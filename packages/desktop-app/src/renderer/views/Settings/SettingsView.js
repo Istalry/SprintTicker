@@ -1,0 +1,54 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useState, useEffect } from 'react';
+import { Sliders, Plug, Calendar, Server, Save, Check } from 'lucide-react';
+export const SettingsView = () => {
+    const [activeTab, setActiveTab] = useState('providers');
+    const [savedSuccess, setSavedSuccess] = useState(false);
+    // Settings State
+    const [fallbackTicketKey, setFallbackTicketKey] = useState('MISC-1');
+    const [providerId, setProviderId] = useState('jira');
+    const [jiraDomain, setJiraDomain] = useState('https://antigravity.atlassian.net');
+    const [bindings, setBindings] = useState({
+        startButtonPress: 'TOGGLE_TRACK_PAUSE',
+        wheelRotateLeft: 'NAVIGATE_QUEUE_PREV',
+        wheelRotateRight: 'NAVIGATE_QUEUE_NEXT',
+        wheelClick: 'TRIGGER_TASK_SELECTOR_MODAL',
+        backButtonShortPress: 'DISMISS_NOTIFICATION_ALERT',
+        backButtonLongPress: 'COMPLETE_AND_LOG_ACTIVE_TASK'
+    });
+    const [standupTime, setStandupTime] = useState('10:00');
+    const [lunchStart, setLunchStart] = useState('12:30');
+    const [lunchEnd, setLunchEnd] = useState('13:30');
+    const [timeoutSeconds, setTimeoutSeconds] = useState(0); // 0 = Indefinite wait
+    useEffect(() => {
+        if (window.electronAPI) {
+            window.electronAPI.getInputBindings().then(b => {
+                if (b)
+                    setBindings(b);
+            }).catch(err => console.error('[SettingsView] Error loading bindings:', err));
+        }
+    }, []);
+    const handleSave = async () => {
+        if (window.electronAPI) {
+            await window.electronAPI.saveInputBindings(bindings);
+        }
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 2500);
+    };
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("h2", { className: "text-xl font-bold font-mono text-white tracking-tight", children: "SETTINGS & MODULE CONFIGURATION" }), _jsx("p", { className: "text-xs text-text-secondary", children: "Configure task providers, hardware rebindings, ceremonies, and webhook endpoints." })] }), _jsxs("button", { onClick: handleSave, className: "flex items-center space-x-2 px-5 py-2.5 bg-accent-green hover:bg-emerald-600 text-dark-900 font-semibold text-sm rounded-lg shadow-md transition-all", children: [savedSuccess ? _jsx(Check, { className: "w-4 h-4" }) : _jsx(Save, { className: "w-4 h-4" }), _jsx("span", { children: savedSuccess ? 'Settings Saved!' : 'Save Settings' })] })] }), _jsx("div", { className: "flex space-x-2 border-b border-border-dark font-mono text-sm", children: [
+                    { id: 'providers', label: '🔌 Task Providers', icon: Plug },
+                    { id: 'hardware', label: '🎛️ Hardware Inputs', icon: Sliders },
+                    { id: 'ceremonies', label: '📅 Ceremonies & Dialogs', icon: Calendar },
+                    { id: 'integrations', label: '⚡ Integrations & Server', icon: Server }
+                ].map(t => (_jsx("button", { onClick: () => setActiveTab(t.id), className: `px-4 py-2.5 font-medium border-b-2 transition-all ${activeTab === t.id
+                        ? 'border-accent-blue text-accent-blue font-bold'
+                        : 'border-transparent text-text-secondary hover:text-white'}`, children: t.label }, t.id))) }), _jsxs("div", { className: "bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl", children: [activeTab === 'providers' && (_jsxs("div", { className: "space-y-6 max-w-xl", children: [_jsx("h3", { className: "text-md font-bold text-white font-mono", children: "Task Provider & Ad-Hoc Mapping" }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Active Task Provider" }), _jsxs("select", { value: providerId, onChange: e => setProviderId(e.target.value), className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono", children: [_jsx("option", { value: "jira", children: "Jira Cloud / Server Integration" }), _jsx("option", { value: "sheets", children: "Google Sheets Sync" }), _jsx("option", { value: "notion", children: "Notion Database" }), _jsx("option", { value: "adhoc", children: "Ad-Hoc / Custom REST Fallback" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Jira Domain URL" }), _jsx("input", { type: "text", value: jiraDomain, onChange: e => setJiraDomain(e.target.value), className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Ad-Hoc Fallback Ticket Key" }), _jsx("input", { type: "text", value: fallbackTicketKey, onChange: e => setFallbackTicketKey(e.target.value), placeholder: "e.g. MISC-1 or ADMIN-1", className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" }), _jsx("p", { className: "text-xs text-text-secondary mt-1", children: "Non-sprint ad-hoc tasks will log hours against this issue key." })] })] })), activeTab === 'hardware' && (_jsxs("div", { className: "space-y-6", children: [_jsx("h3", { className: "text-md font-bold text-white font-mono", children: "Physical Hardware Input Rebinding" }), _jsx("p", { className: "text-xs text-text-secondary", children: "Rebind BUSY Bar physical wheel and button triggers to internal companion app actions:" }), _jsx("div", { className: "divide-y divide-border-dark", children: [
+                                    { label: 'Start / Pause Button Press', key: 'startButtonPress' },
+                                    { label: 'Scroll Wheel Rotate Left', key: 'wheelRotateLeft' },
+                                    { label: 'Scroll Wheel Rotate Right', key: 'wheelRotateRight' },
+                                    { label: 'Scroll Wheel Click (OK)', key: 'wheelClick' },
+                                    { label: 'Back Button Short Press', key: 'backButtonShortPress' },
+                                    { label: 'Back Button Long Press (1.5s)', key: 'backButtonLongPress' }
+                                ].map(item => (_jsxs("div", { className: "py-3 flex items-center justify-between", children: [_jsx("span", { className: "text-sm font-medium text-white", children: item.label }), _jsxs("select", { value: bindings[item.key], onChange: e => setBindings({ ...bindings, [item.key]: e.target.value }), className: "bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-xs text-accent-blue font-mono focus:outline-none focus:border-accent-blue", children: [_jsx("option", { value: "TOGGLE_TRACK_PAUSE", children: "Toggle Start / Pause Tracking" }), _jsx("option", { value: "TRIGGER_TASK_SELECTOR_MODAL", children: "Trigger 2-Step Task Selection Modal" }), _jsx("option", { value: "NAVIGATE_QUEUE_PREV", children: "Previous Task / Queue Item" }), _jsx("option", { value: "NAVIGATE_QUEUE_NEXT", children: "Next Task / Queue Item" }), _jsx("option", { value: "DISMISS_NOTIFICATION_ALERT", children: "Dismiss Alert / Notification" }), _jsx("option", { value: "COMPLETE_AND_LOG_ACTIVE_TASK", children: "Complete & Log Active Task" })] })] }, item.key))) })] })), activeTab === 'ceremonies' && (_jsxs("div", { className: "space-y-6 max-w-xl", children: [_jsx("h3", { className: "text-md font-bold text-white font-mono", children: "Agile Ceremonies & Schedule" }), _jsxs("div", { className: "grid grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Daily Stand-up Time" }), _jsx("input", { type: "time", value: standupTime, onChange: e => setStandupTime(e.target.value), className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Dialog Timeout Limit" }), _jsxs("select", { value: timeoutSeconds, onChange: e => setTimeoutSeconds(Number(e.target.value)), className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono", children: [_jsx("option", { value: 0, children: "Wait Indefinitely (Default)" }), _jsx("option", { value: 60, children: "Auto-Dismiss after 60s" }), _jsx("option", { value: 120, children: "Auto-Execute after 120s" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Lunch Start Time" }), _jsx("input", { type: "time", value: lunchStart, onChange: e => setLunchStart(e.target.value), className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs font-mono text-text-secondary mb-1", children: "Lunch End Time" }), _jsx("input", { type: "time", value: lunchEnd, onChange: e => setLunchEnd(e.target.value), className: "w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" })] })] })] })), activeTab === 'integrations' && (_jsxs("div", { className: "space-y-6 max-w-xl", children: [_jsx("h3", { className: "text-md font-bold text-white font-mono", children: "Local Webhook Server Status" }), _jsxs("div", { className: "bg-dark-900 p-4 rounded-lg border border-border-dark space-y-2 font-mono text-xs", children: [_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-text-secondary", children: "Fastify HTTP Webhook Server:" }), _jsx("span", { className: "text-accent-green font-bold", children: "\uD83D\uDFE2 Listening (127.0.0.1:39123)" })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-text-secondary", children: "Legacy Port Fallback:" }), _jsx("span", { className: "text-accent-blue font-bold", children: "\uD83D\uDFE2 Active (127.0.0.1:8080)" })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-text-secondary", children: "Unity Editor C# Plugin Status:" }), _jsx("span", { className: "text-accent-green font-bold", children: "\uD83D\uDFE2 Connected (MyFantasyGame)" })] })] })] }))] })] }));
+};
+//# sourceMappingURL=SettingsView.js.map

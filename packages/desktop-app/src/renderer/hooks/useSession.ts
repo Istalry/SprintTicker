@@ -28,6 +28,7 @@ export function useSession() {
     } else {
       setLoading(false);
     }
+    return undefined;
   }, []);
 
   // Local 1-second interval to update elapsed seconds UI when TRACKING

@@ -1,0 +1,20 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Play, Pause, CheckCircle2, RefreshCw } from 'lucide-react';
+export const ActiveTaskHeroCard = ({ session, onPause, onResume, onComplete, onOpenTaskModal }) => {
+    const formatSeconds = (totalSec) => {
+        const hrs = Math.floor(totalSec / 3600);
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const secs = totalSec % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+    return (_jsxs("section", { className: "bg-dark-800 rounded-xl border border-border-dark p-6 space-y-6 shadow-xl", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center space-x-3", children: [_jsx("span", { className: "bg-accent-blue/20 text-accent-blue px-3 py-1 rounded-md text-xs font-mono font-bold", children: "CURRENT SESSION" }), _jsxs("span", { className: `px-3 py-1 rounded-full text-xs font-semibold font-mono ${session?.status === 'TRACKING'
+                                    ? 'bg-accent-green/20 text-accent-green border border-accent-green/30'
+                                    : session?.status === 'PAUSED'
+                                        ? 'bg-accent-amber/20 text-accent-amber border border-accent-amber/30'
+                                        : 'bg-dark-700 text-text-secondary border border-border-dark'}`, children: ["\u25CF ", session?.status || 'IDLE'] })] }), _jsx("span", { className: "text-xs font-mono text-text-secondary", children: "UTC Absolute Timestamp Engine" })] }), _jsxs("div", { children: [_jsx("div", { className: "text-xs font-mono text-text-secondary mb-1", children: session?.taskKey || 'NO TASK SELECTED' }), _jsx("h2", { className: "text-xl font-bold text-white tracking-tight", children: session?.taskTitle || 'No Active Task Selected' })] }), _jsxs("div", { className: "flex items-baseline space-x-4 bg-dark-900 p-4 rounded-lg border border-border-dark", children: [_jsx("span", { className: "text-xs font-mono text-text-secondary uppercase", children: "Elapsed Time:" }), _jsx("span", { className: "text-4xl font-extrabold font-mono text-white tracking-widest", children: formatSeconds(session?.elapsedSeconds || 0) })] }), _jsxs("div", { className: "flex items-center space-x-3 pt-2", children: [session?.status === 'TRACKING' ? (_jsxs("button", { onClick: onPause, className: "flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-amber hover:bg-amber-600 text-dark-900 transition-all shadow-md", children: [_jsx(Pause, { className: "w-4 h-4" }), _jsx("span", { children: "Pause" })] })) : (_jsxs("button", { onClick: onResume, disabled: !session, className: `flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-md ${session
+                            ? 'bg-accent-green hover:bg-emerald-600 text-dark-900'
+                            : 'bg-dark-700 text-text-secondary cursor-not-allowed'}`, children: [_jsx(Play, { className: "w-4 h-4" }), _jsx("span", { children: "Resume" })] })), _jsxs("button", { onClick: onComplete, disabled: !session, className: `flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm border transition-all ${session
+                            ? 'bg-dark-700 hover:bg-dark-700/80 text-white border-border-dark'
+                            : 'bg-dark-700/50 text-text-secondary border-border-dark/50 cursor-not-allowed'}`, children: [_jsx(CheckCircle2, { className: "w-4 h-4 text-accent-green" }), _jsx("span", { children: "Finish & Log Hours" })] }), _jsxs("button", { onClick: onOpenTaskModal, className: "flex items-center space-x-2 px-5 py-2.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue rounded-lg font-semibold text-sm border border-accent-blue/30 transition-all", children: [_jsx(RefreshCw, { className: "w-4 h-4" }), _jsx("span", { children: "Switch / New Task" })] })] })] }));
+};
+//# sourceMappingURL=ActiveTaskHeroCard.js.map

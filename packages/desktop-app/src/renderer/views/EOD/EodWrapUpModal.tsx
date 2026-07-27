@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Moon, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Moon, CheckCircle2 } from 'lucide-react';
 
 interface EodWrapUpModalProps {
   isOpen: boolean;

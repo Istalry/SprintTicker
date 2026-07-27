@@ -21,7 +21,7 @@ export class TaskRepository {
 
     const stmt = this.dbConn.getDb().prepare<[string], {
       id: string;
-      project_id: string;
+      projectId: string;
       key: string;
       title: string;
       status: 'todo' | 'in_progress' | 'done';

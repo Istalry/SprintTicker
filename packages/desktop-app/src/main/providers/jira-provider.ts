@@ -19,6 +19,10 @@ export class JiraProvider implements ITaskProvider {
     return true;
   }
 
+  public getCredentials(): { domain: string; apiToken: string; email: string } {
+    return { domain: this.domain, apiToken: this.apiToken, email: this.email };
+  }
+
   public async getProjects(): Promise<ProjectDTO[]> {
     return [
       { id: 'PROJ', key: 'PROJ', name: 'Core Gameplay Engine' },

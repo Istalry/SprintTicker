@@ -136,4 +136,57 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Assert
     expect(bindings.startButtonPress).toBe('CUSTOM_START');
   });
+
+  it('BusyBarDriver_WifiOptionsAndApiToken_ConfiguresHeadersAndWifiConnectionType', () => {
+    // Arrange & Act
+    const wifiDriver = new BusyBarDriver({
+      ipAddress: '192.168.1.100',
+      apiToken: 'my_secret_token',
+      forceMock: true
+    });
+
+    // Assert
+    expect(wifiDriver.getApiToken()).toBe('my_secret_token');
+    const status = wifiDriver.getDeviceStatus();
+    expect(status.connectionType).toBe('wifi');
+    expect(status.ipAddress).toBe('192.168.1.100');
+
+    // Update Token
+    wifiDriver.setApiToken('new_token');
+    expect(wifiDriver.getApiToken()).toBe('new_token');
+  });
+
+  it('BusyBarDriver_LiveMode_SendsPayloadWithApiTokenHeader', async () => {
+    // Arrange
+    const originalFetch = globalThis.fetch;
+    let capturedUrl = '';
+    let capturedHeaders: Record<string, string> = {};
+
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      capturedUrl = url;
+      capturedHeaders = (init?.headers as Record<string, string>) || {};
+      return { ok: true, json: async () => ({ status: 'connected' }) } as Response;
+    }) as typeof fetch;
+
+    const liveDriver = new BusyBarDriver({
+      ipAddress: '192.168.1.105',
+      apiToken: 'secret_x_api_token',
+      forceMock: false
+    });
+
+    try {
+      // Act
+      const connected = await liveDriver.connect();
+      const payloadSuccess = await liveDriver.sendDisplayPayload({ test: 'data' });
+
+      // Assert
+      expect(connected).toBe(true);
+      expect(payloadSuccess).toBe(true);
+      expect(capturedUrl).toBe('http://192.168.1.105/busybar/display/draw');
+      expect(capturedHeaders['X-API-Token']).toBe('secret_x_api_token');
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

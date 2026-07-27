@@ -39,6 +39,10 @@ export class IPCHandlerRegistry {
     this.getWindow = getWindow;
   }
 
+  public getSettingsRepo(): SettingsRepository {
+    return this.settingsRepo;
+  }
+
   /**
    * Registers all ipcMain handles and state listeners.
    */

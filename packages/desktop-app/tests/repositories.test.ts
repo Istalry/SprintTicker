@@ -88,4 +88,22 @@ describe('SQLite Repositories Unit Tests', () => {
     expect(session?.elapsedSeconds).toBeGreaterThanOrEqual(49);
     expect(session?.totalPausedSeconds).toBe(10);
   });
+
+  it('WorklogRepository_QueueAndGetPendingWorklogs_StoresAndReturnsQueue', () => {
+    // Arrange & Act
+    worklogRepo.enqueueSyncItem({
+      id: 'wl_1',
+      providerId: 'jira',
+      taskId: 'PROJ-142',
+      durationSeconds: 3600,
+      startedAtUtc: new Date().toISOString(),
+      comment: 'Offline testing'
+    });
+
+    const pending = worklogRepo.getPendingQueueItems();
+
+    // Assert
+    expect(pending).toHaveLength(1);
+    expect(pending[0].comment).toBe('Offline testing');
+  });
 });

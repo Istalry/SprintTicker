@@ -30,6 +30,7 @@ export function useDeviceStatus() {
 
       return () => unsubscribe();
     }
+    return undefined;
   }, []);
 
   return deviceStatus;

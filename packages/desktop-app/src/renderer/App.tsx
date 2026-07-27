@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Clock,
-  Plug,
   Sliders,
   Gamepad2,
   Calendar,
@@ -45,6 +44,7 @@ export const App: React.FC = () => {
       });
       return () => unsubscribe();
     }
+    return undefined;
   }, []);
 
   const formatSeconds = (totalSec: number): string => {

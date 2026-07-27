@@ -5,7 +5,7 @@ import { TaskDTO, ProjectDTO } from '../../shared/dtos';
  * Custom React hook fetching projects and tasks with support for fuzzy filtering.
  */
 export function useTasks(selectedProjectId: string = 'PROJ') {
-  const [projects, setProjects] = useState<ProjectDTO[]>([
+  const [projects] = useState<ProjectDTO[]>([
     { id: 'PROJ', key: 'PROJ', name: 'Core Gameplay Engine' },
     { id: 'UI', key: 'UI', name: 'Main Menu & HUD Redesign' },
     { id: 'SHDR', key: 'SHDR', name: 'Custom Shader Pipeline' }

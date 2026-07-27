@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@busy-app/busy-lib": "^0.17.0",
     "better-sqlite3": "^11.0.0",
     "fastify": "^4.26.0",
     "lucide-react": "^0.359.0",
