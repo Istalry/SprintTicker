@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "package:win": "tsc && vite build && electron-builder --win",
+    "package:portable": "tsc && vite build && electron-builder --win portable",
+    "package:installer": "tsc && vite build && electron-builder --win nsis",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

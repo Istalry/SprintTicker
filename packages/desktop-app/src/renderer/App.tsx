@@ -8,81 +8,55 @@ import {
   MessageSquare,
   Zap,
   Monitor,
-  Play,
-  Pause,
-  CheckCircle2,
-  RefreshCw,
   Wifi,
   Settings,
-  ShieldAlert
+  Moon
 } from 'lucide-react';
-import { ActiveSessionDTO, DeviceStatusDTO } from '../shared/dtos';
+import { useSession } from './hooks/useSession';
+import { useDeviceStatus } from './hooks/useDeviceStatus';
+import { useTasks } from './hooks/useTasks';
+import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
+import { TaskSelectionModal } from './components/TaskSelectionModal';
+import { SettingsView } from './views/Settings/SettingsView';
+import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
-  const [deviceStatus, setDeviceStatus] = useState<DeviceStatusDTO>({
-    connected: true,
-    ipAddress: '10.0.4.20',
-    connectionType: 'usb',
-    frontBrightness: 80,
-    backBrightness: 100,
-    batteryPercent: 98,
-    firmwareVersion: '1.4.2',
-    webSocketPingMs: 4
-  });
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
+  const [isEodModalOpen, setIsEodModalOpen] = useState<boolean>(false);
 
-  const [session, setSession] = useState<ActiveSessionDTO | null>({
-    sessionId: 'sess_101',
-    projectId: 'PROJ',
-    taskId: 'PROJ-142',
-    taskKey: 'PROJ-142',
-    taskTitle: 'Implement Player Character Dash Mechanics',
-    isAdHoc: false,
-    status: 'TRACKING',
-    startTimeUtc: new Date(Date.now() - 5078000).toISOString(),
-    totalPausedSeconds: 0,
-    elapsedSeconds: 5078
-  });
+  // Custom Hooks
+  const { session, pause, resume, complete, startTask } = useSession();
+  const deviceStatus = useDeviceStatus();
+  const { projects, tasks } = useTasks('PROJ');
 
-  // Timer interval for local stopwatch counter UI update
+  // Auto-open TaskSelectionModal on physical hardware wheel click IPC event
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSession(prev => {
-        if (!prev || prev.status !== 'TRACKING') return prev;
-        return {
-          ...prev,
-          elapsedSeconds: prev.elapsedSeconds + 1
-        };
+    if (window.electronAPI) {
+      const unsubscribe = window.electronAPI.onHardwareInputEvent(event => {
+        if (event.actionAssigned === 'TRIGGER_TASK_SELECTOR_MODAL') {
+          setIsTaskModalOpen(true);
+        }
       });
-    }, 1000);
-    return () => clearInterval(timer);
+      return () => unsubscribe();
+    }
   }, []);
 
   const formatSeconds = (totalSec: number): string => {
     const hrs = Math.floor(totalSec / 3600);
     const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = totalSec % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handlePauseToggle = async () => {
-    if (!session) return;
-    if (session.status === 'TRACKING') {
-      setSession({ ...session, status: 'PAUSED' });
-    } else {
-      setSession({ ...session, status: 'TRACKING' });
-    }
+    return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
   };
 
   const navItems = [
     { id: 'session', label: 'Active Session', icon: Clock },
-    { id: 'provider', label: 'Task Provider', icon: Plug },
-    { id: 'hardware', label: 'Hardware Inputs', icon: Sliders },
+    { id: 'settings', label: 'Modular Settings', icon: Settings },
+    { id: 'hardware', label: 'Hardware Rebinds', icon: Sliders },
     { id: 'unity', label: 'Unity Engine', icon: Gamepad2 },
     { id: 'ceremonies', label: 'Ceremonies', icon: Calendar },
     { id: 'messaging', label: 'Messaging', icon: MessageSquare },
     { id: 'priority', label: 'Priority Rules', icon: Zap },
-    { id: 'device', label: 'Device Hardware', icon: Monitor }
+    { id: 'device', label: 'Device Diagnostics', icon: Monitor }
   ];
 
   return (
@@ -90,7 +64,7 @@ export const App: React.FC = () => {
       {/* Top Navigation Bar */}
       <header className="flex items-center justify-between px-6 py-3 bg-dark-800 border-b border-border-dark select-none">
         <div className="flex items-center space-x-3">
-          <div className="w-3 h-3 rounded-full bg-accent-green animate-pulse" />
+          <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
           <h1 className="text-lg font-bold tracking-tight text-white font-mono">
             ANTIGRAVITY <span className="text-accent-blue font-sans">BUSY Bar</span>
           </h1>
@@ -100,17 +74,21 @@ export const App: React.FC = () => {
           <div className="flex items-center space-x-2 bg-dark-700 px-3 py-1.5 rounded-md border border-border-dark">
             <Wifi className="w-4 h-4 text-accent-green" />
             <span className="text-text-primary">
-              Connected ({deviceStatus.ipAddress})
+              {deviceStatus.connected ? `Connected (${deviceStatus.ipAddress})` : 'Disconnected'}
             </span>
           </div>
 
           <div className="flex items-center space-x-2 text-text-secondary">
-            <span>Sync:</span>
-            <span className="text-accent-green font-semibold">Synced</span>
+            <span>Ping:</span>
+            <span className="text-accent-green font-semibold">{deviceStatus.webSocketPingMs}ms</span>
           </div>
 
-          <button className="p-2 hover:bg-dark-700 rounded-md transition-colors text-text-secondary hover:text-white">
-            <Settings className="w-5 h-5" />
+          <button
+            onClick={() => setIsEodModalOpen(true)}
+            className="flex items-center space-x-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple px-3 py-1.5 rounded-md border border-accent-purple/30 font-semibold transition-colors"
+          >
+            <Moon className="w-4 h-4" />
+            <span>EOD Wrap-Up</span>
           </button>
         </div>
       </header>
@@ -143,129 +121,88 @@ export const App: React.FC = () => {
         </aside>
 
         {/* Workspace Container */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6 bg-dark-900">
-          {/* Active Task Hero Card */}
-          <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="bg-accent-blue/20 text-accent-blue px-3 py-1 rounded-md text-xs font-mono font-bold">
-                  CURRENT SESSION
-                </span>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-semibold font-mono ${
-                    session?.status === 'TRACKING'
-                      ? 'bg-accent-green/20 text-accent-green border border-accent-green/30'
-                      : 'bg-accent-amber/20 text-accent-amber border border-accent-amber/30'
-                  }`}
-                >
-                  ● {session?.status || 'IDLE'}
-                </span>
-              </div>
-              <span className="text-xs font-mono text-text-secondary">UTC Absolute Timestamp Engine</span>
+        <main className="flex-1 overflow-y-auto p-6 bg-dark-900">
+          {activeTab === 'session' ? (
+            <div className="space-y-6">
+              {/* Active Session Hero Card */}
+              <ActiveTaskHeroCard
+                session={session}
+                onPause={pause}
+                onResume={resume}
+                onComplete={() => complete()}
+                onOpenTaskModal={() => setIsTaskModalOpen(true)}
+              />
+
+              {/* Today's Worklog Queue Table */}
+              <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-4 shadow-xl">
+                <h3 className="text-md font-bold text-white font-mono tracking-tight flex items-center justify-between">
+                  <span>TODAY'S WORKLOG QUEUE</span>
+                  <span className="text-xs text-text-secondary font-normal">Active session syncing</span>
+                </h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-dark-700 text-text-secondary text-xs uppercase font-mono border-b border-border-dark">
+                      <tr>
+                        <th className="py-3 px-4">Task ID</th>
+                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Duration</th>
+                        <th className="py-3 px-4">Provider Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-dark text-text-primary">
+                      <tr className="hover:bg-dark-700/50 transition-colors">
+                        <td className="py-3 px-4 font-mono text-accent-blue font-medium">PROJ-140</td>
+                        <td className="py-3 px-4">Fix Enemy Spawner Memory Leak</td>
+                        <td className="py-3 px-4 font-mono">02h 15m</td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
+                            Synced (Jira)
+                          </span>
+                        </td>
+                      </tr>
+                      {session && (
+                        <tr className="hover:bg-dark-700/50 transition-colors bg-dark-700/30">
+                          <td className="py-3 px-4 font-mono text-accent-amber font-medium">{session.taskKey}</td>
+                          <td className="py-3 px-4">{session.taskTitle} (Active)</td>
+                          <td className="py-3 px-4 font-mono">{formatSeconds(session.elapsedSeconds)}</td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-amber/10 text-accent-amber">
+                              {session.status}
+                            </span>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             </div>
-
-            <div>
-              <div className="text-xs font-mono text-text-secondary mb-1">{session?.taskKey || 'NO TASK'}</div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {session?.taskTitle || 'No Active Task Selected'}
-              </h2>
-            </div>
-
-            <div className="flex items-baseline space-x-4 bg-dark-900 p-4 rounded-lg border border-border-dark">
-              <span className="text-xs font-mono text-text-secondary uppercase">Elapsed Time:</span>
-              <span className="text-4xl font-extrabold font-mono text-white tracking-widest">
-                {formatSeconds(session?.elapsedSeconds || 0)}
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3 pt-2">
-              <button
-                onClick={handlePauseToggle}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                  session?.status === 'TRACKING'
-                    ? 'bg-accent-amber hover:bg-amber-600 text-dark-900'
-                    : 'bg-accent-green hover:bg-emerald-600 text-dark-900'
-                }`}
-              >
-                {session?.status === 'TRACKING' ? (
-                  <>
-                    <Pause className="w-4 h-4" />
-                    <span>Pause</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    <span>Resume</span>
-                  </>
-                )}
-              </button>
-
-              <button className="flex items-center space-x-2 px-5 py-2.5 bg-dark-700 hover:bg-dark-700/80 text-white rounded-lg font-semibold text-sm border border-border-dark transition-all">
-                <CheckCircle2 className="w-4 h-4 text-accent-green" />
-                <span>Finish & Log Hours</span>
-              </button>
-
-              <button className="flex items-center space-x-2 px-5 py-2.5 bg-dark-700 hover:bg-dark-700/80 text-white rounded-lg font-semibold text-sm border border-border-dark transition-all">
-                <RefreshCw className="w-4 h-4 text-accent-blue" />
-                <span>Switch / New Task</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Today's Worklog Queue */}
-          <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-4 shadow-xl">
-            <h3 className="text-md font-bold text-white font-mono tracking-tight flex items-center justify-between">
-              <span>TODAY'S WORKLOG QUEUE</span>
-              <span className="text-xs text-text-secondary font-normal">3 entries logged</span>
-            </h3>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-dark-700 text-text-secondary text-xs uppercase font-mono border-b border-border-dark">
-                  <tr>
-                    <th className="py-3 px-4">Task ID</th>
-                    <th className="py-3 px-4">Description</th>
-                    <th className="py-3 px-4">Duration</th>
-                    <th className="py-3 px-4">Provider Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-dark text-text-primary">
-                  <tr className="hover:bg-dark-700/50 transition-colors">
-                    <td className="py-3 px-4 font-mono text-accent-blue font-medium">PROJ-140</td>
-                    <td className="py-3 px-4">Fix Enemy Spawner Memory Leak</td>
-                    <td className="py-3 px-4 font-mono">02h 15m</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
-                        Synced (Jira)
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-dark-700/50 transition-colors">
-                    <td className="py-3 px-4 font-mono text-accent-purple font-medium">ADHOC-01</td>
-                    <td className="py-3 px-4">Sprint Planning & Stand-up</td>
-                    <td className="py-3 px-4 font-mono">00h 45m</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
-                        Synced (Misc)
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-dark-700/50 transition-colors bg-dark-700/30">
-                    <td className="py-3 px-4 font-mono text-accent-amber font-medium">PROJ-142</td>
-                    <td className="py-3 px-4">Implement Dash Mechanics (Active)</td>
-                    <td className="py-3 px-4 font-mono">{formatSeconds(session?.elapsedSeconds || 0)}</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-amber/10 text-accent-amber">
-                        In Progress
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          ) : (
+            <SettingsView />
+          )}
         </main>
       </div>
+
+      {/* 2-Step Task Selection Modal */}
+      <TaskSelectionModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        projects={projects}
+        tasks={tasks}
+        onSelectTask={(taskId, isAdHoc, title) => {
+          startTask(taskId, isAdHoc, title);
+        }}
+      />
+
+      {/* End-of-Day Wrap-up Modal */}
+      <EodWrapUpModal
+        isOpen={isEodModalOpen}
+        onClose={() => setIsEodModalOpen(false)}
+        onConfirmEod={async () => {
+          await complete('Finalized during End-of-Day Wrap-Up');
+        }}
+      />
     </div>
   );
 };

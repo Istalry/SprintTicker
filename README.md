@@ -67,7 +67,38 @@ To launch the Electron Desktop App with hot reloading for the React UI:
 pnpm dev
 ```
 
-This starts the Vite dev server for the React UI on `http://localhost:3000` and launches the Electron Main process with the embedded Fastify Webhook Server listening on `http://127.0.0.1:8080`.
+This starts the Vite dev server for the React UI on `http://localhost:3000` and launches the Electron Main process with the embedded Fastify Webhook Server listening on `http://127.0.0.1:39123`.
+
+---
+
+## 📦 Building & Production Packaging (Windows x64)
+
+The application uses `electron-builder` configured via `electron-builder.json` to generate production binaries for Windows x64:
+
+### 1. Package Complete Windows Release (NSIS Installer & Portable Executable)
+
+To build both the **NSIS Setup Installer** (`.exe`) and the standalone **Portable Executable** (`.exe`):
+
+```bash
+pnpm package:win
+```
+
+*(Or via npx: `npx pnpm package:win`)*
+
+### 2. Package Specific Target Binaries
+
+From within `packages/desktop-app`:
+
+- **NSIS Setup Installer (`.exe`)**:
+  ```bash
+  pnpm --filter @busy-app/desktop-app package:installer
+  ```
+- **Portable Executable (`.exe`)**:
+  ```bash
+  pnpm --filter @busy-app/desktop-app package:portable
+  ```
+
+Outputs are saved to `packages/desktop-app/dist-electron/`.
 
 ---
 
@@ -89,14 +120,14 @@ pnpm test:coverage
 
 ## 🔌 Embedded Webhook Server API Endpoints
 
-The Electron Main process hosts an HTTP server on `http://127.0.0.1:8080` for local IDE integrations:
+The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for local IDE and Unity integrations:
 
 | Route | Method | Payload Description |
 | :--- | :--- | :--- |
-| `/unity/compile-start` | `POST` | Dispatches blue compilation progress bar display state |
-| `/unity/compile-finish` | `POST` | Plays audio chime & blinks green/red LED on build result |
-| `/unity/playmode` | `POST` | Toggles "ON AIR" red display mode during Unity play mode |
-| `/unity/exception` | `POST` | Flashes red LED and displays console exception details |
+| `/api/v1/unity/compile` | `POST` | Compilation state (`started`, `finished`) & progress bar display |
+| `/api/v1/unity/playmode` | `POST` | Toggles "ON AIR" red display mode during Unity Play Mode (`entered`, `exited`) |
+| `/api/v1/unity/console` | `POST` | Flashes red LED and displays exception/warning details |
+| `/api/v1/vscode/activity` | `POST` | VS Code workspace & active file editing activity telemetry |
 
 ---
 

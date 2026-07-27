@@ -167,4 +167,70 @@ describe('WebhookServer Unit Tests', () => {
     // Assert
     expect(response.statusCode).toBe(400);
   });
+
+  it('PostApiV1UnityCompile_ValidPayload_Returns200Accepted', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { state: 'started', projectName: 'MyFantasyGame' };
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/unity/compile',
+      payload
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
+  });
+
+  it('PostApiV1UnityPlaymode_ValidPayload_Returns200Accepted', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { state: 'entered', projectName: 'MyFantasyGame' };
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/unity/playmode',
+      payload
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
+  });
+
+  it('PostApiV1VSCodeActivity_ValidPayload_Returns200Accepted', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { workspaceName: 'BUSY_Bar', fileName: 'App.tsx', action: 'edit' };
+
+    let callbackTriggered = false;
+    webhookServer.onVSCodeEvent(p => {
+      if (p.workspaceName === 'BUSY_Bar') callbackTriggered = true;
+    });
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/vscode/activity',
+      payload
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(callbackTriggered).toBe(true);
+  });
+
+  it('PostApiV1UnityConsole_ValidPayload_TriggersConsoleCallbacks', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { type: 'exception', message: 'NullRef', projectName: 'MyGame' };
+
+    let callbackTriggered = false;
+    webhookServer.onConsoleEvent(p => {
+      if (p.projectName === 'MyGame') callbackTriggered = true;
+    });
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/unity/console',
+      payload
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(callbackTriggered).toBe(true);
+  });
 });

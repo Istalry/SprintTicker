@@ -73,6 +73,7 @@ export class SessionRepository {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
+        start_time_utc = excluded.start_time_utc,
         total_paused_seconds = excluded.total_paused_seconds,
         last_pause_start_utc = excluded.last_pause_start_utc
     `);

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @busy-app/desktop-app dev",
     "build": "pnpm --filter @busy-app/desktop-app build",
+    "package:win": "pnpm --filter @busy-app/desktop-app package:win",
     "test": "pnpm --filter @busy-app/desktop-app test",
     "test:coverage": "pnpm --filter @busy-app/desktop-app test:coverage",
     "lint": "eslint packages/**/*.{ts,tsx}",
