@@ -1,4 +1,5 @@
-import fastify, { FastifyInstance } from 'fastify';
+import http, { Server, IncomingMessage, ServerResponse } from 'http';
+import { AddressInfo } from 'net';
 import { DTOValidator } from '../../shared/dtos';
 
 export interface UnityCompilePayload {
@@ -29,14 +30,26 @@ export interface VSCodeActivityPayload {
   action?: string;
 }
 
+export interface InjectOptions {
+  method: string;
+  url: string;
+  payload?: unknown;
+}
+
+export interface InjectResponse {
+  statusCode: number;
+  payload: string;
+}
+
 /**
- * Embedded Fastify HTTP server listening on 127.0.0.1:39123 (and legacy 8080 fallback)
- * to receive non-blocking webhooks from Unity Editor and VS Code extensions.
+ * Embedded HTTP server built on Node.js native `http` module listening on 127.0.0.1:39123
+ * (and fallback port) to receive webhooks from Unity Editor and VS Code extensions.
  */
 export class WebhookServer {
-  private server: FastifyInstance;
-  private port: number;
+  private readonly server: Server;
+  private readonly port: number;
   private readonly host: string = '127.0.0.1';
+  private listeningAddress: string = '';
   private compileCallbacks: Set<(payload: UnityCompilePayload) => void> = new Set();
   private playModeCallbacks: Set<(payload: UnityPlayModePayload) => void> = new Set();
   private consoleCallbacks: Set<(payload: UnityConsolePayload) => void> = new Set();
@@ -44,152 +57,261 @@ export class WebhookServer {
 
   constructor(port: number = 39123) {
     this.port = port;
-    this.server = fastify({ logger: false });
-    this.registerRoutes();
+    this.server = http.createServer((req, res) => this.handleRequest(req, res));
   }
 
+  /// <summary>
+  /// Registers a callback listener for Unity compilation events.
+  /// </summary>
   public onCompileEvent(cb: (payload: UnityCompilePayload) => void): void {
     this.compileCallbacks.add(cb);
   }
 
+  /// <summary>
+  /// Registers a callback listener for Unity playmode state changes.
+  /// </summary>
   public onPlayModeEvent(cb: (payload: UnityPlayModePayload) => void): void {
     this.playModeCallbacks.add(cb);
   }
 
+  /// <summary>
+  /// Registers a callback listener for Unity console errors and warnings.
+  /// </summary>
   public onConsoleEvent(cb: (payload: UnityConsolePayload) => void): void {
     this.consoleCallbacks.add(cb);
   }
 
+  /// <summary>
+  /// Registers a callback listener for VS Code editor activity events.
+  /// </summary>
   public onVSCodeEvent(cb: (payload: VSCodeActivityPayload) => void): void {
     this.vsCodeCallbacks.add(cb);
   }
 
-  /**
-   * Registers Unity C# plugin & VS Code extension webhook endpoints.
-   */
-  private registerRoutes(): void {
-    // API v1 Unity Compile Route
-    this.server.post('/api/v1/unity/compile', async (request, reply) => {
-      const body = request.body as UnityCompilePayload;
-      if (!body || typeof body.projectName !== 'string' || !['started', 'finished'].includes(body.state)) {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid compile payload' });
-      }
+  /// <summary>
+  /// Asynchronously processes incoming HTTP requests and routes JSON POST webhooks.
+  /// </summary>
+  private handleRequest(req: IncomingMessage, res: ServerResponse): void {
+    if (req.method !== 'POST') {
+      this.sendJSON(res, 405, { error: 'METHOD_NOT_ALLOWED', message: 'Method Not Allowed' });
+      return;
+    }
 
-      for (const cb of this.compileCallbacks) cb(body);
-      return reply.status(200).send({ status: 'ACCEPTED' });
+    let bodyText = '';
+    req.on('data', (chunk: Buffer) => {
+      bodyText += chunk.toString('utf-8');
     });
 
-    // API v1 Unity Play Mode Route
-    this.server.post('/api/v1/unity/playmode', async (request, reply) => {
-      const body = request.body as UnityPlayModePayload;
-      if (!body || typeof body.projectName !== 'string' || !['entered', 'exited'].includes(body.state)) {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid playmode payload' });
+    req.on('end', () => {
+      let body: unknown = null;
+      if (bodyText.trim().length > 0) {
+        try {
+          body = JSON.parse(bodyText);
+        } catch {
+          this.sendJSON(res, 400, { error: 'INVALID_JSON', message: 'Malformed JSON payload' });
+          return;
+        }
       }
 
-      for (const cb of this.playModeCallbacks) cb(body);
-      return reply.status(200).send({ status: 'ACCEPTED' });
-    });
-
-    // API v1 Unity Console Warning / Exception Route
-    this.server.post('/api/v1/unity/console', async (request, reply) => {
-      const body = request.body as UnityConsolePayload;
-      if (!body || typeof body.projectName !== 'string' || typeof body.message !== 'string') {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid console payload' });
-      }
-
-      for (const cb of this.consoleCallbacks) cb(body);
-      return reply.status(200).send({ status: 'ACCEPTED' });
-    });
-
-    // API v1 VS Code Activity Route
-    this.server.post('/api/v1/vscode/activity', async (request, reply) => {
-      const body = request.body as VSCodeActivityPayload;
-      if (!body || typeof body.workspaceName !== 'string') {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid VS Code payload' });
-      }
-
-      for (const cb of this.vsCodeCallbacks) cb(body);
-      return reply.status(200).send({ status: 'ACCEPTED' });
-    });
-
-    // Legacy Compatibility Routes (/unity/*)
-    this.server.post('/unity/compile-start', async (request, reply) => {
-      if (!DTOValidator.isValidCompileStart(request.body)) {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid compile start payload' });
-      }
-      for (const cb of this.compileCallbacks) {
-        cb({ state: 'started', projectName: request.body.project, unityVersion: request.body.unityVersion });
-      }
-      return reply.status(200).send({ status: 'ACCEPTED' });
-    });
-
-    this.server.post('/unity/compile-finish', async (request, reply) => {
-      if (!DTOValidator.isValidCompileFinish(request.body)) {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid compile finish payload' });
-      }
-      for (const cb of this.compileCallbacks) {
-        cb({
-          state: 'finished',
-          projectName: request.body.project,
-          success: request.body.success,
-          elapsedSeconds: request.body.elapsedSeconds,
-          errorCount: request.body.errorCount,
-          warningCount: request.body.warningCount
-        });
-      }
-      return reply.status(200).send({ status: 'ACCEPTED' });
-    });
-
-    this.server.post('/unity/playmode', async (request, reply) => {
-      if (!DTOValidator.isValidPlayMode(request.body)) {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid playmode payload' });
-      }
-      for (const cb of this.playModeCallbacks) {
-        cb({
-          state: request.body.state === 'EnteredPlayMode' ? 'entered' : 'exited',
-          projectName: request.body.project
-        });
-      }
-      return reply.status(200).send({ status: 'ACCEPTED' });
-    });
-
-    this.server.post('/unity/exception', async (request, reply) => {
-      if (!DTOValidator.isValidException(request.body)) {
-        return reply.status(400).send({ error: 'INVALID_PAYLOAD', message: 'Invalid exception payload' });
-      }
-      for (const cb of this.consoleCallbacks) {
-        cb({
-          type: 'exception',
-          projectName: request.body.project,
-          message: request.body.message,
-          stackTrace: request.body.stackTrace
-        });
-      }
-      return reply.status(200).send({ status: 'ACCEPTED' });
+      this.routeRequest(req.url || '/', body, res);
     });
   }
 
-  /**
-   * Starts the Fastify HTTP server.
-   */
-  public async start(): Promise<string> {
-    try {
-      const address = await this.server.listen({ port: this.port, host: this.host });
-      return address;
-    } catch (err) {
-      this.server.log.error(err);
-      throw err;
+  /// <summary>
+  /// Routes parsed body content to corresponding webhook handlers.
+  /// </summary>
+  private routeRequest(url: string, body: unknown, res: ServerResponse): void {
+    switch (url) {
+      case '/api/v1/unity/compile':
+        return this.handleApiV1Compile(body, res);
+      case '/api/v1/unity/playmode':
+        return this.handleApiV1PlayMode(body, res);
+      case '/api/v1/unity/console':
+        return this.handleApiV1Console(body, res);
+      case '/api/v1/vscode/activity':
+        return this.handleApiV1VSCodeActivity(body, res);
+      case '/unity/compile-start':
+        return this.handleLegacyCompileStart(body, res);
+      case '/unity/compile-finish':
+        return this.handleLegacyCompileFinish(body, res);
+      case '/unity/playmode':
+        return this.handleLegacyPlayMode(body, res);
+      case '/unity/exception':
+        return this.handleLegacyException(body, res);
+      default:
+        return this.sendJSON(res, 404, { error: 'NOT_FOUND', message: 'Endpoint Not Found' });
     }
   }
 
-  /**
-   * Stops the Fastify server gracefully.
-   */
-  public async stop(): Promise<void> {
-    await this.server.close();
+  private handleApiV1Compile(body: unknown, res: ServerResponse): void {
+    const p = body as UnityCompilePayload;
+    if (!p || typeof p.projectName !== 'string' || !['started', 'finished'].includes(p.state)) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid compile payload' });
+    }
+    for (const cb of this.compileCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
   }
 
-  public getFastifyInstance(): FastifyInstance {
-    return this.server;
+  private handleApiV1PlayMode(body: unknown, res: ServerResponse): void {
+    const p = body as UnityPlayModePayload;
+    if (!p || typeof p.projectName !== 'string' || !['entered', 'exited'].includes(p.state)) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid playmode payload' });
+    }
+    for (const cb of this.playModeCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleApiV1Console(body: unknown, res: ServerResponse): void {
+    const p = body as UnityConsolePayload;
+    if (!p || typeof p.projectName !== 'string' || typeof p.message !== 'string') {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid console payload' });
+    }
+    for (const cb of this.consoleCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleApiV1VSCodeActivity(body: unknown, res: ServerResponse): void {
+    const p = body as VSCodeActivityPayload;
+    if (!p || typeof p.workspaceName !== 'string') {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid VS Code payload' });
+    }
+    for (const cb of this.vsCodeCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleLegacyCompileStart(body: unknown, res: ServerResponse): void {
+    if (!DTOValidator.isValidCompileStart(body)) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid compile start payload' });
+    }
+    const b = body as Record<string, unknown>;
+    for (const cb of this.compileCallbacks) {
+      cb({ state: 'started', projectName: b.project as string, unityVersion: b.unityVersion as string });
+    }
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleLegacyCompileFinish(body: unknown, res: ServerResponse): void {
+    if (!DTOValidator.isValidCompileFinish(body)) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid compile finish payload' });
+    }
+    const b = body as Record<string, unknown>;
+    for (const cb of this.compileCallbacks) {
+      cb({
+        state: 'finished',
+        projectName: b.project as string,
+        success: b.success as boolean,
+        elapsedSeconds: b.elapsedSeconds as number,
+        errorCount: b.errorCount as number,
+        warningCount: b.warningCount as number
+      });
+    }
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleLegacyPlayMode(body: unknown, res: ServerResponse): void {
+    if (!DTOValidator.isValidPlayMode(body)) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid playmode payload' });
+    }
+    const b = body as Record<string, unknown>;
+    for (const cb of this.playModeCallbacks) {
+      cb({
+        state: b.state === 'EnteredPlayMode' ? 'entered' : 'exited',
+        projectName: b.project as string
+      });
+    }
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleLegacyException(body: unknown, res: ServerResponse): void {
+    if (!DTOValidator.isValidException(body)) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid exception payload' });
+    }
+    const b = body as Record<string, unknown>;
+    for (const cb of this.consoleCallbacks) {
+      cb({
+        type: 'exception',
+        projectName: b.project as string,
+        message: b.message as string,
+        stackTrace: b.stackTrace as string
+      });
+    }
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private sendJSON(res: ServerResponse, statusCode: number, data: unknown): void {
+    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(data));
+  }
+
+  /// <summary>
+  /// Starts the HTTP server on the configured port.
+  /// </summary>
+  public async start(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.server.once('error', (err: Error) => reject(err));
+      this.server.listen(this.port, this.host, () => {
+        const addr = this.server.address() as AddressInfo;
+        this.listeningAddress = `http://${this.host}:${addr.port}`;
+        resolve(this.listeningAddress);
+      });
+    });
+  }
+
+  /// <summary>
+  /// Gracefully stops the HTTP server.
+  /// </summary>
+  public async stop(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.server.listening) {
+        resolve();
+        return;
+      }
+      this.server.close(() => resolve());
+    });
+  }
+
+  /// <summary>
+  /// Injects a simulated HTTP request directly for unit testing without an external caller.
+  /// </summary>
+  public async inject(opts: InjectOptions): Promise<InjectResponse> {
+    if (!this.listeningAddress) {
+      throw new Error('Server is not running. Call start() before inject().');
+    }
+
+    const urlObj = new URL(opts.url, this.listeningAddress);
+    const postData = opts.payload ? JSON.stringify(opts.payload) : '';
+
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: urlObj.hostname,
+          port: urlObj.port,
+          path: urlObj.pathname,
+          method: opts.method || 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        },
+        (res) => {
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk;
+          });
+          res.on('end', () => {
+            resolve({
+              statusCode: res.statusCode || 500,
+              payload: body
+            });
+          });
+        }
+      );
+
+      req.on('error', (err) => reject(err));
+      if (postData) {
+        req.write(postData);
+      }
+      req.end();
+    });
   }
 }

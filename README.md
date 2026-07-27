@@ -130,10 +130,11 @@ pnpm preflight
 
 Convenient Windows batch scripts are available in the repository root directory:
 
+- **`install.bat`**: Installs all monorepo workspace dependencies via PNPM.
 - **`run_app.bat`**: Launches the Electron Desktop App in development mode with hot reloading.
 - **`build.bat`**: Compiles TypeScript and builds Vite frontend bundles.
 - **`package-win.bat`**: Builds and packages the complete Windows installer and portable `.exe`.
-- **`test-coverage.bat`**: Runs the Vitest test suite with V8 code coverage report.
+- **`test-coverage.bat`**: Runs ESLint checks and the Vitest test suite with V8 code coverage report.
 - **`package-unity.bat`**: Packages the Unity C# plugin package.
 
 ---

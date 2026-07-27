@@ -2,6 +2,13 @@
 echo ========================================================
 echo  Running Antigravity BUSY Bar Test Coverage
 echo ========================================================
+call pnpm lint
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] ESLint checks failed with exit code %ERRORLEVEL%.
+    pause
+    exit /b %ERRORLEVEL%
+)
 call pnpm test:coverage
 if %ERRORLEVEL% NEQ 0 (
     echo.

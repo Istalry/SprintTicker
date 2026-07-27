@@ -2,38 +2,17 @@ import { defineConfig } from 'vite';
 import path from 'path';
 
 /**
- * All packages that must NOT be bundled by Rollup for the Electron main process.
- * They are kept in node_modules and required at runtime by Node.js / Electron.
- *
- * Fastify's internal dependency `avvio` uses dynamic CJS require() patterns that
- * Rollup cannot statically resolve, causing a "Cannot find module 'avvio'" crash
- * at startup when the main process output is loaded inside the Electron context.
+ * Native C++ addons (better-sqlite3), Electron built-ins, and Node.js built-ins
+ * are externalized so Electron loads them natively.
  */
 const ELECTRON_EXTERNALS: (string | RegExp)[] = [
   // Electron built-in
   'electron',
 
-  // Fastify and all its internal sub-dependencies
-  'fastify',
-  'avvio',
-  'find-my-way',
-  'light-my-request',
-  'pino',
-  'pino-std-serializers',
-  '@fastify/ajv-compiler',
-  '@fastify/error',
-  '@fastify/fast-json-stringify-compiler',
-  'ajv',
-  'fast-json-stringify',
-  'fast-deep-equal',
-  'fast-uri',
-  'flatstr',
-  'process-warning',
-  'rfdc',
-  'secure-json-parse',
-
   // Native addon (pre-built binary — must never be bundled)
   'better-sqlite3',
+  'bindings',
+  'file-uri-to-path',
 
   // All Node.js built-in modules (node: protocol and classic form)
   /^node:/,

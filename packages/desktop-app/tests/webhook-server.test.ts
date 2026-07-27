@@ -5,7 +5,7 @@ describe('WebhookServer Unit Tests', () => {
   let webhookServer: WebhookServer;
 
   beforeAll(async () => {
-    // Arrange: Instantiate and start Fastify server on ephemeral port for testing
+    // Arrange: Instantiate and start native HTTP server on ephemeral port for testing
     webhookServer = new WebhookServer(0);
     await webhookServer.start();
   });
@@ -16,7 +16,6 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostCompileStart_ValidPayload_Returns200Accepted', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = {
       project: 'MyFantasyGame',
       unityVersion: '2022.3.10f1',
@@ -24,7 +23,7 @@ describe('WebhookServer Unit Tests', () => {
     };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/compile-start',
       payload
@@ -37,11 +36,10 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostCompileStart_InvalidPayload_Returns400BadRequest', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { invalidField: 'test' };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/compile-start',
       payload
@@ -54,7 +52,6 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostCompileFinish_ValidPayload_Returns200Accepted', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = {
       project: 'MyFantasyGame',
       success: true,
@@ -64,7 +61,7 @@ describe('WebhookServer Unit Tests', () => {
     };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/compile-finish',
       payload
@@ -77,11 +74,10 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostCompileFinish_InvalidPayload_Returns400BadRequest', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { project: 'MyFantasyGame', success: 'not-a-boolean' };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/compile-finish',
       payload
@@ -93,14 +89,13 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostPlayMode_ValidPayload_Returns200Accepted', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = {
       project: 'MyFantasyGame',
       state: 'EnteredPlayMode'
     };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/playmode',
       payload
@@ -113,14 +108,13 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostPlayMode_InvalidState_Returns400BadRequest', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = {
       project: 'MyFantasyGame',
       state: 'UnknownState'
     };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/playmode',
       payload
@@ -132,7 +126,6 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostException_ValidPayload_Returns200Accepted', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = {
       project: 'MyFantasyGame',
       exceptionType: 'NullReferenceException',
@@ -141,7 +134,7 @@ describe('WebhookServer Unit Tests', () => {
     };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/exception',
       payload
@@ -154,11 +147,10 @@ describe('WebhookServer Unit Tests', () => {
 
   it('PostException_InvalidPayload_Returns400BadRequest', async () => {
     // Arrange
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { message: 'Missing fields' };
 
     // Act
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/unity/exception',
       payload
@@ -169,10 +161,9 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1UnityCompile_ValidPayload_Returns200Accepted', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { state: 'started', projectName: 'MyFantasyGame' };
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/compile',
       payload
@@ -183,10 +174,9 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1UnityPlaymode_ValidPayload_Returns200Accepted', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { state: 'entered', projectName: 'MyFantasyGame' };
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/playmode',
       payload
@@ -197,15 +187,14 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1VSCodeActivity_ValidPayload_Returns200Accepted', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { workspaceName: 'BUSY_Bar', fileName: 'App.tsx', action: 'edit' };
 
     let callbackTriggered = false;
-    webhookServer.onVSCodeEvent(p => {
+    webhookServer.onVSCodeEvent((p) => {
       if (p.workspaceName === 'BUSY_Bar') callbackTriggered = true;
     });
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/vscode/activity',
       payload
@@ -216,15 +205,14 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1UnityConsole_ValidPayload_TriggersConsoleCallbacks', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { type: 'exception', message: 'NullRef', projectName: 'MyGame' };
 
     let callbackTriggered = false;
-    webhookServer.onConsoleEvent(p => {
+    webhookServer.onConsoleEvent((p) => {
       if (p.projectName === 'MyGame') callbackTriggered = true;
     });
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/console',
       payload
@@ -233,11 +221,11 @@ describe('WebhookServer Unit Tests', () => {
     expect(response.statusCode).toBe(200);
     expect(callbackTriggered).toBe(true);
   });
+
   it('PostApiV1UnityConsole_InvalidPayload_Returns400', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { type: 'error' }; // missing projectName and message
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/console',
       payload
@@ -248,10 +236,9 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1UnityCompile_InvalidPayload_Returns400', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { state: 'invalid-state', projectName: 'MyGame' };
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/compile',
       payload
@@ -262,10 +249,9 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1UnityPlaymode_InvalidPayload_Returns400', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { state: 'bad-state', projectName: 'MyGame' };
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/playmode',
       payload
@@ -276,10 +262,9 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('PostApiV1VSCodeActivity_InvalidPayload_Returns400', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     const payload = { fileName: 'App.tsx' }; // missing workspaceName
 
-    const response = await fastifyInstance.inject({
+    const response = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/vscode/activity',
       payload
@@ -290,14 +275,13 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('OnCompileEvent_CallbackFired_WhenLegacyCompileStartPosted', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     let callbackPayload: any = null;
 
-    webhookServer.onCompileEvent(p => {
+    webhookServer.onCompileEvent((p) => {
       callbackPayload = p;
     });
 
-    await fastifyInstance.inject({
+    await webhookServer.inject({
       method: 'POST',
       url: '/unity/compile-start',
       payload: { project: 'MyGame', unityVersion: '2022.3.10f1', timestampUtc: new Date().toISOString() }
@@ -309,14 +293,13 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('OnPlayModeEvent_ExitedPlayMode_MapsStateToExited', async () => {
-    const fastifyInstance = webhookServer.getFastifyInstance();
     let mappedState: string | null = null;
 
-    webhookServer.onPlayModeEvent(p => {
+    webhookServer.onPlayModeEvent((p) => {
       mappedState = p.state;
     });
 
-    await fastifyInstance.inject({
+    await webhookServer.inject({
       method: 'POST',
       url: '/unity/playmode',
       payload: { project: 'MyGame', state: 'ExitedPlayMode' }

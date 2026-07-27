@@ -56,8 +56,7 @@ describe('Full End-to-End System Simulation Test', () => {
 
   it('E2E_FullLifecycle_SessionTrackingOfflineBufferingAndEodFlow', async () => {
     // Step 1: Unity Webhook Telemetry
-    const fastifyInstance = webhookServer.getFastifyInstance();
-    const compileRes = await fastifyInstance.inject({
+    const compileRes = await webhookServer.inject({
       method: 'POST',
       url: '/api/v1/unity/compile',
       payload: { state: 'started', projectName: 'MyFantasyGame' }

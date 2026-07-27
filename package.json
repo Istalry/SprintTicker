@@ -8,6 +8,7 @@
     "build": "pnpm --filter @busy-app/desktop-app build",
     "package:win": "pnpm --filter @busy-app/desktop-app package:win",
     "package:unity": "node scripts/package-unity-plugin.js",
+    "verify:packed": "node scripts/verify-packed-app.js",
     "preflight": "node scripts/preflight-check.js",
     "test": "pnpm --filter @busy-app/desktop-app test",
     "test:coverage": "pnpm --filter @busy-app/desktop-app test:coverage",

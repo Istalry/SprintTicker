@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
+  base: './',
+  root: path.join(__dirname, 'src/renderer'),
   plugins: [react()],
   publicDir: path.join(__dirname, 'public'),
   build: {
@@ -24,4 +26,5 @@ export default defineConfig({
     strictPort: true
   }
 });
+
 

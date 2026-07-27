@@ -5,7 +5,7 @@ import { SessionRepository } from '../src/main/db/repositories/session-repositor
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
-import { app, Menu, Tray } from 'electron';
+import { app, Menu } from 'electron';
 
 // Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
 let lastMockTray: any = null;

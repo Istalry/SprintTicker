@@ -9,10 +9,9 @@
   },
   "files": [
     "dist/**/*",
-    "node_modules/**/*",
     "package.json"
   ],
-  "npmRebuild": false,
+  "npmRebuild": true,
   "asar": true,
   "win": {
     "target": [

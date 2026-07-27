@@ -62,7 +62,7 @@ export class InputDecoder {
     const bindings = this.getBindings();
     let action = 'NONE';
 
-    if (event.key === 'start' || (event.key === 'ok' && event.type === 'press')) {
+    if (event.key === 'start') {
       action = bindings.startButtonPress;
     } else if (event.key === 'ok' && event.type === 'press') {
       action = bindings.wheelClick;

@@ -111,7 +111,7 @@ export const App: React.FC = () => {
         {/* Sidebar Navigation */}
         <aside className="w-64 bg-dark-800 border-r border-border-dark flex flex-col p-4 space-y-1">
           <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider px-3 py-2">
-            Modules ("1 Bar per Function")
+            Modules (&quot;1 Bar per Function&quot;)
           </div>
           {navItems.map(item => {
             const Icon = item.icon;
@@ -149,7 +149,7 @@ export const App: React.FC = () => {
               {/* Today's Worklog Queue Table */}
               <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-4 shadow-xl">
                 <h3 className="text-md font-bold text-white font-mono tracking-tight flex items-center justify-between">
-                  <span>TODAY'S WORKLOG QUEUE</span>
+                  <span>TODAY&apos;S WORKLOG QUEUE</span>
                   <span className="text-xs text-text-secondary font-normal">Active session syncing</span>
                 </h3>
 
