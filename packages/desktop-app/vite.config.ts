@@ -4,11 +4,13 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  root: path.join(__dirname, 'src/renderer'),
   publicDir: path.join(__dirname, 'public'),
   build: {
     outDir: path.join(__dirname, 'dist/renderer'),
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: path.join(__dirname, 'src/renderer/index.html')
+    }
   },
   resolve: {
     alias: {
@@ -22,3 +24,4 @@ export default defineConfig({
     strictPort: true
   }
 });
+

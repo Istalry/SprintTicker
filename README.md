@@ -106,6 +106,9 @@ Outputs are saved to `packages/desktop-app/dist-electron/`.
 
 The project includes an AAA unit test suite built with Vitest and V8 code coverage:
 
+> [!NOTE]
+> Testing automatically runs `pnpm rebuild better-sqlite3` via pre-test hooks to ensure native C++ SQLite bindings match the host Node.js runtime environment. When packaging for production (`pnpm package:win`), `electron-builder` automatically target-compiles native bindings for Electron.
+
 ### Run Unit Tests
 ```bash
 pnpm test
