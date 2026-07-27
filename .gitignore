@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-electron/
+out/
+build/
+*.pfx
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.user
+
+# Unity metadata & generated files
+/[Aa]ssets/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Llo]gs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log

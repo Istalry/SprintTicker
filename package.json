@@ -1,0 +1,27 @@
+{
+  "name": "antigravity-busy-bar-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Antigravity BUSY Bar Monorepo containing PC Companion Desktop Application and Unity C# Plugin",
+  "scripts": {
+    "dev": "pnpm --filter @busy-app/desktop-app dev",
+    "build": "pnpm --filter @busy-app/desktop-app build",
+    "test": "pnpm --filter @busy-app/desktop-app test",
+    "test:coverage": "pnpm --filter @busy-app/desktop-app test:coverage",
+    "lint": "eslint packages/**/*.{ts,tsx}",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,json,css,md}\""
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
