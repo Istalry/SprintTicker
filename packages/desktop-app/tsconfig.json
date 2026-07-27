@@ -5,6 +5,8 @@
     "declaration": false,
     "declarationMap": false,
     "baseUrl": ".",
+    "outDir": "dist",
+    "rootDir": "src",
     "paths": {
       "@shared/*": ["src/shared/*"],
       "@main/*": ["src/main/*"],
@@ -12,5 +14,6 @@
       "@renderer/*": ["src/renderer/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/renderer/**/*"]
 }

@@ -123,6 +123,17 @@ pnpm preflight
 
 ---
 
+## ⚡ Windows Quick Launch Helpers (`.bat`)
+
+Convenient Windows batch scripts are available in the repository root directory:
+
+- **`build.bat`**: Compiles TypeScript and builds Vite frontend bundles.
+- **`package-win.bat`**: Builds and packages the complete Windows installer and portable `.exe`.
+- **`test-coverage.bat`**: Runs the Vitest test suite with V8 code coverage report.
+- **`package-unity.bat`**: Packages the Unity C# plugin package.
+
+---
+
 ## 🔌 Embedded Webhook Server API Endpoints
 
 The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for local IDE and Unity integrations:
