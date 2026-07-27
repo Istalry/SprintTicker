@@ -17,6 +17,8 @@ vi.mock('electron', () => ({
   }
 }));
 
+import { ipcMain } from 'electron';
+
 describe('IPCHandlerRegistry Unit Tests', () => {
   let dbConn: DatabaseConnection;
   let registry: IPCHandlerRegistry;
@@ -50,7 +52,18 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     dbConn.close();
   });
 
-  it('RegisterAllHandlers_ValidInstance_RegistersWithoutThrowing', () => {
+  it('RegisterAllHandlers_ValidInstance_RegistersWithoutThrowing', async () => {
     expect(() => registry.registerAllHandlers()).not.toThrow();
+
+    const calls = (ipcMain.handle as any).mock.calls || [];
+    for (const [, handler] of calls) {
+      if (typeof handler === 'function') {
+        try {
+          await handler({}, { taskId: 'PROJ-142', isAdHoc: false, customTitle: 'Test' });
+        } catch {
+          // ignore
+        }
+      }
+    }
   });
 });

@@ -131,6 +131,25 @@ The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for l
 
 ---
 
+## 🎮 Unity Editor Plugin (`com.antigravity.busybar`)
+
+The monorepo includes an optional Unity Editor C# package that connects Unity assembly compilation, Play Mode transitions, and console exceptions directly to the BUSY Bar physical matrix display.
+
+### 1. Build Unity Package Bundle
+```bash
+pnpm package:unity
+```
+
+### 2. Import into Unity Project
+1. Open your Unity project (Unity 2021.3+ recommended).
+2. Open **Unity Package Manager** (`Window` > `Package Manager`).
+3. Click `+` (top-left) > **Add package from disk...**.
+4. Select `packages/unity-plugin/package.json` in this monorepo.
+
+The plugin automatically initializes `BusyBarWebhookPublisher` and `BusyBarSceneSaveListener` on port `8081` without modifying your scene files or project code!
+
+---
+
 ## 📜 Code Style & Standards
 
 - **ESLint & Prettier:** Configured with shared rules in `.eslintrc.cjs` and `.prettierrc`.

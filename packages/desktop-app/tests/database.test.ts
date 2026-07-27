@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DatabaseService } from '../src/main/store/database';
+import { DatabaseConnection } from '../src/main/db/database-connection';
 
 describe('DatabaseService Unit Tests', () => {
   let dbService: DatabaseService;
@@ -114,5 +115,12 @@ describe('DatabaseService Unit Tests', () => {
     expect(pending[0].provider_id).toBe('jira');
     expect(pending[0].duration_seconds).toBe(3600);
     expect(pending[0].status).toBe('PENDING');
+  });
+
+  it('DatabaseConnection_SingletonInstance_ManagesConnectionLifecycle', () => {
+    const conn1 = DatabaseConnection.getInstance(':memory:');
+    expect(conn1.getDb()).toBeDefined();
+
+    DatabaseConnection.resetInstance();
   });
 });

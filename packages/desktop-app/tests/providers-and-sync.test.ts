@@ -125,6 +125,14 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     // Act
     const worker = new OfflineSyncWorker(jiraProvider, worklogRepo, 60000);
     worker.setProvider(jiraProvider);
+
+    // Test offline state short circuit
+    worker.setOnlineStatus(false);
+    const offlineSummary = await worker.processPendingQueue();
+    expect(offlineSummary.processed).toBe(0);
+
+    // Test online state processing
+    worker.setOnlineStatus(true);
     const summary = await worker.processPendingQueue();
 
     // Assert

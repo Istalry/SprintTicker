@@ -12,6 +12,8 @@ import { InputDecoder } from './hardware/input-decoder';
 import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { WebhookServer } from './api/webhook-server';
 
+import { TrayManager } from './tray/tray-manager';
+
 let mainWindow: BrowserWindow | null = null;
 let dbConnection: DatabaseConnection | null = null;
 let engine: TimeTrackingEngine | null = null;
@@ -20,6 +22,7 @@ let inputDecoder: InputDecoder | null = null;
 let renderer: DisplayRenderer | null = null;
 let webhookServer: WebhookServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
+let trayManager: TrayManager | null = null;
 
 const createWindow = (): void => {
   mainWindow = new BrowserWindow({
@@ -98,6 +101,10 @@ app.whenReady().then(async () => {
 
   // 6. Create Window & Render Initial State
   createWindow();
+  if (mainWindow && engine) {
+    trayManager = new TrayManager(mainWindow, engine);
+    trayManager.initialize();
+  }
   renderer.renderActiveSession(engine.getCurrentSession());
   console.log('[Main] Initialization completed successfully.');
 

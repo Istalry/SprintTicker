@@ -10,7 +10,8 @@ import {
   Monitor,
   Wifi,
   Settings,
-  Moon
+  Moon,
+  Sparkles
 } from 'lucide-react';
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
@@ -19,11 +20,15 @@ import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
 import { TaskSelectionModal } from './components/TaskSelectionModal';
 import { SettingsView } from './views/Settings/SettingsView';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
+import { OnboardingWizardModal } from './components/OnboardingWizardModal';
+import { ToastNotification, ToastMessage } from './components/ToastNotification';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
   const [isEodModalOpen, setIsEodModalOpen] = useState<boolean>(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Custom Hooks
   const { session, pause, resume, complete, startTask } = useSession();
@@ -70,7 +75,15 @@ export const App: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center space-x-6 text-sm font-mono">
+        <div className="flex items-center space-x-4 text-sm font-mono">
+          <button
+            onClick={() => setIsOnboardingOpen(true)}
+            className="flex items-center space-x-1.5 bg-dark-700 hover:bg-dark-700/80 text-accent-blue px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Setup Wizard</span>
+          </button>
+
           <div className="flex items-center space-x-2 bg-dark-700 px-3 py-1.5 rounded-md border border-border-dark">
             <Wifi className="w-4 h-4 text-accent-green" />
             <span className="text-text-primary">
@@ -202,6 +215,18 @@ export const App: React.FC = () => {
         onConfirmEod={async () => {
           await complete('Finalized during End-of-Day Wrap-Up');
         }}
+      />
+
+      {/* Onboarding Setup Wizard Modal */}
+      <OnboardingWizardModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+      />
+
+      {/* Desktop Toast Notifications */}
+      <ToastNotification
+        toasts={toasts}
+        onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))}
       />
     </div>
   );

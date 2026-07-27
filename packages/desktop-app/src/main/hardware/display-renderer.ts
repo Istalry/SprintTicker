@@ -29,7 +29,7 @@ export class DisplayRenderer {
   /**
    * Renders Template A: Active Task Tracker View on Front Display, and System Metrics on Rear OLED.
    */
-  public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
+  public renderActiveSession(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean = false): DisplayPayload {
     const elapsedText = session ? this.formatTime(session.elapsedSeconds) : '00:00:00';
     const row1Text = session ? `${session.taskKey} ${elapsedText}` : 'IDLE 00:00:00';
     const row2Text = session ? session.taskTitle : 'No Active Task Selected';
@@ -39,6 +39,8 @@ export class DisplayRenderer {
         ? '#10B981FF' // Solid Green
         : '#F59E0BFF' // Breathing Yellow
       : '#2D3440FF'; // Off / Dim
+
+    const rearTextColor = isIdleOver15Mins ? '#444444' : '#CCCCCC';
 
     const payload: DisplayPayload = {
       frontElements: [
@@ -66,15 +68,17 @@ export class DisplayRenderer {
           font: 'tiny',
           x: 0,
           y: 0,
-          color: '#FFFFFF',
-          text: 'BUSY BAR DIAGNOSTICS [USB Ethernet]'
+          color: isIdleOver15Mins ? '#666666' : '#FFFFFF',
+          text: isIdleOver15Mins
+            ? 'BUSY BAR [POWER SAVING MODE]'
+            : 'BUSY BAR DIAGNOSTICS [USB Ethernet]'
         },
         {
           type: 'text',
           font: 'tiny',
           x: 0,
           y: 16,
-          color: '#CCCCCC',
+          color: rearTextColor,
           text: `IP: ${this.driver.getDeviceStatus().ipAddress} | Ping: ${this.driver.getDeviceStatus().webSocketPingMs}ms`
         },
         {
@@ -82,7 +86,7 @@ export class DisplayRenderer {
           font: 'tiny',
           x: 0,
           y: 32,
-          color: '#CCCCCC',
+          color: rearTextColor,
           text: `Active Task: ${session ? session.taskKey : 'NONE'} (${session ? session.status : 'IDLE'})`
         }
       ],
