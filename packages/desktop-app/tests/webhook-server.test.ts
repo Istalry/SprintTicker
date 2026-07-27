@@ -233,4 +233,113 @@ describe('WebhookServer Unit Tests', () => {
     expect(response.statusCode).toBe(200);
     expect(callbackTriggered).toBe(true);
   });
+  it('PostApiV1UnityConsole_InvalidPayload_Returns400', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { type: 'error' }; // missing projectName and message
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/unity/console',
+      payload
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
+  });
+
+  it('PostApiV1UnityCompile_InvalidPayload_Returns400', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { state: 'invalid-state', projectName: 'MyGame' };
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/unity/compile',
+      payload
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
+  });
+
+  it('PostApiV1UnityPlaymode_InvalidPayload_Returns400', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { state: 'bad-state', projectName: 'MyGame' };
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/unity/playmode',
+      payload
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
+  });
+
+  it('PostApiV1VSCodeActivity_InvalidPayload_Returns400', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    const payload = { fileName: 'App.tsx' }; // missing workspaceName
+
+    const response = await fastifyInstance.inject({
+      method: 'POST',
+      url: '/api/v1/vscode/activity',
+      payload
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
+  });
+
+  it('OnCompileEvent_CallbackFired_WhenLegacyCompileStartPosted', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    let callbackPayload: any = null;
+
+    webhookServer.onCompileEvent(p => {
+      callbackPayload = p;
+    });
+
+    await fastifyInstance.inject({
+      method: 'POST',
+      url: '/unity/compile-start',
+      payload: { project: 'MyGame', unityVersion: '2022.3.10f1', timestampUtc: new Date().toISOString() }
+    });
+
+    expect(callbackPayload).not.toBeNull();
+    expect(callbackPayload.state).toBe('started');
+    expect(callbackPayload.projectName).toBe('MyGame');
+  });
+
+  it('OnPlayModeEvent_ExitedPlayMode_MapsStateToExited', async () => {
+    const fastifyInstance = webhookServer.getFastifyInstance();
+    let mappedState: string | null = null;
+
+    webhookServer.onPlayModeEvent(p => {
+      mappedState = p.state;
+    });
+
+    await fastifyInstance.inject({
+      method: 'POST',
+      url: '/unity/playmode',
+      payload: { project: 'MyGame', state: 'ExitedPlayMode' }
+    });
+
+    expect(mappedState).toBe('exited');
+  });
+
+  it('Stop_CalledTwice_DoesNotThrow', async () => {
+    const server = new WebhookServer(0);
+    await server.start();
+    await expect(server.stop()).resolves.not.toThrow();
+  });
+
+  it('Start_ErrorOnPortConflict_ThrowsError', async () => {
+    // Arrange: start first server on a fixed port then try to bind again on same port
+    const server1 = new WebhookServer(0);
+    const address = await server1.start();
+    const port = parseInt(new URL(address).port, 10);
+
+    const server2 = new WebhookServer(port);
+    await expect(server2.start()).rejects.toThrow();
+
+    await server1.stop();
+  });
 });

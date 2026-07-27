@@ -114,4 +114,64 @@ describe('TimeTrackingEngine Unit Tests', () => {
     expect(restored?.status).toBe('TRACKING');
     expect(restored?.elapsedSeconds).toBeGreaterThanOrEqual(3599);
   });
+  it('StopSession_WhenIdle_ReturnsFailure', () => {
+    // No active session — stop should return gracefully with success: false
+    const result = engine.stopSession('No active session');
+
+    expect(result.success).toBe(false);
+    expect(result.loggedSeconds).toBe(0);
+  });
+
+  it('StartTask_WhenAlreadyTracking_AutoStopsCurrentSession_AndQueuesWorklog', () => {
+    // Arrange: start first task, verify nothing queued yet
+    engine.startTask('PROJ-100', false, 'First Task');
+    expect(worklogRepo.getPendingQueueItems()).toHaveLength(0);
+
+    // Act: start a second task — engine should auto-stop the first and queue a worklog
+    engine.startTask('PROJ-200', false, 'Second Task');
+
+    // Assert: the auto-stop created a worklog for PROJ-100
+    const queueItems = worklogRepo.getPendingQueueItems();
+    expect(queueItems).toHaveLength(1);
+    expect(queueItems[0].taskId).toBe('PROJ-100');
+  });
+
+  it('PauseSession_WhenIdle_ThrowsError', () => {
+    // No session started — pause should throw
+    expect(() => engine.pauseSession()).toThrow('No active tracking session available to pause');
+  });
+
+  it('ResumeSession_WhenAlreadyTracking_ThrowsError', () => {
+    // Start a task (status = TRACKING, not PAUSED) — resume should throw
+    engine.startTask('PROJ-303', false, 'Already Tracking');
+    expect(() => engine.resumeSession()).toThrow('No paused session available to resume');
+  });
+
+  it('Subscribe_ListenerFires_OnSessionStateChange', () => {
+    // Arrange
+    let notified = false;
+    engine.subscribe(() => { notified = true; });
+
+    // Act
+    engine.startTask('PROJ-404', false, 'Subscriber Test');
+
+    // Assert
+    expect(notified).toBe(true);
+  });
+
+  it('Subscribe_ReturnsUnsubscribeCallback_RemovesListener', () => {
+    // Arrange
+    let count = 0;
+    const unsubscribe = engine.subscribe(() => { count++; });
+
+    engine.startTask('PROJ-505', false, 'Before Unsub');
+    expect(count).toBeGreaterThan(0);
+
+    const countBefore = count;
+    unsubscribe();
+
+    // Further state changes should NOT increment count
+    engine.pauseSession();
+    expect(count).toBe(countBefore);
+  });
 });

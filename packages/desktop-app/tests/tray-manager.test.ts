@@ -5,6 +5,10 @@ import { SessionRepository } from '../src/main/db/repositories/session-repositor
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
+import { app, Menu, Tray } from 'electron';
+
+// Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
+let lastMockTray: any = null;
 
 vi.mock('electron', () => {
   return {
@@ -17,12 +21,13 @@ vi.mock('electron', () => {
       buildFromTemplate: vi.fn().mockReturnValue({})
     },
     Tray: vi.fn().mockImplementation(() => {
-      return {
+      lastMockTray = {
         setToolTip: vi.fn(),
         setContextMenu: vi.fn(),
         on: vi.fn(),
         destroy: vi.fn()
       };
+      return lastMockTray;
     }),
     nativeImage: {
       createFromDataURL: vi.fn().mockReturnValue({})
@@ -82,6 +87,79 @@ describe('TrayManager Unit Tests', () => {
     closeHandler(mockEvent);
     expect(mockEvent.preventDefault).toHaveBeenCalled();
 
+    manager.destroy();
+  });
+  it('TrayManager_RestoreWindow_WhenMinimized_RestoresAndShows', () => {
+    mockWindow.isMinimized = vi.fn().mockReturnValue(true);
+
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+    manager.restoreWindow();
+
+    expect(mockWindow.restore).toHaveBeenCalled();
+    expect(mockWindow.show).toHaveBeenCalled();
+    manager.destroy();
+  });
+
+  it('TrayManager_UpdateStatusTooltip_WhenPaused_SetsPausedTooltip', () => {
+    // Arrange: initialize creates a fresh tray captured in lastMockTray
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+    const trayInstance = lastMockTray;
+
+    // Transition: TRACKING → PAUSED fires engine subscriber → updateStatusTooltip
+    engine.startTask('PROJ-101', false, 'Tooltip Test');
+    engine.pauseSession();
+
+    const hasPausedTooltip = (trayInstance.setToolTip.mock.calls as string[][]).some(
+      args => args[0].includes('PAUSED')
+    );
+    expect(hasPausedTooltip).toBe(true);
+    manager.destroy();
+  });
+
+  it('TrayManager_UpdateStatusTooltip_WhenTracking_SetsTrackingTooltip', () => {
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+    const trayInstance = lastMockTray;
+
+    engine.startTask('PROJ-202', false, 'Tracking Tooltip Test');
+
+    const hasTrackingTooltip = (trayInstance.setToolTip.mock.calls as string[][]).some(
+      args => args[0].includes('TRACKING')
+    );
+    expect(hasTrackingTooltip).toBe(true);
+    manager.destroy();
+  });
+
+  it('TrayManager_SetAutoStart_CallsLoginItemSettings', () => {
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+    manager.setAutoStart(false);
+
+    // app is the vi.fn() mock from vi.mock('electron')
+    expect(vi.mocked(app).setLoginItemSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ openAtLogin: false })
+    );
+    manager.destroy();
+  });
+
+  it('TrayManager_ContextMenu_QuitMenuItem_SetsIsQuittingAndCallsQuit', () => {
+    let quitClickHandler: ((item: any) => void) | null = null;
+
+    vi.mocked(Menu.buildFromTemplate).mockImplementation((template: any[]) => {
+      const quitItem = template.find(i => i.label === 'Quit Application');
+      if (quitItem) quitClickHandler = quitItem.click;
+      return {} as any;
+    });
+
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+
+    expect(quitClickHandler).not.toBeNull();
+    quitClickHandler!(null);
+
+    expect(vi.mocked(app).quit).toHaveBeenCalled();
     manager.destroy();
   });
 });

@@ -140,4 +140,90 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     expect(summary.succeeded).toBe(2);
     expect(worklogRepo.getPendingQueueItems()).toHaveLength(0);
   });
+  it('OfflineSyncWorker_Start_IdempotentDoubleStart_DoesNotThrow', () => {
+    // Arrange
+    const worker = new OfflineSyncWorker(jiraProvider, worklogRepo, 9999999);
+
+    // Act & Assert — calling start() twice should not throw or duplicate the interval
+    expect(() => {
+      worker.start();
+      worker.start(); // second call is a no-op due to timerId guard
+    }).not.toThrow();
+
+    worker.stop();
+  });
+
+  it('OfflineSyncWorker_Stop_ClearsTimer_AllowsRestartAfter', () => {
+    // Arrange
+    const worker = new OfflineSyncWorker(jiraProvider, worklogRepo, 9999999);
+    worker.start();
+
+    // Act
+    worker.stop();
+
+    // Can be started again after stop without issue
+    expect(() => worker.start()).not.toThrow();
+    worker.stop();
+  });
+
+  it('OfflineSyncWorker_ProcessPendingQueue_ProviderReturnsFailure_IncrementsFailedCount', async () => {
+    // Arrange: enqueue one item
+    worklogRepo.enqueueSyncItem({
+      id: 'sync_fail_01',
+      providerId: 'jira',
+      taskId: 'PROJ-999',
+      durationSeconds: 3600,
+      startedAtUtc: new Date().toISOString(),
+      comment: 'Failure test'
+    });
+
+    // Mock provider returning { success: false }
+    const failingProvider = {
+      providerId: 'jira',
+      providerName: 'Jira (Failing)',
+      initialize: async () => true,
+      getProjects: async () => [],
+      getTasks: async () => [],
+      reconcileRemoteState: async () => ({ remoteLoggedTimeToday: 0 }),
+      logTime: async () => ({ success: false })
+    };
+
+    const worker = new OfflineSyncWorker(failingProvider as any, worklogRepo);
+    const result = await worker.processPendingQueue();
+
+    // Assert
+    expect(result.processed).toBe(1);
+    expect(result.succeeded).toBe(0);
+    expect(result.failed).toBe(1);
+  });
+
+  it('OfflineSyncWorker_ProcessPendingQueue_ProviderThrows_IncrementsFailedCount', async () => {
+    // Arrange: enqueue one item
+    worklogRepo.enqueueSyncItem({
+      id: 'sync_throw_01',
+      providerId: 'jira',
+      taskId: 'PROJ-998',
+      durationSeconds: 1800,
+      startedAtUtc: new Date().toISOString(),
+      comment: 'Throw test'
+    });
+
+    const throwingProvider = {
+      providerId: 'jira',
+      providerName: 'Jira (Throwing)',
+      initialize: async () => true,
+      getProjects: async () => [],
+      getTasks: async () => [],
+      reconcileRemoteState: async () => ({ remoteLoggedTimeToday: 0 }),
+      logTime: async () => { throw new Error('Network timeout'); }
+    };
+
+    const worker = new OfflineSyncWorker(throwingProvider as any, worklogRepo);
+    const result = await worker.processPendingQueue();
+
+    // Assert
+    expect(result.processed).toBe(1);
+    expect(result.succeeded).toBe(0);
+    expect(result.failed).toBe(1);
+  });
 });

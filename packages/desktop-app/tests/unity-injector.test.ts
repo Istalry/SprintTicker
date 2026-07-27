@@ -92,4 +92,41 @@ describe('UnityInjectorService Unit Tests', () => {
     expect(removed).toBe(true);
     expect(fs.existsSync(injectedPath)).toBe(false);
   });
+  it('ScanAndInjectProjects_ValidProject_InjectsAndReturnsInjectedStatus', async () => {
+    // Arrange: full Unity project structure (Assets + Packages both required for detection)
+    const proj = path.join(tempDir, 'ProjectWithPackages');
+    fs.mkdirSync(path.join(proj, 'Assets'), { recursive: true });
+    fs.mkdirSync(path.join(proj, 'Packages'), { recursive: true });
+
+    const results = await service.scanAndInjectProjects(tempDir);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe('injected');
+    expect(results[0].projectName).toBe('ProjectWithPackages');
+    expect(fs.existsSync(path.join(proj, 'Packages', 'com.antigravity.busybar'))).toBe(true);
+  });
+
+  it('RemoveInjection_EmptyPath_ThrowsArgumentException', async () => {
+    await expect(service.removeInjection('')).rejects.toThrow('ArgumentException');
+    await expect(service.removeInjection('   ')).rejects.toThrow('ArgumentException');
+  });
+
+  it('RemoveInjection_NonExistentJunctionPath_ReturnsTrueAlreadyRemoved', async () => {
+    // A project directory that exists but has no junction inside — ENOENT → true
+    const proj = path.join(tempDir, 'EmptyProject');
+    fs.mkdirSync(proj, { recursive: true });
+
+    const result = await service.removeInjection(proj);
+    expect(result).toBe(true);
+  });
+
+  it('CheckGlobalGitignoreStatus_AfterSetupGlobalGitignore_ReturnsConfigured', async () => {
+    // First, set up the gitignore entries
+    await service.setupGlobalGitignore();
+
+    // Then check the status — it should be configured
+    const status = await service.checkGlobalGitignoreStatus();
+    expect(status.configured).toBe(true);
+    expect(status.path).toBeTruthy();
+  });
 });

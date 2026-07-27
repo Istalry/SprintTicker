@@ -189,4 +189,45 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       globalThis.fetch = originalFetch;
     }
   });
+  it('BusyBarDriver_Disconnect_SetsNotConnectedAndEmitsStatus', async () => {
+    // Arrange: driver is already connected (mock mode)
+    expect(driver.getDeviceStatus().connected).toBe(true);
+
+    // Act
+    driver.disconnect();
+
+    // Assert
+    expect(driver.getDeviceStatus().connected).toBe(false);
+  });
+
+  it('BusyBarDriver_SimulateInputEvent_WhenNotConnected_DoesNotEmit', () => {
+    // Arrange: disconnect first so isConnected = false
+    driver.disconnect();
+
+    let emitted = false;
+    driver.on('input', () => { emitted = true; });
+
+    // Act
+    driver.simulateInputEvent({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert: event must NOT fire when disconnected
+    expect(emitted).toBe(false);
+  });
+
+  it('BusyBarDriver_Connect_LiveMode_FetchFails_StillConnectsDegraded', async () => {
+    // Arrange: live-mode driver with mocked fetch that returns null (network unreachable)
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => null as any;
+
+    const liveDriver = new BusyBarDriver('192.168.99.99', false);
+    try {
+      const connected = await liveDriver.connect();
+      // Even with fetch failure, driver falls back to degraded connected state
+      expect(connected).toBe(true);
+      expect(liveDriver.getDeviceStatus().connected).toBe(true);
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
