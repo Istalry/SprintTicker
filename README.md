@@ -116,6 +116,11 @@ pnpm test
 pnpm test:coverage
 ```
 
+### Run Release Pre-Flight Verification Check
+```bash
+pnpm preflight
+```
+
 ---
 
 ## 🔌 Embedded Webhook Server API Endpoints
