@@ -61,13 +61,13 @@ pnpm approve-builds --all
 
 ### Launch Development Server
 
-To launch the Electron Desktop App with hot reloading for the React UI:
+To launch the Electron Desktop App in development mode with hot reloading:
 
 ```bash
 pnpm dev
 ```
 
-This starts the Vite dev server for the React UI on `http://localhost:3000` and launches the Electron Main process with the embedded Fastify Webhook Server listening on `http://127.0.0.1:39123`.
+This starts the Vite dev server for the React UI (`http://localhost:3000`), watches/builds the Electron main process, and launches the interactive Electron window. The embedded Fastify Webhook Server listens on `http://127.0.0.1:39123`.
 
 ---
 
@@ -130,6 +130,7 @@ pnpm preflight
 
 Convenient Windows batch scripts are available in the repository root directory:
 
+- **`run_app.bat`**: Launches the Electron Desktop App in development mode with hot reloading.
 - **`build.bat`**: Compiles TypeScript and builds Vite frontend bundles.
 - **`package-win.bat`**: Builds and packages the complete Windows installer and portable `.exe`.
 - **`test-coverage.bat`**: Runs the Vitest test suite with V8 code coverage report.

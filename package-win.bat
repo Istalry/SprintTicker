@@ -2,6 +2,7 @@
 echo ========================================================
 echo  Packaging Antigravity BUSY Bar Desktop App (Windows)
 echo ========================================================
+rem Uses bundledDependencies in desktop-app/package.json to bundle CJS dependencies (Fastify, avvio, better-sqlite3)
 call pnpm package:win
 if %ERRORLEVEL% NEQ 0 (
     echo.

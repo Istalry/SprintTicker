@@ -12,6 +12,7 @@
     "node_modules/**/*",
     "package.json"
   ],
+  "npmRebuild": false,
   "asar": true,
   "win": {
     "target": [

@@ -10,7 +10,17 @@ export class DatabaseConnection {
   private db: Database.Database;
 
   constructor(dbPath?: string) {
-    const defaultPath = path.join(process.cwd(), 'antigravity-busybar.db');
+    let defaultDir = process.cwd();
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const electron = require('electron');
+      if (electron?.app?.getPath) {
+        defaultDir = electron.app.getPath('userData');
+      }
+    } catch {
+      // Not running in Electron environment
+    }
+    const defaultPath = path.join(defaultDir, 'antigravity-busybar.db');
     this.db = new Database(dbPath || defaultPath);
     this.db.pragma('foreign_keys = ON');
     this.db.pragma('journal_mode = WAL');
