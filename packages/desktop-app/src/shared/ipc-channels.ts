@@ -38,5 +38,12 @@ export enum IPCChannel {
   GET_SCHEDULE_SETTINGS = 'schedule:get-settings',
   SAVE_SCHEDULE_SETTINGS = 'schedule:save-settings',
   TRIGGER_EOD_WRAP_UP = 'schedule:trigger-eod-wrapup',
-  ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt'
+  ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
+
+  // Unity Injector & Gitignore
+  SETUP_GITIGNORE = 'unity-injector:setup-gitignore',
+  CHECK_GITIGNORE = 'unity-injector:check-gitignore',
+  SCAN_AND_INJECT = 'unity-injector:scan-and-inject',
+  REMOVE_INJECTION = 'unity-injector:remove-injection',
+  OPEN_FOLDER_PICKER = 'dialog:open-folder-picker'
 }

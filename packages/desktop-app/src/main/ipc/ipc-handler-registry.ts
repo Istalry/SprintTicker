@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
@@ -6,6 +6,7 @@ import { SettingsRepository } from '../db/repositories/settings-repository';
 import { BusyBarDriver } from '../hardware/busybar-driver';
 import { InputDecoder } from '../hardware/input-decoder';
 import { DisplayRenderer } from '../hardware/display-renderer';
+import { UnityInjectorService } from '../services/unity-injector-service';
 import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO } from '../../shared/dtos';
 
 /**
@@ -19,6 +20,7 @@ export class IPCHandlerRegistry {
   private driver: BusyBarDriver;
   private inputDecoder: InputDecoder;
   private renderer: DisplayRenderer;
+  private unityInjectorService: UnityInjectorService;
   private getWindow: () => BrowserWindow | null;
 
   constructor(
@@ -28,7 +30,8 @@ export class IPCHandlerRegistry {
     driver: BusyBarDriver,
     inputDecoder: InputDecoder,
     renderer: DisplayRenderer,
-    getWindow: () => BrowserWindow | null
+    getWindow: () => BrowserWindow | null,
+    unityInjectorService?: UnityInjectorService
   ) {
     this.engine = engine;
     this.taskRepo = taskRepo;
@@ -37,6 +40,7 @@ export class IPCHandlerRegistry {
     this.inputDecoder = inputDecoder;
     this.renderer = renderer;
     this.getWindow = getWindow;
+    this.unityInjectorService = unityInjectorService || new UnityInjectorService();
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -97,7 +101,34 @@ export class IPCHandlerRegistry {
       return this.driver.getDeviceStatus();
     });
 
-    // 5. Wire Bi-directional State Broadcasts
+    // 5. Unity Injector & Gitignore IPC Handlers
+    ipcMain.handle(IPCChannel.SETUP_GITIGNORE, async () => {
+      return this.unityInjectorService.setupGlobalGitignore();
+    });
+
+    ipcMain.handle(IPCChannel.CHECK_GITIGNORE, async () => {
+      return this.unityInjectorService.checkGlobalGitignoreStatus();
+    });
+
+    ipcMain.handle(IPCChannel.SCAN_AND_INJECT, async (_event, rootFolder: string) => {
+      return this.unityInjectorService.scanAndInjectProjects(rootFolder);
+    });
+
+    ipcMain.handle(IPCChannel.REMOVE_INJECTION, async (_event, projectPath: string) => {
+      return this.unityInjectorService.removeInjection(projectPath);
+    });
+
+    ipcMain.handle(IPCChannel.OPEN_FOLDER_PICKER, async () => {
+      const win = this.getWindow();
+      const options = { properties: ['openDirectory' as const] };
+      const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+      if (res.canceled || res.filePaths.length === 0) {
+        return null;
+      }
+      return res.filePaths[0];
+    });
+
+    // 6. Wire Bi-directional State Broadcasts
     this.engine.subscribe((session: ActiveSessionDTO | null) => {
       this.broadcast(IPCChannel.ON_SESSION_UPDATED, session);
       this.renderer.renderActiveSession(session);

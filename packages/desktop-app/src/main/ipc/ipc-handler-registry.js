@@ -1,5 +1,6 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
+import { UnityInjectorService } from '../services/unity-injector-service';
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
  * state broadcasting between Main, Renderer, and Hardware display layers.
@@ -11,8 +12,9 @@ export class IPCHandlerRegistry {
     driver;
     inputDecoder;
     renderer;
+    unityInjectorService;
     getWindow;
-    constructor(engine, taskRepo, settingsRepo, driver, inputDecoder, renderer, getWindow) {
+    constructor(engine, taskRepo, settingsRepo, driver, inputDecoder, renderer, getWindow, unityInjectorService) {
         this.engine = engine;
         this.taskRepo = taskRepo;
         this.settingsRepo = settingsRepo;
@@ -20,6 +22,7 @@ export class IPCHandlerRegistry {
         this.inputDecoder = inputDecoder;
         this.renderer = renderer;
         this.getWindow = getWindow;
+        this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     }
     getSettingsRepo() {
         return this.settingsRepo;
@@ -67,7 +70,29 @@ export class IPCHandlerRegistry {
         ipcMain.handle(IPCChannel.GET_DEVICE_STATUS, async () => {
             return this.driver.getDeviceStatus();
         });
-        // 5. Wire Bi-directional State Broadcasts
+        // 5. Unity Injector & Gitignore IPC Handlers
+        ipcMain.handle(IPCChannel.SETUP_GITIGNORE, async () => {
+            return this.unityInjectorService.setupGlobalGitignore();
+        });
+        ipcMain.handle(IPCChannel.CHECK_GITIGNORE, async () => {
+            return this.unityInjectorService.checkGlobalGitignoreStatus();
+        });
+        ipcMain.handle(IPCChannel.SCAN_AND_INJECT, async (_event, rootFolder) => {
+            return this.unityInjectorService.scanAndInjectProjects(rootFolder);
+        });
+        ipcMain.handle(IPCChannel.REMOVE_INJECTION, async (_event, projectPath) => {
+            return this.unityInjectorService.removeInjection(projectPath);
+        });
+        ipcMain.handle(IPCChannel.OPEN_FOLDER_PICKER, async () => {
+            const win = this.getWindow();
+            const options = { properties: ['openDirectory'] };
+            const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+            if (res.canceled || res.filePaths.length === 0) {
+                return null;
+            }
+            return res.filePaths[0];
+        });
+        // 6. Wire Bi-directional State Broadcasts
         this.engine.subscribe((session) => {
             this.broadcast(IPCChannel.ON_SESSION_UPDATED, session);
             this.renderer.renderActiveSession(session);

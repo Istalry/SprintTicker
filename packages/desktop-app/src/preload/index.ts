@@ -7,8 +7,17 @@ import {
   HardwareBindingConfig,
   DeviceStatusDTO,
   PriorityMatrixConfig,
-  ScheduleSettingsDTO
+  ScheduleSettingsDTO,
+  UnityProjectInjectionResult
 } from '../shared/dtos';
+
+export interface UnityInjectorAPI {
+  setupGitignore: () => Promise<{ success: boolean; path: string; message: string }>;
+  checkGitignore: () => Promise<{ configured: boolean; path?: string }>;
+  scanAndInject: (rootFolder: string) => Promise<UnityProjectInjectionResult[]>;
+  removeInjection: (projectPath: string) => Promise<boolean>;
+  openFolderPicker: () => Promise<string | null>;
+}
 
 export interface IElectronAPI {
   // Session Controls
@@ -43,6 +52,9 @@ export interface IElectronAPI {
   saveScheduleSettings: (settings: ScheduleSettingsDTO) => Promise<boolean>;
   triggerEodWrapUp: () => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
+
+  // Unity Plugin Injector & Gitignore
+  unityInjector: UnityInjectorAPI;
 }
 
 const electronAPI: IElectronAPI = {
@@ -98,6 +110,15 @@ const electronAPI: IElectronAPI = {
       callback(prompt);
     ipcRenderer.on(IPCChannel.ON_CEREMONY_PROMPT, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_CEREMONY_PROMPT, handler);
+  },
+
+  // Unity Plugin Injector & Gitignore
+  unityInjector: {
+    setupGitignore: () => ipcRenderer.invoke(IPCChannel.SETUP_GITIGNORE),
+    checkGitignore: () => ipcRenderer.invoke(IPCChannel.CHECK_GITIGNORE),
+    scanAndInject: (rootFolder: string) => ipcRenderer.invoke(IPCChannel.SCAN_AND_INJECT, rootFolder),
+    removeInjection: (projectPath: string) => ipcRenderer.invoke(IPCChannel.REMOVE_INJECTION, projectPath),
+    openFolderPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_FOLDER_PICKER)
   }
 };
 

@@ -100,6 +100,13 @@ export interface UnityExceptionDTO {
   stackTrace: string;
 }
 
+export interface UnityProjectInjectionResult {
+  projectName: string;
+  projectPath: string;
+  status: 'injected' | 'already_exists' | 'failed';
+  error?: string;
+}
+
 /**
  * Validation helpers for incoming API payloads
  */

@@ -35,5 +35,11 @@ export var IPCChannel;
     IPCChannel["SAVE_SCHEDULE_SETTINGS"] = "schedule:save-settings";
     IPCChannel["TRIGGER_EOD_WRAP_UP"] = "schedule:trigger-eod-wrapup";
     IPCChannel["ON_CEREMONY_PROMPT"] = "schedule:on-ceremony-prompt";
+    // Unity Injector & Gitignore
+    IPCChannel["SETUP_GITIGNORE"] = "unity-injector:setup-gitignore";
+    IPCChannel["CHECK_GITIGNORE"] = "unity-injector:check-gitignore";
+    IPCChannel["SCAN_AND_INJECT"] = "unity-injector:scan-and-inject";
+    IPCChannel["REMOVE_INJECTION"] = "unity-injector:remove-injection";
+    IPCChannel["OPEN_FOLDER_PICKER"] = "dialog:open-folder-picker";
 })(IPCChannel || (IPCChannel = {}));
 //# sourceMappingURL=ipc-channels.js.map

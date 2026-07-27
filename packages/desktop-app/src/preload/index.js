@@ -43,6 +43,14 @@ const electronAPI = {
         const handler = (_event, prompt) => callback(prompt);
         ipcRenderer.on(IPCChannel.ON_CEREMONY_PROMPT, handler);
         return () => ipcRenderer.removeListener(IPCChannel.ON_CEREMONY_PROMPT, handler);
+    },
+    // Unity Plugin Injector & Gitignore
+    unityInjector: {
+        setupGitignore: () => ipcRenderer.invoke(IPCChannel.SETUP_GITIGNORE),
+        checkGitignore: () => ipcRenderer.invoke(IPCChannel.CHECK_GITIGNORE),
+        scanAndInject: (rootFolder) => ipcRenderer.invoke(IPCChannel.SCAN_AND_INJECT, rootFolder),
+        removeInjection: (projectPath) => ipcRenderer.invoke(IPCChannel.REMOVE_INJECTION, projectPath),
+        openFolderPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_FOLDER_PICKER)
     }
 };
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

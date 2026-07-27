@@ -86,7 +86,7 @@ namespace Com.Antigravity.BusyBar.Editor
                     {
                         try
                         {
-                            var count = EditorSceneManager.loadedSceneCount;
+                            var count = UnityEngine.SceneManagement.SceneManager.loadedSceneCount;
                             for (int i = 0; i < count; i++)
                             {
                                 var scene = EditorSceneManager.GetSceneAt(i);

@@ -10,6 +10,7 @@ import { BusyBarDriver } from './hardware/busybar-driver';
 import { DisplayRenderer } from './hardware/display-renderer';
 import { InputDecoder } from './hardware/input-decoder';
 import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
+import { UnityInjectorService } from './services/unity-injector-service';
 import { WebhookServer } from './api/webhook-server';
 import { TrayManager } from './tray/tray-manager';
 let mainWindow = null;
@@ -18,6 +19,7 @@ let engine = null;
 let driver = null;
 let inputDecoder = null;
 let renderer = null;
+let unityInjectorService = null;
 let webhookServer = null;
 let ipcRegistry = null;
 let trayManager = null;
@@ -76,7 +78,8 @@ app.whenReady().then(async () => {
     await webhookServer.start();
     console.log('[Main] Fastify Webhook Server listening on http://127.0.0.1:8080');
     // 5. Register IPC Handlers and Bi-directional State Broadcasts
-    ipcRegistry = new IPCHandlerRegistry(engine, taskRepo, settingsRepo, driver, inputDecoder, renderer, () => mainWindow);
+    unityInjectorService = new UnityInjectorService();
+    ipcRegistry = new IPCHandlerRegistry(engine, taskRepo, settingsRepo, driver, inputDecoder, renderer, () => mainWindow, unityInjectorService);
     ipcRegistry.registerAllHandlers();
     // 6. Create Window & Render Initial State
     createWindow();
