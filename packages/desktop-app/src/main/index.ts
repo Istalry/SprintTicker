@@ -1,13 +1,25 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { DatabaseConnection } from './db/database-connection';
+import { TaskRepository } from './db/repositories/task-repository';
+import { WorklogRepository } from './db/repositories/worklog-repository';
+import { SettingsRepository } from './db/repositories/settings-repository';
+import { SessionRepository } from './db/repositories/session-repository';
+import { TimeTrackingEngine } from './engine/time-tracking-engine';
+import { BusyBarDriver } from './hardware/busybar-driver';
+import { DisplayRenderer } from './hardware/display-renderer';
+import { InputDecoder } from './hardware/input-decoder';
+import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { WebhookServer } from './api/webhook-server';
-import { DatabaseService } from './store/database';
-import { IPCChannel } from '../shared/ipc-channels';
-import { ActiveSessionDTO } from '../shared/dtos';
 
 let mainWindow: BrowserWindow | null = null;
+let dbConnection: DatabaseConnection | null = null;
+let engine: TimeTrackingEngine | null = null;
+let driver: BusyBarDriver | null = null;
+let inputDecoder: InputDecoder | null = null;
+let renderer: DisplayRenderer | null = null;
 let webhookServer: WebhookServer | null = null;
-let databaseService: DatabaseService | null = null;
+let ipcRegistry: IPCHandlerRegistry | null = null;
 
 const createWindow = (): void => {
   mainWindow = new BrowserWindow({
@@ -35,92 +47,59 @@ const createWindow = (): void => {
   });
 };
 
-const setupIPCHandlers = (): void => {
-  ipcMain.handle(IPCChannel.GET_CURRENT_SESSION, async () => {
-    return databaseService ? databaseService.getActiveSession() : null;
-  });
-
-  ipcMain.handle(IPCChannel.START_TASK, async (_event, payload: { taskId: string; isAdHoc?: boolean; customTitle?: string }) => {
-    if (!databaseService) throw new Error('Database service not initialized');
-    const newSession: Omit<ActiveSessionDTO, 'elapsedSeconds'> = {
-      sessionId: `sess_${Date.now()}`,
-      projectId: 'PROJ-1',
-      taskId: payload.taskId,
-      taskKey: payload.taskId,
-      taskTitle: payload.customTitle || 'Active Development Task',
-      isAdHoc: Boolean(payload.isAdHoc),
-      status: 'TRACKING',
-      startTimeUtc: new Date().toISOString(),
-      totalPausedSeconds: 0
-    };
-    databaseService.createSession(newSession);
-    return databaseService.getActiveSession();
-  });
-
-  ipcMain.handle(IPCChannel.PAUSE_SESSION, async () => {
-    if (!databaseService) throw new Error('Database service not initialized');
-    const active = databaseService.getActiveSession();
-    if (active && active.status === 'TRACKING') {
-      databaseService.updateSessionStatus(
-        active.sessionId,
-        'PAUSED',
-        active.totalPausedSeconds,
-        new Date().toISOString()
-      );
-    }
-    return databaseService.getActiveSession();
-  });
-
-  ipcMain.handle(IPCChannel.RESUME_SESSION, async () => {
-    if (!databaseService) throw new Error('Database service not initialized');
-    const active = databaseService.getActiveSession();
-    if (active && active.status === 'PAUSED' && active.lastPauseStartUtc) {
-      const pauseDuration = Math.floor((Date.now() - new Date(active.lastPauseStartUtc).getTime()) / 1000);
-      const totalPaused = active.totalPausedSeconds + pauseDuration;
-      databaseService.updateSessionStatus(active.sessionId, 'TRACKING', totalPaused, undefined);
-    }
-    return databaseService.getActiveSession();
-  });
-
-  ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string }) => {
-    if (!databaseService) throw new Error('Database service not initialized');
-    const active = databaseService.getActiveSession();
-    if (active) {
-      databaseService.updateSessionStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
-      databaseService.enqueueWorklog({
-        id: `log_${Date.now()}`,
-        providerId: 'jira',
-        taskId: active.taskId,
-        durationSeconds: active.elapsedSeconds,
-        startedAtUtc: active.startTimeUtc,
-        comment: payload.comment || 'Logged via Antigravity BUSY Bar'
-      });
-      return { success: true, loggedSeconds: active.elapsedSeconds };
-    }
-    return { success: false, loggedSeconds: 0 };
-  });
-
-  ipcMain.handle(IPCChannel.GET_DEVICE_STATUS, async () => {
-    return {
-      connected: true,
-      ipAddress: '10.0.4.20',
-      connectionType: 'usb',
-      frontBrightness: 80,
-      backBrightness: 100,
-      batteryPercent: 98,
-      firmwareVersion: '1.4.2',
-      webSocketPingMs: 4
-    };
-  });
-};
-
 app.whenReady().then(async () => {
-  databaseService = new DatabaseService();
+  console.log('[Main] Starting Antigravity BUSY Bar PC Companion Application...');
+
+  // 1. Initialize SQLite Database & Repositories
+  dbConnection = DatabaseConnection.getInstance();
+  const taskRepo = new TaskRepository(dbConnection);
+  const worklogRepo = new WorklogRepository(dbConnection);
+  const settingsRepo = new SettingsRepository(dbConnection);
+  const sessionRepo = new SessionRepository(dbConnection);
+
+  // Seed sample task if empty
+  if (taskRepo.getTasksByProjectId('PROJ').length === 0) {
+    taskRepo.saveTask({
+      id: 'PROJ-142',
+      projectId: 'PROJ',
+      key: 'PROJ-142',
+      title: 'Implement Player Character Dash Mechanics',
+      status: 'in_progress'
+    });
+  }
+
+  // 2. Initialize Time Tracking Engine
+  engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+
+  // 3. Initialize Hardware Driver, Display Renderer & Input Decoder
+  const forceMock = process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
+  driver = new BusyBarDriver('10.0.4.20', forceMock);
+  await driver.connect();
+
+  renderer = new DisplayRenderer(driver);
+  inputDecoder = new InputDecoder(driver, engine, settingsRepo);
+
+  // 4. Initialize Local Fastify Webhook Server
   webhookServer = new WebhookServer(8080);
   await webhookServer.start();
+  console.log('[Main] Fastify Webhook Server listening on http://127.0.0.1:8080');
 
-  setupIPCHandlers();
+  // 5. Register IPC Handlers and Bi-directional State Broadcasts
+  ipcRegistry = new IPCHandlerRegistry(
+    engine,
+    taskRepo,
+    settingsRepo,
+    driver,
+    inputDecoder,
+    renderer,
+    () => mainWindow
+  );
+  ipcRegistry.registerAllHandlers();
+
+  // 6. Create Window & Render Initial State
   createWindow();
+  renderer.renderActiveSession(engine.getCurrentSession());
+  console.log('[Main] Initialization completed successfully.');
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -137,7 +116,10 @@ app.on('will-quit', async () => {
   if (webhookServer) {
     await webhookServer.stop();
   }
-  if (databaseService) {
-    databaseService.close();
+  if (driver) {
+    driver.disconnect();
+  }
+  if (dbConnection) {
+    DatabaseConnection.resetInstance();
   }
 });
