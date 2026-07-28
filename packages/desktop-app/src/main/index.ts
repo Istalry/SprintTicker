@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { DatabaseConnection } from './db/database-connection';
 import { TaskRepository } from './db/repositories/task-repository';
 import { WorklogRepository } from './db/repositories/worklog-repository';
@@ -31,6 +32,10 @@ let trayManager: TrayManager | null = null;
 const createWindow = (): void => {
   Menu.setApplicationMenu(null);
 
+  const iconPath = path.join(__dirname, '../../build/icon.png');
+  const icoPath = path.join(__dirname, '../../build/icon.ico');
+  const windowIcon = fs.existsSync(iconPath) ? iconPath : (fs.existsSync(icoPath) ? icoPath : undefined);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -39,6 +44,7 @@ const createWindow = (): void => {
     backgroundColor: '#0D0F12',
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
+    icon: windowIcon,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
@@ -92,13 +98,13 @@ app.whenReady().then(async () => {
   inputDecoder = new InputDecoder(driver, engine, settingsRepo);
 
   // 4. Initialize Local Fastify Webhook Server
-  webhookServer = new WebhookServer(8080);
+  webhookServer = new WebhookServer(39123);
   await webhookServer.start();
-  console.log('[Main] Fastify Webhook Server listening on http://127.0.0.1:8080');
+  console.log('[Main] Fastify Webhook Server listening on http://127.0.0.1:39123');
 
   // 5. Register IPC Handlers and Bi-directional State Broadcasts
   unityInjectorService = new UnityInjectorService();
-  const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer);
+  const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine);
   const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer);
 
   ipcRegistry = new IPCHandlerRegistry(

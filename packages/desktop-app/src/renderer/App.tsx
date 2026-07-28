@@ -26,22 +26,42 @@ import { MessagingView } from './views/Messaging/MessagingView';
 import { PriorityRulesView } from './views/Priority/PriorityRulesView';
 import { DeviceDiagnosticsView } from './views/Device/DeviceDiagnosticsView';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
+import { StandupPromptModal } from './views/Standup/StandupPromptModal';
+import { ProjectTaskManagerView } from './views/Tasks/ProjectTaskManagerView';
+import { WorklogHistoryView } from './views/History/WorklogHistoryView';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { HardwareDisplayEmulator } from './components/HardwareDisplayEmulator';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
+import { FolderGit2, History } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
   const [isEodModalOpen, setIsEodModalOpen] = useState<boolean>(false);
+  const [isStandupModalOpen, setIsStandupModalOpen] = useState<boolean>(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Custom Hooks
   const { session, pause, resume, complete, startTask } = useSession();
   const deviceStatus = useDeviceStatus();
-  const { projects, tasks } = useTasks('PROJ');
+  const { projects } = useTasks('PROJ');
   const { worklogs } = useWorklogs();
+
+  // Auto-open ceremony prompts (STANDUP or EOD) from schedule service
+  useEffect(() => {
+    if (window.electronAPI?.onCeremonyPrompt) {
+      const unsubscribe = window.electronAPI.onCeremonyPrompt(prompt => {
+        if (prompt.type === 'EOD') {
+          setIsEodModalOpen(true);
+        } else if (prompt.type === 'STANDUP') {
+          setIsStandupModalOpen(true);
+        }
+      });
+      return () => unsubscribe();
+    }
+    return undefined;
+  }, []);
 
   // Auto-open TaskSelectionModal on physical hardware wheel click IPC event
   useEffect(() => {
@@ -64,7 +84,9 @@ export const App: React.FC = () => {
 
   const navItems = [
     { id: 'session', label: 'Active Session', icon: Clock },
-    { id: 'settings', label: 'Modular Settings', icon: Settings },
+    { id: 'projects', label: 'Projects & Tasks', icon: FolderGit2 },
+    { id: 'history', label: 'Work History', icon: History },
+    { id: 'settings', label: 'Task Providers', icon: Settings },
     { id: 'hardware', label: 'Hardware Rebinds', icon: Sliders },
     { id: 'unity', label: 'Unity Engine', icon: Gamepad2 },
     { id: 'ceremonies', label: 'Ceremonies', icon: Calendar },
@@ -82,44 +104,50 @@ export const App: React.FC = () => {
               session={session}
               onPause={pause}
               onResume={resume}
-              onComplete={() => complete()}
+              onComplete={complete}
               onOpenTaskModal={() => setIsTaskModalOpen(true)}
             />
 
-            <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-4 shadow-xl">
-              <h3 className="text-md font-bold text-white font-mono tracking-tight flex items-center justify-between">
-                <span>TODAY&apos;S WORKLOG QUEUE</span>
-                <span className="text-xs text-text-secondary font-normal">Active session syncing</span>
+            {/* Todays Completed Worklogs Table */}
+            <section className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
+              <h3 className="text-md font-bold text-white font-mono flex items-center justify-between">
+                <span>Today&apos;s Logged Work sessions</span>
+                <span className="text-xs text-text-secondary font-normal">
+                  Total: {formatSeconds(worklogs.reduce((acc, curr) => acc + curr.durationSeconds, 0))}
+                </span>
               </h3>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-dark-700 text-text-secondary text-xs uppercase font-mono border-b border-border-dark">
-                    <tr>
-                      <th className="py-3 px-4">Task ID</th>
-                      <th className="py-3 px-4">Description</th>
-                      <th className="py-3 px-4">Duration</th>
-                      <th className="py-3 px-4">Provider Status</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-dark text-text-secondary text-xs font-mono">
+                      <th className="py-3 px-4 font-semibold">Task Key</th>
+                      <th className="py-3 px-4 font-semibold">Comment / Description</th>
+                      <th className="py-3 px-4 font-semibold">Logged Duration</th>
+                      <th className="py-3 px-4 font-semibold">Provider Sync</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-dark text-text-primary">
+                  <tbody className="divide-y divide-border-dark text-sm">
                     {session && (
-                      <tr className="hover:bg-dark-700/50 transition-colors bg-dark-700/30">
-                        <td className="py-3 px-4 font-mono text-accent-amber font-medium">{session.taskKey}</td>
-                        <td className="py-3 px-4">{session.taskTitle} (Active Session)</td>
-                        <td className="py-3 px-4 font-mono">{formatSeconds(session.elapsedSeconds)}</td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-amber/10 text-accent-amber">
-                            {session.status}
-                          </span>
+                      <tr className="bg-accent-blue/5">
+                        <td className="py-3 px-4 font-mono font-bold text-accent-blue flex items-center space-x-2">
+                          <span className="w-2 h-2 rounded-full bg-accent-green animate-pulse" />
+                          <span>{session.taskKey}</span>
                         </td>
+                        <td className="py-3 px-4 text-white font-medium">
+                          {session.taskTitle} <span className="text-xs text-accent-blue">(Active Session)</span>
+                        </td>
+                        <td className="py-3 px-4 font-mono font-bold text-accent-green">Tracking...</td>
+                        <td className="py-3 px-4 text-xs text-text-secondary font-mono">Real-time</td>
                       </tr>
                     )}
                     {worklogs.map(log => (
                       <tr key={log.id} className="hover:bg-dark-700/50 transition-colors">
-                        <td className="py-3 px-4 font-mono text-accent-blue font-medium">{log.taskKey || log.taskId}</td>
-                        <td className="py-3 px-4">{log.taskTitle || log.comment || 'Completed session'}</td>
-                        <td className="py-3 px-4 font-mono">{formatSeconds(log.durationSeconds)}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-text-primary">{log.taskId}</td>
+                        <td className="py-3 px-4 text-text-primary">{log.comment || 'No comment'}</td>
+                        <td className="py-3 px-4 font-mono text-accent-blue font-bold">
+                          {formatSeconds(log.durationSeconds)}
+                        </td>
                         <td className="py-3 px-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
                             {log.syncStatus || 'Synced'} ({log.providerId || 'Jira'})
@@ -140,6 +168,10 @@ export const App: React.FC = () => {
             </section>
           </div>
         );
+      case 'projects':
+        return <ProjectTaskManagerView />;
+      case 'history':
+        return <WorklogHistoryView />;
       case 'hardware':
         return <HardwareRebindsView />;
       case 'unity':
@@ -243,18 +275,50 @@ export const App: React.FC = () => {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         projects={projects}
-        tasks={tasks}
         onSelectTask={(taskId, isAdHoc, title) => {
           startTask(taskId, isAdHoc, title);
+        }}
+      />
+
+      {/* Daily Stand-Up Meeting Prompt Modal */}
+      <StandupPromptModal
+        isOpen={isStandupModalOpen}
+        onClose={() => setIsStandupModalOpen(false)}
+        onSnooze={async (minutes) => {
+          setIsStandupModalOpen(false);
+          if (window.electronAPI?.snoozeCeremony) {
+            await window.electronAPI.snoozeCeremony('STANDUP', minutes);
+          }
+        }}
+        onAccept={async () => {
+          setIsStandupModalOpen(false);
+          if (session && session.status === 'TRACKING') {
+            await pause();
+          }
+          await startTask('STANDUP-1', true, 'Daily Stand-Up');
         }}
       />
 
       {/* End-of-Day Wrap-up Modal */}
       <EodWrapUpModal
         isOpen={isEodModalOpen}
-        onClose={() => setIsEodModalOpen(false)}
-        onConfirmEod={async () => {
+        onClose={async () => {
+          setIsEodModalOpen(false);
+          if (window.electronAPI?.cancelEodWrapUp) {
+            await window.electronAPI.cancelEodWrapUp();
+          }
+        }}
+        onSnooze={async (minutes) => {
+          setIsEodModalOpen(false);
+          if (window.electronAPI?.snoozeCeremony) {
+            await window.electronAPI.snoozeCeremony('EOD', minutes);
+          }
+        }}
+        onConfirmEod={async (options) => {
           await complete('Finalized during End-of-Day Wrap-Up');
+          if (window.electronAPI?.triggerEodWrapUp) {
+            await window.electronAPI.triggerEodWrapUp(options);
+          }
         }}
       />
 

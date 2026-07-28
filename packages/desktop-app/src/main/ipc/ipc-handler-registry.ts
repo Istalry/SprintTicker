@@ -2,7 +2,9 @@ import { ipcMain, BrowserWindow, dialog } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
+import { ProjectRepository } from '../db/repositories/project-repository';
 import { SettingsRepository } from '../db/repositories/settings-repository';
+import { DatabaseConnection } from '../db/database-connection';
 import { BusyBarDriver } from '../hardware/busybar-driver';
 import { InputDecoder } from '../hardware/input-decoder';
 import { DisplayRenderer } from '../hardware/display-renderer';
@@ -10,6 +12,8 @@ import { UnityInjectorService } from '../services/unity-injector-service';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { UnityTelemetryService } from '../services/unity-telemetry-service';
 import { MessagingIntegrationService } from '../services/messaging-service';
+import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
+import { ContextScheduleService } from '../services/context-schedule-service';
 import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO } from '../../shared/dtos';
 
 /**
@@ -19,6 +23,7 @@ import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettings
 export class IPCHandlerRegistry {
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
+  private projectRepo: ProjectRepository;
   private settingsRepo: SettingsRepository;
   private worklogRepo: WorklogRepository;
   private driver: BusyBarDriver;
@@ -27,6 +32,8 @@ export class IPCHandlerRegistry {
   private unityInjectorService: UnityInjectorService;
   private unityTelemetryService: UnityTelemetryService;
   private messagingService: MessagingIntegrationService;
+  private priorityEngine: PriorityPreemptionEngine;
+  private contextScheduleService: ContextScheduleService;
   private getWindow: () => BrowserWindow | null;
 
   constructor(
@@ -40,10 +47,13 @@ export class IPCHandlerRegistry {
     unityInjectorService?: UnityInjectorService,
     worklogRepo?: WorklogRepository,
     unityTelemetryService?: UnityTelemetryService,
-    messagingService?: MessagingIntegrationService
+    messagingService?: MessagingIntegrationService,
+    priorityEngine?: PriorityPreemptionEngine,
+    contextScheduleService?: ContextScheduleService
   ) {
     this.engine = engine;
     this.taskRepo = taskRepo;
+    this.projectRepo = new ProjectRepository();
     this.settingsRepo = settingsRepo;
     this.driver = driver;
     this.inputDecoder = inputDecoder;
@@ -53,6 +63,8 @@ export class IPCHandlerRegistry {
     this.worklogRepo = worklogRepo || new WorklogRepository();
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
     this.messagingService = messagingService || new MessagingIntegrationService(settingsRepo, renderer);
+    this.priorityEngine = priorityEngine || new PriorityPreemptionEngine(settingsRepo);
+    this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer);
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -89,13 +101,59 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    // 2. Task Provider IPC Handlers
+    // 2. Project & Task Management IPC Handlers
+    ipcMain.handle(IPCChannel.GET_PROJECTS, async () => {
+      return this.projectRepo.getAllProjects();
+    });
+
+    ipcMain.handle(IPCChannel.CREATE_PROJECT, async (_event, payload: { id: string; key: string; name: string; providerId?: string }) => {
+      this.projectRepo.saveProject(payload);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.RENAME_PROJECT, async (_event, payload: { id: string; name: string; key: string }) => {
+      this.projectRepo.renameProject(payload.id, payload.name, payload.key);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.DELETE_PROJECT, async (_event, id: string) => {
+      this.projectRepo.deleteProject(id);
+      return true;
+    });
+
     ipcMain.handle(IPCChannel.GET_TASKS, async (_event, projectId: string) => {
       return this.taskRepo.getTasksByProjectId(projectId);
     });
 
     ipcMain.handle(IPCChannel.CREATE_AD_HOC_TASK, async (_event, customTitle: string) => {
       return this.taskRepo.createAdHocTask(customTitle);
+    });
+
+    ipcMain.handle(IPCChannel.DELETE_TASK, async (_event, taskId: string) => {
+      this.taskRepo.deleteTask(taskId);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.UPDATE_TASK, async (_event, task) => {
+      this.taskRepo.updateTask(task);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.IMPORT_TASKS, async (_event, payload: { projectId: string; tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }> }) => {
+      return this.taskRepo.importTasks(payload.projectId, payload.tasks);
+    });
+
+    ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, dateString: string) => {
+      return this.worklogRepo.getWorklogsByDate(dateString);
+    });
+
+    ipcMain.handle(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, async (_event, dateString: string) => {
+      return this.worklogRepo.getDailySummary(dateString);
+    });
+
+    ipcMain.handle(IPCChannel.WIPE_ALL_DATA, async () => {
+      DatabaseConnection.getInstance().wipeAllData();
+      return true;
     });
 
     // 3. Hardware Rebinding IPC Handlers
@@ -129,28 +187,79 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async () => {
+    ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
       const activeSession = this.engine.getCurrentSession();
       if (activeSession) {
         this.engine.stopSession('Finalized during End-of-Day Wrap-Up');
       }
-      return { success: true, savedUnityScenes: true, savedVSCode: true };
+
+      // Instruct VS Code to save open dirty files
+      let savedVSCode = false;
+      try {
+        const { exec } = await import('child_process');
+        exec('code --command workbench.action.files.saveAll', (err) => {
+          if (!err) savedVSCode = true;
+        });
+      } catch {
+        console.log('[EOD] VS Code CLI not in system PATH, skipping VS Code save command.');
+      }
+
+      if (options?.shouldShutdown) {
+        try {
+          const { exec } = await import('child_process');
+          exec('shutdown /s /t 30', (err) => {
+            if (err) console.error('[EOD] Shutdown command error:', err);
+          });
+        } catch (e) {
+          console.error('[EOD] Failed to execute shutdown command:', e);
+        }
+      }
+
+      return { success: true, savedUnityScenes: true, savedVSCode };
+    });
+
+    ipcMain.handle(IPCChannel.CANCEL_EOD_WRAP_UP, async () => {
+      const activeSession = this.engine.getCurrentSession();
+      this.renderer.renderActiveSession(activeSession);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.SNOOZE_CEREMONY, async (_event, payload: { type: 'STANDUP' | 'EOD'; minutes: number }) => {
+      this.contextScheduleService.snoozeCeremony(payload.type, payload.minutes);
+      const activeSession = this.engine.getCurrentSession();
+      this.renderer.renderActiveSession(activeSession);
+      return true;
     });
 
     // 6. Priority Rules IPC Handlers
     ipcMain.handle(IPCChannel.GET_PRIORITY_RULES, async () => {
-      return this.settingsRepo.getSetting('priority_rules', {
-        unityBuildFailurePriority: 100,
-        unityCompilingPriority: 80,
-        standupPromptPriority: 70,
-        messagingPriority: 40,
-        activeTrackerPriority: 20
-      });
+      return this.priorityEngine.getRules();
     });
 
     ipcMain.handle(IPCChannel.SAVE_PRIORITY_RULES, async (_event, config) => {
-      this.settingsRepo.setSetting('priority_rules', config);
+      if (Array.isArray(config)) {
+        this.priorityEngine.saveRules(config);
+      } else if (config && typeof config === 'object' && Array.isArray(config.rules)) {
+        this.priorityEngine.saveRules(config.rules);
+      } else {
+        this.settingsRepo.setSetting('priority_rules', config);
+      }
       return true;
+    });
+
+    ipcMain.handle(IPCChannel.SET_USER_MODE, async (_event, mode) => {
+      if (mode === 'LUNCH') {
+        this.contextScheduleService.enterLunchMode();
+      } else if (mode === 'AWAY') {
+        this.contextScheduleService.enterAwayMode();
+      } else {
+        this.contextScheduleService.exitLunchMode();
+      }
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.GET_USER_MODE, async () => {
+      return this.priorityEngine.getUserMode();
     });
 
     // 7. Task Provider Config IPC Handlers

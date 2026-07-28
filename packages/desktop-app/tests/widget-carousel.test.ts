@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { WidgetRegistry } from '../src/main/widgets/widget-registry';
+import { WidgetRegistry, Widget } from '../src/main/widgets/widget-registry';
 
 describe('WidgetRegistry & Carousel Unit Tests', () => {
   let registry: WidgetRegistry;
@@ -16,7 +16,7 @@ describe('WidgetRegistry & Carousel Unit Tests', () => {
     });
 
     it('RegisterWidget_NullWidget_ThrowsError', () => {
-      expect(() => registry.registerWidget(null as unknown as any)).toThrow();
+      expect(() => registry.registerWidget(null as unknown as Widget)).toThrow();
     });
   });
 

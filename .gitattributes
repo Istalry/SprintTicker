@@ -1,0 +1,2 @@
+*.affinity filter=lfs diff=lfs merge=lfs -text
+deff=exif filter=lfs diff=lfs merge=lfs -text

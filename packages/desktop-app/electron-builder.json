@@ -9,6 +9,7 @@
   },
   "files": [
     "dist/**/*",
+    "build/**/*",
     "package.json"
   ],
   "extraFiles": [
@@ -21,6 +22,7 @@
   "npmRebuild": true,
   "asar": true,
   "win": {
+    "icon": "build/icon.ico",
     "target": [
       {
         "target": "nsis",

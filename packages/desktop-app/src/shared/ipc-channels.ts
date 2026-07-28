@@ -20,6 +20,17 @@ export enum IPCChannel {
   CREATE_AD_HOC_TASK = 'provider:create-adhoc',
   RECONCILE_REMOTE_STATE = 'provider:reconcile',
 
+  // Projects & Tasks Management
+  CREATE_PROJECT = 'projects:create',
+  RENAME_PROJECT = 'projects:rename',
+  DELETE_PROJECT = 'projects:delete',
+  DELETE_TASK = 'tasks:delete',
+  UPDATE_TASK = 'tasks:update',
+  IMPORT_TASKS = 'tasks:import',
+  GET_WORKLOGS_BY_DATE = 'worklogs:get-by-date',
+  GET_DAILY_WORKLOG_SUMMARY = 'worklogs:get-daily-summary',
+  WIPE_ALL_DATA = 'db:wipe-all-data',
+
   // Hardware Input Rebindings
   GET_INPUT_BINDINGS = 'input:get-bindings',
   SAVE_INPUT_BINDINGS = 'input:save-bindings',
@@ -28,6 +39,8 @@ export enum IPCChannel {
   // Priority Matrix & Display
   GET_PRIORITY_RULES = 'priority:get-rules',
   SAVE_PRIORITY_RULES = 'priority:save-rules',
+  SET_USER_MODE = 'priority:set-user-mode',
+  GET_USER_MODE = 'priority:get-user-mode',
 
   // Device Management & SDK
   GET_DEVICE_STATUS = 'device:get-status',
@@ -38,6 +51,8 @@ export enum IPCChannel {
   GET_SCHEDULE_SETTINGS = 'schedule:get-settings',
   SAVE_SCHEDULE_SETTINGS = 'schedule:save-settings',
   TRIGGER_EOD_WRAP_UP = 'schedule:trigger-eod-wrapup',
+  CANCEL_EOD_WRAP_UP = 'schedule:cancel-eod-wrapup',
+  SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
 
   // Unity Injector & Gitignore

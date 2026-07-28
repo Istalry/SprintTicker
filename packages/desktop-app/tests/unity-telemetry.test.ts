@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UnityTelemetryService } from '../src/main/services/unity-telemetry-service';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { UnitySettingsDTO } from '../src/shared/dtos';
+import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 
 describe('UnityTelemetryService', () => {
   let settingsRepo: SettingsRepository;
@@ -14,6 +15,10 @@ describe('UnityTelemetryService', () => {
     } as unknown as SettingsRepository;
 
     service = new UnityTelemetryService(settingsRepo);
+  });
+
+  afterEach(() => {
+    if (service) service.dispose();
   });
 
   describe('constructor', () => {
@@ -77,6 +82,100 @@ describe('UnityTelemetryService', () => {
       const t = service.getTelemetry();
       expect(t.activeProjectName).toBe('CyberGame');
       expect(t.playModeStatus).toBe('In Play Mode');
+    });
+
+    it('HandleHeartbeat_MultipleInstances_AggregatesActiveProjectsAndStates', () => {
+      service.handleHeartbeat({ instanceId: 'inst-1', projectName: 'GameOne', compiling: true, savePort: 8081 });
+      service.handleHeartbeat({ instanceId: 'inst-2', projectName: 'GameTwo', playMode: true, savePort: 8082 });
+
+      const t = service.getTelemetry();
+      expect(t.isConnected).toBe(true);
+      expect(t.activeProjectName).toBe('2 Unity Instances Connected');
+      expect(t.compilationState).toBe('Compiling');
+      expect(t.playModeStatus).toBe('In Play Mode');
+      expect(t.instances).toHaveLength(2);
+    });
+
+    it('PruneStaleInstances_ExpiredHeartbeat_RemovesStaleInstance', () => {
+      service.handleHeartbeat({ instanceId: 'inst-old', projectName: 'OldGame' });
+      expect(service.getTelemetry().instances).toHaveLength(1);
+
+      service.pruneStaleInstances(0);
+      expect(service.getTelemetry().isConnected).toBe(false);
+      expect(service.getTelemetry().instances).toHaveLength(0);
+    });
+
+    it('HandleHeartbeat_DuringActiveCompilation_PreservesCompilingState', () => {
+      service.handleCompile({ instanceId: 'p1', projectName: 'GameOne', state: 'started' });
+      expect(service.getTelemetry().compilationState).toBe('Compiling');
+
+      service.handleHeartbeat({ instanceId: 'p1', projectName: 'GameOne', compiling: false });
+      expect(service.getTelemetry().compilationState).toBe('Compiling');
+
+      service.handleCompile({ instanceId: 'p1', projectName: 'GameOne', state: 'finished' });
+      service.handleHeartbeat({ instanceId: 'p1', projectName: 'GameOne', compiling: false });
+      expect(service.getTelemetry().compilationState).toBe('Idle');
+    });
+
+    it('HandleCompile_StartedCompile_TriggersDisplayRendererCompilationWithoutProgressBar', () => {
+      const mockRenderer = { renderCompilation: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
+      s.handleCompile({ state: 'started', type: 'compile', projectName: 'CyberGame' });
+
+      expect(mockRenderer.renderCompilation).toHaveBeenCalledWith('CyberGame');
+      s.dispose();
+    });
+
+    it('HandleCompile_StartedBuild_TriggersDisplayRendererBuilding', () => {
+      const mockRenderer = { renderBuilding: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
+      s.handleCompile({ state: 'started', type: 'build', projectName: 'CyberGame', progress: 25 });
+
+      expect(mockRenderer.renderBuilding).toHaveBeenCalledWith('CyberGame', 25);
+      
+      // Script compile finished should NOT tear down active build display
+      s.handleCompile({ state: 'finished', type: 'compile', projectName: 'CyberGame' });
+      expect(mockRenderer.renderIdle).not.toHaveBeenCalled();
+
+      // Build finished tears down build display
+      s.handleCompile({ state: 'finished', type: 'build', projectName: 'CyberGame' });
+      expect(mockRenderer.renderIdle).toHaveBeenCalled();
+      s.dispose();
+    });
+
+    it('HandleCompile_StartedBake_TriggersDisplayRendererBaking_AndRestoresOnBakeFinished', () => {
+      const mockRenderer = { renderBaking: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
+      s.handleCompile({ state: 'started', type: 'bake', projectName: 'CyberGame', progress: 10 });
+
+      expect(mockRenderer.renderBaking).toHaveBeenCalledWith('CyberGame', 10);
+
+      // Bake stopped/finished restores display
+      s.handleCompile({ state: 'finished', type: 'bake', projectName: 'CyberGame' });
+      expect(mockRenderer.renderIdle).toHaveBeenCalled();
+      s.dispose();
+    });
+
+    it('HandlePlayMode_Entered_TriggersDisplayRendererPlayMode', () => {
+      const mockRenderer = { renderPlayMode: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
+      s.handlePlayMode({ state: 'entered', projectName: 'CyberGame' });
+
+      expect(mockRenderer.renderPlayMode).toHaveBeenCalledWith('CyberGame');
+      s.dispose();
+    });
+
+    it('HandleConsole_Exception_TriggersDisplayRendererException', () => {
+      const mockRenderer = { renderException: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
+      s.handleConsole({ type: 'exception', projectName: 'CyberGame', message: 'NullReferenceException' });
+
+      expect(mockRenderer.renderException).toHaveBeenCalledWith('CyberGame', 'NullReferenceException');
+      s.dispose();
+    });
+
+    it('Dispose_ClearsPruneTimer_DisposesCleanly', () => {
+      expect(() => service.dispose()).not.toThrow();
     });
   });
 });

@@ -24,7 +24,7 @@ export class BusyBarDriver extends EventEmitter {
   private ipAddress: string = '10.0.4.20';
   private apiToken: string = '';
   private pingMs: number = 4;
-  private activeStream: any = null;
+  private activeStream: unknown = null;
 
   constructor(ipAddressOrOptions: string | BusyBarDriverOptions = '10.0.4.20', forceMock: boolean = false) {
     super();

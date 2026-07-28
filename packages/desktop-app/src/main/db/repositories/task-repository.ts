@@ -19,22 +19,30 @@ export class TaskRepository {
       throw new Error('Project ID is required');
     }
 
-    const stmt = this.dbConn.getDb().prepare<[string], {
-      id: string;
-      projectId: string;
-      key: string;
-      title: string;
-      status: 'todo' | 'in_progress' | 'done';
-    }>('SELECT id, project_id as projectId, key, title, status FROM tasks WHERE project_id = ?');
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return [];
 
-    const rows = stmt.all(projectId);
-    return rows.map(r => ({
-      id: r.id,
-      projectId: r.projectId,
-      key: r.key,
-      title: r.title,
-      status: r.status
-    }));
+      const stmt = db.prepare<[string], {
+        id: string;
+        projectId: string;
+        key: string;
+        title: string;
+        status: 'todo' | 'in_progress' | 'done';
+      }>('SELECT id, project_id as projectId, key, title, status FROM tasks WHERE project_id = ?');
+
+      const rows = stmt.all(projectId);
+      return rows.map(r => ({
+        id: r.id,
+        projectId: r.projectId,
+        key: r.key,
+        title: r.title,
+        status: r.status
+      }));
+    } catch (err) {
+      console.warn('[TaskRepository] Failed to fetch tasks:', err);
+      return [];
+    }
   }
 
   /**
@@ -45,17 +53,24 @@ export class TaskRepository {
       throw new Error('Task ID, Project ID, Key, and Title are required');
     }
 
-    const stmt = this.dbConn.getDb().prepare(`
-      INSERT INTO tasks (id, project_id, key, title, status, created_at_utc)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        project_id = excluded.project_id,
-        key = excluded.key,
-        title = excluded.title,
-        status = excluded.status
-    `);
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return;
 
-    stmt.run(task.id, task.projectId, task.key, task.title, task.status, new Date().toISOString());
+      const stmt = db.prepare(`
+        INSERT INTO tasks (id, project_id, key, title, status, created_at_utc)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          project_id = excluded.project_id,
+          key = excluded.key,
+          title = excluded.title,
+          status = excluded.status
+      `);
+
+      stmt.run(task.id, task.projectId, task.key, task.title, task.status, new Date().toISOString());
+    } catch (err) {
+      console.warn('[TaskRepository] Failed to save task:', err);
+    }
   }
 
   /**
@@ -77,5 +92,57 @@ export class TaskRepository {
 
     this.saveTask(adHocTask);
     return adHocTask;
+  }
+
+  /**
+   * Deletes a task record from SQLite.
+   */
+  public deleteTask(taskId: string): void {
+    if (!taskId) {
+      throw new Error('Task ID is required');
+    }
+
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return;
+
+      const stmt = db.prepare('DELETE FROM tasks WHERE id = ?');
+      stmt.run(taskId);
+    } catch (err) {
+      console.warn('[TaskRepository] Failed to delete task:', err);
+    }
+  }
+
+  /**
+   * Updates an existing task's title, key, or status.
+   */
+  public updateTask(task: TaskDTO): void {
+    this.saveTask(task);
+  }
+
+  /**
+   * Bulk imports tasks into a target project.
+   */
+  public importTasks(
+    projectId: string,
+    rawTasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }>
+  ): TaskDTO[] {
+    if (!projectId || !Array.isArray(rawTasks)) return [];
+
+    const imported: TaskDTO[] = [];
+    for (const t of rawTasks) {
+      if (!t.key || !t.title) continue;
+      const taskId = `${projectId}_${t.key.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      const taskObj: TaskDTO = {
+        id: taskId,
+        projectId,
+        key: t.key.toUpperCase(),
+        title: t.title.trim(),
+        status: t.status || 'todo'
+      };
+      this.saveTask(taskObj);
+      imported.push(taskObj);
+    }
+    return imported;
   }
 }

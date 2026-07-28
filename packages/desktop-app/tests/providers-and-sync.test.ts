@@ -5,6 +5,7 @@ import { JiraProvider } from '../src/main/providers/jira-provider';
 import { AdHocProvider } from '../src/main/providers/adhoc-provider';
 import { NotionProvider } from '../src/main/providers/notion-provider';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
+import { TaskProvider } from '../src/main/sync/task-provider';
 
 describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -188,7 +189,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
       logTime: async () => ({ success: false })
     };
 
-    const worker = new OfflineSyncWorker(failingProvider as any, worklogRepo);
+    const worker = new OfflineSyncWorker(failingProvider as unknown as TaskProvider, worklogRepo);
     const result = await worker.processPendingQueue();
 
     // Assert
@@ -218,7 +219,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
       logTime: async () => { throw new Error('Network timeout'); }
     };
 
-    const worker = new OfflineSyncWorker(throwingProvider as any, worklogRepo);
+    const worker = new OfflineSyncWorker(throwingProvider as unknown as TaskProvider, worklogRepo);
     const result = await worker.processPendingQueue();
 
     // Assert

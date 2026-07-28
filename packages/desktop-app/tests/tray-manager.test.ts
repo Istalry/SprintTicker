@@ -5,10 +5,10 @@ import { SessionRepository } from '../src/main/db/repositories/session-repositor
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
-import { app, Menu } from 'electron';
+import { app, Menu, BrowserWindow } from 'electron';
 
 // Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
-let lastMockTray: any = null;
+let lastMockTray: { setToolTip: ReturnType<typeof vi.fn>; setContextMenu: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> } | null = null;
 
 vi.mock('electron', () => {
   return {
@@ -41,7 +41,7 @@ describe('TrayManager Unit Tests', () => {
   let worklogRepo: WorklogRepository;
   let taskRepo: TaskRepository;
   let engine: TimeTrackingEngine;
-  let mockWindow: any;
+  let mockWindow: BrowserWindow;
 
   beforeEach(() => {
     dbConn = new DatabaseConnection(':memory:');
@@ -57,7 +57,7 @@ describe('TrayManager Unit Tests', () => {
       focus: vi.fn(),
       hide: vi.fn(),
       on: vi.fn()
-    };
+    } as unknown as BrowserWindow;
   });
 
   afterEach(() => {
@@ -82,9 +82,9 @@ describe('TrayManager Unit Tests', () => {
     engine.resumeSession();
 
     // Trigger close event
-    const closeHandler = mockWindow.on.mock.calls.find((c: any) => c[0] === 'close')[1];
+    const closeHandler = (mockWindow.on as unknown as { mock: { calls: Array<[string, (...args: unknown[]) => unknown]> } }).mock.calls.find(c => c[0] === 'close')![1];
     closeHandler();
-    expect((app as any).isQuitting).toBe(true);
+    expect((app as unknown as { isQuitting?: boolean }).isQuitting).toBe(true);
 
     manager.destroy();
   });
@@ -104,7 +104,7 @@ describe('TrayManager Unit Tests', () => {
     // Arrange: initialize creates a fresh tray captured in lastMockTray
     const manager = new TrayManager(mockWindow, engine);
     manager.initialize();
-    const trayInstance = lastMockTray;
+    const trayInstance = lastMockTray!;
 
     // Transition: TRACKING → PAUSED fires engine subscriber → updateStatusTooltip
     engine.startTask('PROJ-101', false, 'Tooltip Test');
@@ -120,7 +120,7 @@ describe('TrayManager Unit Tests', () => {
   it('TrayManager_UpdateStatusTooltip_WhenTracking_SetsTrackingTooltip', () => {
     const manager = new TrayManager(mockWindow, engine);
     manager.initialize();
-    const trayInstance = lastMockTray;
+    const trayInstance = lastMockTray!;
 
     engine.startTask('PROJ-202', false, 'Tracking Tooltip Test');
 
@@ -144,12 +144,12 @@ describe('TrayManager Unit Tests', () => {
   });
 
   it('TrayManager_ContextMenu_QuitMenuItem_SetsIsQuittingAndCallsQuit', () => {
-    let quitClickHandler: ((item: any) => void) | null = null;
+    let quitClickHandler: ((item: unknown) => void) | null = null;
 
-    vi.mocked(Menu.buildFromTemplate).mockImplementation((template: any[]) => {
+    vi.mocked(Menu.buildFromTemplate).mockImplementation((template: Array<{ label?: string; click?: () => void }>) => {
       const quitItem = template.find(i => i.label === 'Quit Application');
-      if (quitItem) quitClickHandler = quitItem.click;
-      return {} as any;
+      if (quitItem && quitItem.click) quitClickHandler = quitItem.click;
+      return {} as unknown as Menu;
     });
 
     const manager = new TrayManager(mockWindow, engine);

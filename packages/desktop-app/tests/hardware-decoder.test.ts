@@ -91,18 +91,30 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const payload = renderer.renderPlayMode('MyFantasyGame');
 
     // Assert
+    expect((payload.frontElements[0] as Record<string, unknown>).iconId).toBe('playmode');
     expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('ON AIR');
     expect((payload.frontElements[2] as Record<string, unknown>).text).toBe('MyFantasyGame');
     expect(payload.ledColorHex).toBe('#FF0000FF');
   });
 
-  it('RenderCompilation_ValidProject_RendersProgressBarPayload', () => {
+  it('RenderCompilation_ValidProject_RendersCompilationPayloadWithoutProgressBar', () => {
     // Act
-    const payload = renderer.renderCompilation('MyFantasyGame', 75);
+    const payload = renderer.renderCompilation('MyFantasyGame');
 
     // Assert
-    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('MyFantasyGame: Compiling...');
-    expect((payload.frontElements[2] as Record<string, unknown>).width).toBe(54); // 75% of 72
+    expect((payload.frontElements[0] as Record<string, unknown>).iconId).toBe('compiling');
+    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('COMPILING:');
+    expect((payload.frontElements[2] as Record<string, unknown>).text).toBe('MyFantasyGame');
+  });
+
+  it('RenderBuilding_ValidProject_RendersProgressBarPayload', () => {
+    // Act
+    const payload = renderer.renderBuilding('MyFantasyGame', 75);
+
+    // Assert
+    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('BUILDING: MyFantasyGame');
+    expect((payload.frontElements[2] as Record<string, unknown>).x).toBe(16);
+    expect((payload.frontElements[2] as Record<string, unknown>).width).toBe(42); // 75% of 56
     expect(payload.ledColorHex).toBe('#3B82F6FF');
   });
 
@@ -217,7 +229,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   it('BusyBarDriver_Connect_LiveMode_FetchFails_StillConnectsDegraded', async () => {
     // Arrange: live-mode driver with mocked fetch that returns null (network unreachable)
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = async () => null as any;
+    globalThis.fetch = async () => null as unknown as Response;
 
     const liveDriver = new BusyBarDriver('192.168.99.99', false);
     try {

@@ -1,37 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, PlusCircle, ArrowLeft, Check } from 'lucide-react';
+import { X, Search, PlusCircle, ArrowLeft, Check, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 
 interface TaskSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   projects: ProjectDTO[];
-  tasks: TaskDTO[];
+  tasks?: TaskDTO[];
   onSelectTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => void;
 }
+
+const statusConfig: Record<string, { label: string; icon: React.FC<{ className?: string }>; color: string }> = {
+  done: { label: 'Done', icon: CheckCircle2, color: 'text-accent-green' },
+  in_progress: { label: 'In Progress', icon: Clock, color: 'text-accent-blue' },
+  todo: { label: 'To Do', icon: AlertCircle, color: 'text-text-secondary' }
+};
 
 export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
   isOpen,
   onClose,
   projects,
-  tasks,
   onSelectTask
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('PROJ');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [projectTasks, setProjectTasks] = useState<TaskDTO[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState<boolean>(false);
   const [isAdHocMode, setIsAdHocMode] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customTitle, setCustomTitle] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-  // Filter tasks by selected project and search query
-  const filteredTasks = tasks.filter(t => {
-    const matchesProject = t.projectId === selectedProjectId;
-    const matchesQuery =
-      t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesProject && matchesQuery;
-  });
+  // Dynamically fetch tasks from SQLite for the selected project
+  const fetchTasksForProject = async (projectId: string) => {
+    if (!projectId || !window.electronAPI?.getTasks) return;
+    setLoadingTasks(true);
+    try {
+      const tasks = await window.electronAPI.getTasks(projectId);
+      setProjectTasks(tasks);
+    } catch (err) {
+      console.warn('[TaskSelectionModal] Failed to load tasks for project:', projectId, err);
+      setProjectTasks([]);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  // When project changes in Step 2, fetch tasks for that project
+  useEffect(() => {
+    if (selectedProjectId && step === 2 && !isAdHocMode) {
+      fetchTasksForProject(selectedProjectId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProjectId, step]);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,8 +61,18 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
       setCustomTitle('');
       setIsAdHocMode(false);
       setSelectedIndex(0);
+      setProjectTasks([]);
+      // Pre-select first project
+      if (projects.length > 0) {
+        setSelectedProjectId(projects[0].id);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, projects]);
+
+  const filteredTasks = projectTasks.filter(t =>
+    t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Handle keyboard events (Esc to close, Enter to confirm, Arrow keys)
   useEffect(() => {
@@ -58,13 +89,7 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
         setSelectedIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (step === 1) {
-          if (isAdHocMode) {
-            setStep(2);
-          } else {
-            setStep(2);
-          }
-        } else if (step === 2) {
+        if (step === 2) {
           if (isAdHocMode) {
             if (customTitle.trim()) {
               onSelectTask(`adhoc_${Date.now()}`, true, customTitle.trim());
@@ -84,6 +109,8 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
 
   if (!isOpen) return null;
 
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -92,7 +119,7 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
           <div className="flex items-center space-x-2">
             {step === 2 && (
               <button
-                onClick={() => setStep(1)}
+                onClick={() => { setStep(1); setSearchQuery(''); setSelectedIndex(0); }}
                 className="p-1 hover:bg-dark-700 rounded-md text-text-secondary hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -100,10 +127,10 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
             )}
             <h3 className="text-md font-bold text-white font-mono">
               {step === 1
-                ? 'Step 1: Select Target Project or Provider'
+                ? 'Step 1: Select Target Project'
                 : isAdHocMode
                 ? 'Step 2: Enter Custom Ad-Hoc Task Title'
-                : `Step 2: Select Task under [${selectedProjectId}]`}
+                : `Step 2: Select Task under [${selectedProject?.key ?? selectedProjectId}]`}
             </h3>
           </div>
 
@@ -120,20 +147,20 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
           {step === 1 ? (
             <div className="space-y-3">
               <p className="text-xs text-text-secondary">
-                Choose an active project from your provider (Jira/Notion) or create custom overhead work:
+                Choose an active project to track time against:
               </p>
 
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {projects.map(proj => (
                   <button
                     key={proj.id}
                     onClick={() => {
-                      setSelectedProjectId(proj.key);
+                      setSelectedProjectId(proj.id);
                       setIsAdHocMode(false);
                       setStep(2);
                     }}
                     className={`w-full flex items-center justify-between p-3.5 rounded-lg border text-left font-medium text-sm transition-all ${
-                      selectedProjectId === proj.key && !isAdHocMode
+                      selectedProjectId === proj.id && !isAdHocMode
                         ? 'bg-accent-blue/10 border-accent-blue text-accent-blue'
                         : 'bg-dark-700/50 border-border-dark text-text-primary hover:bg-dark-700'
                     }`}
@@ -142,7 +169,7 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
                       <div className="font-mono font-bold">{proj.key}</div>
                       <div className="text-xs text-text-secondary">{proj.name}</div>
                     </div>
-                    {selectedProjectId === proj.key && !isAdHocMode && <Check className="w-5 h-5" />}
+                    {selectedProjectId === proj.id && !isAdHocMode && <Check className="w-5 h-5" />}
                   </button>
                 ))}
 
@@ -198,37 +225,50 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
                     setSearchQuery(e.target.value);
                     setSelectedIndex(0);
                   }}
-                  placeholder="Search sprint task key or title..."
+                  placeholder="Search task key or title..."
                   autoFocus
                   className="w-full bg-dark-900 border border-border-dark rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent-blue font-sans"
                 />
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-                {filteredTasks.length > 0 ? (
-                  filteredTasks.map((t, idx) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        onSelectTask(t.id, false, t.title);
-                        onClose();
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg text-left text-sm font-medium transition-all ${
-                        selectedIndex === idx
-                          ? 'bg-accent-blue/15 border border-accent-blue/40 text-white'
-                          : 'bg-dark-700/40 border border-transparent text-text-primary hover:bg-dark-700'
-                      }`}
-                    >
-                      <div>
-                        <div className="font-mono text-accent-blue font-bold">{t.key}</div>
-                        <div className="text-xs text-text-secondary">{t.title}</div>
-                      </div>
-                      <span className="text-xs font-mono text-text-secondary capitalize">{t.status}</span>
-                    </button>
-                  ))
+                {loadingTasks ? (
+                  <div className="text-center py-6 text-xs text-text-secondary font-mono">
+                    Loading tasks for [{selectedProject?.key}]...
+                  </div>
+                ) : filteredTasks.length > 0 ? (
+                  filteredTasks.map((t, idx) => {
+                    const conf = statusConfig[t.status] ?? statusConfig['todo'];
+                    const StatusIcon = conf.icon;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          onSelectTask(t.id, false, t.title);
+                          onClose();
+                        }}
+                        className={`w-full flex items-center justify-between p-3 rounded-lg text-left text-sm font-medium transition-all ${
+                          selectedIndex === idx
+                            ? 'bg-accent-blue/15 border border-accent-blue/40 text-white'
+                            : 'bg-dark-700/40 border border-transparent text-text-primary hover:bg-dark-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-mono text-accent-blue font-bold">{t.key}</div>
+                          <div className="text-xs text-text-secondary">{t.title}</div>
+                        </div>
+                        <div className={`flex items-center space-x-1 text-xs ${conf.color}`}>
+                          <StatusIcon className="w-3.5 h-3.5" />
+                          <span className="font-mono">{conf.label}</span>
+                        </div>
+                      </button>
+                    );
+                  })
                 ) : (
                   <div className="text-center py-6 text-xs text-text-secondary font-mono">
-                    No matching sprint tasks found under [{selectedProjectId}].
+                    No matching tasks under [{selectedProject?.key ?? selectedProjectId}].
+                    <br />
+                    <span className="text-accent-purple">Add tasks in Projects &amp; Tasks manager.</span>
                   </div>
                 )}
               </div>

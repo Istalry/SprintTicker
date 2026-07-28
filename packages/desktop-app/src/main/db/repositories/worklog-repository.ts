@@ -152,4 +152,87 @@ export class WorklogRepository {
       createdAtUtc: r.created_at_utc
     }));
   }
+
+  /**
+   * Retrieves worklogs logged on a specific YYYY-MM-DD date.
+   */
+  public getWorklogsByDate(dateString: string): WorklogRecord[] {
+    if (!dateString) return this.getTodaysWorklogs();
+
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return [];
+
+      const stmt = db.prepare<[string], {
+        id: string;
+        session_id: string;
+        task_id: string;
+        duration_seconds: number;
+        started_at_utc: string;
+        comment: string;
+        created_at_utc: string;
+      }>('SELECT * FROM worklogs WHERE strftime(\'%Y-%m-%d\', created_at_utc) = ? ORDER BY created_at_utc DESC');
+
+      const rows = stmt.all(dateString);
+      return rows.map(r => ({
+        id: r.id,
+        sessionId: r.session_id,
+        taskId: r.task_id,
+        durationSeconds: r.duration_seconds,
+        startedAtUtc: r.started_at_utc,
+        comment: r.comment,
+        createdAtUtc: r.created_at_utc
+      }));
+    } catch (err) {
+      console.warn(`[WorklogRepository] Failed to fetch worklogs for date ${dateString}:`, err);
+      return [];
+    }
+  }
+
+  /**
+   * Generates a daily summary report of hours and tasks for a given YYYY-MM-DD date.
+   */
+  public getDailySummary(dateString: string): {
+    date: string;
+    totalSeconds: number;
+    tasksCount: number;
+    items: Array<{
+      taskId: string;
+      key: string;
+      title: string;
+      durationSeconds: number;
+      comment: string;
+    }>;
+  } {
+    const logs = this.getWorklogsByDate(dateString);
+    let totalSeconds = 0;
+    const taskMap = new Map<string, { taskId: string; key: string; title: string; durationSeconds: number; comment: string }>();
+
+    for (const log of logs) {
+      totalSeconds += log.durationSeconds;
+      const existing = taskMap.get(log.taskId);
+      if (existing) {
+        existing.durationSeconds += log.durationSeconds;
+        if (log.comment && !existing.comment.includes(log.comment)) {
+          existing.comment += `; ${log.comment}`;
+        }
+      } else {
+        taskMap.set(log.taskId, {
+          taskId: log.taskId,
+          key: log.taskId.split('_')[1] || log.taskId,
+          title: log.comment || log.taskId,
+          durationSeconds: log.durationSeconds,
+          comment: log.comment
+        });
+      }
+    }
+
+    const items = Array.from(taskMap.values());
+    return {
+      date: dateString,
+      totalSeconds,
+      tasksCount: items.length,
+      items
+    };
+  }
 }

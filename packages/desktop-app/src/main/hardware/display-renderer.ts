@@ -123,6 +123,106 @@ export class DisplayRenderer {
   }
 
   /**
+   * Renders Idle View on Front Display.
+   */
+  public renderIdle(): DisplayPayload {
+    return this.renderActiveSession(null);
+  }
+
+  /**
+   * Renders LUNCH MUTE screen on Front Display with Burger Icon and warm amber LED.
+   */
+  public renderLunchMode(): DisplayPayload {
+    const payload: DisplayPayload = {
+      frontElements: [
+        { type: 'bitmap', iconId: 'burger' as BitmapIconId, bitmapData: getBitmapById('burger'), x: 0, y: 0 },
+        { type: 'text', font: 'bold', x: 16, y: 0, color: '#F59E0BFF', text: 'LUNCH MUTE' },
+        { type: 'text', font: 'small', x: 16, y: 8, color: '#FFFFFFFF', text: 'Task Paused' }
+      ],
+      backElements: [
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS' },
+        { type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCC', text: 'Notifications Muted | Session Paused' }
+      ],
+      ledColorHex: '#F59E0BFF'
+    };
+
+    this.ledMode = 'BREATHING';
+    this.updateStateAndDispatch(payload);
+    return payload;
+  }
+
+  /**
+   * Renders AWAY / STEALTH screen on Front Display with Clock Icon and dim purple LED.
+   */
+  public renderAwayMode(): DisplayPayload {
+    const payload: DisplayPayload = {
+      frontElements: [
+        { type: 'bitmap', iconId: 'clock' as BitmapIconId, bitmapData: getBitmapById('clock'), x: 0, y: 0 },
+        { type: 'text', font: 'bold', x: 16, y: 0, color: '#A855F7FF', text: 'AWAY MODE' },
+        { type: 'text', font: 'small', x: 16, y: 8, color: '#888888FF', text: 'PC Locked' }
+      ],
+      backElements: [
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY' },
+        { type: 'text', font: 'tiny', x: 0, y: 16, color: '#888888', text: 'Stealth Display Active' }
+      ],
+      ledColorHex: '#A855F7FF'
+    };
+
+    this.ledMode = 'SOLID';
+    this.updateStateAndDispatch(payload);
+    return payload;
+  }
+
+  /**
+   * Renders Agile Ceremony Prompt on Front Display with Attention-Grabbing Pulsing LED & Scrolling Text.
+   */
+  public renderCeremonyPrompt(type: 'STANDUP' | 'LUNCH' | 'EOD', title: string): DisplayPayload {
+    const isEod = type === 'EOD';
+    const isLunch = type === 'LUNCH';
+    const iconId: BitmapIconId = isLunch ? 'burger' : 'clock';
+    const accentColor = isEod ? '#A855F7FF' : isLunch ? '#F59E0BFF' : '#3B82F6FF';
+
+    const payload: DisplayPayload = {
+      frontElements: [
+        {
+          type: 'bitmap',
+          iconId,
+          bitmapData: getBitmapById(iconId),
+          x: 0,
+          y: 0
+        },
+        {
+          type: 'text',
+          font: 'bold',
+          x: 16,
+          y: 0,
+          color: accentColor,
+          text: isEod ? 'EOD WRAP-UP' : isLunch ? 'LUNCH TIME' : 'DAILY STANDUP'
+        },
+        {
+          type: 'text',
+          font: 'small',
+          x: 16,
+          y: 8,
+          width: 56,
+          color: '#FFFFFFFF',
+          text: title || 'Press Wheel or Click UI to Start',
+          scroll_rate: 60
+        }
+      ],
+      backElements: [
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: accentColor, text: `CEREMONY PROMPT: ${type}` },
+        { type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCC', text: 'Press Scroll Wheel to Open Wizard' }
+      ],
+      ledColorHex: accentColor
+    };
+
+    this.ledMode = 'PULSE_ALERT';
+    this.updateStateAndDispatch(payload);
+    return payload;
+  }
+
+  /**
    * Renders Template A: Active Task Tracker View on Front Display, with Pixel Icon & OLED Rear layout.
    */
   public renderActiveSession(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean = false): DisplayPayload {
@@ -143,8 +243,8 @@ export class DisplayRenderer {
       frontElements: [
         {
           type: 'bitmap',
-          iconId: 'unity' as BitmapIconId,
-          bitmapData: getBitmapById('unity'),
+          iconId: 'checkmark' as BitmapIconId,
+          bitmapData: getBitmapById('checkmark'),
           x: 0,
           y: 0
         },
@@ -249,7 +349,7 @@ export class DisplayRenderer {
 
     const payload: DisplayPayload = {
       frontElements: [
-        { type: 'bitmap', iconId: 'unity', bitmapData: getBitmapById('unity'), x: 0, y: 0 },
+        { type: 'bitmap', iconId: 'checkmark' as BitmapIconId, bitmapData: getBitmapById('checkmark'), x: 0, y: 0 },
         { type: 'text', font: 'bold', x: 10, y: 3, color: '#10B981FF', text: 'TASK DONE 🎉' },
         ...particleElements
       ],
@@ -265,14 +365,14 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders Template C: Unity Play Mode "ON AIR" Alert with Unity Icon.
+   * Renders Template C: Unity Play Mode "ON AIR" Alert with Gamepad Controller Icon.
    */
   public renderPlayMode(projectName: string): DisplayPayload {
     const payload: DisplayPayload = {
       frontElements: [
-        { type: 'bitmap', iconId: 'unity', bitmapData: getBitmapById('unity'), x: 0, y: 0 },
-        { type: 'text', font: 'bold', x: 12, y: 0, color: '#FF0000FF', text: 'ON AIR' },
-        { type: 'text', font: 'tiny', x: 12, y: 8, color: '#3B82F6FF', text: projectName }
+        { type: 'bitmap', iconId: 'playmode' as BitmapIconId, bitmapData: getBitmapById('playmode'), x: 0, y: 0 },
+        { type: 'text', font: 'bold', x: 16, y: 0, color: '#FF0000FF', text: 'ON AIR' },
+        { type: 'text', font: 'tiny', x: 16, y: 8, color: '#3B82F6FF', text: projectName }
       ],
       backElements: [
         { type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: 'UNITY PLAY MODE ACTIVE' }
@@ -286,31 +386,99 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders Template B: Enhanced Unity Compilation Progress Bar View with track, glowing cap, and color thresholds.
+   * Renders C# Script Compilation View with Compiling Gear Icon and text (NO progress bar).
    */
-  public renderCompilation(projectName: string, progress: number = 50): DisplayPayload {
-    const barWidth = Math.floor((progress * 72) / 100);
+  public renderCompilation(projectName: string): DisplayPayload {
+    const colors = this.getThemeColors();
+    const payload: DisplayPayload = {
+      frontElements: [
+        { type: 'bitmap', iconId: 'compiling' as BitmapIconId, bitmapData: getBitmapById('compiling'), x: 0, y: 0 },
+        { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: colors.keyColor, text: 'COMPILING:' },
+        { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: projectName }
+      ],
+      backElements: [
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: `Compiling ${projectName}` }
+      ],
+      ledColorHex: colors.keyColor
+    };
+
+    this.ledMode = 'SOLID';
+    this.updateStateAndDispatch(payload);
+    return payload;
+  }
+
+  /**
+   * Renders Standalone Game Build View with Unity Icon and progress bar restrained to text container (x=16, width=56).
+   */
+  public renderBuilding(projectName: string, progress: number = 50): DisplayPayload {
+    const barWidth = Math.floor((progress * 56) / 100);
     const progressColor = progress >= 80 ? '#10B981FF' : progress >= 40 ? '#3B82F6FF' : '#FBBF24FF';
-    const endCapX = Math.max(0, barWidth - 1);
+    const endCapX = 16 + Math.max(0, barWidth - 1);
 
     const payload: DisplayPayload = {
       frontElements: [
-        { type: 'bitmap', iconId: 'unity', bitmapData: getBitmapById('unity'), x: 0, y: 0 },
-        { type: 'text', font: 'small', x: 10, y: 0, color: progressColor, text: `${projectName}: Compiling...` },
-        // Filled progress bar (Primary element [2])
-        { type: 'rectangle', x: 0, y: 11, width: barWidth, height: 4, fill: progressColor },
-        // Background track (element [3])
-        { type: 'rectangle', x: barWidth, y: 11, width: Math.max(0, 72 - barWidth), height: 4, fill: '#1E293BFF' },
-        // Glowing end-cap pixel (element [4])
+        { type: 'bitmap', iconId: 'unity' as BitmapIconId, bitmapData: getBitmapById('unity'), x: 0, y: 0 },
+        { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: progressColor, text: `BUILDING: ${projectName}` },
+        { type: 'rectangle', x: 16, y: 11, width: barWidth, height: 4, fill: progressColor },
+        { type: 'rectangle', x: 16 + barWidth, y: 11, width: Math.max(0, 56 - barWidth), height: 4, fill: '#1E293BFF' },
         { type: 'rectangle', x: endCapX, y: 10, width: 2, height: 6, fill: '#FFFFFFFF' }
       ],
       backElements: [
-        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: `Compiling ${projectName} (${progress}%)` }
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: `Building ${projectName} (${progress}%)` }
       ],
       ledColorHex: progressColor
     };
 
     this.ledMode = 'FLASH_BURST';
+    this.updateStateAndDispatch(payload);
+    return payload;
+  }
+
+  /**
+   * Renders Lightmap Baking View with Unity Icon and progress bar restrained to text container (x=16, width=56).
+   */
+  public renderBaking(projectName: string, progress: number = 50): DisplayPayload {
+    const barWidth = Math.floor((progress * 56) / 100);
+    const progressColor = '#FBBF24FF';
+    const endCapX = 16 + Math.max(0, barWidth - 1);
+
+    const payload: DisplayPayload = {
+      frontElements: [
+        { type: 'bitmap', iconId: 'unity' as BitmapIconId, bitmapData: getBitmapById('unity'), x: 0, y: 0 },
+        { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: progressColor, text: `BAKING: ${projectName}` },
+        { type: 'rectangle', x: 16, y: 11, width: barWidth, height: 4, fill: progressColor },
+        { type: 'rectangle', x: 16 + barWidth, y: 11, width: Math.max(0, 56 - barWidth), height: 4, fill: '#1E293BFF' },
+        { type: 'rectangle', x: endCapX, y: 10, width: 2, height: 6, fill: '#FFFFFFFF' }
+      ],
+      backElements: [
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: `Baking ${projectName} (${progress}%)` }
+      ],
+      ledColorHex: progressColor
+    };
+
+    this.ledMode = 'FLASH_BURST';
+    this.updateStateAndDispatch(payload);
+    return payload;
+  }
+
+  /**
+   * Renders Unity Exception / Error Alert View with Orange Error Icon.
+   */
+  public renderException(projectName: string, message: string): DisplayPayload {
+    const payload: DisplayPayload = {
+      frontElements: [
+        { type: 'bitmap', iconId: 'error' as BitmapIconId, bitmapData: getBitmapById('error'), x: 0, y: 0 },
+        { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#EF4444FF', text: 'EXCEPTION:' },
+        { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: message, scroll_rate: 60 }
+      ],
+      backElements: [
+        { type: 'text', font: 'tiny', x: 0, y: 0, color: '#EF4444FF', text: `EXCEPTION: ${projectName}` },
+        { type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCC', text: message }
+      ],
+      ledColorHex: '#EF4444FF'
+    };
+
+    this.ledMode = 'PULSE_ALERT';
     this.updateStateAndDispatch(payload);
     return payload;
   }

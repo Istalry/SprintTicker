@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { BrowserWindow } from 'electron';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
@@ -13,6 +14,9 @@ import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
+    on: vi.fn()
+  },
+  powerMonitor: {
     on: vi.fn()
   }
 }));
@@ -55,7 +59,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
   it('RegisterAllHandlers_ValidInstance_RegistersWithoutThrowing', async () => {
     expect(() => registry.registerAllHandlers()).not.toThrow();
 
-    const calls = (ipcMain.handle as any).mock.calls || [];
+    const calls = (ipcMain.handle as unknown as { mock: { calls: Array<[string, (...args: unknown[]) => unknown]> } }).mock.calls || [];
     for (const [, handler] of calls) {
       if (typeof handler === 'function') {
         try {
@@ -79,7 +83,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const mockWindow = {
       isDestroyed: vi.fn().mockReturnValue(false),
       webContents: { send: vi.fn() }
-    } as any;
+    } as unknown as BrowserWindow;
 
     const dbConn2 = new DatabaseConnection(':memory:');
     const sessionRepo2 = new SessionRepository(dbConn2);

@@ -54,6 +54,20 @@ export class DatabaseConnection {
    */
   private initTables(): void {
     const schemaSql = `
+      CREATE TABLE IF NOT EXISTS projects (
+          id TEXT PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          provider_id TEXT NOT NULL DEFAULT 'local',
+          created_at_utc TEXT NOT NULL
+      );
+
+      INSERT OR IGNORE INTO projects (id, key, name, provider_id, created_at_utc)
+      VALUES
+        ('PROJ', 'PROJ', 'Default Project', 'jira', datetime('now')),
+        ('UNITY', 'UNITY', 'Unity Engine Project', 'local', datetime('now')),
+        ('ADMIN', 'ADMIN', 'Administrative Overhead', 'local', datetime('now'));
+
       CREATE TABLE IF NOT EXISTS tasks (
           id TEXT PRIMARY KEY,
           project_id TEXT NOT NULL,
@@ -119,5 +133,24 @@ export class DatabaseConnection {
     if (this.db && this.db.open) {
       this.db.close();
     }
+  }
+
+  public wipeAllData(): void {
+    if (!this.db || !this.db.open) return;
+
+    this.db.exec(`
+      DELETE FROM worklog_sync_queue;
+      DELETE FROM worklogs;
+      DELETE FROM paused_intervals;
+      DELETE FROM active_sessions;
+      DELETE FROM tasks;
+      DELETE FROM projects;
+
+      INSERT OR IGNORE INTO projects (id, key, name, provider_id, created_at_utc)
+      VALUES
+        ('PROJ', 'PROJ', 'Default Project', 'jira', datetime('now')),
+        ('UNITY', 'UNITY', 'Unity Engine Project', 'local', datetime('now')),
+        ('ADMIN', 'ADMIN', 'Administrative Overhead', 'local', datetime('now'));
+    `);
   }
 }

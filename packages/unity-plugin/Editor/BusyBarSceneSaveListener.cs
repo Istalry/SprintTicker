@@ -11,43 +11,95 @@ using UnityEngine;
 namespace Com.Antigravity.BusyBar.Editor
 {
     /// <summary>
-    /// Lightweight HTTP listener running inside Unity Editor listening on http://localhost:8081/antigravity/save-scenes.
+    /// Lightweight HTTP listener running inside Unity Editor listening on http://localhost:8081/antigravity/save-scenes/
+    /// (or fallback ports 8082-8089 for multi-instance support).
     /// Responds to RPC scene save requests triggered during PC Companion App End-of-Day wrap-up.
     /// </summary>
     [InitializeOnLoad]
     public static class BusyBarSceneSaveListener
     {
-        private const string ListenerPrefix = "http://localhost:8081/antigravity/save-scenes/";
+        private const int StartingPort = 8081;
+        private const int MaxPortOffset = 8;
         private static HttpListener _httpListener;
         private static Thread _listenerThread;
-        private static readonly Queue<Action> MainThreadQueue = new Queue<Action>();
+        private static readonly Queue<Action> _mainThreadQueue = new Queue<Action>();
+
+        /// <summary>
+        /// Gets the local HTTP port bound by this Unity Editor instance for scene save RPC requests.
+        /// </summary>
+        public static int BoundPort { get; private set; } = StartingPort;
 
         static BusyBarSceneSaveListener()
         {
             EditorApplication.update += ProcessMainThreadQueue;
+            AssemblyReloadEvents.beforeAssemblyReload += StopHttpListener;
+            EditorApplication.quitting += StopHttpListener;
+            AppDomain.CurrentDomain.DomainUnload += OnDomainUnload;
+
             StartHttpListener();
+        }
+
+        private static void OnDomainUnload(object sender, EventArgs e)
+        {
+            StopHttpListener();
         }
 
         private static void StartHttpListener()
         {
+            if (_httpListener != null && _httpListener.IsListening) return;
+
+            for (int portOffset = 0; portOffset <= MaxPortOffset; portOffset++)
+            {
+                int candidatePort = StartingPort + portOffset;
+                string prefix = $"http://localhost:{candidatePort}/antigravity/save-scenes/";
+                try
+                {
+                    var listener = new HttpListener();
+                    listener.Prefixes.Add(prefix);
+                    listener.Start();
+
+                    _httpListener = listener;
+                    BoundPort = candidatePort;
+
+                    _listenerThread = new Thread(ListenLoop)
+                    {
+                        IsBackground = true
+                    };
+                    _listenerThread.Start();
+                    Debug.Log($"[BUSYBarSceneSaveListener] Listening for EOD scene save commands on {prefix}");
+                    return;
+                }
+                catch (Exception)
+                {
+                    // Try next port in range if port is already in use
+                    if (portOffset == MaxPortOffset)
+                    {
+                        Debug.LogWarning($"[BUSYBarSceneSaveListener] Unable to bind scene save listener on ports {StartingPort}-{StartingPort + MaxPortOffset}.");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gracefully stops the HTTP listener and terminates the background thread before domain reload.
+        /// </summary>
+        public static void StopHttpListener()
+        {
             try
             {
-                if (_httpListener != null && _httpListener.IsListening) return;
-
-                _httpListener = new HttpListener();
-                _httpListener.Prefixes.Add(ListenerPrefix);
-                _httpListener.Start();
-
-                _listenerThread = new Thread(ListenLoop)
+                if (_httpListener != null)
                 {
-                    IsBackground = true
-                };
-                _listenerThread.Start();
-                Debug.Log("[BUSYBarSceneSaveListener] Listening for EOD scene save commands on http://localhost:8081/antigravity/save-scenes");
+                    if (_httpListener.IsListening)
+                    {
+                        _httpListener.Stop();
+                    }
+                    _httpListener.Close();
+                    _httpListener = null;
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.LogWarning($"[BUSYBarSceneSaveListener] Unable to bind port 8081: {ex.Message}");
+                // Suppress cleanup exceptions during domain reload or exit
             }
         }
 
@@ -62,7 +114,17 @@ namespace Com.Antigravity.BusyBar.Editor
                 }
                 catch (HttpListenerException)
                 {
-                    // Listener closed or aborted
+                    // Listener stopped or closed cleanly
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Listener object disposed on domain unload
+                    break;
+                }
+                catch (ThreadAbortException)
+                {
+                    // Thread aborted on Mono domain reload
                     break;
                 }
                 catch (Exception ex)
@@ -79,10 +141,9 @@ namespace Com.Antigravity.BusyBar.Editor
                 var resetEvent = new AutoResetEvent(false);
                 var savedScenesList = new List<string>();
 
-                // Queue main thread scene saving
-                lock (MainThreadQueue)
+                lock (_mainThreadQueue)
                 {
-                    MainThreadQueue.Enqueue(() =>
+                    _mainThreadQueue.Enqueue(() =>
                     {
                         try
                         {
@@ -108,7 +169,6 @@ namespace Com.Antigravity.BusyBar.Editor
                     });
                 }
 
-                // Wait up to 1800ms for main thread execution
                 resetEvent.WaitOne(1800);
 
                 var responseJson = JsonUtility.ToJson(new SaveResponse
@@ -133,11 +193,11 @@ namespace Com.Antigravity.BusyBar.Editor
 
         private static void ProcessMainThreadQueue()
         {
-            lock (MainThreadQueue)
+            lock (_mainThreadQueue)
             {
-                while (MainThreadQueue.Count > 0)
+                while (_mainThreadQueue.Count > 0)
                 {
-                    var action = MainThreadQueue.Dequeue();
+                    var action = _mainThreadQueue.Dequeue();
                     action?.Invoke();
                 }
             }
@@ -151,3 +211,4 @@ namespace Com.Antigravity.BusyBar.Editor
         }
     }
 }
+

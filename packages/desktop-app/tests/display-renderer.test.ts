@@ -43,10 +43,35 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
     });
 
+    it('RenderIdle_ReturnsActiveSessionWithNull', () => {
+      const payload = renderer.renderIdle();
+      expect(payload).toBeDefined();
+    });
+
     it('SetColorTheme_ValidTheme_UpdatesPaletteColors', () => {
       renderer.setColorTheme('cyberpunk');
       const payload = renderer.renderActiveSession(null);
       expect(payload).toBeDefined();
+    });
+  });
+
+  describe('schedule & ceremony rendering', () => {
+    it('RenderLunchMode_DispatchesLunchScreenPayload', () => {
+      const payload = renderer.renderLunchMode();
+      expect(payload.ledColorHex).toBe('#F59E0BFF');
+      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+    });
+
+    it('RenderAwayMode_DispatchesAwayScreenPayload', () => {
+      const payload = renderer.renderAwayMode();
+      expect(payload.ledColorHex).toBe('#A855F7FF');
+      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+    });
+
+    it('RenderCeremonyPrompt_EODType_DispatchesCeremonyPromptPayload', () => {
+      const payload = renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
+      expect(payload.ledColorHex).toBe('#A855F7FF');
+      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
     });
   });
 

@@ -60,13 +60,16 @@ export interface ScheduleSettingsDTO {
   promptTimeoutSeconds: number; // 0 for indefinite
 }
 
+export type UserMode = 'WORK' | 'LUNCH' | 'AWAY';
+export type PriorityAction = 'DISPLAY' | 'QUEUE' | 'SUPPRESS';
+
 export interface PriorityRule {
   id: string;
   eventName: string;
   priority: number;
-  actionOnWork: 'DISPLAY' | 'QUEUE' | 'SUPPRESS';
-  actionOnLunch: 'DISPLAY' | 'QUEUE' | 'SUPPRESS';
-  actionOnAway: 'DISPLAY' | 'QUEUE' | 'SUPPRESS';
+  actionOnWork: PriorityAction;
+  actionOnLunch: PriorityAction;
+  actionOnAway: PriorityAction;
 }
 
 export interface PriorityMatrixConfig {
@@ -123,6 +126,19 @@ export interface UnitySettingsDTO {
   buildChime: string;
   enableFailureSound: boolean;
   enablePlayModeDnd: boolean;
+  showUnityErrors?: boolean;
+  errorDurationSeconds?: number;
+  scanFolder?: string;
+}
+
+export interface UnityInstanceDTO {
+  instanceId: string;
+  projectName: string;
+  unityVersion?: string;
+  compilationState: 'Idle' | 'Compiling';
+  playModeStatus: 'Editor Idle' | 'In Play Mode';
+  savePort: number;
+  lastPingUtc: string;
 }
 
 export interface UnityTelemetryDTO {
@@ -131,6 +147,7 @@ export interface UnityTelemetryDTO {
   compilationState: 'Idle' | 'Compiling';
   playModeStatus: 'Editor Idle' | 'In Play Mode';
   lastPingUtc?: string;
+  instances?: UnityInstanceDTO[];
 }
 
 export interface MessagingSettingsDTO {
@@ -157,7 +174,7 @@ export interface MessagingTestResultDTO {
 export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
 export type EdgeGlowMode = 'NONE' | 'STATIC' | 'PULSE' | 'BLINKING' | 'ROTATING';
 export type EdgeGlowTransition = 'FADE' | 'INSTANT';
-export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity';
+export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 

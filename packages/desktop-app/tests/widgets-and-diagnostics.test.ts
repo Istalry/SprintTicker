@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { BrowserWindow } from 'electron';
 import { AutoUpdateManager } from '../src/main/updater/auto-update-manager';
 import { WidgetRegistry } from '../src/main/widgets/widget-registry';
 import { PomodoroWidget } from '../src/main/widgets/pomodoro-widget';
@@ -27,7 +28,7 @@ describe('Phase 6 Widgets, Auto-Updater & Diagnostics Unit Tests', () => {
     const mockWindow = {
       isDestroyed: vi.fn().mockReturnValue(false),
       webContents: { send: vi.fn() }
-    } as any;
+    } as unknown as BrowserWindow;
 
     const updater = new AutoUpdateManager(() => mockWindow);
     updater.initialize('stable');

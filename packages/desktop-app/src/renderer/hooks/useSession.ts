@@ -46,7 +46,7 @@ export function useSession() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [session?.status, session?.sessionId]);
+  }, [session]);
 
   const pause = async () => {
     if (window.electronAPI) {

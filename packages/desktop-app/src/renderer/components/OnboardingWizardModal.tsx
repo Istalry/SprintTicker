@@ -175,7 +175,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
         <div className="flex items-center justify-between px-6 py-4 border-t border-border-dark bg-dark-700/30">
           {step > 1 ? (
             <button
-              onClick={() => setStep(s => (s - 1) as any)}
+              onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}
               className="flex items-center space-x-1.5 px-4 py-2 bg-dark-700 hover:bg-dark-700/80 text-text-secondary hover:text-white text-xs font-semibold rounded-lg border border-border-dark transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -187,7 +187,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
 
           {step < 3 ? (
             <button
-              onClick={() => setStep(s => (s + 1) as any)}
+              onClick={() => setStep(s => (s + 1) as 1 | 2 | 3)}
               className="flex items-center space-x-1.5 px-5 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
             >
               <span>Next</span>

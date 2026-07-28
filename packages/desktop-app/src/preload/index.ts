@@ -39,12 +39,27 @@ export interface IElectronAPI {
   getTodaysWorklogs: () => Promise<WorklogDTO[]>;
   onWorklogsUpdated: (callback: (worklogs: WorklogDTO[]) => void) => () => void;
 
-  // Providers & Tasks
+  // Providers, Projects & Tasks
   getProviders: () => Promise<{ activeProviderId: string; fallbackTicketKey: string; jiraDomain: string; providers: Array<{ id: string; name: string }> }>;
   setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) => Promise<boolean>;
   getProjects: () => Promise<ProjectDTO[]>;
+  createProject: (payload: { id: string; key: string; name: string; providerId?: string }) => Promise<boolean>;
+  renameProject: (payload: { id: string; name: string; key: string }) => Promise<boolean>;
+  deleteProject: (id: string) => Promise<boolean>;
   getTasks: (projectId: string) => Promise<TaskDTO[]>;
+  deleteTask: (taskId: string) => Promise<boolean>;
+  updateTask: (task: TaskDTO) => Promise<boolean>;
+  importTasks: (projectId: string, tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }>) => Promise<TaskDTO[]>;
   reconcileRemoteState: () => Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }>;
+
+  // Worklog History & Reports
+  getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;
+  getDailyWorklogSummary: (dateString: string) => Promise<{
+    date: string;
+    totalSeconds: number;
+    tasksCount: number;
+    items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string }>;
+  }>;
 
   // Hardware Rebindings
   getInputBindings: () => Promise<HardwareBindingConfig>;
@@ -62,7 +77,9 @@ export interface IElectronAPI {
   // Schedule & Ceremonies
   getScheduleSettings: () => Promise<ScheduleSettingsDTO>;
   saveScheduleSettings: (settings: ScheduleSettingsDTO) => Promise<boolean>;
-  triggerEodWrapUp: () => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
+  triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
+  cancelEodWrapUp: () => Promise<boolean>;
+  snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes?: number) => Promise<boolean>;
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
 
   // Unity Telemetry & Audio Settings
@@ -82,6 +99,9 @@ export interface IElectronAPI {
   setRearOledMode: (mode: string) => Promise<boolean>;
   setColorTheme: (theme: string) => Promise<boolean>;
   triggerConfettiBurst: () => Promise<boolean>;
+
+  // Database Management
+  wipeAllData: () => Promise<boolean>;
 
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;
@@ -110,13 +130,29 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_WORKLOGS_UPDATED, handler);
   },
 
-  // Providers & Tasks
+  // Providers, Projects & Tasks
   getProviders: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDERS),
   setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) =>
     ipcRenderer.invoke(IPCChannel.SET_ACTIVE_PROVIDER, payload),
   getProjects: () => ipcRenderer.invoke(IPCChannel.GET_PROJECTS),
+  createProject: (payload: { id: string; key: string; name: string; providerId?: string }) =>
+    ipcRenderer.invoke(IPCChannel.CREATE_PROJECT, payload),
+  renameProject: (payload: { id: string; name: string; key: string }) =>
+    ipcRenderer.invoke(IPCChannel.RENAME_PROJECT, payload),
+  deleteProject: (id: string) => ipcRenderer.invoke(IPCChannel.DELETE_PROJECT, id),
   getTasks: (projectId: string) => ipcRenderer.invoke(IPCChannel.GET_TASKS, projectId),
+  deleteTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.DELETE_TASK, taskId),
+  updateTask: (task: TaskDTO) => ipcRenderer.invoke(IPCChannel.UPDATE_TASK, task),
+  importTasks: (projectId: string, tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }>) =>
+    ipcRenderer.invoke(IPCChannel.IMPORT_TASKS, { projectId, tasks }),
   reconcileRemoteState: () => ipcRenderer.invoke(IPCChannel.RECONCILE_REMOTE_STATE),
+
+  // Worklog History & Reports
+  getWorklogsByDate: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_BY_DATE, dateString),
+  getDailyWorklogSummary: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, dateString),
+
+  // Database Management
+  wipeAllData: () => ipcRenderer.invoke(IPCChannel.WIPE_ALL_DATA),
 
   // Hardware Rebindings
   getInputBindings: () => ipcRenderer.invoke(IPCChannel.GET_INPUT_BINDINGS),
@@ -130,8 +166,10 @@ const electronAPI: IElectronAPI = {
 
   // Priority Rules
   getPriorityRules: () => ipcRenderer.invoke(IPCChannel.GET_PRIORITY_RULES),
-  savePriorityRules: (config: PriorityMatrixConfig) =>
+  savePriorityRules: (config: PriorityMatrixConfig | PriorityRule[]) =>
     ipcRenderer.invoke(IPCChannel.SAVE_PRIORITY_RULES, config),
+  setUserMode: (mode: string) => ipcRenderer.invoke(IPCChannel.SET_USER_MODE, mode),
+  getUserMode: () => ipcRenderer.invoke(IPCChannel.GET_USER_MODE),
 
   // Device Management
   getDeviceStatus: () => ipcRenderer.invoke(IPCChannel.GET_DEVICE_STATUS),
@@ -145,7 +183,9 @@ const electronAPI: IElectronAPI = {
   getScheduleSettings: () => ipcRenderer.invoke(IPCChannel.GET_SCHEDULE_SETTINGS),
   saveScheduleSettings: (settings: ScheduleSettingsDTO) =>
     ipcRenderer.invoke(IPCChannel.SAVE_SCHEDULE_SETTINGS, settings),
-  triggerEodWrapUp: () => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_WRAP_UP),
+  triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, options),
+  cancelEodWrapUp: () => ipcRenderer.invoke(IPCChannel.CANCEL_EOD_WRAP_UP),
+  snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes = 10) => ipcRenderer.invoke(IPCChannel.SNOOZE_CEREMONY, { type, minutes }),
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => {
     const handler = (_event: IpcRendererEvent, prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) =>
       callback(prompt);

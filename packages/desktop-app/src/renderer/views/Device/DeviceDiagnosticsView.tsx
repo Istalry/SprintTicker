@@ -1,10 +1,12 @@
-import React from 'react';
-import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 
 export const DeviceDiagnosticsView: React.FC = () => {
   const deviceStatus = useDeviceStatus();
+  const [wipeConfirm, setWipeConfirm] = useState<boolean>(false);
+  const [wiping, setWiping] = useState<boolean>(false);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -136,6 +138,55 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {/* Animation Debug Panel */}
       <AnimationDebugPanel />
+
+      {/* ⚠️ Danger Zone: Factory Data Wipe */}
+      <div className="bg-dark-800 border border-accent-red/30 rounded-xl p-6 space-y-4">
+        <div className="flex items-center space-x-2 text-accent-red">
+          <AlertTriangle className="w-5 h-5" />
+          <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Danger Zone - Factory Reset</h3>
+        </div>
+        <p className="text-xs text-text-secondary">
+          Permanently delete all projects, tasks, sessions, and worklog history from the local SQLite database. Default projects (PROJ, UNITY, ADMIN) will be restored.
+          <strong className="text-accent-red"> This action cannot be undone.</strong>
+        </p>
+
+        {!wipeConfirm ? (
+          <button
+            onClick={() => setWipeConfirm(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-accent-red/10 hover:bg-accent-red/20 text-accent-red text-xs font-bold border border-accent-red/40 rounded-lg transition-all"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Wipe Tasks, Projects &amp; History</span>
+          </button>
+        ) : (
+          <div className="flex items-center space-x-3 p-3 bg-accent-red/10 border border-accent-red/40 rounded-lg">
+            <span className="text-xs text-accent-red font-bold">Are you sure? This deletes ALL local data.</span>
+            <button
+              onClick={async () => {
+                setWiping(true);
+                try {
+                  if (window.electronAPI?.wipeAllData) {
+                    await window.electronAPI.wipeAllData();
+                  }
+                } finally {
+                  setWiping(false);
+                  setWipeConfirm(false);
+                }
+              }}
+              disabled={wiping}
+              className="px-3 py-1.5 bg-accent-red hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all"
+            >
+              {wiping ? 'Wiping...' : 'Yes, Wipe Everything'}
+            </button>
+            <button
+              onClick={() => setWipeConfirm(false)}
+              className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-text-secondary hover:text-white text-xs font-semibold rounded-lg border border-border-dark transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

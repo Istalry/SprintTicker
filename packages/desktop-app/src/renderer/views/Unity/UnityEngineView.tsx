@@ -8,6 +8,8 @@ export const UnityEngineView: React.FC = () => {
   const [buildChime, setBuildChime] = useState<string>('chime_1');
   const [enableFailureSound, setEnableFailureSound] = useState<boolean>(true);
   const [enablePlayModeDnd, setEnablePlayModeDnd] = useState<boolean>(true);
+  const [showUnityErrors, setShowUnityErrors] = useState<boolean>(true);
+  const [errorDurationSeconds, setErrorDurationSeconds] = useState<number>(5);
   const [isSaved, setIsSaved] = useState<boolean>(false);
 
   // Live Telemetry State
@@ -24,7 +26,7 @@ export const UnityEngineView: React.FC = () => {
   const [isSettingUpGitignore, setIsSettingUpGitignore] = useState<boolean>(false);
   const [gitignoreMessage, setGitignoreMessage] = useState<string | null>(null);
 
-  const [scanFolder, setScanFolder] = useState<string>('C:\\Users\\jbgeron\\Documents');
+  const [scanFolder, setScanFolder] = useState<string>('');
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanResults, setScanResults] = useState<UnityProjectInjectionResult[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -43,6 +45,16 @@ export const UnityEngineView: React.FC = () => {
           setBuildChime(s.buildChime);
           setEnableFailureSound(s.enableFailureSound);
           setEnablePlayModeDnd(s.enablePlayModeDnd);
+          if (s.showUnityErrors !== undefined) setShowUnityErrors(s.showUnityErrors);
+          if (s.errorDurationSeconds !== undefined) setErrorDurationSeconds(s.errorDurationSeconds);
+          if (s.scanFolder) {
+            setScanFolder(s.scanFolder);
+            if (window.electronAPI?.unityInjector) {
+              window.electronAPI.unityInjector.scanAndInject(s.scanFolder).then(res => {
+                if (res) setScanResults(res);
+              }).catch(() => {});
+            }
+          }
         }
       }).catch(err => console.error('[UnityEngineView] Error fetching settings:', err));
     }
@@ -67,7 +79,10 @@ export const UnityEngineView: React.FC = () => {
       await window.electronAPI.saveUnitySettings({
         buildChime,
         enableFailureSound,
-        enablePlayModeDnd
+        enablePlayModeDnd,
+        showUnityErrors,
+        errorDurationSeconds,
+        scanFolder
       });
     }
     setIsSaved(true);
@@ -88,8 +103,9 @@ export const UnityEngineView: React.FC = () => {
       } else {
         setGitignoreMessage(res.message);
       }
-    } catch (err: any) {
-      setGitignoreMessage(`Error: ${err?.message || err}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setGitignoreMessage(`Error: ${msg}`);
     } finally {
       setIsSettingUpGitignore(false);
       setTimeout(() => setGitignoreMessage(null), 4000);
@@ -100,7 +116,17 @@ export const UnityEngineView: React.FC = () => {
     if (!window.electronAPI?.unityInjector) return;
     try {
       const selected = await window.electronAPI.unityInjector.openFolderPicker();
-      if (selected) setScanFolder(selected);
+      if (selected) {
+        setScanFolder(selected);
+        if (window.electronAPI?.saveUnitySettings) {
+          await window.electronAPI.saveUnitySettings({
+            buildChime,
+            enableFailureSound,
+            enablePlayModeDnd,
+            scanFolder: selected
+          });
+        }
+      }
     } catch (err) {
       console.error('[UnityEngineView] Error browsing folder:', err);
     }
@@ -114,10 +140,19 @@ export const UnityEngineView: React.FC = () => {
     setScanError(null);
 
     try {
+      if (window.electronAPI?.saveUnitySettings) {
+        await window.electronAPI.saveUnitySettings({
+          buildChime,
+          enableFailureSound,
+          enablePlayModeDnd,
+          scanFolder
+        });
+      }
       const results = await window.electronAPI.unityInjector.scanAndInject(scanFolder);
       setScanResults(results);
-    } catch (err: any) {
-      setScanError(err?.message || 'Failed to scan and inject Unity projects.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setScanError(msg || 'Failed to scan and inject Unity projects.');
     } finally {
       setIsScanning(false);
     }
@@ -130,7 +165,7 @@ export const UnityEngineView: React.FC = () => {
       if (success) {
         setScanResults(prev => prev.map(r => r.projectPath === projectPath ? { ...r, status: 'failed', error: 'Removed injection junction' } : r));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[UnityEngineView] Error removing injection:', err);
     }
   };
@@ -143,7 +178,7 @@ export const UnityEngineView: React.FC = () => {
         const updated = results[0];
         setScanResults(prev => prev.map(r => r.projectPath === projectPath ? updated : r));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[UnityEngineView] Error re-injecting project:', err);
     }
   };
@@ -246,6 +281,33 @@ export const UnityEngineView: React.FC = () => {
               />
               <span>Play Alert Sound on Build Failure / Exception</span>
             </label>
+
+            <label className="flex items-center space-x-3 text-xs text-white cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showUnityErrors}
+                onChange={e => setShowUnityErrors(e.target.checked)}
+                className="rounded bg-dark-900 border-border-dark text-accent-blue focus:ring-0"
+              />
+              <span>Show Unity C# Error / Exception Alerts on LED Display</span>
+            </label>
+
+            {showUnityErrors && (
+              <div className="pl-7 flex items-center space-x-3">
+                <span className="text-xs text-text-secondary">Error Alert Display Duration:</span>
+                <select
+                  value={errorDurationSeconds}
+                  onChange={e => setErrorDurationSeconds(Number(e.target.value))}
+                  className="bg-dark-900 border border-border-dark rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+                >
+                  <option value={3}>3 Seconds</option>
+                  <option value={5}>5 Seconds (Default)</option>
+                  <option value={10}>10 Seconds</option>
+                  <option value={15}>15 Seconds</option>
+                  <option value={30}>30 Seconds</option>
+                </select>
+              </div>
+            )}
 
             <label className="flex items-center space-x-3 text-xs text-white cursor-pointer select-none">
               <input

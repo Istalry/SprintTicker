@@ -80,11 +80,12 @@ export class UnityInjectorService {
         path: gitignorePath,
         message: 'Global gitignore configured successfully.'
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       return {
         success: false,
         path: '',
-        message: `Failed to configure global gitignore: ${err?.message || err}`
+        message: `Failed to configure global gitignore: ${msg}`
       };
     }
   }
@@ -166,12 +167,12 @@ export class UnityInjectorService {
           projectPath,
           status: 'injected'
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.push({
           projectName,
           projectPath,
           status: 'failed',
-          error: err?.message || String(err)
+          error: err instanceof Error ? err.message : String(err)
         });
       }
     }
@@ -200,8 +201,8 @@ export class UnityInjectorService {
         return true;
       }
       return false;
-    } catch (err: any) {
-      if (err.code === 'ENOENT') {
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === 'ENOENT') {
         return true; // Already removed
       }
       throw err;

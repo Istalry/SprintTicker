@@ -136,6 +136,20 @@ export const AnimationDebugPanel: React.FC = () => {
     'FADE'
   );
 
+  const triggerEodPrompt = () => dispatchState(
+    [
+      { type: 'bitmap', iconId: 'clock', bitmapData: getBitmapById('clock'), x: 0, y: 0 },
+      { type: 'text', font: 'bold', x: 16, y: 0, color: '#A855F7FF', text: 'EOD WRAP-UP' },
+      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Press Wheel or Click UI to Start', scroll_rate: 60 }
+    ],
+    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'CEREMONY PROMPT: EOD WRAP-UP' }],
+    '#A855F7FF',
+    'PULSE_ALERT',
+    'Dispatched EOD Ceremony Prompt (PULSE_ALERT Glow)',
+    'PULSE',
+    'FADE'
+  );
+
   const triggerWave = () => dispatchState(
     [
       { type: 'bitmap', iconId: 'wave', bitmapData: getBitmapById('wave'), x: 0, y: 0 },
@@ -334,7 +348,7 @@ export const AnimationDebugPanel: React.FC = () => {
         {/* Category D: System & Schedule Modes */}
         <div>
           <div className="text-[10px] text-text-secondary uppercase mb-2">4. System & Schedule Modes</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <button onClick={triggerLunch} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Utensils className="w-3.5 h-3.5 text-accent-gold" />
               <span>Lunch Break</span>
@@ -343,9 +357,13 @@ export const AnimationDebugPanel: React.FC = () => {
               <Moon className="w-3.5 h-3.5 text-accent-purple" />
               <span>Away Mode</span>
             </button>
+            <button onClick={triggerEodPrompt} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
+              <Moon className="w-3.5 h-3.5 text-accent-purple" />
+              <span>EOD Prompt</span>
+            </button>
             <button onClick={triggerWave} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Waves className="w-3.5 h-3.5 text-accent-cyan" />
-              <span>Great Wave View</span>
+              <span>Great Wave</span>
             </button>
           </div>
         </div>

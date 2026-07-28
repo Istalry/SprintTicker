@@ -5,49 +5,44 @@ import { BitmapIconId } from '../../shared/dtos';
  * Programmatically generated from high-resolution reference icons via scripts/convert-icons-pixelit.js.
  */
 
-const N = null;
-const W_DB = '#1E3A8A'; // Dark Blue
-const W_LB = '#38BDF8'; // Light Blue
-const W_WT = '#FFFFFF'; // White Foam
-const W_BK = '#0F172A'; // Shadow Dark
 
 // 💬 Slack 16x16 PixelIt Bitmap
 export const SLACK_16X16_BITMAP: (string | null)[][] = [
-  [null, null, null, null, '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
-  [null, null, null, null, '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
-  [null, null, null, null, '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
+  [null, null, null, null, null, '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
   [null, null, null, null, null, null, null, null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
-  ['#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, '#2EB67D', '#2EB67D', '#2EB67D'],
-  ['#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, '#2EB67D', '#2EB67D', '#2EB67D'],
-  ['#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, '#2EB67D', '#2EB67D', '#2EB67D'],
+  [null, '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, null, null, null],
+  [null, '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, '#2EB67D', '#2EB67D', null],
+  [null, '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', '#36C5F0', null, null, '#2EB67D', '#2EB67D', '#2EB67D', null, '#2EB67D', '#2EB67D', null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  ['#E01E5A', '#E01E5A', '#E01E5A', null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E'],
-  ['#E01E5A', '#E01E5A', '#E01E5A', null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E'],
-  ['#E01E5A', '#E01E5A', '#E01E5A', null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E'],
+  [null, '#E01E5A', '#E01E5A', null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', null],
+  [null, '#E01E5A', '#E01E5A', null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', null],
+  [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', null],
   [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', null, null, null, null],
-  [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', null, null, null, null],
-  [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', '#ECB22E', null, null, null, null]
+  [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', null, null, null, null, null],
+  [null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#ECB22E', '#ECB22E', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
 // 🎮 Discord Clyde 16x16 PixelIt Bitmap
 export const DISCORD_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, null, '#5865F2', null, null, null, null, '#5865F2', null, null, null, null, null],
-  [null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#5865F2', '#5865F2', null, null, null, null, '#5865F2', '#5865F2', null, null, null, null],
+  [null, null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, null],
+  [null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null],
   [null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null],
   [null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
-  ['#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2'],
+  [null, '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', null],
+  [null, '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', null],
+  [null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null],
+  [null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null],
+  [null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', '#5865F2', null],
   [null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null, null, null, null, null, null, '#5865F2', '#5865F2', '#5865F2', '#5865F2', null],
-  [null, null, null, '#5865F2', '#5865F2', null, null, null, null, null, null, '#5865F2', '#5865F2', null, null, null],
+  [null, null, '#5865F2', '#5865F2', null, null, null, null, null, null, null, null, '#5865F2', '#5865F2', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
@@ -73,61 +68,61 @@ export const GMAIL_16X16_BITMAP: (string | null)[][] = [
 
 // 🕹️ Unity 3D Cube 16x16 PixelIt Bitmap
 export const UNITY_16X16_BITMAP: (string | null)[][] = [
-  [null, null, null, null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, null],
   [null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null],
-  ['#C3C3C3', '#D2D2D2', '#D4D4D4', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898'],
-  ['#C0C0C0', '#C2C2C2', '#CDCDCD', '#D4D4D4', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', '#C0C0C0', '#C5C5C5', '#D0D0D0', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C8C8C8', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', '#989898', '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', null, null, '#C0C0C0', '#C0C0C0', '#C1C1C1', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', null, null, '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', null, null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#989898', null, null, null, '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', null, null, null, null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, null, null, null, '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', '#C0C0C0', null, null, null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, null, null, '#9A9A9A', '#989898', '#989898'],
-  ['#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', null, null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, null, '#999999', '#9A9A9A', '#9E9E9E', '#989898'],
-  [null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, '#989898', '#989898', '#999999', '#989898', null],
-  [null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#989898', '#989898', '#999999', '#989898', null, null],
-  [null, null, null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#999999', '#9C9C9C', null, null, null, null],
-  [null, null, null, null, null, null, '#C0C0C0', '#C0C0C0', '#989898', '#9B9B9B', null, null, null, null, null, null]
+  [null, '#D2D2D2', '#D4D4D4', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', null],
+  [null, '#C2C2C2', '#CDCDCD', '#D4D4D4', '#EBEBEB', '#EBEBEB', '#EBEBEB', null, null, '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', null],
+  [null, '#C0C0C0', '#C0C0C0', '#C5C5C5', '#D0D0D0', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', '#989898', null],
+  [null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C8C8C8', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', '#989898', '#989898', null],
+  [null, '#C0C0C0', '#C0C0C0', null, '#C0C0C0', '#C0C0C0', '#C1C1C1', '#EBEBEB', '#EBEBEB', '#989898', '#989898', '#989898', null, '#989898', '#989898', null],
+  [null, '#C0C0C0', '#C0C0C0', null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#989898', null, null, '#989898', '#989898', null],
+  [null, '#C0C0C0', '#C0C0C0', '#C0C0C0', null, null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, null, '#989898', '#989898', '#989898', null],
+  [null, '#C0C0C0', '#C0C0C0', '#C0C0C0', null, null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, null, '#989898', '#9A9A9A', '#989898', null],
+  [null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', null, '#C0C0C0', '#C0C0C0', '#989898', '#989898', null, '#989898', '#989898', '#9A9A9A', null, null],
+  [null, null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#989898', '#989898', '#989898', null, null, null],
+  [null, null, null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#989898', '#989898', null, null, null, null],
+  [null, null, null, null, null, '#C0C0C0', '#C0C0C0', '#C0C0C0', '#989898', '#989898', '#999999', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
 // 🍔 Lunch Burger 16x16 PixelIt Bitmap
 export const BURGER_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null, null, null],
-  [null, null, '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', null, null],
-  [null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null],
-  ['#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335'],
-  ['#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335'],
-  ['#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335'],
-  [null, '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', null],
-  ['#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E', '#ECB22E'],
-  [null, '#2EB67D', '#2EB67D', '#34A853', '#2EB67D', '#34A853', '#2EB67D', '#2EB67D', '#34A853', '#34A853', '#2EB67D', '#ECB22E', '#ECB22E', '#ECB22E', '#34A853', null],
-  ['#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#ECB22E', '#ECB22E', '#E01E5A', '#E01E5A', '#E01E5A'],
-  ['#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335'],
-  ['#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335'],
-  ['#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335'],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#B45309', '#EFA335', null, null, null],
+  [null, null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null, null],
+  [null, '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null],
+  [null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#B45309', '#EFA335', '#EFA335', '#B45309', '#EFA335', null],
   [null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null],
+  ['#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000', '#E60000'],
+  ['#FBBC05', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#FBBC05'],
+  ['#2EB67D', '#2EB67D', '#2EB67D', '#34A853', '#2EB67D', '#34A853', '#2EB67D', '#2EB67D', '#34A853', '#34A853', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#34A853', '#2EB67D'],
+  [null, '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#F59E0B', '#F59E0B', '#E01E5A', '#E01E5A', null],
+  [null, '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', null],
+  [null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null],
+  [null, null, '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', '#EFA335', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
 // ⏰ Away Clock 16x16 PixelIt Bitmap
 export const CLOCK_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, null, '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', null, null, null, null, null],
-  [null, null, null, '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', null, null, null],
-  [null, null, '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#F95151', null, null, '#F95252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', null, null],
-  [null, null, '#FA5252', '#FA5252', '#FA5252', null, null, '#E01E5A', '#E01E5A', null, null, '#FA5252', '#FA5252', '#FA5252', null, null],
-  [null, '#FA5252', '#FA5252', '#FA5252', null, null, null, '#E01E5A', '#E01E5A', null, null, null, '#FA5252', '#FA5252', '#FA5252', null],
-  [null, '#FA5252', '#FA5252', '#F95151', null, null, null, '#E01E5A', '#E01E5A', null, null, null, '#F95151', '#FA5252', '#FA5252', null],
-  [null, '#FA5252', '#FA5252', null, null, null, null, '#E01E5A', '#E01E5A', null, null, null, null, '#FA5252', '#FA5252', null],
-  [null, '#FA5252', '#FA5252', null, null, null, null, '#E01E5A', '#4285F4', '#4285F4', null, null, null, '#FA5252', '#FA5252', null],
-  [null, '#FA5252', '#FA5252', '#F95151', null, null, null, null, '#4285F4', '#4285F4', '#4285F4', null, '#F95252', '#FA5252', '#FA5252', null],
-  [null, '#FA5252', '#FA5252', '#FA5252', null, null, null, null, null, '#4285F4', '#4285F4', null, '#FA5252', '#FA5252', '#FA5252', null],
-  [null, null, '#FA5252', '#FA5252', '#FA5252', null, null, null, null, null, null, '#FA5252', '#FA5252', '#FA5252', null, null],
-  [null, null, '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#F95252', null, null, '#F95151', '#FA5252', '#FA5252', '#FA5252', '#FA5252', null, null],
-  [null, null, null, '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', null, null, null],
-  [null, null, null, null, null, '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', '#FA5252', null, null, null, null, null],
+  [null, null, null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null],
+  [null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, '#FFFFFF', '#FFFFFF', null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
+  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, '#FFFFFF', '#FFFFFF', null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
+  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, '#FFFFFF', '#FFFFFF', null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
+  [null, '#8B5CF6', '#8B5CF6', null, null, null, null, '#FFFFFF', '#FFFFFF', null, null, null, null, '#8B5CF6', '#8B5CF6', null],
+  [null, '#8B5CF6', '#8B5CF6', null, null, null, null, '#FFFFFF', '#FFFFFF', '#FFFFFF', null, null, null, '#8B5CF6', '#8B5CF6', null],
+  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, '#FFFFFF', '#FFFFFF', '#FFFFFF', null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
+  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null, '#FFFFFF', '#FFFFFF', null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
+  [null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null],
+  [null, null, null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
@@ -193,21 +188,21 @@ export const STOP_16X16_BITMAP: (string | null)[][] = [
 
 // ⚠️ Unity Exception Error 16x16 PixelIt Bitmap
 export const ERROR_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, '#FFA500', '#FFA500', null, null, null, null, null, null, null],
   [null, null, null, null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, null, null, null, null],
-  [null, null, null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FEA400', '#FEA400', '#FFA400', null, null, null, null, null],
-  [null, null, null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FEA400', '#FEA400', '#FEA500', null, null, null, null, null],
-  [null, null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FEA500', '#FEA500', '#FEA500', '#FEA400', null, null, null, null],
-  [null, null, null, null, '#FFA500', '#FFA500', '#FFA500', null, null, '#FEA500', '#FEA500', '#FEA500', null, null, null, null],
-  [null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, '#FEA500', '#FEA500', '#FEA500', '#FFA500', null, null, null],
-  [null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, '#FEA500', '#FEA500', '#FEA500', '#FEA500', '#FFA500', null, null],
-  [null, null, '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null],
-  [null, '#FFA500', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null],
-  [null, '#FFA500', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null],
-  ['#FFA500', '#FFA500', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FFA500', '#FEA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500'],
-  ['#FFA500', '#FFA500', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500'],
-  ['#FFA500', '#FFA500', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500'],
-  ['#FFA500', '#FFA500', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FEA400', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500'],
+  [null, null, null, null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, null, null, null, null],
+  [null, null, null, null, null, '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', null, null, null, null, null],
+  [null, null, null, null, null, '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', null, null, null, null, null],
+  [null, null, null, null, '#FFA500', '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', '#FFA500', null, null, null, null],
+  [null, null, null, null, '#FFA500', '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', '#FFA500', null, null, null, null],
+  [null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, null],
+  [null, null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, null],
+  [null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null],
+  [null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null],
+  [null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null, null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null],
+  [null, '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', '#FFA500', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
@@ -252,33 +247,51 @@ export const PLAYMODE_16X16_BITMAP: (string | null)[][] = [
 ];
 
 export const WAVE_16X16_BITMAP: (string | null)[][] = [
-  [N, N, N, N, N, N, W_LB, W_WT, W_WT, W_LB, N, N, N, N, N, N],
-  [N, N, N, N, N, W_LB, W_WT, W_WT, W_WT, W_WT, W_LB, N, N, N, N, N],
-  [N, N, N, N, W_LB, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_LB, N, N, N, N],
-  [N, N, N, W_LB, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_LB, N, N, N],
-  [N, N, W_LB, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_LB, N, N],
-  [N, W_LB, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_WT, W_LB, N],
-  [N, W_LB, W_WT, W_WT, W_DB, W_DB, W_DB, W_WT, W_WT, W_DB, W_DB, W_DB, W_WT, W_WT, W_LB, N],
-  [W_LB, W_WT, W_WT, W_DB, W_DB, W_LB, W_DB, W_DB, W_DB, W_LB, W_DB, W_DB, W_DB, W_WT, W_WT, W_LB],
-  [W_LB, W_WT, W_DB, W_DB, W_LB, W_LB, W_LB, W_DB, W_LB, W_LB, W_LB, W_DB, W_DB, W_DB, W_WT, W_LB],
-  [W_LB, W_DB, W_DB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_DB, W_DB, W_DB, W_LB],
-  [W_LB, W_DB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_DB, W_DB, W_LB],
-  [W_LB, W_DB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_DB, W_LB],
-  [W_LB, W_DB, W_DB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_DB, W_DB, W_LB],
-  [W_LB, W_BK, W_DB, W_DB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_LB, W_DB, W_DB, W_BK, W_LB],
-  [N, W_LB, W_BK, W_DB, W_DB, W_DB, W_DB, W_DB, W_DB, W_DB, W_DB, W_DB, W_DB, W_BK, W_LB, N],
-  [N, N, W_LB, W_LB, W_BK, W_BK, W_BK, W_BK, W_BK, W_BK, W_BK, W_BK, W_LB, W_LB, N, N]
+  [null, null, null, null, null, null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#38BDF8', null, null, null, null, null, null],
+  [null, null, null, null, null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#38BDF8', null, null, null, null, null],
+  [null, null, null, null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#38BDF8', null, null, null, null],
+  [null, null, null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#38BDF8', null, null, null],
+  [null, null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#38BDF8', null, null],
+  [null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#38BDF8', null],
+  [null, '#38BDF8', '#FFFFFF', '#FFFFFF', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#FFFFFF', '#FFFFFF', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#FFFFFF', '#FFFFFF', '#38BDF8', null],
+  ['#38BDF8', '#FFFFFF', '#FFFFFF', '#1E3A8A', '#1E3A8A', '#38BDF8', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#38BDF8', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#FFFFFF', '#FFFFFF', '#38BDF8'],
+  ['#38BDF8', '#FFFFFF', '#1E3A8A', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#FFFFFF', '#38BDF8'],
+  ['#38BDF8', '#1E3A8A', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#38BDF8'],
+  ['#38BDF8', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#1E3A8A', '#38BDF8'],
+  ['#38BDF8', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#38BDF8'],
+  ['#38BDF8', '#1E3A8A', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#1E3A8A', '#38BDF8'],
+  ['#38BDF8', '#0F172A', '#1E3A8A', '#1E3A8A', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#38BDF8', '#1E3A8A', '#1E3A8A', '#0F172A', '#38BDF8'],
+  [null, '#38BDF8', '#0F172A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#1E3A8A', '#0F172A', '#38BDF8', null],
+  [null, null, '#38BDF8', '#38BDF8', '#0F172A', '#0F172A', '#0F172A', '#0F172A', '#0F172A', '#0F172A', '#0F172A', '#0F172A', '#38BDF8', '#38BDF8', null, null]
+];
+
+export const CHECKMARK_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null, null],
+  [null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null, null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, null, null, null, null, null, null, null, '#E01E5A', '#E01E5A', null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, null, null, null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, null, null, null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, '#E01E5A', '#E01E5A', null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, '#E01E5A', '#E01E5A', '#E01E5A', null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#3B82F6', null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, null, '#E01E5A', '#E01E5A', '#E01E5A', null, null, '#3B82F6', '#3B82F6', null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, null, null, '#E01E5A', null, null, null, '#3B82F6', '#3B82F6', null, null],
+  [null, null, '#3B82F6', '#3B82F6', null, null, null, null, null, null, null, null, '#3B82F6', '#3B82F6', null, null],
+  [null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null],
+  [null, null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
 /**
  * Retrieves the 16x16 multi-color pixel bitmap grid by icon identifier.
  * Returns full 16x16 matrix for all icons.
  */
-
-
-
 export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number = 0): (string | null)[][] {
   switch (iconId.toLowerCase()) {
+    case 'checkmark':
+      return CHECKMARK_16X16_BITMAP;
     case 'slack':
       return SLACK_16X16_BITMAP;
     case 'discord':

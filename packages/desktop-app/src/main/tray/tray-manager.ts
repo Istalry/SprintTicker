@@ -1,4 +1,6 @@
 import { app, Menu, Tray, BrowserWindow, nativeImage } from 'electron';
+import path from 'path';
+import fs from 'fs';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 
 /**
@@ -16,10 +18,15 @@ export class TrayManager {
   }
 
   public initialize(): void {
-    // Create 16x16 transparent PNG canvas data for native tray icon
-    const iconData =
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAuSURBVHgB7cxBDQAACAIg2v6dZg0v0gAGZpJupv7uAQgICAgICAgICAgICAgIXLg3SAE7mEomwQAAAABJRU5ErkJggg==';
-    const image = nativeImage.createFromDataURL(iconData);
+    const trayIconPath = path.join(__dirname, '../../build/tray-icon.png');
+    let image: nativeImage;
+    if (fs.existsSync(trayIconPath)) {
+      image = nativeImage.createFromPath(trayIconPath);
+    } else {
+      const iconData =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAuSURBVHgB7cxBDQAACAIg2v6dZg0v0gAGZpJupv7uAQgICAgICAgICAgICAgIXLg3SAE7mEomwQAAAABJRU5ErkJggg==';
+      image = nativeImage.createFromDataURL(iconData);
+    }
 
     this.tray = new Tray(image);
     this.tray.setToolTip('Antigravity BUSY Bar PC Companion (Idle)');
@@ -33,7 +40,7 @@ export class TrayManager {
 
     // Window close event triggers standard exit
     this.mainWindow.on('close', () => {
-      (app as any).isQuitting = true;
+      (app as unknown as { isQuitting?: boolean }).isQuitting = true;
     });
 
     // Subscribe to engine state updates to adjust tray tooltip and context menu
@@ -113,7 +120,7 @@ export class TrayManager {
       {
         label: 'Quit Application',
         click: () => {
-          (app as any).isQuitting = true;
+          (app as unknown as { isQuitting?: boolean }).isQuitting = true;
           app.quit();
         }
       }

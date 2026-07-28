@@ -136,7 +136,7 @@ export const HardwareRebindsView: React.FC = () => {
               </div>
 
               <select
-                value={(bindings as any)[item.key]}
+                value={(bindings as Record<string, string>)[item.key]}
                 onChange={e => setBindings({ ...bindings, [item.key]: e.target.value })}
                 className="bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-xs text-accent-blue font-bold focus:outline-none focus:border-accent-blue"
               >

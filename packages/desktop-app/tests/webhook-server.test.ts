@@ -275,7 +275,7 @@ describe('WebhookServer Unit Tests', () => {
   });
 
   it('OnCompileEvent_CallbackFired_WhenLegacyCompileStartPosted', async () => {
-    let callbackPayload: any = null;
+    let callbackPayload: unknown = null;
 
     webhookServer.onCompileEvent((p) => {
       callbackPayload = p;

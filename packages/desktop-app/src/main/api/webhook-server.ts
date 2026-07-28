@@ -3,7 +3,10 @@ import { AddressInfo } from 'net';
 import { DTOValidator } from '../../shared/dtos';
 
 export interface UnityCompilePayload {
+  instanceId?: string;
   state: 'started' | 'finished';
+  type?: 'compile' | 'build' | 'bake';
+  progress?: number;
   projectName: string;
   unityVersion?: string;
   success?: boolean;
@@ -13,11 +16,13 @@ export interface UnityCompilePayload {
 }
 
 export interface UnityPlayModePayload {
+  instanceId?: string;
   state: 'entered' | 'exited';
   projectName: string;
 }
 
 export interface UnityConsolePayload {
+  instanceId?: string;
   type: 'warning' | 'error' | 'exception';
   message: string;
   stackTrace?: string;
@@ -31,10 +36,12 @@ export interface VSCodeActivityPayload {
 }
 
 export interface UnityHeartbeatPayload {
+  instanceId?: string;
   projectName: string;
   unityVersion?: string;
   compiling?: boolean;
   playMode?: boolean;
+  savePort?: number;
 }
 
 export interface SlackEventPayload {
