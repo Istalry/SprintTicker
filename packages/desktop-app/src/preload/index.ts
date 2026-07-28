@@ -8,7 +8,12 @@ import {
   DeviceStatusDTO,
   PriorityMatrixConfig,
   ScheduleSettingsDTO,
-  UnityProjectInjectionResult
+  UnityProjectInjectionResult,
+  WorklogDTO,
+  UnitySettingsDTO,
+  UnityTelemetryDTO,
+  MessagingSettingsDTO,
+  MessagingTestResultDTO
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -29,7 +34,13 @@ export interface IElectronAPI {
   discardSession: () => Promise<boolean>;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 
+  // Worklogs
+  getTodaysWorklogs: () => Promise<WorklogDTO[]>;
+  onWorklogsUpdated: (callback: (worklogs: WorklogDTO[]) => void) => () => void;
+
   // Providers & Tasks
+  getProviders: () => Promise<{ activeProviderId: string; fallbackTicketKey: string; jiraDomain: string; providers: Array<{ id: string; name: string }> }>;
+  setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) => Promise<boolean>;
   getProjects: () => Promise<ProjectDTO[]>;
   getTasks: (projectId: string) => Promise<TaskDTO[]>;
   reconcileRemoteState: () => Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }>;
@@ -53,6 +64,17 @@ export interface IElectronAPI {
   triggerEodWrapUp: () => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
 
+  // Unity Telemetry & Audio Settings
+  getUnitySettings: () => Promise<UnitySettingsDTO>;
+  saveUnitySettings: (settings: UnitySettingsDTO) => Promise<boolean>;
+  getUnityTelemetry: () => Promise<UnityTelemetryDTO>;
+  onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => () => void;
+
+  // Messaging Integration
+  getMessagingSettings: () => Promise<MessagingSettingsDTO>;
+  saveMessagingSettings: (settings: MessagingSettingsDTO) => Promise<boolean>;
+  testMessagingIntegration: (channelName: string) => Promise<MessagingTestResultDTO>;
+
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;
 }
@@ -72,7 +94,18 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_SESSION_UPDATED, handler);
   },
 
+  // Worklogs
+  getTodaysWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_TODAYS_WORKLOGS),
+  onWorklogsUpdated: (callback: (worklogs: WorklogDTO[]) => void) => {
+    const handler = (_event: IpcRendererEvent, worklogs: WorklogDTO[]) => callback(worklogs);
+    ipcRenderer.on(IPCChannel.ON_WORKLOGS_UPDATED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_WORKLOGS_UPDATED, handler);
+  },
+
   // Providers & Tasks
+  getProviders: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDERS),
+  setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) =>
+    ipcRenderer.invoke(IPCChannel.SET_ACTIVE_PROVIDER, payload),
   getProjects: () => ipcRenderer.invoke(IPCChannel.GET_PROJECTS),
   getTasks: (projectId: string) => ipcRenderer.invoke(IPCChannel.GET_TASKS, projectId),
   reconcileRemoteState: () => ipcRenderer.invoke(IPCChannel.RECONCILE_REMOTE_STATE),
@@ -111,6 +144,24 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.on(IPCChannel.ON_CEREMONY_PROMPT, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_CEREMONY_PROMPT, handler);
   },
+
+  // Unity Telemetry & Audio Settings
+  getUnitySettings: () => ipcRenderer.invoke(IPCChannel.GET_UNITY_SETTINGS),
+  saveUnitySettings: (settings: UnitySettingsDTO) =>
+    ipcRenderer.invoke(IPCChannel.SAVE_UNITY_SETTINGS, settings),
+  getUnityTelemetry: () => ipcRenderer.invoke(IPCChannel.GET_UNITY_TELEMETRY),
+  onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => {
+    const handler = (_event: IpcRendererEvent, telemetry: UnityTelemetryDTO) => callback(telemetry);
+    ipcRenderer.on(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, handler);
+  },
+
+  // Messaging Integration
+  getMessagingSettings: () => ipcRenderer.invoke(IPCChannel.GET_MESSAGING_SETTINGS),
+  saveMessagingSettings: (settings: MessagingSettingsDTO) =>
+    ipcRenderer.invoke(IPCChannel.SAVE_MESSAGING_SETTINGS, settings),
+  testMessagingIntegration: (channelName: string) =>
+    ipcRenderer.invoke(IPCChannel.TEST_MESSAGING_INTEGRATION, channelName),
 
   // Unity Plugin Injector & Gitignore
   unityInjector: {

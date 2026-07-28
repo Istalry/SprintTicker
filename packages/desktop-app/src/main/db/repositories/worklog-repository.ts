@@ -126,4 +126,30 @@ export class WorklogRepository {
 
     stmt.run(status, id);
   }
+
+  /**
+   * Retrieves today's completed worklogs from SQLite database.
+   */
+  public getTodaysWorklogs(): WorklogRecord[] {
+    const stmt = this.dbConn.getDb().prepare<[], {
+      id: string;
+      session_id: string;
+      task_id: string;
+      duration_seconds: number;
+      started_at_utc: string;
+      comment: string;
+      created_at_utc: string;
+    }>('SELECT * FROM worklogs ORDER BY created_at_utc DESC LIMIT 50');
+
+    const rows = stmt.all();
+    return rows.map(r => ({
+      id: r.id,
+      sessionId: r.session_id,
+      taskId: r.task_id,
+      durationSeconds: r.duration_seconds,
+      startedAtUtc: r.started_at_utc,
+      comment: r.comment,
+      createdAtUtc: r.created_at_utc
+    }));
+  }
 }

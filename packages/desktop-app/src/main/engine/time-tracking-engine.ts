@@ -3,6 +3,8 @@ import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ActiveSessionDTO } from '../../shared/dtos';
 
+import { ProviderManager } from '../providers/provider-manager';
+
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
 export type SessionStateCallback = (session: ActiveSessionDTO | null) => void;
@@ -15,17 +17,20 @@ export class TimeTrackingEngine {
   private sessionRepo: SessionRepository;
   private worklogRepo: WorklogRepository;
   private taskRepo: TaskRepository;
+  private providerManager: ProviderManager;
   private listeners: Set<SessionStateCallback> = new Set();
   private currentSession: ActiveSessionDTO | null = null;
 
   constructor(
     sessionRepo?: SessionRepository,
     worklogRepo?: WorklogRepository,
-    taskRepo?: TaskRepository
+    taskRepo?: TaskRepository,
+    providerManager?: ProviderManager
   ) {
     this.sessionRepo = sessionRepo || new SessionRepository();
     this.worklogRepo = worklogRepo || new WorklogRepository();
     this.taskRepo = taskRepo || new TaskRepository();
+    this.providerManager = providerManager || new ProviderManager(undefined, this.worklogRepo);
 
     this.reconcileStartupState();
   }
@@ -174,6 +179,8 @@ export class TimeTrackingEngine {
 
     const nowIso = new Date().toISOString();
 
+    const worklogComment = comment || 'Completed session via Antigravity BUSY Bar';
+
     // 1. Save worklog to SQLite
     this.worklogRepo.saveWorklog({
       id: `wl_${Date.now()}`,
@@ -181,19 +188,27 @@ export class TimeTrackingEngine {
       taskId: active.taskId,
       durationSeconds: loggedSeconds,
       startedAtUtc: active.startTimeUtc,
-      comment: comment || 'Completed session via Antigravity BUSY Bar',
+      comment: worklogComment,
       createdAtUtc: nowIso
     });
 
     // 2. Buffer to offline sync queue
+    const activeProvider = this.providerManager ? this.providerManager.getActiveProvider() : null;
     this.worklogRepo.enqueueSyncItem({
       id: `sync_${Date.now()}`,
-      providerId: 'jira',
+      providerId: activeProvider ? activeProvider.providerId : 'jira',
       taskId: active.taskId,
       durationSeconds: loggedSeconds,
       startedAtUtc: active.startTimeUtc,
-      comment: comment || 'Completed session via Antigravity BUSY Bar'
+      comment: worklogComment
     });
+
+    // 3. Attempt async flush with provider
+    if (this.providerManager) {
+      this.providerManager.flushPendingSyncQueue().catch(err => {
+        console.warn('[TimeTrackingEngine] Background sync queue flush failed:', err);
+      });
+    }
 
     this.currentSession = null;
     this.notifyListeners();

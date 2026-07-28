@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Sliders, Plug, Calendar, Server, Save, Check, Box, Folder, Loader2, CheckCircle, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import { HardwareBindingConfig, UnityProjectInjectionResult } from '../../../shared/dtos';
 
-export const SettingsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'providers' | 'hardware' | 'ceremonies' | 'integrations' | 'unity'>('providers');
+export interface SettingsViewProps {
+  initialTab?: 'providers' | 'hardware' | 'ceremonies' | 'integrations' | 'unity';
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'providers' }) => {
+  const [activeTab, setActiveTab] = useState<'providers' | 'hardware' | 'ceremonies' | 'integrations' | 'unity'>(initialTab);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
   // Settings State
@@ -42,6 +46,27 @@ export const SettingsView: React.FC = () => {
         if (b) setBindings(b);
       }).catch(err => console.error('[SettingsView] Error loading bindings:', err));
 
+      if (window.electronAPI.getProviders) {
+        window.electronAPI.getProviders().then(res => {
+          if (res) {
+            if (res.activeProviderId) setProviderId(res.activeProviderId);
+            if (res.fallbackTicketKey) setFallbackTicketKey(res.fallbackTicketKey);
+            if (res.jiraDomain) setJiraDomain(res.jiraDomain);
+          }
+        }).catch(err => console.error('[SettingsView] Error loading providers:', err));
+      }
+
+      if (window.electronAPI.getScheduleSettings) {
+        window.electronAPI.getScheduleSettings().then(sched => {
+          if (sched) {
+            if (sched.standupTime) setStandupTime(sched.standupTime);
+            if (sched.lunchStart) setLunchStart(sched.lunchStart);
+            if (sched.lunchEnd) setLunchEnd(sched.lunchEnd);
+            if (sched.autoDismissSeconds !== undefined) setTimeoutSeconds(sched.autoDismissSeconds);
+          }
+        }).catch(err => console.error('[SettingsView] Error loading schedule settings:', err));
+      }
+
       if (window.electronAPI.unityInjector) {
         window.electronAPI.unityInjector.checkGitignore().then(res => {
           setIsGitignoreConfigured(res.configured);
@@ -54,6 +79,22 @@ export const SettingsView: React.FC = () => {
   const handleSave = async () => {
     if (window.electronAPI) {
       await window.electronAPI.saveInputBindings(bindings);
+      if (window.electronAPI.setActiveProvider) {
+        await window.electronAPI.setActiveProvider({
+          providerId,
+          jiraDomain,
+          fallbackTicketKey
+        });
+      }
+      if (window.electronAPI.saveScheduleSettings) {
+        await window.electronAPI.saveScheduleSettings({
+          standupTime,
+          lunchStart,
+          lunchEnd,
+          eodTime: '18:00',
+          autoDismissSeconds: timeoutSeconds
+        });
+      }
     }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);

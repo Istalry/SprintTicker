@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu } from 'electron';
 import path from 'path';
 import { DatabaseConnection } from './db/database-connection';
 import { TaskRepository } from './db/repositories/task-repository';
@@ -11,6 +11,8 @@ import { DisplayRenderer } from './hardware/display-renderer';
 import { InputDecoder } from './hardware/input-decoder';
 import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { UnityInjectorService } from './services/unity-injector-service';
+import { UnityTelemetryService } from './services/unity-telemetry-service';
+import { MessagingIntegrationService } from './services/messaging-service';
 import { WebhookServer } from './api/webhook-server';
 
 import { TrayManager } from './tray/tray-manager';
@@ -27,12 +29,15 @@ let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
 
 const createWindow = (): void => {
+  Menu.setApplicationMenu(null);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0D0F12',
+    autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -40,6 +45,8 @@ const createWindow = (): void => {
       contextIsolation: true
     }
   });
+
+  mainWindow.setMenu(null);
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -91,6 +98,9 @@ app.whenReady().then(async () => {
 
   // 5. Register IPC Handlers and Bi-directional State Broadcasts
   unityInjectorService = new UnityInjectorService();
+  const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer);
+  const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer);
+
   ipcRegistry = new IPCHandlerRegistry(
     engine,
     taskRepo,
@@ -99,7 +109,10 @@ app.whenReady().then(async () => {
     inputDecoder,
     renderer,
     () => mainWindow,
-    unityInjectorService
+    unityInjectorService,
+    worklogRepo,
+    unityTelemetryService,
+    messagingService
   );
   ipcRegistry.registerAllHandlers();
 

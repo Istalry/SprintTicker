@@ -8,7 +8,12 @@ export class NotionProvider implements ITaskProvider {
   public readonly providerId: string = 'notion';
   public readonly providerName: string = 'Notion Database';
 
-  public async initialize(_credentials: Record<string, string>): Promise<boolean> {
+  private apiKey: string = '';
+  private databaseId: string = '';
+
+  public async initialize(credentials: Record<string, string>): Promise<boolean> {
+    this.apiKey = credentials.apiKey || '';
+    this.databaseId = credentials.databaseId || '';
     return true;
   }
 
@@ -17,6 +22,40 @@ export class NotionProvider implements ITaskProvider {
   }
 
   public async getTasks(projectId: string): Promise<TaskDTO[]> {
+    if (this.apiKey && this.databaseId) {
+      try {
+        const url = `https://api.notion.com/v1/databases/${this.databaseId}/query`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+          }
+        });
+        if (res.ok) {
+          const json = await res.json() as { results?: Array<Record<string, unknown>> };
+          if (Array.isArray(json?.results)) {
+            return json.results.map((row, idx: number) => {
+              const props = (row.properties || {}) as Record<string, unknown>;
+              const titleProp = (props.Name || props.Title || {}) as Record<string, unknown>;
+              const titleArr = (titleProp.title || []) as Array<Record<string, unknown>>;
+              const titleText = (titleArr[0]?.plain_text as string) || `Notion Task ${idx + 1}`;
+              return {
+                id: (row.id as string) || `NOTION-${idx + 101}`,
+                projectId,
+                key: `NOT-${idx + 101}`,
+                title: titleText,
+                status: 'todo' as const
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[NotionProvider] REST API database fetch failed, using fallback tasks:', err);
+      }
+    }
+
     return [
       { id: 'NOTION-101', projectId, key: 'NOTION-101', title: 'Refactor UI State Store', status: 'todo' }
     ];

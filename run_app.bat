@@ -1,14 +1,11 @@
 @echo off
 echo ========================================================
-echo  Building Antigravity BUSY Bar Desktop App (Main & Renderer)
+echo  Launching Antigravity BUSY Bar Companion (Development)
 echo ========================================================
-call pnpm build
+call pnpm dev
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERROR] Build failed with exit code %ERRORLEVEL%.
+    echo [ERROR] Application failed to launch with exit code %ERRORLEVEL%.
     pause
     exit /b %ERRORLEVEL%
 )
-echo.
-echo [SUCCESS] Build completed successfully.
-pause

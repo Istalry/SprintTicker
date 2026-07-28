@@ -107,6 +107,47 @@ export interface UnityProjectInjectionResult {
   error?: string;
 }
 
+export interface WorklogDTO {
+  id: string;
+  taskId: string;
+  taskKey: string;
+  taskTitle: string;
+  durationSeconds: number;
+  providerId: string;
+  syncStatus: 'SYNCED' | 'QUEUED' | 'FAILED';
+  completedAtUtc: string;
+  comment?: string;
+}
+
+export interface UnitySettingsDTO {
+  buildChime: string;
+  enableFailureSound: boolean;
+  enablePlayModeDnd: boolean;
+}
+
+export interface UnityTelemetryDTO {
+  activeProjectName: string;
+  isConnected: boolean;
+  compilationState: 'Idle' | 'Compiling';
+  playModeStatus: 'Editor Idle' | 'In Play Mode';
+  lastPingUtc?: string;
+}
+
+export interface MessagingSettingsDTO {
+  discordWebhookUrl: string;
+  enableDiscordLed: boolean;
+  slackWebhookUrl: string;
+  enableSlackPreview: boolean;
+  gmailQuery: string;
+  enableGmailLed: boolean;
+}
+
+export interface MessagingTestResultDTO {
+  success: boolean;
+  channel: string;
+  message: string;
+}
+
 /**
  * Validation helpers for incoming API payloads
  */

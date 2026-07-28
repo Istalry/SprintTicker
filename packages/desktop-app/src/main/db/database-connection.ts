@@ -22,8 +22,12 @@ export class DatabaseConnection {
     }
     const defaultPath = path.join(defaultDir, 'antigravity-busybar.db');
     this.db = new Database(dbPath || defaultPath);
-    this.db.pragma('foreign_keys = ON');
-    this.db.pragma('journal_mode = WAL');
+    try {
+      this.db.pragma('foreign_keys = ON');
+      this.db.pragma('journal_mode = WAL');
+    } catch {
+      // Memory databases or test instances skip WAL pragma safely
+    }
     this.initTables();
   }
 

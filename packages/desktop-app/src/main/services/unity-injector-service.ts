@@ -230,9 +230,13 @@ export class UnityInjectorService {
    * Resolves the monorepo path for packages/unity-plugin.
    */
   private resolvePluginSourcePath(): string {
+    const exeDir = path.dirname(process.execPath);
     const candidates = [
       path.resolve(process.cwd(), 'packages', 'unity-plugin'),
       path.resolve(process.cwd(), '..', 'unity-plugin'),
+      path.resolve(exeDir, 'packages', 'unity-plugin'),
+      path.resolve(exeDir, 'resources', 'packages', 'unity-plugin'),
+      path.resolve(process.cwd(), 'dist-electron', 'win-unpacked', 'packages', 'unity-plugin'),
       path.resolve(__dirname, '..', '..', '..', '..', 'packages', 'unity-plugin'),
       path.resolve(__dirname, '..', '..', '..', 'unity-plugin')
     ];
@@ -243,7 +247,7 @@ export class UnityInjectorService {
       }
     }
 
-    // Default fallback if not found yet
+    // Default fallback
     return path.resolve(process.cwd(), 'packages', 'unity-plugin');
   }
 

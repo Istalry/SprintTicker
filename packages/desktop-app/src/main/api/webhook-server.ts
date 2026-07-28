@@ -30,6 +30,26 @@ export interface VSCodeActivityPayload {
   action?: string;
 }
 
+export interface UnityHeartbeatPayload {
+  projectName: string;
+  unityVersion?: string;
+  compiling?: boolean;
+  playMode?: boolean;
+}
+
+export interface SlackEventPayload {
+  sender?: string;
+  message?: string;
+  channel?: string;
+  isUrgent?: boolean;
+}
+
+export interface DiscordWebhookPayload {
+  author?: string;
+  content?: string;
+  mentionUrgent?: boolean;
+}
+
 export interface InjectOptions {
   method: string;
   url: string;
@@ -54,6 +74,9 @@ export class WebhookServer {
   private playModeCallbacks: Set<(payload: UnityPlayModePayload) => void> = new Set();
   private consoleCallbacks: Set<(payload: UnityConsolePayload) => void> = new Set();
   private vsCodeCallbacks: Set<(payload: VSCodeActivityPayload) => void> = new Set();
+  private heartbeatCallbacks: Set<(payload: UnityHeartbeatPayload) => void> = new Set();
+  private slackCallbacks: Set<(payload: SlackEventPayload) => void> = new Set();
+  private discordCallbacks: Set<(payload: DiscordWebhookPayload) => void> = new Set();
 
   constructor(port: number = 39123) {
     this.port = port;
@@ -86,6 +109,27 @@ export class WebhookServer {
   /// </summary>
   public onVSCodeEvent(cb: (payload: VSCodeActivityPayload) => void): void {
     this.vsCodeCallbacks.add(cb);
+  }
+
+  /// <summary>
+  /// Registers a callback listener for Unity plugin heartbeat pings.
+  /// </summary>
+  public onHeartbeatEvent(cb: (payload: UnityHeartbeatPayload) => void): void {
+    this.heartbeatCallbacks.add(cb);
+  }
+
+  /// <summary>
+  /// Registers a callback listener for Slack event notifications.
+  /// </summary>
+  public onSlackEvent(cb: (payload: SlackEventPayload) => void): void {
+    this.slackCallbacks.add(cb);
+  }
+
+  /// <summary>
+  /// Registers a callback listener for Discord webhook notifications.
+  /// </summary>
+  public onDiscordWebhookEvent(cb: (payload: DiscordWebhookPayload) => void): void {
+    this.discordCallbacks.add(cb);
   }
 
   /// <summary>
@@ -128,6 +172,12 @@ export class WebhookServer {
         return this.handleApiV1PlayMode(body, res);
       case '/api/v1/unity/console':
         return this.handleApiV1Console(body, res);
+      case '/api/v1/unity/heartbeat':
+        return this.handleApiV1UnityHeartbeat(body, res);
+      case '/api/v1/slack/events':
+        return this.handleApiV1SlackEvents(body, res);
+      case '/api/v1/discord/webhook':
+        return this.handleApiV1DiscordWebhook(body, res);
       case '/api/v1/vscode/activity':
         return this.handleApiV1VSCodeActivity(body, res);
       case '/unity/compile-start':
@@ -176,6 +226,33 @@ export class WebhookServer {
       return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid VS Code payload' });
     }
     for (const cb of this.vsCodeCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleApiV1UnityHeartbeat(body: unknown, res: ServerResponse): void {
+    const p = body as UnityHeartbeatPayload;
+    if (!p || typeof p.projectName !== 'string') {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Unity heartbeat payload' });
+    }
+    for (const cb of this.heartbeatCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleApiV1SlackEvents(body: unknown, res: ServerResponse): void {
+    const p = body as SlackEventPayload;
+    if (!p || typeof p !== 'object') {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Slack payload' });
+    }
+    for (const cb of this.slackCallbacks) cb(p);
+    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
+  }
+
+  private handleApiV1DiscordWebhook(body: unknown, res: ServerResponse): void {
+    const p = body as DiscordWebhookPayload;
+    if (!p || typeof p !== 'object') {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Discord payload' });
+    }
+    for (const cb of this.discordCallbacks) cb(p);
     return this.sendJSON(res, 200, { status: 'ACCEPTED' });
   }
 

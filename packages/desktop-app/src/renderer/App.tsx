@@ -15,9 +15,16 @@ import {
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
 import { useTasks } from './hooks/useTasks';
+import { useWorklogs } from './hooks/useWorklogs';
 import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
 import { TaskSelectionModal } from './components/TaskSelectionModal';
 import { SettingsView } from './views/Settings/SettingsView';
+import { HardwareRebindsView } from './views/Hardware/HardwareRebindsView';
+import { UnityEngineView } from './views/Unity/UnityEngineView';
+import { CeremoniesView } from './views/Ceremonies/CeremoniesView';
+import { MessagingView } from './views/Messaging/MessagingView';
+import { PriorityRulesView } from './views/Priority/PriorityRulesView';
+import { DeviceDiagnosticsView } from './views/Device/DeviceDiagnosticsView';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
@@ -33,6 +40,7 @@ export const App: React.FC = () => {
   const { session, pause, resume, complete, startTask } = useSession();
   const deviceStatus = useDeviceStatus();
   const { projects, tasks } = useTasks('PROJ');
+  const { worklogs } = useWorklogs();
 
   // Auto-open TaskSelectionModal on physical hardware wheel click IPC event
   useEffect(() => {
@@ -64,6 +72,91 @@ export const App: React.FC = () => {
     { id: 'device', label: 'Device Diagnostics', icon: Monitor }
   ];
 
+  const renderActiveView = () => {
+    switch (activeTab) {
+      case 'session':
+        return (
+          <div className="space-y-6">
+            <ActiveTaskHeroCard
+              session={session}
+              onPause={pause}
+              onResume={resume}
+              onComplete={() => complete()}
+              onOpenTaskModal={() => setIsTaskModalOpen(true)}
+            />
+
+            <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-4 shadow-xl">
+              <h3 className="text-md font-bold text-white font-mono tracking-tight flex items-center justify-between">
+                <span>TODAY&apos;S WORKLOG QUEUE</span>
+                <span className="text-xs text-text-secondary font-normal">Active session syncing</span>
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-dark-700 text-text-secondary text-xs uppercase font-mono border-b border-border-dark">
+                    <tr>
+                      <th className="py-3 px-4">Task ID</th>
+                      <th className="py-3 px-4">Description</th>
+                      <th className="py-3 px-4">Duration</th>
+                      <th className="py-3 px-4">Provider Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-dark text-text-primary">
+                    {session && (
+                      <tr className="hover:bg-dark-700/50 transition-colors bg-dark-700/30">
+                        <td className="py-3 px-4 font-mono text-accent-amber font-medium">{session.taskKey}</td>
+                        <td className="py-3 px-4">{session.taskTitle} (Active Session)</td>
+                        <td className="py-3 px-4 font-mono">{formatSeconds(session.elapsedSeconds)}</td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-amber/10 text-accent-amber">
+                            {session.status}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                    {worklogs.map(log => (
+                      <tr key={log.id} className="hover:bg-dark-700/50 transition-colors">
+                        <td className="py-3 px-4 font-mono text-accent-blue font-medium">{log.taskKey || log.taskId}</td>
+                        <td className="py-3 px-4">{log.taskTitle || log.comment || 'Completed session'}</td>
+                        <td className="py-3 px-4 font-mono">{formatSeconds(log.durationSeconds)}</td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
+                            {log.syncStatus || 'Synced'} ({log.providerId || 'Jira'})
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {!session && worklogs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-6 text-center text-xs text-text-secondary font-mono">
+                          No worklogs recorded today yet. Select a task above to start tracking time!
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        );
+      case 'hardware':
+        return <HardwareRebindsView />;
+      case 'unity':
+        return <UnityEngineView />;
+      case 'ceremonies':
+        return <CeremoniesView />;
+      case 'messaging':
+        return <MessagingView />;
+      case 'priority':
+        return <PriorityRulesView />;
+      case 'device':
+        return <DeviceDiagnosticsView />;
+      case 'settings':
+      default:
+        return <SettingsView initialTab="providers" />;
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-dark-900 text-text-primary">
       {/* Top Navigation Bar */}
@@ -93,7 +186,9 @@ export const App: React.FC = () => {
 
           <div className="flex items-center space-x-2 text-text-secondary">
             <span>Ping:</span>
-            <span className="text-accent-green font-semibold">{deviceStatus.webSocketPingMs}ms</span>
+            <span className={`font-semibold ${deviceStatus.connected ? 'text-accent-green' : 'text-text-secondary'}`}>
+              {deviceStatus.connected ? `${deviceStatus.webSocketPingMs}ms` : '--'}
+            </span>
           </div>
 
           <button
@@ -135,65 +230,7 @@ export const App: React.FC = () => {
 
         {/* Workspace Container */}
         <main className="flex-1 overflow-y-auto p-6 bg-dark-900">
-          {activeTab === 'session' ? (
-            <div className="space-y-6">
-              {/* Active Session Hero Card */}
-              <ActiveTaskHeroCard
-                session={session}
-                onPause={pause}
-                onResume={resume}
-                onComplete={() => complete()}
-                onOpenTaskModal={() => setIsTaskModalOpen(true)}
-              />
-
-              {/* Today's Worklog Queue Table */}
-              <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-4 shadow-xl">
-                <h3 className="text-md font-bold text-white font-mono tracking-tight flex items-center justify-between">
-                  <span>TODAY&apos;S WORKLOG QUEUE</span>
-                  <span className="text-xs text-text-secondary font-normal">Active session syncing</span>
-                </h3>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-dark-700 text-text-secondary text-xs uppercase font-mono border-b border-border-dark">
-                      <tr>
-                        <th className="py-3 px-4">Task ID</th>
-                        <th className="py-3 px-4">Description</th>
-                        <th className="py-3 px-4">Duration</th>
-                        <th className="py-3 px-4">Provider Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-dark text-text-primary">
-                      <tr className="hover:bg-dark-700/50 transition-colors">
-                        <td className="py-3 px-4 font-mono text-accent-blue font-medium">PROJ-140</td>
-                        <td className="py-3 px-4">Fix Enemy Spawner Memory Leak</td>
-                        <td className="py-3 px-4 font-mono">02h 15m</td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
-                            Synced (Jira)
-                          </span>
-                        </td>
-                      </tr>
-                      {session && (
-                        <tr className="hover:bg-dark-700/50 transition-colors bg-dark-700/30">
-                          <td className="py-3 px-4 font-mono text-accent-amber font-medium">{session.taskKey}</td>
-                          <td className="py-3 px-4">{session.taskTitle} (Active)</td>
-                          <td className="py-3 px-4 font-mono">{formatSeconds(session.elapsedSeconds)}</td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-amber/10 text-accent-amber">
-                              {session.status}
-                            </span>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </div>
-          ) : (
-            <SettingsView />
-          )}
+          {renderActiveView()}
         </main>
       </div>
 

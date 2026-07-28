@@ -1,0 +1,81 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { MessagingIntegrationService } from '../src/main/services/messaging-service';
+import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
+import { DisplayRenderer } from '../src/main/hardware/display-renderer';
+import { MessagingSettingsDTO } from '../src/shared/dtos';
+
+describe('MessagingIntegrationService', () => {
+  let settingsRepo: SettingsRepository;
+  let mockRenderer: DisplayRenderer;
+  let service: MessagingIntegrationService;
+
+  beforeEach(() => {
+    settingsRepo = {
+      getSetting: vi.fn((_key: string, defaultVal: unknown) => defaultVal),
+      setSetting: vi.fn()
+    } as unknown as SettingsRepository;
+
+    mockRenderer = {
+      renderNotificationBanner: vi.fn()
+    } as unknown as DisplayRenderer;
+
+    service = new MessagingIntegrationService(settingsRepo, mockRenderer);
+  });
+
+  describe('constructor', () => {
+    it('Constructor_NullSettingsRepo_ThrowsException', () => {
+      expect(() => new MessagingIntegrationService(null as unknown as SettingsRepository)).toThrow();
+    });
+  });
+
+  describe('getSettings & saveSettings', () => {
+    it('GetSettings_Default_ReturnsDefaultDTO', () => {
+      const settings = service.getSettings();
+      expect(settings).toBeDefined();
+      expect(settings.discordWebhookUrl).toBe('https://discord.com/api/webhooks/demo');
+      expect(settings.enableDiscordLed).toBe(true);
+    });
+
+    it('SaveSettings_ValidDTO_CallsSettingsRepo', () => {
+      const dto = {
+        discordWebhookUrl: 'https://discord.com/test',
+        enableDiscordLed: false,
+        slackWebhookUrl: 'https://slack.com/test',
+        enableSlackPreview: true,
+        gmailQuery: 'is:unread',
+        enableGmailLed: true
+      };
+      service.saveSettings(dto);
+      expect(settingsRepo.setSetting).toHaveBeenCalledWith('messaging_settings', dto);
+    });
+
+    it('SaveSettings_Null_ThrowsException', () => {
+      expect(() => service.saveSettings(null as unknown as MessagingSettingsDTO)).toThrow();
+    });
+  });
+
+  describe('testIntegration', () => {
+    it('TestIntegration_ValidChannel_DispatchesBannerAndReturnsResult', () => {
+      const res = service.testIntegration('Slack Webhook');
+      expect(res.success).toBe(true);
+      expect(res.channel).toBe('Slack Webhook');
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('[TEST ALERT] Incoming message from Slack Webhook', 40);
+    });
+
+    it('TestIntegration_EmptyChannel_ThrowsException', () => {
+      expect(() => service.testIntegration('')).toThrow();
+    });
+  });
+
+  describe('handleSlackEvent & handleDiscordWebhook', () => {
+    it('HandleSlackEvent_EnabledPreview_DispatchesSlackBanner', () => {
+      service.handleSlackEvent({ sender: 'Alice', message: 'Deployment complete!' });
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('[SLACK] Alice: Deployment complete!', 40);
+    });
+
+    it('HandleDiscordWebhook_EnabledLed_DispatchesDiscordBanner', () => {
+      service.handleDiscordWebhook({ author: 'Bob', content: 'Bug urgent fix needed' });
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('[DISCORD] Bob: Bug urgent fix needed', 40);
+    });
+  });
+});

@@ -45,5 +45,20 @@ export enum IPCChannel {
   CHECK_GITIGNORE = 'unity-injector:check-gitignore',
   SCAN_AND_INJECT = 'unity-injector:scan-and-inject',
   REMOVE_INJECTION = 'unity-injector:remove-injection',
-  OPEN_FOLDER_PICKER = 'dialog:open-folder-picker'
+  OPEN_FOLDER_PICKER = 'dialog:open-folder-picker',
+
+  // Worklogs
+  GET_TODAYS_WORKLOGS = 'worklog:get-todays',
+  ON_WORKLOGS_UPDATED = 'worklog:on-updated',
+
+  // Unity Telemetry & Audio Settings
+  GET_UNITY_SETTINGS = 'unity:get-settings',
+  SAVE_UNITY_SETTINGS = 'unity:save-settings',
+  GET_UNITY_TELEMETRY = 'unity:get-telemetry',
+  ON_UNITY_TELEMETRY_UPDATED = 'unity:on-telemetry-updated',
+
+  // Messaging Integration
+  GET_MESSAGING_SETTINGS = 'messaging:get-settings',
+  SAVE_MESSAGING_SETTINGS = 'messaging:save-settings',
+  TEST_MESSAGING_INTEGRATION = 'messaging:test-integration'
 }

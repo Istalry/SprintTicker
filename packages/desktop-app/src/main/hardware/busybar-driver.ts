@@ -60,6 +60,7 @@ export class BusyBarDriver extends EventEmitter {
     if (this.isMockMode) {
       console.log('[BusyBarDriver] Initialized in MOCK HARDWARE mode (--mock-hardware)');
       this.isConnected = true;
+      this.startPingLoop();
       this.emit('statusChanged', this.getDeviceStatus());
       return true;
     }
@@ -89,11 +90,13 @@ export class BusyBarDriver extends EventEmitter {
         this.isConnected = true;
       }
 
+      this.startPingLoop();
       this.emit('statusChanged', this.getDeviceStatus());
       return this.isConnected;
     } catch (err) {
       console.warn(`[BusyBarDriver] Hardware connection to ${this.ipAddress} failed. Falling back to degraded state.`, err);
       this.isConnected = false;
+      this.startPingLoop();
       this.emit('statusChanged', this.getDeviceStatus());
       return false;
     }
@@ -118,6 +121,19 @@ export class BusyBarDriver extends EventEmitter {
    */
   public getDeviceStatus(): DeviceStatusDTO {
     const isWifi = this.ipAddress !== '10.0.4.20';
+    if (!this.isConnected && !this.isMockMode) {
+      return {
+        connected: false,
+        ipAddress: this.ipAddress,
+        connectionType: isWifi ? 'wifi' : 'usb',
+        frontBrightness: 0,
+        backBrightness: 0,
+        batteryPercent: 0,
+        firmwareVersion: 'N/A',
+        webSocketPingMs: 0
+      };
+    }
+
     return {
       connected: this.isConnected,
       ipAddress: this.ipAddress,
@@ -172,8 +188,53 @@ export class BusyBarDriver extends EventEmitter {
     }
   }
 
+  private pingTimer: NodeJS.Timeout | null = null;
+
+  private startPingLoop(): void {
+    if (this.pingTimer) clearInterval(this.pingTimer);
+
+    this.pingTimer = setInterval(async () => {
+      if (this.isMockMode) {
+        // Vary mock ping between 3ms and 6ms for dynamic feedback
+        this.pingMs = Math.floor(Math.random() * 4) + 3;
+        this.isConnected = true;
+        this.emit('statusChanged', this.getDeviceStatus());
+        return;
+      }
+
+      const start = Date.now();
+      try {
+        const headers: Record<string, string> = { 'Accept': 'application/json' };
+        if (this.apiToken) headers['X-API-Token'] = this.apiToken;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`http://${this.ipAddress}/busybar/account/status`, {
+          method: 'GET',
+          headers,
+          signal: controller.signal
+        }).catch(() => null);
+
+        clearTimeout(timeoutId);
+
+        const elapsed = Date.now() - start;
+        this.pingMs = Math.max(1, elapsed);
+        this.isConnected = res ? res.ok : false;
+      } catch {
+        this.isConnected = false;
+      }
+
+      this.emit('statusChanged', this.getDeviceStatus());
+    }, 3000);
+  }
+
   public disconnect(): void {
     this.isConnected = false;
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
     if (this.activeStream) {
       try {
         this.activeStream.stop?.();

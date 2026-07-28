@@ -11,6 +11,13 @@
     "dist/**/*",
     "package.json"
   ],
+  "extraFiles": [
+    {
+      "from": "../unity-plugin",
+      "to": "packages/unity-plugin",
+      "filter": ["**/*", "!**/node_modules/**", "!**/.git/**"]
+    }
+  ],
   "npmRebuild": true,
   "asar": true,
   "win": {

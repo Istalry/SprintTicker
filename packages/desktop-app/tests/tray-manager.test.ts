@@ -81,11 +81,10 @@ describe('TrayManager Unit Tests', () => {
     engine.pauseSession();
     engine.resumeSession();
 
-    // Trigger close event interception
+    // Trigger close event
     const closeHandler = mockWindow.on.mock.calls.find((c: any) => c[0] === 'close')[1];
-    const mockEvent = { preventDefault: vi.fn() };
-    closeHandler(mockEvent);
-    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    closeHandler();
+    expect((app as any).isQuitting).toBe(true);
 
     manager.destroy();
   });

@@ -148,6 +148,9 @@ The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for l
 | `/api/v1/unity/compile` | `POST` | Compilation state (`started`, `finished`) & progress bar display |
 | `/api/v1/unity/playmode` | `POST` | Toggles "ON AIR" red display mode during Unity Play Mode (`entered`, `exited`) |
 | `/api/v1/unity/console` | `POST` | Flashes red LED and displays exception/warning details |
+| `/api/v1/unity/heartbeat` | `POST` | Unity Editor C# plugin active connection heartbeat pings |
+| `/api/v1/slack/events` | `POST` | Slack workspace event subscriptions and notification banners |
+| `/api/v1/discord/webhook` | `POST` | Discord incoming mentions and high-priority purple LED alerts |
 | `/api/v1/vscode/activity` | `POST` | VS Code workspace & active file editing activity telemetry |
 
 ---

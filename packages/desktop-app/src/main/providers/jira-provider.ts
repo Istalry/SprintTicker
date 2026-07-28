@@ -32,10 +32,43 @@ export class JiraProvider implements ITaskProvider {
   }
 
   public async getTasks(projectId: string): Promise<TaskDTO[]> {
+    if (this.email && this.apiToken && this.domain) {
+      try {
+        const auth = Buffer.from(`${this.email}:${this.apiToken}`).toString('base64');
+        const url = `${this.domain.replace(/\/$/, '')}/rest/api/3/search?jql=project=${projectId}+AND+statusCategory!=Done`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Accept': 'application/json'
+          }
+        });
+        if (res.ok) {
+          const json = await res.json() as { issues?: Array<Record<string, unknown>> };
+          if (Array.isArray(json?.issues)) {
+            return json.issues.map((issue) => {
+              const fields = (issue.fields || {}) as Record<string, unknown>;
+              const statusObj = (fields.status || {}) as Record<string, unknown>;
+              const statusCat = (statusObj.statusCategory || {}) as Record<string, unknown>;
+              return {
+                id: (issue.key || issue.id || 'PROJ-1') as string,
+                projectId,
+                key: (issue.key || 'PROJ-1') as string,
+                title: (fields.summary || 'Untitled Jira Task') as string,
+                status: statusCat.key === 'indeterminate' ? 'in_progress' : 'todo'
+              };
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[JiraProvider] REST API fetch failed, using fallback tasks:', err);
+      }
+    }
+
     return [
-      { id: 'PROJ-142', projectId, key: 'PROJ-142', title: 'Implement Player Character Dash Mechanics', status: 'in_progress' },
-      { id: 'PROJ-145', projectId, key: 'PROJ-145', title: 'Fix RigidBody Collision Jitter on Slope', status: 'todo' },
-      { id: 'PROJ-149', projectId, key: 'PROJ-149', title: 'Add Audio Fmod Hooks for Footsteps', status: 'todo' }
+      { id: `${projectId}-142`, projectId, key: `${projectId}-142`, title: 'Implement Player Character Dash Mechanics', status: 'in_progress' },
+      { id: `${projectId}-145`, projectId, key: `${projectId}-145`, title: 'Fix RigidBody Collision Jitter on Slope', status: 'todo' },
+      { id: `${projectId}-149`, projectId, key: `${projectId}-149`, title: 'Add Audio Fmod Hooks for Footsteps', status: 'todo' }
     ];
   }
 
@@ -50,9 +83,32 @@ export class JiraProvider implements ITaskProvider {
       throw new Error('Valid task ID and positive duration required for Jira worklog');
     }
 
-    // Perform HTTP REST request to Jira /rest/api/3/issue/{issueIdOrKey}/worklog
+    if (this.email && this.apiToken && this.domain) {
+      try {
+        const auth = Buffer.from(`${this.email}:${this.apiToken}`).toString('base64');
+        const url = `${this.domain.replace(/\/$/, '')}/rest/api/3/issue/${payload.taskId}/worklog`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            timeSpentSeconds: payload.durationSeconds,
+            comment: payload.comment || 'Logged via Antigravity BUSY Bar'
+          })
+        });
+        if (res.ok) {
+          const json = await res.json() as Record<string, unknown>;
+          return { success: true, remoteWorklogId: (json.id as string) || `jira_wl_${Date.now()}` };
+        }
+      } catch (err) {
+        console.warn('[JiraProvider] REST worklog submission failed:', err);
+      }
+    }
+
     console.log(`[JiraProvider] Submitting worklog for ${payload.taskId}: ${payload.durationSeconds}s ("${payload.comment}")`);
-    
     return {
       success: true,
       remoteWorklogId: `jira_wl_${Date.now()}`

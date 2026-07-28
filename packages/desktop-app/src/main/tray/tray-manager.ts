@@ -31,12 +31,9 @@ export class TrayManager {
       this.restoreWindow();
     });
 
-    // Intercept window close event to minimize to system tray instead of exiting
-    this.mainWindow.on('close', event => {
-      if (!(app as any).isQuitting) {
-        event.preventDefault();
-        this.mainWindow.hide();
-      }
+    // Window close event triggers standard exit
+    this.mainWindow.on('close', () => {
+      (app as any).isQuitting = true;
     });
 
     // Subscribe to engine state updates to adjust tray tooltip and context menu
