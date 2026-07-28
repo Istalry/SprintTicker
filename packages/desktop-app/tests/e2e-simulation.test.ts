@@ -69,7 +69,7 @@ describe('Full End-to-End System Simulation Test', () => {
 
     // Step 3: Display Payload Generated
     const displayPayload = renderer.renderActiveSession(session);
-    expect(displayPayload.frontElements[0].text).toContain('PROJ-142');
+    expect((displayPayload.frontElements[1] as Record<string, unknown>).text as string).toContain('PROJ-142');
 
     // Step 4: Physical Wheel Click pauses session
     const pauseAction = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });

@@ -1,5 +1,11 @@
 import { IWidget, WidgetContext, HardwareInputEvent } from './widget-interface';
 import { DisplayPayload } from '../hardware/display-renderer';
+import {
+  TaskTrackerWidget,
+  StandupStopwatchWidget,
+  UnityBuildWidget,
+  NotificationCounterWidget
+} from './default-widgets';
 
 /**
  * Widget Registry managing custom display widget registration, wheel cycling,
@@ -9,7 +15,17 @@ export class WidgetRegistry {
   private widgets: Map<string, IWidget> = new Map();
   private activeWidgetId: string | null = null;
 
+  constructor() {
+    this.registerWidget(new TaskTrackerWidget());
+    this.registerWidget(new StandupStopwatchWidget());
+    this.registerWidget(new UnityBuildWidget());
+    this.registerWidget(new NotificationCounterWidget());
+  }
+
   public registerWidget(widget: IWidget): void {
+    if (!widget || !widget.id) {
+      throw new Error('Valid widget instance with ID required');
+    }
     this.widgets.set(widget.id, widget);
     if (!this.activeWidgetId) {
       this.activeWidgetId = widget.id;

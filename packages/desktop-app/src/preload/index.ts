@@ -13,7 +13,8 @@ import {
   UnitySettingsDTO,
   UnityTelemetryDTO,
   MessagingSettingsDTO,
-  MessagingTestResultDTO
+  MessagingTestResultDTO,
+  HardwareDisplayStateDTO
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -74,6 +75,13 @@ export interface IElectronAPI {
   getMessagingSettings: () => Promise<MessagingSettingsDTO>;
   saveMessagingSettings: (settings: MessagingSettingsDTO) => Promise<boolean>;
   testMessagingIntegration: (channelName: string) => Promise<MessagingTestResultDTO>;
+
+  // Hardware Display Animation & Screen Emulator
+  getDisplayState: () => Promise<HardwareDisplayStateDTO>;
+  onDisplayStateUpdated: (callback: (state: HardwareDisplayStateDTO) => void) => () => void;
+  setRearOledMode: (mode: string) => Promise<boolean>;
+  setColorTheme: (theme: string) => Promise<boolean>;
+  triggerConfettiBurst: () => Promise<boolean>;
 
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;
@@ -162,6 +170,17 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.SAVE_MESSAGING_SETTINGS, settings),
   testMessagingIntegration: (channelName: string) =>
     ipcRenderer.invoke(IPCChannel.TEST_MESSAGING_INTEGRATION, channelName),
+
+  // Hardware Display Animation & Screen Emulator
+  getDisplayState: () => ipcRenderer.invoke(IPCChannel.GET_DISPLAY_STATE),
+  onDisplayStateUpdated: (callback: (state: HardwareDisplayStateDTO) => void) => {
+    const handler = (_event: IpcRendererEvent, state: HardwareDisplayStateDTO) => callback(state);
+    ipcRenderer.on(IPCChannel.ON_DISPLAY_STATE_UPDATED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_DISPLAY_STATE_UPDATED, handler);
+  },
+  setRearOledMode: (mode: string) => ipcRenderer.invoke(IPCChannel.SET_REAR_OLED_MODE, mode),
+  setColorTheme: (theme: string) => ipcRenderer.invoke(IPCChannel.SET_COLOR_THEME, theme),
+  triggerConfettiBurst: () => ipcRenderer.invoke(IPCChannel.TRIGGER_CONFETTI_BURST),
 
   // Unity Plugin Injector & Gitignore
   unityInjector: {

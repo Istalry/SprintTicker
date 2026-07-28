@@ -1,6 +1,7 @@
 import React from 'react';
 import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
+import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 
 export const DeviceDiagnosticsView: React.FC = () => {
   const deviceStatus = useDeviceStatus();
@@ -99,11 +100,42 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Rear Display Debug Strategy:</span>
-            <span className="text-accent-green font-bold">Debug Metrics Only (IP, Reconnects, System Memory)</span>
+            <span className="text-text-secondary">Rear 160×80 OLED Display Strategy:</span>
+            <select
+              onChange={(e) => {
+                if (window.electronAPI?.setRearOledMode) {
+                  window.electronAPI.setRearOledMode(e.target.value);
+                }
+              }}
+              className="bg-dark-800 text-accent-green font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
+            >
+              <option value="DIAGNOSTICS">Mode A: Diagnostics & IP Metrics</option>
+              <option value="PERFORMANCE_MONITOR">Mode B: System Performance Graph</option>
+              <option value="STEALTH_CLOCK">Mode C: Power-Saving Stealth Clock</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary">Front 72×16 LED Matrix Color Theme:</span>
+            <select
+              onChange={(e) => {
+                if (window.electronAPI?.setColorTheme) {
+                  window.electronAPI.setColorTheme(e.target.value);
+                }
+              }}
+              className="bg-dark-800 text-accent-blue font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
+            >
+              <option value="emerald">Emerald Developer (#10B981)</option>
+              <option value="cyberpunk">Cyberpunk Neon (#8B5CF6)</option>
+              <option value="retro_arcade">Retro Arcade (#F59E0B)</option>
+              <option value="nordic_cyan">Nordic Cyan (#06B6D4)</option>
+            </select>
           </div>
         </div>
       </div>
+
+      {/* Animation Debug Panel */}
+      <AnimationDebugPanel />
     </div>
   );
 };

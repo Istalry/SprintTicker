@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Gamepad2, Box, Folder, Loader2, CheckCircle, AlertTriangle, Trash2, RefreshCw, Volume2, Bell, Save, Check } from 'lucide-react';
 import { UnityProjectInjectionResult, UnityTelemetryDTO } from '../../../shared/dtos';
+import { playAudioChimePreview } from '../../utils/audio-chime-synth';
 
 export const UnityEngineView: React.FC = () => {
   // Audio & Play Mode State
@@ -213,7 +214,16 @@ export const UnityEngineView: React.FC = () => {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-xs text-text-secondary">Build Completion Audio Chime</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs text-text-secondary">Build Completion Audio Chime</label>
+              <button
+                type="button"
+                onClick={() => playAudioChimePreview(buildChime)}
+                className="text-[10px] text-accent-blue hover:text-blue-400 font-semibold underline cursor-pointer"
+              >
+                🔊 Test Sound
+              </button>
+            </div>
             <select
               value={buildChime}
               onChange={e => setBuildChime(e.target.value)}

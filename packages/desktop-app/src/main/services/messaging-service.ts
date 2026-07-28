@@ -34,7 +34,13 @@ export class MessagingIntegrationService {
       slackWebhookUrl: 'https://hooks.slack.com/services/demo',
       enableSlackPreview: true,
       gmailQuery: 'is:unread label:urgent',
-      enableGmailLed: true
+      enableGmailLed: true,
+      notificationTimeoutSeconds: 10,
+      stealthClockIdleTimeoutMins: 15,
+      enableEdgeGlow: true,
+      edgeGlowOpacity: 0.3,
+      edgeGlowMode: 'PULSE',
+      edgeGlowTransition: 'FADE'
     });
   }
 
@@ -56,15 +62,21 @@ export class MessagingIntegrationService {
       throw new ArgumentException('Channel parameter cannot be empty');
     }
 
-    const testMessage = `[TEST ALERT] Incoming message from ${channel}`;
+    const iconId = channel.toLowerCase().includes('discord')
+      ? 'discord'
+      : channel.toLowerCase().includes('gmail')
+      ? 'gmail'
+      : 'slack';
+
+    const testSender = 'Alice';
     if (this.renderer) {
-      this.renderer.renderNotificationBanner(testMessage, 40);
+      this.renderer.renderNotificationBanner(testSender, channel, 40, iconId);
     }
 
     return {
       success: true,
       channel,
-      message: `Sent test notification payload to ${channel}!`
+      message: `Sent test notification payload for ${channel}!`
     };
   }
 
@@ -75,9 +87,8 @@ export class MessagingIntegrationService {
     if (!payload) return;
     const settings = this.getSettings();
     if (settings.enableSlackPreview && this.renderer) {
-      const sender = payload.sender || 'Slack User';
-      const text = payload.message || 'New Slack Message';
-      this.renderer.renderNotificationBanner(`[SLACK] ${sender}: ${text}`, 40);
+      const sender = payload.sender || 'Alice';
+      this.renderer.renderNotificationBanner(sender, 'SLACK', 40, 'slack');
     }
   }
 
@@ -88,9 +99,8 @@ export class MessagingIntegrationService {
     if (!payload) return;
     const settings = this.getSettings();
     if (settings.enableDiscordLed && this.renderer) {
-      const author = payload.author || 'Discord User';
-      const text = payload.content || 'New Discord Mention';
-      this.renderer.renderNotificationBanner(`[DISCORD] ${author}: ${text}`, 40);
+      const author = payload.author || 'Bob';
+      this.renderer.renderNotificationBanner(author, 'DISCORD', 40, 'discord');
     }
   }
 }

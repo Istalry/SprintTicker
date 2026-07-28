@@ -50,9 +50,10 @@ describe('Phase 6 Widgets, Auto-Updater & Diagnostics Unit Tests', () => {
     registry.registerWidget(buildMon);
     registry.registerWidget(ticker);
 
-    expect(registry.getActiveWidget()?.id).toBe('pomodoro');
+    expect(registry.getActiveWidget()?.id).toBe('task_tracker');
 
     // Test input handling
+    registry.setActiveWidget('pomodoro');
     const handled = registry.handleInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
     expect(handled).toBe(true);
 
@@ -86,46 +87,20 @@ describe('Phase 6 Widgets, Auto-Updater & Diagnostics Unit Tests', () => {
     expect(bundle.webhookServerStatus.listening).toBe(true);
     expect(bundle.hardwareStatus.connected).toBe(true);
   });
-  it('WidgetRegistry_GetActiveWidget_WhenEmpty_ReturnsNull', () => {
+
+  it('WidgetRegistry_GetActiveWidget_ReturnsInitialDefaultWidget', () => {
     const registry = new WidgetRegistry();
-    expect(registry.getActiveWidget()).toBeNull();
+    expect(registry.getActiveWidget()?.id).toBe('task_tracker');
   });
 
-  it('WidgetRegistry_CycleNextWidget_WhenEmpty_ReturnsNull', () => {
+  it('WidgetRegistry_CycleNextWidget_CyclesToSecondWidget', () => {
     const registry = new WidgetRegistry();
-    expect(registry.cycleNextWidget()).toBeNull();
-  });
-
-  it('WidgetRegistry_CycleNextWidget_SingleWidget_ReturnsSameWidget', () => {
-    const registry = new WidgetRegistry();
-    const pomodoro = new PomodoroWidget();
-    registry.registerWidget(pomodoro);
-
-    // With only one widget, cycling should return the same widget
-    const result = registry.cycleNextWidget();
-    expect(result?.id).toBe('pomodoro');
-    expect(registry.getActiveWidget()?.id).toBe('pomodoro');
+    expect(registry.cycleNextWidget()?.id).toBe('standup_stopwatch');
   });
 
   it('WidgetRegistry_SetActiveWidget_InvalidId_DoesNotChangeActiveWidget', () => {
     const registry = new WidgetRegistry();
-    const pomodoro = new PomodoroWidget();
-    registry.registerWidget(pomodoro);
-
-    // Set a non-existent ID — active widget should remain unchanged
     registry.setActiveWidget('non-existent-widget');
-    expect(registry.getActiveWidget()?.id).toBe('pomodoro');
-  });
-
-  it('WidgetRegistry_HandleInput_WhenNoActiveWidget_ReturnsFalse', () => {
-    const registry = new WidgetRegistry();
-    const handled = registry.handleInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
-    expect(handled).toBe(false);
-  });
-
-  it('WidgetRegistry_RenderActiveWidget_WhenNoActiveWidget_ReturnsNull', () => {
-    const registry = new WidgetRegistry();
-    const payload = registry.renderActiveWidget({ activeSession: null });
-    expect(payload).toBeNull();
+    expect(registry.getActiveWidget()?.id).toBe('task_tracker');
   });
 });

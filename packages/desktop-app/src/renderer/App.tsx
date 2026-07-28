@@ -27,6 +27,7 @@ import { PriorityRulesView } from './views/Priority/PriorityRulesView';
 import { DeviceDiagnosticsView } from './views/Device/DeviceDiagnosticsView';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
+import { HardwareDisplayEmulator } from './components/HardwareDisplayEmulator';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 
 export const App: React.FC = () => {
@@ -159,14 +160,17 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-dark-900 text-text-primary">
-      {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between px-6 py-3 bg-dark-800 border-b border-border-dark select-none">
+      {/* Top Navigation Bar with Hardware Display Live Emulator */}
+      <header className="flex items-center justify-between px-6 py-2.5 bg-dark-800 border-b border-border-dark select-none">
         <div className="flex items-center space-x-3">
           <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
           <h1 className="text-lg font-bold tracking-tight text-white font-mono">
             ANTIGRAVITY <span className="text-accent-blue font-sans">BUSY Bar</span>
           </h1>
         </div>
+
+        {/* Live Hardware Canvas Emulator */}
+        <HardwareDisplayEmulator />
 
         <div className="flex items-center space-x-4 text-sm font-mono">
           <button

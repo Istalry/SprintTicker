@@ -238,11 +238,35 @@ export class IPCHandlerRegistry {
       return this.messagingService.testIntegration(channelName);
     });
 
-    // 12. Wire Bi-directional State Broadcasts
+    // 12. Hardware Display Animation & Screen Emulator IPC Handlers
+    ipcMain.handle(IPCChannel.GET_DISPLAY_STATE, async () => {
+      return this.renderer.getDisplayState();
+    });
+
+    ipcMain.handle(IPCChannel.SET_REAR_OLED_MODE, async (_event, mode: RearOledMode) => {
+      this.renderer.setRearOledMode(mode);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.SET_COLOR_THEME, async (_event, theme: ColorThemeId) => {
+      this.renderer.setColorTheme(theme);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.TRIGGER_CONFETTI_BURST, async () => {
+      this.renderer.renderTaskCompletionConfetti();
+      return true;
+    });
+
+    // 13. Wire Bi-directional State Broadcasts
     this.engine.subscribe((session: ActiveSessionDTO | null) => {
       this.broadcast(IPCChannel.ON_SESSION_UPDATED, session);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       this.renderer.renderActiveSession(session);
+    });
+
+    this.renderer.onStateChanged((state) => {
+      this.broadcast(IPCChannel.ON_DISPLAY_STATE_UPDATED, state);
     });
 
     this.unityTelemetryService.onTelemetryUpdated(telemetry => {

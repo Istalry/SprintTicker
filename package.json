@@ -12,6 +12,7 @@
     "preflight": "node scripts/preflight-check.js",
     "test": "pnpm --filter @busy-app/desktop-app test",
     "test:coverage": "pnpm --filter @busy-app/desktop-app test:coverage",
+    "editor": "node tools/pixel-editor/server.js",
     "lint": "eslint packages/**/*.{ts,tsx}",
     "format": "prettier --write \"packages/**/*.{ts,tsx,json,css,md}\""
   },

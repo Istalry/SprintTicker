@@ -1,6 +1,7 @@
 import React from 'react';
-import { Play, Pause, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Play, Pause, RefreshCw, Sparkles } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
+import { triggerDesktopConfetti } from '../utils/confetti-fx';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -22,6 +23,14 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
     const mins = Math.floor((totalSec % 3600) / 60);
     const secs = totalSec % 60;
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleCompleteClick = () => {
+    triggerDesktopConfetti();
+    if (window.electronAPI && window.electronAPI.triggerConfettiBurst) {
+      window.electronAPI.triggerConfettiBurst().catch(err => console.warn('[Confetti] Hardware trigger warning:', err));
+    }
+    onComplete();
   };
 
   return (
@@ -85,7 +94,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         )}
 
         <button
-          onClick={onComplete}
+          onClick={handleCompleteClick}
           disabled={!session}
           className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm border transition-all ${
             session
@@ -93,7 +102,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               : 'bg-dark-700/50 text-text-secondary border-border-dark/50 cursor-not-allowed'
           }`}
         >
-          <CheckCircle2 className="w-4 h-4 text-accent-green" />
+          <Sparkles className="w-4 h-4 text-accent-green" />
           <span>Finish & Log Hours</span>
         </button>
 

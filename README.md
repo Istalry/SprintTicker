@@ -126,10 +126,25 @@ pnpm preflight
 
 ---
 
+## 🎨 PixelIt 16×16 Icon Downsampling Engine & Animation Debugger
+
+The companion app includes an automated **PixelIt** image downsampling engine (`scripts/convert-icons-pixelit.js`) that processes high-resolution PNG reference icons into crisp 16×16 RGB pixel-art matrices for physical and emulated LED displays:
+
+- **1:1 Crisp Pixel Art Font:** Uses `PIXEL_FONT_5X7` bitmask rasterization to eliminate subpixel canvas blur.
+- **Full 16×16 Icon Canvas:** Spans the full 16-pixel vertical matrix height for Slack, Discord, Gmail, Unity, Burger, Clock, Wave, Pause, Play, Stop, Error, and Compiling icons.
+- **Icon Conversion Command:**
+  ```bash
+  node scripts/convert-icons-pixelit.js
+  ```
+- **Animation & Visual Debugger Panel:** Accessible under **Settings > Device Diagnostics** in the desktop application to test marquee text scrolling, dynamic confetti particle animations, LED modes, and icon states in real-time.
+
+---
+
 ## ⚡ Windows Quick Launch Helpers (`.bat`)
 
 Convenient Windows batch scripts are available in the repository root directory:
 
+- **`run_editor.bat`**: Launches the standalone 16×16 Pixel Art Editor web server (`http://localhost:39124`) for live visual icon tweaking.
 - **`install.bat`**: Installs all monorepo workspace dependencies via PNPM.
 - **`run_app.bat`**: Launches the Electron Desktop App in development mode with hot reloading.
 - **`build.bat`**: Compiles TypeScript and builds Vite frontend bundles.

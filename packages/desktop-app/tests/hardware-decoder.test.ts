@@ -54,9 +54,9 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const payload = renderer.renderActiveSession(session);
 
     // Assert
-    expect(payload.frontElements).toHaveLength(2);
-    expect(payload.frontElements[0].text).toContain('PROJ-142');
-    expect(payload.backElements[0].text).toContain('BUSY BAR DIAGNOSTICS');
+    expect(payload.frontElements).toHaveLength(3);
+    expect((payload.frontElements[1] as Record<string, unknown>).text as string).toContain('PROJ-142');
+    expect((payload.backElements[0] as Record<string, unknown>).text as string).toContain('BUSY BAR DIAGNOSTICS');
     expect(payload.ledColorHex).toBe('#10B981FF'); // Green LED for TRACKING
   });
 
@@ -91,8 +91,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const payload = renderer.renderPlayMode('MyFantasyGame');
 
     // Assert
-    expect(payload.frontElements[0].text).toBe('ON AIR');
-    expect(payload.frontElements[1].text).toBe('MyFantasyGame');
+    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('ON AIR');
+    expect((payload.frontElements[2] as Record<string, unknown>).text).toBe('MyFantasyGame');
     expect(payload.ledColorHex).toBe('#FF0000FF');
   });
 
@@ -101,8 +101,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const payload = renderer.renderCompilation('MyFantasyGame', 75);
 
     // Assert
-    expect(payload.frontElements[0].text).toBe('MyFantasyGame: Compiling...');
-    expect(payload.frontElements[1].width).toBe(54); // 75% of 72
+    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('MyFantasyGame: Compiling...');
+    expect((payload.frontElements[2] as Record<string, unknown>).width).toBe(54); // 75% of 72
     expect(payload.ledColorHex).toBe('#3B82F6FF');
   });
 

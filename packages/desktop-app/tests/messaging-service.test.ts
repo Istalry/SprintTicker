@@ -59,7 +59,7 @@ describe('MessagingIntegrationService', () => {
       const res = service.testIntegration('Slack Webhook');
       expect(res.success).toBe(true);
       expect(res.channel).toBe('Slack Webhook');
-      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('[TEST ALERT] Incoming message from Slack Webhook', 40);
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'Slack Webhook', 40, 'slack');
     });
 
     it('TestIntegration_EmptyChannel_ThrowsException', () => {
@@ -70,12 +70,12 @@ describe('MessagingIntegrationService', () => {
   describe('handleSlackEvent & handleDiscordWebhook', () => {
     it('HandleSlackEvent_EnabledPreview_DispatchesSlackBanner', () => {
       service.handleSlackEvent({ sender: 'Alice', message: 'Deployment complete!' });
-      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('[SLACK] Alice: Deployment complete!', 40);
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'SLACK', 40, 'slack');
     });
 
     it('HandleDiscordWebhook_EnabledLed_DispatchesDiscordBanner', () => {
       service.handleDiscordWebhook({ author: 'Bob', content: 'Bug urgent fix needed' });
-      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('[DISCORD] Bob: Bug urgent fix needed', 40);
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Bob', 'DISCORD', 40, 'discord');
     });
   });
 });

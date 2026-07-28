@@ -140,12 +140,54 @@ export interface MessagingSettingsDTO {
   enableSlackPreview: boolean;
   gmailQuery: string;
   enableGmailLed: boolean;
+  notificationTimeoutSeconds?: number; // Auto-dismiss notification banner duration in seconds (default: 10)
+  stealthClockIdleTimeoutMins?: number; // Idle duration before switching OLED to stealth clock (default: 15)
+  enableEdgeGlow?: boolean; // Enable ambient screen edge glow effect (default: true)
+  edgeGlowOpacity?: number; // Screen edge glow opacity between 0.0 and 1.0 (default: 0.3)
+  edgeGlowMode?: EdgeGlowMode; // Edge glow pattern (STATIC, PULSE, BLINKING, ROTATING) (default: PULSE)
+  edgeGlowTransition?: EdgeGlowTransition; // Transition style (FADE, INSTANT) (default: FADE)
 }
 
 export interface MessagingTestResultDTO {
   success: boolean;
   channel: string;
   message: string;
+}
+
+export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
+export type EdgeGlowMode = 'NONE' | 'STATIC' | 'PULSE' | 'BLINKING' | 'ROTATING';
+export type EdgeGlowTransition = 'FADE' | 'INSTANT';
+export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity';
+export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
+export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
+
+export interface DisplayElementDTO {
+  type: 'text' | 'bitmap' | 'rectangle';
+  x: number;
+  y: number;
+  text?: string;
+  font?: 'small' | 'bold' | 'tiny';
+  color?: string;
+  iconId?: BitmapIconId;
+  bitmapData?: (string | number | null)[][];
+  width?: number;
+  height?: number;
+  fill?: string;
+  scroll_rate?: number;
+}
+
+export interface HardwareDisplayStateDTO {
+  frontElements: DisplayElementDTO[];
+  backElements: DisplayElementDTO[];
+  ledColorHex: string;
+  ledMode: LedAnimationMode;
+  colorTheme: ColorThemeId;
+  rearOledMode: RearOledMode;
+  activeWidgetId: string;
+  enableEdgeGlow?: boolean;
+  edgeGlowOpacity?: number;
+  edgeGlowMode?: EdgeGlowMode;
+  edgeGlowTransition?: EdgeGlowTransition;
 }
 
 /**
