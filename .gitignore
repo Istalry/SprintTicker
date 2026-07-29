@@ -33,3 +33,7 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.log
+
+# Allow tracking app icons in desktop-app build directory
+!packages/desktop-app/build/
+!packages/desktop-app/build/*
