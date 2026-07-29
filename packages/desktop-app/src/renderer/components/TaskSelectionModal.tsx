@@ -19,10 +19,11 @@ const statusConfig: Record<string, { label: string; icon: React.FC<{ className?:
 export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
   isOpen,
   onClose,
-  projects,
+  projects: propProjects,
   onSelectTask
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
+  const [activeProjects, setActiveProjects] = useState<ProjectDTO[]>(propProjects || []);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [projectTasks, setProjectTasks] = useState<TaskDTO[]>([]);
   const [loadingTasks, setLoadingTasks] = useState<boolean>(false);
@@ -62,12 +63,27 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
       setIsAdHocMode(false);
       setSelectedIndex(0);
       setProjectTasks([]);
-      // Pre-select first project
-      if (projects.length > 0) {
-        setSelectedProjectId(projects[0].id);
+
+      if (window.electronAPI?.getProjects) {
+        window.electronAPI.getProjects().then(projs => {
+          const list = projs || [];
+          setActiveProjects(list);
+          if (list.length > 0) {
+            setSelectedProjectId(list[0].id);
+          } else {
+            setSelectedProjectId('');
+          }
+        }).catch(() => {
+          setActiveProjects(propProjects || []);
+        });
+      } else {
+        setActiveProjects(propProjects || []);
+        if (propProjects && propProjects.length > 0) {
+          setSelectedProjectId(propProjects[0].id);
+        }
       }
     }
-  }, [isOpen, projects]);
+  }, [isOpen, propProjects]);
 
   const filteredTasks = projectTasks.filter(t =>
     t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,7 +125,7 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
 
   if (!isOpen) return null;
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedProject = activeProjects.find(p => p.id === selectedProjectId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
@@ -151,27 +167,33 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
               </p>
 
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {projects.map(proj => (
-                  <button
-                    key={proj.id}
-                    onClick={() => {
-                      setSelectedProjectId(proj.id);
-                      setIsAdHocMode(false);
-                      setStep(2);
-                    }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-lg border text-left font-medium text-sm transition-all ${
-                      selectedProjectId === proj.id && !isAdHocMode
-                        ? 'bg-accent-blue/10 border-accent-blue text-accent-blue'
-                        : 'bg-dark-700/50 border-border-dark text-text-primary hover:bg-dark-700'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-mono font-bold">{proj.key}</div>
-                      <div className="text-xs text-text-secondary">{proj.name}</div>
-                    </div>
-                    {selectedProjectId === proj.id && !isAdHocMode && <Check className="w-5 h-5" />}
-                  </button>
-                ))}
+                {activeProjects.length > 0 ? (
+                  activeProjects.map(proj => (
+                    <button
+                      key={proj.id}
+                      onClick={() => {
+                        setSelectedProjectId(proj.id);
+                        setIsAdHocMode(false);
+                        setStep(2);
+                      }}
+                      className={`w-full flex items-center justify-between p-3.5 rounded-lg border text-left font-medium text-sm transition-all ${
+                        selectedProjectId === proj.id && !isAdHocMode
+                          ? 'bg-accent-blue/10 border-accent-blue text-accent-blue'
+                          : 'bg-dark-700/50 border-border-dark text-text-primary hover:bg-dark-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-mono font-bold">{proj.key}</div>
+                        <div className="text-xs text-text-secondary">{proj.name}</div>
+                      </div>
+                      {selectedProjectId === proj.id && !isAdHocMode && <Check className="w-5 h-5" />}
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 bg-dark-900/50 border border-border-dark rounded-lg text-center text-xs text-text-secondary font-mono">
+                    No active projects registered in database.
+                  </div>
+                )}
 
                 <button
                   onClick={() => {

@@ -45,7 +45,7 @@ export const App: React.FC = () => {
   // Custom Hooks
   const { session, pause, resume, complete, startTask } = useSession();
   const deviceStatus = useDeviceStatus();
-  const { projects } = useTasks('PROJ');
+  const { projects } = useTasks();
   const { worklogs } = useWorklogs();
 
   // Auto-open ceremony prompts (STANDUP or EOD) from schedule service

@@ -145,12 +145,6 @@ export class DatabaseConnection {
       DELETE FROM active_sessions;
       DELETE FROM tasks;
       DELETE FROM projects;
-
-      INSERT OR IGNORE INTO projects (id, key, name, provider_id, created_at_utc)
-      VALUES
-        ('PROJ', 'PROJ', 'Default Project', 'jira', datetime('now')),
-        ('UNITY', 'UNITY', 'Unity Engine Project', 'local', datetime('now')),
-        ('ADMIN', 'ADMIN', 'Administrative Overhead', 'local', datetime('now'));
     `);
   }
 }

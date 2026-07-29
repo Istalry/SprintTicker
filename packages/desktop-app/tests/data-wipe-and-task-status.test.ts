@@ -25,25 +25,20 @@ describe('Data Wipe & Task Status Unit Tests', () => {
     }
   });
 
-  it('DatabaseConnection_WipeAllData_ClearsTablesAndReSeedsDefaultProjects', () => {
+  it('DatabaseConnection_WipeAllData_ClearsAllProjectsAndDataCompletely', () => {
     // Add extra data
     projectRepo.saveProject({ id: 'CUSTOM', key: 'CUSTOM', name: 'Custom Project' });
     taskRepo.saveTask({ id: 'CUSTOM_1', projectId: 'CUSTOM', key: 'CUSTOM-1', title: 'Task to Wipe', status: 'todo' });
 
     const beforeWipe = projectRepo.getAllProjects();
-    expect(beforeWipe.length).toBeGreaterThan(3);
+    expect(beforeWipe.length).toBeGreaterThan(0);
 
     // Wipe everything
     dbConn.wipeAllData();
 
     const afterWipe = projectRepo.getAllProjects();
-    // Only 3 default seeds should remain
-    expect(afterWipe.length).toBe(3);
-    expect(afterWipe.map(p => p.id)).toContain('PROJ');
-    expect(afterWipe.map(p => p.id)).toContain('UNITY');
-    expect(afterWipe.map(p => p.id)).toContain('ADMIN');
-    // CUSTOM project should be gone
-    expect(afterWipe.find(p => p.id === 'CUSTOM')).toBeUndefined();
+    // 0 projects should remain (no re-seeded default projects)
+    expect(afterWipe.length).toBe(0);
   });
 
   it('DatabaseConnection_WipeAllData_ClearsAllTasks', () => {

@@ -146,7 +146,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
           <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Danger Zone - Factory Reset</h3>
         </div>
         <p className="text-xs text-text-secondary">
-          Permanently delete all projects, tasks, sessions, and worklog history from the local SQLite database. Default projects (PROJ, UNITY, ADMIN) will be restored.
+          Permanently delete all projects, tasks, sessions, and worklog history from the local SQLite database.
           <strong className="text-accent-red"> This action cannot be undone.</strong>
         </p>
 
