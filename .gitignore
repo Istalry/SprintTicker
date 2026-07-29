@@ -34,6 +34,10 @@ Thumbs.db
 *.sqlite3
 *.log
 
+# Compiled test outputs
+packages/desktop-app/tests/*.js
+packages/desktop-app/tests/*.js.map
+
 # Allow tracking app icons in desktop-app build directory
 !packages/desktop-app/build/
 !packages/desktop-app/build/*

@@ -91,12 +91,12 @@ export class OfflineSyncWorker {
             this.worklogRepo.updateSyncItemStatus(item.id, 'SYNCED');
             succeeded++;
           } else {
-            this.worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
+            this.worklogRepo.incrementRetryCount(item.id, 3);
             failed++;
           }
         } catch (err) {
           console.error(`[OfflineSyncWorker] Failed to sync worklog ${item.id}:`, err);
-          this.worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
+          this.worklogRepo.incrementRetryCount(item.id, 3);
           failed++;
         }
       }

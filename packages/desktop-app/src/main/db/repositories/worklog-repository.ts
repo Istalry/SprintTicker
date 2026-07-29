@@ -128,6 +128,20 @@ export class WorklogRepository {
   }
 
   /**
+   * Increments retry count and sets status to FAILED only if maxRetries limit is reached.
+   */
+  public incrementRetryCount(id: string, maxRetries: number = 3): void {
+    const stmt = this.dbConn.getDb().prepare(`
+      UPDATE worklog_sync_queue
+      SET retry_count = retry_count + 1,
+          status = CASE WHEN retry_count + 1 >= ? THEN 'FAILED' ELSE 'PENDING' END
+      WHERE id = ?
+    `);
+
+    stmt.run(maxRetries, id);
+  }
+
+  /**
    * Retrieves today's completed worklogs from SQLite database.
    */
   public getTodaysWorklogs(): WorklogRecord[] {

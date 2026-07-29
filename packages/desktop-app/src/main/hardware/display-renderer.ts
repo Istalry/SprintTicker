@@ -1,6 +1,7 @@
 import { BusyBarDriver } from './busybar-driver';
 import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId } from '../../shared/dtos';
 import { getBitmapById } from './pixel-bitmaps';
+import { DISPLAY_CONSTANTS } from './render-constants';
 
 export interface DisplayPayload {
   frontElements: Array<Record<string, unknown>>;
@@ -139,8 +140,8 @@ export class DisplayRenderer {
     const payload: DisplayPayload = {
       frontElements: [
         { type: 'bitmap', iconId: 'burger' as BitmapIconId, bitmapData: getBitmapById('burger'), x: 0, y: 0 },
-        { type: 'text', font: 'bold', x: 16, y: 0, color: '#F59E0BFF', text: 'LUNCH MUTE' },
-        { type: 'text', font: 'small', x: 16, y: 8, color: '#FFFFFFFF', text: 'Task Paused' }
+        { type: 'text', font: 'bold', x: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_PROJECT_X, y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_PROJECT_Y, color: '#F59E0BFF', text: 'LUNCH MUTE' },
+        { type: 'text', font: 'small', x: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_TITLE_X, y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_TITLE_Y, color: '#FFFFFFFF', text: 'Task Paused' }
       ],
       backElements: [
         { type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS' },
@@ -161,8 +162,8 @@ export class DisplayRenderer {
     const payload: DisplayPayload = {
       frontElements: [
         { type: 'bitmap', iconId: 'clock' as BitmapIconId, bitmapData: getBitmapById('clock'), x: 0, y: 0 },
-        { type: 'text', font: 'bold', x: 16, y: 0, color: '#A855F7FF', text: 'AWAY MODE' },
-        { type: 'text', font: 'small', x: 16, y: 8, color: '#888888FF', text: 'PC Locked' }
+        { type: 'text', font: 'bold', x: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_PROJECT_X, y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_PROJECT_Y, color: '#A855F7FF', text: 'AWAY MODE' },
+        { type: 'text', font: 'small', x: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_TITLE_X, y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_TITLE_Y, color: '#888888FF', text: 'PC Locked' }
       ],
       backElements: [
         { type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY' },
@@ -197,20 +198,20 @@ export class DisplayRenderer {
         {
           type: 'text',
           font: 'bold',
-          x: 16,
-          y: 0,
+          x: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_PROJECT_X,
+          y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_PROJECT_Y,
           color: accentColor,
           text: isEod ? 'EOD WRAP-UP' : isLunch ? 'LUNCH TIME' : 'DAILY STANDUP'
         },
         {
           type: 'text',
           font: 'small',
-          x: 16,
-          y: 8,
-          width: 56,
+          x: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_TITLE_X,
+          y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TASK_TITLE_Y,
+          width: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_FIELD_WIDTH,
           color: '#FFFFFFFF',
           text: title || 'Press Wheel or Click UI to Start',
-          scroll_rate: 60
+          scroll_rate: DISPLAY_CONSTANTS.DEFAULT_SCROLL_RATE
         }
       ],
       backElements: [

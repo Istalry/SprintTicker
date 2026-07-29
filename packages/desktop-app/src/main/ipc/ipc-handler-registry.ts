@@ -120,26 +120,30 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    ipcMain.handle(IPCChannel.DELETE_PROJECT, async (_event, payload: any) => {
-      const projId = typeof payload === 'string' ? payload : (payload?.id || payload?.projectId);
+    ipcMain.handle(IPCChannel.DELETE_PROJECT, async (_event, payload: string | Record<string, string> | unknown) => {
+      const p = payload as Record<string, string> | string;
+      const projId = typeof p === 'string' ? p : (p?.id || p?.projectId);
       if (projId) {
         this.projectRepo.deleteProject(projId);
       }
       return true;
     });
 
-    ipcMain.handle(IPCChannel.GET_TASKS, async (_event, payload: any) => {
-      const projId = typeof payload === 'string' ? payload : (payload?.projectId || payload?.id);
+    ipcMain.handle(IPCChannel.GET_TASKS, async (_event, payload: string | Record<string, string> | unknown) => {
+      const p = payload as Record<string, string> | string;
+      const projId = typeof p === 'string' ? p : (p?.projectId || p?.id);
       return projId ? this.taskRepo.getTasksByProjectId(projId) : [];
     });
 
-    ipcMain.handle(IPCChannel.CREATE_AD_HOC_TASK, async (_event, payload: any) => {
-      const title = typeof payload === 'string' ? payload : (payload?.customTitle || payload?.title);
+    ipcMain.handle(IPCChannel.CREATE_AD_HOC_TASK, async (_event, payload: string | Record<string, string> | unknown) => {
+      const p = payload as Record<string, string> | string;
+      const title = typeof p === 'string' ? p : (p?.customTitle || p?.title);
       return title ? this.taskRepo.createAdHocTask(title) : null;
     });
 
-    ipcMain.handle(IPCChannel.DELETE_TASK, async (_event, payload: any) => {
-      const taskId = typeof payload === 'string' ? payload : (payload?.taskId || payload?.id);
+    ipcMain.handle(IPCChannel.DELETE_TASK, async (_event, payload: string | Record<string, string> | unknown) => {
+      const p = payload as Record<string, string> | string;
+      const taskId = typeof p === 'string' ? p : (p?.taskId || p?.id);
       if (taskId) {
         this.taskRepo.deleteTask(taskId);
       }
@@ -157,13 +161,15 @@ export class IPCHandlerRegistry {
       return this.taskRepo.importTasks(payload.projectId, payload.tasks);
     });
 
-    ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, payload: any) => {
-      const dateStr = typeof payload === 'string' ? payload : (payload?.dateString || payload?.date || new Date().toISOString().split('T')[0]);
+    ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, payload: string | Record<string, string> | unknown) => {
+      const p = payload as Record<string, string> | string;
+      const dateStr = typeof p === 'string' ? p : (p?.dateString || p?.date || new Date().toISOString().split('T')[0]);
       return this.worklogRepo.getWorklogsByDate(dateStr);
     });
 
-    ipcMain.handle(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, async (_event, payload: any) => {
-      const dateStr = typeof payload === 'string' ? payload : (payload?.dateString || payload?.date || new Date().toISOString().split('T')[0]);
+    ipcMain.handle(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, async (_event, payload: string | Record<string, string> | unknown) => {
+      const p = payload as Record<string, string> | string;
+      const dateStr = typeof p === 'string' ? p : (p?.dateString || p?.date || new Date().toISOString().split('T')[0]);
       return this.worklogRepo.getDailySummary(dateStr);
     });
 

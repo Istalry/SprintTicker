@@ -12,6 +12,8 @@ namespace Com.Antigravity.BusyBar.Editor
     /// <summary>
     /// Lightweight Unity Editor script that hooks into compilation events, Play Mode state transitions,
     /// player build preprocess/scene hooks, console exceptions, and periodic heartbeats, posting JSON telemetry webhooks.
+    /// Architectural Rationale: Non-blocking HTTP POST requests run asynchronously on background threads to ensure 
+    /// Unity Editor performance is never degraded even if the desktop companion app is closed.
     /// </summary>
     [InitializeOnLoad]
     public class BusyBarWebhookPublisher : IPreprocessBuildWithReport, IProcessSceneWithReport, IPostprocessBuildWithReport
@@ -30,73 +32,58 @@ namespace Com.Antigravity.BusyBar.Editor
 
         private static bool _wasBakingLightmaps;
 
-        private static int s_TotalAssemblies = 0;
-        private static int s_CompiledAssemblies = 0;
+        private static int _totalAssemblies = 0;
+        private static int _compiledAssemblies = 0;
 
-        private static int s_TotalBuildScenes = 0;
-        private static int s_ProcessedBuildScenes = 0;
+        private static int _totalBuildScenes = 0;
+        private static int _processedBuildScenes = 0;
 
+        /// <summary>
+        /// Gets the order in which build pipeline callbacks are invoked. Returns 0 to execute early in the build pipeline.
+        /// </summary>
         public int callbackOrder => 0;
 
         #region Player Build Hooks (IPreprocessBuildWithReport, IProcessSceneWithReport, IPostprocessBuildWithReport)
+        /// <summary>
+        /// Intercepts the start of player build processing to broadcast initial build telemetry to the BUSY Bar.
+        /// Why: Enables hardware display to show build progress bars to the developer during long standalone builds.
+        /// </summary>
         public void OnPreprocessBuild(BuildReport report)
         {
-            s_ProcessedBuildScenes = 0;
-            s_TotalBuildScenes = EditorBuildSettings.scenes != null 
+            _processedBuildScenes = 0;
+            _totalBuildScenes = EditorBuildSettings.scenes != null 
                 ? System.Array.FindAll(EditorBuildSettings.scenes, s => s.enabled).Length 
                 : 0;
 
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "started",
-                type = "build",
-                progress = 0,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            DispatchCompilePayload("started", "build", 0);
         }
 
+        /// <summary>
+        /// Intercepts per-scene processing during standalone builds to update progress metrics.
+        /// Why: Provides real-time incremental build progress on the BUSY Bar display as scenes compile.
+        /// </summary>
         public void OnProcessScene(UnityEngine.SceneManagement.Scene scene, BuildReport report)
         {
-            // Invoked synchronously on main thread as each scene is compiled into the build
             if (BuildPipeline.isBuildingPlayer && report != null)
             {
-                s_ProcessedBuildScenes++;
-                int progressPct = s_TotalBuildScenes > 0 
-                    ? (int)((float)s_ProcessedBuildScenes / s_TotalBuildScenes * 90f) 
+                _processedBuildScenes++;
+                int progressPct = _totalBuildScenes > 0 
+                    ? (int)((float)_processedBuildScenes / _totalBuildScenes * 90f) 
                     : 50;
 
-                // Clamp progress between 10% and 90% while scenes process
                 progressPct = Math.Max(10, Math.Min(90, progressPct));
-
-                var payload = new CompileEventPayload
-                {
-                    instanceId = _instanceId,
-                    state = "started",
-                    type = "build",
-                    progress = progressPct,
-                    projectName = Application.productName,
-                    unityVersion = Application.unityVersion
-                };
-                SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+                DispatchCompilePayload("started", "build", progressPct);
             }
         }
 
+        /// <summary>
+        /// Intercepts build completion or failure to play success chimes or trigger error LED alerts.
+        /// Why: Notifies developers immediately on build finish regardless of whether Unity window is focused.
+        /// </summary>
         public void OnPostprocessBuild(BuildReport report)
         {
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "finished",
-                type = "build",
-                progress = 100,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion,
-                success = (report != null && report.summary.result == BuildResult.Succeeded)
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            bool isSuccess = (report != null && report.summary.result == BuildResult.Succeeded);
+            DispatchCompilePayload("finished", "build", 100, isSuccess);
         }
         #endregion
 
@@ -124,6 +111,10 @@ namespace Com.Antigravity.BusyBar.Editor
             SendHeartbeat();
         }
 
+        /// <summary>
+        /// Dispatches a periodic heartbeat ping to the desktop companion app containing active project context and bound scene save port.
+        /// Why: Registers active Unity instances with desktop app so EOD scene saves and playmode status updates route accurately.
+        /// </summary>
         public static void SendHeartbeat()
         {
             _lastHeartbeatTime = EditorApplication.timeSinceStartup;
@@ -147,22 +138,16 @@ namespace Com.Antigravity.BusyBar.Editor
                 SendHeartbeat();
             }
 
-            // Real-time Lightmapping polling
+            CheckLightmapBakeProgress(now);
+        }
+
+        private static void CheckLightmapBakeProgress(double now)
+        {
             bool isBaking = Lightmapping.isRunning;
             if (isBaking != _wasBakingLightmaps)
             {
                 _wasBakingLightmaps = isBaking;
-                var bakeStatePayload = new CompileEventPayload
-                {
-                    instanceId = _instanceId,
-                    state = isBaking ? "started" : "finished",
-                    type = "bake",
-                    progress = isBaking ? 0 : 100,
-                    projectName = Application.productName,
-                    unityVersion = Application.unityVersion,
-                    success = !isBaking
-                };
-                SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(bakeStatePayload));
+                DispatchCompilePayload(isBaking ? "started" : "finished", "bake", isBaking ? 0 : 100, !isBaking);
             }
 
             if (isBaking)
@@ -172,143 +157,58 @@ namespace Com.Antigravity.BusyBar.Editor
                 {
                     _lastReportedBakeProgress = currentProgress;
                     _lastBakeProgressTime = now;
-
                     int bakePct = Math.Max(0, Math.Min(100, (int)(currentProgress * 100f)));
-                    var bakePayload = new CompileEventPayload
-                    {
-                        instanceId = _instanceId,
-                        state = "started",
-                        type = "bake",
-                        progress = bakePct,
-                        projectName = Application.productName,
-                        unityVersion = Application.unityVersion
-                    };
-                    SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(bakePayload));
+                    DispatchCompilePayload("started", "bake", bakePct);
                 }
             }
         }
 
         private static void OnCompilationStarted(object context)
         {
-            s_TotalAssemblies = CompilationPipeline.GetAssemblies().Length;
-            s_CompiledAssemblies = 0;
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "started",
-                type = "compile",
-                progress = 0,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            _totalAssemblies = CompilationPipeline.GetAssemblies().Length;
+            _compiledAssemblies = 0;
+            DispatchCompilePayload("started", "compile", 0);
         }
 
         private static void OnCompilationFinished(object context)
         {
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "finished",
-                type = "compile",
-                progress = 100,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion,
-                success = true
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            DispatchCompilePayload("finished", "compile", 100, true);
         }
 
         private static void OnBakeStarted()
         {
             _lastReportedBakeProgress = 0f;
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "started",
-                type = "bake",
-                progress = 0,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            DispatchCompilePayload("started", "bake", 0);
         }
 
         private static void OnBakeCompleted()
         {
             bool isCancelled = _lastReportedBakeProgress < 0.99f;
             _lastReportedBakeProgress = -1f;
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "finished",
-                type = "bake",
-                progress = 100,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion,
-                success = !isCancelled
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            DispatchCompilePayload("finished", "bake", 100, !isCancelled);
         }
 
         private static void OnBeforeAssemblyReload()
         {
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "started",
-                type = "compile",
-                progress = 0,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            DispatchCompilePayload("started", "compile", 0);
         }
 
         private static void OnAfterAssemblyReload()
         {
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "finished",
-                type = "compile",
-                progress = 100,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion,
-                success = true
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            DispatchCompilePayload("finished", "compile", 100, true);
         }
 
         private static void OnAssemblyCompilationStarted(string assemblyPath)
         {
-            int pct = s_TotalAssemblies > 0 ? (int)(100f * s_CompiledAssemblies / s_TotalAssemblies) : 0;
-            var payload = new CompileEventPayload
-            {
-                instanceId = _instanceId,
-                state = "started",
-                type = "compile",
-                progress = pct,
-                projectName = Application.productName,
-                unityVersion = Application.unityVersion
-            };
-            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+            int pct = _totalAssemblies > 0 ? (int)(100f * _compiledAssemblies / _totalAssemblies) : 0;
+            DispatchCompilePayload("started", "compile", pct);
         }
 
         private static void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] compilerMessages)
         {
-            s_CompiledAssemblies++;
-            int pct = s_TotalAssemblies > 0 ? (int)(100f * s_CompiledAssemblies / s_TotalAssemblies) : 100;
-            int errors = 0;
-            int warnings = 0;
-            if (compilerMessages != null)
-            {
-                foreach (var msg in compilerMessages)
-                {
-                    if (msg.type == CompilerMessageType.Error) errors++;
-                    else if (msg.type == CompilerMessageType.Warning) warnings++;
-                }
-            }
+            _compiledAssemblies++;
+            int pct = _totalAssemblies > 0 ? (int)(100f * _compiledAssemblies / _totalAssemblies) : 100;
+            (int errors, int warnings) = CountCompilerMessages(compilerMessages);
 
             var payload = new CompileEventPayload
             {
@@ -323,6 +223,21 @@ namespace Com.Antigravity.BusyBar.Editor
                 warningCount = warnings
             };
             SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+        }
+
+        private static (int errors, int warnings) CountCompilerMessages(CompilerMessage[] compilerMessages)
+        {
+            int errors = 0;
+            int warnings = 0;
+            if (compilerMessages != null)
+            {
+                foreach (var msg in compilerMessages)
+                {
+                    if (msg.type == CompilerMessageType.Error) errors++;
+                    else if (msg.type == CompilerMessageType.Warning) warnings++;
+                }
+            }
+            return (errors, warnings);
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state)
@@ -355,9 +270,25 @@ namespace Com.Antigravity.BusyBar.Editor
             }
         }
 
+        private static void DispatchCompilePayload(string state, string type, int progress, bool success = true)
+        {
+            var payload = new CompileEventPayload
+            {
+                instanceId = _instanceId,
+                state = state,
+                type = type,
+                progress = progress,
+                projectName = Application.productName,
+                unityVersion = Application.unityVersion,
+                success = success
+            };
+            SendWebhookAsync($"{WebhookBaseUrl}/compile", JsonUtility.ToJson(payload));
+        }
+
         /// <summary>
         /// Sends JSON payload via background ThreadPool so network requests are dispatched immediately 
         /// even when the Unity main thread is blocked executing a build pipeline.
+        /// Why: Guarantees zero latency visual updates on BUSY Bar display without blocking Unity UI.
         /// </summary>
         private static void SendWebhookAsync(string url, string jsonBody)
         {

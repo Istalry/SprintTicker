@@ -74,6 +74,7 @@ export interface InjectResponse {
  */
 export class WebhookServer {
   private readonly server: Server;
+  private fallbackServer?: Server;
   private readonly port: number;
   private readonly host: string = '127.0.0.1';
   private listeningAddress: string = '';
@@ -88,6 +89,9 @@ export class WebhookServer {
   constructor(port: number = 39123) {
     this.port = port;
     this.server = http.createServer((req, res) => this.handleRequest(req, res));
+    if (port !== 8080) {
+      this.fallbackServer = http.createServer((req, res) => this.handleRequest(req, res));
+    }
   }
 
   /// <summary>
@@ -328,7 +332,7 @@ export class WebhookServer {
   }
 
   /// <summary>
-  /// Starts the HTTP server on the configured port.
+  /// Starts the HTTP server on the configured port (and fallback port 8080 if available).
   /// </summary>
   public async start(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -336,15 +340,31 @@ export class WebhookServer {
       this.server.listen(this.port, this.host, () => {
         const addr = this.server.address() as AddressInfo;
         this.listeningAddress = `http://${this.host}:${addr.port}`;
+
+        if (this.fallbackServer) {
+          this.fallbackServer.once('error', (err) => {
+            console.warn(`[WebhookServer] Optional fallback port 8080 binding skipped: ${err.message}`);
+          });
+          this.fallbackServer.listen(8080, this.host);
+        }
+
         resolve(this.listeningAddress);
       });
     });
   }
 
   /// <summary>
-  /// Gracefully stops the HTTP server.
+  /// Gracefully stops the primary and fallback HTTP servers.
   /// </summary>
   public async stop(): Promise<void> {
+    if (this.fallbackServer && this.fallbackServer.listening) {
+      try {
+        this.fallbackServer.close();
+      } catch {
+        // Suppress cleanup error
+      }
+    }
+
     return new Promise((resolve) => {
       if (!this.server.listening) {
         resolve();
