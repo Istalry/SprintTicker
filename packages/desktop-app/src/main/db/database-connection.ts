@@ -62,12 +62,6 @@ export class DatabaseConnection {
           created_at_utc TEXT NOT NULL
       );
 
-      INSERT OR IGNORE INTO projects (id, key, name, provider_id, created_at_utc)
-      VALUES
-        ('PROJ', 'PROJ', 'Default Project', 'jira', datetime('now')),
-        ('UNITY', 'UNITY', 'Unity Engine Project', 'local', datetime('now')),
-        ('ADMIN', 'ADMIN', 'Administrative Overhead', 'local', datetime('now'));
-
       CREATE TABLE IF NOT EXISTS tasks (
           id TEXT PRIMARY KEY,
           project_id TEXT NOT NULL,

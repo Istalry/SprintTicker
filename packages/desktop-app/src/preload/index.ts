@@ -31,7 +31,7 @@ export interface IElectronAPI {
   startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<ActiveSessionDTO>;
   pauseSession: () => Promise<ActiveSessionDTO>;
   resumeSession: () => Promise<ActiveSessionDTO>;
-  completeSession: (comment?: string) => Promise<{ success: boolean; loggedSeconds: number }>;
+  completeSession: (comment?: string, markDone?: boolean) => Promise<{ success: boolean; loggedSeconds: number }>;
   discardSession: () => Promise<boolean>;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 
@@ -114,7 +114,7 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.START_TASK, { taskId, isAdHoc, customTitle }),
   pauseSession: () => ipcRenderer.invoke(IPCChannel.PAUSE_SESSION),
   resumeSession: () => ipcRenderer.invoke(IPCChannel.RESUME_SESSION),
-  completeSession: (comment?: string) => ipcRenderer.invoke(IPCChannel.COMPLETE_SESSION, { comment }),
+  completeSession: (comment?: string, markDone?: boolean) => ipcRenderer.invoke(IPCChannel.COMPLETE_SESSION, { comment, markDone }),
   discardSession: () => ipcRenderer.invoke(IPCChannel.DISCARD_SESSION),
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, session: ActiveSessionDTO | null) => callback(session);

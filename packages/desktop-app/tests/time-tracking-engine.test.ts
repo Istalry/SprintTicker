@@ -174,4 +174,29 @@ describe('TimeTrackingEngine Unit Tests', () => {
     engine.pauseSession();
     expect(count).toBe(countBefore);
   });
+
+  it('StartTask_TodoTask_TransitionsToInProgressState', () => {
+    // Arrange: Create project and task with 'todo' status
+    taskRepo.saveTask({ id: 'TASK_TODO', projectId: 'PROJ', key: 'PROJ-TODO', title: 'To-Do Task', status: 'todo' });
+
+    // Act
+    engine.startTask('TASK_TODO', false, 'To-Do Task', 'PROJ', 'PROJ-TODO');
+
+    // Assert
+    const updatedTask = taskRepo.getTaskById('TASK_TODO');
+    expect(updatedTask?.status).toBe('in_progress');
+  });
+
+  it('StopSession_WithIsMarkDone_TransitionsTaskToDoneState', () => {
+    // Arrange: Task in progress
+    taskRepo.saveTask({ id: 'TASK_INPROG', projectId: 'PROJ', key: 'PROJ-INP', title: 'In-Progress Task', status: 'in_progress' });
+    engine.startTask('TASK_INPROG', false, 'In-Progress Task', 'PROJ', 'PROJ-INP');
+
+    // Act: Stop session with isMarkDone = true
+    engine.stopSession('Completed work', true);
+
+    // Assert
+    const updatedTask = taskRepo.getTaskById('TASK_INPROG');
+    expect(updatedTask?.status).toBe('done');
+  });
 });

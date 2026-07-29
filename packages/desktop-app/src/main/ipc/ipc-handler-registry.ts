@@ -92,8 +92,12 @@ export class IPCHandlerRegistry {
       return this.engine.resumeSession();
     });
 
-    ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string }) => {
-      return this.engine.stopSession(payload.comment);
+    ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string; markDone?: boolean }) => {
+      const res = this.engine.stopSession(payload.comment, payload.markDone);
+      if (payload.markDone) {
+        this.renderer.renderTaskCompletionConfetti(4);
+      }
+      return res;
     });
 
     ipcMain.handle(IPCChannel.DISCARD_SESSION, async () => {
@@ -116,26 +120,36 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    ipcMain.handle(IPCChannel.DELETE_PROJECT, async (_event, id: string) => {
-      this.projectRepo.deleteProject(id);
+    ipcMain.handle(IPCChannel.DELETE_PROJECT, async (_event, payload: any) => {
+      const projId = typeof payload === 'string' ? payload : (payload?.id || payload?.projectId);
+      if (projId) {
+        this.projectRepo.deleteProject(projId);
+      }
       return true;
     });
 
-    ipcMain.handle(IPCChannel.GET_TASKS, async (_event, projectId: string) => {
-      return this.taskRepo.getTasksByProjectId(projectId);
+    ipcMain.handle(IPCChannel.GET_TASKS, async (_event, payload: any) => {
+      const projId = typeof payload === 'string' ? payload : (payload?.projectId || payload?.id);
+      return projId ? this.taskRepo.getTasksByProjectId(projId) : [];
     });
 
-    ipcMain.handle(IPCChannel.CREATE_AD_HOC_TASK, async (_event, customTitle: string) => {
-      return this.taskRepo.createAdHocTask(customTitle);
+    ipcMain.handle(IPCChannel.CREATE_AD_HOC_TASK, async (_event, payload: any) => {
+      const title = typeof payload === 'string' ? payload : (payload?.customTitle || payload?.title);
+      return title ? this.taskRepo.createAdHocTask(title) : null;
     });
 
-    ipcMain.handle(IPCChannel.DELETE_TASK, async (_event, taskId: string) => {
-      this.taskRepo.deleteTask(taskId);
+    ipcMain.handle(IPCChannel.DELETE_TASK, async (_event, payload: any) => {
+      const taskId = typeof payload === 'string' ? payload : (payload?.taskId || payload?.id);
+      if (taskId) {
+        this.taskRepo.deleteTask(taskId);
+      }
       return true;
     });
 
     ipcMain.handle(IPCChannel.UPDATE_TASK, async (_event, task) => {
-      this.taskRepo.updateTask(task);
+      if (task) {
+        this.taskRepo.updateTask(task);
+      }
       return true;
     });
 
@@ -143,12 +157,14 @@ export class IPCHandlerRegistry {
       return this.taskRepo.importTasks(payload.projectId, payload.tasks);
     });
 
-    ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, dateString: string) => {
-      return this.worklogRepo.getWorklogsByDate(dateString);
+    ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, payload: any) => {
+      const dateStr = typeof payload === 'string' ? payload : (payload?.dateString || payload?.date || new Date().toISOString().split('T')[0]);
+      return this.worklogRepo.getWorklogsByDate(dateStr);
     });
 
-    ipcMain.handle(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, async (_event, dateString: string) => {
-      return this.worklogRepo.getDailySummary(dateString);
+    ipcMain.handle(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, async (_event, payload: any) => {
+      const dateStr = typeof payload === 'string' ? payload : (payload?.dateString || payload?.date || new Date().toISOString().split('T')[0]);
+      return this.worklogRepo.getDailySummary(dateStr);
     });
 
     ipcMain.handle(IPCChannel.WIPE_ALL_DATA, async () => {

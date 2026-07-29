@@ -62,9 +62,9 @@ export function useSession() {
     }
   };
 
-  const complete = async (comment?: string) => {
+  const complete = async (comment?: string, markDone?: boolean) => {
     if (window.electronAPI) {
-      const res = await window.electronAPI.completeSession(comment);
+      const res = await window.electronAPI.completeSession(comment, markDone);
       setSession(null);
       return res;
     }

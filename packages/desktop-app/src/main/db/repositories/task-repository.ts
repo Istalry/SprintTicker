@@ -46,6 +46,40 @@ export class TaskRepository {
   }
 
   /**
+   * Retrieves a single task record by its ID.
+   */
+  public getTaskById(taskId: string): TaskDTO | null {
+    if (!taskId) return null;
+
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return null;
+
+      const stmt = db.prepare<[string], {
+        id: string;
+        projectId: string;
+        key: string;
+        title: string;
+        status: 'todo' | 'in_progress' | 'done';
+      }>('SELECT id, project_id as projectId, key, title, status FROM tasks WHERE id = ?');
+
+      const row = stmt.get(taskId);
+      if (!row) return null;
+
+      return {
+        id: row.id,
+        projectId: row.projectId,
+        key: row.key,
+        title: row.title,
+        status: row.status
+      };
+    } catch (err) {
+      console.warn('[TaskRepository] Failed to fetch task by id:', err);
+      return null;
+    }
+  }
+
+  /**
    * Upserts a task record into SQLite.
    */
   public saveTask(task: TaskDTO): void {

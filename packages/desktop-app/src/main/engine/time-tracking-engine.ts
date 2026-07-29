@@ -102,6 +102,12 @@ export class TimeTrackingEngine {
       const adHocTask = this.taskRepo.createAdHocTask(customTitle, 'MISC-1');
       finalKey = adHocTask.key;
       finalTitle = adHocTask.title;
+    } else if (taskId) {
+      // Transition task from 'todo' to 'in_progress' when session starts
+      const existingTask = this.taskRepo.getTaskById(taskId);
+      if (existingTask && existingTask.status === 'todo') {
+        this.taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+      }
     }
 
     const startTimeUtc = new Date().toISOString();
@@ -170,9 +176,17 @@ export class TimeTrackingEngine {
   /**
    * Stops and finalizes the active session, logging elapsed time and creating offline sync queue entry.
    */
-  public stopSession(comment?: string): { success: boolean; loggedSeconds: number } {
+  public stopSession(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
     const active = this.getCurrentSession();
     if (!active) return { success: false, loggedSeconds: 0 };
+
+    // If user selected to mark task as done on session stop
+    if (markDone && !active.isAdHoc && active.taskId) {
+      const existingTask = this.taskRepo.getTaskById(active.taskId);
+      if (existingTask) {
+        this.taskRepo.updateTask({ ...existingTask, status: 'done' });
+      }
+    }
 
     const loggedSeconds = active.elapsedSeconds;
     this.sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);

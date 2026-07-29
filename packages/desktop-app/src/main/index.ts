@@ -75,17 +75,6 @@ app.whenReady().then(async () => {
   const settingsRepo = new SettingsRepository(dbConnection);
   const sessionRepo = new SessionRepository(dbConnection);
 
-  // Seed sample task if empty
-  if (taskRepo.getTasksByProjectId('PROJ').length === 0) {
-    taskRepo.saveTask({
-      id: 'PROJ-142',
-      projectId: 'PROJ',
-      key: 'PROJ-142',
-      title: 'Implement Player Character Dash Mechanics',
-      status: 'in_progress'
-    });
-  }
-
   // 2. Initialize Time Tracking Engine
   engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
 

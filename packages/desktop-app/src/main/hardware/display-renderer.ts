@@ -31,6 +31,9 @@ export class DisplayRenderer {
   };
 
   private stateChangeCallbacks: Set<(state: HardwareDisplayStateDTO) => void> = new Set();
+  private isCelebrating: boolean = false;
+  private celebrationTimeout: NodeJS.Timeout | null = null;
+  private lastSessionCache: ActiveSessionDTO | null = null;
 
   constructor(driver: BusyBarDriver) {
     if (!driver) {
@@ -226,6 +229,26 @@ export class DisplayRenderer {
    * Renders Template A: Active Task Tracker View on Front Display, with Pixel Icon & OLED Rear layout.
    */
   public renderActiveSession(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean = false): DisplayPayload {
+    this.lastSessionCache = session;
+
+    // If a active session starts tracking, cancel celebration immediately
+    if (session && session.status === 'TRACKING' && this.isCelebrating) {
+      this.isCelebrating = false;
+      if (this.celebrationTimeout) {
+        clearTimeout(this.celebrationTimeout);
+        this.celebrationTimeout = null;
+      }
+    }
+
+    // Lock display output during confetti celebration
+    if (this.isCelebrating) {
+      return {
+        frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
+        backElements: this.lastState.backElements as unknown as Array<Record<string, unknown>>,
+        ledColorHex: this.lastState.ledColorHex
+      };
+    }
+
     const colors = this.getThemeColors();
     const elapsedText = session ? this.formatTime(session.elapsedSeconds) : '00:00:00';
     const row1Text = session ? `${session.taskKey} ${elapsedText}` : 'IDLE 00:00:00';
@@ -330,7 +353,13 @@ export class DisplayRenderer {
   /**
    * Renders Task Completion Confetti explosion animation sequence with multi-color particle elements.
    */
-  public renderTaskCompletionConfetti(): DisplayPayload {
+  public renderTaskCompletionConfetti(durationSeconds: number = 4): DisplayPayload {
+    this.isCelebrating = true;
+    if (this.celebrationTimeout) {
+      clearTimeout(this.celebrationTimeout);
+      this.celebrationTimeout = null;
+    }
+
     const confettiColors = ['#10B981FF', '#FBBF24FF', '#38BDF8FF', '#EC4899FF', '#AAFF00FF'];
     const particles = [
       { x: 2, y: 2 }, { x: 5, y: 12 }, { x: 12, y: 1 }, { x: 18, y: 14 },
@@ -350,7 +379,7 @@ export class DisplayRenderer {
     const payload: DisplayPayload = {
       frontElements: [
         { type: 'bitmap', iconId: 'checkmark' as BitmapIconId, bitmapData: getBitmapById('checkmark'), x: 0, y: 0 },
-        { type: 'text', font: 'bold', x: 10, y: 3, color: '#10B981FF', text: 'TASK DONE 🎉' },
+        { type: 'text', font: 'bold', x: 17, y: 3, color: '#10B981FF', text: 'TASK DONE 🎉' },
         ...particleElements
       ],
       backElements: [
@@ -361,6 +390,14 @@ export class DisplayRenderer {
 
     this.ledMode = 'CONFETTI_EXPLOSION';
     this.updateStateAndDispatch(payload);
+
+    // Hold celebration sequence on display for durationSeconds (default 4 seconds)
+    this.celebrationTimeout = setTimeout(() => {
+      this.isCelebrating = false;
+      this.celebrationTimeout = null;
+      this.renderActiveSession(this.lastSessionCache);
+    }, Math.max(1, durationSeconds) * 1000);
+
     return payload;
   }
 

@@ -41,7 +41,7 @@ describe('Project & Task Management and Worklog History Unit Tests', () => {
     });
 
     const projs = projectRepo.getAllProjects();
-    expect(projs.length).toBeGreaterThanOrEqual(4); // 3 defaults (PROJ, UNITY, ADMIN) + GAME1
+    expect(projs.length).toBeGreaterThanOrEqual(1); // GAME1 created
     const found = projs.find(p => p.id === 'GAME1');
     expect(found).toBeDefined();
     expect(found?.name).toBe('RPG Sandbox');
