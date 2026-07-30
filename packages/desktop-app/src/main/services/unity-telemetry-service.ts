@@ -271,7 +271,7 @@ export class UnityTelemetryService {
 
     if (this.engine) {
       const session = this.engine.getCurrentSession();
-      if (session && session.status === 'in_progress') {
+      if (session && (session.status === 'TRACKING' || session.status === 'PAUSED')) {
         this.renderer.renderActiveSession(session);
         return;
       }

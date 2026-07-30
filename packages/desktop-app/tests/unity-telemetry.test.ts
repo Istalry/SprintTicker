@@ -220,6 +220,22 @@ describe('UnityTelemetryService', () => {
       s.dispose();
     });
 
+    it('HandlePlayMode_Exited_WithActiveTrackingSession_RestoresActiveSessionDisplay', () => {
+      const mockRenderer = { renderPlayMode: vi.fn(), renderActiveSession: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const activeSession = { sessionId: 's1', taskId: 't1', taskKey: 'TASK-1', taskTitle: 'My Task', status: 'TRACKING', elapsedSeconds: 60 };
+      const mockEngine = { getCurrentSession: vi.fn().mockReturnValue(activeSession) };
+
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer, mockEngine as any);
+
+      s.handlePlayMode({ state: 'entered', projectName: 'CyberGame' });
+      expect(mockRenderer.renderPlayMode).toHaveBeenCalledWith('CyberGame');
+
+      s.handlePlayMode({ state: 'exited', projectName: 'CyberGame' });
+      expect(mockRenderer.renderActiveSession).toHaveBeenCalledWith(activeSession);
+      expect(mockRenderer.renderIdle).not.toHaveBeenCalled();
+      s.dispose();
+    });
+
     it('Dispose_ClearsPruneTimer_DisposesCleanly', () => {
       expect(() => service.dispose()).not.toThrow();
     });

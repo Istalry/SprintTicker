@@ -76,28 +76,46 @@ export const HardwareDisplayEmulator: React.FC = () => {
         }
       } else if (el.type === 'text' && el.text) {
         const textColor = el.color || '#FFFFFFFF';
-        const startX = el.scroll_rate ? el.x - Math.floor(scrollX % 140) : el.x;
-        const maskMinX = el.x >= 16 ? 16 : 0;
         const textStr = el.text;
+        const maskMinX = el.x >= 16 ? 16 : 0;
+        const maskMaxX = el.width ? Math.min(72, el.x + el.width) : 72;
+        const visibleWidth = maskMaxX - maskMinX;
+        const textWidth = textStr.length * 6;
 
-        // Razor-Sharp 1:1 Crisp Pixel Art Typography Rasterization
-        for (let chIdx = 0; chIdx < textStr.length; chIdx++) {
-          const char = textStr[chIdx];
-          const bitmask = PIXEL_FONT_5X7[char.toUpperCase()] || PIXEL_FONT_5X7[' '];
-          const charX = startX + chIdx * 6;
+        const renderTextCopy = (baseX: number) => {
+          for (let chIdx = 0; chIdx < textStr.length; chIdx++) {
+            const char = textStr[chIdx];
+            const bitmask = PIXEL_FONT_5X7[char.toUpperCase()] || PIXEL_FONT_5X7[' '];
+            const charX = baseX + chIdx * 6;
 
-          for (let r = 0; r < 7; r++) {
-            const rowBits = bitmask[r];
-            for (let c = 0; c < 5; c++) {
-              if (rowBits & (1 << (4 - c))) {
-                const px = charX + c;
-                const py = el.y + r;
-                if (px >= maskMinX && px < 72 && py >= 0 && py < 16) {
-                  buffer[py][px] = textColor;
+            if (charX + 5 < maskMinX || charX >= maskMaxX) continue;
+
+            for (let r = 0; r < 7; r++) {
+              const rowBits = bitmask[r];
+              for (let c = 0; c < 5; c++) {
+                if (rowBits & (1 << (4 - c))) {
+                  const px = charX + c;
+                  const py = el.y + r;
+                  if (px >= maskMinX && px < maskMaxX && py >= 0 && py < 16) {
+                    buffer[py][px] = textColor;
+                  }
                 }
               }
             }
           }
+        };
+
+        if (el.scroll_rate && textWidth > visibleWidth) {
+          const spacing = 24; // 4 spaces (24px) end-of-description gap for clean marquee loop
+          const loopWidth = textWidth + spacing;
+          const offset = Math.floor(scrollX % loopWidth);
+          const baseX0 = el.x - offset;
+          const baseX1 = baseX0 + loopWidth;
+
+          renderTextCopy(baseX0);
+          renderTextCopy(baseX1);
+        } else {
+          renderTextCopy(el.x);
         }
       }
     });
