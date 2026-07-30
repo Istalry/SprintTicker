@@ -14,6 +14,9 @@ import {
   UnityTelemetryDTO,
   MessagingSettingsDTO,
   MessagingTestResultDTO,
+  WindowsNotificationSettingsDTO,
+  WindowsNotificationEventDTO,
+  BitmapIconId,
   HardwareDisplayStateDTO
 } from '../shared/dtos';
 
@@ -69,6 +72,7 @@ export interface IElectronAPI {
   // Priority Rules
   getPriorityRules: () => Promise<PriorityMatrixConfig>;
   savePriorityRules: (config: PriorityMatrixConfig) => Promise<boolean>;
+  onUserModeUpdated?: (callback: (mode: UserMode) => void) => () => void;
 
   // Device Management
   getDeviceStatus: () => Promise<DeviceStatusDTO>;
@@ -88,10 +92,13 @@ export interface IElectronAPI {
   getUnityTelemetry: () => Promise<UnityTelemetryDTO>;
   onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => () => void;
 
-  // Messaging Integration
+  // Messaging Integration & Windows Notification Listener
   getMessagingSettings: () => Promise<MessagingSettingsDTO>;
   saveMessagingSettings: (settings: MessagingSettingsDTO) => Promise<boolean>;
   testMessagingIntegration: (channelName: string) => Promise<MessagingTestResultDTO>;
+  getNotificationSettings: () => Promise<WindowsNotificationSettingsDTO>;
+  saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) => Promise<boolean>;
+  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) => Promise<WindowsNotificationEventDTO>;
 
   // Hardware Display Animation & Screen Emulator
   getDisplayState: () => Promise<HardwareDisplayStateDTO>;
@@ -170,6 +177,11 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.SAVE_PRIORITY_RULES, config),
   setUserMode: (mode: string) => ipcRenderer.invoke(IPCChannel.SET_USER_MODE, mode),
   getUserMode: () => ipcRenderer.invoke(IPCChannel.GET_USER_MODE),
+  onUserModeUpdated: (callback: (mode: UserMode) => void) => {
+    const handler = (_event: IpcRendererEvent, mode: UserMode) => callback(mode);
+    ipcRenderer.on(IPCChannel.ON_USER_MODE_UPDATED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_USER_MODE_UPDATED, handler);
+  },
 
   // Device Management
   getDeviceStatus: () => ipcRenderer.invoke(IPCChannel.GET_DEVICE_STATUS),
@@ -204,12 +216,17 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, handler);
   },
 
-  // Messaging Integration
+  // Messaging Integration & Windows Notification Listener
   getMessagingSettings: () => ipcRenderer.invoke(IPCChannel.GET_MESSAGING_SETTINGS),
   saveMessagingSettings: (settings: MessagingSettingsDTO) =>
     ipcRenderer.invoke(IPCChannel.SAVE_MESSAGING_SETTINGS, settings),
   testMessagingIntegration: (channelName: string) =>
     ipcRenderer.invoke(IPCChannel.TEST_MESSAGING_INTEGRATION, channelName),
+  getNotificationSettings: () => ipcRenderer.invoke(IPCChannel.GET_NOTIFICATION_SETTINGS),
+  saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) =>
+    ipcRenderer.invoke(IPCChannel.SAVE_NOTIFICATION_SETTINGS, settings),
+  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) =>
+    ipcRenderer.invoke(IPCChannel.SIMULATE_NOTIFICATION, payload),
 
   // Hardware Display Animation & Screen Emulator
   getDisplayState: () => ipcRenderer.invoke(IPCChannel.GET_DISPLAY_STATE),

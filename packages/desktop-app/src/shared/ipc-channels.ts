@@ -41,6 +41,7 @@ export enum IPCChannel {
   SAVE_PRIORITY_RULES = 'priority:save-rules',
   SET_USER_MODE = 'priority:set-user-mode',
   GET_USER_MODE = 'priority:get-user-mode',
+  ON_USER_MODE_UPDATED = 'priority:on-user-mode-updated',
 
   // Device Management & SDK
   GET_DEVICE_STATUS = 'device:get-status',
@@ -72,10 +73,13 @@ export enum IPCChannel {
   GET_UNITY_TELEMETRY = 'unity:get-telemetry',
   ON_UNITY_TELEMETRY_UPDATED = 'unity:on-telemetry-updated',
 
-  // Messaging Integration
+  // Messaging Integration & Windows Notification Listener
   GET_MESSAGING_SETTINGS = 'messaging:get-settings',
   SAVE_MESSAGING_SETTINGS = 'messaging:save-settings',
   TEST_MESSAGING_INTEGRATION = 'messaging:test-integration',
+  GET_NOTIFICATION_SETTINGS = 'notifications:get-settings',
+  SAVE_NOTIFICATION_SETTINGS = 'notifications:save-settings',
+  SIMULATE_NOTIFICATION = 'notifications:simulate',
 
   // Hardware Display Animation & Live Emulator
   GET_DISPLAY_STATE = 'display:get-state',

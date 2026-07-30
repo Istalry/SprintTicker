@@ -398,7 +398,15 @@ export const AnimationDebugPanel: React.FC = () => {
               <option value="slack">Slack (16×16)</option>
               <option value="discord">Discord (16×16)</option>
               <option value="gmail">Gmail (16×16)</option>
+              <option value="antigravity">Antigravity (16×16)</option>
+              <option value="battery">Battery (16×16)</option>
+              <option value="windows">Windows (16×16)</option>
+              <option value="bell">Bell (16×16)</option>
               <option value="unity">Unity (16×16)</option>
+              <option value="checkmark">Checkmark (16×16)</option>
+              <option value="playmode">Playmode (16×16)</option>
+              <option value="compiling">Compiling (16×16)</option>
+              <option value="error">Error (16×16)</option>
               <option value="burger">Burger (16×16)</option>
               <option value="clock">Clock (16×16)</option>
             </select>

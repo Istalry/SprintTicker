@@ -12,8 +12,12 @@ export const PriorityRulesView: React.FC = () => {
   const [userMode, setUserMode] = useState<UserMode>('WORK');
   const [rules, setRules] = useState<PriorityRule[]>([
     { id: 'unity_exception', eventName: 'unityBuildFailurePriority', priority: 100, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'DISPLAY' },
+    { id: 'high_notification', eventName: 'highNotificationPriority', priority: 95, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'DISPLAY' },
+    { id: 'unity_playmode', eventName: 'unityPlayModePriority', priority: 90, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'DISPLAY' },
     { id: 'unity_compiling', eventName: 'unityCompilingPriority', priority: 80, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'SUPPRESS' },
+    { id: 'away_mode', eventName: 'awayModePriority', priority: 75, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'DISPLAY' },
     { id: 'standup_prompt', eventName: 'standupPromptPriority', priority: 70, actionOnWork: 'DISPLAY', actionOnLunch: 'QUEUE', actionOnAway: 'QUEUE' },
+    { id: 'lunch_mode', eventName: 'lunchModePriority', priority: 65, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'SUPPRESS' },
     { id: 'messaging_alert', eventName: 'messagingPriority', priority: 40, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'SUPPRESS' },
     { id: 'active_tracker', eventName: 'activeTrackerPriority', priority: 20, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'DISPLAY' }
   ]);
@@ -24,26 +28,50 @@ export const PriorityRulesView: React.FC = () => {
     if (window.electronAPI?.getPriorityRules) {
       window.electronAPI.getPriorityRules().then(res => {
         const obj = res as unknown as { rules?: PriorityRule[] } & Record<string, number>;
+        let fetched: PriorityRule[] = [];
         if (Array.isArray(res)) {
-          setRules(res);
+          fetched = res;
         } else if (obj && typeof obj === 'object' && Array.isArray(obj.rules)) {
-          setRules(obj.rules);
+          fetched = obj.rules;
         } else if (obj && typeof obj === 'object') {
-          // Legacy numeric fallback
           setRules(prev => prev.map(r => ({
             ...r,
             priority: typeof obj[r.eventName] === 'number' ? obj[r.eventName] : r.priority
           })));
+          return;
+        }
+
+        if (fetched.length > 0) {
+          setRules(prev => {
+            const merged = [...fetched].filter(r => r.eventName !== 'breakPromptPriority' && r.id !== 'break_prompt');
+            prev.forEach(defaultRule => {
+              if (!merged.some(r => r.eventName === defaultRule.eventName || r.id === defaultRule.id)) {
+                merged.push(defaultRule);
+              }
+            });
+            return merged;
+          });
         }
       }).catch(err => console.error('[PriorityRulesView] Error fetching rules:', err));
     }
 
-    const api = window.electronAPI as unknown as Record<string, () => Promise<UserMode>>;
+    const api = window.electronAPI as unknown as {
+      getUserMode?: () => Promise<UserMode>;
+      onUserModeUpdated?: (cb: (m: UserMode) => void) => () => void;
+    };
     if (api?.getUserMode) {
       api.getUserMode().then((m: UserMode) => {
         if (m) setUserMode(m);
       }).catch(() => {});
     }
+
+    if (api?.onUserModeUpdated) {
+      const unsub = api.onUserModeUpdated((newMode: UserMode) => {
+        if (newMode) setUserMode(newMode);
+      });
+      return () => unsub();
+    }
+    return undefined;
   }, []);
 
   const handleSave = async () => {
@@ -68,9 +96,13 @@ export const PriorityRulesView: React.FC = () => {
 
   const baseItems: PriorityItemDef[] = [
     { key: 'unityBuildFailurePriority', label: 'Unity Build Failure / Exception Alert', desc: 'High-priority critical alert; overrides active tracking display' },
+    { key: 'highNotificationPriority', label: 'High Priority App / System Notification', desc: 'Critical notifications (e.g. Discord high alerts, low battery, urgent messages)' },
+    { key: 'unityPlayModePriority', label: 'Unity Play Mode / ON AIR Status', desc: 'Active Play Mode status banner; held while game is running' },
     { key: 'unityCompilingPriority', label: 'Unity Compiling / Building Status', desc: 'Shows live compile progress over chat alerts' },
+    { key: 'awayModePriority', label: 'Away Mode Screen / Windows Lock', desc: 'Away screen banner displayed when Windows session is locked or suspended' },
     { key: 'standupPromptPriority', label: 'Daily Stand-Up Ceremonies Prompt', desc: 'Interactive dialog for daily stand-up tracking' },
-    { key: 'messagingPriority', label: 'Discord / Slack / Gmail Messages', desc: 'Third-party chat notifications; auto-suppressed during Lunch or Away' },
+    { key: 'lunchModePriority', label: 'Lunch Mode Screen / Scheduled Break', desc: 'Lunch time screen displayed during configured lunch hours' },
+    { key: 'messagingPriority', label: 'Default Chat / App Notifications', desc: 'Standard third-party notifications; auto-suppressed during Lunch or Away' },
     { key: 'activeTrackerPriority', label: 'Active Session Time Tracker / Idle', desc: 'Base UI tracker state' }
   ];
 

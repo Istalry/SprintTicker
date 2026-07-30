@@ -3,6 +3,8 @@ import { UnitySettingsDTO, UnityTelemetryDTO, UnityInstanceDTO } from '../../sha
 import { WebhookServer, UnityHeartbeatPayload, UnityCompilePayload, UnityPlayModePayload } from '../api/webhook-server';
 import { DisplayRenderer } from '../hardware/display-renderer';
 import { TimeTrackingEngine } from './time-tracking-engine';
+import { IPriorityPreemptionEngine } from './priority-preemption-engine';
+import { ArgumentNullException } from '../../shared/dtos';
 
 /**
  * Service managing live Unity Editor telemetry status, compile states,
@@ -15,6 +17,7 @@ export class UnityTelemetryService {
   private pruneTimer?: NodeJS.Timeout;
   private renderer?: DisplayRenderer;
   private engine?: TimeTrackingEngine;
+  private priorityEngine?: IPriorityPreemptionEngine;
 
   private telemetryState: UnityTelemetryDTO = {
     activeProjectName: 'No Unity Instance Connected',
@@ -29,7 +32,8 @@ export class UnityTelemetryService {
     settingsRepo: SettingsRepository,
     webhookServer?: WebhookServer,
     renderer?: DisplayRenderer,
-    engine?: TimeTrackingEngine
+    engine?: TimeTrackingEngine,
+    priorityEngine?: IPriorityPreemptionEngine
   ) {
     if (!settingsRepo) {
       throw new ArgumentNullException('settingsRepo');
@@ -37,6 +41,7 @@ export class UnityTelemetryService {
     this.settingsRepo = settingsRepo;
     this.renderer = renderer;
     this.engine = engine;
+    this.priorityEngine = priorityEngine;
 
     if (webhookServer) {
       webhookServer.onHeartbeatEvent((payload) => this.handleHeartbeat(payload));
@@ -66,13 +71,15 @@ export class UnityTelemetryService {
   }
 
   /// <summary>
-  /// Persists audio chime and play mode alert settings to SQLite.
+  /// Persists audio chime and play mode alert settings to SQLite. Merges partial settings with existing configuration.
   /// </summary>
-  public saveSettings(settings: UnitySettingsDTO): void {
+  public saveSettings(settings: Partial<UnitySettingsDTO>): void {
     if (!settings) {
       throw new ArgumentNullException('settings');
     }
-    this.settingsRepo.setSetting('unity_settings', settings);
+    const current = this.getSettings();
+    const merged = { ...current, ...settings };
+    this.settingsRepo.setSetting('unity_settings', merged);
   }
 
   /// <summary>
@@ -153,6 +160,11 @@ export class UnityTelemetryService {
     this.recomputeTelemetryState();
 
     if (isStarted) {
+      const evalResult = this.priorityEngine?.evaluateRequest('unityCompilingPriority');
+      if (evalResult && !evalResult.shouldRender) {
+        return;
+      }
+
       if (type === 'build') {
         this.activeOperation = 'build';
         this.renderer?.renderBuilding(payload.projectName, payload.progress ?? 0);
@@ -166,6 +178,7 @@ export class UnityTelemetryService {
         }
       }
     } else {
+      this.priorityEngine?.releaseActiveLock('unityCompilingPriority');
       if (type === 'compile') {
         if (this.activeOperation === 'compile') {
           this.activeOperation = 'none';
@@ -185,7 +198,12 @@ export class UnityTelemetryService {
     if (!payload || !payload.projectName) return;
     const settings = this.getSettings();
     const shouldShow = settings.showUnityErrors ?? true;
-    if (shouldShow && settings.enableFailureSound && (payload.type === 'exception' || payload.type === 'error')) {
+    if (shouldShow && (payload.type === 'exception' || payload.type === 'error')) {
+      const evalResult = this.priorityEngine?.evaluateRequest('unityBuildFailurePriority');
+      if (evalResult && !evalResult.shouldRender) {
+        return;
+      }
+
       this.renderer?.renderException(payload.projectName, payload.message || 'Unity Exception Detected');
 
       if (this.exceptionTimer) {
@@ -193,6 +211,7 @@ export class UnityTelemetryService {
       }
       const durationSeconds = settings.errorDurationSeconds ?? 5;
       this.exceptionTimer = setTimeout(() => {
+        this.priorityEngine?.releaseActiveLock('unityBuildFailurePriority');
         this.restoreDisplayState();
       }, durationSeconds * 1000);
     }
@@ -223,14 +242,33 @@ export class UnityTelemetryService {
 
     const settings = this.getSettings();
     if (isInPlayMode && settings.enablePlayModeDnd) {
+      const evalResult = this.priorityEngine?.evaluateRequest('unityPlayModePriority');
+      if (evalResult && !evalResult.shouldRender) {
+        return;
+      }
       this.renderer?.renderPlayMode(payload.projectName);
     } else {
+      this.priorityEngine?.releaseActiveLock('unityPlayModePriority');
       this.restoreDisplayState();
     }
   }
 
   private restoreDisplayState(): void {
     if (!this.renderer) return;
+
+    // Check if any connected Unity instance is currently in Play Mode
+    const settings = this.getSettings();
+    if (settings.enablePlayModeDnd) {
+      const playModeInstance = Array.from(this.activeInstances.values()).find(
+        i => i.playModeStatus === 'In Play Mode'
+      );
+      if (playModeInstance) {
+        this.priorityEngine?.evaluateRequest('unityPlayModePriority', 90);
+        this.renderer.renderPlayMode(playModeInstance.projectName);
+        return;
+      }
+    }
+
     if (this.engine) {
       const session = this.engine.getCurrentSession();
       if (session && session.status === 'in_progress') {

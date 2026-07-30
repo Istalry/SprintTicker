@@ -1,6 +1,5 @@
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
-import fs from 'fs';
 import { DatabaseConnection } from './db/database-connection';
 import { TaskRepository } from './db/repositories/task-repository';
 import { WorklogRepository } from './db/repositories/worklog-repository';
@@ -14,8 +13,10 @@ import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { UnityInjectorService } from './services/unity-injector-service';
 import { UnityTelemetryService } from './services/unity-telemetry-service';
 import { MessagingIntegrationService } from './services/messaging-service';
+import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
 import { WebhookServer } from './api/webhook-server';
 
+import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
 import { TrayManager } from './tray/tray-manager';
 
 let mainWindow: BrowserWindow | null = null;
@@ -29,22 +30,25 @@ let webhookServer: WebhookServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
 
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
 const createWindow = (): void => {
-  Menu.setApplicationMenu(null);
-
-  const iconPath = path.join(__dirname, '../../build/icon.png');
-  const icoPath = path.join(__dirname, '../../build/icon.ico');
-  const windowIcon = fs.existsSync(iconPath) ? iconPath : (fs.existsSync(icoPath) ? icoPath : undefined);
-
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#0D0F12',
-    autoHideMenuBar: true,
-    titleBarStyle: 'hiddenInset',
-    icon: windowIcon,
+    backgroundColor: '#0F172A',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
@@ -93,8 +97,13 @@ app.whenReady().then(async () => {
 
   // 5. Register IPC Handlers and Bi-directional State Broadcasts
   unityInjectorService = new UnityInjectorService();
-  const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine);
+  const priorityEngine = new PriorityPreemptionEngine(settingsRepo);
+  renderer.setPriorityEngine(priorityEngine);
+
+  const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine, priorityEngine);
   const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer);
+  const windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
+  windowsNotificationService.startListening();
 
   ipcRegistry = new IPCHandlerRegistry(
     engine,
@@ -107,7 +116,10 @@ app.whenReady().then(async () => {
     unityInjectorService,
     worklogRepo,
     unityTelemetryService,
-    messagingService
+    messagingService,
+    priorityEngine,
+    undefined,
+    windowsNotificationService
   );
   ipcRegistry.registerAllHandlers();
 
@@ -132,6 +144,9 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', async () => {
+  if (windowsNotificationService) {
+    windowsNotificationService.stopListening();
+  }
   if (webhookServer) {
     await webhookServer.stop();
   }

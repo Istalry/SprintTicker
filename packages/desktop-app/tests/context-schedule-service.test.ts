@@ -35,7 +35,12 @@ describe('ContextScheduleService Unit Tests', () => {
       renderLunchMode: vi.fn(),
       renderAwayMode: vi.fn(),
       renderActiveSession: vi.fn(),
-      renderCeremonyPrompt: vi.fn()
+      renderCeremonyPrompt: vi.fn(),
+      setContextMode: vi.fn().mockImplementation((mode: string) => {
+        if (mode === 'LUNCH') mockRenderer.renderLunchMode();
+        else if (mode === 'AWAY') mockRenderer.renderAwayMode();
+        else if (mode === 'WORK') mockRenderer.renderActiveSession(mockEngine.getCurrentSession());
+      })
     };
 
     service = new ContextScheduleService(
@@ -55,7 +60,7 @@ describe('ContextScheduleService Unit Tests', () => {
   });
 
   it('EnterLunchMode_ActiveTrackingSession_AutoPausesSessionAndRendersLunchScreen', () => {
-    mockEngine.getCurrentSession.mockReturnValue({ status: 'in_progress', taskKey: 'PROJ-101' });
+    mockEngine.getCurrentSession.mockReturnValue({ status: 'TRACKING', taskKey: 'PROJ-101' });
 
     service.enterLunchMode();
 
@@ -65,10 +70,10 @@ describe('ContextScheduleService Unit Tests', () => {
   });
 
   it('ExitLunchMode_WasAutoPausedForLunch_ResumesSession', () => {
-    mockEngine.getCurrentSession.mockReturnValue({ status: 'in_progress', taskKey: 'PROJ-101' });
+    mockEngine.getCurrentSession.mockReturnValue({ status: 'TRACKING', taskKey: 'PROJ-101' });
     service.enterLunchMode();
 
-    mockEngine.getCurrentSession.mockReturnValue({ status: 'paused', taskKey: 'PROJ-101' });
+    mockEngine.getCurrentSession.mockReturnValue({ status: 'PAUSED', taskKey: 'PROJ-101' });
 
     service.exitLunchMode();
 
@@ -123,9 +128,35 @@ describe('ContextScheduleService Unit Tests', () => {
     vi.useRealTimers();
   });
 
-  it('EvaluateSchedule_TimeIsEOD_TriggersEodPrompt', () => {
+  it('EvaluateSchedule_WithLunchStartAndLunchEndAliases_EntersAndExitsLunchModeOnTime', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 6, 28, 18, 5, 0));
+    vi.setSystemTime(new Date(2026, 6, 30, 13, 14, 0)); // 13:14 (between 13:13 and 13:15)
+
+    mockSettingsRepo.getSetting.mockReturnValue({
+      lunchStart: '13:13',
+      lunchEnd: '13:15',
+      enableLunchMute: true
+    });
+
+    service.evaluateSchedule();
+
+    expect(mockPriorityEngine.setUserMode).toHaveBeenCalledWith('LUNCH');
+    expect(mockRenderer.renderLunchMode).toHaveBeenCalledTimes(1);
+
+    // Advance time past 13:15
+    vi.setSystemTime(new Date(2026, 6, 30, 13, 16, 0));
+    mockPriorityEngine.getUserMode.mockReturnValue('LUNCH');
+
+    service.evaluateSchedule();
+
+    expect(mockPriorityEngine.setUserMode).toHaveBeenCalledWith('WORK');
+
+    vi.useRealTimers();
+  });
+
+  it('EvaluateSchedule_AppOpenedAfterEodTime_DoesNotTriggerEodPrompt', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 28, 19, 0, 0)); // Opened at 19:00 (after 18:00 EOD)
 
     const mockSend = vi.fn();
     const mockWindow = { isDestroyed: () => false, webContents: { send: mockSend } };
@@ -139,10 +170,64 @@ describe('ContextScheduleService Unit Tests', () => {
       getWindow
     );
 
-    svc.evaluateSchedule();
+    svc.evaluateSchedule(); // Initial check on app startup
 
-    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'EOD', title: 'End-of-Day Wrap-Up' });
+    expect(mockRenderer.renderCeremonyPrompt).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+
+    svc.dispose();
+    vi.useRealTimers();
+  });
+
+  it('EvaluateSchedule_AppOpenedAfterStandupTime_DoesNotTriggerStandupPrompt', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 28, 11, 30, 0)); // Opened at 11:30 (after 10:00 Standup)
+
+    const mockSend = vi.fn();
+    const mockWindow = { isDestroyed: () => false, webContents: { send: mockSend } };
+    const getWindow = () => mockWindow as unknown as BrowserWindow;
+
+    const svc = new ContextScheduleService(
+      mockPriorityEngine as unknown as PriorityPreemptionEngine,
+      mockSettingsRepo as unknown as SettingsRepository,
+      mockEngine as unknown as TimeTrackingEngine,
+      mockRenderer as unknown as DisplayRenderer,
+      getWindow
+    );
+
+    svc.evaluateSchedule(); // Initial check on app startup
+
+    expect(mockRenderer.renderCeremonyPrompt).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+
+    svc.dispose();
+    vi.useRealTimers();
+  });
+
+  it('EvaluateSchedule_AppRunningBeforeStandupTime_TriggersStandupPromptAtDueTime', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 28, 9, 30, 0)); // Opened at 09:30
+
+    const mockSend = vi.fn();
+    const mockWindow = { isDestroyed: () => false, webContents: { send: mockSend } };
+    const getWindow = () => mockWindow as unknown as BrowserWindow;
+
+    const svc = new ContextScheduleService(
+      mockPriorityEngine as unknown as PriorityPreemptionEngine,
+      mockSettingsRepo as unknown as SettingsRepository,
+      mockEngine as unknown as TimeTrackingEngine,
+      mockRenderer as unknown as DisplayRenderer,
+      getWindow
+    );
+
+    svc.evaluateSchedule(); // Initial check at 09:30 -> no prompt
+    expect(mockRenderer.renderCeremonyPrompt).not.toHaveBeenCalled();
+
+    vi.setSystemTime(new Date(2026, 6, 28, 10, 0, 0)); // Clock ticks to 10:00
+    svc.evaluateSchedule(); // Scheduled evaluation at 10:00 -> prompt triggered!
+
+    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('STANDUP', 'Daily Stand-Up');
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'STANDUP', title: 'Daily Stand-Up' });
 
     svc.dispose();
     vi.useRealTimers();

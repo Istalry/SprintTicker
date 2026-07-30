@@ -4,13 +4,13 @@ import {
   Sliders,
   Gamepad2,
   Calendar,
-  MessageSquare,
   Zap,
   Monitor,
   Wifi,
   Settings,
   Moon,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
@@ -22,7 +22,7 @@ import { SettingsView } from './views/Settings/SettingsView';
 import { HardwareRebindsView } from './views/Hardware/HardwareRebindsView';
 import { UnityEngineView } from './views/Unity/UnityEngineView';
 import { CeremoniesView } from './views/Ceremonies/CeremoniesView';
-import { MessagingView } from './views/Messaging/MessagingView';
+import { NotificationSettingsView } from './views/Notifications/NotificationSettingsView';
 import { PriorityRulesView } from './views/Priority/PriorityRulesView';
 import { DeviceDiagnosticsView } from './views/Device/DeviceDiagnosticsView';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
@@ -90,7 +90,7 @@ export const App: React.FC = () => {
     { id: 'hardware', label: 'Hardware Rebinds', icon: Sliders },
     { id: 'unity', label: 'Unity Engine', icon: Gamepad2 },
     { id: 'ceremonies', label: 'Ceremonies', icon: Calendar },
-    { id: 'messaging', label: 'Messaging', icon: MessageSquare },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'priority', label: 'Priority Rules', icon: Zap },
     { id: 'device', label: 'Device Diagnostics', icon: Monitor }
   ];
@@ -178,8 +178,8 @@ export const App: React.FC = () => {
         return <UnityEngineView />;
       case 'ceremonies':
         return <CeremoniesView />;
-      case 'messaging':
-        return <MessagingView />;
+      case 'notifications':
+        return <NotificationSettingsView />;
       case 'priority':
         return <PriorityRulesView />;
       case 'device':

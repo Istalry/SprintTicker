@@ -51,13 +51,17 @@ export interface DeviceStatusDTO {
 }
 
 export interface ScheduleSettingsDTO {
-  standupTime: string; // e.g. "10:00"
-  enableStandupPrompt: boolean;
-  lunchStartTime: string; // e.g. "12:30"
-  lunchEndTime: string; // e.g. "13:30"
-  enableLunchMute: boolean;
-  eodWrapUpTime: string; // e.g. "18:00"
-  promptTimeoutSeconds: number; // 0 for indefinite
+  standupTime?: string; // e.g. "10:00"
+  enableStandupPrompt?: boolean;
+  lunchStartTime?: string; // e.g. "12:30"
+  lunchEndTime?: string; // e.g. "13:30"
+  lunchStart?: string; // Alias for UI compatibility
+  lunchEnd?: string; // Alias for UI compatibility
+  enableLunchMute?: boolean;
+  eodWrapUpTime?: string; // e.g. "18:00"
+  eodTime?: string; // Alias for UI compatibility
+  promptTimeoutSeconds?: number; // 0 for indefinite
+  autoDismissSeconds?: number; // Alias for UI compatibility
 }
 
 export type UserMode = 'WORK' | 'LUNCH' | 'AWAY';
@@ -165,6 +169,32 @@ export interface MessagingSettingsDTO {
   edgeGlowTransition?: EdgeGlowTransition; // Transition style (FADE, INSTANT) (default: FADE)
 }
 
+export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';
+
+export interface NotificationSourceRule {
+  appId: string;
+  appName: string;
+  iconId: BitmapIconId;
+  priorityMode: NotificationPriorityMode;
+}
+
+export interface WindowsNotificationSettingsDTO {
+  enableListener: boolean;
+  sourceRules: NotificationSourceRule[];
+  notificationTimeoutSeconds: number;
+}
+
+export interface WindowsNotificationEventDTO {
+  id?: string;
+  appId: string;
+  appName: string;
+  title: string;
+  body: string;
+  iconId?: BitmapIconId;
+  rawIconData?: (string | null)[][];
+  timestampUtc?: string;
+}
+
 export interface MessagingTestResultDTO {
   success: boolean;
   channel: string;
@@ -174,7 +204,7 @@ export interface MessagingTestResultDTO {
 export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
 export type EdgeGlowMode = 'NONE' | 'STATIC' | 'PULSE' | 'BLINKING' | 'ROTATING';
 export type EdgeGlowTransition = 'FADE' | 'INSTANT';
-export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error';
+export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows' | 'bell';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 

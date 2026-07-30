@@ -12,9 +12,10 @@ import { UnityInjectorService } from '../services/unity-injector-service';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { UnityTelemetryService } from '../services/unity-telemetry-service';
 import { MessagingIntegrationService } from '../services/messaging-service';
+import { WindowsNotificationListenerService } from '../services/windows-notification-listener-service';
 import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { ContextScheduleService } from '../services/context-schedule-service';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId } from '../../shared/dtos';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -32,6 +33,7 @@ export class IPCHandlerRegistry {
   private unityInjectorService: UnityInjectorService;
   private unityTelemetryService: UnityTelemetryService;
   private messagingService: MessagingIntegrationService;
+  private windowsNotificationService: WindowsNotificationListenerService;
   private priorityEngine: PriorityPreemptionEngine;
   private contextScheduleService: ContextScheduleService;
   private getWindow: () => BrowserWindow | null;
@@ -49,7 +51,8 @@ export class IPCHandlerRegistry {
     unityTelemetryService?: UnityTelemetryService,
     messagingService?: MessagingIntegrationService,
     priorityEngine?: PriorityPreemptionEngine,
-    contextScheduleService?: ContextScheduleService
+    contextScheduleService?: ContextScheduleService,
+    windowsNotificationService?: WindowsNotificationListenerService
   ) {
     this.engine = engine;
     this.taskRepo = taskRepo;
@@ -62,8 +65,9 @@ export class IPCHandlerRegistry {
     this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     this.worklogRepo = worklogRepo || new WorklogRepository();
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
-    this.messagingService = messagingService || new MessagingIntegrationService(settingsRepo, renderer);
     this.priorityEngine = priorityEngine || new PriorityPreemptionEngine(settingsRepo);
+    this.priorityEngine.setRenderer(renderer);
+    this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer);
   }
 
@@ -206,6 +210,7 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.SAVE_SCHEDULE_SETTINGS, async (_event, settings) => {
       this.settingsRepo.setSetting('schedule_settings', settings);
+      this.contextScheduleService.evaluateSchedule();
       return true;
     });
 
@@ -355,7 +360,7 @@ export class IPCHandlerRegistry {
       return this.unityTelemetryService.getTelemetry();
     });
 
-    // 11. Third-Party Messaging IPC Handlers
+    // 11. Third-Party Messaging & Windows Notification Listener IPC Handlers
     ipcMain.handle(IPCChannel.GET_MESSAGING_SETTINGS, async () => {
       return this.messagingService.getSettings();
     });
@@ -367,6 +372,25 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.TEST_MESSAGING_INTEGRATION, async (_event, channelName: string) => {
       return this.messagingService.testIntegration(channelName);
+    });
+
+    ipcMain.handle(IPCChannel.GET_NOTIFICATION_SETTINGS, async () => {
+      return this.windowsNotificationService.getSettings();
+    });
+
+    ipcMain.handle(IPCChannel.SAVE_NOTIFICATION_SETTINGS, async (_event, settings: WindowsNotificationSettingsDTO) => {
+      this.windowsNotificationService.saveSettings(settings);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.SIMULATE_NOTIFICATION, async (_event, payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) => {
+      return this.windowsNotificationService.simulateNotification(
+        payload.appId,
+        payload.appName,
+        payload.title,
+        payload.body,
+        payload.iconId
+      );
     });
 
     // 12. Hardware Display Animation & Screen Emulator IPC Handlers
@@ -398,6 +422,10 @@ export class IPCHandlerRegistry {
 
     this.renderer.onStateChanged((state) => {
       this.broadcast(IPCChannel.ON_DISPLAY_STATE_UPDATED, state);
+    });
+
+    this.priorityEngine.onUserModeChanged((mode) => {
+      this.broadcast(IPCChannel.ON_USER_MODE_UPDATED, mode);
     });
 
     this.unityTelemetryService.onTelemetryUpdated(telemetry => {

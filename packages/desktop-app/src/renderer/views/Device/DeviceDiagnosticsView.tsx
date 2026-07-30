@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
+import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 
@@ -133,6 +133,83 @@ export const DeviceDiagnosticsView: React.FC = () => {
               <option value="nordic_cyan">Nordic Cyan (#06B6D4)</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      {/* Notification Debug Panel */}
+      <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
+        <div className="flex items-center space-x-2 text-accent-purple">
+          <Bell className="w-5 h-5" />
+          <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Windows Notification Debug Triggers</h3>
+        </div>
+        <p className="text-xs text-text-secondary">
+          Dispatch simulated Windows system &amp; application notifications to verify left-icon centered 15x15 rasterization and priority preemption rules.
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button
+            onClick={() => {
+              if (window.electronAPI?.simulateNotification) {
+                window.electronAPI.simulateNotification({
+                  appId: 'discord',
+                  appName: 'Discord',
+                  title: 'Alice',
+                  body: 'Hey, build pipeline deployed to production!'
+                });
+              }
+            }}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-purple text-xs font-bold border border-border-dark rounded-lg transition-all"
+          >
+            <span>💬 Test Discord</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (window.electronAPI?.simulateNotification) {
+                window.electronAPI.simulateNotification({
+                  appId: 'slack',
+                  appName: 'Slack',
+                  title: 'Bob (Core Team)',
+                  body: 'Sprint planning review in 10 mins.'
+                });
+              }
+            }}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-emerald text-xs font-bold border border-border-dark rounded-lg transition-all"
+          >
+            <span># Test Slack</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (window.electronAPI?.simulateNotification) {
+                window.electronAPI.simulateNotification({
+                  appId: 'antigravity',
+                  appName: 'Antigravity',
+                  title: 'Agentic AI',
+                  body: 'Refactoring & Vitest suite complete!'
+                });
+              }
+            }}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-blue text-xs font-bold border border-border-dark rounded-lg transition-all"
+          >
+            <span>🌀 Test Antigravity</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (window.electronAPI?.simulateNotification) {
+                window.electronAPI.simulateNotification({
+                  appId: 'battery',
+                  appName: 'System Battery',
+                  title: 'Low Battery Alert',
+                  body: 'Battery level 15% - Connect charger!'
+                });
+              }
+            }}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-amber text-xs font-bold border border-border-dark rounded-lg transition-all"
+          >
+            <span>🔋 Test Battery Alert</span>
+          </button>
         </div>
       </div>
 

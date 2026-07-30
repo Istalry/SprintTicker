@@ -154,9 +154,22 @@ Convenient Windows batch scripts are available in the repository root directory:
 
 ---
 
+## 🔔 Windows User Notification Listener & Priority Engine
+
+The BUSY Bar PC Companion application includes a generic **Windows User Notification Listener** service that captures system and app notifications directly from Windows Action Center / User Notification API.
+
+- **Dynamic Icon Centering:** Automatically extracts and centers application icons into a **15x15 pixel slot on the left** of the 72x16 LED matrix display.
+- **Left Icon + Right Header Layout:** Displays the app icon on the left (`x=0`) and the notification title + text on the right (`x=16`).
+- **3-Level Per-Source Priority Management:** Assign priority levels per application source: `Don't Show` (suppressed), `Default` (priority 40), or `High Priority` (priority 95).
+- **Editable Away & Lunch Priorities:** Adjust priority scores and preemption actions for Away Mode (75) and Lunch Mode (65) in the Priority Rules tab.
+
+For complete documentation on setup, custom source rules, and test simulation triggers, see the [Windows Notification Listener Guide](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/docs/WINDOWS_NOTIFICATION_LISTENER_GUIDE.md).
+
+---
+
 ## 🔌 Embedded Webhook Server API Endpoints
 
-The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for local IDE and Unity integrations:
+The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for local IDE, Unity, and telemetry integrations. For webhook documentation, see the [Webhook Integration Guide](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/docs/WEBHOOK_INTEGRATION_GUIDE.md).
 
 | Route | Method | Payload Description |
 | :--- | :--- | :--- |
@@ -164,8 +177,6 @@ The Electron Main process hosts an HTTP server on `http://127.0.0.1:39123` for l
 | `/api/v1/unity/playmode` | `POST` | Toggles "ON AIR" red display mode during Unity Play Mode (`entered`, `exited`) |
 | `/api/v1/unity/console` | `POST` | Flashes red LED and displays exception/warning details |
 | `/api/v1/unity/heartbeat` | `POST` | Unity Editor C# plugin active connection heartbeat pings |
-| `/api/v1/slack/events` | `POST` | Slack workspace event subscriptions and notification banners |
-| `/api/v1/discord/webhook` | `POST` | Discord incoming mentions and high-priority purple LED alerts |
 | `/api/v1/vscode/activity` | `POST` | VS Code workspace & active file editing activity telemetry |
 
 ---

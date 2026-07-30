@@ -31,8 +31,12 @@ export const CeremoniesView: React.FC = () => {
         standupTime,
         lunchStart,
         lunchEnd,
+        lunchStartTime: lunchStart,
+        lunchEndTime: lunchEnd,
         eodTime,
-        autoDismissSeconds: timeoutSeconds
+        eodWrapUpTime: eodTime,
+        autoDismissSeconds: timeoutSeconds,
+        promptTimeoutSeconds: timeoutSeconds
       };
       await window.electronAPI.saveScheduleSettings(settings);
     }

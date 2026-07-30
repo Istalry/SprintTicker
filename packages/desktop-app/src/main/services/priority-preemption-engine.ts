@@ -58,6 +58,22 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       actionOnAway: 'DISPLAY'
     },
     {
+      id: 'high_notification',
+      eventName: 'highNotificationPriority',
+      priority: 95,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'DISPLAY',
+      actionOnAway: 'DISPLAY'
+    },
+    {
+      id: 'unity_playmode',
+      eventName: 'unityPlayModePriority',
+      priority: 90,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
+      actionOnAway: 'DISPLAY'
+    },
+    {
       id: 'unity_compiling',
       eventName: 'unityCompilingPriority',
       priority: 80,
@@ -66,12 +82,28 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       actionOnAway: 'SUPPRESS'
     },
     {
+      id: 'away_mode',
+      eventName: 'awayModePriority',
+      priority: 75,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
+      actionOnAway: 'DISPLAY'
+    },
+    {
       id: 'standup_prompt',
       eventName: 'standupPromptPriority',
       priority: 70,
       actionOnWork: 'DISPLAY',
       actionOnLunch: 'QUEUE',
       actionOnAway: 'QUEUE'
+    },
+    {
+      id: 'lunch_mode',
+      eventName: 'lunchModePriority',
+      priority: 65,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'DISPLAY',
+      actionOnAway: 'SUPPRESS'
     },
     {
       id: 'messaging_alert',
@@ -98,6 +130,20 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     this._settingsRepo = settingsRepo;
   }
 
+  private _userModeChangeSubscribers: ((mode: UserMode) => void)[] = [];
+
+  /// <summary>
+  /// Subscribes a listener to user context mode transitions (e.g. WORK, LUNCH, AWAY).
+  /// </summary>
+  public onUserModeChanged(callback: (mode: UserMode) => void): () => void {
+    if (typeof callback === 'function') {
+      this._userModeChangeSubscribers.push(callback);
+    }
+    return () => {
+      this._userModeChangeSubscribers = this._userModeChangeSubscribers.filter(cb => cb !== callback);
+    };
+  }
+
   /// <summary>
   /// Retrieves the current active user context mode (WORK, LUNCH, or AWAY).
   /// </summary>
@@ -112,9 +158,13 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     if (!mode) {
       throw new ArgumentNullException('mode');
     }
+    const previous = this._userMode;
     this._userMode = mode;
     if (mode === 'WORK') {
       this.drainQueue();
+    }
+    if (previous !== mode) {
+      this._userModeChangeSubscribers.forEach(cb => cb(mode));
     }
   }
 
@@ -123,17 +173,28 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   /// </summary>
   public getRules(): PriorityRule[] {
     const raw = this._settingsRepo.getSetting<Record<string, unknown> | null>(PriorityPreemptionEngine.DB_SETTINGS_KEY, null);
+    let loadedRules: PriorityRule[] = [];
+
     if (!raw) {
-      return PriorityPreemptionEngine.DEFAULT_RULES;
+      loadedRules = PriorityPreemptionEngine.DEFAULT_RULES;
+    } else if (Array.isArray(raw.rules)) {
+      loadedRules = raw.rules as PriorityRule[];
+    } else {
+      loadedRules = PriorityPreemptionEngine.DEFAULT_RULES.map(rule => {
+        const score = typeof raw[rule.eventName] === 'number' ? raw[rule.eventName] : rule.priority;
+        return { ...rule, priority: score };
+      });
     }
-    if (Array.isArray(raw.rules)) {
-      return raw.rules;
-    }
-    // Handle legacy Record<string, number> fallback
-    return PriorityPreemptionEngine.DEFAULT_RULES.map(rule => {
-      const score = typeof raw[rule.eventName] === 'number' ? raw[rule.eventName] : rule.priority;
-      return { ...rule, priority: score };
+
+    // Ensure all default rules are present and filter out obsolete breakPromptPriority
+    const merged = [...loadedRules].filter(r => r.eventName !== 'breakPromptPriority' && r.id !== 'break_prompt');
+    PriorityPreemptionEngine.DEFAULT_RULES.forEach(defaultRule => {
+      if (!merged.some(r => r.eventName === defaultRule.eventName || r.id === defaultRule.id)) {
+        merged.push(defaultRule);
+      }
     });
+
+    return merged;
   }
 
   /// <summary>
@@ -168,8 +229,15 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       return { shouldRender: false, action: 'SUPPRESS', evaluatedPriority: priority };
     }
 
+    if (action === 'QUEUE') {
+      if (renderCallback) {
+        this.enqueueRequest(eventName, priority, renderCallback);
+      }
+      return { shouldRender: false, action: 'QUEUE', evaluatedPriority: priority };
+    }
+
     if (this._activeLockEventName && priority < this._activeLockPriority) {
-      if (action !== 'SUPPRESS' && renderCallback) {
+      if (renderCallback) {
         this.enqueueRequest(eventName, priority, renderCallback);
       }
       return { shouldRender: false, action, evaluatedPriority: priority };
@@ -181,6 +249,12 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     return { shouldRender: true, action, evaluatedPriority: priority };
   }
 
+  private _renderer?: DisplayRenderer;
+
+  public setRenderer(renderer: DisplayRenderer): void {
+    this._renderer = renderer;
+  }
+
   /// <summary>
   /// Releases the active display lock for the specified event name and attempts to replay any queued alerts.
   /// </summary>
@@ -189,6 +263,9 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       this._activeLockEventName = null;
       this._activeLockPriority = 0;
       this.drainQueue();
+      if (this._notificationQueue.length === 0 && this._renderer) {
+        this._renderer.setContextMode(this._userMode);
+      }
     }
   }
 

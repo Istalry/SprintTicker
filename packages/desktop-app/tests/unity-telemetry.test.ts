@@ -3,6 +3,7 @@ import { UnityTelemetryService } from '../src/main/services/unity-telemetry-serv
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { UnitySettingsDTO } from '../src/shared/dtos';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
+import { IPriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 
 describe('UnityTelemetryService', () => {
   let settingsRepo: SettingsRepository;
@@ -39,7 +40,7 @@ describe('UnityTelemetryService', () => {
     it('SaveSettings_ValidDTO_SavesToSettingsRepo', () => {
       const dto = { buildChime: 'retro_beep', enableFailureSound: false, enablePlayModeDnd: true };
       service.saveSettings(dto);
-      expect(settingsRepo.setSetting).toHaveBeenCalledWith('unity_settings', dto);
+      expect(settingsRepo.setSetting).toHaveBeenCalledWith('unity_settings', expect.objectContaining(dto));
     });
 
     it('SaveSettings_Null_ThrowsException', () => {
@@ -171,6 +172,51 @@ describe('UnityTelemetryService', () => {
       s.handleConsole({ type: 'exception', projectName: 'CyberGame', message: 'NullReferenceException' });
 
       expect(mockRenderer.renderException).toHaveBeenCalledWith('CyberGame', 'NullReferenceException');
+      s.dispose();
+    });
+
+    it('SaveSettings_PartialUpdate_PreservesExistingSettings', () => {
+      const initialSettings = { buildChime: 'chime_1', enableFailureSound: true, enablePlayModeDnd: true, showUnityErrors: false, errorDurationSeconds: 10, scanFolder: '/path1' };
+      settingsRepo.getSetting = vi.fn().mockReturnValue(initialSettings);
+
+      service.saveSettings({ scanFolder: '/path2' });
+
+      expect(settingsRepo.setSetting).toHaveBeenCalledWith('unity_settings', {
+        buildChime: 'chime_1',
+        enableFailureSound: true,
+        enablePlayModeDnd: true,
+        showUnityErrors: false,
+        errorDurationSeconds: 10,
+        scanFolder: '/path2'
+      });
+    });
+
+    it('HandleConsole_ShowUnityErrorsFalse_DoesNotTriggerExceptionDisplay', () => {
+      const mockRenderer = { renderException: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      settingsRepo.getSetting = vi.fn().mockReturnValue({ showUnityErrors: false, enableFailureSound: true, errorDurationSeconds: 5 });
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
+
+      s.handleConsole({ type: 'exception', projectName: 'CyberGame', message: 'NullReferenceException' });
+
+      expect(mockRenderer.renderException).not.toHaveBeenCalled();
+      s.dispose();
+    });
+
+    it('HandlePlayMode_InPlayMode_AcquiresPriorityLockAndRetainsStatus', () => {
+      const mockRenderer = { renderPlayMode: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      const mockPriorityEngine = {
+        evaluateRequest: vi.fn().mockReturnValue({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 90 }),
+        releaseActiveLock: vi.fn()
+      };
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer, undefined, mockPriorityEngine as unknown as IPriorityPreemptionEngine);
+
+      s.handlePlayMode({ state: 'entered', projectName: 'CyberGame' });
+
+      expect(mockPriorityEngine.evaluateRequest).toHaveBeenCalledWith('unityPlayModePriority');
+      expect(mockRenderer.renderPlayMode).toHaveBeenCalledWith('CyberGame');
+
+      s.handlePlayMode({ state: 'exited', projectName: 'CyberGame' });
+      expect(mockPriorityEngine.releaseActiveLock).toHaveBeenCalledWith('unityPlayModePriority');
       s.dispose();
     });
 

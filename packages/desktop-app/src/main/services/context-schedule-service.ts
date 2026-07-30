@@ -23,6 +23,7 @@ export class ContextScheduleService {
   private _lastStandupPromptDateString: string | null = null;
   private _standupSnoozeUntilTimestamp: number | null = null;
   private _eodSnoozeUntilTimestamp: number | null = null;
+  private _isInitialCheck = true;
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,
@@ -61,49 +62,60 @@ export class ContextScheduleService {
         promptTimeoutSeconds: 0
       });
 
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const todayDateString = now.toISOString().split('T')[0];
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const todayDateString = now.toISOString().split('T')[0];
 
-    // 1. Evaluate Daily Stand-Up Schedule
-    if (settings.enableStandupPrompt !== false) {
-      const [suH, suM] = (settings.standupTime || '10:00').split(':').map(Number);
-      const standupMins = suH * 60 + suM;
-      const isSnoozed = this._standupSnoozeUntilTimestamp !== null && Date.now() < this._standupSnoozeUntilTimestamp;
+      // 1. Evaluate Daily Stand-Up Schedule
+      if (settings.enableStandupPrompt !== false) {
+        const [suH, suM] = (settings.standupTime || '10:00').split(':').map(Number);
+        const standupMins = suH * 60 + suM;
+        const isSnoozed = this._standupSnoozeUntilTimestamp !== null && Date.now() < this._standupSnoozeUntilTimestamp;
 
-      if (currentMinutes >= standupMins && this._lastStandupPromptDateString !== todayDateString && !isSnoozed) {
-        this._lastStandupPromptDateString = todayDateString;
-        this._standupSnoozeUntilTimestamp = null;
-        this.triggerStandupPrompt();
+        if (this._isInitialCheck && currentMinutes > standupMins) {
+          // Suppress retroactive prompt if app launched after due time
+          this._lastStandupPromptDateString = todayDateString;
+        } else if (currentMinutes >= standupMins && this._lastStandupPromptDateString !== todayDateString && !isSnoozed) {
+          this._lastStandupPromptDateString = todayDateString;
+          this._standupSnoozeUntilTimestamp = null;
+          this.triggerStandupPrompt();
+        }
       }
-    }
 
-    // 2. Evaluate Lunch Schedule
-    const [startH, startM] = (settings.lunchStartTime || '12:30').split(':').map(Number);
-    const [endH, endM] = (settings.lunchEndTime || '13:30').split(':').map(Number);
+      // 2. Evaluate Lunch Schedule
+      const lunchStartStr = settings.lunchStartTime || settings.lunchStart || '12:30';
+      const lunchEndStr = settings.lunchEndTime || settings.lunchEnd || '13:30';
+      const [startH, startM] = lunchStartStr.split(':').map(Number);
+      const [endH, endM] = lunchEndStr.split(':').map(Number);
 
-    const lunchStartMins = startH * 60 + startM;
-    const lunchEndMins = endH * 60 + endM;
+      const lunchStartMins = startH * 60 + startM;
+      const lunchEndMins = endH * 60 + endM;
 
-    const isLunchTime = currentMinutes >= lunchStartMins && currentMinutes < lunchEndMins;
-    const currentMode = this._priorityEngine.getUserMode();
+      const isLunchTime = currentMinutes >= lunchStartMins && currentMinutes < lunchEndMins;
+      const currentMode = this._priorityEngine.getUserMode();
 
-    if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY') {
-      this.enterLunchMode();
-    } else if (!isLunchTime && currentMode === 'LUNCH') {
-      this.exitLunchMode();
-    }
+      if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY') {
+        this.enterLunchMode();
+      } else if (!isLunchTime && currentMode === 'LUNCH') {
+        this.exitLunchMode();
+      }
 
-    // 3. Evaluate End-of-Day Wrap-Up Schedule
-    const [eodH, eodM] = (settings.eodWrapUpTime || '18:00').split(':').map(Number);
-    const eodStartMins = eodH * 60 + eodM;
-    const isEodSnoozed = this._eodSnoozeUntilTimestamp !== null && Date.now() < this._eodSnoozeUntilTimestamp;
+      // 3. Evaluate End-of-Day Wrap-Up Schedule
+      const eodTimeStr = settings.eodWrapUpTime || settings.eodTime || '18:00';
+      const [eodH, eodM] = eodTimeStr.split(':').map(Number);
+      const eodStartMins = eodH * 60 + eodM;
+      const isEodSnoozed = this._eodSnoozeUntilTimestamp !== null && Date.now() < this._eodSnoozeUntilTimestamp;
 
-      if (currentMinutes >= eodStartMins && this._lastEodPromptDateString !== todayDateString && !isEodSnoozed) {
+      if (this._isInitialCheck && currentMinutes > eodStartMins) {
+        // Suppress retroactive prompt if app launched after due time
+        this._lastEodPromptDateString = todayDateString;
+      } else if (currentMinutes >= eodStartMins && this._lastEodPromptDateString !== todayDateString && !isEodSnoozed) {
         this._lastEodPromptDateString = todayDateString;
         this._eodSnoozeUntilTimestamp = null;
         this.triggerEodPrompt();
       }
+
+      this._isInitialCheck = false;
     } catch (err) {
       console.warn('[ContextScheduleService] Skipping schedule evaluation due to closed database or system error:', err);
     }
@@ -174,13 +186,13 @@ export class ContextScheduleService {
   /// </summary>
   public enterLunchMode(): void {
     const session = this._engine.getCurrentSession();
-    if (session && session.status === 'in_progress') {
+    if (session && session.status === 'TRACKING') {
       this._wasTaskAutoPausedForLunch = true;
       this._engine.pauseSession();
     }
 
     this._priorityEngine.setUserMode('LUNCH');
-    this._renderer.renderLunchMode();
+    this._renderer.setContextMode('LUNCH');
   }
 
   /// <summary>
@@ -188,16 +200,14 @@ export class ContextScheduleService {
   /// </summary>
   public exitLunchMode(): void {
     this._priorityEngine.setUserMode('WORK');
+    this._renderer.setContextMode('WORK');
 
     if (this._wasTaskAutoPausedForLunch) {
       this._wasTaskAutoPausedForLunch = false;
       const session = this._engine.getCurrentSession();
-      if (session && session.status === 'paused') {
+      if (session && session.status === 'PAUSED') {
         this._engine.resumeSession();
       }
-    } else {
-      const session = this._engine.getCurrentSession();
-      this._renderer.renderActiveSession(session);
     }
   }
 
@@ -206,7 +216,7 @@ export class ContextScheduleService {
   /// </summary>
   public enterAwayMode(): void {
     this._priorityEngine.setUserMode('AWAY');
-    this._renderer.renderAwayMode();
+    this._renderer.setContextMode('AWAY');
   }
 
   /// <summary>
@@ -214,8 +224,7 @@ export class ContextScheduleService {
   /// </summary>
   public exitAwayMode(): void {
     this._priorityEngine.setUserMode('WORK');
-    const session = this._engine.getCurrentSession();
-    this._renderer.renderActiveSession(session);
+    this._renderer.setContextMode('WORK');
   }
 
   /// <summary>

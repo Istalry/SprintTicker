@@ -123,6 +123,8 @@ export const UnityEngineView: React.FC = () => {
             buildChime,
             enableFailureSound,
             enablePlayModeDnd,
+            showUnityErrors,
+            errorDurationSeconds,
             scanFolder: selected
           });
         }
@@ -145,6 +147,8 @@ export const UnityEngineView: React.FC = () => {
           buildChime,
           enableFailureSound,
           enablePlayModeDnd,
+          showUnityErrors,
+          errorDurationSeconds,
           scanFolder
         });
       }

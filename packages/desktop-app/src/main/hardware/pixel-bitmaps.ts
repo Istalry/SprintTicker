@@ -288,6 +288,89 @@ export const CHECKMARK_16X16_BITMAP: (string | null)[][] = [
  * Retrieves the 16x16 multi-color pixel bitmap grid by icon identifier.
  * Returns full 16x16 matrix for all icons.
  */
+// 🌀 Antigravity 16x16 Pixel Bitmap
+export const ANTIGRAVITY_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#E01E5A', '#E01E5A', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#ECB22E', '#EF4444', '#E01E5A', '#E01E5A', null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#2EB67D', '#ECB22E', '#EF4444', '#E01E5A', null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#2EB67D', '#ECB22E', '#EF4444', '#E01E5A', null, null, null, null, null, null],
+  [null, null, null, null, null, '#2EB67D', '#2EB67D', '#ECB22E', '#4285F4', '#4285F4', '#5865F2', null, null, null, null, null],
+  [null, null, null, null, null, '#2EB67D', '#2EB67D', null, null, '#4285F4', '#5865F2', null, null, null, null, null],
+  [null, null, null, null, '#4285F4', '#4285F4', null, null, null, null, '#4285F4', '#5865F2', null, null, null, null],
+  [null, null, null, '#4285F4', '#4285F4', '#4285F4', null, null, null, null, '#4285F4', '#4285F4', '#5865F2', null, null, null],
+  [null, null, null, '#4285F4', '#4285F4', null, null, null, null, null, null, '#4285F4', '#5865F2', null, null, null],
+  [null, null, '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, '#4285F4', '#4285F4', '#5865F2', null, null],
+  [null, '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null, '#4285F4', '#5865F2', '#5865F2', null],
+  [null, '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', '#5865F2', null],
+  [null, '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', '#5865F2', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+// 🔋 Battery 16x16 Pixel Bitmap
+export const BATTERY_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', null, null, null, null],
+  [null, '#FFFFFF', null, null, null, null, null, null, null, null, null, null, '#FFFFFF', null, null, null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', null, null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', '#FFFFFF', null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', '#FFFFFF', null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', '#FFFFFF', null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', '#FFFFFF', null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', '#FFFFFF', null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', '#FFFFFF', null],
+  [null, '#FFFFFF', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, '#10B981', '#10B981', null, null, '#FFFFFF', null, null],
+  [null, '#FFFFFF', null, null, null, null, null, null, null, null, null, null, '#FFFFFF', null, null, null],
+  [null, null, '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+// 🪟 Windows 16x16 Pixel Bitmap
+export const WINDOWS_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null, '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', '#00ADEF', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+// 🔔 Bell 16x16 Pixel Bitmap
+export const BELL_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#F59E0B', '#F59E0B', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null, null, null, null],
+  [null, null, null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null, null, null],
+  [null, null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null, null],
+  [null, null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null, null],
+  [null, null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null, null],
+  [null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null],
+  [null, null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null],
+  [null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null],
+  [null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null],
+  [null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null],
+  [null, null, null, null, null, null, '#FBBC05', '#FBBC05', '#FBBC05', '#FBBC05', null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#FBBC05', '#FBBC05', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+/**
+ * Retrieves 16x16 pixel bitmap matrix by identifier.
+ */
 export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number = 0): (string | null)[][] {
   switch (iconId.toLowerCase()) {
     case 'checkmark':
@@ -298,6 +381,14 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return DISCORD_16X16_BITMAP;
     case 'gmail':
       return GMAIL_16X16_BITMAP;
+    case 'antigravity':
+      return ANTIGRAVITY_16X16_BITMAP;
+    case 'battery':
+      return BATTERY_16X16_BITMAP;
+    case 'windows':
+      return WINDOWS_16X16_BITMAP;
+    case 'bell':
+      return BELL_16X16_BITMAP;
     case 'burger':
       return BURGER_16X16_BITMAP;
     case 'clock':

@@ -54,7 +54,7 @@ describe('Standup & Ceremony Snooze Unit Tests', () => {
 
   it('EvaluateSchedule_StandupTimeArrives_TriggersStandupPrompt', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 6, 28, 10, 5, 0));
+    vi.setSystemTime(new Date(2026, 6, 28, 9, 55, 0));
 
     const mockSend = vi.fn();
     const mockWindow = { isDestroyed: () => false, isMinimized: () => false, show: vi.fn(), focus: vi.fn(), webContents: { send: mockSend } };
@@ -68,6 +68,9 @@ describe('Standup & Ceremony Snooze Unit Tests', () => {
       getWindow
     );
 
+    svc.evaluateSchedule(); // 09:55 -> no prompt yet
+
+    vi.setSystemTime(new Date(2026, 6, 28, 10, 0, 0)); // 10:00 -> standup time arrives
     svc.evaluateSchedule();
 
     expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('STANDUP', 'Daily Stand-Up');
