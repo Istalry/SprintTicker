@@ -41,3 +41,5 @@ packages/desktop-app/tests/*.js.map
 # Allow tracking app icons in desktop-app build directory
 !packages/desktop-app/build/
 !packages/desktop-app/build/*
+
+busybar-firmware

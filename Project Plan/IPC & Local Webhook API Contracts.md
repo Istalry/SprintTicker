@@ -197,7 +197,7 @@ The Electron Main process hosts an embedded **Fastify HTTP Server** listening on
                                                                   v
                                                    +-------------------------------+
                                                    | BUSY Bar Hardware REST Client |
-                                                   | /busybar/display/draw         |
+                                                   | /api/display/draw         |
                                                    +-------------------------------+
 ```
 
@@ -251,7 +251,7 @@ The Electron Main process hosts an embedded **Fastify HTTP Server** listening on
     
 -   **Action:**
     
-    -   If `success: true`: Plays success chime (`/busybar/audio/play`), blinks green LED, then clears after 3s.
+    -   If `success: true`: Plays success chime (`/api/audio/play`), blinks green LED, then clears after 3s.
         
     -   If `success: false`: Plays error chime, blinks red LED, displays error count banner (Priority 80).
         
@@ -325,7 +325,7 @@ During the optional End-of-Day wrap-up sequence, the PC Companion App acts as an
 
 ## 4\. WebSocket Hardware Input Dispatching Protocol
 
-The Electron Main process subscribes to the BUSY Bar's native WebSocket (`/busybar/status/ws`) via `@busy-app/busy-lib` `LocalStateStream`.
+The Electron Main process subscribes to the BUSY Bar's native WebSocket (`/api/status/ws`) via `@busy-app/busy-lib` `LocalStateStream`.
 
 ### 4.1 Input Event Decoding & Rebinding Logic
 

@@ -288,7 +288,7 @@ export interface ITaskProvider {
 
 ### 4.2 Priority Notification Matrix Engine (`PriorityDispatcher`)
 
-All display commands sent to the BUSY Bar pass through an internal priority preemption engine before constructing the `/busybar/display/draw` payload:
+All display commands sent to the BUSY Bar pass through an internal priority preemption engine before constructing the `/api/display/draw` payload:
 
 ```
 export enum PriorityLevel {

@@ -10,17 +10,40 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [ipAddress, setIpAddress] = useState<string>('10.0.4.20');
   const [pingSuccess, setPingSuccess] = useState<boolean | null>(null);
+  const [pingDetails, setPingDetails] = useState<string>('');
+  const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
   const [providerId, setProviderId] = useState<string>('jira');
   const [fallbackKey, setFallbackKey] = useState<string>('MISC-1');
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
-  const handleTestPing = () => {
+  const handleTestPing = async () => {
     setPingSuccess(null);
-    setTimeout(() => {
-      setPingSuccess(true);
-    }, 600);
+    setIsTestingPing(true);
+    try {
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.getDeviceStatus) {
+        const status = await (window as any).electronAPI.getDeviceStatus();
+        if (status && status.connected) {
+          setPingSuccess(true);
+          const modeLabel = status.firmwareVersion?.includes('mock') ? 'Mock Hardware Ready' : `${status.connectionType?.toUpperCase() || 'USB'} Hardware Connected`;
+          setPingDetails(`Connection Verified! Latency: ${status.webSocketPingMs || 4}ms (${modeLabel}) - Battery: ${status.batteryPercent}% - Firmware: v${status.firmwareVersion}`);
+        } else {
+          setPingSuccess(false);
+          setPingDetails(`Connection Failed: Hardware at ${ipAddress} is offline or unreachable.`);
+        }
+      } else {
+        setTimeout(() => {
+          setPingSuccess(true);
+          setPingDetails('Connection Verified! Response time: 4ms (Mock Hardware Ready)');
+        }, 600);
+      }
+    } catch {
+      setPingSuccess(false);
+      setPingDetails(`Connection Failed: Unable to reach ${ipAddress}`);
+    } finally {
+      setIsTestingPing(false);
+    }
   };
 
   const handleCopyPackagePath = () => {
@@ -91,9 +114,10 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                   />
                   <button
                     onClick={handleTestPing}
-                    className="px-4 py-2 bg-dark-700 hover:bg-dark-700/80 text-text-primary text-xs font-semibold rounded-lg border border-border-dark transition-all"
+                    disabled={isTestingPing}
+                    className="px-4 py-2 bg-dark-700 hover:bg-dark-700/80 disabled:opacity-50 text-text-primary text-xs font-semibold rounded-lg border border-border-dark transition-all"
                   >
-                    Test Ping
+                    {isTestingPing ? 'Pinging...' : 'Test Ping'}
                   </button>
                 </div>
               </div>
@@ -106,8 +130,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                       : 'bg-accent-red/10 border-accent-red/30 text-accent-red'
                   }`}
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Connection Verified! Response time: 4ms (Mock Hardware Ready)</span>
+                  <Check className="w-4 h-4 flex-shrink-0" />
+                  <span>{pingDetails || (pingSuccess ? 'Connection Verified!' : 'Connection Failed')}</span>
                 </div>
               )}
             </div>

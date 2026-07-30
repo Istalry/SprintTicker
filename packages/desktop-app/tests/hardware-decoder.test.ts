@@ -194,7 +194,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       // Assert
       expect(connected).toBe(true);
       expect(payloadSuccess).toBe(true);
-      expect(capturedUrl).toBe('http://192.168.1.105/busybar/display/draw');
+      expect(capturedUrl).toBe('http://192.168.1.105/api/display/draw');
       expect(capturedHeaders['X-API-Token']).toBe('secret_x_api_token');
     } finally {
       liveDriver.disconnect();
@@ -237,6 +237,40 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       // Even with fetch failure, driver falls back to degraded connected state
       expect(connected).toBe(true);
       expect(liveDriver.getDeviceStatus().connected).toBe(true);
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('BusyBarDriver_Connect_LiveMode_ParsesBatteryAndFirmwareFromStatusEndpoint', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => {
+      if (url.includes('/api/status') || url.includes('/api/status')) {
+        return {
+          ok: true,
+          json: async () => ({
+            power: { battery_charge: 85 },
+            firmware: { version: '2.1.0' }
+          })
+        } as Response;
+      }
+      return { ok: false } as Response;
+    }) as typeof fetch;
+
+    const liveDriver = new BusyBarDriver({
+      ipAddress: '10.0.4.20',
+      forceMock: false
+    });
+
+    try {
+      const connected = await liveDriver.connect();
+      const status = liveDriver.getDeviceStatus();
+
+      expect(connected).toBe(true);
+      expect(status.connected).toBe(true);
+      expect(status.batteryPercent).toBe(85);
+      expect(status.firmwareVersion).toBe('2.1.0');
     } finally {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;

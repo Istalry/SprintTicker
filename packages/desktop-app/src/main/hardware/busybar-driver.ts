@@ -24,6 +24,8 @@ export class BusyBarDriver extends EventEmitter {
   private ipAddress: string = '10.0.4.20';
   private apiToken: string = '';
   private pingMs: number = 4;
+  private batteryPercent: number = 98;
+  private firmwareVersion: string = '1.4.2';
   private activeStream: unknown = null;
 
   constructor(ipAddressOrOptions: string | BusyBarDriverOptions = '10.0.4.20', forceMock: boolean = false) {
@@ -54,6 +56,28 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
+   * Parses system status, battery power level, and firmware telemetry from API response JSON.
+   */
+  private parseTelemetryData(data: Record<string, any>): void {
+    if (!data || typeof data !== 'object') return;
+
+    // Battery / Power telemetry parsing
+    const rawBattery = data.power?.battery_charge ?? data.battery_charge ?? data.battery_level ?? data.batteryPercent;
+    if (rawBattery !== undefined && rawBattery !== null) {
+      const parsedNum = Number(rawBattery);
+      if (!isNaN(parsedNum)) {
+        this.batteryPercent = parsedNum;
+      }
+    }
+
+    // Firmware version telemetry parsing
+    const rawFirmware = data.firmware?.version ?? data.version ?? data.firmware_version ?? data.firmwareVersion;
+    if (rawFirmware) {
+      this.firmwareVersion = String(rawFirmware);
+    }
+  }
+
+  /**
    * Initializes hardware connection or enters mock dry-run mode.
    */
   public async connect(): Promise<boolean> {
@@ -67,7 +91,7 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       console.log(`[BusyBarDriver] Connecting to BUSY Bar hardware at ${this.ipAddress}...`);
-      
+
       const headers: Record<string, string> = {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
@@ -76,14 +100,54 @@ export class BusyBarDriver extends EventEmitter {
         headers['X-API-Token'] = this.apiToken;
       }
 
-      // Check device status over REST API
-      const response = await fetch(`http://${this.ipAddress}/busybar/account/status`, {
+      // Check device status over REST API system status endpoint (/api/status per latest OpenAPI spec)
+      let response = await fetch(`http://${this.ipAddress}/api/status`, {
         method: 'GET',
         headers
       }).catch(() => null);
 
+      if (!response || !response.ok) {
+        response = await fetch(`http://${this.ipAddress}/api/status/power`, {
+          method: 'GET',
+          headers
+        }).catch(() => null);
+      }
+
+      if (!response || !response.ok) {
+        response = await fetch(`http://${this.ipAddress}/api/status`, {
+          method: 'GET',
+          headers
+        }).catch(() => null);
+      }
+
+      if (!response || !response.ok) {
+        response = await fetch(`http://${this.ipAddress}/api/account/status`, {
+          method: 'GET',
+          headers
+        }).catch(() => null);
+      }
+
+      if (!response || !response.ok) {
+        response = await fetch(`http://${this.ipAddress}/api/account/status`, {
+          method: 'GET',
+          headers
+        }).catch(() => null);
+      }
+
       if (response && response.ok) {
         this.isConnected = true;
+        const data = await response.json().catch(() => null);
+        if (data) {
+          this.parseTelemetryData(data);
+        }
+        // Query firmware version endpoint if missing
+        if (this.firmwareVersion === '1.4.2') {
+          const fwRes = await fetch(`http://${this.ipAddress}/api/status/firmware`, { method: 'GET', headers }).catch(() => null);
+          if (fwRes && fwRes.ok) {
+            const fwData = await fwRes.json().catch(() => null);
+            if (fwData) this.parseTelemetryData(fwData);
+          }
+        }
         this.startStateStreamListener();
       } else {
         // Connected over USB or local LAN without status check failure
@@ -140,8 +204,8 @@ export class BusyBarDriver extends EventEmitter {
       connectionType: isWifi ? 'wifi' : 'usb',
       frontBrightness: 80,
       backBrightness: 100,
-      batteryPercent: 98,
-      firmwareVersion: this.isMockMode ? '1.4.2-mock' : '1.4.2',
+      batteryPercent: this.batteryPercent,
+      firmwareVersion: this.isMockMode ? `${this.firmwareVersion}-mock` : this.firmwareVersion,
       webSocketPingMs: this.pingMs
     };
   }
@@ -158,6 +222,7 @@ export class BusyBarDriver extends EventEmitter {
   /**
    * Sends display payload to physical hardware REST API.
    * Attaches X-API-Token header when operating over Wi-Fi LAN.
+   * Posts to /api/display/draw (OpenAPI v25) with fallback to /api/display/draw.
    */
   public async sendDisplayPayload(payload: Record<string, unknown>): Promise<boolean> {
     if (this.isMockMode) {
@@ -175,15 +240,23 @@ export class BusyBarDriver extends EventEmitter {
         headers['X-API-Token'] = this.apiToken;
       }
 
-      const response = await fetch(`http://${this.ipAddress}/busybar/display/draw`, {
+      let response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload)
-      });
+      }).catch(() => null);
 
-      return response.ok;
+      if (!response || !response.ok) {
+        response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        }).catch(() => null);
+      }
+
+      return response ? response.ok : false;
     } catch (err) {
-      console.error(`[BusyBarDriver] Error posting display payload to http://${this.ipAddress}/busybar/display/draw:`, err);
+      console.error(`[BusyBarDriver] Error posting display payload to http://${this.ipAddress}/api/display/draw:`, err);
       return false;
     }
   }
@@ -210,17 +283,48 @@ export class BusyBarDriver extends EventEmitter {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        const res = await fetch(`http://${this.ipAddress}/busybar/account/status`, {
+        let res = await fetch(`http://${this.ipAddress}/api/status`, {
           method: 'GET',
           headers,
           signal: controller.signal
         }).catch(() => null);
+
+        if (!res || !res.ok) {
+          res = await fetch(`http://${this.ipAddress}/api/status/power`, {
+            method: 'GET',
+            headers,
+            signal: controller.signal
+          }).catch(() => null);
+        }
+
+        if (!res || !res.ok) {
+          res = await fetch(`http://${this.ipAddress}/api/status`, {
+            method: 'GET',
+            headers,
+            signal: controller.signal
+          }).catch(() => null);
+        }
+
+        if (!res || !res.ok) {
+          res = await fetch(`http://${this.ipAddress}/api/account/status`, {
+            method: 'GET',
+            headers,
+            signal: controller.signal
+          }).catch(() => null);
+        }
 
         clearTimeout(timeoutId);
 
         const elapsed = Date.now() - start;
         this.pingMs = Math.max(1, elapsed);
         this.isConnected = res ? res.ok : false;
+
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data) {
+            this.parseTelemetryData(data);
+          }
+        }
       } catch {
         this.isConnected = false;
       }
@@ -237,7 +341,7 @@ export class BusyBarDriver extends EventEmitter {
     }
     if (this.activeStream) {
       try {
-        this.activeStream.stop?.();
+        (this.activeStream as { stop?: () => void }).stop?.();
       } catch (err) {
         // ignore stream close errors
       }

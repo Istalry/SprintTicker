@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUSY Bar Controller & Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        busy: {
+                            bg: '#0b0f19',
+                            card: '#131c2e',
+                            border: '#1e2d4a',
+                            accent: '#3b82f6',
+                            highlight: '#06b6d4'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        .pixel-grid-cell {
+            width: 12px;
+            height: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.05s ease;
+        }
+        .pixel-grid-cell.active {
+            box-shadow: 0 0 4px currentColor;
+        }
+        .pixel-grid-cell:hover {
+            border-color: rgba(0, 255, 204, 0.6);
+        }
+        .glow-screen {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+        }
+        #consoleLog::-webkit-scrollbar {
+            width: 6px;
+        }
+        #consoleLog::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        #consoleLog::-webkit-scrollbar-thumb {
+            background: #1e2d4a;
+            border-radius: 3px;
+        }
+        #consoleLog::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+        @keyframes pulse-key {
+            0% { transform: scale(1); box-shadow: 0 0 0px #06b6d4; }
+            50% { transform: scale(1.15); box-shadow: 0 0 18px #06b6d4; }
+            100% { transform: scale(1); box-shadow: 0 0 0px #06b6d4; }
+        }
+        .key-flash {
+            animation: pulse-key 0.4s ease-in-out;
+            background-color: #06b6d4 !important;
+            color: #ffffff !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 text-slate-100">
+
+    <header class="bg-busy-card border border-busy-border rounded-xl p-4 mb-4 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-xl shadow-lg">
+                <i data-lucide="monitor" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    BUSY Bar <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/50">72x16 Studio</span>
+                </h1>
+                <p class="text-xs text-slate-400">USB / Wi-Fi REST API Client & Live Hardware Display Studio</p>
+            </div>
+        </div>
+
+        <!-- Target IP & Mode Selector -->
+        <div class="flex flex-wrap items-center gap-3 bg-slate-900/80 p-2 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-2 px-2">
+                <i data-lucide="globe" class="w-4 h-4 text-slate-400"></i>
+                <input type="text" id="deviceHost" value="10.0.4.20" class="bg-slate-950 text-slate-200 border border-slate-700 px-2 py-1 rounded text-xs font-mono w-28 focus:outline-none focus:border-cyan-500" placeholder="10.0.4.20" onchange="initWebSocket()">
+            </div>
+            <div class="flex items-center gap-2 px-2 border-l border-slate-800">
+                <i data-lucide="key" class="w-4 h-4 text-slate-400"></i>
+                <input type="password" id="apiKey" value="" class="bg-slate-950 text-slate-200 border border-slate-700 px-2 py-1 rounded text-xs font-mono w-24 focus:outline-none focus:border-cyan-500" placeholder="API Key (Opt)">
+            </div>
+            <div class="flex items-center gap-2 px-2 border-l border-slate-800">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="demoModeToggle" class="sr-only peer" onchange="toggleDemoMode()">
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    <span class="ml-2 text-xs font-medium text-slate-300" id="demoModeLabel">Demo Mode (OFF)</span>
+                </label>
+            </div>
+            <div class="flex items-center gap-2 px-2 border-l border-slate-800" title="Automatically clear existing screen elements before drawing new frame">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="autoClearToggle" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                    <span class="ml-2 text-xs font-medium text-slate-300">Auto-Clear Screen</span>
+                </label>
+            </div>
+            <button onclick="fetchStatusAll()" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Telemetry
+            </button>
+        </div>
+    </header>
+
+    <div id="modeNoticeBanner" class="mb-4 p-3 bg-blue-950/60 border border-blue-500/50 rounded-xl text-xs text-blue-200 flex items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-2">
+            <i data-lucide="radio" class="w-5 h-5 text-blue-400 shrink-0"></i>
+            <div>
+                <strong id="bannerTitle">Mode: LIVE HARDWARE DIRECT CONNECT</strong>
+                <p class="text-[11px] text-blue-300/80" id="bannerDesc">HTTP requests will be transmitted directly to <code class="bg-blue-900/80 px-1 py-0.5 rounded font-mono">http://10.0.4.20</code>.</p>
+            </div>
+        </div>
+        <button onclick="toggleDemoModeFromBanner()" id="bannerBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition whitespace-nowrap">
+            Enable Demo Mode
+        </button>
+    </div>
+
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-4 flex-grow">
+
+        <!-- Left Column: Device Telemetry & Physical Key Event Remote (4 cols) -->
+        <section class="lg:col-span-4 space-y-4">
+            
+            <!-- Connection & Power Card -->
+            <div class="bg-busy-card border border-busy-border rounded-xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i> Power & Connection
+                    </h2>
+                    <div class="flex items-center gap-1.5">
+                        <span id="wsStatusBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">WS CONNECTING</span>
+                        <span id="connectionBadge" class="flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="connectionStatusText">HARDWARE MODE</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+                    <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px] uppercase">Battery Charge</div>
+                        <div id="statBatteryCharge" class="text-lg font-bold text-emerald-400 mt-0.5">-- %</div>
+                        <div id="statPowerState" class="text-[10px] text-slate-500 uppercase">unknown</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px] uppercase">Battery Voltage</div>
+                        <div id="statBatteryVoltage" class="text-lg font-bold text-cyan-400 mt-0.5">-- mV</div>
+                        <div id="statBatteryCurrent" class="text-[10px] text-slate-500">-- mA</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px] uppercase">USB Voltage</div>
+                        <div id="statUsbVoltage" class="text-lg font-bold text-blue-400 mt-0.5">-- mV</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                        <div class="text-slate-400 text-[10px] uppercase">Firmware Target</div>
+                        <div id="statFirmwareTarget" class="text-lg font-bold text-purple-400 mt-0.5">v1.0.0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Firmware & System Specs Card -->
+            <div class="bg-busy-card border border-busy-border rounded-xl p-4 shadow-xl space-y-3">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i> System Information
+                </h2>
+
+                <div class="space-y-2 text-xs font-mono text-slate-300">
+                    <div class="flex justify-between p-2 rounded bg-slate-900/50">
+                        <span class="text-slate-400">Firmware Version:</span>
+                        <span id="infoFwVer" class="text-cyan-300 font-bold">Checking...</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-900/50">
+                        <span class="text-slate-400">Git Commit:</span>
+                        <span id="infoGitCommit" class="text-slate-200">--</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-900/50">
+                        <span class="text-slate-400">Build Date:</span>
+                        <span id="infoBuildDate" class="text-slate-200">--</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-900/50">
+                        <span class="text-slate-400">System Uptime:</span>
+                        <span id="infoUptime" class="text-emerald-400 font-semibold">--</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-900/50">
+                        <span class="text-slate-400">Serial Number:</span>
+                        <span id="infoSerial" class="text-slate-300 font-mono text-[11px]">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-busy-card border border-busy-border rounded-xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                        <i data-lucide="gamepad-2" class="w-4 h-4 text-rose-400"></i> Physical Hardware Remote
+                    </h2>
+                    <span id="lastPhysicalKeyBadge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50">
+                        KEY FEEDBACK: READY
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-3">Pressing a button on your physical BUSY Bar device or using the pad below will flash the active button in real-time.</p>
+                <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
+                    <div></div>
+                    <button onclick="sendInputKey('up')" data-key-btn="up" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 transition flex items-center justify-center gap-1">▲ UP</button>
+                    <div></div>
+                    <button onclick="sendInputKey('back')" data-key-btn="back" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 transition">BACK</button>
+                    <button onclick="sendInputKey('ok')" data-key-btn="ok" class="py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-bold transition">OK</button>
+                    <button onclick="sendInputKey('start')" data-key-btn="start" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 transition">START</button>
+                    <div></div>
+                    <button onclick="sendInputKey('down')" data-key-btn="down" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-200 transition flex items-center justify-center gap-1">▼ DOWN</button>
+                    <div></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs font-medium mt-2">
+                    <button onclick="sendInputKey('busy')" data-key-btn="busy" class="py-2 rounded bg-rose-950/60 border border-rose-800/50 hover:bg-rose-900 text-rose-300 transition">BUSY</button>
+                    <button onclick="sendInputKey('apps')" data-key-btn="apps" class="py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">APPS</button>
+                    <button onclick="sendInputKey('settings')" data-key-btn="settings" class="py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">SETUP</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-8 space-y-4">
+
+            <!-- Live 72x16 Matrix Simulator & Real Hardware Mirror -->
+            <div class="bg-busy-card border border-busy-border rounded-xl p-4 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                            <i data-lucide="tv" class="w-4 h-4 text-cyan-400"></i> Display Simulator & Hardware Mirror
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 font-mono text-cyan-400 border border-slate-700">72 &times; 16 px</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="fetchHardwareScreenFrame()" class="px-2.5 py-1 bg-blue-900 hover:bg-blue-800 text-blue-200 border border-blue-700 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Get single frame bitmap directly from physical display screen via GET /api/screen">
+                            <i data-lucide="camera" class="w-3.5 h-3.5"></i> Capture Screen
+                        </button>
+                        <button onclick="clearDeviceDisplay()" class="px-2.5 py-1 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear Screen
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Simulator Canvas -->
+                    <div class="p-3 bg-black rounded-xl border border-slate-800 flex flex-col items-center justify-center">
+                        <span class="text-[10px] font-mono text-slate-400 mb-1">Canvas Simulator Output</span>
+                        <canvas id="displayCanvas" width="576" height="128" class="bg-black rounded border border-slate-900 max-w-full h-auto" style="image-rendering: pixelated;"></canvas>
+                    </div>
+
+                    <!-- Live Hardware Bitmap Capture Frame -->
+                    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col items-center justify-center min-h-[140px]">
+                        <div class="flex items-center justify-between w-full mb-1 px-1">
+                            <span class="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Hardware Frame Mirror (/api/screen)
+                            </span>
+                            <label class="text-[10px] text-slate-400 flex items-center gap-1 cursor-pointer">
+                                <input type="checkbox" id="autoFetchScreenToggle" class="rounded bg-slate-900 border-slate-700 text-cyan-500"> Auto Refresh
+                            </label>
+                        </div>
+                        <div id="hardwareScreenContainer" class="w-full flex flex-col items-center justify-center py-2">
+                            <img id="hardwareScreenImg" class="bg-black rounded border border-slate-800 max-w-full hidden" style="image-rendering: pixelated; width: 288px; height: 64px;" alt="Hardware Screen Capture">
+                            <p id="hardwareScreenPlaceholder" class="text-xs text-slate-500 font-mono text-center p-4">Click "Capture Screen" to fetch the exact bitmap frame running on the device.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-busy-card border border-busy-border rounded-xl p-4 shadow-xl">
+                
+                <!-- Tab Headers -->
+                <div class="flex border-b border-slate-800 mb-4 overflow-x-auto">
+                    <button onclick="switchTab('text')" id="tabBtn-text" class="px-4 py-2 text-xs font-semibold border-b-2 border-cyan-400 text-cyan-400 flex items-center gap-1.5 whitespace-nowrap">
+                        <i data-lucide="type" class="w-3.5 h-3.5"></i> Custom Text Studio
+                    </button>
+                    <button onclick="switchTab('draw')" id="tabBtn-draw" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Pixel Art Drawer
+                    </button>
+                    <button onclick="switchTab('image')" id="tabBtn-image" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i> Image & Asset Upload
+                    </button>
+                    <button onclick="switchTab('presets')" id="tabBtn-presets" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Presets & Badges
+                    </button>
+                    <button onclick="switchTab('settings')" id="tabBtn-settings" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+                        <i data-lucide="sliders" class="w-3.5 h-3.5"></i> Device Config
+                    </button>
+                </div>
+
+                <!-- Tab 1: Text Studio -->
+                <div id="tabContent-text" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Text String (ASCII Printable)</label>
+                            <input type="text" id="textInput" value="BUSY BAR 72x16" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-sm font-mono text-cyan-300 focus:outline-none focus:border-cyan-500" oninput="updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Font Size</label>
+                            <select id="textFont" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-slate-200" onchange="updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                                <option value="tiny">tiny</option>
+                                <option value="small">small</option>
+                                <option value="normal" selected>normal</option>
+                                <option value="condensed">condensed</option>
+                                <option value="bold">bold</option>
+                                <option value="large">large</option>
+                                <option value="extra_large">extra_large</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Text Color (#RRGGBBAA)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="textColorPicker" value="#00ffcc" class="w-8 h-8 rounded border-none bg-transparent cursor-pointer" oninput="document.getElementById('textColorHex').value = this.value.toUpperCase() + 'FF'; updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                                <input type="text" id="textColorHex" value="#00FFCCFF" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-slate-200" oninput="updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Alignment Anchor</label>
+                            <select id="textAlign" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-slate-200" onchange="updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                                <option value="center" selected>center</option>
+                                <option value="top_left">top_left</option>
+                                <option value="top_mid">top_mid</option>
+                                <option value="top_right">top_right</option>
+                                <option value="mid_left">mid_left</option>
+                                <option value="mid_right">mid_right</option>
+                                <option value="bottom_left">bottom_left</option>
+                                <option value="bottom_mid">bottom_mid</option>
+                                <option value="bottom_right">bottom_right</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Position X & Y (Pixels)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="textX" value="36" class="bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-slate-200" placeholder="X (0-71)" oninput="updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                                <input type="number" id="textY" value="8" class="bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-slate-200" placeholder="Y (0-15)" oninput="updateJsonPayloadPreview(); drawSimulatedDisplay();">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">LED Notification Color (#RRGGBBAA)</label>
+                            <input type="text" id="ledColorHex" value="#FF0000FF" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-slate-200" oninput="updateJsonPayloadPreview();">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Priority Level (95 Recommended)</label>
+                            <input type="number" id="drawPriority" value="95" min="1" max="100" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs font-mono text-cyan-300 font-bold" oninput="updateJsonPayloadPreview();">
+                        </div>
+                    </div>
+
+                    <button onclick="sendTextDisplay()" class="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-lg text-xs shadow-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="send" class="w-4 h-4"></i> Transmit Text to Display (/api/display/draw)
+                    </button>
+                </div>
+
+                <div id="tabContent-draw" class="space-y-3 hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-400">Tool:</span>
+                            <button onclick="setDrawTool('pencil')" id="tool-pencil" class="px-2.5 py-1 rounded bg-cyan-600 text-white font-semibold">Pencil</button>
+                            <button onclick="setDrawTool('eraser')" id="tool-eraser" class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white">Eraser</button>
+                            <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+                                <span class="text-slate-400">Color:</span>
+                                <input type="color" id="drawColorPicker" value="#00ffcc" class="w-6 h-6 rounded bg-transparent border-none cursor-pointer">
+                            </div>
+                            <button onclick="clearGrid()" class="px-2.5 py-1 rounded bg-slate-800 text-rose-400 hover:bg-rose-950 border border-rose-900/50">Clear Matrix</button>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-400">Pixel Presets:</span>
+                            <button onclick="loadPixelPreset('heart')" class="px-2 py-0.5 rounded bg-slate-800 text-xs hover:bg-slate-700">♥ Heart</button>
+                            <button onclick="loadPixelPreset('smile')" class="px-2 py-0.5 rounded bg-slate-800 text-xs hover:bg-slate-700">☺ Smile</button>
+                            <button onclick="loadPixelPreset('check')" class="px-2 py-0.5 rounded bg-slate-800 text-xs hover:bg-slate-700">✓ Check</button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive 72x16 Grid Container -->
+                    <div class="p-2 bg-slate-950 rounded-xl border border-slate-800 overflow-x-auto">
+                        <div id="pixelDrawingGrid" class="grid grid-rows-16 gap-[1px] bg-slate-900 p-1 rounded" style="grid-template-columns: repeat(72, minmax(0, 1fr)); width: 864px;">
+                            <!-- Dynamically generated 72x16 cells -->
+                        </div>
+                    </div>
+
+                    <button onclick="sendDrawCanvas()" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs shadow-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Send Pixel Matrix to BUSY Bar Display
+                    </button>
+                </div>
+
+                <div id="tabContent-image" class="space-y-4 hidden">
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <h3 class="text-xs font-bold uppercase text-slate-200 flex items-center gap-2">
+                            <i data-lucide="file-up" class="w-4 h-4 text-cyan-400"></i> Custom Image File Loader & Asset Manager
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Upload any image file (PNG, JPG, BMP). You can upload it directly to the device storage via <code class="bg-slate-950 px-1 text-cyan-300 font-mono">/api/assets/upload</code>, or import it into the Pixel Drawer.</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="space-y-2">
+                                <label class="block text-xs font-medium text-slate-300">Select Image File</label>
+                                <input type="file" id="imageFileInput" accept="image/*" class="w-full text-xs text-slate-300 bg-slate-950 p-2 rounded border border-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500" onchange="handleImageFileSelect(event)">
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400">Asset Filename</label>
+                                        <input type="text" id="imageAssetFileName" value="data.png" class="w-full bg-slate-950 p-1.5 rounded border border-slate-700 font-mono text-xs text-slate-200">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400">App Name</label>
+                                        <input type="text" id="imageAppName" value="my_app" class="w-full bg-slate-950 p-1.5 rounded border border-slate-700 font-mono text-xs text-slate-200">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex flex-col items-center justify-center">
+                                <span class="text-[10px] text-slate-400 font-mono mb-1">72x16 Resized Image Preview</span>
+                                <canvas id="imagePreviewCanvas" width="72" height="16" class="bg-black border border-slate-800 rounded" style="width: 216px; height: 48px; image-rendering: pixelated;"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
+                            <button onclick="uploadImageAssetAndDraw()" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="cloud-upload" class="w-4 h-4"></i> Upload & Render as Image Element
+                            </button>
+                            <button onclick="importImageToPixelGrid()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 border border-slate-700">
+                                <i data-lucide="pencil-line" class="w-4 h-4"></i> Import into Pixel Drawer Grid
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Presets & Shapes -->
+                <div id="tabContent-presets" class="grid grid-cols-2 md:grid-cols-3 gap-3 hidden">
+                    <button onclick="sendPreset('on_air')" class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 rounded-xl text-left transition space-y-1">
+                        <div class="text-rose-400 font-bold text-xs flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> ON AIR
+                        </div>
+                        <p class="text-[11px] text-slate-400">Red warning badge with bold centered text.</p>
+                    </button>
+                    <button onclick="sendPreset('clock')" class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 rounded-xl text-left transition space-y-1">
+                        <div class="text-cyan-400 font-bold text-xs flex items-center gap-1.5">
+                            <i data-lucide="clock" class="w-3.5 h-3.5"></i> Digital Clock
+                        </div>
+                        <p class="text-[11px] text-slate-400">Live timestamp display.</p>
+                    </button>
+                    <button onclick="sendPreset('coffee')" class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 rounded-xl text-left transition space-y-1">
+                        <div class="text-amber-400 font-bold text-xs flex items-center gap-1.5">
+                            <i data-lucide="coffee" class="w-3.5 h-3.5"></i> Coffee Break
+                        </div>
+                        <p class="text-[11px] text-slate-400">Break notification string.</p>
+                    </button>
+                    <button onclick="sendPreset('dnd')" class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 rounded-xl text-left transition space-y-1">
+                        <div class="text-purple-400 font-bold text-xs flex items-center gap-1.5">
+                            <i data-lucide="slash" class="w-3.5 h-3.5"></i> Do Not Disturb
+                        </div>
+                        <p class="text-[11px] text-slate-400">Focus session indicator.</p>
+                    </button>
+                    <button onclick="sendPreset('matrix')" class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 rounded-xl text-left transition space-y-1">
+                        <div class="text-emerald-400 font-bold text-xs flex items-center gap-1.5">
+                            <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Matrix Rain
+                        </div>
+                        <p class="text-[11px] text-slate-400">Green terminal message.</p>
+                    </button>
+                    <button onclick="sendPreset('audio')" class="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 rounded-xl text-left transition space-y-1">
+                        <div class="text-blue-400 font-bold text-xs flex items-center gap-1.5">
+                            <i data-lucide="music" class="w-3.5 h-3.5"></i> Equalizer Bars
+                        </div>
+                        <p class="text-[11px] text-slate-400">Audio spectrum preset.</p>
+                    </button>
+                </div>
+
+                <!-- Tab 5: Device Config -->
+                <div id="tabContent-settings" class="space-y-4 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                            <label class="block text-xs font-bold text-slate-200">Display Brightness (/api/display/brightness)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="brightnessSlider" min="0" max="100" value="50" class="w-full accent-cyan-500" oninput="document.getElementById('brightnessVal').innerText = this.value">
+                                <span id="brightnessVal" class="text-xs font-mono font-bold text-cyan-400 w-8">50</span>
+                            </div>
+                            <button onclick="setBrightness()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg">Apply Brightness</button>
+                        </div>
+
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                            <label class="block text-xs font-bold text-slate-200">Audio Volume (/api/audio/volume)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="volumeSlider" min="0" max="100" value="50" class="w-full accent-cyan-500" oninput="document.getElementById('volumeVal').innerText = this.value">
+                                <span id="volumeVal" class="text-xs font-mono font-bold text-cyan-400 w-8">50</span>
+                            </div>
+                            <button onclick="setVolume()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg">Apply Volume</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JSON OpenAPI Payload Preview Inspector -->
+                <div class="mt-4 pt-3 border-t border-slate-800">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[11px] font-mono uppercase text-slate-400 flex items-center gap-1">
+                            <i data-lucide="code" class="w-3.5 h-3.5 text-cyan-400"></i> Active OpenAPI Request Payload (/api/display/draw)
+                        </span>
+                        <button onclick="copyJsonPayload()" class="text-[10px] text-cyan-400 hover:underline font-mono">Copy JSON</button>
+                    </div>
+                    <pre id="jsonPayloadPreview" class="p-2.5 bg-slate-950 rounded-lg border border-slate-900 font-mono text-[11px] text-cyan-300 overflow-x-auto whitespace-pre-wrap max-h-28">{ "application_name": "my_app", "elements": [] }</pre>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <section class="bg-busy-card border border-busy-border rounded-xl p-4 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold uppercase text-slate-300 font-mono flex items-center gap-2">
+                    <i data-lucide="terminal" class="w-4 h-4 text-rose-400"></i> Network & Hardware Event Diagnostic Console
+                </span>
+                <span id="logCountBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">0 logs</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[11px] font-mono">
+                    <button onclick="setLogFilter('all')" id="filter-all" class="px-2 py-0.5 rounded bg-rose-600 text-white font-semibold">ALL</button>
+                    <button onclick="setLogFilter('req')" id="filter-req" class="px-2 py-0.5 rounded text-slate-400 hover:text-slate-200">REQ</button>
+                    <button onclick="setLogFilter('res')" id="filter-res" class="px-2 py-0.5 rounded text-slate-400 hover:text-slate-200">RES</button>
+                    <button onclick="setLogFilter('err')" id="filter-err" class="px-2 py-0.5 rounded text-slate-400 hover:text-slate-200">ERR</button>
+                </div>
+                <button onclick="copyConsoleLogs()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300 flex items-center gap-1 transition">
+                    <i data-lucide="copy" class="w-3 h-3"></i> Copy
+                </button>
+                <button onclick="clearConsoleLog()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-400 hover:text-rose-400 transition">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Console Log Window -->
+        <div id="consoleLog" class="h-56 bg-slate-950 font-mono text-xs p-3 rounded-xl border border-slate-900 overflow-y-auto space-y-2 text-slate-300 select-text">
+            <div class="text-slate-500 text-[11px] border-b border-slate-900 pb-1">
+                [System Initialized] Live Hardware mode active. Direct API host: 10.0.4.20
+            </div>
+        </div>
+    </section>
+
+    <footer class="mt-4 border-t border-busy-border py-3 text-center text-xs text-slate-500">
+        BUSY Bar HTTP Client & 72x16 Display Studio &bull; Designed for USB & Wi-Fi REST API
+    </footer>
+
+    <script>
+        // Global Application State
+        let isDemoMode = false;
+        let activeTool = 'pencil';
+        let isDrawing = false;
+        let currentLogFilter = 'all';
+        let totalLogCount = 0;
+        let wsConnection = null;
+        let logsArray = [];
+        let autoFetchScreenInterval = null;
+        let loadedImageCanvas = null;
+
+        // 72x16 Matrix state (color strings or 0)
+        let matrixData = Array(16).fill(0).map(() => Array(72).fill(0));
+
+        window.onload = function() {
+            lucide.createIcons();
+            initDrawingGrid();
+            drawSimulatedDisplay();
+            
+            // Default Demo Mode to OFF so requests target live hardware
+            document.getElementById('demoModeToggle').checked = false;
+            updateModeBanner();
+            updateJsonPayloadPreview();
+
+            // Initial telemetry poll and WebSocket initialization
+            fetchStatusAll();
+            initWebSocket();
+
+            // Set up auto screen refresh listener
+            document.getElementById('autoFetchScreenToggle').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    fetchHardwareScreenFrame();
+                    autoFetchScreenInterval = setInterval(fetchHardwareScreenFrame, 2500);
+                } else {
+                    if (autoFetchScreenInterval) clearInterval(autoFetchScreenInterval);
+                }
+            });
+        };
+
+        function getApiBaseUrl() {
+            const hostInput = document.getElementById('deviceHost').value.trim() || '10.0.4.20';
+            let cleanHost = hostInput.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+            return `http://${cleanHost}`;
+        }
+
+        function getHeaders(isBinary = false) {
+            const headers = { 
+                'Content-Type': isBinary ? 'application/octet-stream' : 'application/json' 
+            };
+            const key = document.getElementById('apiKey').value.trim();
+            if (key) headers['X-API-Token'] = key;
+            return headers;
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null, isBinary = false) {
+            const startTime = performance.now();
+            const url = `${getApiBaseUrl()}${endpoint}`;
+            const headers = getHeaders(isBinary);
+
+            logMessage(`>>> OUTGOING REQUEST: ${method} ${endpoint}`, 'req', {
+                url: url,
+                method: method,
+                headers: headers,
+                body: isBinary ? `[Binary Data Blob (${body ? body.size || 'raw' : 0} bytes)]` : body
+            });
+
+            if (isDemoMode) {
+                await new Promise(r => setTimeout(r, 60));
+                const duration = Math.round(performance.now() - startTime);
+                const demoRes = { result: "OK" };
+                logMessage(`<<< DEMO RESPONSE (Simulated): HTTP 200 OK (${endpoint}) [${duration}ms]`, 'res', demoRes);
+                return demoRes;
+            }
+
+            try {
+                const options = { method: method, headers: headers };
+                if (body && (method === 'POST' || method === 'PUT')) {
+                    options.body = isBinary ? body : (typeof body === 'string' ? body : JSON.stringify(body));
+                }
+
+                const response = await fetch(url, options);
+                const duration = Math.round(performance.now() - startTime);
+                
+                let resData = null;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    resData = await response.json();
+                } else {
+                    resData = await response.text();
+                }
+
+                if (response.ok) {
+                    logMessage(`<<< RESPONSE: HTTP ${response.status} OK (${endpoint}) [${duration}ms]`, 'res', resData);
+                    return resData;
+                } else {
+                    logMessage(`<<< HTTP ERROR ${response.status} (${endpoint}) [${duration}ms]`, 'err', resData);
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (err) {
+                const duration = Math.round(performance.now() - startTime);
+                logMessage(`❌ NETWORK ERROR (${endpoint}) [${duration}ms]: ${err.message}`, 'err');
+                throw err;
+            }
+        }
+
+        function logMessage(msg, type = 'info', details = null) {
+            totalLogCount++;
+            const badge = document.getElementById('logCountBadge');
+            if (badge) badge.innerText = `${totalLogCount} logs`;
+
+            const logContainer = document.getElementById('consoleLog');
+            if (!logContainer) return;
+
+            const logItem = document.createElement('div');
+            const timeStr = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+
+            let badgeBg = "bg-slate-800 text-slate-300";
+            if (type === 'req') badgeBg = "bg-blue-900 text-blue-300 border border-blue-700";
+            if (type === 'res') badgeBg = "bg-emerald-900 text-emerald-300 border border-emerald-700";
+            if (type === 'err') badgeBg = "bg-rose-900 text-rose-300 border border-rose-700";
+
+            logItem.className = `p-2 rounded-lg bg-slate-900/90 border border-slate-800/80 log-entry log-type-${type}`;
+            if (currentLogFilter !== 'all' && currentLogFilter !== type) logItem.style.display = 'none';
+
+            let detailsHtml = '';
+            if (details) {
+                const detailsId = `log-details-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                const detailsJson = typeof details === 'string' ? details : JSON.stringify(details, null, 2);
+                detailsHtml = `
+                    <div class="mt-1">
+                        <button onclick="document.getElementById('${detailsId}').classList.toggle('hidden')" class="text-[10px] text-cyan-400 hover:underline font-mono">
+                            Toggle Details / Payload JSON
+                        </button>
+                        <pre id="${detailsId}" class="hidden mt-1 p-2 bg-slate-950 rounded border border-slate-800 text-[10px] text-slate-300 font-mono overflow-x-auto">${detailsJson}</pre>
+                    </div>
+                `;
+            }
+
+            logItem.innerHTML = `
+                <div class="flex items-center gap-2 text-[11px]">
+                    <span class="text-slate-500 font-mono">[${timeStr}]</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${badgeBg}">${type.toUpperCase()}</span>
+                    <span class="text-slate-200 font-medium">${msg}</span>
+                </div>
+                ${detailsHtml}
+            `;
+
+            logContainer.appendChild(logItem);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            logsArray.push({ time: timeStr, type, msg, details });
+        }
+
+        async function fetchStatusAll() {
+            logMessage("Polling system status telemetry...", "info");
+            if (isDemoMode) { simulateTelemetryData(); return; }
+
+            try {
+                const power = await apiCall('/api/status/power', 'GET');
+                if (power) {
+                    if (power.battery_charge !== undefined) document.getElementById('statBatteryCharge').innerText = `${power.battery_charge} %`;
+                    if (power.state !== undefined) document.getElementById('statPowerState').innerText = power.state;
+                    if (power.battery_voltage !== undefined) document.getElementById('statBatteryVoltage').innerText = `${power.battery_voltage} mV`;
+                    if (power.battery_current !== undefined) document.getElementById('statBatteryCurrent').innerText = `${power.battery_current} mA`;
+                    if (power.usb_voltage !== undefined) document.getElementById('statUsbVoltage').innerText = `${power.usb_voltage} mV`;
+                }
+
+                const fw = await apiCall('/api/status/firmware', 'GET');
+                if (fw) {
+                    if (fw.version) document.getElementById('infoFwVer').innerText = fw.version;
+                    if (fw.target !== undefined) document.getElementById('statFirmwareTarget').innerText = `Target ${fw.target}`;
+                    if (fw.commit_hash) document.getElementById('infoGitCommit').innerText = fw.commit_hash;
+                    if (fw.build_date) document.getElementById('infoBuildDate').innerText = fw.build_date;
+                }
+
+                const sys = await apiCall('/api/status/system', 'GET');
+                if (sys && sys.uptime) document.getElementById('infoUptime').innerText = sys.uptime;
+
+                const dev = await apiCall('/api/status/device', 'GET');
+                if (dev && dev.serial_number) document.getElementById('infoSerial').innerText = dev.serial_number;
+
+            } catch (err) {
+                logMessage("Telemetry poll completed with errors", "err");
+            }
+        }
+
+        function simulateTelemetryData() {
+            document.getElementById('statBatteryCharge').innerText = "98 %";
+            document.getElementById('statPowerState').innerText = "DISCHARGING";
+            document.getElementById('statBatteryVoltage').innerText = "4180 mV";
+            document.getElementById('statBatteryCurrent').innerText = "-120 mA";
+            document.getElementById('statUsbVoltage').innerText = "4850 mV";
+            document.getElementById('infoFwVer').innerText = "v1.0.0 (Demo)";
+            document.getElementById('infoGitCommit').innerText = "a1b2c3d";
+            document.getElementById('infoBuildDate').innerText = "2025-01-15";
+            document.getElementById('infoUptime').innerText = "01d 04h 12m";
+            document.getElementById('infoSerial').innerText = "BB2025DEMO999";
+        }
+
+        // Live Real-Time WebSocket Listener for Physical Key Presses
+        function initWebSocket() {
+            if (isDemoMode) return;
+            if (wsConnection) { try { wsConnection.close(); } catch(e){} }
+
+            const host = document.getElementById('deviceHost').value.trim() || "10.0.4.20";
+            const cleanHost = host.replace(/^https?:\/\//, '');
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${cleanHost}/api/status/ws`;
+
+            logMessage(`Connecting WebSocket hardware stream: ${wsUrl}`, "info");
+
+            try {
+                wsConnection = new WebSocket(wsUrl);
+
+                wsConnection.onopen = () => {
+                    logMessage("WebSocket connected! Enabling live event streaming...", "res");
+                    updateWsBadge("WS LIVE", "emerald");
+                    wsConnection.send(JSON.stringify({ enable: true }));
+                };
+
+                wsConnection.onmessage = (evt) => {
+                    if (evt.data instanceof Blob) return; // Ignore binary WS frame blobs
+                    try {
+                        const data = JSON.parse(evt.data);
+                        handleWsEvent(data);
+                    } catch (e) {
+                        if (typeof evt.data === 'string') {
+                            logMessage(`[WS Stream Message]: ${evt.data}`, "res");
+                        }
+                    }
+                };
+
+                wsConnection.onerror = () => updateWsBadge("WS ERROR", "rose");
+                wsConnection.onclose = () => updateWsBadge("WS CLOSED", "slate");
+            } catch(err) {
+                logMessage(`WebSocket connection failed: ${err.message}`, "err");
+            }
+        }
+
+        function updateWsBadge(text, color) {
+            const badge = document.getElementById('wsStatusBadge');
+            if (!badge) return;
+            badge.innerText = text;
+            badge.className = `text-[10px] font-mono px-2 py-0.5 rounded-full bg-${color}-950 text-${color}-400 border border-${color}-800`;
+        }
+
+        function handleWsEvent(data) {
+            logMessage(`<<< WS EVENT FROM HARDWARE:`, "res", data);
+            const key = data.key || data.input || data.button || data.event_key || (data.input_event && data.input_event.key);
+            if (key) {
+                highlightPhysicalKeyPress(key);
+            }
+        }
+
+        function highlightPhysicalKeyPress(keyName) {
+            const keyLower = String(keyName).toLowerCase();
+            const badge = document.getElementById('lastPhysicalKeyBadge');
+            if (badge) {
+                badge.innerText = `LAST KEY: ${keyName.toUpperCase()}`;
+                badge.className = "text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/30 text-cyan-300 border border-cyan-400";
+            }
+
+            const btn = document.querySelector(`[data-key-btn="${keyLower}"]`);
+            if (btn) {
+                btn.classList.add('key-flash');
+                setTimeout(() => btn.classList.remove('key-flash'), 500);
+            }
+
+            logMessage(`⚡ PHYSICAL HARDWARE BUTTON PRESSED: '${keyName.toUpperCase()}'`, 'res');
+        }
+
+        async function sendInputKey(keyName) {
+            logMessage(`Sending key press: '${keyName}'`, "info");
+            highlightPhysicalKeyPress(keyName);
+            await apiCall(`/api/input?key=${keyName}`, 'POST');
+        }
+
+        // Fetch Exact Hardware Display Bitmap Frame (/api/screen)
+        async function fetchHardwareScreenFrame() {
+            if (isDemoMode) return;
+            logMessage("Fetching live screen capture frame via GET /api/screen?display=0...", "info");
+            try {
+                const url = `${getApiBaseUrl()}/api/screen?display=0`;
+                const response = await fetch(url, { headers: getHeaders() });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imgUrl = URL.createObjectURL(blob);
+                    const img = document.getElementById('hardwareScreenImg');
+                    const placeholder = document.getElementById('hardwareScreenPlaceholder');
+                    
+                    img.src = imgUrl;
+                    img.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                    logMessage("Hardware screen frame updated!", "res");
+                }
+            } catch (err) {
+                logMessage("Failed to fetch hardware screen frame", "err");
+            }
+        }
+
+        async function prepareDisplayForDraw() {
+            const autoClear = document.getElementById('autoClearToggle').checked;
+            if (autoClear) {
+                logMessage("Auto-Clear active: clearing device screen buffer...", "info");
+                await clearDeviceDisplay(false);
+            }
+        }
+
+        // Wipes ONLY the physical screen on the device, without wiping user's drawn matrix in memory
+        async function clearDeviceDisplay(showLog = true) {
+            if (showLog) logMessage("Clearing device display via DELETE /api/display/draw?application_name=my_app...", "info");
+            await apiCall('/api/display/draw?application_name=my_app', 'DELETE');
+            drawSimulatedDisplay();
+        }
+
+        function getFormTextPayload() {
+            const text = document.getElementById('textInput').value || "BUSY BAR 72x16";
+            const font = document.getElementById('textFont').value || "normal";
+            const color = document.getElementById('textColorHex').value || "#00FFCCFF";
+            const align = document.getElementById('textAlign').value || "center";
+            const x = parseInt(document.getElementById('textX').value) || 36;
+            const y = parseInt(document.getElementById('textY').value) || 8;
+            const ledColor = document.getElementById('ledColorHex').value || "#FF0000FF";
+            const priority = parseInt(document.getElementById('drawPriority').value) || 95;
+
+            return {
+                application_name: "my_app",
+                priority: priority,
+                led_notification_color: ledColor,
+                elements: [{
+                    id: "text_0",
+                    type: "text",
+                    text: text,
+                    font: font,
+                    color: color,
+                    align: align,
+                    x: x,
+                    y: y,
+                    display: "front"
+                }]
+            };
+        }
+
+        async function sendTextDisplay() {
+            await prepareDisplayForDraw();
+            const payload = getFormTextPayload();
+            logMessage("Sending Text Payload to /api/display/draw...", "info");
+            await apiCall('/api/display/draw', 'POST', payload);
+        }
+
+        function initDrawingGrid() {
+            const gridContainer = document.getElementById('pixelDrawingGrid');
+            gridContainer.innerHTML = '';
+
+            for (let r = 0; r < 16; r++) {
+                for (let c = 0; c < 72; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'pixel-grid-cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    cell.onmousedown = (e) => { e.preventDefault(); isDrawing = true; toggleCell(r, c, cell); };
+                    cell.onmouseenter = (e) => { if (isDrawing) toggleCell(r, c, cell); };
+                    
+                    gridContainer.appendChild(cell);
+                }
+            }
+
+            window.onmouseup = () => { isDrawing = false; };
+        }
+
+        function toggleCell(r, c, cell) {
+            const color = document.getElementById('drawColorPicker').value || "#00ffcc";
+            if (activeTool === 'pencil') {
+                matrixData[r][c] = color;
+                cell.classList.add('active');
+                cell.style.backgroundColor = color;
+                cell.style.color = color;
+            } else {
+                matrixData[r][c] = 0;
+                cell.classList.remove('active');
+                cell.style.backgroundColor = 'transparent';
+            }
+            drawSimulatedDisplay();
+        }
+
+        function setDrawTool(tool) {
+            activeTool = tool;
+            document.getElementById('tool-pencil').className = tool === 'pencil' ? "px-2.5 py-1 rounded bg-cyan-600 text-white font-semibold" : "px-2.5 py-1 rounded bg-slate-800 text-slate-300";
+            document.getElementById('tool-eraser').className = tool === 'eraser' ? "px-2.5 py-1 rounded bg-cyan-600 text-white font-semibold" : "px-2.5 py-1 rounded bg-slate-800 text-slate-300";
+        }
+
+        // Explicitly resets matrix drawing state when user clicks Clear Matrix button
+        function clearGrid() {
+            matrixData = Array(16).fill(0).map(() => Array(72).fill(0));
+            const cells = document.querySelectorAll('.pixel-grid-cell');
+            cells.forEach(c => {
+                c.classList.remove('active');
+                c.style.backgroundColor = 'transparent';
+            });
+            drawSimulatedDisplay();
+            logMessage("Pixel drawing canvas reset", "info");
+        }
+
+        async function sendDrawCanvas() {
+            await prepareDisplayForDraw();
+
+            let totalActivePixels = 0;
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 72;
+            offCanvas.height = 16;
+            const offCtx = offCanvas.getContext('2d');
+            offCtx.fillStyle = '#000000';
+            offCtx.fillRect(0, 0, 72, 16);
+
+            for (let r = 0; r < 16; r++) {
+                for (let c = 0; c < 72; c++) {
+                    const val = matrixData[r][c];
+                    if (val !== 0) {
+                        totalActivePixels++;
+                        offCtx.fillStyle = typeof val === 'string' ? val : '#00FFCC';
+                        offCtx.fillRect(c, r, 1, 1);
+                    }
+                }
+            }
+
+            if (totalActivePixels === 0) {
+                logMessage("Pixel matrix is completely empty. Clearing display...", "info");
+                await clearDeviceDisplay(false);
+                return;
+            }
+
+            // Horizontal Strip Compression Algorithm
+            const rects = [];
+            for (let r = 0; r < 16; r++) {
+                let startCol = -1;
+                let length = 0;
+                let currentColor = null;
+
+                for (let c = 0; c < 72; c++) {
+                    const val = matrixData[r][c];
+                    if (val !== 0) {
+                        if (startCol === -1) {
+                            startCol = c;
+                            length = 1;
+                            currentColor = typeof val === 'string' ? val : "#00FFCC";
+                        } else if (val === currentColor) {
+                            length++;
+                        } else {
+                            rects.push(buildRectElem(r, startCol, length, currentColor));
+                            startCol = c;
+                            length = 1;
+                            currentColor = typeof val === 'string' ? val : "#00FFCC";
+                        }
+                    } else {
+                        if (startCol !== -1) {
+                            rects.push(buildRectElem(r, startCol, length, currentColor));
+                            startCol = -1;
+                            length = 0;
+                        }
+                    }
+                }
+                if (startCol !== -1) {
+                    rects.push(buildRectElem(r, startCol, length, currentColor));
+                }
+            }
+
+            // For simple drawings (<= 40 rects), send rectangle elements array.
+            // For complex drawings/imported images (>40 rects), convert canvas to a 72x16 PNG asset
+            // and upload via /api/assets/upload to prevent JSON buffer overflows on hardware.
+            if (rects.length <= 40) {
+                const payload = {
+                    application_name: "my_app",
+                    priority: 95,
+                    elements: rects
+                };
+
+                logMessage(`Sending matrix (${totalActivePixels} pixels in ${rects.length} strip elements)...`, "info");
+                await apiCall('/api/display/draw', 'POST', payload);
+            } else {
+                logMessage(`Matrix has ${totalActivePixels} pixels (${rects.length} strips). Converting to 72x16 PNG asset for optimal hardware rendering...`, "info");
+                const pngBlob = await new Promise(resolve => offCanvas.toBlob(resolve, 'image/png'));
+                
+                await apiCall('/api/assets/upload?application_name=my_app&file=matrix_draw.png', 'POST', pngBlob, true);
+                
+                const drawPayload = {
+                    application_name: "my_app",
+                    priority: 95,
+                    elements: [{
+                        id: "px_matrix_img",
+                        type: "image",
+                        path: "matrix_draw.png",
+                        x: 0,
+                        y: 0,
+                        display: "front"
+                    }]
+                };
+
+                logMessage("Rendering matrix PNG asset on device display...", "info");
+                await apiCall('/api/display/draw', 'POST', drawPayload);
+            }
+        }
+
+        function buildRectElem(row, col, width, hexColor) {
+            let cleanHex = hexColor.toUpperCase();
+            if (cleanHex.length === 7) cleanHex += "FF";
+            return {
+                id: `px_${row}_${col}`,
+                type: "rectangle",
+                x: col,
+                y: row,
+                width: width,
+                height: 1,
+                fill: "solid",
+                fill_colors: [cleanHex],
+                border_width: 0
+            };
+        }
+
+        // Image File Loader Handlers
+        function handleImageFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Auto-sanitize filename for OpenAPI schema compliance (pattern: ^[a-zA-Z0-9._-]+$)
+            let cleanName = file.name.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+            if (!cleanName.endsWith('.png')) {
+                cleanName = cleanName.replace(/\.[^/.]+$/, "") + ".png";
+            }
+            document.getElementById('imageAssetFileName').value = cleanName;
+
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.getElementById('imagePreviewCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = false;
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(0, 0, 72, 16);
+                ctx.drawImage(img, 0, 0, 72, 16);
+                loadedImageCanvas = canvas;
+                logMessage(`Loaded image file: ${file.name} (${img.width}x${img.height}) -> formatted to 72x16 PNG`, "info");
+            };
+            img.src = URL.createObjectURL(file);
+        }
+
+        function importImageToPixelGrid(shouldSwitchTab = true) {
+            if (!loadedImageCanvas) {
+                logMessage("Please select an image file first", "err");
+                return;
+            }
+            const ctx = loadedImageCanvas.getContext('2d');
+            const imgData = ctx.getImageData(0, 0, 72, 16).data;
+
+            clearGrid();
+            const cells = document.querySelectorAll('.pixel-grid-cell');
+
+            for (let r = 0; r < 16; r++) {
+                for (let c = 0; c < 72; c++) {
+                    const idx = (r * 72 + c) * 4;
+                    const red = imgData[idx];
+                    const green = imgData[idx+1];
+                    const blue = imgData[idx+2];
+                    const alpha = imgData[idx+3];
+
+                    if (alpha > 30 && (red > 20 || green > 20 || blue > 20)) {
+                        const hex = `#${red.toString(16).padStart(2,'0')}${green.toString(16).padStart(2,'0')}${blue.toString(16).padStart(2,'0')}`;
+                        matrixData[r][c] = hex;
+
+                        const cellIdx = r * 72 + c;
+                        if (cells[cellIdx]) {
+                            cells[cellIdx].classList.add('active');
+                            cells[cellIdx].style.backgroundColor = hex;
+                        }
+                    }
+                }
+            }
+            drawSimulatedDisplay();
+            if (shouldSwitchTab) {
+                switchTab('draw');
+                logMessage("Image imported into Pixel Drawer matrix grid!", "info");
+            }
+        }
+
+        async function uploadImageAssetAndDraw() {
+            const appName = document.getElementById('imageAppName').value.trim() || "my_app";
+            let fileName = document.getElementById('imageAssetFileName').value.trim() || "data.png";
+
+            // Sanitize filename to strictly match OpenAPI pattern ^[a-zA-Z0-9._-]+$
+            fileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+            if (!fileName.endsWith('.png')) fileName += '.png';
+            document.getElementById('imageAssetFileName').value = fileName;
+
+            if (!loadedImageCanvas) {
+                logMessage("Please select an image file first", "err");
+                return;
+            }
+
+            // Sync pixel grid & matrixData state
+            importImageToPixelGrid(false);
+
+            // Generate guaranteed opaque 24-bit RGB PNG blob compatible with firmware decoder
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 72;
+            offCanvas.height = 16;
+            const offCtx = offCanvas.getContext('2d');
+            offCtx.fillStyle = '#000000';
+            offCtx.fillRect(0, 0, 72, 16);
+
+            for (let r = 0; r < 16; r++) {
+                for (let c = 0; c < 72; c++) {
+                    const val = matrixData[r][c];
+                    if (val !== 0) {
+                        offCtx.fillStyle = typeof val === 'string' ? val : '#00FFCC';
+                        offCtx.fillRect(c, r, 1, 1);
+                    }
+                }
+            }
+
+            const pngBlob = await new Promise(resolve => offCanvas.toBlob(resolve, 'image/png'));
+            if (!pngBlob) {
+                logMessage("Failed to convert image to PNG blob", "err");
+                return;
+            }
+
+            logMessage(`Uploading crisp 72x16 asset '${fileName}' (${pngBlob.size} bytes) to /api/assets/upload...`, "info");
+
+            try {
+                await apiCall(`/api/assets/upload?application_name=${appName}&file=${fileName}`, 'POST', pngBlob, true);
+                await prepareDisplayForDraw();
+
+                const drawPayload = {
+                    application_name: appName,
+                    priority: 95,
+                    elements: [{
+                        id: "uploaded_img",
+                        type: "image",
+                        path: fileName,
+                        x: 0,
+                        y: 0,
+                        display: "front"
+                    }]
+                };
+
+                logMessage(`Rendering uploaded image asset '${fileName}' on display...`, "info");
+                await apiCall('/api/display/draw', 'POST', drawPayload);
+            } catch (e) {
+                logMessage(`Failed to upload or render image asset: ${e.message}`, "err");
+            }
+        }
+
+        function drawSimulatedDisplay() {
+            const canvas = document.getElementById('displayCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const scale = 8;
+            ctx.strokeStyle = "#111827";
+            ctx.lineWidth = 1;
+
+            for (let x = 0; x <= 72; x++) {
+                ctx.beginPath(); ctx.moveTo(x * scale, 0); ctx.lineTo(x * scale, 16 * scale); ctx.stroke();
+            }
+            for (let y = 0; y <= 16; y++) {
+                ctx.beginPath(); ctx.moveTo(0, y * scale); ctx.lineTo(72 * scale, y * scale); ctx.stroke();
+            }
+
+            const text = document.getElementById('textInput').value || "BUSY BAR 72x16";
+            const font = document.getElementById('textFont').value;
+            const color = document.getElementById('textColorPicker').value || "#00ffcc";
+
+            ctx.fillStyle = color;
+            ctx.font = (font === 'large' || font === 'extra_large' || font === 'bold') ? "bold 22px monospace" : "14px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text, (72 * scale) / 2, (16 * scale) / 2);
+
+            for (let r = 0; r < 16; r++) {
+                for (let c = 0; c < 72; c++) {
+                    const val = matrixData[r][c];
+                    if (val !== 0) {
+                        ctx.fillStyle = typeof val === 'string' ? val : "#00ffcc";
+                        ctx.fillRect(c * scale + 1, r * scale + 1, scale - 2, scale - 2);
+                    }
+                }
+            }
+        }
+
+        function loadPixelPreset(type) {
+            clearGrid();
+            if (type === 'heart') {
+                const heart = [
+                    [2,3],[2,4],[2,8],[2,9],[1,2],[1,5],[1,7],[1,10],[2,1],[2,11],[3,1],[3,11],[4,2],[4,10],[5,3],[5,9],[6,4],[6,8],[7,5],[7,7],[8,6]
+                ];
+                heart.forEach(([r, c]) => {
+                    const col = c + 30; const row = r + 3;
+                    if (row < 16 && col < 72) matrixData[row][col] = "#FF0055";
+                });
+            }
+            syncGridUi();
+            drawSimulatedDisplay();
+        }
+
+        function syncGridUi() {
+            const cells = document.querySelectorAll('.pixel-grid-cell');
+            cells.forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+                const val = matrixData[r][c];
+                if (val !== 0) {
+                    cell.classList.add('active');
+                    cell.style.backgroundColor = typeof val === 'string' ? val : "#00ffcc";
+                } else {
+                    cell.classList.remove('active');
+                    cell.style.backgroundColor = 'transparent';
+                }
+            });
+        }
+
+        async function setBrightness() {
+            const val = document.getElementById('brightnessSlider').value;
+            logMessage(`Setting brightness to ${val}...`, "info");
+            await apiCall(`/api/display/brightness?value=${val}`, 'POST');
+        }
+
+        async function setVolume() {
+            const val = document.getElementById('volumeSlider').value;
+            logMessage(`Setting volume to ${val}...`, "info");
+            await apiCall(`/api/audio/volume?volume=${val}`, 'POST');
+        }
+
+        async function sendPreset(presetName) {
+            await prepareDisplayForDraw();
+            let payload = { application_name: "my_app", priority: 95, elements: [] };
+
+            if (presetName === 'on_air') {
+                payload.led_notification_color = "#FF0000FF";
+                payload.elements = [
+                    { id: "rect_1", type: "rectangle", x: 6, y: 1, width: 60, height: 14, radius: 2, fill: "solid", fill_colors: ["#FF0000FF"], border_width: 1, border_color: "#FFFFFFFF" },
+                    { id: "text_1", type: "text", text: "ON AIR", font: "bold", color: "#FFFFFFFF", align: "center", x: 36, y: 8 }
+                ];
+            } else if (presetName === 'clock') {
+                payload.elements = [{ id: "text_clock", type: "text", text: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), font: "large", color: "#00FFCCFF", align: "center", x: 36, y: 8 }];
+            } else {
+                payload.elements = [{ id: "text_gen", type: "text", text: presetName.toUpperCase(), font: "normal", color: "#00FFCCFF", align: "center", x: 36, y: 8 }];
+            }
+
+            logMessage(`Sending Preset '${presetName}'...`, "info");
+            await apiCall('/api/display/draw', 'POST', payload);
+        }
+
+        function updateModeBanner() {
+            const banner = document.getElementById('modeNoticeBanner');
+            const title = document.getElementById('bannerTitle');
+            const desc = document.getElementById('bannerDesc');
+            const btn = document.getElementById('bannerBtn');
+
+            if (!banner || !title || !desc || !btn) return;
+
+            if (isDemoMode) {
+                banner.className = "mb-4 p-3 bg-amber-950/60 border border-amber-500/50 rounded-xl text-xs text-amber-200 flex items-center justify-between gap-3 shadow-lg";
+                title.innerText = "Mode: DEMO SIMULATOR ACTIVE";
+                desc.innerHTML = `HTTP requests are simulated in memory. No network traffic is being sent to <code class="bg-amber-900/80 px-1 py-0.5 rounded font-mono">${getApiBaseUrl()}</code>.`;
+                btn.innerText = "Disable Demo Mode (Connect Hardware)";
+                btn.className = "px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition whitespace-nowrap";
+            } else {
+                banner.className = "mb-4 p-3 bg-blue-950/60 border border-blue-500/50 rounded-xl text-xs text-blue-200 flex items-center justify-between gap-3 shadow-lg";
+                title.innerText = "Mode: LIVE HARDWARE DIRECT CONNECT";
+                desc.innerHTML = `HTTP requests will be transmitted directly to <code class="bg-blue-900/80 px-1 py-0.5 rounded font-mono">${getApiBaseUrl()}</code> over USB or Wi-Fi.`;
+                btn.innerText = "Enable Demo Mode";
+                btn.className = "px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition whitespace-nowrap";
+            }
+        }
+
+        function toggleDemoMode() {
+            isDemoMode = document.getElementById('demoModeToggle').checked;
+            updateModeBanner();
+            if (isDemoMode) {
+                logMessage("Switched to DEMO SIMULATOR mode.", "info");
+                simulateTelemetryData();
+            } else {
+                logMessage("Switched to LIVE HARDWARE mode.", "info");
+                fetchStatusAll();
+                initWebSocket();
+            }
+        }
+
+        function toggleDemoModeFromBanner() {
+            const toggle = document.getElementById('demoModeToggle');
+            if (toggle) { toggle.checked = !toggle.checked; toggleDemoMode(); }
+        }
+
+        function updateJsonPayloadPreview() {
+            const payload = getFormTextPayload();
+            document.getElementById('jsonPayloadPreview').innerText = JSON.stringify(payload, null, 2);
+        }
+
+        function copyJsonPayload() {
+            const text = document.getElementById('jsonPayloadPreview').innerText;
+            const dummy = document.createElement('textarea');
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+            logMessage("Payload JSON copied to clipboard", "info");
+        }
+
+        function setLogFilter(filter) {
+            currentLogFilter = filter;
+            ['all', 'req', 'res', 'err'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (btn) btn.className = f === filter ? "px-2 py-0.5 rounded bg-rose-600 text-white font-semibold" : "px-2 py-0.5 rounded text-slate-400 hover:text-slate-200";
+            });
+            document.querySelectorAll('.log-entry').forEach(entry => {
+                entry.style.display = (filter === 'all' || entry.classList.contains(`log-type-${filter}`)) ? 'block' : 'none';
+            });
+        }
+
+        function clearConsoleLog() {
+            const logContainer = document.getElementById('consoleLog');
+            if (logContainer) logContainer.innerHTML = `<div class="text-slate-500 text-[11px] border-b border-slate-900 pb-1">[Console Cleared] Logs reset at ${new Date().toLocaleTimeString()}</div>`;
+            totalLogCount = 0; logsArray = [];
+            document.getElementById('logCountBadge').innerText = "0 logs";
+        }
+
+        function copyConsoleLogs() {
+            if (logsArray.length === 0) return;
+            const textStr = logsArray.map(l => `[${l.time}] [${l.type.toUpperCase()}] ${l.msg}`).join('\n');
+            const dummy = document.createElement('textarea');
+            document.body.appendChild(dummy);
+            dummy.value = textStr;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+            logMessage("Console logs copied to clipboard", "info");
+        }
+
+        function switchTab(tabName) {
+            ['text', 'draw', 'image', 'presets', 'settings'].forEach(t => {
+                const btn = document.getElementById(`tabBtn-${t}`);
+                const content = document.getElementById(`tabContent-${t}`);
+                if (t === tabName) {
+                    btn.className = "px-4 py-2 text-xs font-semibold border-b-2 border-cyan-400 text-cyan-400 flex items-center gap-1.5 whitespace-nowrap";
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = "px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap";
+                    content.classList.add('hidden');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
