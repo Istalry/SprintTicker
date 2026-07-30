@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
@@ -391,6 +391,30 @@ export class IPCHandlerRegistry {
         payload.body,
         payload.iconId
       );
+    });
+
+    ipcMain.handle(IPCChannel.GET_NOTIFICATION_LISTENER_STATUS, async () => {
+      return {
+        status: this.windowsNotificationService.getListenerStatus(),
+        logs: this.windowsNotificationService.getLogEntries()
+      };
+    });
+
+    ipcMain.handle(IPCChannel.OPEN_NOTIFICATION_SETTINGS, async () => {
+      if (process.platform === 'win32') {
+        try {
+          await shell.openExternal('ms-settings:privacy-notifications');
+          return true;
+        } catch {
+          await shell.openExternal('ms-settings:notifications');
+          return true;
+        }
+      }
+      return false;
+    });
+
+    this.windowsNotificationService.onLog((entry) => {
+      this.broadcast(IPCChannel.ON_NOTIFICATION_LOG, entry);
     });
 
     // 12. Hardware Display Animation & Screen Emulator IPC Handlers

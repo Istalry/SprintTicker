@@ -80,6 +80,9 @@ export enum IPCChannel {
   GET_NOTIFICATION_SETTINGS = 'notifications:get-settings',
   SAVE_NOTIFICATION_SETTINGS = 'notifications:save-settings',
   SIMULATE_NOTIFICATION = 'notifications:simulate',
+  GET_NOTIFICATION_LISTENER_STATUS = 'notifications:get-listener-status',
+  ON_NOTIFICATION_LOG = 'notifications:on-log',
+  OPEN_NOTIFICATION_SETTINGS = 'notifications:open-settings',
 
   // Hardware Display Animation & Live Emulator
   GET_DISPLAY_STATE = 'display:get-state',

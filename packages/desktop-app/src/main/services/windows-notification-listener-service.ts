@@ -1,5 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import * as readline from 'readline';
+import * as path from 'path';
+import * as os from 'os';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
@@ -7,6 +9,9 @@ import {
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
   NotificationSourceRule,
+  NotificationLogEntryDTO,
+  NotificationLogLevel,
+  NotificationListenerStatusDTO,
   BitmapIconId
 } from '../../shared/dtos';
 
@@ -14,9 +19,15 @@ import {
  * Service that captures Windows Action Center / System notifications,
  * evaluates per-source priority rules (DONT_SHOW, DEFAULT, HIGH_PRIORITY),
  * and renders formatted notification banners on the BUSY Bar LED display.
+ *
+ * Uses a dual-strategy approach:
+ * 1. Primary: Polls the Windows Notification Database (wpndatabase.db) for real-time notifications
+ * 2. Fallback: Battery monitoring via WMI CIM queries
  */
 export class WindowsNotificationListenerService {
   private static readonly DB_SETTINGS_KEY = 'windows_notification_settings';
+  private static readonly DEFAULT_POLLING_INTERVAL_SECONDS = 2;
+  private static readonly MAX_LOG_ENTRIES = 200;
 
   private readonly _settingsRepo: SettingsRepository;
   private readonly _priorityEngine: PriorityPreemptionEngine;
@@ -25,6 +36,16 @@ export class WindowsNotificationListenerService {
   private _psProcess: ChildProcess | null = null;
   private _readlineInterface: readline.Interface | null = null;
   private _isListening: boolean = false;
+
+  private _logEntries: NotificationLogEntryDTO[] = [];
+  private _logSubscribers: ((entry: NotificationLogEntryDTO) => void)[] = [];
+  private _totalCaptured = 0;
+  private _totalSuppressed = 0;
+  private _strategy: 'DB_POLLING' | 'WINRT' | 'NONE' = 'NONE';
+  private _hasSqlite3 = false;
+  private _hasNotifDb = false;
+  private _lastPollTimestamp?: string;
+  private _errorMessage?: string;
 
   constructor(
     settingsRepo: SettingsRepository,
@@ -48,6 +69,7 @@ export class WindowsNotificationListenerService {
       {
         enableListener: true,
         notificationTimeoutSeconds: 10,
+        pollingIntervalSeconds: WindowsNotificationListenerService.DEFAULT_POLLING_INTERVAL_SECONDS,
         sourceRules: [
           { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'HIGH_PRIORITY' },
           { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT' },
@@ -75,126 +97,62 @@ export class WindowsNotificationListenerService {
   }
 
   /**
-   * Starts active OS-level listening for Windows notifications and system events via PowerShell bridge.
+   * Subscribes to real-time log events emitted by the notification listener.
+   */
+  public onLog(callback: (entry: NotificationLogEntryDTO) => void): () => void {
+    this._logSubscribers.push(callback);
+    return () => {
+      this._logSubscribers = this._logSubscribers.filter(cb => cb !== callback);
+    };
+  }
+
+  /**
+   * Returns buffered log entries for initial hydration of the debug console.
+   */
+  public getLogEntries(): NotificationLogEntryDTO[] {
+    return [...this._logEntries];
+  }
+
+  /**
+   * Returns current listener status for the UI status indicator.
+   */
+  public getListenerStatus(): NotificationListenerStatusDTO {
+    return {
+      isListening: this._isListening,
+      strategy: this._strategy,
+      hasSqlite3: this._hasSqlite3,
+      hasNotifDb: this._hasNotifDb,
+      lastPollTimestamp: this._lastPollTimestamp,
+      totalCaptured: this._totalCaptured,
+      totalSuppressed: this._totalSuppressed,
+      errorMessage: this._errorMessage
+    };
+  }
+
+  /**
+   * Starts active OS-level listening for Windows notifications via dual-strategy:
+   * 1. Primary: Polls Windows Notification Database (wpndatabase.db) — works for all apps
+   * 2. Battery: WMI battery status monitoring
    */
   public startListening(): void {
     if (this._isListening) return;
     this._isListening = true;
 
     if (process.platform !== 'win32') {
-      console.log('[WindowsNotificationListener] Non-Windows OS platform detected. OS listener suspended.');
+      this.emitLog('warn', 'Non-Windows OS platform detected. OS listener suspended.');
       return;
     }
 
     const settings = this.getSettings();
     if (!settings.enableListener) {
-      console.log('[WindowsNotificationListener] Notification listener is disabled in settings.');
+      this.emitLog('info', 'Notification listener is disabled in settings.');
       return;
     }
 
+    const pollingIntervalMs = (settings.pollingIntervalSeconds || WindowsNotificationListenerService.DEFAULT_POLLING_INTERVAL_SECONDS) * 1000;
+
     try {
-      // PowerShell script using WMI event watcher for system events
-      // and safe WinRT invocation wrapped in error handling
-      const rawScript = `
-        $OutputEncoding = [System.Text.Encoding]::UTF8
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-        # Load WinRT Notification Assembly
-        $hasWinRT = $false
-        try {
-          [void][Windows.UI.Notifications.Management.UserNotificationListener, Windows.UI.Notifications, ContentType=WindowsRuntime]
-          $hasWinRT = $true
-        } catch {}
-
-        $listener = $null
-        if ($hasWinRT) {
-          try {
-            $listener = [Windows.UI.Notifications.Management.UserNotificationListener]::Current
-            $accessTask = $listener.RequestAccessAsync()
-            while (-not $accessTask.IsCompleted) { Start-Sleep -Milliseconds 50 }
-            if ($accessTask.GetResults() -ne 'Allowed') {
-              Write-Output '{"error":"ACCESS_DENIED"}'
-              $listener = $null
-            }
-          } catch {
-            $listener = $null
-          }
-        }
-
-        $lastBatteryStatus = $null
-        $knownIds = New-Object 'System.Collections.Generic.HashSet[uint32]'
-
-        while ($true) {
-          # 1. WinRT Toast Notification Listener (Requires App Package Identity)
-          if ($listener) {
-            try {
-              $asyncOp = $listener.GetNotificationsAsync([Windows.UI.Notifications.NotificationKinds]::Toast)
-              while (-not $asyncOp.IsCompleted) { Start-Sleep -Milliseconds 50 }
-              $notifs = $asyncOp.GetResults()
-
-              foreach ($n in $notifs) {
-                if (-not $knownIds.Contains($n.Id)) {
-                  $knownIds.Add($n.Id) | Out-Null
-                  $appInfo = $n.AppInfo
-                  $appName = if ($appInfo -and $appInfo.DisplayInfo) { $appInfo.DisplayInfo.Title } else { 'Windows App' }
-                  $appId = if ($appInfo) { $appInfo.Id } else { 'windows' }
-                  
-                  $binding = $n.Notification.Visual.GetBinding([Windows.UI.Notifications.KnownNotificationNestedLanguageElementKinds]::Toast)
-                  $title = ''
-                  $body = ''
-                  if ($binding) {
-                    $elements = $binding.GetTextElements()
-                    if ($elements.Count -gt 0) { $title = $elements[0].Text }
-                    if ($elements.Count -gt 1) { $body = $elements[1].Text }
-                  }
-                  
-                  $evt = @{
-                    id = $n.Id.ToString()
-                    appId = $appId
-                    appName = $appName
-                    title = $title
-                    body = $body
-                    timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
-                  } | ConvertTo-Json -Compress
-                  
-                  Write-Output $evt
-                }
-              }
-            } catch {}
-          }
-
-          # 2. Battery & Power System Monitor via WMI (Fast CIM query)
-          try {
-            $bat = Get-CimInstance -ClassName Win32_Battery -ErrorAction SilentlyContinue
-            if ($bat) {
-              $curStatus = "$($bat.BatteryStatus)_$($bat.EstimatedChargeRemaining)"
-              if ($lastBatteryStatus -and $lastBatteryStatus -ne $curStatus) {
-                $msg = switch ($bat.BatteryStatus) {
-                  1 { "Discharging ($($bat.EstimatedChargeRemaining)% remaining)" }
-                  2 { "Connected to AC ($($bat.EstimatedChargeRemaining)%)" }
-                  3 { "Fully Charged (100%)" }
-                  4 { "Low Battery ($($bat.EstimatedChargeRemaining)%)" }
-                  5 { "Critical Battery ($($bat.EstimatedChargeRemaining)%)" }
-                  6 { "Charging ($($bat.EstimatedChargeRemaining)%)" }
-                  default { "Battery status updated ($($bat.EstimatedChargeRemaining)%)" }
-                }
-                $evt = @{
-                  id = "bat_$(Get-Date -UFormat %s)"
-                  appId = "battery"
-                  appName = "System Battery"
-                  title = "Battery Alert"
-                  body = $msg
-                  timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
-                } | ConvertTo-Json -Compress
-                Write-Output $evt
-              }
-              $lastBatteryStatus = $curStatus
-            }
-          } catch {}
-
-          Start-Sleep -Milliseconds 1000
-        }
-      `;
+      const rawScript = this.buildPowerShellScript(pollingIntervalMs);
 
       // Convert script to Base64 (UTF-16LE) to prevent parsing/quoting issues across OS shells
       const encodedScript = Buffer.from(rawScript, 'utf16le').toString('base64');
@@ -220,11 +178,38 @@ export class WindowsNotificationListenerService {
 
           try {
             const data = JSON.parse(trimmed);
-            if (data.error === 'ACCESS_DENIED') {
-              console.warn('[WindowsNotificationListener] Toast Notifications Access Denied. (Note: App requires an MSIX package identity for WinRT Toast access).');
+
+            if (data.type === 'status') {
+              this.emitLog('info', data.message);
+
+              // Track capabilities reported by PowerShell
+              if (data.message?.includes('DB polling active')) {
+                this._strategy = 'DB_POLLING';
+                this._hasSqlite3 = true;
+                this._hasNotifDb = true;
+              }
+              if (data.message?.includes('Watermark initialized')) {
+                this._lastPollTimestamp = new Date().toISOString();
+              }
               return;
             }
-            this.handleNotification({
+
+            if (data.type === 'error') {
+              this.emitLog('error', `${data.code}: ${data.message}`);
+              this._errorMessage = `${data.code}: ${data.message}`;
+
+              if (data.code === 'NO_SQLITE3') {
+                this._hasSqlite3 = false;
+              }
+              if (data.code === 'NO_WPNDB') {
+                this._hasNotifDb = false;
+              }
+              return;
+            }
+
+            // Notification event from PowerShell
+            this._lastPollTimestamp = new Date().toISOString();
+            const handled = this.handleNotification({
               id: data.id || `win_${Date.now()}`,
               appId: data.appId,
               appName: data.appName,
@@ -232,23 +217,40 @@ export class WindowsNotificationListenerService {
               body: data.body,
               timestampUtc: data.timestampUtc || new Date().toISOString()
             });
-          } catch (err) {
+
+            if (handled) {
+              this._totalCaptured++;
+              this.emitLog('notification', `[${data.appName || data.appId}] ${data.title || ''}${data.body ? ': ' + data.body : ''}`.trim());
+            } else {
+              this._totalSuppressed++;
+              this.emitLog('info', `Suppressed: [${data.appName || data.appId}] ${data.title || ''}`);
+            }
+          } catch {
             // Non-JSON output line safely ignored
           }
         });
       }
 
       this._psProcess.stderr?.on('data', (errData: Buffer) => {
-        console.warn('[WindowsNotificationListener] OS Listener log:', errData.toString('utf8').trim());
+        const msg = errData.toString('utf8').trim();
+        if (msg) {
+          this.emitLog('warn', `PS stderr: ${msg}`);
+        }
       });
 
-      this._psProcess.on('exit', () => {
+      this._psProcess.on('exit', (code) => {
+        this.emitLog('warn', `PowerShell process exited with code ${code}`);
         this._isListening = false;
         this._psProcess = null;
         this._readlineInterface = null;
+        this._strategy = 'NONE';
       });
+
+      this.emitLog('info', `Listener started (polling interval: ${pollingIntervalMs}ms).`);
     } catch (error) {
-      console.error('[WindowsNotificationListener] Failed to launch PowerShell notification listener:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.emitLog('error', `Failed to launch PowerShell notification listener: ${errMsg}`);
+      this._errorMessage = errMsg;
       this._isListening = false;
     }
   }
@@ -266,6 +268,8 @@ export class WindowsNotificationListenerService {
       this._psProcess = null;
     }
     this._isListening = false;
+    this._strategy = 'NONE';
+    this.emitLog('info', 'Listener stopped.');
   }
 
   /**
@@ -337,7 +341,313 @@ export class WindowsNotificationListenerService {
     };
 
     this.handleNotification(event);
+    this.emitLog('notification', `[SIMULATED] [${appName}] ${title}: ${body}`);
+    this._totalCaptured++;
     return event;
+  }
+
+  /**
+   * Emits a log entry to all subscribers and buffers it for initial UI hydration.
+   */
+  private emitLog(level: NotificationLogLevel, message: string): void {
+    const entry: NotificationLogEntryDTO = {
+      timestamp: new Date().toISOString(),
+      level,
+      message
+    };
+
+    this._logEntries.push(entry);
+    if (this._logEntries.length > WindowsNotificationListenerService.MAX_LOG_ENTRIES) {
+      this._logEntries = this._logEntries.slice(-WindowsNotificationListenerService.MAX_LOG_ENTRIES);
+    }
+
+    // Forward to console
+    if (level === 'error') {
+      console.error(`[WindowsNotificationListener] ${message}`);
+    } else if (level === 'warn') {
+      console.warn(`[WindowsNotificationListener] ${message}`);
+    } else {
+      console.log(`[WindowsNotificationListener] ${message}`);
+    }
+
+    // Notify subscribers (IPC broadcast)
+    this._logSubscribers.forEach(cb => cb(entry));
+  }
+
+  /**
+   * Builds the PowerShell script that polls Windows Notification Database and monitors battery status.
+   * Uses wpndatabase.db as primary source (works without MSIX package identity) and WMI for battery.
+   */
+  private buildPowerShellScript(pollingIntervalMs: number): string {
+    const notifDbPath = path.join(os.homedir(), 'AppData', 'Local', 'Microsoft', 'Windows', 'Notifications', 'wpndatabase.db');
+    const escapedDbPath = notifDbPath.replace(/\\/g, '\\\\');
+
+    return `
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$ErrorActionPreference = 'SilentlyContinue'
+
+# ---- Configuration ----
+$notifDbPath = "${escapedDbPath}"
+$pollingMs = ${pollingIntervalMs}
+$lastArrivalTime = 0
+$seenPayloadHashes = @{}
+
+# ---- Helpers ----
+function Write-Status($msg) {
+  $obj = @{ type = 'status'; message = $msg } | ConvertTo-Json -Compress
+  Write-Output $obj
+}
+
+function Write-Error-Evt($code, $msg) {
+  $obj = @{ type = 'error'; code = $code; message = $msg } | ConvertTo-Json -Compress
+  Write-Output $obj
+}
+
+function Write-Notification($id, $appId, $appName, $title, $body) {
+  $obj = @{
+    id = $id
+    appId = $appId
+    appName = $appName
+    title = $title
+    body = $body
+    timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
+  } | ConvertTo-Json -Compress
+  Write-Output $obj
+}
+
+# ---- 1. WinRT UserNotificationListener Check ----
+$winRtActive = $false
+$listener = $null
+try {
+  [Windows.UI.Notifications.Management.UserNotificationListener, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+  $listener = [Windows.UI.Notifications.Management.UserNotificationListener]::Current
+  if ($listener) {
+    $accessStatus = $listener.RequestAccessAsync().GetResults()
+    if ($accessStatus -eq [Windows.UI.Notifications.Management.UserNotificationListenerAccessStatus]::Allowed) {
+      $winRtActive = $true
+      Write-Status "WinRT UserNotificationListener active & permitted"
+    } else {
+      Write-Error-Evt "WINRT_ACCESS_DENIED" "WinRT access status: $accessStatus. Open Windows Settings to grant access."
+    }
+  }
+} catch {
+  Write-Status "WinRT listener check deferred to database parser."
+}
+
+# ---- 2. Detect sqlite3 CLI availability ----
+$sqlite3Cmd = $null
+try {
+  $found = Get-Command sqlite3 -ErrorAction SilentlyContinue
+  if ($found) { $sqlite3Cmd = $found.Source }
+} catch {}
+
+if (-not $sqlite3Cmd) {
+  $candidates = @(
+    "$env:ProgramFiles\\SQLite\\sqlite3.exe",
+    "$env:LOCALAPPDATA\\Programs\\sqlite\\sqlite3.exe",
+    "$env:ChocolateyInstall\\bin\\sqlite3.exe",
+    "$env:SCOOP\\shims\\sqlite3.exe"
+  )
+  foreach ($c in $candidates) {
+    if (Test-Path $c) { $sqlite3Cmd = $c; break }
+  }
+}
+
+$hasDbPolling = $false
+$hasNativeDbParser = $false
+
+if ($sqlite3Cmd -and (Test-Path $notifDbPath)) {
+  $hasDbPolling = $true
+  Write-Status "DB polling active (sqlite3=$sqlite3Cmd, db=$notifDbPath)"
+
+  try {
+    $tempDb = "$env:TEMP\\busybar_wpndb_init.db"
+    Copy-Item $notifDbPath $tempDb -Force 2>$null
+    if (Test-Path "$notifDbPath-wal") { Copy-Item "$notifDbPath-wal" "$tempDb-wal" -Force 2>$null }
+    if (Test-Path "$notifDbPath-shm") { Copy-Item "$notifDbPath-shm" "$tempDb-shm" -Force 2>$null }
+    $maxTime = & $sqlite3Cmd $tempDb "SELECT MAX(ArrivalTime) FROM Notification;" 2>$null
+    if ($maxTime -and $maxTime -match '^\\d+$') {
+      $lastArrivalTime = [long]$maxTime
+    }
+    Remove-Item "$tempDb*" -Force -ErrorAction SilentlyContinue
+    Write-Status "Watermark initialized at ArrivalTime=$lastArrivalTime"
+  } catch {
+    Write-Error-Evt "DB_INIT_WARN" "Could not initialize watermark: $($_.Exception.Message)"
+  }
+} elseif (Test-Path $notifDbPath) {
+  $hasNativeDbParser = $true
+  Write-Status "DB polling active via native string parser (standalone mode)"
+} else {
+  Write-Error-Evt "NO_WPNDB" "Windows notification database not found at: $notifDbPath"
+}
+
+# ---- Battery state tracking ----
+$lastBatteryStatus = $null
+
+# ---- Self-identification: skip our own app's notifications ----
+$selfAppIds = @('com.busybar.desktop')
+
+# ---- Main Polling Loop ----
+Write-Status "Entering main polling loop (interval=${pollingIntervalMs}ms)"
+
+while ($true) {
+  # ---- A. Native WinRT Polling ----
+  if ($winRtActive -and $listener) {
+    try {
+      $notifs = $listener.GetNotificationsAsync([Windows.UI.Notifications.KnownNotificationTypes]::Toast).GetResults()
+      foreach ($n in $notifs) {
+        $nId = $n.Id
+        if ($seenPayloadHashes.ContainsKey("winrt_$nId")) { continue }
+        $seenPayloadHashes["winrt_$nId"] = $true
+
+        $appInfo = $n.AppInfo
+        $aId = if ($appInfo) { $appInfo.AppUserModelId } else { "System" }
+        $aName = if ($appInfo -and $appInfo.DisplayInfo) { $appInfo.DisplayInfo.Title } else { $aId }
+
+        $binding = $n.Notification.Visual.GetBinding([Windows.UI.Notifications.KnownNotificationTemplateTypes]::ToastGeneric)
+        if ($binding) {
+          $elems = $binding.GetTextElements()
+          $title = if ($elems.Count -gt 0) { $elems[0].Text } else { "" }
+          $body = if ($elems.Count -gt 1) { $elems[1].Text } else { "" }
+
+          if ($title -or $body) {
+            Write-Notification "winrt_$nId" $aId $aName $title $body
+          }
+        }
+      }
+    } catch {}
+  }
+
+  # ---- B. Poll Windows Notification Database via sqlite3 CLI ----
+  if ($hasDbPolling) {
+    try {
+      $tempDb = "$env:TEMP\\busybar_wpndb_poll.db"
+      Copy-Item $notifDbPath $tempDb -Force 2>$null
+      if (Test-Path "$notifDbPath-wal") { Copy-Item "$notifDbPath-wal" "$tempDb-wal" -Force 2>$null }
+      if (Test-Path "$notifDbPath-shm") { Copy-Item "$notifDbPath-shm" "$tempDb-shm" -Force 2>$null }
+
+      if (Test-Path $tempDb) {
+        $query = "SELECT n.Id, n.ArrivalTime, h.PrimaryId, replace(replace(cast(n.Payload as text), char(10), ' '), char(13), ' ') FROM Notification n LEFT JOIN NotificationHandler h ON n.HandlerId = h.RecordId WHERE n.ArrivalTime > $lastArrivalTime AND n.Type = 'toast' ORDER BY n.ArrivalTime ASC LIMIT 20;"
+        $rows = & $sqlite3Cmd -separator '|BUSYSEP|' $tempDb $query 2>$null
+
+        foreach ($row in $rows) {
+          if (-not $row -or $row.Length -lt 5) { continue }
+
+          $parts = $row -split '\\|BUSYSEP\\|', 4
+          if ($parts.Count -lt 4) { continue }
+
+          $notifId = $parts[0]
+          $arrivalTime = $parts[1]
+          $primaryId = $parts[2]
+          $payload = $parts[3]
+
+          $isSelf = $false
+          foreach ($selfId in $selfAppIds) {
+            if ($primaryId -eq $selfId) { $isSelf = $true; break }
+          }
+          if ($isSelf) {
+            if ($arrivalTime -match '^\\d+$' -and [long]$arrivalTime -gt $lastArrivalTime) {
+              $lastArrivalTime = [long]$arrivalTime
+            }
+            continue
+          }
+
+          $title = ''
+          $body = ''
+          try {
+            if ($payload -match '<text[^>]*>([^<]*)</text>') {
+              $allMatches = [regex]::Matches($payload, '<text[^>]*>([^<]*)</text>')
+              if ($allMatches.Count -gt 0) { $title = $allMatches[0].Groups[1].Value }
+              if ($allMatches.Count -gt 1) { $body = $allMatches[1].Groups[1].Value }
+            }
+          } catch {}
+
+          $appName = $primaryId
+          $appId = $primaryId
+          if ($primaryId -match '^([^_!]+)') {
+            $appName = $Matches[1]
+          }
+          $appName = $appName -replace '^com\\.tinyspeck\\.', ''
+          $appName = $appName -replace '^com\\.', ''
+          $appName = $appName -replace '^Microsoft\\.', ''
+          $appName = $appName -replace 'desktop$', ''
+          $appName = $appName -replace 'Windows\\.SystemToast\\.', ''
+
+          if ($title -or $body) {
+            Write-Notification "wpn_$notifId" $appId $appName $title $body
+          }
+
+          if ($arrivalTime -match '^\\d+$' -and [long]$arrivalTime -gt $lastArrivalTime) {
+            $lastArrivalTime = [long]$arrivalTime
+          }
+        }
+
+        Remove-Item $tempDb -Force -ErrorAction SilentlyContinue
+      }
+    } catch {
+      Write-Error-Evt "DB_POLL_ERROR" "Database polling error: $($_.Exception.Message)"
+    }
+  } elseif ($hasNativeDbParser) {
+    # ---- C. Native Direct String Extraction Fallback (No sqlite3.exe) ----
+    try {
+      $tempDb = "$env:TEMP\\busybar_wpndb_raw.db"
+      Copy-Item $notifDbPath $tempDb -Force 2>$null
+
+      if (Test-Path $tempDb) {
+        $rawBytes = [System.IO.File]::ReadAllBytes($tempDb)
+        $rawText = [System.Text.Encoding]::UTF8.GetString($rawBytes)
+
+        $matches = [regex]::Matches($rawText, '<toast[^>]*>(.*?)</toast>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        foreach ($m in $matches) {
+          $toastXml = $m.Value
+          $hash = $toastXml.GetHashCode().ToString()
+          if ($seenPayloadHashes.ContainsKey($hash)) { continue }
+          $seenPayloadHashes[$hash] = $true
+
+          # Limit cache size
+          if ($seenPayloadHashes.Count -gt 500) { $seenPayloadHashes.Clear() }
+
+          $title = ""
+          $body = ""
+          $textMatches = [regex]::Matches($toastXml, '<text[^>]*>([^<]+)</text>')
+          if ($textMatches.Count -gt 0) { $title = $textMatches[0].Groups[1].Value }
+          if ($textMatches.Count -gt 1) { $body = $textMatches[1].Groups[1].Value }
+
+          if ($title -or $body) {
+            Write-Notification "raw_$hash" "system" "Windows Notification" $title $body
+          }
+        }
+
+        Remove-Item $tempDb -Force -ErrorAction SilentlyContinue
+      }
+    } catch {}
+  }
+
+  # ---- 2. Battery & Power System Monitor via WMI ----
+  try {
+    $bat = Get-CimInstance -ClassName Win32_Battery -ErrorAction SilentlyContinue
+    if ($bat) {
+      $curStatus = "$($bat.BatteryStatus)_$($bat.EstimatedChargeRemaining)"
+      if ($lastBatteryStatus -and $lastBatteryStatus -ne $curStatus) {
+        $msg = switch ($bat.BatteryStatus) {
+          1 { "Discharging ($($bat.EstimatedChargeRemaining)% remaining)" }
+          2 { "Connected to AC ($($bat.EstimatedChargeRemaining)%)" }
+          3 { "Fully Charged (100%)" }
+          4 { "Low Battery ($($bat.EstimatedChargeRemaining)%)" }
+          5 { "Critical Battery ($($bat.EstimatedChargeRemaining)%)" }
+          6 { "Charging ($($bat.EstimatedChargeRemaining)%)" }
+          default { "Battery status updated ($($bat.EstimatedChargeRemaining)%)" }
+        }
+        Write-Notification "bat_$(Get-Date -UFormat %s)" "battery" "System Battery" "Battery Alert" $msg
+      }
+      $lastBatteryStatus = $curStatus
+    }
+  } catch {}
+
+  Start-Sleep -Milliseconds $pollingMs
+}
+`;
   }
 
   private findSourceRule(

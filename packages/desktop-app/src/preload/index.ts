@@ -16,6 +16,8 @@ import {
   MessagingTestResultDTO,
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
+  NotificationLogEntryDTO,
+  NotificationListenerStatusDTO,
   BitmapIconId,
   HardwareDisplayStateDTO
 } from '../shared/dtos';
@@ -99,6 +101,9 @@ export interface IElectronAPI {
   getNotificationSettings: () => Promise<WindowsNotificationSettingsDTO>;
   saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) => Promise<boolean>;
   simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) => Promise<WindowsNotificationEventDTO>;
+  getNotificationListenerStatus: () => Promise<{ status: NotificationListenerStatusDTO; logs: NotificationLogEntryDTO[] }>;
+  onNotificationLog: (callback: (entry: NotificationLogEntryDTO) => void) => () => void;
+  openNotificationSettings: () => Promise<boolean>;
 
   // Hardware Display Animation & Screen Emulator
   getDisplayState: () => Promise<HardwareDisplayStateDTO>;
@@ -227,6 +232,13 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.SAVE_NOTIFICATION_SETTINGS, settings),
   simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) =>
     ipcRenderer.invoke(IPCChannel.SIMULATE_NOTIFICATION, payload),
+  getNotificationListenerStatus: () => ipcRenderer.invoke(IPCChannel.GET_NOTIFICATION_LISTENER_STATUS),
+  onNotificationLog: (callback: (entry: NotificationLogEntryDTO) => void) => {
+    const handler = (_event: IpcRendererEvent, entry: NotificationLogEntryDTO) => callback(entry);
+    ipcRenderer.on(IPCChannel.ON_NOTIFICATION_LOG, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_NOTIFICATION_LOG, handler);
+  },
+  openNotificationSettings: () => ipcRenderer.invoke(IPCChannel.OPEN_NOTIFICATION_SETTINGS),
 
   // Hardware Display Animation & Screen Emulator
   getDisplayState: () => ipcRenderer.invoke(IPCChannel.GET_DISPLAY_STATE),

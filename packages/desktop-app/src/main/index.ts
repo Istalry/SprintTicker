@@ -29,6 +29,7 @@ let unityInjectorService: UnityInjectorService | null = null;
 let webhookServer: WebhookServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
+let windowsNotificationService: WindowsNotificationListenerService | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -70,6 +71,9 @@ const createWindow = (): void => {
 };
 
 app.whenReady().then(async () => {
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.busybar.desktop');
+  }
   console.log('[Main] Starting Antigravity BUSY Bar PC Companion Application...');
 
   // 1. Initialize SQLite Database & Repositories
@@ -102,7 +106,7 @@ app.whenReady().then(async () => {
 
   const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine, priorityEngine);
   const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer);
-  const windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
+  windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   windowsNotificationService.startListening();
 
   ipcRegistry = new IPCHandlerRegistry(

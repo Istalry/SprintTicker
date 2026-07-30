@@ -182,6 +182,7 @@ export interface WindowsNotificationSettingsDTO {
   enableListener: boolean;
   sourceRules: NotificationSourceRule[];
   notificationTimeoutSeconds: number;
+  pollingIntervalSeconds: number;
 }
 
 export interface WindowsNotificationEventDTO {
@@ -194,6 +195,26 @@ export interface WindowsNotificationEventDTO {
   rawIconData?: (string | null)[][];
   timestampUtc?: string;
 }
+
+export type NotificationLogLevel = 'info' | 'warn' | 'error' | 'notification';
+
+export interface NotificationLogEntryDTO {
+  timestamp: string;
+  level: NotificationLogLevel;
+  message: string;
+}
+
+export interface NotificationListenerStatusDTO {
+  isListening: boolean;
+  strategy: 'DB_POLLING' | 'WINRT' | 'NONE';
+  hasSqlite3: boolean;
+  hasNotifDb: boolean;
+  lastPollTimestamp?: string;
+  totalCaptured: number;
+  totalSuppressed: number;
+  errorMessage?: string;
+}
+
 
 export interface MessagingTestResultDTO {
   success: boolean;
