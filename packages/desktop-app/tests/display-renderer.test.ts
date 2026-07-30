@@ -8,7 +8,10 @@ describe('DisplayRenderer Unit Tests', () => {
 
   beforeEach(() => {
     mockDriver = {
-      sendDisplayPayload: vi.fn(),
+      sendDisplayPayload: vi.fn().mockResolvedValue(true),
+      sendPixelFrame: vi.fn().mockResolvedValue(true),
+      clearDisplay: vi.fn().mockResolvedValue(true),
+      uploadAsset: vi.fn().mockResolvedValue(true),
       getDeviceStatus: vi.fn(() => ({
         connected: true,
         ipAddress: '10.0.4.20',
@@ -40,7 +43,8 @@ describe('DisplayRenderer Unit Tests', () => {
 
       const payload = renderer.renderActiveSession(session);
       expect(payload.frontElements.length).toBeGreaterThan(0);
-      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+      // The new pixel pipeline calls sendPixelFrame (clear → upload PNG → draw image)
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
 
     it('RenderIdle_ReturnsActiveSessionWithNull', () => {
@@ -59,19 +63,19 @@ describe('DisplayRenderer Unit Tests', () => {
     it('RenderLunchMode_DispatchesLunchScreenPayload', () => {
       const payload = renderer.renderLunchMode();
       expect(payload.ledColorHex).toBe('#F59E0BFF');
-      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
 
     it('RenderAwayMode_DispatchesAwayScreenPayload', () => {
       const payload = renderer.renderAwayMode();
       expect(payload.ledColorHex).toBe('#A855F7FF');
-      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
 
     it('RenderCeremonyPrompt_EODType_DispatchesCeremonyPromptPayload', () => {
       const payload = renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
       expect(payload.ledColorHex).toBe('#A855F7FF');
-      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
   });
 
@@ -79,13 +83,13 @@ describe('DisplayRenderer Unit Tests', () => {
     it('RenderNotificationBanner_ValidMessage_DispatchesAlertPayload', () => {
       const payload = renderer.renderNotificationBanner('Alice', 'SLACK', 40, 'slack');
       expect(payload.ledColorHex).toBe('#8B5CF6FF');
-      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
 
     it('RenderTaskCompletionConfetti_Triggered_DispatchesConfettiPayload', () => {
       const payload = renderer.renderTaskCompletionConfetti();
       expect(payload.ledColorHex).toBe('#10B981FF');
-      expect(mockDriver.sendDisplayPayload).toHaveBeenCalled();
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
   });
 

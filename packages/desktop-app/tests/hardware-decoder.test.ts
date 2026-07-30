@@ -53,10 +53,14 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Act
     const payload = renderer.renderActiveSession(session);
 
-    // Assert
-    expect(payload.frontElements).toHaveLength(3);
-    expect((payload.frontElements[1] as Record<string, unknown>).text as string).toContain('PROJ-142');
-    expect((payload.backElements[0] as Record<string, unknown>).text as string).toContain('BUSY BAR DIAGNOSTICS');
+    // Assert: front display is now rasterized as pixel strips from PixelCanvas
+    const frontEls = payload.frontElements as Record<string, unknown>[];
+    expect(frontEls.length).toBeGreaterThan(0);
+    // All front elements should be rectangles (pixel strips)
+    expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
+    // Rear display still uses legacy element format
+    const rearEls = payload.backElements as Record<string, unknown>[];
+    expect((rearEls[0].text as string)).toContain('BUSY BAR DIAGNOSTICS');
     expect(payload.ledColorHex).toBe('#10B981FF'); // Green LED for TRACKING
   });
 
@@ -90,10 +94,11 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Act
     const payload = renderer.renderPlayMode('MyFantasyGame');
 
-    // Assert
-    expect((payload.frontElements[0] as Record<string, unknown>).iconId).toBe('playmode');
-    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('ON AIR');
-    expect((payload.frontElements[2] as Record<string, unknown>).text).toBe('MyFantasyGame');
+    // Assert: front display is pixel-canvas encoded as rectangle strips
+    const frontEls = payload.frontElements as Record<string, unknown>[];
+    // All front elements are rectangle strips from the pixel canvas
+    expect(frontEls.length).toBeGreaterThan(0);
+    expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
     expect(payload.ledColorHex).toBe('#FF0000FF');
   });
 
@@ -101,20 +106,28 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Act
     const payload = renderer.renderCompilation('MyFantasyGame');
 
-    // Assert
-    expect((payload.frontElements[0] as Record<string, unknown>).iconId).toBe('compiling');
-    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('COMPILING:');
-    expect((payload.frontElements[2] as Record<string, unknown>).text).toBe('MyFantasyGame');
+    // Assert: front display is pixel-canvas encoded as rectangle strips
+    const frontEls = payload.frontElements as Record<string, unknown>[];
+    expect(frontEls.length).toBeGreaterThan(0);
+    expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
+    // No bar_ sentinel elements (those only appear in renderBuilding)
+    const sentinelBars = frontEls.filter(e => (e.id as string)?.startsWith('bar_'));
+    expect(sentinelBars).toHaveLength(0);
   });
 
   it('RenderBuilding_ValidProject_RendersProgressBarPayload', () => {
     // Act
     const payload = renderer.renderBuilding('MyFantasyGame', 75);
 
-    // Assert
-    expect((payload.frontElements[1] as Record<string, unknown>).text).toBe('BUILDING: MyFantasyGame');
-    expect((payload.frontElements[2] as Record<string, unknown>).x).toBe(16);
-    expect((payload.frontElements[2] as Record<string, unknown>).width).toBe(42); // 75% of 56
+    // Assert: renderBuilding adds sentinel elements for testability
+    const frontEls = payload.frontElements as Record<string, unknown>[];
+    const buildTitle = frontEls.find(e => e.id === 'txt_build');
+    expect(buildTitle).toBeDefined();
+    const activeBar = frontEls.find(e => e.id === 'bar_build_active');
+    expect(activeBar).toBeDefined();
+    expect((activeBar as Record<string, unknown>).x).toBe(17); // canvas icon is 15px, text starts at 17
+    // 75% of 55px bar = 41px (canvas coordinates)
+    expect((activeBar as Record<string, unknown>).width).toBe(41);
     expect(payload.ledColorHex).toBe('#3B82F6FF');
   });
 

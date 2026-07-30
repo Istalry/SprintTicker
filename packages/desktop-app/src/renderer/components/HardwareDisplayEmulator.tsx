@@ -62,7 +62,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
           });
         });
       } else if (el.type === 'rectangle') {
-        const fill = el.fill || '#3B82F6FF';
+        const fill = (el.fill_colors && el.fill_colors[0]) || el.fill || '#3B82F6FF';
         const w = el.width || 10;
         const h = el.height || 4;
         for (let r = 0; r < h; r++) {

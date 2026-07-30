@@ -220,13 +220,221 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
+   * Formats internal or raw payload into OpenAPI v25 hardware DisplayElements schema.
+   */
+  private formatHardwarePayload(payload: Record<string, unknown>): Record<string, unknown> {
+    if ('application_name' in payload && 'elements' in payload && Array.isArray(payload.elements)) {
+      return payload;
+    }
+
+    const formattedElements: Array<Record<string, unknown>> = [];
+    let elemIdCounter = 0;
+
+    const front = payload.frontElements;
+    if (Array.isArray(front)) {
+      for (const item of front) {
+        if (item && typeof item === 'object') {
+          formattedElements.push({
+            id: (item as Record<string, unknown>).id || `front_elem_${elemIdCounter++}`,
+            display: 'front',
+            ...item
+          });
+        }
+      }
+    }
+
+    const back = payload.backElements;
+    if (Array.isArray(back)) {
+      for (const item of back) {
+        if (item && typeof item === 'object') {
+          formattedElements.push({
+            id: (item as Record<string, unknown>).id || `back_elem_${elemIdCounter++}`,
+            display: 'back',
+            ...item
+          });
+        }
+      }
+    }
+
+    const hardwarePayload: Record<string, unknown> = {
+      application_name: (payload.application_name as string) || 'busybar_desktop',
+      priority: (payload.priority as number) || 95,
+      elements: formattedElements.length > 0 ? formattedElements : (payload.elements as Array<Record<string, unknown>>) || []
+    };
+
+    const ledColor = payload.ledColorHex || payload.led_notification_color;
+    if (ledColor) {
+      hardwarePayload.led_notification_color = String(ledColor);
+    }
+
+    return hardwarePayload;
+  }
+
+  /**
+   * Uploads binary asset file (e.g. 72x16 PNG bitmap) for a specific app ID to device hardware.
+   * Endpoint: POST /api/assets/upload?application_name={applicationName}&file={filename}
+   */
+  public async uploadAsset(applicationName: string, filename: string, binaryData: Buffer | Uint8Array): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK ASSET UPLOAD] app=${applicationName}, file=${filename}, bytes=${binaryData.byteLength}`);
+      return true;
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/octet-stream'
+      };
+      if (this.apiToken) {
+        headers['X-API-Token'] = this.apiToken;
+      }
+
+      const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(filename)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: binaryData
+      }).catch(() => null);
+
+      return response ? response.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Asset upload failed for ${filename}:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Deletes all asset files for a specific application name from device hardware.
+   * Endpoint: DELETE /api/assets/upload?application_name={applicationName}
+   */
+  public async deleteAppAssets(applicationName: string): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK ASSET DELETE] app=${applicationName}`);
+      return true;
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (this.apiToken) {
+        headers['X-API-Token'] = this.apiToken;
+      }
+
+      const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}`;
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers
+      }).catch(() => null);
+
+      return response ? response.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Asset delete failed for ${applicationName}:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Clears all currently displayed elements from the device screen buffer.
+   * Endpoint: DELETE /api/display/draw?application_name={applicationName}
+   */
+  public async clearDisplay(applicationName: string = 'busybar_desktop'): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK CLEAR] app=${applicationName}`);
+      return true;
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (this.apiToken) headers['X-API-Token'] = this.apiToken;
+
+      const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
+      const response = await fetch(url, { method: 'DELETE', headers }).catch(() => null);
+      return response ? response.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Clear display failed:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Renders a 72×16 pixel matrix directly on the BUSY Bar front display using the PNG asset pipeline.
+   * Mirrors the reference Studio's proven approach for complex frames (>40 strips):
+   *   1. Clear current display buffer
+   *   2. Upload the matrix as a 72×16 PNG binary to /api/assets/upload
+   *   3. Draw a single image element referencing the uploaded PNG
+   *
+   * This approach is guaranteed to work for any frame complexity and avoids JSON buffer limits.
+   */
+  public async sendPixelFrame(
+    pngBuffer: Buffer,
+    ledColorHex?: string,
+    applicationName: string = 'busybar_desktop',
+    filename: string = 'frame.png',
+    priority: number = 95
+  ): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK PIXEL FRAME] app=${applicationName}, file=${filename}, bytes=${pngBuffer.byteLength}, led=${ledColorHex ?? 'none'}`);
+      return true;
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (this.apiToken) headers['X-API-Token'] = this.apiToken;
+
+      // Step 1: Clear existing display elements
+      await this.clearDisplay(applicationName);
+
+      // Step 2: Upload 72×16 PNG as binary asset
+      const uploadOk = await this.uploadAsset(applicationName, filename, pngBuffer);
+      if (!uploadOk) {
+        console.warn(`[BusyBarDriver] PNG asset upload failed for ${filename}, skipping draw.`);
+        return false;
+      }
+
+      // Step 3: Draw the uploaded PNG as a single image element
+      const drawPayload: Record<string, unknown> = {
+        application_name: applicationName,
+        priority,
+        elements: [{
+          id: 'px_matrix_img',
+          type: 'image',
+          path: filename,
+          x: 0,
+          y: 0,
+          display: 'front'
+        }]
+      };
+
+      if (ledColorHex) {
+        drawPayload.led_notification_color = ledColorHex;
+      }
+
+      const jsonHeaders = { ...headers, 'Content-Type': 'application/json', 'Accept': 'application/json' };
+      const drawResponse = await fetch(`http://${this.ipAddress}/api/display/draw`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(drawPayload)
+      }).catch(() => null);
+
+      const success = drawResponse ? drawResponse.ok : false;
+      if (!success) {
+        console.error(`[BusyBarDriver] Draw image element failed (HTTP ${drawResponse?.status})`);
+      }
+      return success;
+    } catch (err) {
+      console.error(`[BusyBarDriver] sendPixelFrame failed:`, err);
+      return false;
+    }
+  }
+
+  /**
    * Sends display payload to physical hardware REST API.
    * Attaches X-API-Token header when operating over Wi-Fi LAN.
-   * Posts to /api/display/draw (OpenAPI v25) with fallback to /api/display/draw.
+   * Posts to /api/display/draw (OpenAPI v25).
    */
   public async sendDisplayPayload(payload: Record<string, unknown>): Promise<boolean> {
+    const formattedPayload = this.formatHardwarePayload(payload);
+
     if (this.isMockMode) {
-      console.log('[BusyBarDriver] [MOCK DISPLAY DRAW]:', JSON.stringify(payload));
+      console.log('[BusyBarDriver] [MOCK DISPLAY DRAW]:', JSON.stringify(formattedPayload));
       return true;
     }
 
@@ -243,14 +451,14 @@ export class BusyBarDriver extends EventEmitter {
       let response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(formattedPayload)
       }).catch(() => null);
 
       if (!response || !response.ok) {
         response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
           method: 'POST',
           headers,
-          body: JSON.stringify(payload)
+          body: JSON.stringify(formattedPayload)
         }).catch(() => null);
       }
 
@@ -260,6 +468,7 @@ export class BusyBarDriver extends EventEmitter {
       return false;
     }
   }
+
 
   private pingTimer: NodeJS.Timeout | null = null;
 
