@@ -220,10 +220,10 @@ export class WindowsNotificationListenerService {
 
             if (handled) {
               this._totalCaptured++;
-              this.emitLog('notification', `[${data.appName || data.appId}] ${data.title || ''}${data.body ? ': ' + data.body : ''}`.trim());
+              this.emitLog('notification', `[${data.appName}][${data.id}] ${data.title || ''}${data.body ? ': ' + data.body : ''}`.trim());
             } else {
               this._totalSuppressed++;
-              this.emitLog('info', `Suppressed: [${data.appName || data.appId}] ${data.title || ''}`);
+              this.emitLog('info', `Suppressed: [${data.appName}][${data.id}] ${data.title || ''}`);
             }
           } catch {
             // Non-JSON output line safely ignored
