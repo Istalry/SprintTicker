@@ -266,8 +266,8 @@ export class DisplayRenderer {
     row1Color: string
   ): void {
     this.canvas.clear();
-    // Draw 16×16 icon scaled to 15×14, centered vertically in the 16px display height
-    this.canvas.drawBitmap(iconBitmap, 0, 1, 15, 14);
+    // Draw 16×16 icon, centered vertically in the 16px display height
+    this.canvas.drawBitmap(iconBitmap, 0, 0, 16, 16);
     // Row 0: main label (task key + elapsed, or status)
     this.canvas.drawTextClipped(row0Text, 17, 0, row0Color, 55);
     // Row 1: secondary label (task title or status detail)
@@ -286,7 +286,7 @@ export class DisplayRenderer {
     barColor: string
   ): void {
     this.canvas.clear();
-    this.canvas.drawBitmap(iconBitmap, 0, 1, 15, 14);
+    this.canvas.drawBitmap(iconBitmap, 0, 0, 16, 16);
     this.canvas.drawTextClipped(titleText, 17, 1, titleColor, 55);
 
     // Progress bar: x=17, y=9, width=55 total
