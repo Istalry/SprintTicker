@@ -130,7 +130,7 @@ pnpm preflight
 
 The companion app includes an automated **PixelIt** image downsampling engine (`scripts/convert-icons-pixelit.js`) that processes high-resolution PNG reference icons into crisp 16×16 RGB pixel-art matrices for physical and emulated LED displays:
 
-- **1:1 Crisp Pixel Art Font:** Uses `PIXEL_FONT_5X7` bitmask rasterization to eliminate subpixel canvas blur.
+- **1:1 Crisp Pixel Art Font:** Uses `FONT_4X6` bitmask rasterization to eliminate subpixel canvas blur.
 - **Full 16×16 Icon Canvas:** Spans the full 16-pixel vertical matrix height for Slack, Discord, Gmail, Unity, Burger, Clock, Wave, Pause, Play, Stop, Error, and Compiling icons.
 - **Icon Conversion Command:**
   ```bash

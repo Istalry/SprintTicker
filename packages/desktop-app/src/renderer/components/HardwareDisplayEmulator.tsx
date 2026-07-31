@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HardwareDisplayStateDTO, DisplayElementDTO } from '../../shared/dtos';
-import { PIXEL_FONT_5X7 } from '../../main/hardware/pixel-bitmaps';
+import { FONT_4X6 } from '../../main/hardware/pixel-canvas.ts';
 
 /**
  * Physical Hardware Display Emulator Component.
@@ -85,7 +85,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
         const renderTextCopy = (baseX: number) => {
           for (let chIdx = 0; chIdx < textStr.length; chIdx++) {
             const char = textStr[chIdx];
-            const bitmask = PIXEL_FONT_5X7[char.toUpperCase()] || PIXEL_FONT_5X7[' '];
+            const bitmask = FONT_4X6[char.toUpperCase()] || FONT_4X6[' '];
             const charX = baseX + chIdx * 6;
 
             if (charX + 5 < maskMinX || charX >= maskMaxX) continue;
@@ -287,7 +287,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
   const edgeGlowOpacity = displayState?.edgeGlowOpacity ?? 0.3;
   const edgeGlowHex = displayState?.ledColorHex || '#38BDF8';
   const glowBoxShadow = enableEdgeGlow && edgeGlowOpacity > 0
-    ? `0 0 16px rgba(${parseInt(edgeGlowHex.slice(1,3)||'38',16)}, ${parseInt(edgeGlowHex.slice(3,5)||'BD',16)}, ${parseInt(edgeGlowHex.slice(5,7)||'F8',16)}, ${edgeGlowOpacity})`
+    ? `0 0 16px rgba(${parseInt(edgeGlowHex.slice(1, 3) || '38', 16)}, ${parseInt(edgeGlowHex.slice(3, 5) || 'BD', 16)}, ${parseInt(edgeGlowHex.slice(5, 7) || 'F8', 16)}, ${edgeGlowOpacity})`
     : 'none';
 
   return (
@@ -296,9 +296,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
         {/* Physical Status RGB LED Light Bar */}
         <div className="flex flex-col items-center">
           <div
-            className={`w-3.5 h-3.5 rounded-full transition-all duration-300 shadow-md ${
-              isAlert ? 'animate-pulse' : ''
-            }`}
+            className={`w-3.5 h-3.5 rounded-full transition-all duration-300 shadow-md ${isAlert ? 'animate-pulse' : ''
+              }`}
             style={{ backgroundColor: ledColor, boxShadow: `0 0 10px ${ledColor}` }}
             title={`Status LED (${displayState?.ledMode || 'SOLID'})`}
           />
