@@ -118,4 +118,17 @@ describe('IPCHandlerRegistry Unit Tests', () => {
 
     dbConn2.close();
   });
+
+  it('RegisterAllHandlers_InjectRemoteKeyChannel_InvokesDriver', async () => {
+    registry.registerAllHandlers();
+    const handleCalls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const injectCall = handleCalls.find(call => call[0] === 'input:inject-remote-key');
+    expect(injectCall).toBeDefined();
+
+    if (injectCall) {
+      const handler = injectCall[1];
+      const res = await handler({}, 'up');
+      expect(res).toBe(true);
+    }
+  });
 });

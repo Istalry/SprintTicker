@@ -69,6 +69,7 @@ export interface IElectronAPI {
   // Hardware Rebindings
   getInputBindings: () => Promise<HardwareBindingConfig>;
   saveInputBindings: (config: HardwareBindingConfig) => Promise<boolean>;
+  injectRemoteKey: (key: string) => Promise<boolean>;
   onHardwareInputEvent: (callback: (event: { inputKey: string; actionAssigned: string }) => void) => () => void;
 
   // Priority Rules
@@ -170,6 +171,7 @@ const electronAPI: IElectronAPI = {
   getInputBindings: () => ipcRenderer.invoke(IPCChannel.GET_INPUT_BINDINGS),
   saveInputBindings: (config: HardwareBindingConfig) =>
     ipcRenderer.invoke(IPCChannel.SAVE_INPUT_BINDINGS, config),
+  injectRemoteKey: (key: string) => ipcRenderer.invoke(IPCChannel.INJECT_REMOTE_KEY, key),
   onHardwareInputEvent: (callback: (event: { inputKey: string; actionAssigned: string }) => void) => {
     const handler = (_event: IpcRendererEvent, data: { inputKey: string; actionAssigned: string }) => callback(data);
     ipcRenderer.on(IPCChannel.ON_HARDWARE_INPUT_EVENT, handler);

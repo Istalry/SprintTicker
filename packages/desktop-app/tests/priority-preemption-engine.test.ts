@@ -100,4 +100,17 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
     // Assert
     expect(mockSettingsRepo.setSetting).toHaveBeenCalledWith('priority_rules', { rules: customRules });
   });
+
+  it('DismissNotification_ActiveNotificationPresent_DismissesAndReturnsTrue', () => {
+    // Arrange
+    engine.evaluateRequest('messagingPriority');
+    expect(engine.hasActiveNotification()).toBe(true);
+
+    // Act
+    const result = engine.dismissNotification();
+
+    // Assert
+    expect(result).toBe(true);
+    expect(engine.hasActiveNotification()).toBe(false);
+  });
 });

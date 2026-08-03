@@ -290,8 +290,16 @@ export const HardwareDisplayEmulator: React.FC = () => {
     ? `0 0 16px rgba(${parseInt(edgeGlowHex.slice(1, 3) || '38', 16)}, ${parseInt(edgeGlowHex.slice(3, 5) || 'BD', 16)}, ${parseInt(edgeGlowHex.slice(5, 7) || 'F8', 16)}, ${edgeGlowOpacity})`
     : 'none';
 
+  const handleKeyClick = (key: string) => {
+    if (window.electronAPI?.injectRemoteKey) {
+      window.electronAPI.injectRemoteKey(key).catch(err =>
+        console.warn('[Emulator] Remote key injection error:', err)
+      );
+    }
+  };
+
   return (
-    <div className="flex items-center space-x-4 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner">
+    <div className="flex items-center space-x-4 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner select-none">
       <div className="flex items-center space-x-2">
         {/* Physical Status RGB LED Light Bar */}
         <div className="flex flex-col items-center">
@@ -322,6 +330,48 @@ export const HardwareDisplayEmulator: React.FC = () => {
           <canvas ref={backCanvasRef} className="block rounded" title="Physical Rear 160x80 OLED Screen" />
         </div>
         <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono">160×80 Rear OLED</span>
+      </div>
+
+      {/* Interactive Physical Remote Control Pad */}
+      <div className="flex flex-col items-center border-l border-border-dark pl-4 space-y-1 font-mono">
+        <span className="text-[9px] text-text-secondary uppercase">Remote Controls</span>
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => handleKeyClick('up')}
+            className="px-1.5 py-0.5 bg-dark-800 hover:bg-accent-blue/20 text-white hover:text-accent-blue rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
+            title="Wheel Scroll Up"
+          >
+            ▲
+          </button>
+          <button
+            onClick={() => handleKeyClick('down')}
+            className="px-1.5 py-0.5 bg-dark-800 hover:bg-accent-blue/20 text-white hover:text-accent-blue rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
+            title="Wheel Scroll Down"
+          >
+            ▼
+          </button>
+          <button
+            onClick={() => handleKeyClick('ok')}
+            className="px-2 py-0.5 bg-accent-blue/20 hover:bg-accent-blue/40 text-accent-blue rounded border border-accent-blue/40 text-[10px] font-bold transition-all active:scale-95"
+            title="Wheel Click OK"
+          >
+            OK
+          </button>
+          <button
+            onClick={() => handleKeyClick('back')}
+            className="px-1.5 py-0.5 bg-dark-800 hover:bg-dark-700 text-text-secondary hover:text-white rounded border border-border-dark text-[10px] font-semibold transition-all active:scale-95"
+            title="Back Button"
+          >
+            BACK
+          </button>
+          <button
+            onClick={() => handleKeyClick('start')}
+            className="px-1.5 py-0.5 bg-accent-green/20 hover:bg-accent-green/30 text-accent-green rounded border border-accent-green/30 text-[10px] font-bold transition-all active:scale-95"
+            title="Start / Pause Session"
+          >
+            START
+          </button>
+        </div>
       </div>
     </div>
   );

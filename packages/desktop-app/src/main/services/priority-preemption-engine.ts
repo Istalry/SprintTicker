@@ -32,6 +32,8 @@ export interface IPriorityPreemptionEngine {
   evaluateRequest(eventName: string, requestedPriority?: number, renderCallback?: () => void): PreemptionEvaluationResult;
   releaseActiveLock(eventName: string): void;
   drainQueue(): void;
+  hasActiveNotification(): boolean;
+  dismissNotification(): boolean;
 }
 
 /**
@@ -267,6 +269,29 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
         this._renderer.setContextMode(this._userMode);
       }
     }
+  }
+
+  /// <summary>
+  /// Checks whether a notification alert is currently holding an active display lock.
+  /// </summary>
+  public hasActiveNotification(): boolean {
+    return (
+      this._activeLockEventName === 'messagingPriority' ||
+      this._activeLockEventName === 'highNotificationPriority'
+    );
+  }
+
+  /// <summary>
+  /// Dismisses any active notification alert, restoring background display context.
+  /// Returns true if a notification was active and dismissed.
+  /// </summary>
+  public dismissNotification(): boolean {
+    if (this.hasActiveNotification()) {
+      const activeEvt = this._activeLockEventName!;
+      this.releaseActiveLock(activeEvt);
+      return true;
+    }
+    return false;
   }
 
   /// <summary>

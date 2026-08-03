@@ -314,6 +314,22 @@ describe('WebhookServer Unit Tests', () => {
     await expect(server.stop()).resolves.not.toThrow();
   });
 
+  it('PostInput_ValidPayload_TriggersCallbackAndReturns200Accepted', async () => {
+    let capturedKey: string | null = null;
+    webhookServer.onInputEvent((k) => {
+      capturedKey = k;
+    });
+
+    const response = await webhookServer.inject({
+      method: 'POST',
+      url: '/api/input?key=ok'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED', key: 'ok' });
+    expect(capturedKey).toBe('ok');
+  });
+
   it('Start_ErrorOnPortConflict_ThrowsError', async () => {
     // Arrange: start first server on a fixed port then try to bind again on same port
     const server1 = new WebhookServer(0);

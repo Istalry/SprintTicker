@@ -225,8 +225,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(driver.getDeviceStatus().connected).toBe(false);
   });
 
-  it('BusyBarDriver_SimulateInputEvent_WhenNotConnected_DoesNotEmit', () => {
-    // Arrange: disconnect first so isConnected = false
+  it('BusyBarDriver_SimulateInputEvent_AlwaysEmitsEvents', () => {
+    // Arrange: disconnect driver
     driver.disconnect();
 
     let emitted = false;
@@ -235,8 +235,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Act
     driver.simulateInputEvent({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
 
-    // Assert: event must NOT fire when disconnected
-    expect(emitted).toBe(false);
+    // Assert: event must fire even when offline or mock
+    expect(emitted).toBe(true);
   });
 
   it('BusyBarDriver_Connect_LiveMode_FetchFails_StillConnectsDegraded', async () => {
@@ -288,5 +288,96 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it('HandleHardwareInput_TaskPaused_WheelScrollTogglesStopFinishSelection', () => {
+    // Arrange: Start task and pause it
+    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
+    decoder.setRenderer(renderer);
+    engine.pauseSession();
+
+    expect(renderer.getPausedSelection()).toBe('FINISH');
+
+    // Act: Scroll wheel
+    const action = decoder.handleHardwareInput({ key: 'down', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(action).toBe('TOGGLE_PAUSED_SELECTION');
+    expect(renderer.getPausedSelection()).toBe('STOP');
+  });
+
+  it('HandleHardwareInput_TaskPaused_WheelClickValidatesSelectionAndStopsTask', () => {
+    // Arrange: Start task and pause it
+    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
+    decoder.setRenderer(renderer);
+    engine.pauseSession();
+
+    // Act: Press wheel (selection default 'FINISH')
+    const action = decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(action).toBe('VALIDATE_PAUSED_SELECTION');
+    expect(engine.getCurrentSession()).toBeNull();
+  });
+
+  it('HandleHardwareInput_StartButtonPress_CallsWindowFocusCallbackWhenPausing', () => {
+    // Arrange
+    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
+    let focusCalled = false;
+    decoder.setWindowFocusCallback(() => { focusCalled = true; });
+
+    // Act: Press start button to pause task
+    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+    expect(focusCalled).toBe(true);
+  });
+  it('HandleHardwareInput_StartButtonPress_ResumesPausedSession', () => {
+    // Arrange: Start and pause
+    engine.startTask('PROJ-200', false, 'Resume Test');
+    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+    expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+
+    // Act: Press start again to resume
+    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+  });
+
+  it('HandleHardwareInput_NavigateQueueAction_CallsWindowFocusCallback', () => {
+    // Arrange: bind navigate_queue to up key via custom bindings (up → NAVIGATE_QUEUE_PREV by default)
+    let focusCalled = false;
+    decoder.setWindowFocusCallback(() => { focusCalled = true; });
+
+    // Act: 'up' maps to wheelRotateLeft which is NAVIGATE_QUEUE_PREV by default
+    decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(focusCalled).toBe(true);
+  });
+
+  it('HandleHardwareInput_ActionHandlerThrows_DoesNotPropagateError', () => {
+    // Arrange: register a failing action handler
+    decoder.registerActionHandler(() => { throw new Error('handler boom'); });
+
+    // Act & Assert: handleHardwareInput should not throw
+    expect(() =>
+      decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() })
+    ).not.toThrow();
+  });
+
+  it('HandleHardwareInput_NoEventType_RoutesOkKeyToWheelClickAction', () => {
+    // Arrange: REST-injected key has no event type
+    engine.startTask('PROJ-300', false, 'No-Type Key Test');
+    decoder.setRenderer(renderer);
+    engine.pauseSession();
+
+    // Act: ok key without event type (simulates REST /api/input?key=ok)
+    const action = decoder.handleHardwareInput({ key: 'ok', timestamp: new Date().toISOString() } as never);
+
+    // Assert: paused selection validated → session stopped
+    expect(action).toBe('VALIDATE_PAUSED_SELECTION');
   });
 });

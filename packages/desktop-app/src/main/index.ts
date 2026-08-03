@@ -18,6 +18,7 @@ import { WebhookServer } from './api/webhook-server';
 
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
 import { TrayManager } from './tray/tray-manager';
+import { IPCChannel } from '../shared/ipc-channels';
 
 let mainWindow: BrowserWindow | null = null;
 let dbConnection: DatabaseConnection | null = null;
@@ -99,10 +100,25 @@ app.whenReady().then(async () => {
   await webhookServer.start();
   console.log('[Main] Fastify Webhook Server listening on http://127.0.0.1:39123');
 
+  webhookServer.onInputEvent(key => {
+    if (driver) {
+      driver.injectRemoteKey(key);
+    }
+  });
+
   // 5. Register IPC Handlers and Bi-directional State Broadcasts
   unityInjectorService = new UnityInjectorService();
   const priorityEngine = new PriorityPreemptionEngine(settingsRepo);
   renderer.setPriorityEngine(priorityEngine);
+  inputDecoder.setPriorityEngine(priorityEngine);
+  inputDecoder.setRenderer(renderer);
+  inputDecoder.setWindowFocusCallback(() => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 
   const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine, priorityEngine);
   const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer);
@@ -134,6 +150,21 @@ app.whenReady().then(async () => {
     trayManager.initialize();
   }
   renderer.renderActiveSession(engine.getCurrentSession());
+
+  // Connect engine ticks to display renderer and IPC window broadcast for live matrix timer updates
+  engine.on('tick', (session) => {
+    renderer?.renderActiveSession(session);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPCChannel.ON_SESSION_UPDATED, session);
+    }
+  });
+
+  engine.on('sessionUpdated', (session) => {
+    renderer?.renderActiveSession(session);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPCChannel.ON_SESSION_UPDATED, session);
+    }
+  });
   console.log('[Main] Initialization completed successfully.');
 
   app.on('activate', () => {

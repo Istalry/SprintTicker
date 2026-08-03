@@ -22,8 +22,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
     setPingSuccess(null);
     setIsTestingPing(true);
     try {
-      if (typeof window !== 'undefined' && (window as any).electronAPI?.getDeviceStatus) {
-        const status = await (window as any).electronAPI.getDeviceStatus();
+      const win = window as unknown as { electronAPI?: { getDeviceStatus: () => Promise<{ connected: boolean; firmwareVersion?: string; connectionType?: string; webSocketPingMs?: number; batteryPercent?: number }> } };
+      if (typeof window !== 'undefined' && win.electronAPI?.getDeviceStatus) {
+        const status = await win.electronAPI.getDeviceStatus();
         if (status && status.connected) {
           setPingSuccess(true);
           const modeLabel = status.firmwareVersion?.includes('mock') ? 'Mock Hardware Ready' : `${status.connectionType?.toUpperCase() || 'USB'} Hardware Connected`;

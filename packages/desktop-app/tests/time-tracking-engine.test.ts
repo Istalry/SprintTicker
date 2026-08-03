@@ -199,4 +199,69 @@ describe('TimeTrackingEngine Unit Tests', () => {
     const updatedTask = taskRepo.getTaskById('TASK_INPROG');
     expect(updatedTask?.status).toBe('done');
   });
+
+  it('StartTask_AdHocTask_CreatesAdHocTaskAndStartsSession', () => {
+    // Act: start an ad-hoc task (isAdHoc = true)
+    const session = engine.startTask('adhoc-1', true, 'My Ad Hoc Work');
+
+    // Assert: session is running and ad-hoc task was created
+    expect(session.status).toBe('TRACKING');
+    expect(session.taskTitle).toMatch(/My Ad Hoc Work/i);
+  });
+
+  it('ReconcileStartupState_PausedSession_ReturnsSessionWithoutStartingTick', () => {
+    // Arrange: create a paused session manually in the DB
+    engine.startTask('PROJ-RECON', false, 'Reconcile Task');
+    engine.pauseSession();
+
+    // Re-create engine instance to simulate app restart (uses same DB)
+    const engine2 = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+
+    // Act
+    const reconciled = engine2.reconcileStartupState();
+
+    // Assert: session is returned in PAUSED state, tick loop is not running
+    expect(reconciled).not.toBeNull();
+    expect(reconciled!.status).toBe('PAUSED');
+  });
+
+  it('ReconcileStartupState_NoActiveSession_ReturnsNull', () => {
+    // Arrange: no active session
+    const engine2 = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+
+    // Act
+    const result = engine2.reconcileStartupState();
+
+    // Assert
+    expect(result).toBeNull();
+  });
+
+  it('Subscribe_ListenerThrows_DoesNotCrashEngine', () => {
+    // Arrange: register a listener that throws
+    engine.subscribe(() => { throw new Error('listener error'); });
+
+    // Act & Assert: startTask should not throw even when listener throws
+    expect(() => engine.startTask('PROJ-ERR', false, 'Error Task')).not.toThrow();
+  });
+
+  it('StartTickLoop_EmitsTick_AfterIntervalFires', async () => {
+    // Arrange: use fake timers so we can advance time without leaving live intervals after DB close
+    const { vi } = await import('vitest');
+    vi.useFakeTimers();
+
+    const tickedSessions: unknown[] = [];
+    engine.on('tick', (s) => tickedSessions.push(s));
+
+    // Act: start a task then advance the clock past one tick interval
+    engine.startTask('PROJ-TICK', false, 'Tick Task');
+    await vi.advanceTimersByTimeAsync(1100);
+
+    // Restore real timers and stop the tick loop cleanly
+    vi.useRealTimers();
+    engine.stopSession('Tick test complete');
+
+    // Assert
+    expect(tickedSessions.length).toBeGreaterThan(0);
+  });
 });
+

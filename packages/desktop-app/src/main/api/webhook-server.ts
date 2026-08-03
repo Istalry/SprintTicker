@@ -85,6 +85,7 @@ export class WebhookServer {
   private heartbeatCallbacks: Set<(payload: UnityHeartbeatPayload) => void> = new Set();
   private slackCallbacks: Set<(payload: SlackEventPayload) => void> = new Set();
   private discordCallbacks: Set<(payload: DiscordWebhookPayload) => void> = new Set();
+  private inputCallbacks: Set<(key: string) => void> = new Set();
 
   constructor(port: number = 39123) {
     this.port = port;
@@ -92,6 +93,13 @@ export class WebhookServer {
     if (port !== 8080) {
       this.fallbackServer = http.createServer((req, res) => this.handleRequest(req, res));
     }
+  }
+
+  /// <summary>
+  /// Registers a callback listener for remote input key events.
+  /// </summary>
+  public onInputEvent(cb: (key: string) => void): void {
+    this.inputCallbacks.add(cb);
   }
 
   /// <summary>
@@ -176,6 +184,10 @@ export class WebhookServer {
   /// Routes parsed body content to corresponding webhook handlers.
   /// </summary>
   private routeRequest(url: string, body: unknown, res: ServerResponse): void {
+    if (url.startsWith('/api/input') || url.startsWith('/api/v1/input')) {
+      return this.handleApiInput(url, body, res);
+    }
+
     switch (url) {
       case '/api/v1/unity/compile':
         return this.handleApiV1Compile(body, res);
@@ -202,6 +214,29 @@ export class WebhookServer {
       default:
         return this.sendJSON(res, 404, { error: 'NOT_FOUND', message: 'Endpoint Not Found' });
     }
+  }
+
+  private handleApiInput(url: string, body: unknown, res: ServerResponse): void {
+    let key: string | null = null;
+    const queryIndex = url.indexOf('?');
+    if (queryIndex !== -1) {
+      const searchParams = new URLSearchParams(url.substring(queryIndex));
+      key = searchParams.get('key');
+    }
+
+    if (!key && body && typeof body === 'object') {
+      const b = body as Record<string, unknown>;
+      key = String(b.key || b.input || b.button || '');
+    }
+
+    if (!key) {
+      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Missing key parameter' });
+    }
+
+    for (const cb of this.inputCallbacks) {
+      cb(key);
+    }
+    return this.sendJSON(res, 200, { status: 'ACCEPTED', key });
   }
 
   private handleApiV1Compile(body: unknown, res: ServerResponse): void {
@@ -390,7 +425,7 @@ export class WebhookServer {
         {
           hostname: urlObj.hostname,
           port: urlObj.port,
-          path: urlObj.pathname,
+          path: urlObj.pathname + urlObj.search,
           method: opts.method || 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Clock,
-  Sliders,
   Gamepad2,
   Calendar,
   Zap,
@@ -19,7 +18,6 @@ import { useWorklogs } from './hooks/useWorklogs';
 import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
 import { TaskSelectionModal } from './components/TaskSelectionModal';
 import { SettingsView } from './views/Settings/SettingsView';
-import { HardwareRebindsView } from './views/Hardware/HardwareRebindsView';
 import { UnityEngineView } from './views/Unity/UnityEngineView';
 import { CeremoniesView } from './views/Ceremonies/CeremoniesView';
 import { NotificationSettingsView } from './views/Notifications/NotificationSettingsView';
@@ -87,7 +85,6 @@ export const App: React.FC = () => {
     { id: 'projects', label: 'Projects & Tasks', icon: FolderGit2 },
     { id: 'history', label: 'Work History', icon: History },
     { id: 'settings', label: 'Task Providers', icon: Settings },
-    { id: 'hardware', label: 'Hardware Rebinds', icon: Sliders },
     { id: 'unity', label: 'Unity Engine', icon: Gamepad2 },
     { id: 'ceremonies', label: 'Ceremonies', icon: Calendar },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -172,8 +169,6 @@ export const App: React.FC = () => {
         return <ProjectTaskManagerView />;
       case 'history':
         return <WorklogHistoryView />;
-      case 'hardware':
-        return <HardwareRebindsView />;
       case 'unity':
         return <UnityEngineView />;
       case 'ceremonies':

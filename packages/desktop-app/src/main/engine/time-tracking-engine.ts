@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
@@ -13,13 +14,14 @@ export type SessionStateCallback = (session: ActiveSessionDTO | null) => void;
  * Core Time Tracking Engine managing finite state machine (Idle, Tracking, Paused),
  * absolute UTC timestamp delta calculations, crash/reboot resilience, and offline worklog buffering.
  */
-export class TimeTrackingEngine {
+export class TimeTrackingEngine extends EventEmitter {
   private sessionRepo: SessionRepository;
   private worklogRepo: WorklogRepository;
   private taskRepo: TaskRepository;
   private providerManager: ProviderManager;
   private listeners: Set<SessionStateCallback> = new Set();
   private currentSession: ActiveSessionDTO | null = null;
+  private tickTimer: NodeJS.Timeout | null = null;
 
   constructor(
     sessionRepo?: SessionRepository,
@@ -27,6 +29,7 @@ export class TimeTrackingEngine {
     taskRepo?: TaskRepository,
     providerManager?: ProviderManager
   ) {
+    super();
     this.sessionRepo = sessionRepo || new SessionRepository();
     this.worklogRepo = worklogRepo || new WorklogRepository();
     this.taskRepo = taskRepo || new TaskRepository();
@@ -35,18 +38,45 @@ export class TimeTrackingEngine {
     this.reconcileStartupState();
   }
 
+  private startTickLoop(): void {
+    if (this.tickTimer) return;
+    this.tickTimer = setInterval(() => {
+      const active = this.getCurrentSession();
+      if (!active || active.status !== 'TRACKING') {
+        this.stopTickLoop();
+        return;
+      }
+      this.emit('tick', active);
+      this.emit('sessionUpdated', active);
+      this.notifyListeners();
+    }, 1000);
+  }
+
+  private stopTickLoop(): void {
+    if (this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
+  }
+
   /**
    * Reconciles unfinalized sessions on application startup to ensure reboot & crash resilience.
    */
   public reconcileStartupState(): ActiveSessionDTO | null {
     const active = this.sessionRepo.getActiveSession();
     if (!active) {
+      this.stopTickLoop();
       this.currentSession = null;
       return null;
     }
 
     // If session was in TRACKING state during app crash/reboot, calculate accurate elapsed time
     this.currentSession = active;
+    if (active.status === 'TRACKING') {
+      this.startTickLoop();
+    } else {
+      this.stopTickLoop();
+    }
     this.notifyListeners();
     return this.currentSession;
   }
@@ -127,6 +157,7 @@ export class TimeTrackingEngine {
 
     this.sessionRepo.saveSession(newSession);
     this.currentSession = this.sessionRepo.getActiveSession();
+    this.startTickLoop();
     this.notifyListeners();
 
     return this.currentSession!;
@@ -146,6 +177,7 @@ export class TimeTrackingEngine {
     this.sessionRepo.recordPauseInterval(active.sessionId, nowIso);
 
     this.currentSession = this.sessionRepo.getActiveSession();
+    this.stopTickLoop();
     this.notifyListeners();
 
     return this.currentSession!;
@@ -168,6 +200,7 @@ export class TimeTrackingEngine {
 
     this.sessionRepo.updateStatus(active.sessionId, 'TRACKING', newTotalPaused, undefined);
     this.currentSession = this.sessionRepo.getActiveSession();
+    this.startTickLoop();
     this.notifyListeners();
 
     return this.currentSession!;
@@ -179,6 +212,8 @@ export class TimeTrackingEngine {
   public stopSession(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
     const active = this.getCurrentSession();
     if (!active) return { success: false, loggedSeconds: 0 };
+
+    this.stopTickLoop();
 
     // If user selected to mark task as done on session stop
     if (markDone && !active.isAdHoc && active.taskId) {

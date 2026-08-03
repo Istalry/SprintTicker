@@ -7,6 +7,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
   const deviceStatus = useDeviceStatus();
   const [wipeConfirm, setWipeConfirm] = useState<boolean>(false);
   const [wiping, setWiping] = useState<boolean>(false);
+  const [activeTestLog, setActiveTestLog] = useState<string | null>(null);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -136,6 +137,16 @@ export const DeviceDiagnosticsView: React.FC = () => {
         </div>
       </div>
 
+      {activeTestLog && (
+        <div className="bg-accent-blue/10 border border-accent-blue/40 text-accent-blue font-mono text-xs p-3 rounded-lg flex items-center justify-between animate-fade-in">
+          <div className="flex items-center space-x-2">
+            <Activity className="w-4 h-4 animate-spin" />
+            <span className="font-bold">{activeTestLog}</span>
+          </div>
+          <span className="text-[10px] text-text-secondary">Dispatched to Display Engine</span>
+        </div>
+      )}
+
       {/* Notification Debug Panel */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
         <div className="flex items-center space-x-2 text-accent-purple">
@@ -149,6 +160,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
             onClick={() => {
+              setActiveTestLog('Executing Discord Banner Test ([DISCORD] Alice)...');
               if (window.electronAPI?.simulateNotification) {
                 window.electronAPI.simulateNotification({
                   appId: 'discord',
@@ -157,6 +169,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                   body: 'Hey, build pipeline deployed to production!'
                 });
               }
+              setTimeout(() => setActiveTestLog(null), 3000);
             }}
             className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-purple text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
@@ -165,6 +178,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
           <button
             onClick={() => {
+              setActiveTestLog('Executing Slack Banner Test ([SLACK] Bob)...');
               if (window.electronAPI?.simulateNotification) {
                 window.electronAPI.simulateNotification({
                   appId: 'slack',
@@ -173,6 +187,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                   body: 'Sprint planning review in 10 mins.'
                 });
               }
+              setTimeout(() => setActiveTestLog(null), 3000);
             }}
             className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-emerald text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
@@ -181,6 +196,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
           <button
             onClick={() => {
+              setActiveTestLog('Executing Antigravity Alert Test ([ANTIGRAVITY] Agentic AI)...');
               if (window.electronAPI?.simulateNotification) {
                 window.electronAPI.simulateNotification({
                   appId: 'antigravity',
@@ -189,6 +205,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                   body: 'Refactoring & Vitest suite complete!'
                 });
               }
+              setTimeout(() => setActiveTestLog(null), 3000);
             }}
             className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-blue text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
@@ -197,6 +214,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
           <button
             onClick={() => {
+              setActiveTestLog('Executing System Battery Alert Test ([SYSTEM BATTERY] Low Battery)...');
               if (window.electronAPI?.simulateNotification) {
                 window.electronAPI.simulateNotification({
                   appId: 'battery',
@@ -205,6 +223,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                   body: 'Battery level 15% - Connect charger!'
                 });
               }
+              setTimeout(() => setActiveTestLog(null), 3000);
             }}
             className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-amber text-xs font-bold border border-border-dark rounded-lg transition-all"
           >

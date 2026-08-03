@@ -225,7 +225,7 @@ describe('UnityTelemetryService', () => {
       const activeSession = { sessionId: 's1', taskId: 't1', taskKey: 'TASK-1', taskTitle: 'My Task', status: 'TRACKING', elapsedSeconds: 60 };
       const mockEngine = { getCurrentSession: vi.fn().mockReturnValue(activeSession) };
 
-      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer, mockEngine as any);
+      const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer, mockEngine as unknown as TimeTrackingEngine);
 
       s.handlePlayMode({ state: 'entered', projectName: 'CyberGame' });
       expect(mockRenderer.renderPlayMode).toHaveBeenCalledWith('CyberGame');

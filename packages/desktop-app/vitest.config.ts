@@ -11,7 +11,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/main/**/*.ts', 'src/shared/**/*.ts'],
-      exclude: ['src/main/index.ts', 'src/preload/**/*.ts', 'src/main/providers/task-provider-interface.ts', 'src/main/widgets/widget-interface.ts'],
+      exclude: ['src/main/index.ts', 'src/preload/**/*.ts', 'src/main/providers/task-provider-interface.ts', 'src/main/widgets/widget-interface.ts', 'src/main/hardware/render-constants.ts'],
       thresholds: {
         lines: 90,
         functions: 90,

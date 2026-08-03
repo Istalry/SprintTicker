@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BusyBarDriver, sanitizeAsciiText } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput } from '../src/main/hardware/busybar-driver';
 
 describe('BusyBarDriver Unit Tests', () => {
   let driver: BusyBarDriver;
@@ -173,16 +173,16 @@ describe('BusyBarDriver Unit Tests', () => {
   });
 
   it('InjectRemoteKey_ValidKeyInMockMode_EmitsInputEvent', async () => {
-    let capturedEvent: any = null;
+    let capturedEvent: { key: string; type: string } | null = null;
     driver.on('input', (evt) => {
-      capturedEvent = evt;
+      capturedEvent = evt as { key: string; type: string };
     });
 
     const success = await driver.injectRemoteKey('ok');
 
     expect(success).toBe(true);
     expect(capturedEvent).not.toBeNull();
-    expect(capturedEvent.key).toBe('ok');
+    expect(capturedEvent?.key).toBe('ok');
   });
 
   it('SetAudioVolume_DefaultSilentFlag_ClampsVolumeAndPassesSilentOne', async () => {
@@ -217,7 +217,7 @@ describe('BusyBarDriver Unit Tests', () => {
     const originalFetch = globalThis.fetch;
     const callLog: string[] = [];
 
-    globalThis.fetch = (async (url: string, opts?: any) => {
+    globalThis.fetch = (async (url: string, opts?: RequestInit) => {
       callLog.push(`${opts?.method || 'GET'} ${url}`);
       return {
         ok: true,
@@ -251,5 +251,81 @@ describe('BusyBarDriver Unit Tests', () => {
     expect(callLog.some(c => c.includes('/api/display/draw'))).toBe(true);
     expect(callLog.some(c => c.includes('/api/assets/upload'))).toBe(true);
     expect(callLog.some(c => c.includes('/api/audio/volume'))).toBe(true);
+  });
+
+  it('ProtobufHelpers_ParseVarintAndZigZag_DecodesCorrectValues', () => {
+    const data = new Uint8Array([0x08, 0x96, 0x01]);
+    const res1 = parseVarint(data, 0);
+    expect(res1.value).toBe(8);
+
+    const res2 = parseVarint(data, 1);
+    expect(res2.value).toBe(150);
+
+    expect(zigzagDecode(0)).toBe(0);
+    expect(zigzagDecode(1)).toBe(-1);
+    expect(zigzagDecode(2)).toBe(1);
+    expect(zigzagDecode(3)).toBe(-2);
+  });
+
+  it('ProtobufHelpers_ParseFieldsAndDecodeInput_ParsesButtonAndEncoderPayloads', () => {
+    // Encoded button payload: BTN_START (2) -> key 'start'
+    const btnPayload = new Uint8Array([
+      0x12, 0x07, // Field 2 (update) len 7
+      0x5a, 0x05, // Field 11 (input_event) len 5
+      0x0a, 0x03, // Subfield 1 (button) len 3
+      0x08, 0x02, // field 1 (button id) = 2 (BTN_START)
+      0x10, 0x01  // field 2 (action) = 1 (ACT_RELEASE)
+    ]);
+
+    const decodedBtn = decodeProtobufInput(btnPayload);
+    expect(decodedBtn).not.toBeNull();
+    expect(decodedBtn?.key).toBe('start');
+    expect(decodedBtn?.type).toBe('press');
+
+    // Encoded encoder payload: rotate right (delta > 0)
+    const encoderPayload = new Uint8Array([
+      0x5a, 0x05, // Field 11 (input_event) len 5
+      0x1a, 0x03, // Subfield 3 (encoder) len 3
+      0x08, 0x02  // zigzag value 2 -> delta +1
+    ]);
+
+    const decodedEncoder = decodeProtobufInput(encoderPayload);
+    expect(decodedEncoder).not.toBeNull();
+    expect(decodedEncoder?.key).toBe('rotate_right');
+
+    // Encoded encoder payload: rotate left (delta < 0)
+    const encoderLeftPayload = new Uint8Array([
+      0x5a, 0x05,
+      0x1a, 0x03,
+      0x08, 0x01 // zigzag value 1 -> delta -1
+    ]);
+
+    const decodedLeft = decodeProtobufInput(encoderLeftPayload);
+    expect(decodedLeft?.key).toBe('rotate_left');
+
+    // Switch payload (SW_APPS = 3)
+    const switchPayload = new Uint8Array([
+      0x5a, 0x05, // Field 11
+      0x12, 0x03, // Subfield 2 (switch) len 3
+      0x08, 0x03  // pos = 3
+    ]);
+
+    const decodedSwitch = decodeProtobufInput(switchPayload);
+    expect(decodedSwitch?.key).toBe('apps');
+
+    // Invalid / empty payloads return null
+    expect(decodeProtobufInput(new Uint8Array([]))).toBeNull();
+  });
+
+  it('BusyBarDriver_PingLoopMockMode_FiresStatusChangedEvent', async () => {
+    vi.useFakeTimers();
+    await driver.connect();
+    let statusFired = false;
+    driver.on('statusChanged', () => { statusFired = true; });
+
+    vi.advanceTimersByTime(3500);
+
+    expect(statusFired).toBe(true);
+    vi.useRealTimers();
   });
 });

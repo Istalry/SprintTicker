@@ -192,6 +192,21 @@ export class IPCHandlerRegistry {
       return true;
     });
 
+    ipcMain.handle(IPCChannel.INJECT_REMOTE_KEY, async (_event, payload: string | { key: string }) => {
+      const key = typeof payload === 'string' ? payload : payload?.key;
+      if (key) {
+        return this.driver.injectRemoteKey(key);
+      }
+      return false;
+    });
+
+    this.inputDecoder.registerActionHandler((action, inputKey) => {
+      const window = this.getWindow();
+      if (window && !window.isDestroyed()) {
+        window.webContents.send(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
+      }
+    });
+
     // 4. Device Status & Config IPC Handlers
     ipcMain.handle(IPCChannel.GET_DEVICE_STATUS, async () => {
       return this.driver.getDeviceStatus();

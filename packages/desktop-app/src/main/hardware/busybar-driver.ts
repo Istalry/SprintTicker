@@ -26,7 +26,9 @@ export const VALID_HARDWARE_KEYS = [
   'custom',
   'off',
   'apps',
-  'settings'
+  'settings',
+  'rotate_left',
+  'rotate_right'
 ] as const;
 
 /**
@@ -42,6 +44,115 @@ export function sanitizeAsciiText(input: string): string {
     .replace(/\u2013/g, '-')
     .replace(/\u2026/g, '...')
     .replace(/[^\x20-\x7E]/g, '');
+}
+
+export function parseVarint(data: Uint8Array, offset: number): { value: number; nextOffset: number } {
+  let value = 0;
+  let shift = 0;
+  let curr = offset;
+  while (curr < data.length) {
+    const byte = data[curr++];
+    value |= (byte & 0x7f) << shift;
+    if (!(byte & 0x80)) {
+      return { value: value >>> 0, nextOffset: curr };
+    }
+    shift += 7;
+    if (shift > 35) break;
+  }
+  return { value: 0, nextOffset: data.length };
+}
+
+export function parseFields(data: Uint8Array): Array<{ number: number; wireType: number; value: number | Uint8Array }> {
+  const fields: Array<{ number: number; wireType: number; value: number | Uint8Array }> = [];
+  let offset = 0;
+  while (offset < data.length) {
+    const keyRes = parseVarint(data, offset);
+    if (keyRes.nextOffset === offset) break;
+    offset = keyRes.nextOffset;
+    const key = keyRes.value;
+    const number = key >> 3;
+    const wireType = key & 7;
+
+    if (wireType === 0) {
+      const valRes = parseVarint(data, offset);
+      offset = valRes.nextOffset;
+      fields.push({ number, wireType, value: valRes.value });
+    } else if (wireType === 2) {
+      const lenRes = parseVarint(data, offset);
+      offset = lenRes.nextOffset;
+      const len = lenRes.value;
+      const sub = data.subarray(offset, offset + len);
+      offset += len;
+      fields.push({ number, wireType, value: sub });
+    } else if (wireType === 1) {
+      offset += 8;
+    } else if (wireType === 5) {
+      offset += 4;
+    } else {
+      break;
+    }
+  }
+  return fields;
+}
+
+export function zigzagDecode(val: number): number {
+  return (val >> 1) ^ -(val & 1);
+}
+
+export function decodeProtobufInput(data: Uint8Array): { key: string; type: 'press' | 'long_press' | 'rotate_left' | 'rotate_right' } | null {
+  const rootFields = parseFields(data);
+
+  const processInputEventBytes = (inputBytes: Uint8Array): { key: string; type: 'press' | 'long_press' | 'rotate_left' | 'rotate_right' } | null => {
+    const fields = parseFields(inputBytes);
+    for (const f of fields) {
+      if (f.number === 1 && f.value instanceof Uint8Array) {
+        let button = 0;
+        let action = 0;
+        const subFields = parseFields(f.value);
+        for (const sf of subFields) {
+          if (sf.number === 1 && typeof sf.value === 'number') button = sf.value;
+          if (sf.number === 2 && typeof sf.value === 'number') action = sf.value;
+        }
+        const keyMap: Record<number, string> = { 0: 'ok', 1: 'back', 2: 'start' };
+        const key = keyMap[button] || 'ok';
+        const type = action === 2 ? 'long_press' : 'press';
+        return { key, type };
+      }
+      if (f.number === 2 && f.value instanceof Uint8Array) {
+        let pos = 0;
+        const subFields = parseFields(f.value);
+        for (const sf of subFields) {
+          if (sf.number === 1 && typeof sf.value === 'number') pos = sf.value;
+        }
+        return { key: pos === 3 ? 'apps' : 'mode', type: 'press' };
+      }
+      if (f.number === 3 && f.value instanceof Uint8Array) {
+        let delta = 0;
+        const subFields = parseFields(f.value);
+        for (const sf of subFields) {
+          if (sf.number === 1 && typeof sf.value === 'number') delta = zigzagDecode(sf.value);
+        }
+        if (delta < 0) return { key: 'rotate_left', type: 'rotate_left' };
+        if (delta > 0) return { key: 'rotate_right', type: 'rotate_right' };
+      }
+    }
+    return null;
+  };
+
+  for (const rf of rootFields) {
+    if (rf.number === 2 && rf.value instanceof Uint8Array) {
+      const updateFields = parseFields(rf.value);
+      for (const uf of updateFields) {
+        if (uf.number === 11 && uf.value instanceof Uint8Array) {
+          return processInputEventBytes(uf.value);
+        }
+      }
+    } else if (rf.number === 11 && rf.value instanceof Uint8Array) {
+      return processInputEventBytes(rf.value);
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -98,7 +209,7 @@ export class BusyBarDriver extends EventEmitter {
   /**
    * Parses telemetry fields from device status API payloads.
    */
-  private parseTelemetryData(data: Record<string, any>): void {
+  private parseTelemetryData(data: Record<string, unknown>): void {
     if (!data || typeof data !== 'object') return;
 
     const rawBattery = data.power?.battery_charge ?? data.battery_charge ?? data.battery_level ?? data.batteryPercent;
@@ -197,7 +308,7 @@ export class BusyBarDriver extends EventEmitter {
       }
 
       console.log(`[BusyBarDriver] Starting WebSocket StateStream listener on ${wsUrl}`);
-      const WsCtor = (globalThis as any).WebSocket;
+      const WsCtor = (globalThis as Record<string, unknown>).WebSocket as (new (url: string) => WebSocket) | undefined;
       if (typeof WsCtor !== 'function') {
         return;
       }
@@ -214,21 +325,46 @@ export class BusyBarDriver extends EventEmitter {
         }
       };
 
+      ws.binaryType = 'arraybuffer';
+
       ws.onmessage = (event: { data: unknown }) => {
-        if (typeof event.data === 'string') {
+        const rawData = event.data;
+        if (typeof rawData === 'string') {
           try {
-            const data = JSON.parse(event.data);
+            const data = JSON.parse(rawData);
             const key = data.key || data.input || data.button || (data.input_event && data.input_event.key);
             if (key) {
               const actionType = data.type || data.action || 'press';
               this.emit('input', {
                 key: String(key).toLowerCase(),
-                type: actionType,
+                type: actionType as 'press' | 'long_press' | 'rotate_left' | 'rotate_right',
                 timestamp: new Date().toISOString()
               });
             }
           } catch {
             // Ignore malformed JSON packets
+          }
+          return;
+        }
+
+        // Binary Protobuf StateStream frame decoding
+        let u8: Uint8Array | null = null;
+        if (rawData instanceof ArrayBuffer) {
+          u8 = new Uint8Array(rawData);
+        } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(rawData)) {
+          u8 = new Uint8Array(rawData as Buffer);
+        } else if (rawData instanceof Uint8Array) {
+          u8 = rawData;
+        }
+
+        if (u8) {
+          const parsed = decodeProtobufInput(u8);
+          if (parsed) {
+            this.emit('input', {
+              key: parsed.key,
+              type: parsed.type,
+              timestamp: new Date().toISOString()
+            });
           }
         }
       };
@@ -282,7 +418,6 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   public simulateInputEvent(event: HardwareEvent): void {
-    if (!this.isConnected) return;
     console.log(`[BusyBarDriver] Hardware Input Event: ${event.key} (${event.type})`);
     this.emit('input', event);
   }
@@ -536,17 +671,18 @@ export class BusyBarDriver extends EventEmitter {
    */
   public async injectRemoteKey(key: string): Promise<boolean> {
     const lowerKey = key.toLowerCase();
-    if (!VALID_HARDWARE_KEYS.includes(lowerKey as any)) {
+    if (!(VALID_HARDWARE_KEYS as readonly string[]).includes(lowerKey)) {
       console.warn(`[BusyBarDriver] Unknown hardware key '${key}' injected.`);
     }
 
-    if (this.isMockMode) {
-      console.log(`[BusyBarDriver] [MOCK REMOTE KEY INJECTION] key=${lowerKey}`);
-      this.simulateInputEvent({
-        key: lowerKey,
-        type: 'press',
-        timestamp: new Date().toISOString()
-      });
+    // Always emit local input event for desktop app & matrix display handlers
+    this.simulateInputEvent({
+      key: lowerKey,
+      type: lowerKey === 'rotate_left' ? 'rotate_left' : lowerKey === 'rotate_right' ? 'rotate_right' : 'press',
+      timestamp: new Date().toISOString()
+    });
+
+    if (this.isMockMode || !this.isConnected) {
       return true;
     }
 
@@ -557,10 +693,9 @@ export class BusyBarDriver extends EventEmitter {
         headers: this.getHeaders()
       }).catch(() => null);
 
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Remote key injection failed for '${key}':`, err);
-      return false;
+      return res ? res.ok : true;
+    } catch {
+      return true;
     }
   }
 

@@ -34,6 +34,7 @@ export enum IPCChannel {
   // Hardware Input Rebindings
   GET_INPUT_BINDINGS = 'input:get-bindings',
   SAVE_INPUT_BINDINGS = 'input:save-bindings',
+  INJECT_REMOTE_KEY = 'input:inject-remote-key',
   ON_HARDWARE_INPUT_EVENT = 'input:on-hardware-event',
 
   // Priority Matrix & Display

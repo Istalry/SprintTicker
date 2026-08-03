@@ -2,7 +2,6 @@ import { BusyBarDriver } from './busybar-driver';
 import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, ArgumentNullException } from '../../shared/dtos';
 import { getBitmapById } from './pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
-import { DISPLAY_CONSTANTS } from './render-constants';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
@@ -125,6 +124,26 @@ export class DisplayRenderer {
   /// </summary>
   public setActiveWidgetId(widgetId: string): void {
     this.activeWidgetId = widgetId;
+  }
+
+  private pausedSelection: 'STOP' | 'FINISH' = 'FINISH';
+
+  /// <summary>
+  /// Toggles interactive paused task option selection between STOP and FINISH.
+  /// </summary>
+  public togglePausedSelection(): 'STOP' | 'FINISH' {
+    this.pausedSelection = this.pausedSelection === 'STOP' ? 'FINISH' : 'STOP';
+    if (this.lastSessionCache && this.lastSessionCache.status === 'PAUSED') {
+      this.renderActiveSession(this.lastSessionCache);
+    }
+    return this.pausedSelection;
+  }
+
+  /// <summary>
+  /// Retrieves current paused option selection ('STOP' or 'FINISH').
+  /// </summary>
+  public getPausedSelection(): 'STOP' | 'FINISH' {
+    return this.pausedSelection;
   }
 
   /// <summary>
@@ -292,7 +311,6 @@ export class DisplayRenderer {
     // Progress bar: x=17, y=9, width=55 total
     const barTotalW = 55;
     const barFillW = Math.max(1, Math.floor((progressPercent * barTotalW) / 100));
-    const barTrackW = barTotalW - barFillW;
 
     // Track (background)
     this.canvas.drawRect(17, 10, barTotalW, 4, '#1E293B');
@@ -354,7 +372,7 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders LUNCH MUTE screen on Front Display with Burger Icon and warm amber LED.
+   * Renders LUNCH MUTE animation screen on Front Display with warm amber LED.
    */
   public renderLunchMode(): DisplayPayload {
     return this.requestRender('lunchModePriority', () => {
@@ -366,6 +384,20 @@ export class DisplayRenderer {
         '#FFFFFF'
       );
 
+      const frontElements: Array<Record<string, unknown>> = [
+        {
+          id: 'anim_lunch',
+          type: 'animation',
+          builtin_anim: 'lunch_72x16',
+          path: 'lunch_72x16',
+          x: 0,
+          y: 0,
+          align: 'top_left',
+          loop: true,
+          display: 'front'
+        }
+      ];
+
       const backElements = [
         { id: 'rear_lunch_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS', align: 'top_left' },
         { id: 'rear_lunch_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Notifications Muted | Session Paused', align: 'top_left' }
@@ -373,17 +405,25 @@ export class DisplayRenderer {
 
       this.ledMode = 'BREATHING';
       const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
+        frontElements,
         backElements,
         ledColorHex: '#F59E0BFF'
       };
-      this.transmitFrame('#F59E0BFF', backElements, payload.frontElements);
+
+      this.driver.sendDisplayPayload({
+        application_name: APP_NAME,
+        priority: 95,
+        led_notification_color: '#F59E0BFF',
+        elements: frontElements
+      }).catch(err => console.error('[DisplayRenderer] sendDisplayPayload failed:', err));
+
+      this.transmitFrame('#F59E0BFF', backElements, frontElements);
       return payload;
     });
   }
 
   /**
-   * Renders AWAY / STEALTH screen on Front Display with Clock Icon and dim purple LED.
+   * Renders AWAY / STEALTH animation screen on Front Display with dim purple LED.
    */
   public renderAwayMode(): DisplayPayload {
     return this.requestRender('awayModePriority', () => {
@@ -395,6 +435,20 @@ export class DisplayRenderer {
         '#888888'
       );
 
+      const frontElements: Array<Record<string, unknown>> = [
+        {
+          id: 'anim_away',
+          type: 'animation',
+          builtin_anim: 'back_soon_72x16',
+          path: 'back_soon_72x16',
+          x: 0,
+          y: 0,
+          align: 'top_left',
+          loop: true,
+          display: 'front'
+        }
+      ];
+
       const backElements = [
         { id: 'rear_away_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY', align: 'top_left' },
         { id: 'rear_away_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#888888FF', text: 'Stealth Display Active', align: 'top_left' }
@@ -402,11 +456,19 @@ export class DisplayRenderer {
 
       this.ledMode = 'SOLID';
       const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
+        frontElements,
         backElements,
         ledColorHex: '#A855F7FF'
       };
-      this.transmitFrame('#A855F7FF', backElements, payload.frontElements);
+
+      this.driver.sendDisplayPayload({
+        application_name: APP_NAME,
+        priority: 95,
+        led_notification_color: '#A855F7FF',
+        elements: frontElements
+      }).catch(err => console.error('[DisplayRenderer] sendDisplayPayload failed:', err));
+
+      this.transmitFrame('#A855F7FF', backElements, frontElements);
       return payload;
     });
   }
@@ -447,7 +509,12 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders Template A: Active Task Tracker View on Front Display, with Pixel Icon & OLED Rear layout.
+   * Renders Active Task Tracker View on Front Display:
+   *  - Left (x=0..15): Icon (checkmark)
+   *  - Row 0 (y=0): Task title (TASK-KEY: Title)
+   *  - Row 1 (y=8): Task timer (HH:MM:SS)
+   *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), and right side (x=47..71) displays
+   *    interactive STOP vs FINISH controls selectable via scroll wheel.
    */
   public renderActiveSession(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean = false): DisplayPayload {
     this.lastSessionCache = session;
@@ -469,25 +536,42 @@ export class DisplayRenderer {
     }
 
     const colors = this.getThemeColors();
-    const elapsedText = session ? this.formatTime(session.elapsedSeconds) : '00:00:00';
-    const row0Text = session ? `${session.taskKey} ${elapsedText}` : 'IDLE 00:00:00';
-    const row1Text = session ? session.taskTitle : 'No Active Task';
+    const isPaused = session?.status === 'PAUSED';
+    const isTracking = session?.status === 'TRACKING';
 
-    const ledColor = session
-      ? session.status === 'TRACKING'
-        ? colors.primaryColor
-        : '#F59E0BFF'
-      : '#2D3440FF';
+    const titleText = session ? `${session.taskKey}: ${session.taskTitle}` : 'No Active Task';
+    const timerText = session ? this.formatTime(session.elapsedSeconds) : '00:00:00';
 
-    this.ledMode = session ? (session.status === 'TRACKING' ? 'SOLID' : 'BREATHING') : 'SOLID';
+    const row0Color = isPaused ? '#F59E0B' : session ? colors.keyColor : '#888888';
+    const row1Color = isPaused ? '#F59E0B' : session ? '#FFFFFF' : '#888888';
+    const ledColor = isPaused ? '#F59E0BFF' : isTracking ? colors.primaryColor : '#2D3440FF';
 
-    this.paintIconAndTwoRows(
-      getBitmapById('checkmark'),
-      row0Text,
-      row1Text,
-      colors.keyColor,
-      '#FFFFFF'
-    );
+    this.ledMode = session ? (isTracking ? 'SOLID' : 'BREATHING') : 'SOLID';
+
+    this.canvas.clear();
+    this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
+
+    if (isPaused) {
+      // Clipped title & timer on left, interactive STOP/FINISH selection on right
+      this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 26);
+      this.canvas.drawSmallText(timerText, 17, 8, row1Color, 26);
+
+      // Render STOP vs FINISH controls moved down 1px to y=1 and y=9
+      if (this.pausedSelection === 'STOP') {
+        this.canvas.drawRect(44, 1, 27, 7, '#F59E0B');
+        this.canvas.drawSmallText('STOP', 45, 2, '#000000', 26);
+        this.canvas.drawSmallText('FINISH', 45, 10, '#888888', 26);
+      } else {
+        this.canvas.drawSmallText('STOP', 45, 2, '#888888', 26);
+        this.canvas.drawRect(44, 9, 27, 7, '#F59E0B');
+        this.canvas.drawSmallText('FINISH', 45, 10, '#000000', 26);
+      }
+    } else {
+      // Row 0: Task Title
+      this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 55);
+      // Row 1: Task Timer (HH:MM:SS)
+      this.canvas.drawSmallText(timerText, 17, 8, row1Color, 55);
+    }
 
     const backElements = this.buildRearElements(session, isIdleOver15Mins);
     const frontEls = this.canvasToEmulatorElements();
@@ -503,7 +587,8 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders Notification Banner with multi-color animated icon or custom app bitmap.
+   * Renders Notification Banner with icon on left and vertically centered header on right (y=5).
+   * Message body text is excluded per user specification.
    */
   public renderNotificationBanner(
     senderName: string,
@@ -520,18 +605,15 @@ export class DisplayRenderer {
 
       const isHighPriority = priority >= 90;
       const accentColor = isHighPriority ? '#EC4899' : '#8B5CF6';
+      const headerText = `[${channelName}] ${senderName}`;
 
-      this.paintIconAndTwoRows(
-        bitmapData,
-        `[${channelName}]`,
-        senderName,
-        accentColor,
-        '#FFFFFF'
-      );
+      this.canvas.clear();
+      this.canvas.drawBitmap(bitmapData, 0, 0, 16, 16);
+      this.canvas.drawTextClipped(headerText, 17, 5, accentColor, 55);
 
       const backElements = [
         { id: 'rear_notif_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `NOTIFICATION (Priority ${priority})`, align: 'top_left' },
-        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: `[${channelName.toUpperCase()}] ${senderName}`, align: 'top_left' }
+        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: headerText, align: 'top_left' }
       ];
 
       const ledColorHex = `${accentColor}FF`;
