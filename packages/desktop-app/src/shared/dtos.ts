@@ -258,6 +258,129 @@ export interface HardwareDisplayStateDTO {
   edgeGlowTransition?: EdgeGlowTransition;
 }
 
+// OpenAPI v25 System Status & Power Telemetry DTOs
+export interface StatusPowerDTO {
+  state: string;
+  battery_charge: number;
+  battery_voltage: number;
+  battery_current: number;
+  usb_voltage: number;
+}
+
+export interface StatusFirmwareDTO {
+  version: string;
+  build_date?: string;
+  git_hash?: string;
+}
+
+export interface StatusSystemDTO {
+  uptime_seconds?: number;
+  free_heap_bytes?: number;
+  cpu_frequency_mhz?: number;
+}
+
+export interface StatusDeviceDTO {
+  serial_number?: string;
+  mac_address?: string;
+  model?: string;
+}
+
+export interface AccessSettingsDTO {
+  mode: 'disabled' | 'enabled' | 'key';
+  has_key?: boolean;
+}
+
+export interface BrightnessDTO {
+  value: number | 'auto';
+  display?: 'front' | 'back' | 'all';
+}
+
+export interface AudioVolumeDTO {
+  volume: number; // 0..100
+  silent?: number; // 1 suppresses volume chime
+}
+
+export interface RtcTimeDTO {
+  timestamp: string; // ISO 8601 with timezone offset
+}
+
+// Official DisplayElements OpenAPI v25 Schemas
+export type ElementAnchor =
+  | 'top_left'
+  | 'top_mid'
+  | 'top_right'
+  | 'mid_left'
+  | 'center'
+  | 'mid_right'
+  | 'bottom_left'
+  | 'bottom_mid'
+  | 'bottom_right';
+
+export interface BaseElementSchemaDTO {
+  id: string;
+  type: 'text' | 'image' | 'animation' | 'countdown' | 'rectangle';
+  x?: number;
+  y?: number;
+  align?: ElementAnchor;
+  display?: 'front' | 'back';
+  timeout?: number;
+  display_until?: string;
+}
+
+export interface TextElementSchemaDTO extends BaseElementSchemaDTO {
+  type: 'text';
+  text: string;
+  font?: 'small' | 'medium' | 'medium_condensed' | 'big' | 'tiny' | 'normal' | 'condensed' | 'bold' | 'large' | 'extra_large' | 'global';
+  color?: string; // #RRGGBBAA hex
+  width?: number;
+  scroll_rate?: number;
+  scroll_start_delay?: number;
+  scroll_repeat_delay?: number;
+}
+
+export interface ImageElementSchemaDTO extends BaseElementSchemaDTO {
+  type: 'image';
+  path?: string;
+  stock_path?: string;
+  opacity?: number; // 0..100
+}
+
+export interface AnimationElementSchemaDTO extends BaseElementSchemaDTO {
+  type: 'animation';
+  path?: string;
+  builtin_anim?: string;
+  loop?: boolean;
+  section?: string;
+  await_previous_end?: boolean;
+  opacity?: number;
+}
+
+export interface CountdownElementSchemaDTO extends BaseElementSchemaDTO {
+  type: 'countdown';
+  timestamp: string; // Unix UTC in seconds
+  direction: 'time_left' | 'time_since';
+  show_hours: 'when_non_zero' | 'always';
+  color?: string;
+}
+
+export interface RectangleElementSchemaDTO extends BaseElementSchemaDTO {
+  type: 'rectangle';
+  width: number;
+  height: number;
+  radius?: number;
+  fill?: 'none' | 'solid' | 'gradient_h' | 'gradient_v';
+  fill_colors?: string[]; // Strictly 1 color for solid, strictly 2 for gradients
+  border_width?: number;
+  border_color?: string;
+}
+
+export interface HardwareDrawPayloadDTO {
+  application_name: string;
+  priority?: number; // 1..100 (95-100 recommended for custom apps)
+  led_notification_color?: string;
+  elements: BaseElementSchemaDTO[];
+}
+
 /**
  * Validation helpers for incoming API payloads
  */

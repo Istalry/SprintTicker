@@ -115,5 +115,52 @@ namespace Com.Antigravity.BusyBar.Editor.Tests
             Assert.GreaterOrEqual(boundPort, 8081);
             Assert.LessOrEqual(boundPort, 8089);
         }
+
+        /// <summary>
+        /// Validates that CompileEventPayload correctly formats failed builds with non-zero error counts.
+        /// </summary>
+        [Test]
+        public void SerializeCompilePayload_FailedBuild_ReturnsExpectedJson()
+        {
+            var payload = new BusyBarWebhookPublisher.CompileEventPayload
+            {
+                instanceId = "MyGame_1234",
+                state = "finished",
+                type = "compile",
+                progress = 100,
+                projectName = "MyGame",
+                unityVersion = "2022.3.10f1",
+                success = false,
+                errorCount = 3,
+                warningCount = 5
+            };
+
+            string json = JsonUtility.ToJson(payload);
+
+            Assert.IsNotNull(json);
+            Assert.IsTrue(json.Contains("\"success\":false"));
+            Assert.IsTrue(json.Contains("\"errorCount\":3"));
+        }
+
+        /// <summary>
+        /// Validates that ConsoleEventPayload handles empty log messages without throwing.
+        /// </summary>
+        [Test]
+        public void SerializeConsolePayload_EmptyMessage_HandlesGracefully()
+        {
+            var payload = new BusyBarWebhookPublisher.ConsoleEventPayload
+            {
+                instanceId = "MyGame_1234",
+                type = "error",
+                message = string.Empty,
+                stackTrace = string.Empty,
+                projectName = "MyGame"
+            };
+
+            string json = JsonUtility.ToJson(payload);
+
+            Assert.IsNotNull(json);
+            Assert.IsTrue(json.Contains("\"type\":\"error\""));
+        }
     }
 }

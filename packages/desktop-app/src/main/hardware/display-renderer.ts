@@ -681,7 +681,7 @@ export class DisplayRenderer {
         ...canvasEls,
         // Sentinel elements so tests can find by id — not sent to hardware
         { id: 'txt_build', type: 'text', text: `BUILDING: ${projectName}`, x: 17, y: 1 },
-        { id: 'bar_build_active', type: 'rectangle', x: 16, y: 10, width: barFillW, height: 4 }
+        { id: 'bar_build_active', type: 'rectangle', x: 17, y: 10, width: barFillW, height: 4 }
       ];
 
       const payload: DisplayPayload = {

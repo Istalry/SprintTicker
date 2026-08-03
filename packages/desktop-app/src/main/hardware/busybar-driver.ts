@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { DeviceStatusDTO } from '../../shared/dtos';
+import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO } from '../../shared/dtos';
 
 export interface HardwareEvent {
   key: string;
@@ -13,26 +13,58 @@ export interface BusyBarDriverOptions {
   forceMock?: boolean;
 }
 
+export const DEFAULT_USB_IP = '10.0.4.20';
+export const DEFAULT_DRAW_PRIORITY = 95;
+export const ASSET_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
+export const VALID_HARDWARE_KEYS = [
+  'up',
+  'down',
+  'ok',
+  'back',
+  'start',
+  'busy',
+  'custom',
+  'off',
+  'apps',
+  'settings'
+] as const;
+
 /**
- * Driver managing connection, telemetry, and input event streams with physical BUSY Bar hardware.
- * Communicates over USB (10.0.4.20) or Wi-Fi LAN IP with optional X-API-Token header authentication.
- * Supports --mock-hardware mode for local testing without physical device attached.
+ * Sanitizes input string to printable ASCII characters (0x20-0x7E) to ensure
+ * compatibility with BUSY Bar display fonts and prevent firmware rendering glitches.
+ */
+export function sanitizeAsciiText(input: string): string {
+  if (!input) return '';
+  return input
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\u2014/g, '--')
+    .replace(/\u2013/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x20-\x7E]/g, '');
+}
+
+/**
+ * Driver managing connection, telemetry, input event streams, and REST API commands
+ * for physical BUSY Bar hardware (72×16 matrix) per OpenAPI v25 and Developer Guide specs.
  */
 export class BusyBarDriver extends EventEmitter {
   private isMockMode: boolean = false;
   private isConnected: boolean = false;
-  private ipAddress: string = '10.0.4.20';
+  private ipAddress: string = DEFAULT_USB_IP;
   private apiToken: string = '';
   private pingMs: number = 4;
   private batteryPercent: number = 98;
   private firmwareVersion: string = '1.4.2';
-  private activeStream: unknown = null;
+  private wsClient: unknown = null;
+  private wsReconnectTimer: NodeJS.Timeout | null = null;
+  private pingTimer: NodeJS.Timeout | null = null;
 
-  constructor(ipAddressOrOptions: string | BusyBarDriverOptions = '10.0.4.20', forceMock: boolean = false) {
+  constructor(ipAddressOrOptions: string | BusyBarDriverOptions = DEFAULT_USB_IP, forceMock: boolean = false) {
     super();
 
     if (typeof ipAddressOrOptions === 'object') {
-      this.ipAddress = ipAddressOrOptions.ipAddress || '10.0.4.20';
+      this.ipAddress = ipAddressOrOptions.ipAddress || DEFAULT_USB_IP;
       this.apiToken = ipAddressOrOptions.apiToken || '';
       this.isMockMode = ipAddressOrOptions.forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
     } else {
@@ -41,27 +73,34 @@ export class BusyBarDriver extends EventEmitter {
     }
   }
 
-  /**
-   * Configures or updates the X-API-Token for Wi-Fi LAN access authentication.
-   */
   public setApiToken(token: string): void {
     this.apiToken = token;
   }
 
-  /**
-   * Gets current API token.
-   */
   public getApiToken(): string {
     return this.apiToken;
   }
 
   /**
-   * Parses system status, battery power level, and firmware telemetry from API response JSON.
+   * Helper constructing standard request headers with X-API-Token if configured.
+   */
+  private getHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      ...additionalHeaders
+    };
+    if (this.apiToken) {
+      headers['X-API-Token'] = this.apiToken;
+    }
+    return headers;
+  }
+
+  /**
+   * Parses telemetry fields from device status API payloads.
    */
   private parseTelemetryData(data: Record<string, any>): void {
     if (!data || typeof data !== 'object') return;
 
-    // Battery / Power telemetry parsing
     const rawBattery = data.power?.battery_charge ?? data.battery_charge ?? data.battery_level ?? data.batteryPercent;
     if (rawBattery !== undefined && rawBattery !== null) {
       const parsedNum = Number(rawBattery);
@@ -70,7 +109,6 @@ export class BusyBarDriver extends EventEmitter {
       }
     }
 
-    // Firmware version telemetry parsing
     const rawFirmware = data.firmware?.version ?? data.version ?? data.firmware_version ?? data.firmwareVersion;
     if (rawFirmware) {
       this.firmwareVersion = String(rawFirmware);
@@ -78,7 +116,7 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Initializes hardware connection or enters mock dry-run mode.
+   * Initializes hardware connection and starts ping loop & WebSocket listener.
    */
   public async connect(): Promise<boolean> {
     if (this.isMockMode) {
@@ -92,45 +130,15 @@ export class BusyBarDriver extends EventEmitter {
     try {
       console.log(`[BusyBarDriver] Connecting to BUSY Bar hardware at ${this.ipAddress}...`);
 
-      const headers: Record<string, string> = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      };
-      if (this.apiToken) {
-        headers['X-API-Token'] = this.apiToken;
-      }
-
-      // Check device status over REST API system status endpoint (/api/status per latest OpenAPI spec)
       let response = await fetch(`http://${this.ipAddress}/api/status`, {
         method: 'GET',
-        headers
+        headers: this.getHeaders()
       }).catch(() => null);
 
       if (!response || !response.ok) {
         response = await fetch(`http://${this.ipAddress}/api/status/power`, {
           method: 'GET',
-          headers
-        }).catch(() => null);
-      }
-
-      if (!response || !response.ok) {
-        response = await fetch(`http://${this.ipAddress}/api/status`, {
-          method: 'GET',
-          headers
-        }).catch(() => null);
-      }
-
-      if (!response || !response.ok) {
-        response = await fetch(`http://${this.ipAddress}/api/account/status`, {
-          method: 'GET',
-          headers
-        }).catch(() => null);
-      }
-
-      if (!response || !response.ok) {
-        response = await fetch(`http://${this.ipAddress}/api/account/status`, {
-          method: 'GET',
-          headers
+          headers: this.getHeaders()
         }).catch(() => null);
       }
 
@@ -140,9 +148,11 @@ export class BusyBarDriver extends EventEmitter {
         if (data) {
           this.parseTelemetryData(data);
         }
-        // Query firmware version endpoint if missing
         if (this.firmwareVersion === '1.4.2') {
-          const fwRes = await fetch(`http://${this.ipAddress}/api/status/firmware`, { method: 'GET', headers }).catch(() => null);
+          const fwRes = await fetch(`http://${this.ipAddress}/api/status/firmware`, {
+            method: 'GET',
+            headers: this.getHeaders()
+          }).catch(() => null);
           if (fwRes && fwRes.ok) {
             const fwData = await fwRes.json().catch(() => null);
             if (fwData) this.parseTelemetryData(fwData);
@@ -150,7 +160,6 @@ export class BusyBarDriver extends EventEmitter {
         }
         this.startStateStreamListener();
       } else {
-        // Connected over USB or local LAN without status check failure
         this.isConnected = true;
       }
 
@@ -167,24 +176,86 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Connects WebSocket StateStream listener for real-time hardware input events.
+   * Connects WebSocket StateStream to ws://{host}/api/status/ws with automatic 3s reconnection.
+   * Sends mandatory handshake payload `{ enable: true }` upon connection.
    */
-  private startStateStreamListener(): void {
+  public startStateStreamListener(): void {
+    if (this.isMockMode) return;
+    if (this.wsClient) {
+      try {
+        (this.wsClient as { close?: () => void }).close?.();
+      } catch {
+        // ignore close errors
+      }
+      this.wsClient = null;
+    }
+
     try {
-      console.log(`[BusyBarDriver] Starting WebSocket StateStream listener on http://${this.ipAddress}`);
-      // Listening for physical hardware events (buttons, wheel rotation)
-      // When incoming websocket packet arrives:
-      // this.emit('input', { key: update.key, type: update.actionType, timestamp: new Date().toISOString() });
+      let wsUrl = `ws://${this.ipAddress}/api/status/ws`;
+      if (this.apiToken) {
+        wsUrl += `?x-api-token=${encodeURIComponent(this.apiToken)}`;
+      }
+
+      console.log(`[BusyBarDriver] Starting WebSocket StateStream listener on ${wsUrl}`);
+      const WsCtor = (globalThis as any).WebSocket;
+      if (typeof WsCtor !== 'function') {
+        return;
+      }
+
+      const ws = new WsCtor(wsUrl);
+      this.wsClient = ws;
+
+      ws.onopen = () => {
+        console.log('[BusyBarDriver] WebSocket connected. Sending handshake { enable: true }');
+        try {
+          ws.send(JSON.stringify({ enable: true }));
+        } catch (err) {
+          console.warn('[BusyBarDriver] WebSocket handshake send failed:', err);
+        }
+      };
+
+      ws.onmessage = (event: { data: unknown }) => {
+        if (typeof event.data === 'string') {
+          try {
+            const data = JSON.parse(event.data);
+            const key = data.key || data.input || data.button || (data.input_event && data.input_event.key);
+            if (key) {
+              const actionType = data.type || data.action || 'press';
+              this.emit('input', {
+                key: String(key).toLowerCase(),
+                type: actionType,
+                timestamp: new Date().toISOString()
+              });
+            }
+          } catch {
+            // Ignore malformed JSON packets
+          }
+        }
+      };
+
+      ws.onerror = (err: unknown) => {
+        console.warn('[BusyBarDriver] WebSocket error:', err);
+      };
+
+      ws.onclose = () => {
+        console.log('[BusyBarDriver] WebSocket closed. Scheduling reconnection in 3s...');
+        this.wsClient = null;
+        if (!this.wsReconnectTimer) {
+          this.wsReconnectTimer = setTimeout(() => {
+            this.wsReconnectTimer = null;
+            if (this.isConnected && !this.isMockMode) {
+              this.startStateStreamListener();
+            }
+          }, 3000);
+        }
+      };
     } catch (err) {
-      console.warn('[BusyBarDriver] StateStream WebSocket connection degraded:', err);
+      console.warn('[BusyBarDriver] StateStream WebSocket connection failed:', err);
     }
   }
 
-  /**
-   * Returns current hardware status DTO.
-   */
   public getDeviceStatus(): DeviceStatusDTO {
-    const isWifi = this.ipAddress !== '10.0.4.20';
+    const isWifi = this.ipAddress !== DEFAULT_USB_IP;
     if (!this.isConnected && !this.isMockMode) {
       return {
         connected: false,
@@ -210,9 +281,6 @@ export class BusyBarDriver extends EventEmitter {
     };
   }
 
-  /**
-   * Simulates a physical hardware input event (used in mock mode or automated tests).
-   */
   public simulateInputEvent(event: HardwareEvent): void {
     if (!this.isConnected) return;
     console.log(`[BusyBarDriver] Hardware Input Event: ${event.key} (${event.type})`);
@@ -220,46 +288,83 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Formats internal or raw payload into OpenAPI v25 hardware DisplayElements schema.
+   * Formats raw element arrays and enforces firmware validation rules:
+   *  - Solid fills MUST contain strictly 1 color string in fill_colors.
+   *  - Gradient fills MUST contain strictly 2 color strings in fill_colors.
+   *  - Text elements MUST have text strings sanitized to ASCII.
+   *  - Image elements MUST use filename-only path and exclude width/height keys.
    */
-  private formatHardwarePayload(payload: Record<string, unknown>): Record<string, unknown> {
-    if ('application_name' in payload && 'elements' in payload && Array.isArray(payload.elements)) {
-      return payload;
-    }
-
-    const formattedElements: Array<Record<string, unknown>> = [];
+  public formatHardwarePayload(payload: Record<string, unknown>): Record<string, unknown> {
+    const rawElements = (payload.elements as Array<Record<string, unknown>>) || [];
     let elemIdCounter = 0;
 
-    const front = payload.frontElements;
-    if (Array.isArray(front)) {
-      for (const item of front) {
+    const formattedElements: Array<Record<string, unknown>> = [];
+
+    const processElement = (item: Record<string, unknown>, defaultDisplay: string): Record<string, unknown> => {
+      const elem: Record<string, unknown> = {
+        id: item.id || `elem_${elemIdCounter++}`,
+        display: item.display || defaultDisplay,
+        ...item
+      };
+
+      if (elem.type === 'text' && typeof elem.text === 'string') {
+        elem.text = sanitizeAsciiText(elem.text);
+      }
+
+      if (elem.type === 'rectangle') {
+        const fillMode = String(elem.fill || 'solid').toLowerCase();
+        let colors = Array.isArray(elem.fill_colors) ? elem.fill_colors.map(String) : [];
+
+        if (fillMode === 'solid' || fillMode === 'none') {
+          if (colors.length === 0) colors = ['#FFFFFFFF'];
+          else if (colors.length > 1) colors = [colors[0]];
+        } else if (fillMode === 'gradient_h' || fillMode === 'gradient_v') {
+          if (colors.length === 0) colors = ['#FFFFFFFF', '#000000FF'];
+          else if (colors.length === 1) colors = [colors[0], colors[0]];
+          else if (colors.length > 2) colors = colors.slice(0, 2);
+        }
+        elem.fill_colors = colors;
+      }
+
+      if (elem.type === 'image') {
+        if (typeof elem.path === 'string') {
+          elem.path = elem.path.replace(/^.*[\\/]/, '');
+        }
+        delete elem.width;
+        delete elem.height;
+      }
+
+      return elem;
+    };
+
+    if (Array.isArray(payload.frontElements)) {
+      for (const item of payload.frontElements as Array<Record<string, unknown>>) {
         if (item && typeof item === 'object') {
-          formattedElements.push({
-            id: (item as Record<string, unknown>).id || `front_elem_${elemIdCounter++}`,
-            display: 'front',
-            ...item
-          });
+          formattedElements.push(processElement(item, 'front'));
         }
       }
     }
 
-    const back = payload.backElements;
-    if (Array.isArray(back)) {
-      for (const item of back) {
+    if (Array.isArray(payload.backElements)) {
+      for (const item of payload.backElements as Array<Record<string, unknown>>) {
         if (item && typeof item === 'object') {
-          formattedElements.push({
-            id: (item as Record<string, unknown>).id || `back_elem_${elemIdCounter++}`,
-            display: 'back',
-            ...item
-          });
+          formattedElements.push(processElement(item, 'back'));
+        }
+      }
+    }
+
+    if (formattedElements.length === 0 && rawElements.length > 0) {
+      for (const item of rawElements) {
+        if (item && typeof item === 'object') {
+          formattedElements.push(processElement(item, String(item.display || 'front')));
         }
       }
     }
 
     const hardwarePayload: Record<string, unknown> = {
       application_name: (payload.application_name as string) || 'busybar_desktop',
-      priority: (payload.priority as number) || 95,
-      elements: formattedElements.length > 0 ? formattedElements : (payload.elements as Array<Record<string, unknown>>) || []
+      priority: typeof payload.priority === 'number' ? payload.priority : DEFAULT_DRAW_PRIORITY,
+      elements: formattedElements
     };
 
     const ledColor = payload.ledColorHex || payload.led_notification_color;
@@ -271,40 +376,38 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Uploads binary asset file (e.g. 72x16 PNG bitmap) for a specific app ID to device hardware.
-   * Endpoint: POST /api/assets/upload?application_name={applicationName}&file={filename}
+   * Uploads binary asset file to POST /api/assets/upload?application_name={app}&file={filename}
+   * Validates filename strictly against regex ^[a-zA-Z0-9._-]+$.
    */
   public async uploadAsset(applicationName: string, filename: string, binaryData: Buffer | Uint8Array): Promise<boolean> {
+    const cleanFilename = filename.replace(/^.*[\\/]/, '');
+    if (!ASSET_FILENAME_REGEX.test(cleanFilename)) {
+      console.error(`[BusyBarDriver] Invalid asset filename '${filename}'. Must match ${ASSET_FILENAME_REGEX}`);
+      return false;
+    }
+
     if (this.isMockMode) {
-      console.log(`[BusyBarDriver] [MOCK ASSET UPLOAD] app=${applicationName}, file=${filename}, bytes=${binaryData.byteLength}`);
+      console.log(`[BusyBarDriver] [MOCK ASSET UPLOAD] app=${applicationName}, file=${cleanFilename}, bytes=${binaryData.byteLength}`);
       return true;
     }
 
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/octet-stream'
-      };
-      if (this.apiToken) {
-        headers['X-API-Token'] = this.apiToken;
-      }
-
-      const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(filename)}`;
+      const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(cleanFilename)}`;
       const response = await fetch(url, {
         method: 'POST',
-        headers,
+        headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
         body: binaryData
       }).catch(() => null);
 
       return response ? response.ok : false;
     } catch (err) {
-      console.error(`[BusyBarDriver] Asset upload failed for ${filename}:`, err);
+      console.error(`[BusyBarDriver] Asset upload failed for ${cleanFilename}:`, err);
       return false;
     }
   }
 
   /**
-   * Deletes all asset files for a specific application name from device hardware.
-   * Endpoint: DELETE /api/assets/upload?application_name={applicationName}
+   * Deletes all asset files for application: DELETE /api/assets/upload?application_name={app}
    */
   public async deleteAppAssets(applicationName: string): Promise<boolean> {
     if (this.isMockMode) {
@@ -313,15 +416,10 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const headers: Record<string, string> = {};
-      if (this.apiToken) {
-        headers['X-API-Token'] = this.apiToken;
-      }
-
       const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}`;
       const response = await fetch(url, {
         method: 'DELETE',
-        headers
+        headers: this.getHeaders()
       }).catch(() => null);
 
       return response ? response.ok : false;
@@ -332,8 +430,7 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Clears all currently displayed elements from the device screen buffer.
-   * Endpoint: DELETE /api/display/draw?application_name={applicationName}
+   * Clears display elements for application: DELETE /api/display/draw?application_name={app}
    */
   public async clearDisplay(applicationName: string = 'busybar_desktop'): Promise<boolean> {
     if (this.isMockMode) {
@@ -342,11 +439,11 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const headers: Record<string, string> = {};
-      if (this.apiToken) headers['X-API-Token'] = this.apiToken;
-
       const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
-      const response = await fetch(url, { method: 'DELETE', headers }).catch(() => null);
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      }).catch(() => null);
       return response ? response.ok : false;
     } catch (err) {
       console.error(`[BusyBarDriver] Clear display failed:`, err);
@@ -355,48 +452,37 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Renders a 72×16 pixel matrix directly on the BUSY Bar front display using the PNG asset pipeline.
-   * Mirrors the reference Studio's proven approach for complex frames (>40 strips):
-   *   1. Clear current display buffer
-   *   2. Upload the matrix as a 72×16 PNG binary to /api/assets/upload
-   *   3. Draw a single image element referencing the uploaded PNG
-   *
-   * This approach is guaranteed to work for any frame complexity and avoids JSON buffer limits.
+   * Renders pixel art matrix PNG to physical display via uploadAsset + single ImageElement draw.
    */
   public async sendPixelFrame(
     pngBuffer: Buffer,
     ledColorHex?: string,
     applicationName: string = 'busybar_desktop',
     filename: string = 'frame.png',
-    priority: number = 95
+    priority: number = DEFAULT_DRAW_PRIORITY
   ): Promise<boolean> {
+    const cleanFilename = filename.replace(/^.*[\\/]/, '');
     if (this.isMockMode) {
-      console.log(`[BusyBarDriver] [MOCK PIXEL FRAME] app=${applicationName}, file=${filename}, bytes=${pngBuffer.byteLength}, led=${ledColorHex ?? 'none'}`);
+      console.log(`[BusyBarDriver] [MOCK PIXEL FRAME] app=${applicationName}, file=${cleanFilename}, bytes=${pngBuffer.byteLength}, led=${ledColorHex ?? 'none'}`);
       return true;
     }
 
     try {
-      const headers: Record<string, string> = {};
-      if (this.apiToken) headers['X-API-Token'] = this.apiToken;
-
-      // Step 1: Clear existing display elements
       await this.clearDisplay(applicationName);
 
-      // Step 2: Upload 72×16 PNG as binary asset
-      const uploadOk = await this.uploadAsset(applicationName, filename, pngBuffer);
+      const uploadOk = await this.uploadAsset(applicationName, cleanFilename, pngBuffer);
       if (!uploadOk) {
-        console.warn(`[BusyBarDriver] PNG asset upload failed for ${filename}, skipping draw.`);
+        console.warn(`[BusyBarDriver] PNG asset upload failed for ${cleanFilename}, skipping draw.`);
         return false;
       }
 
-      // Step 3: Draw the uploaded PNG as a single image element
       const drawPayload: Record<string, unknown> = {
         application_name: applicationName,
         priority,
         elements: [{
           id: 'px_matrix_img',
           type: 'image',
-          path: filename,
+          path: cleanFilename,
           x: 0,
           y: 0,
           display: 'front'
@@ -407,18 +493,13 @@ export class BusyBarDriver extends EventEmitter {
         drawPayload.led_notification_color = ledColorHex;
       }
 
-      const jsonHeaders = { ...headers, 'Content-Type': 'application/json', 'Accept': 'application/json' };
       const drawResponse = await fetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
-        headers: jsonHeaders,
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(drawPayload)
       }).catch(() => null);
 
-      const success = drawResponse ? drawResponse.ok : false;
-      if (!success) {
-        console.error(`[BusyBarDriver] Draw image element failed (HTTP ${drawResponse?.status})`);
-      }
-      return success;
+      return drawResponse ? drawResponse.ok : false;
     } catch (err) {
       console.error(`[BusyBarDriver] sendPixelFrame failed:`, err);
       return false;
@@ -426,9 +507,7 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Sends display payload to physical hardware REST API.
-   * Attaches X-API-Token header when operating over Wi-Fi LAN.
-   * Posts to /api/display/draw (OpenAPI v25).
+   * Posts draw payload to POST /api/display/draw.
    */
   public async sendDisplayPayload(payload: Record<string, unknown>): Promise<boolean> {
     const formattedPayload = this.formatHardwarePayload(payload);
@@ -439,28 +518,11 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const headers: Record<string, string> = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      };
-
-      if (this.apiToken) {
-        headers['X-API-Token'] = this.apiToken;
-      }
-
-      let response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
+      const response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
-        headers,
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(formattedPayload)
       }).catch(() => null);
-
-      if (!response || !response.ok) {
-        response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(formattedPayload)
-        }).catch(() => null);
-      }
 
       return response ? response.ok : false;
     } catch (err) {
@@ -469,15 +531,243 @@ export class BusyBarDriver extends EventEmitter {
     }
   }
 
+  /**
+   * Remote key event injection: POST /api/input?key={key}
+   */
+  public async injectRemoteKey(key: string): Promise<boolean> {
+    const lowerKey = key.toLowerCase();
+    if (!VALID_HARDWARE_KEYS.includes(lowerKey as any)) {
+      console.warn(`[BusyBarDriver] Unknown hardware key '${key}' injected.`);
+    }
 
-  private pingTimer: NodeJS.Timeout | null = null;
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK REMOTE KEY INJECTION] key=${lowerKey}`);
+      this.simulateInputEvent({
+        key: lowerKey,
+        type: 'press',
+        timestamp: new Date().toISOString()
+      });
+      return true;
+    }
+
+    try {
+      const url = `http://${this.ipAddress}/api/input?key=${encodeURIComponent(lowerKey)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Remote key injection failed for '${key}':`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Controls matrix brightness: POST /api/display/brightness?value={val}
+   */
+  public async setBrightness(value: number | 'auto'): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK BRIGHTNESS SET] value=${value}`);
+      return true;
+    }
+
+    try {
+      const url = `http://${this.ipAddress}/api/display/brightness?value=${encodeURIComponent(String(value))}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Set brightness failed:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Queries matrix brightness: GET /api/display/brightness
+   */
+  public async getBrightness(): Promise<BrightnessDTO | null> {
+    if (this.isMockMode) {
+      return { value: 80, display: 'front' };
+    }
+
+    try {
+      const res = await fetch(`http://${this.ipAddress}/api/display/brightness`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        return (await res.json()) as BrightnessDTO;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Configures device audio volume: POST /api/audio/volume?volume={0-100}&silent={0|1}
+   * Default silent=1 suppresses hardware volume change chime during updates per user preference.
+   */
+  public async setAudioVolume(volume: number, silent: boolean = true): Promise<boolean> {
+    const clampedVolume = Math.max(0, Math.min(100, volume));
+    const silentParam = silent ? 1 : 0;
+
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK AUDIO VOLUME] volume=${clampedVolume}, silent=${silentParam}`);
+      return true;
+    }
+
+    try {
+      const url = `http://${this.ipAddress}/api/audio/volume?volume=${clampedVolume}&silent=${silentParam}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Set audio volume failed:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Triggers audio playback (.snd): POST /api/audio/play
+   */
+  public async playAudio(applicationName: string, soundPath: string): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK AUDIO PLAY] app=${applicationName}, path=${soundPath}`);
+      return true;
+    }
+
+    try {
+      const res = await fetch(`http://${this.ipAddress}/api/audio/play`, {
+        method: 'POST',
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ application_name: applicationName, path: soundPath })
+      }).catch(() => null);
+
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Play audio failed:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Stops active audio playback: DELETE /api/audio/play
+   */
+  public async stopAudio(): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK AUDIO STOP]`);
+      return true;
+    }
+
+    try {
+      const res = await fetch(`http://${this.ipAddress}/api/audio/play`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Stop audio failed:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Synchronizes system RTC clock: POST /api/time/timestamp?timestamp={iso}
+   */
+  public async syncRtcTime(timestampIso?: string): Promise<boolean> {
+    const ts = timestampIso || new Date().toISOString();
+
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK RTC TIME SYNC] timestamp=${ts}`);
+      return true;
+    }
+
+    try {
+      const url = `http://${this.ipAddress}/api/time/timestamp?timestamp=${encodeURIComponent(ts)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] RTC sync failed:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Queries access settings: GET /api/access
+   */
+  public async getAccessSettings(): Promise<AccessSettingsDTO | null> {
+    if (this.isMockMode) {
+      return { mode: this.apiToken ? 'key' : 'disabled', has_key: Boolean(this.apiToken) };
+    }
+
+    try {
+      const res = await fetch(`http://${this.ipAddress}/api/access`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        return (await res.json()) as AccessSettingsDTO;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Updates API access protection mode & key: POST /api/access?mode={mode}&key={key}
+   */
+  public async updateAccessSettings(mode: 'disabled' | 'enabled' | 'key', key?: string): Promise<boolean> {
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK ACCESS SETTINGS UPDATE] mode=${mode}, key=${key ? '****' : 'none'}`);
+      if (mode === 'key' && key) {
+        this.setApiToken(key);
+      }
+      return true;
+    }
+
+    try {
+      let url = `http://${this.ipAddress}/api/access?mode=${encodeURIComponent(mode)}`;
+      if (key) {
+        url += `&key=${encodeURIComponent(key)}`;
+      }
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders()
+      }).catch(() => null);
+
+      if (res && res.ok && mode === 'key' && key) {
+        this.setApiToken(key);
+      }
+      return res ? res.ok : false;
+    } catch (err) {
+      console.error(`[BusyBarDriver] Update access settings failed:`, err);
+      return false;
+    }
+  }
 
   private startPingLoop(): void {
     if (this.pingTimer) clearInterval(this.pingTimer);
 
     this.pingTimer = setInterval(async () => {
       if (this.isMockMode) {
-        // Vary mock ping between 3ms and 6ms for dynamic feedback
         this.pingMs = Math.floor(Math.random() * 4) + 3;
         this.isConnected = true;
         this.emit('statusChanged', this.getDeviceStatus());
@@ -486,41 +776,14 @@ export class BusyBarDriver extends EventEmitter {
 
       const start = Date.now();
       try {
-        const headers: Record<string, string> = { 'Accept': 'application/json' };
-        if (this.apiToken) headers['X-API-Token'] = this.apiToken;
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        let res = await fetch(`http://${this.ipAddress}/api/status`, {
+        const res = await fetch(`http://${this.ipAddress}/api/status`, {
           method: 'GET',
-          headers,
+          headers: this.getHeaders(),
           signal: controller.signal
         }).catch(() => null);
-
-        if (!res || !res.ok) {
-          res = await fetch(`http://${this.ipAddress}/api/status/power`, {
-            method: 'GET',
-            headers,
-            signal: controller.signal
-          }).catch(() => null);
-        }
-
-        if (!res || !res.ok) {
-          res = await fetch(`http://${this.ipAddress}/api/status`, {
-            method: 'GET',
-            headers,
-            signal: controller.signal
-          }).catch(() => null);
-        }
-
-        if (!res || !res.ok) {
-          res = await fetch(`http://${this.ipAddress}/api/account/status`, {
-            method: 'GET',
-            headers,
-            signal: controller.signal
-          }).catch(() => null);
-        }
 
         clearTimeout(timeoutId);
 
@@ -548,13 +811,17 @@ export class BusyBarDriver extends EventEmitter {
       clearInterval(this.pingTimer);
       this.pingTimer = null;
     }
-    if (this.activeStream) {
+    if (this.wsReconnectTimer) {
+      clearTimeout(this.wsReconnectTimer);
+      this.wsReconnectTimer = null;
+    }
+    if (this.wsClient) {
       try {
-        (this.activeStream as { stop?: () => void }).stop?.();
-      } catch (err) {
-        // ignore stream close errors
+        (this.wsClient as { close?: () => void }).close?.();
+      } catch {
+        // ignore close errors
       }
-      this.activeStream = null;
+      this.wsClient = null;
     }
     this.emit('statusChanged', this.getDeviceStatus());
   }

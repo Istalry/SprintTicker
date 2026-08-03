@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, sanitizeAsciiText } from '../src/main/hardware/busybar-driver';
 
 describe('BusyBarDriver Unit Tests', () => {
   let driver: BusyBarDriver;
@@ -85,5 +85,171 @@ describe('BusyBarDriver Unit Tests', () => {
     expect(status.batteryPercent).toBe(0);
     expect(status.firmwareVersion).toBe('N/A');
     expect(status.webSocketPingMs).toBe(0);
+  });
+
+  it('FormatHardwarePayload_SolidRectangle_EnforcesSingleColorInFillColors', () => {
+    const rawPayload = {
+      application_name: 'test_app',
+      elements: [
+        {
+          id: 'rect_1',
+          type: 'rectangle',
+          fill: 'solid',
+          fill_colors: ['#FF0000FF', '#00FF00FF'] // Invalid 2 colors for solid
+        }
+      ]
+    };
+
+    const formatted = driver.formatHardwarePayload(rawPayload);
+    const elements = formatted.elements as Array<Record<string, unknown>>;
+
+    expect(elements[0].fill_colors).toEqual(['#FF0000FF']);
+  });
+
+  it('FormatHardwarePayload_GradientRectangle_EnforcesTwoColorsInFillColors', () => {
+    const rawPayload = {
+      application_name: 'test_app',
+      elements: [
+        {
+          id: 'rect_grad',
+          type: 'rectangle',
+          fill: 'gradient_h',
+          fill_colors: ['#FF0000FF'] // Single color provided
+        }
+      ]
+    };
+
+    const formatted = driver.formatHardwarePayload(rawPayload);
+    const elements = formatted.elements as Array<Record<string, unknown>>;
+
+    expect(elements[0].fill_colors).toEqual(['#FF0000FF', '#FF0000FF']);
+  });
+
+  it('FormatHardwarePayload_TextElement_SanitizesNonAsciiCharacters', () => {
+    const rawPayload = {
+      application_name: 'test_app',
+      elements: [
+        {
+          id: 'text_1',
+          type: 'text',
+          text: '“Hello World”—🚀' // Smart quotes, em-dash, emoji
+        }
+      ]
+    };
+
+    const formatted = driver.formatHardwarePayload(rawPayload);
+    const elements = formatted.elements as Array<Record<string, unknown>>;
+
+    expect(elements[0].text).toBe('"Hello World"--');
+  });
+
+  it('FormatHardwarePayload_ImageElement_RemovesWidthHeightAndNormalizesPath', () => {
+    const rawPayload = {
+      application_name: 'test_app',
+      elements: [
+        {
+          id: 'img_1',
+          type: 'image',
+          path: '/assets/subfolder/icon.png',
+          width: 15,
+          height: 15
+        }
+      ]
+    };
+
+    const formatted = driver.formatHardwarePayload(rawPayload);
+    const elements = formatted.elements as Array<Record<string, unknown>>;
+
+    expect(elements[0].path).toBe('icon.png');
+    expect(elements[0].width).toBeUndefined();
+    expect(elements[0].height).toBeUndefined();
+  });
+
+  it('UploadAsset_InvalidFilenameWithSlashes_RejectsUpload', async () => {
+    const buffer = Buffer.from('fake_image');
+    const result = await driver.uploadAsset('test_app', 'invalid/path/file!.png', buffer);
+
+    expect(result).toBe(false);
+  });
+
+  it('InjectRemoteKey_ValidKeyInMockMode_EmitsInputEvent', async () => {
+    let capturedEvent: any = null;
+    driver.on('input', (evt) => {
+      capturedEvent = evt;
+    });
+
+    const success = await driver.injectRemoteKey('ok');
+
+    expect(success).toBe(true);
+    expect(capturedEvent).not.toBeNull();
+    expect(capturedEvent.key).toBe('ok');
+  });
+
+  it('SetAudioVolume_DefaultSilentFlag_ClampsVolumeAndPassesSilentOne', async () => {
+    const success = await driver.setAudioVolume(150, true);
+    expect(success).toBe(true);
+  });
+
+  it('SetBrightness_ValidValue_ReturnsTrueInMockMode', async () => {
+    const success = await driver.setBrightness(50);
+    expect(success).toBe(true);
+  });
+
+  it('SyncRtcTime_IsoTimestamp_SyncsClockInMockMode', async () => {
+    const success = await driver.syncRtcTime('2026-08-03T22:00:00Z');
+    expect(success).toBe(true);
+  });
+
+  it('UpdateAccessSettings_NewKey_UpdatesApiToken', async () => {
+    const success = await driver.updateAccessSettings('key', '87654321');
+    expect(success).toBe(true);
+    expect(driver.getApiToken()).toBe('87654321');
+  });
+
+  it('SanitizeAsciiText_Helper_ConvertsKnownUnicodeToAscii', () => {
+    const input = '“Smart Quotes” & ‘Single’ — Dash… Emoji 😁';
+    const clean = sanitizeAsciiText(input);
+
+    expect(clean).toBe('"Smart Quotes" & \'Single\' -- Dash... Emoji ');
+  });
+
+  it('LiveMode_HttpEndpoints_ExecutesFetchRequests', async () => {
+    const originalFetch = globalThis.fetch;
+    const callLog: string[] = [];
+
+    globalThis.fetch = (async (url: string, opts?: any) => {
+      callLog.push(`${opts?.method || 'GET'} ${url}`);
+      return {
+        ok: true,
+        json: async () => ({ value: 50, mode: 'disabled' })
+      } as Response;
+    }) as typeof fetch;
+
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', apiToken: 'token123', forceMock: false });
+
+    try {
+      await liveDriver.sendDisplayPayload({ elements: [{ id: '1', type: 'text', text: 'hi' }] });
+      await liveDriver.uploadAsset('app1', 'test.png', Buffer.from('png'));
+      await liveDriver.deleteAppAssets('app1');
+      await liveDriver.clearDisplay('app1');
+      await liveDriver.sendPixelFrame(Buffer.from('png'), '#FF0000FF', 'app1', 'frame.png');
+      await liveDriver.injectRemoteKey('start');
+      await liveDriver.setBrightness(80);
+      await liveDriver.getBrightness();
+      await liveDriver.setAudioVolume(60, true);
+      await liveDriver.playAudio('app1', 'alert.snd');
+      await liveDriver.stopAudio();
+      await liveDriver.syncRtcTime();
+      await liveDriver.getAccessSettings();
+      await liveDriver.updateAccessSettings('enabled');
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+    }
+
+    expect(callLog.length).toBeGreaterThan(10);
+    expect(callLog.some(c => c.includes('/api/display/draw'))).toBe(true);
+    expect(callLog.some(c => c.includes('/api/assets/upload'))).toBe(true);
+    expect(callLog.some(c => c.includes('/api/audio/volume'))).toBe(true);
   });
 });

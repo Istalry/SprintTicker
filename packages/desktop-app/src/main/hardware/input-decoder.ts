@@ -62,21 +62,24 @@ export class InputDecoder {
     const bindings = this.getBindings();
     let action = 'NONE';
 
-    if (event.key === 'start') {
+    const normalizedKey = (event.key || '').toLowerCase();
+    if (normalizedKey === 'start' || normalizedKey === 'busy' || normalizedKey === 'custom') {
       action = bindings.startButtonPress;
-    } else if (event.key === 'ok' && event.type === 'press') {
+    } else if ((normalizedKey === 'ok' || normalizedKey === 'click') && event.type === 'press') {
       action = bindings.wheelClick;
-    } else if (event.key === 'up') {
+    } else if (normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left') {
       action = bindings.wheelRotateLeft;
-    } else if (event.key === 'down') {
+    } else if (normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right') {
       action = bindings.wheelRotateRight;
-    } else if (event.key === 'back' && event.type === 'press') {
+    } else if (normalizedKey === 'back' && event.type === 'press') {
       action = bindings.backButtonShortPress;
-    } else if (event.key === 'back_hold' || (event.key === 'back' && event.type === 'long_press')) {
+    } else if (normalizedKey === 'back_hold' || (normalizedKey === 'back' && event.type === 'long_press')) {
       action = bindings.backButtonLongPress;
+    } else if (normalizedKey === 'apps' || normalizedKey === 'settings' || normalizedKey === 'off') {
+      action = `SYSTEM_MODE_${normalizedKey.toUpperCase()}`;
     }
 
-    this.executeAction(action, event.key);
+    this.executeAction(action, normalizedKey);
     return action;
   }
 
