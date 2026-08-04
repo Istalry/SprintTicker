@@ -14,7 +14,6 @@ export interface DisplayPayload {
 }
 
 const APP_NAME = 'busybar_desktop';
-const FRONT_FRAME_FILE = 'frame_front.png';
 
 /**
  * Service rendering hardware display screen payloads according to physical pixel templates.
@@ -58,6 +57,16 @@ export class DisplayRenderer {
     this.priorityEngine = priorityEngine;
     this.animationPlayer = new AnimationPlayer(driver);
     this.animationPlayer.setLedColorCallback(() => this.lastState.ledColorHex);
+    this.onAnimationFrame = this.onAnimationFrame.bind(this);
+  }
+
+  private onAnimationFrame(frameBuffer: Buffer, _frameIndex: number) {
+    const base64 = frameBuffer.toString('base64');
+    const imgElement = { id: 'anim_frame', type: 'image', x: 0, y: 0, data: `data:image/png;base64,${base64}` };
+    this.lastState.frontElements = [imgElement as unknown as DisplayElementDTO];
+    for (const callback of this.stateChangeCallbacks) {
+      callback(this.lastState);
+    }
   }
 
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
@@ -231,14 +240,14 @@ export class DisplayRenderer {
   private getThemeColors(): { keyColor: string; primaryColor: string } {
     switch (this.colorTheme) {
       case 'cyberpunk':
-        return { keyColor: '#EC4899FF', primaryColor: '#8B5CF6FF' };
+        return { keyColor: '#EC4899FF', primaryColor: '#8B5CF6' };
       case 'retro_arcade':
-        return { keyColor: '#FBBF24FF', primaryColor: '#F59E0BFF' };
-      case 'nordic_cyan':
-        return { keyColor: '#38BDF8FF', primaryColor: '#06B6D4FF' };
-      case 'emerald':
+        return { keyColor: '#FBBF24FF', primaryColor: '#F59E0B' };
+      case 'neon_night':
+        return { keyColor: '#00FFCCFF', primaryColor: '#FF00FF' };
+      case 'default':
       default:
-        return { keyColor: '#AAFF00FF', primaryColor: '#10B981FF' };
+        return { keyColor: '#3B82F6FF', primaryColor: '#10B981' };
     }
   }
 
@@ -348,8 +357,16 @@ export class DisplayRenderer {
   private async transmitFrame(
     ledColorHex: string,
     backElements: Array<Record<string, unknown>>,
-    frontElementsForEmulator: Array<Record<string, unknown>>
+    frontElementsForEmulator: Array<Record<string, unknown>>,
+    enableEdgeGlow: boolean = true
   ): Promise<void> {
+    if (enableEdgeGlow && ledColorHex && ledColorHex !== '#000000FF') {
+      this.canvas.drawRect(0, 0, 72, 1, ledColorHex);
+      this.canvas.drawRect(0, 15, 72, 1, ledColorHex);
+      this.canvas.drawRect(0, 0, 1, 16, ledColorHex);
+      this.canvas.drawRect(71, 0, 1, 16, ledColorHex);
+    }
+
     const pngBuffer = encodeMatrixToPng(this.canvas.getPixels(), 72, 16);
     this.frameBufferToggle = !this.frameBufferToggle;
     const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
@@ -366,7 +383,8 @@ export class DisplayRenderer {
       ledMode: this.ledMode,
       colorTheme: this.colorTheme,
       rearOledMode: this.rearOledMode,
-      activeWidgetId: this.activeWidgetId
+      activeWidgetId: this.activeWidgetId,
+      enableEdgeGlow
     };
 
     for (const callback of this.stateChangeCallbacks) {
@@ -398,16 +416,8 @@ export class DisplayRenderer {
    */
   public renderLunchMode(): DisplayPayload {
     return this.requestRender('lunchModePriority', () => {
-      this.paintIconAndTwoRows(
-        getBitmapById('burger'),
-        'LUNCH MUTE',
-        'Task Paused',
-        '#F59E0B',
-        '#FFFFFF'
-      );
-
       const frontElements: Array<Record<string, unknown>> = [];
-      this.animationPlayer.play('lunch_72x16');
+      this.animationPlayer.play('lunch_72x16', { loop: true, onFrame: this.onAnimationFrame });
 
       const backElements = [
         { id: 'rear_lunch_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS', align: 'top_left' },
@@ -431,16 +441,8 @@ export class DisplayRenderer {
    */
   public renderAwayMode(): DisplayPayload {
     return this.requestRender('awayModePriority', () => {
-      this.paintIconAndTwoRows(
-        getBitmapById('clock'),
-        'AWAY MODE',
-        'PC Locked',
-        '#A855F7',
-        '#888888'
-      );
-
       const frontElements: Array<Record<string, unknown>> = [];
-      this.animationPlayer.play('back_soon_72x16');
+      this.animationPlayer.play('back_soon_72x16', { loop: true, onFrame: this.onAnimationFrame });
 
       const backElements = [
         { id: 'rear_away_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY', align: 'top_left' },
@@ -470,13 +472,17 @@ export class DisplayRenderer {
       const accentColor = isEod ? '#A855F7' : isLunch ? '#F59E0B' : '#3B82F6';
       const label = isEod ? 'EOD WRAP-UP' : isLunch ? 'LUNCH TIME' : 'DAILY STANDUP';
 
-      this.paintIconAndTwoRows(
-        getBitmapById(iconId),
-        label,
-        title || 'Click to Start',
-        accentColor,
-        '#FFFFFF'
-      );
+      if (type === 'STANDUP') {
+        this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame });
+      } else {
+        this.paintIconAndTwoRows(
+          getBitmapById(iconId),
+          label,
+          title || 'Click to Start',
+          accentColor,
+          '#FFFFFF'
+        );
+      }
 
       const backElements = [
         { id: 'rear_ceremony_0', type: 'text', font: 'tiny', x: 0, y: 0, color: `${accentColor}FF`, text: `CEREMONY PROMPT: ${type}`, align: 'top_left' },
@@ -524,18 +530,25 @@ export class DisplayRenderer {
     const colors = this.getThemeColors();
     const isPaused = session?.status === 'PAUSED';
     const isTracking = session?.status === 'TRACKING';
+    const isStandup = session?.taskTitle?.toLowerCase().includes('standup');
 
     const titleText = session ? `${session.taskKey}: ${session.taskTitle}` : 'No Active Task';
     const timerText = session ? this.formatTime(session.elapsedSeconds) : '00:00:00';
 
     const row0Color = isPaused ? '#F59E0B' : session ? colors.keyColor : '#888888';
     const row1Color = isPaused ? '#F59E0B' : session ? '#FFFFFF' : '#888888';
-    const ledColor = isPaused ? '#F59E0BFF' : isTracking ? colors.primaryColor : '#2D3440FF';
+    // Remove edge glow during active tracking tasks by modifying ledMode if needed, but LED must remain green
+    const ledColor = isPaused ? '#F59E0BFF' : session ? '#10B981FF' : '#2D3440FF';
 
     this.ledMode = session ? (isTracking ? 'SOLID' : 'BREATHING') : 'SOLID';
 
     this.canvas.clear();
-    this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
+    if (isStandup && isTracking) {
+      this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame });
+    } else {
+      this.animationPlayer.stop();
+      this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
+    }
 
     if (isPaused) {
       // Clipped title & timer on left, interactive STOP/FINISH selection on right
@@ -562,14 +575,49 @@ export class DisplayRenderer {
     const backElements = this.buildRearElements(session, isIdleOver15Mins);
     const frontEls = this.canvasToEmulatorElements();
 
+    const enableEdgeGlow = !isTracking;
+
     const payload: DisplayPayload = {
       frontElements: frontEls,
       backElements,
       ledColorHex: ledColor
     };
 
-    this.transmitFrame(ledColor, backElements, frontEls);
+    this.transmitFrame(ledColor, backElements, frontEls, enableEdgeGlow);
     return payload;
+  }
+
+  /**
+   * Renders the hardware Task Selection Menu directly on the front display.
+   */
+  public renderTaskSelection(stage: 'PROJECT' | 'TASK', itemName: string, description?: string): DisplayPayload {
+    return this.requestRender('menuPriority', () => {
+      this.canvas.clear();
+      if (stage === 'PROJECT') {
+        this.canvas.drawTextClipped(itemName, 0, 4, '#FFFFFF', 72);
+      } else {
+        this.canvas.drawTextClipped(itemName, 0, 0, '#FFFFFF', 72);
+        if (description) {
+          this.canvas.drawSmallText(description, 0, 8, '#888888', 72);
+        }
+      }
+
+      const backElements = [
+        { id: 'rear_menu_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#3B82F6FF', text: `SELECTION: ${stage}`, align: 'top_left' },
+        { id: 'rear_menu_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Scroll to pick, click to select', align: 'top_left' }
+      ];
+
+      this.ledMode = 'SOLID';
+      const frontEls = this.canvasToEmulatorElements();
+      const payload: DisplayPayload = {
+        frontElements: frontEls,
+        backElements,
+        ledColorHex: '#3B82F6FF'
+      };
+
+      this.transmitFrame('#3B82F6FF', backElements, frontEls);
+      return payload;
+    });
   }
 
   /**
@@ -581,7 +629,8 @@ export class DisplayRenderer {
     channelName: string = 'SLACK',
     priority: number = 40,
     iconId: BitmapIconId = 'slack',
-    customIconData?: (string | null)[][]
+    customIconData?: (string | null)[][],
+    timeoutMs: number = 10000
   ): DisplayPayload {
     const eventName = priority >= 90 ? 'highNotificationPriority' : 'messagingPriority';
     return this.requestRender(eventName, () => {
@@ -594,7 +643,8 @@ export class DisplayRenderer {
       const headerText = `[${channelName}] ${senderName}`;
 
       this.canvas.clear();
-      this.canvas.drawBitmap(bitmapData, 0, 0, 16, 16);
+      // Draw 15x15 icon centered (roughly) in the 16x16 space, offset by x=1, y=1 to avoid top/left edge glow
+      this.canvas.drawBitmap(bitmapData, 1, 1, 15, 15);
       this.canvas.drawTextClipped(headerText, 17, 5, accentColor, 55);
 
       const backElements = [
@@ -610,56 +660,85 @@ export class DisplayRenderer {
         ledColorHex
       };
       this.transmitFrame(ledColorHex, backElements, payload.frontElements);
+
+      if (timeoutMs > 0 && this.priorityEngine) {
+        setTimeout(() => {
+          this.priorityEngine?.releaseActiveLock(eventName);
+        }, timeoutMs);
+      }
+
       return payload;
     });
   }
 
-  /**
-   * Renders Task Completion Confetti explosion animation sequence with multi-color particle elements.
-   */
   public renderTaskCompletionConfetti(durationSeconds: number = 4): DisplayPayload {
     this.isCelebrating = true;
     if (this.celebrationTimeout) {
       clearTimeout(this.celebrationTimeout);
       this.celebrationTimeout = null;
     }
-
-    // Paint confetti particles + checkmark icon
-    this.canvas.clear();
-    this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 1, 15, 14);
-    this.canvas.drawTextClipped('TASK DONE!', 17, 0, '#10B981', 55);
-
-    const confettiColors = ['#10B981', '#FBBF24', '#38BDF8', '#EC4899', '#AAFF00'];
-    const particles = [
-      { x: 20, y: 7 }, { x: 25, y: 12 }, { x: 32, y: 7 }, { x: 40, y: 12 },
-      { x: 48, y: 7 }, { x: 55, y: 12 }, { x: 62, y: 7 }, { x: 68, y: 12 }
-    ];
-    particles.forEach((p, i) => {
-      this.canvas.setPixel(p.x, p.y, confettiColors[i % confettiColors.length]);
-      this.canvas.setPixel(p.x + 1, p.y, confettiColors[(i + 1) % confettiColors.length]);
-    });
+    this.ledMode = 'CONFETTI_EXPLOSION';
 
     const backElements = [
       { id: 'rear_confetti_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'TASK COMPLETED SUCCESSFULLY!', align: 'top_left' }
     ];
 
-    const frontEls = this.canvasToEmulatorElements();
-    const payload: DisplayPayload = {
-      frontElements: frontEls,
+    const confettiColors = ['#10B981', '#FBBF24', '#38BDF8', '#EC4899', '#AAFF00'];
+    const activeParticles = Array.from({length: 30}).map(() => ({
+      x: 16 + Math.random() * 56,
+      y: -2 - Math.random() * 10,
+      vx: (Math.random() - 0.5) * 2,
+      vy: Math.random() * 1.5 + 0.5,
+      color: confettiColors[Math.floor(Math.random() * confettiColors.length)]
+    }));
+
+    let frames = 0;
+    const maxFrames = durationSeconds * 10; // 10 fps
+
+    const renderFrame = () => {
+      if (!this.isCelebrating || frames >= maxFrames) {
+        this.isCelebrating = false;
+        if (this.celebrationTimeout) clearInterval(this.celebrationTimeout);
+        this.celebrationTimeout = null;
+        this.renderActiveSession(this.lastSessionCache);
+        return;
+      }
+
+      this.canvas.clear();
+      this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 1, 15, 14);
+      this.canvas.drawTextClipped('TASK DONE!', 17, 5, '#10B981', 55);
+
+      for (const p of activeParticles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.y > 16) {
+          p.y = -2;
+          p.x = 16 + Math.random() * 56;
+        }
+
+        const drawX = Math.floor(p.x);
+        const drawY = Math.floor(p.y);
+        if (drawX >= 16 && drawX < 72 && drawY >= 0 && drawY < 16) {
+          this.canvas.setPixel(drawX, drawY, p.color);
+        }
+      }
+
+      const frontEls = this.canvasToEmulatorElements();
+      this.transmitFrame('#10B981FF', backElements, frontEls);
+      frames++;
+    };
+
+    // First frame sync
+    renderFrame();
+
+    // Loop rest async
+    this.celebrationTimeout = setInterval(renderFrame, 100);
+
+    return {
+      frontElements: this.lastState.frontElements as unknown as DisplayElementDTO[],
       backElements,
       ledColorHex: '#10B981FF'
     };
-
-    this.ledMode = 'CONFETTI_EXPLOSION';
-    this.transmitFrame('#10B981FF', backElements, frontEls);
-
-    this.celebrationTimeout = setTimeout(() => {
-      this.isCelebrating = false;
-      this.celebrationTimeout = null;
-      this.renderActiveSession(this.lastSessionCache);
-    }, Math.max(1, durationSeconds) * 1000);
-
-    return payload;
   }
 
   /**

@@ -16,6 +16,7 @@
     "package:installer": "vite build --config vite.config.electron.ts && vite build --config vite.config.preload.ts && vite build && electron-builder --win nsis",
     "pretest": "pnpm rebuild better-sqlite3",
     "pretest:coverage": "pnpm rebuild better-sqlite3",
+    "rebuild:electron": "electron-builder install-app-deps",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

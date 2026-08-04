@@ -2,7 +2,8 @@ import { EventEmitter } from 'events';
 import { SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
-import { ActiveSessionDTO } from '../../shared/dtos';
+import { ProjectRepository } from '../db/repositories/project-repository';
+import { ActiveSessionDTO, TaskDTO, ProjectDTO } from '../../shared/dtos';
 
 import { ProviderManager } from '../providers/provider-manager';
 
@@ -18,6 +19,7 @@ export class TimeTrackingEngine extends EventEmitter {
   private sessionRepo: SessionRepository;
   private worklogRepo: WorklogRepository;
   private taskRepo: TaskRepository;
+  private projectRepo: ProjectRepository;
   private providerManager: ProviderManager;
   private listeners: Set<SessionStateCallback> = new Set();
   private currentSession: ActiveSessionDTO | null = null;
@@ -33,6 +35,7 @@ export class TimeTrackingEngine extends EventEmitter {
     this.sessionRepo = sessionRepo || new SessionRepository();
     this.worklogRepo = worklogRepo || new WorklogRepository();
     this.taskRepo = taskRepo || new TaskRepository();
+    this.projectRepo = new ProjectRepository();
     this.providerManager = providerManager || new ProviderManager(undefined, this.worklogRepo);
 
     this.reconcileStartupState();
@@ -106,6 +109,14 @@ export class TimeTrackingEngine extends EventEmitter {
   public getCurrentSession(): ActiveSessionDTO | null {
     if (!this.currentSession) return null;
     return this.sessionRepo.getActiveSession();
+  }
+
+  public getProjects(): ProjectDTO[] {
+    return this.projectRepo.getAllProjects();
+  }
+
+  public getTasksForProject(projectId: string): TaskDTO[] {
+    return this.taskRepo.getTasksByProjectId(projectId);
   }
 
   /**

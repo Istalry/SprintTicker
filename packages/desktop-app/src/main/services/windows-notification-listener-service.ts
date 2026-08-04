@@ -302,20 +302,18 @@ export class WindowsNotificationListenerService {
     const channelLabel = event.appName || matchedRule?.appName || 'ALERT';
     const textBody = `${event.title ? event.title + ': ' : ''}${event.body || ''}`.trim();
 
+    const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
+
     if (this._renderer) {
       this._renderer.renderNotificationBanner(
         textBody || 'New Notification',
         channelLabel,
         priorityScore,
         iconId,
-        event.rawIconData
+        event.rawIconData,
+        timeoutMs
       );
     }
-
-    const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
-    setTimeout(() => {
-      this._priorityEngine.releaseActiveLock(eventName);
-    }, timeoutMs);
 
     return true;
   }

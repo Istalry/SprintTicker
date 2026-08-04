@@ -65,90 +65,88 @@ export const AnimationDebugPanel: React.FC = () => {
     setTimeout(() => setStatusMessage(null), 3000);
   };
 
-  // 1. Messaging Alerts
-  const triggerSlack = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'slack', bitmapData: getBitmapById('slack', 1), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#36C5F0FF', text: '[SLACK CHANNEL]' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Alice: PR #142 is ready for review!', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: '[SLACK ALICE] Unread Alert' }],
-    '#36C5F0FF',
-    'PULSE_ALERT',
-    'Dispatched Slack Alert (ROTATING Edge Chaser)',
-    'ROTATING',
-    'FADE'
-  );
+  const triggerSlack = () => {
+    if (window.electronAPI && window.electronAPI.simulateNotification) {
+      window.electronAPI.simulateNotification({
+        appId: 'slack',
+        appName: 'Slack',
+        title: '[SLACK ALICE] Unread Alert',
+        body: 'Alice: PR #142 is ready for review!',
+        iconId: 'slack'
+      });
+      showStatus('Real IPC: Simulated Slack Notification');
+    }
+  };
 
-  const triggerDiscord = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'discord', bitmapData: getBitmapById('discord', 1), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#5865F2FF', text: '[DISCORD DEV]' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Bob: Build deployment completed successfully', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: '[DISCORD] Build notification' }],
-    '#5865F2FF',
-    'PULSE_ALERT',
-    'Dispatched Discord Clyde Alert (PULSE Edge Glow)',
-    'PULSE',
-    'FADE'
-  );
+  const triggerDiscord = () => {
+    if (window.electronAPI && window.electronAPI.simulateNotification) {
+      window.electronAPI.simulateNotification({
+        appId: 'discord',
+        appName: 'Discord',
+        title: '[DISCORD] Build notification',
+        body: 'Bob: Build deployment completed successfully',
+        iconId: 'discord'
+      });
+      showStatus('Real IPC: Simulated Discord Notification');
+    }
+  };
 
-  const triggerGmail = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'gmail', bitmapData: getBitmapById('gmail', 1), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#EA4335FF', text: '[GMAIL URGENT]' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Production Release v2.4 Status Update', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: '[GMAIL] Urgent Email Received' }],
-    '#EA4335FF',
-    'PULSE_ALERT',
-    'Dispatched Gmail Envelope Alert (BLINKING Strobe)',
-    'BLINKING',
-    'INSTANT'
-  );
+  const triggerGmail = () => {
+    if (window.electronAPI && window.electronAPI.simulateNotification) {
+      window.electronAPI.simulateNotification({
+        appId: 'gmail',
+        appName: 'Gmail',
+        title: '[GMAIL] Urgent Email',
+        body: 'Production Release v2.4 Status Update',
+        iconId: 'gmail'
+      });
+      showStatus('Real IPC: Simulated Gmail Notification');
+    }
+  };
 
   // 2. Schedule & System Modes
-  const triggerLunch = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'burger', bitmapData: getBitmapById('burger'), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#F59E0BFF', text: 'LUNCH BREAK' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#888888FF', text: 'Notifications muted until 13:30', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: 'SCHEDULE: LUNCH MUTE ACTIVE' }],
-    '#F59E0BFF',
-    'BREATHING',
-    'Dispatched Lunch Break Mode (NONE Edge Glow)',
-    'NONE'
-  );
+  const triggerLunch = () => {
+    if (window.electronAPI && window.electronAPI.setUserMode) {
+      window.electronAPI.setUserMode('LUNCH');
+      showStatus('Real IPC: Dispatched Lunch Break Mode');
+    } else {
+      showStatus('Error: electronAPI.setUserMode not available');
+    }
+  };
 
-  const triggerAway = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'clock', bitmapData: getBitmapById('clock'), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#8B5CF6FF', text: 'AWAY MODE' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#CCCCCCFF', text: 'System Idle for 15 minutes' }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: 'SYSTEM: IDLE AWAY MODE' }],
-    '#8B5CF6FF',
-    'BREATHING',
-    'Dispatched Away Mode (PULSE Edge Glow)',
-    'PULSE',
-    'FADE'
-  );
+  const triggerAway = () => {
+    if (window.electronAPI && window.electronAPI.setUserMode) {
+      window.electronAPI.setUserMode('AWAY');
+      showStatus('Real IPC: Dispatched Away Mode');
+    } else {
+      showStatus('Error: electronAPI.setUserMode not available');
+    }
+  };
 
-  const triggerEodPrompt = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'clock', bitmapData: getBitmapById('clock'), x: 0, y: 0 },
-      { type: 'text', font: 'bold', x: 16, y: 0, color: '#A855F7FF', text: 'EOD WRAP-UP' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Press Wheel or Click UI to Start', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'CEREMONY PROMPT: EOD WRAP-UP' }],
-    '#A855F7FF',
-    'PULSE_ALERT',
-    'Dispatched EOD Ceremony Prompt (PULSE_ALERT Glow)',
-    'PULSE',
-    'FADE'
-  );
+  const triggerEodPrompt = () => {
+    dispatchState(
+      [
+        { type: 'bitmap', iconId: 'clock', bitmapData: getBitmapById('clock'), x: 0, y: 0 },
+        { type: 'text', font: 'bold', x: 16, y: 0, color: '#A855F7FF', text: 'EOD WRAP-UP' },
+        { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Press Wheel or Click UI to Start', scroll_rate: 60 }
+      ],
+      [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'CEREMONY PROMPT: EOD WRAP-UP' }],
+      '#A855F7FF',
+      'PULSE_ALERT',
+      'Dispatched EOD Ceremony Prompt (PULSE_ALERT Glow)',
+      'PULSE',
+      'FADE'
+    );
+  };
+
+  const triggerStandupTask = () => {
+    if (window.electronAPI && window.electronAPI.startTask) {
+      window.electronAPI.startTask('DEBUG_STANDUP', true, 'Daily Standup');
+      showStatus('Real IPC: Dispatched Daily Standup Task');
+    } else {
+      showStatus('Error: electronAPI.startTask not available');
+    }
+  };
 
   const triggerWave = () => dispatchState(
     [
@@ -210,45 +208,27 @@ export const AnimationDebugPanel: React.FC = () => {
 
   // 4. Task Session States & Confetti
   const triggerConfetti = () => {
-    dispatchState(
-      [
-        { type: 'bitmap', iconId: 'unity', bitmapData: getBitmapById('unity'), x: 0, y: 0 },
-        { type: 'text', font: 'bold', x: 16, y: 4, width: 56, color: '#10B981FF', text: 'TASK DONE 🎉' }
-      ],
-      [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'TASK COMPLETED SUCCESSFULLY!' }],
-      '#10B981FF',
-      'CONFETTI_EXPLOSION',
-      'Dispatched Animated Confetti Burst! (PULSE Glow)',
-      'PULSE',
-      'FADE'
-    );
+    if (window.electronAPI && window.electronAPI.triggerConfettiBurst) {
+      window.electronAPI.triggerConfettiBurst();
+      showStatus('Real IPC: Triggered Confetti Burst');
+    } else {
+      showStatus('Error: electronAPI.triggerConfettiBurst not available');
+    }
   };
 
-  const triggerPause = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'pause', bitmapData: getBitmapById('pause'), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#F59E0BFF', text: 'PAUSED 00:14:20' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#888888FF', text: 'PROJ-142 Refactor Core API', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'SESSION PAUSED (PROJ-142)' }],
-    '#F59E0BFF',
-    'BREATHING',
-    'Dispatched Pause Task Session (NONE Edge Glow)',
-    'NONE'
-  );
+  const triggerPause = () => {
+    if (window.electronAPI && window.electronAPI.pauseSession) {
+      window.electronAPI.pauseSession();
+      showStatus('Real IPC: Paused active session');
+    }
+  };
 
-  const triggerResume = () => dispatchState(
-    [
-      { type: 'bitmap', iconId: 'play', bitmapData: getBitmapById('play'), x: 0, y: 0 },
-      { type: 'text', font: 'small', x: 16, y: 0, width: 56, color: '#AAFF00FF', text: 'PROJ-142 00:15:02' },
-      { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'PROJ-142 Refactor Core API', scroll_rate: 60 }
-    ],
-    [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'TRACKING SESSION (PROJ-142)' }],
-    '#10B981FF',
-    'SOLID',
-    'Dispatched Resume Task Session (NONE Edge Glow)',
-    'NONE'
-  );
+  const triggerResume = () => {
+    if (window.electronAPI && window.electronAPI.resumeSession) {
+      window.electronAPI.resumeSession();
+      showStatus('Real IPC: Resumed active session');
+    }
+  };
 
   const triggerCustomMarquee = () => dispatchState(
     [
@@ -360,6 +340,10 @@ export const AnimationDebugPanel: React.FC = () => {
             <button onClick={triggerEodPrompt} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Moon className="w-3.5 h-3.5 text-accent-purple" />
               <span>EOD Prompt</span>
+            </button>
+            <button onClick={triggerStandupTask} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-accent-green" />
+              <span>Daily Standup</span>
             </button>
             <button onClick={triggerWave} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Waves className="w-3.5 h-3.5 text-accent-cyan" />

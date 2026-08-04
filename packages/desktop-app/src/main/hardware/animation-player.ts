@@ -1,3 +1,4 @@
+import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { BusyBarDriver } from './busybar-driver';
@@ -22,11 +23,15 @@ export class AnimationPlayer {
   private frameIndex: number = 0;
   private isPlaying: boolean = false;
   private getLedColorCallback?: () => string | undefined;
+  private onFrameCallback?: (frameBuffer: Buffer, frameIndex: number) => void;
+  private loop: boolean = true;
 
   constructor(driver: BusyBarDriver, animationsDir?: string) {
     this.driver = driver;
-    // Default to the repository root Animations folder
-    this.animationsDir = animationsDir || path.resolve(__dirname, '../../../../../Animations');
+    // Default to the repository root Animations folder in dev, or resources/Animations when packaged
+    this.animationsDir = animationsDir || (app.isPackaged 
+      ? path.join(process.resourcesPath, 'Animations') 
+      : path.resolve(__dirname, '../../../../Animations'));
   }
 
   /**
@@ -47,10 +52,16 @@ export class AnimationPlayer {
     }
 
     try {
-      const targetDir = path.join(this.animationsDir, animName);
+      let targetDir = path.join(this.animationsDir, animName);
       if (!fs.existsSync(targetDir)) {
         console.warn(`[AnimationPlayer] Animation directory not found: ${targetDir}`);
         return null;
+      }
+
+      // If the directory contains a nested directory of the exact same name (common from zip extraction), use it instead
+      const nestedDir = path.join(targetDir, animName);
+      if (fs.existsSync(nestedDir) && fs.statSync(nestedDir).isDirectory()) {
+        targetDir = nestedDir;
       }
 
       const metaPath = path.join(targetDir, 'meta.json');
@@ -103,13 +114,25 @@ export class AnimationPlayer {
    * Start playing an animation on the BUSY Bar.
    * Stops any currently playing animation.
    */
-  public async play(animName: string): Promise<void> {
+  public async play(animName: string, options?: { loop?: boolean; onFrame?: (frameBuffer: Buffer, frameIndex: number) => void }): Promise<void> {
     if (this.currentAnimation === animName && this.isPlaying) {
-      return; // Already playing this animation
+      // If we are already playing, just update the options
+      if (options) {
+        if (options.loop !== undefined) this.loop = options.loop;
+        if (options.onFrame !== undefined) this.onFrameCallback = options.onFrame;
+      }
+      return;
     }
 
     this.stop();
     this.currentAnimation = animName;
+    if (options) {
+      this.loop = options.loop !== undefined ? options.loop : true;
+      if (options.onFrame !== undefined) this.onFrameCallback = options.onFrame;
+    } else {
+      this.loop = true;
+      this.onFrameCallback = undefined;
+    }
     const animData = await this.loadAnimation(animName);
     if (!animData) {
       if (this.currentAnimation === animName) {
@@ -132,6 +155,10 @@ export class AnimationPlayer {
     this.drawCurrentFrame();
 
     this.intervalId = setInterval(() => {
+      if (!this.loop && this.frameIndex >= animData.frames.length - 1) {
+        this.stop();
+        return;
+      }
       this.frameIndex = (this.frameIndex + 1) % animData.frames.length;
       this.drawCurrentFrame();
     }, frameIntervalMs);
@@ -177,5 +204,9 @@ export class AnimationPlayer {
       `anim_${this.frameIndex}.png`,
       95
     ).catch(err => console.error(`[AnimationPlayer] Frame draw failed:`, err));
+
+    if (this.onFrameCallback) {
+      this.onFrameCallback(frameBuffer, this.frameIndex);
+    }
   }
 }

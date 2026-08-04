@@ -13,6 +13,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
   const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const scrollOffsetRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
+  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   useEffect(() => {
     // Fetch initial hardware display state
@@ -40,6 +41,20 @@ export const HardwareDisplayEmulator: React.FC = () => {
       };
     }
   }, []);
+
+  // Pre-load images from displayState
+  useEffect(() => {
+    if (!displayState) return;
+    displayState.frontElements.forEach(el => {
+      if (el.type === 'image' && el.data) {
+        if (!imageCacheRef.current.has(el.data)) {
+          const img = new Image();
+          img.src = el.data;
+          imageCacheRef.current.set(el.data, img);
+        }
+      }
+    });
+  }, [displayState]);
 
   /**
    * Generates 1:1 72x16 matrix pixel color buffer with 16x16 icon support,
@@ -244,6 +259,23 @@ export const HardwareDisplayEmulator: React.FC = () => {
             ctx.fill();
           }
         }
+      }
+
+      // Draw loaded image overlays (e.g. PNG animations)
+      if (displayState) {
+        displayState.frontElements.forEach(el => {
+          if (el.type === 'image' && el.data) {
+            const img = imageCacheRef.current.get(el.data);
+            if (img && img.complete) {
+              // Draw image scaled to LED matrix grid
+              ctx.shadowBlur = 0;
+              ctx.globalAlpha = 1.0;
+              // Ensure crisp pixel art rendering
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(img, gap + el.x * cellSize, gap + el.y * cellSize, img.width * cellSize, img.height * cellSize);
+            }
+          }
+        });
       }
 
       animFrameRef.current = requestAnimationFrame(renderLoop);

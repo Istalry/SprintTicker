@@ -19,6 +19,13 @@
       "filter": ["**/*", "!**/node_modules/**", "!**/.git/**"]
     }
   ],
+  "extraResources": [
+    {
+      "from": "../../Animations",
+      "to": "Animations",
+      "filter": ["**/*"]
+    }
+  ],
   "npmRebuild": true,
   "asar": true,
   "win": {

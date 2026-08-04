@@ -20,6 +20,13 @@ export class InputDecoder {
   private renderer?: DisplayRenderer;
   private windowFocusCallback?: () => void;
   private actionHandlers: Set<ActionHandler> = new Set();
+  
+  private isSelectingTask: boolean = false;
+  private selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
+  private projectsList: { id: string, name: string }[] = [];
+  private tasksList: { id: string, title: string, description: string }[] = [];
+  private selectedProjectIndex: number = 0;
+  private selectedTaskIndex: number = 0;
 
   private defaultBindings: HardwareBindingConfig = {
     startButtonPress: 'TOGGLE_TRACK_PAUSE',
@@ -82,6 +89,61 @@ export class InputDecoder {
     if (this.renderer) {
       this.renderer.logLastInputKey(normalizedKey);
     }
+
+    if (this.isSelectingTask && this.renderer) {
+      if (normalizedKey === 'back') {
+        this.isSelectingTask = false;
+        this.renderer.renderIdle();
+        return 'CANCEL_SELECTION';
+      }
+      
+      const isUp = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
+      const isDown = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
+      
+      if (this.selectionStage === 'PROJECT') {
+        if (isUp) this.selectedProjectIndex = Math.max(0, this.selectedProjectIndex - 1);
+        if (isDown) this.selectedProjectIndex = Math.min(this.projectsList.length - 1, this.selectedProjectIndex + 1);
+        
+        if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
+          this.selectionStage = 'TASK';
+          const proj = this.projectsList[this.selectedProjectIndex];
+          if (proj) {
+            this.tasksList = this.engine.getTasksForProject(proj.id).map(t => ({
+               id: t.id,
+               title: t.title,
+               description: t.description || 'No description'
+            }));
+          }
+          if (this.tasksList.length === 0) {
+            this.tasksList = [{ id: 'none', title: 'No Tasks', description: '' }];
+          }
+          this.selectedTaskIndex = 0;
+        }
+      } else if (this.selectionStage === 'TASK') {
+        if (isUp) this.selectedTaskIndex = Math.max(0, this.selectedTaskIndex - 1);
+        if (isDown) this.selectedTaskIndex = Math.min(this.tasksList.length - 1, this.selectedTaskIndex + 1);
+        
+        if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
+          const task = this.tasksList[this.selectedTaskIndex];
+          if (task && task.id !== 'none') {
+             this.engine.startTask(task.id, false, task.title, this.projectsList[this.selectedProjectIndex].id);
+          }
+          this.isSelectingTask = false;
+          return 'START_TASK_FROM_SELECTION';
+        }
+      }
+      
+      if (this.isSelectingTask) {
+        if (this.selectionStage === 'PROJECT') {
+          const proj = this.projectsList[this.selectedProjectIndex];
+          this.renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects');
+        } else {
+          const task = this.tasksList[this.selectedTaskIndex];
+          this.renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', task?.description);
+        }
+        return 'UPDATE_SELECTION';
+      }
+    }
     
     const activeSession = this.engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
@@ -108,6 +170,9 @@ export class InputDecoder {
         if (choice === 'STOP') {
           this.engine.stopSession('Stopped via BUSY Bar Paused Menu');
         } else {
+          if (this.renderer.renderTaskCompletionConfetti) {
+            this.renderer.renderTaskCompletionConfetti();
+          }
           this.engine.stopSession('Completed via BUSY Bar Paused Menu');
         }
         this.notifyActionHandlers('VALIDATE_PAUSED_SELECTION', normalizedKey);
@@ -149,7 +214,7 @@ export class InputDecoder {
 
         const active = this.engine.getCurrentSession();
         if (!active) {
-          this.engine.startTask('PROJ-101', false, 'Development Task');
+          this.startTaskSelection();
         } else if (active.status === 'TRACKING') {
           this.engine.pauseSession();
           if (this.windowFocusCallback) {
@@ -170,7 +235,17 @@ export class InputDecoder {
         this.engine.stopSession('Completed via BUSY Bar Long Press');
         break;
       }
-      case 'TRIGGER_TASK_SELECTOR_MODAL':
+      case 'TRIGGER_TASK_SELECTOR_MODAL': {
+        const active2 = this.engine.getCurrentSession();
+        if (!active2) {
+          this.startTaskSelection();
+        } else {
+          if (this.windowFocusCallback) {
+            this.windowFocusCallback();
+          }
+        }
+        break;
+      }
       case 'NAVIGATE_QUEUE_PREV':
       case 'NAVIGATE_QUEUE_NEXT': {
         if (this.windowFocusCallback) {
@@ -190,6 +265,19 @@ export class InputDecoder {
       } catch (err) {
         console.error('[InputDecoder] Error in action handler:', err);
       }
+    }
+  }
+
+  private startTaskSelection() {
+    this.isSelectingTask = true;
+    this.selectionStage = 'PROJECT';
+    this.projectsList = this.engine.getProjects().map(p => ({ id: p.id, name: p.name }));
+    if (this.projectsList.length === 0) {
+      this.projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];
+    }
+    this.selectedProjectIndex = 0;
+    if (this.renderer) {
+      this.renderer.renderTaskSelection('PROJECT', this.projectsList[0].name);
     }
   }
 }

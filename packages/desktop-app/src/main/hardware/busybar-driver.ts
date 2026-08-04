@@ -171,7 +171,7 @@ export class BusyBarDriver extends EventEmitter {
   private pingMs: number = 4;
   private batteryPercent: number = 98;
   private firmwareVersion: string = '1.4.2';
-  private wsClient: any | null = null;
+  private wsClient: unknown | null = null;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
   private frameInFlight: boolean = false;
