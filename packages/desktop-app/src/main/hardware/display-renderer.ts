@@ -5,6 +5,7 @@ import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
+import { AnimationPlayer } from './animation-player';
 
 export interface DisplayPayload {
   frontElements: Array<Record<string, unknown>>;
@@ -43,6 +44,8 @@ export class DisplayRenderer {
   private isCelebrating: boolean = false;
   private celebrationTimeout: NodeJS.Timeout | null = null;
   private lastSessionCache: ActiveSessionDTO | null = null;
+  private animationPlayer: AnimationPlayer;
+  private frameBufferToggle: boolean = false;
 
   /** The software 72×16 pixel canvas that is encoded and uploaded each frame. */
   private canvas: PixelCanvas = new PixelCanvas(72, 16);
@@ -53,6 +56,8 @@ export class DisplayRenderer {
     }
     this.driver = driver;
     this.priorityEngine = priorityEngine;
+    this.animationPlayer = new AnimationPlayer(driver);
+    this.animationPlayer.setLedColorCallback(() => this.lastState.ledColorHex);
   }
 
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
@@ -101,6 +106,7 @@ export class DisplayRenderer {
     } else if (mode === 'AWAY') {
       this.renderAwayMode();
     } else if (mode === 'WORK') {
+      this.animationPlayer.stop();
       this.renderActiveSession(this.lastSessionCache);
     }
   }
@@ -243,6 +249,18 @@ export class DisplayRenderer {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
+  private lastInputKey: string = 'NONE';
+  private lastInputTime: string = 'N/A';
+
+  public logLastInputKey(key: string): void {
+    this.lastInputKey = key.toUpperCase();
+    this.lastInputTime = new Date().toLocaleTimeString();
+    // Force a re-render of the active session to update the diagnostics panel immediately
+    if (this.lastSessionCache) {
+      this.renderActiveSession(this.lastSessionCache);
+    }
+  }
+
   private buildRearElements(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean): Array<Record<string, unknown>> {
     if (this.rearOledMode === 'STEALTH_CLOCK' || isIdleOver15Mins) {
       return [
@@ -263,9 +281,11 @@ export class DisplayRenderer {
     // Default DIAGNOSTICS Mode
     const status = this.driver.getDeviceStatus();
     return [
-      { id: 'rear_diag_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'BUSY BAR DIAGNOSTICS [USB Ethernet]', align: 'top_left' },
+      { id: 'rear_diag_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'BUSY BAR DIAGNOSTICS [USB/WiFi]', align: 'top_left' },
       { id: 'rear_diag_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: `IP: ${status.ipAddress} | Ping: ${status.webSocketPingMs}ms`, align: 'top_left' },
-      { id: 'rear_diag_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCCCFF', text: `Active Task: ${session ? session.taskKey : 'NONE'} (${session ? session.status : 'IDLE'})`, align: 'top_left' }
+      { id: 'rear_diag_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCCCFF', text: `Frames: ${status.framesSent} OK, ${status.framesFailed} FAIL`, align: 'top_left' },
+      { id: 'rear_diag_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCCCFF', text: `Last Input: ${this.lastInputKey} @ ${this.lastInputTime}`, align: 'top_left' },
+      { id: 'rear_diag_4', type: 'text', font: 'tiny', x: 0, y: 64, color: '#CCCCCCCCFF', text: `Task: ${session ? session.taskKey : 'NONE'} (${session ? session.status : 'IDLE'})`, align: 'top_left' }
     ];
   }
 
@@ -331,9 +351,11 @@ export class DisplayRenderer {
     frontElementsForEmulator: Array<Record<string, unknown>>
   ): Promise<void> {
     const pngBuffer = encodeMatrixToPng(this.canvas.getPixels(), 72, 16);
+    this.frameBufferToggle = !this.frameBufferToggle;
+    const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
 
     // Fire-and-forget hardware transmission (non-blocking for render callers)
-    this.driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, FRONT_FRAME_FILE).catch(err => {
+    this.driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename).catch(err => {
       console.error('[DisplayRenderer] sendPixelFrame failed:', err);
     });
 
@@ -384,19 +406,8 @@ export class DisplayRenderer {
         '#FFFFFF'
       );
 
-      const frontElements: Array<Record<string, unknown>> = [
-        {
-          id: 'anim_lunch',
-          type: 'animation',
-          builtin_anim: 'lunch_72x16',
-          path: 'lunch_72x16',
-          x: 0,
-          y: 0,
-          align: 'top_left',
-          loop: true,
-          display: 'front'
-        }
-      ];
+      const frontElements: Array<Record<string, unknown>> = [];
+      this.animationPlayer.play('lunch_72x16');
 
       const backElements = [
         { id: 'rear_lunch_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS', align: 'top_left' },
@@ -409,13 +420,6 @@ export class DisplayRenderer {
         backElements,
         ledColorHex: '#F59E0BFF'
       };
-
-      this.driver.sendDisplayPayload({
-        application_name: APP_NAME,
-        priority: 95,
-        led_notification_color: '#F59E0BFF',
-        elements: frontElements
-      }).catch(err => console.error('[DisplayRenderer] sendDisplayPayload failed:', err));
 
       this.transmitFrame('#F59E0BFF', backElements, frontElements);
       return payload;
@@ -435,19 +439,8 @@ export class DisplayRenderer {
         '#888888'
       );
 
-      const frontElements: Array<Record<string, unknown>> = [
-        {
-          id: 'anim_away',
-          type: 'animation',
-          builtin_anim: 'back_soon_72x16',
-          path: 'back_soon_72x16',
-          x: 0,
-          y: 0,
-          align: 'top_left',
-          loop: true,
-          display: 'front'
-        }
-      ];
+      const frontElements: Array<Record<string, unknown>> = [];
+      this.animationPlayer.play('back_soon_72x16');
 
       const backElements = [
         { id: 'rear_away_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY', align: 'top_left' },
@@ -460,13 +453,6 @@ export class DisplayRenderer {
         backElements,
         ledColorHex: '#A855F7FF'
       };
-
-      this.driver.sendDisplayPayload({
-        application_name: APP_NAME,
-        priority: 95,
-        led_notification_color: '#A855F7FF',
-        elements: frontElements
-      }).catch(err => console.error('[DisplayRenderer] sendDisplayPayload failed:', err));
 
       this.transmitFrame('#A855F7FF', backElements, frontElements);
       return payload;
@@ -836,23 +822,7 @@ export class DisplayRenderer {
     });
   }
 
-  private updateStateAndDispatch(payload: DisplayPayload): void {
-    this.driver.sendDisplayPayload(payload as unknown as Record<string, unknown>);
 
-    this.lastState = {
-      frontElements: payload.frontElements as unknown as DisplayElementDTO[],
-      backElements: payload.backElements as unknown as DisplayElementDTO[],
-      ledColorHex: payload.ledColorHex || '#10B981FF',
-      ledMode: this.ledMode,
-      colorTheme: this.colorTheme,
-      rearOledMode: this.rearOledMode,
-      activeWidgetId: this.activeWidgetId
-    };
-
-    for (const callback of this.stateChangeCallbacks) {
-      callback(this.lastState);
-    }
-  }
 }
 
 class ArgumentNullException extends Error {

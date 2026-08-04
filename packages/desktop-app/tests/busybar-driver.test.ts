@@ -270,9 +270,9 @@ describe('BusyBarDriver Unit Tests', () => {
   it('ProtobufHelpers_ParseFieldsAndDecodeInput_ParsesButtonAndEncoderPayloads', () => {
     // Encoded button payload: BTN_START (2) -> key 'start'
     const btnPayload = new Uint8Array([
-      0x12, 0x07, // Field 2 (update) len 7
-      0x5a, 0x05, // Field 11 (input_event) len 5
-      0x0a, 0x03, // Subfield 1 (button) len 3
+      0x12, 0x08, // Field 2 (update) len 8
+      0x5a, 0x06, // Field 11 (input_event) len 6
+      0x0a, 0x04, // Subfield 1 (button) len 4
       0x08, 0x02, // field 1 (button id) = 2 (BTN_START)
       0x10, 0x01  // field 2 (action) = 1 (ACT_RELEASE)
     ]);

@@ -48,6 +48,8 @@ export interface DeviceStatusDTO {
   batteryPercent: number;
   firmwareVersion: string;
   webSocketPingMs: number;
+  framesSent: number;
+  framesFailed: number;
 }
 
 export interface ScheduleSettingsDTO {

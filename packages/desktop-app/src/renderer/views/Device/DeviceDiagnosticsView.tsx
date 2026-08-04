@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 
@@ -8,6 +8,17 @@ export const DeviceDiagnosticsView: React.FC = () => {
   const [wipeConfirm, setWipeConfirm] = useState<boolean>(false);
   const [wiping, setWiping] = useState<boolean>(false);
   const [activeTestLog, setActiveTestLog] = useState<string | null>(null);
+  const [hardwareLogs, setHardwareLogs] = useState<{ time: string; key: string; action: string }[]>([]);
+
+  useEffect(() => {
+    if (window.electronAPI?.onHardwareInputEvent) {
+      const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
+        const timeStr = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+        setHardwareLogs((prev) => [...prev, { time: timeStr, key: event.inputKey, action: event.actionAssigned }].slice(-20));
+      });
+      return () => unsubscribe();
+    }
+  }, []);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -234,6 +245,31 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {/* Animation Debug Panel */}
       <AnimationDebugPanel />
+
+      {/* Hardware Input Stream Console */}
+      <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
+        <div className="flex items-center space-x-2 text-accent-blue">
+          <Keyboard className="w-5 h-5" />
+          <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Hardware Input Stream Console</h3>
+        </div>
+        <p className="text-xs text-text-secondary">
+          Live stream of physical hardware button presses received via WebSocket telemetry over USB or Wi-Fi.
+        </p>
+        <div className="bg-dark-900 border border-dark-700 rounded-lg h-40 overflow-y-auto p-3 font-mono text-[11px] space-y-1 shadow-inner">
+          {hardwareLogs.length === 0 ? (
+            <div className="text-dark-500 italic">Waiting for physical hardware inputs... Press a button on the BUSY Bar.</div>
+          ) : (
+            hardwareLogs.map((log, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="text-dark-400">[{log.time}]</span>
+                <span className="px-1.5 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-800 font-bold">INPUT</span>
+                <span className="text-text-primary">Key: <strong className="text-accent-blue">{log.key.toUpperCase()}</strong></span>
+                <span className="text-text-secondary ml-4">Assigned Action: {log.action}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       {/* ⚠️ Danger Zone: Factory Data Wipe */}
       <div className="bg-dark-800 border border-accent-red/30 rounded-xl p-6 space-y-4">

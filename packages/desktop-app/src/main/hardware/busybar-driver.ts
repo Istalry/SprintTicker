@@ -114,6 +114,7 @@ export function decodeProtobufInput(data: Uint8Array): { key: string; type: 'pre
           if (sf.number === 2 && typeof sf.value === 'number') action = sf.value;
         }
         const keyMap: Record<number, string> = { 0: 'ok', 1: 'back', 2: 'start' };
+        if (action === 0) return null; // Ignore down press (0). Only process release (1) and long press (2).
         const key = keyMap[button] || 'ok';
         const type = action === 2 ? 'long_press' : 'press';
         return { key, type };
@@ -139,20 +140,23 @@ export function decodeProtobufInput(data: Uint8Array): { key: string; type: 'pre
     return null;
   };
 
+  let lastValidInput: { key: string; type: 'press' | 'long_press' | 'rotate_left' | 'rotate_right' } | null = null;
   for (const rf of rootFields) {
     if (rf.number === 2 && rf.value instanceof Uint8Array) {
       const updateFields = parseFields(rf.value);
       for (const uf of updateFields) {
         if (uf.number === 11 && uf.value instanceof Uint8Array) {
-          return processInputEventBytes(uf.value);
+          const res = processInputEventBytes(uf.value);
+          if (res) lastValidInput = res;
         }
       }
     } else if (rf.number === 11 && rf.value instanceof Uint8Array) {
-      return processInputEventBytes(rf.value);
+      const res = processInputEventBytes(rf.value);
+      if (res) lastValidInput = res;
     }
   }
 
-  return null;
+  return lastValidInput;
 }
 
 /**
@@ -167,9 +171,13 @@ export class BusyBarDriver extends EventEmitter {
   private pingMs: number = 4;
   private batteryPercent: number = 98;
   private firmwareVersion: string = '1.4.2';
-  private wsClient: unknown = null;
+  private wsClient: any | null = null;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
+  private frameInFlight: boolean = false;
+  private pendingFrameArgs: Parameters<BusyBarDriver['sendPixelFrame']> | null = null;
+  private framesSent: number = 0;
+  private framesFailed: number = 0;
 
   constructor(ipAddressOrOptions: string | BusyBarDriverOptions = DEFAULT_USB_IP, forceMock: boolean = false) {
     super();
@@ -308,11 +316,8 @@ export class BusyBarDriver extends EventEmitter {
       }
 
       console.log(`[BusyBarDriver] Starting WebSocket StateStream listener on ${wsUrl}`);
-      const WsCtor = (globalThis as Record<string, unknown>).WebSocket as (new (url: string) => WebSocket) | undefined;
-      if (typeof WsCtor !== 'function') {
-        return;
-      }
-
+      
+      const WsCtor = eval('require("ws")');
       const ws = new WsCtor(wsUrl);
       this.wsClient = ws;
 
@@ -374,7 +379,7 @@ export class BusyBarDriver extends EventEmitter {
       };
 
       ws.onclose = () => {
-        console.log('[BusyBarDriver] WebSocket closed. Scheduling reconnection in 3s...');
+        console.log('[BusyBarDriver] WebSocket closed. Scheduling reconnection in 1s...');
         this.wsClient = null;
         if (!this.wsReconnectTimer) {
           this.wsReconnectTimer = setTimeout(() => {
@@ -382,7 +387,7 @@ export class BusyBarDriver extends EventEmitter {
             if (this.isConnected && !this.isMockMode) {
               this.startStateStreamListener();
             }
-          }, 3000);
+          }, 1000);
         }
       };
     } catch (err) {
@@ -401,7 +406,9 @@ export class BusyBarDriver extends EventEmitter {
         backBrightness: 0,
         batteryPercent: 0,
         firmwareVersion: 'N/A',
-        webSocketPingMs: 0
+        webSocketPingMs: 0,
+        framesSent: this.framesSent,
+        framesFailed: this.framesFailed
       };
     }
 
@@ -413,7 +420,9 @@ export class BusyBarDriver extends EventEmitter {
       backBrightness: 100,
       batteryPercent: this.batteryPercent,
       firmwareVersion: this.isMockMode ? `${this.firmwareVersion}-mock` : this.firmwareVersion,
-      webSocketPingMs: this.pingMs
+      webSocketPingMs: this.pingMs,
+      framesSent: this.framesSent,
+      framesFailed: this.framesFailed
     };
   }
 
@@ -531,7 +540,8 @@ export class BusyBarDriver extends EventEmitter {
       const response = await fetch(url, {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
-        body: binaryData
+        body: binaryData,
+        signal: AbortSignal.timeout(2000)
       }).catch(() => null);
 
       return response ? response.ok : false;
@@ -602,12 +612,21 @@ export class BusyBarDriver extends EventEmitter {
       return true;
     }
 
-    try {
-      await this.clearDisplay(applicationName);
+    if (this.frameInFlight) {
+      // Store the latest requested frame so it gets drawn after the current one finishes.
+      // This guarantees we don't drop critical static state changes (like task finishing)
+      this.pendingFrameArgs = [pngBuffer, ledColorHex, applicationName, filename, priority];
+      return false; // Skip this hardware transmission to avoid queue flooding
+    }
 
+    this.frameInFlight = true;
+    try {
       const uploadOk = await this.uploadAsset(applicationName, cleanFilename, pngBuffer);
       if (!uploadOk) {
         console.warn(`[BusyBarDriver] PNG asset upload failed for ${cleanFilename}, skipping draw.`);
+        this.framesFailed++;
+        this.frameInFlight = false;
+        this.checkPendingFrame();
         return false;
       }
 
@@ -631,13 +650,34 @@ export class BusyBarDriver extends EventEmitter {
       const drawResponse = await fetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(drawPayload)
+        body: JSON.stringify(drawPayload),
+        signal: AbortSignal.timeout(2000)
       }).catch(() => null);
 
+      if (drawResponse && drawResponse.ok) {
+        this.framesSent++;
+      } else {
+        this.framesFailed++;
+      }
+
+      this.frameInFlight = false;
+      this.checkPendingFrame();
       return drawResponse ? drawResponse.ok : false;
     } catch (err) {
       console.error(`[BusyBarDriver] sendPixelFrame failed:`, err);
+      this.framesFailed++;
+      this.frameInFlight = false;
+      this.checkPendingFrame();
       return false;
+    }
+  }
+
+  private checkPendingFrame() {
+    if (this.pendingFrameArgs) {
+      const args = this.pendingFrameArgs;
+      this.pendingFrameArgs = null;
+      // Fire next frame asynchronously without blocking
+      this.sendPixelFrame(...args).catch(() => {});
     }
   }
 
@@ -656,7 +696,8 @@ export class BusyBarDriver extends EventEmitter {
       const response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(formattedPayload)
+        body: JSON.stringify(formattedPayload),
+        signal: AbortSignal.timeout(2000)
       }).catch(() => null);
 
       return response ? response.ok : false;

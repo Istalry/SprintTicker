@@ -192,13 +192,10 @@ export class TimeTrackingEngine extends EventEmitter {
       throw new Error('No paused session available to resume');
     }
 
-    const pauseDuration = Math.max(
-      0,
-      Math.floor((Date.now() - new Date(active.lastPauseStartUtc).getTime()) / 1000)
-    );
-    const newTotalPaused = active.totalPausedSeconds + pauseDuration;
-
-    this.sessionRepo.updateStatus(active.sessionId, 'TRACKING', newTotalPaused, undefined);
+    // active.totalPausedSeconds already includes the live duration of the current pause
+    // (calculated inside SessionRepository.getActiveSession), so we don't need to add it again.
+    this.sessionRepo.updateStatus(active.sessionId, 'TRACKING', active.totalPausedSeconds, undefined);
+    
     this.currentSession = this.sessionRepo.getActiveSession();
     this.startTickLoop();
     this.notifyListeners();

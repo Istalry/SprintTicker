@@ -78,6 +78,11 @@ export class InputDecoder {
   public handleHardwareInput(event: HardwareEvent): string {
     const bindings = this.getBindings();
     const normalizedKey = (event.key || '').toLowerCase();
+    
+    if (this.renderer) {
+      this.renderer.logLastInputKey(normalizedKey);
+    }
+    
     const activeSession = this.engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
 

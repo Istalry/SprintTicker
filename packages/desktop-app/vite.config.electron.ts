@@ -13,6 +13,7 @@ const ELECTRON_EXTERNALS: (string | RegExp)[] = [
   'better-sqlite3',
   'bindings',
   'file-uri-to-path',
+  'ws',
 
   // All Node.js built-in modules (node: protocol and classic form)
   /^node:/,

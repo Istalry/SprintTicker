@@ -87,6 +87,12 @@ export class DatabaseService {
     const startTime = new Date(row.start_time_utc).getTime();
     const now = Date.now();
     let elapsedSeconds = Math.floor((now - startTime) / 1000) - row.total_paused_seconds;
+    
+    if (row.status === 'PAUSED' && row.last_pause_start_utc) {
+      const pauseStart = new Date(row.last_pause_start_utc).getTime();
+      elapsedSeconds -= Math.floor((now - pauseStart) / 1000);
+    }
+    
     if (elapsedSeconds < 0) elapsedSeconds = 0;
 
     return {

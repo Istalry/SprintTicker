@@ -93,6 +93,29 @@ describe('DisplayRenderer Unit Tests', () => {
     });
   });
 
+  describe('baking & exceptions rendering', () => {
+    it('RenderBuilding_ValidProject_DispatchesBuildingPayload', () => {
+      const payload = renderer.renderBuilding('ProjectX', 45);
+      expect(payload.ledColorHex).toBe('#3B82F6FF');
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('Building ProjectX (45%)'))).toBe(true);
+    });
+
+    it('RenderBaking_ValidProject_DispatchesBakingPayload', () => {
+      const payload = renderer.renderBaking('ProjectX', 45);
+      expect(payload.ledColorHex).toBe('#FBBF24FF');
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('Baking ProjectX (45%)'))).toBe(true);
+    });
+
+    it('RenderException_ValidError_DispatchesExceptionPayload', () => {
+      const payload = renderer.renderException('ProjectY', 'Syntax Error');
+      expect(payload.ledColorHex).toBe('#EF4444FF');
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('EXCEPTION: ProjectY'))).toBe(true);
+    });
+  });
+
   describe('rear OLED modes', () => {
     it('SetRearOledMode_PerformanceMonitor_RendersPerformanceElements', () => {
       renderer.setRearOledMode('PERFORMANCE_MONITOR');
