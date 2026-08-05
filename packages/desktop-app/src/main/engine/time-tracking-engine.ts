@@ -6,6 +6,7 @@ import { ProjectRepository } from '../db/repositories/project-repository';
 import { ActiveSessionDTO, TaskDTO, ProjectDTO } from '../../shared/dtos';
 
 import { ProviderManager } from '../providers/provider-manager';
+import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -24,6 +25,7 @@ export class TimeTrackingEngine extends EventEmitter {
   private listeners: Set<SessionStateCallback> = new Set();
   private currentSession: ActiveSessionDTO | null = null;
   private tickTimer: NodeJS.Timeout | null = null;
+  private syncWorker: OfflineSyncWorker;
 
   constructor(
     sessionRepo?: SessionRepository,
@@ -37,6 +39,14 @@ export class TimeTrackingEngine extends EventEmitter {
     this.taskRepo = taskRepo || new TaskRepository();
     this.projectRepo = new ProjectRepository();
     this.providerManager = providerManager || new ProviderManager(undefined, this.worklogRepo);
+    
+    this.syncWorker = new OfflineSyncWorker(
+      this.providerManager,
+      this.worklogRepo,
+      this.projectRepo,
+      this.taskRepo
+    );
+    this.syncWorker.start();
 
     this.reconcileStartupState();
   }
@@ -148,6 +158,11 @@ export class TimeTrackingEngine extends EventEmitter {
       const existingTask = this.taskRepo.getTaskById(taskId);
       if (existingTask && existingTask.status === 'todo') {
         this.taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+        
+        // Push status to remote provider asynchronously
+        this.providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
+          console.warn(`[TimeTrackingEngine] Failed to remote update task status:`, err);
+        });
       }
     }
 
@@ -228,6 +243,11 @@ export class TimeTrackingEngine extends EventEmitter {
       const existingTask = this.taskRepo.getTaskById(active.taskId);
       if (existingTask) {
         this.taskRepo.updateTask({ ...existingTask, status: 'done' });
+        
+        // Push completion status remotely
+        this.providerManager.updateTaskStatus(active.taskId, 'done').catch(err => {
+          console.warn(`[TimeTrackingEngine] Failed to remote update task status to done:`, err);
+        });
       }
     }
 

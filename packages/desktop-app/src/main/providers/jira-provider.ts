@@ -114,4 +114,9 @@ export class JiraProvider implements ITaskProvider {
       remoteWorklogId: `jira_wl_${Date.now()}`
     };
   }
+
+  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
+    console.log(`[JiraProvider] Stub: Update task ${taskId} status to ${status}`);
+    return false;
+  }
 }

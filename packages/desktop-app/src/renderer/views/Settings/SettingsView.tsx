@@ -12,6 +12,12 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
   const [fallbackTicketKey, setFallbackTicketKey] = useState<string>('MISC-1');
   const [providerId, setProviderId] = useState<string>('jira');
   const [jiraDomain, setJiraDomain] = useState<string>('https://antigravity.atlassian.net');
+  const [opDomain, setOpDomain] = useState<string>('');
+  const [opApiKey, setOpApiKey] = useState<string>('');
+  const [opStatusInProgress, setOpStatusInProgress] = useState<string>('');
+  const [opStatusToTest, setOpStatusToTest] = useState<string>('');
+  const [opStatusToReview, setOpStatusToReview] = useState<string>('');
+  const [opCompletionAction, setOpCompletionAction] = useState<string>('to_test');
 
   useEffect(() => {
     if (window.electronAPI?.getProviders) {
@@ -20,6 +26,12 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           if (res.activeProviderId) setProviderId(res.activeProviderId);
           if (res.fallbackTicketKey) setFallbackTicketKey(res.fallbackTicketKey);
           if (res.jiraDomain) setJiraDomain(res.jiraDomain);
+          if (res.opDomain) setOpDomain(res.opDomain);
+          if (res.opApiKey) setOpApiKey(res.opApiKey);
+          if (res.opStatusInProgress) setOpStatusInProgress(res.opStatusInProgress);
+          if (res.opStatusToTest) setOpStatusToTest(res.opStatusToTest);
+          if (res.opStatusToReview) setOpStatusToReview(res.opStatusToReview);
+          if (res.opCompletionAction) setOpCompletionAction(res.opCompletionAction);
         }
       }).catch(err => console.error('[SettingsView] Error loading providers:', err));
     }
@@ -30,7 +42,13 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       await window.electronAPI.setActiveProvider({
         providerId,
         jiraDomain,
-        fallbackTicketKey
+        fallbackTicketKey,
+        opDomain,
+        opApiKey,
+        opStatusInProgress,
+        opStatusToTest,
+        opStatusToReview,
+        opCompletionAction
       });
     }
     setSavedSuccess(true);
@@ -72,19 +90,68 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
             <option value="jira">Jira Cloud / Server Integration</option>
             <option value="sheets">Google Sheets Sync</option>
             <option value="notion">Notion Database</option>
+            <option value="openproject">OpenProject</option>
             <option value="adhoc">Ad-Hoc / Custom REST Fallback</option>
           </select>
         </div>
 
-        <div>
-          <label className="block text-xs font-mono text-text-secondary mb-1">Jira Domain URL</label>
-          <input
-            type="text"
-            value={jiraDomain}
-            onChange={e => setJiraDomain(e.target.value)}
-            className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
-          />
-        </div>
+        {providerId === 'jira' && (
+          <div>
+            <label className="block text-xs font-mono text-text-secondary mb-1">Jira Domain URL</label>
+            <input
+              type="text"
+              value={jiraDomain}
+              onChange={e => setJiraDomain(e.target.value)}
+              className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+            />
+          </div>
+        )}
+
+        {providerId === 'openproject' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">OpenProject Domain URL</label>
+              <input
+                type="text"
+                value={opDomain}
+                onChange={e => setOpDomain(e.target.value)}
+                placeholder="https://openproject.example.com"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">API Key</label>
+              <input
+                type="password"
+                value={opApiKey}
+                onChange={e => setOpApiKey(e.target.value)}
+                placeholder="apikey"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-mono text-text-secondary mb-1">In Progress Status ID</label>
+                <input type="text" value={opStatusInProgress} onChange={e => setOpStatusInProgress(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-text-secondary mb-1">To Test Status ID</label>
+                <input type="text" value={opStatusToTest} onChange={e => setOpStatusToTest(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-text-secondary mb-1">To Review Status ID</label>
+                <input type="text" value={opStatusToReview} onChange={e => setOpStatusToReview(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-text-secondary mb-1">Task Completion Action</label>
+                <select value={opCompletionAction} onChange={e => setOpCompletionAction(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono">
+                  <option value="to_test">Move to To Test</option>
+                  <option value="to_review">Move to To Review</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-mono text-text-secondary mb-1">Ad-Hoc Fallback Ticket Key</label>

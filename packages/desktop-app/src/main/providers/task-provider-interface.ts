@@ -20,4 +20,5 @@ export interface ITaskProvider {
   getTasks(projectId: string): Promise<TaskDTO[]>;
   reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }>;
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
+  updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
 }

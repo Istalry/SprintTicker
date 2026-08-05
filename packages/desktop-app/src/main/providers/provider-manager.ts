@@ -2,6 +2,7 @@ import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { JiraProvider } from './jira-provider';
 import { AdHocProvider } from './adhoc-provider';
 import { NotionProvider } from './notion-provider';
+import { OpenProjectProvider } from './openproject-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
@@ -23,6 +24,7 @@ export class ProviderManager {
     this.registerProvider(new JiraProvider());
     this.registerProvider(new AdHocProvider());
     this.registerProvider(new NotionProvider());
+    this.registerProvider(new OpenProjectProvider());
 
     this.activeProviderId = this.settingsRepo.getSetting('active_provider_id', 'jira');
   }
@@ -48,6 +50,10 @@ export class ProviderManager {
 
   public async getTasks(projectId: string): Promise<TaskDTO[]> {
     return this.getActiveProvider().getTasks(projectId);
+  }
+
+  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
+    return this.getActiveProvider().updateTaskStatus(taskId, status);
   }
 
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {

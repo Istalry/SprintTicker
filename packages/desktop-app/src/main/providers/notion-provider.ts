@@ -72,4 +72,9 @@ export class NotionProvider implements ITaskProvider {
       remoteWorklogId: `notion_wl_${Date.now()}`
     };
   }
+
+  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
+    console.log(`[NotionProvider] Stub: Update task ${taskId} status to ${status}`);
+    return false;
+  }
 }

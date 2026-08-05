@@ -35,4 +35,8 @@ export class AdHocProvider implements ITaskProvider {
       remoteWorklogId: `adhoc_wl_${Date.now()}`
     };
   }
+
+  public async updateTaskStatus(_taskId: string, _status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
+    return false;
+  }
 }

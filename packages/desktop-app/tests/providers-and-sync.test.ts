@@ -4,8 +4,10 @@ import { WorklogRepository } from '../src/main/db/repositories/worklog-repositor
 import { JiraProvider } from '../src/main/providers/jira-provider';
 import { AdHocProvider } from '../src/main/providers/adhoc-provider';
 import { NotionProvider } from '../src/main/providers/notion-provider';
+import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
-import { TaskProvider } from '../src/main/sync/task-provider';
+import { ProviderManager } from '../src/main/providers/provider-manager';
+import { vi } from 'vitest';
 
 describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -13,6 +15,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
   let jiraProvider: JiraProvider;
   let adhocProvider: AdHocProvider;
   let notionProvider: NotionProvider;
+  let openProjectProvider: OpenProjectProvider;
 
   beforeEach(() => {
     dbConn = new DatabaseConnection(':memory:');
@@ -21,6 +24,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     jiraProvider = new JiraProvider();
     adhocProvider = new AdHocProvider();
     notionProvider = new NotionProvider();
+    openProjectProvider = new OpenProjectProvider();
   });
 
   afterEach(() => {
@@ -160,6 +164,93 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     expect(result.success).toBe(true);
   });
 
+  it('OpenProjectProvider_GetProjects_WithCredentials_FetchesFromApi', async () => {
+    await openProjectProvider.initialize({ domain: 'https://op.test', apiToken: 'token' });
+    
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _embedded: {
+          elements: [
+            { id: 1, name: 'OP Project', identifier: 'op-proj' }
+          ]
+        }
+      })
+    } as unknown as Response);
+
+    const projects = await openProjectProvider.getProjects();
+    expect(projects).toHaveLength(1);
+    expect(projects[0].name).toBe('OP Project');
+    expect(projects[0].key).toBe('op-proj');
+
+    global.fetch = originalFetch;
+  });
+
+  it('OpenProjectProvider_GetTasks_WithCredentials_FetchesFromApi', async () => {
+    await openProjectProvider.initialize({ domain: 'https://op.test', apiToken: 'token' });
+    
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _embedded: {
+          elements: [
+            { id: 101, subject: 'OP Task', _links: { status: { title: 'New' } } }
+          ]
+        }
+      })
+    } as unknown as Response);
+
+    const tasks = await openProjectProvider.getTasks('1');
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe('OP Task');
+    expect(tasks[0].status).toBe('todo');
+
+    global.fetch = originalFetch;
+  });
+
+  it('OpenProjectProvider_UpdateTaskStatus_ValidStatus_SendsPatchRequest', async () => {
+    await openProjectProvider.initialize({ 
+      domain: 'https://op.test', 
+      apiToken: 'token',
+      opStatusInProgress: '2',
+      opStatusToTest: '3'
+    });
+    
+    const originalFetch = global.fetch;
+    let patchUrl = '';
+    let patchBody = '';
+    
+    // First it GETs the task to find lockVersion, then it PATCHes it
+    global.fetch = vi.fn().mockImplementation(async (url: string, options: RequestInit = {}) => {
+      const method = options.method || 'GET';
+      if (method === 'GET') {
+        return {
+          ok: true,
+          json: async () => ({ lockVersion: 5 })
+        };
+      } else if (options.method === 'PATCH') {
+        patchUrl = url;
+        patchBody = options.body;
+        return { ok: true };
+      }
+    });
+
+    const result = await openProjectProvider.updateTaskStatus('101', 'in_progress');
+    expect(result).toBe(true);
+    expect(patchUrl).toContain('/api/v3/work_packages/101');
+    expect(patchBody).toContain('"lockVersion":5');
+    expect(patchBody).toContain('"/api/v3/statuses/2"');
+
+    global.fetch = originalFetch;
+  });
+
+  it('AdHocProvider_UpdateTaskStatus_ReturnsFalse', async () => {
+    const result = await adhocProvider.updateTaskStatus('ADHOC-1', 'done');
+    expect(result).toBe(false);
+  });
+
   it('OfflineSyncWorker_PendingQueue_ProcessesAndDrainsSyncQueue', async () => {
     // Arrange: Enqueue worklog items into SQLite
     worklogRepo.enqueueSyncItem({
@@ -181,9 +272,15 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
     expect(worklogRepo.getPendingQueueItems()).toHaveLength(2);
 
+    // Mock providerManager
+    const providerManager = {
+      logTime: async () => ({ success: true }),
+      getProjects: async () => [],
+      getTasks: async () => []
+    } as unknown as ProviderManager;
+
     // Act
-    const worker = new OfflineSyncWorker(jiraProvider, worklogRepo, 60000);
-    worker.setProvider(jiraProvider);
+    const worker = new OfflineSyncWorker(providerManager, worklogRepo, undefined, undefined, 60000);
 
     // Test offline state short circuit
     worker.setOnlineStatus(false);
@@ -201,7 +298,8 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
   });
   it('OfflineSyncWorker_Start_IdempotentDoubleStart_DoesNotThrow', () => {
     // Arrange
-    const worker = new OfflineSyncWorker(jiraProvider, worklogRepo, 9999999);
+    const providerManager = { getProjects: async () => [], getTasks: async () => [] } as unknown as ProviderManager;
+    const worker = new OfflineSyncWorker(providerManager, worklogRepo, undefined, undefined, 9999999);
 
     // Act & Assert — calling start() twice should not throw or duplicate the interval
     expect(() => {
@@ -214,7 +312,8 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
   it('OfflineSyncWorker_Stop_ClearsTimer_AllowsRestartAfter', () => {
     // Arrange
-    const worker = new OfflineSyncWorker(jiraProvider, worklogRepo, 9999999);
+    const providerManager = { getProjects: async () => [], getTasks: async () => [] } as unknown as ProviderManager;
+    const worker = new OfflineSyncWorker(providerManager, worklogRepo, undefined, undefined, 9999999);
     worker.start();
 
     // Act
@@ -236,18 +335,13 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
       comment: 'Failure test'
     });
 
-    // Mock provider returning { success: false }
-    const failingProvider = {
-      providerId: 'jira',
-      providerName: 'Jira (Failing)',
-      initialize: async () => true,
+    const failingManager = {
+      logTime: async () => ({ success: false }),
       getProjects: async () => [],
-      getTasks: async () => [],
-      reconcileRemoteState: async () => ({ remoteLoggedTimeToday: 0 }),
-      logTime: async () => ({ success: false })
-    };
+      getTasks: async () => []
+    } as unknown as ProviderManager;
 
-    const worker = new OfflineSyncWorker(failingProvider as unknown as TaskProvider, worklogRepo);
+    const worker = new OfflineSyncWorker(failingManager, worklogRepo);
     const result = await worker.processPendingQueue();
 
     // Assert
@@ -267,17 +361,13 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
       comment: 'Throw test'
     });
 
-    const throwingProvider = {
-      providerId: 'jira',
-      providerName: 'Jira (Throwing)',
-      initialize: async () => true,
+    const throwingManager = {
+      logTime: async () => { throw new Error('Network timeout'); },
       getProjects: async () => [],
-      getTasks: async () => [],
-      reconcileRemoteState: async () => ({ remoteLoggedTimeToday: 0 }),
-      logTime: async () => { throw new Error('Network timeout'); }
-    };
+      getTasks: async () => []
+    } as unknown as ProviderManager;
 
-    const worker = new OfflineSyncWorker(throwingProvider as unknown as TaskProvider, worklogRepo);
+    const worker = new OfflineSyncWorker(throwingManager, worklogRepo);
     const result = await worker.processPendingQueue();
 
     // Assert
