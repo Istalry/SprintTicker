@@ -13,7 +13,7 @@ import {
   AlertOctagon,
   Square
 } from 'lucide-react';
-import { HardwareDisplayStateDTO, BitmapIconId, EdgeGlowMode, EdgeGlowTransition, DisplayElementDTO } from '../../shared/dtos';
+import { HardwareDisplayStateDTO, BitmapIconId, DisplayElementDTO } from '../../shared/dtos';
 import { getBitmapById } from '../../main/hardware/pixel-bitmaps';
 
 /**
@@ -27,21 +27,19 @@ export const AnimationDebugPanel: React.FC = () => {
   const [scrollRate, setScrollRate] = useState<number>(60);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Edge Screen Glow Settings State
-  const [enableEdgeGlow, setEnableEdgeGlow] = useState<boolean>(true);
-  const [edgeGlowOpacity, setEdgeGlowOpacity] = useState<number>(0.3);
-  const [edgeGlowMode, setEdgeGlowMode] = useState<EdgeGlowMode>('PULSE');
-  const [edgeGlowTransition, setEdgeGlowTransition] = useState<EdgeGlowTransition>('FADE');
+  const [debugTimer, setDebugTimer] = useState<NodeJS.Timeout | null>(null);
 
   const dispatchState = (
     frontElements: Array<Record<string, unknown>>,
     backElements: Array<Record<string, unknown>>,
     ledColorHex: string = '#10B981FF',
     ledMode: 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION' = 'SOLID',
-    msg?: string,
-    overrideGlowMode?: EdgeGlowMode,
-    overrideGlowTransition?: EdgeGlowTransition
+    msg?: string
   ) => {
+    if (debugTimer) {
+      clearTimeout(debugTimer);
+    }
+
     const state: HardwareDisplayStateDTO = {
       frontElements: frontElements as DisplayElementDTO[],
       backElements: backElements as DisplayElementDTO[],
@@ -49,15 +47,23 @@ export const AnimationDebugPanel: React.FC = () => {
       ledMode,
       colorTheme: 'emerald',
       rearOledMode: 'DIAGNOSTICS',
-      activeWidgetId: 'debug',
-      enableEdgeGlow,
-      edgeGlowOpacity,
-      edgeGlowMode: overrideGlowMode !== undefined ? overrideGlowMode : edgeGlowMode,
-      edgeGlowTransition: overrideGlowTransition !== undefined ? overrideGlowTransition : edgeGlowTransition
+      activeWidgetId: 'debug'
     };
 
     window.dispatchEvent(new CustomEvent('debug-display-update', { detail: state }));
     if (msg) showStatus(msg);
+
+    const timer = setTimeout(() => {
+      if (window.electronAPI && window.electronAPI.getDisplayState) {
+        window.electronAPI.getDisplayState().then((origState) => {
+          if (origState) {
+            window.dispatchEvent(new CustomEvent('debug-display-update', { detail: origState }));
+          }
+        });
+      }
+    }, 10000);
+
+    setDebugTimer(timer);
   };
 
   const showStatus = (msg: string) => {
@@ -108,7 +114,12 @@ export const AnimationDebugPanel: React.FC = () => {
   const triggerLunch = () => {
     if (window.electronAPI && window.electronAPI.setUserMode) {
       window.electronAPI.setUserMode('LUNCH');
-      showStatus('Real IPC: Dispatched Lunch Break Mode');
+      showStatus('Real IPC: Dispatched Lunch Break Mode (Auto-reverting in 10s)');
+      setTimeout(() => {
+        if (window.electronAPI && window.electronAPI.setUserMode) {
+          window.electronAPI.setUserMode('WORK');
+        }
+      }, 10000);
     } else {
       showStatus('Error: electronAPI.setUserMode not available');
     }
@@ -117,7 +128,12 @@ export const AnimationDebugPanel: React.FC = () => {
   const triggerAway = () => {
     if (window.electronAPI && window.electronAPI.setUserMode) {
       window.electronAPI.setUserMode('AWAY');
-      showStatus('Real IPC: Dispatched Away Mode');
+      showStatus('Real IPC: Dispatched Away Mode (Auto-reverting in 10s)');
+      setTimeout(() => {
+        if (window.electronAPI && window.electronAPI.setUserMode) {
+          window.electronAPI.setUserMode('WORK');
+        }
+      }, 10000);
     } else {
       showStatus('Error: electronAPI.setUserMode not available');
     }
@@ -421,72 +437,6 @@ export const AnimationDebugPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* 🌟 Screen Edge Glow Controls Section */}
-      <div className="bg-dark-900 p-4 rounded-lg border border-border-dark space-y-4">
-        <div className="font-bold text-white uppercase tracking-wider text-[11px] flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-3.5 h-3.5 text-accent-cyan" />
-            <span>Screen Edge Glow Controls</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="enableGlowCheck"
-              checked={enableEdgeGlow}
-              onChange={(e) => setEnableEdgeGlow(e.target.checked)}
-              className="rounded bg-dark-800 border-border-dark text-accent-cyan focus:ring-0"
-            />
-            <label htmlFor="enableGlowCheck" className="text-[10px] text-text-secondary cursor-pointer">
-              Enable Edge Glow
-            </label>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <label className="text-text-secondary text-[10px]">Animation Pattern:</label>
-            <select
-              value={edgeGlowMode}
-              onChange={(e) => setEdgeGlowMode(e.target.value as EdgeGlowMode)}
-              className="w-full bg-dark-800 text-white px-2 py-1.5 rounded border border-border-dark focus:outline-none text-xs"
-            >
-              <option value="PULSE">Pulse (Breathing)</option>
-              <option value="ROTATING">Rotating (Chaser Light)</option>
-              <option value="BLINKING">Blinking (Strobe Alert)</option>
-              <option value="STATIC">Static (Solid Ambient)</option>
-              <option value="NONE">None (Disabled for Status)</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-text-secondary text-[10px]">Transition Effect:</label>
-            <select
-              value={edgeGlowTransition}
-              onChange={(e) => setEdgeGlowTransition(e.target.value as EdgeGlowTransition)}
-              className="w-full bg-dark-800 text-white px-2 py-1.5 rounded border border-border-dark focus:outline-none text-xs"
-            >
-              <option value="FADE">Fade (Smooth Interpolation)</option>
-              <option value="INSTANT">Instant (0ms Strobe)</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex justify-between items-center text-[10px] text-text-secondary">
-              <span>Glow Opacity:</span>
-              <span className="text-accent-cyan font-bold">{Math.round(edgeGlowOpacity * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={edgeGlowOpacity}
-              onChange={(e) => setEdgeGlowOpacity(Number(e.target.value))}
-              className="w-full mt-2"
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

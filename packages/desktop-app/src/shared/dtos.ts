@@ -165,10 +165,6 @@ export interface MessagingSettingsDTO {
   enableGmailLed: boolean;
   notificationTimeoutSeconds?: number; // Auto-dismiss notification banner duration in seconds (default: 10)
   stealthClockIdleTimeoutMins?: number; // Idle duration before switching OLED to stealth clock (default: 15)
-  enableEdgeGlow?: boolean; // Enable ambient screen edge glow effect (default: true)
-  edgeGlowOpacity?: number; // Screen edge glow opacity between 0.0 and 1.0 (default: 0.3)
-  edgeGlowMode?: EdgeGlowMode; // Edge glow pattern (STATIC, PULSE, BLINKING, ROTATING) (default: PULSE)
-  edgeGlowTransition?: EdgeGlowTransition; // Transition style (FADE, INSTANT) (default: FADE)
 }
 
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';
@@ -225,8 +221,6 @@ export interface MessagingTestResultDTO {
 }
 
 export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
-export type EdgeGlowMode = 'NONE' | 'STATIC' | 'PULSE' | 'BLINKING' | 'ROTATING';
-export type EdgeGlowTransition = 'FADE' | 'INSTANT';
 export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows' | 'bell';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
@@ -254,10 +248,6 @@ export interface HardwareDisplayStateDTO {
   colorTheme: ColorThemeId;
   rearOledMode: RearOledMode;
   activeWidgetId: string;
-  enableEdgeGlow?: boolean;
-  edgeGlowOpacity?: number;
-  edgeGlowMode?: EdgeGlowMode;
-  edgeGlowTransition?: EdgeGlowTransition;
 }
 
 // OpenAPI v25 System Status & Power Telemetry DTOs

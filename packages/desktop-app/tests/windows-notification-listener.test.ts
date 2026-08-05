@@ -82,7 +82,8 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
       'Slack',
       40,
       'slack',
-      undefined
+      undefined,
+      10000
     );
   });
 
@@ -107,7 +108,8 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
       'Discord',
       95,
       'discord',
-      undefined
+      undefined,
+      10000
     );
   });
 

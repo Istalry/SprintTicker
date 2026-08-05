@@ -17,6 +17,7 @@ describe('AnimationPlayer Unit Tests', () => {
   let player: AnimationPlayer;
 
   beforeEach(() => {
+    vi.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => false } as unknown as fs.Stats);
     driver = {
       sendPixelFrame: vi.fn().mockResolvedValue(true)
     } as unknown as BusyBarDriver;

@@ -12,10 +12,9 @@ import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
 
 vi.mock('electron', () => ({
-  ipcMain: {
-    handle: vi.fn(),
-    on: vi.fn()
-  },
+  ipcMain: { handle: vi.fn(), on: vi.fn(), emit: vi.fn() },
+  BrowserWindow: vi.fn(),
+  app: { isPackaged: false },
   powerMonitor: {
     on: vi.fn()
   }

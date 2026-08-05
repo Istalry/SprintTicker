@@ -29,8 +29,8 @@ export class AnimationPlayer {
   constructor(driver: BusyBarDriver, animationsDir?: string) {
     this.driver = driver;
     // Default to the repository root Animations folder in dev, or resources/Animations when packaged
-    this.animationsDir = animationsDir || (app.isPackaged 
-      ? path.join(process.resourcesPath, 'Animations') 
+    this.animationsDir = animationsDir || (app?.isPackaged 
+      ? path.join(process?.resourcesPath || '', 'Animations') 
       : path.resolve(__dirname, '../../../../Animations'));
   }
 

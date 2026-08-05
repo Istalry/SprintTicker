@@ -357,16 +357,8 @@ export class DisplayRenderer {
   private async transmitFrame(
     ledColorHex: string,
     backElements: Array<Record<string, unknown>>,
-    frontElementsForEmulator: Array<Record<string, unknown>>,
-    enableEdgeGlow: boolean = true
+    frontElementsForEmulator: Array<Record<string, unknown>>
   ): Promise<void> {
-    if (enableEdgeGlow && ledColorHex && ledColorHex !== '#000000FF') {
-      this.canvas.drawRect(0, 0, 72, 1, ledColorHex);
-      this.canvas.drawRect(0, 15, 72, 1, ledColorHex);
-      this.canvas.drawRect(0, 0, 1, 16, ledColorHex);
-      this.canvas.drawRect(71, 0, 1, 16, ledColorHex);
-    }
-
     const pngBuffer = encodeMatrixToPng(this.canvas.getPixels(), 72, 16);
     this.frameBufferToggle = !this.frameBufferToggle;
     const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
@@ -383,8 +375,7 @@ export class DisplayRenderer {
       ledMode: this.ledMode,
       colorTheme: this.colorTheme,
       rearOledMode: this.rearOledMode,
-      activeWidgetId: this.activeWidgetId,
-      enableEdgeGlow
+      activeWidgetId: this.activeWidgetId
     };
 
     for (const callback of this.stateChangeCallbacks) {
@@ -575,15 +566,13 @@ export class DisplayRenderer {
     const backElements = this.buildRearElements(session, isIdleOver15Mins);
     const frontEls = this.canvasToEmulatorElements();
 
-    const enableEdgeGlow = !isTracking;
-
     const payload: DisplayPayload = {
       frontElements: frontEls,
       backElements,
       ledColorHex: ledColor
     };
 
-    this.transmitFrame(ledColor, backElements, frontEls, enableEdgeGlow);
+    this.transmitFrame(ledColor, backElements, frontEls);
     return payload;
   }
 

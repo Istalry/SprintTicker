@@ -14,6 +14,7 @@
     "package:win": "vite build --config vite.config.electron.ts && vite build --config vite.config.preload.ts && vite build && electron-builder --win",
     "package:portable": "vite build --config vite.config.electron.ts && vite build --config vite.config.preload.ts && vite build && electron-builder --win portable",
     "package:installer": "vite build --config vite.config.electron.ts && vite build --config vite.config.preload.ts && vite build && electron-builder --win nsis",
+    "predev": "pnpm rebuild:electron",
     "pretest": "pnpm rebuild better-sqlite3",
     "pretest:coverage": "pnpm rebuild better-sqlite3",
     "rebuild:electron": "electron-builder install-app-deps",

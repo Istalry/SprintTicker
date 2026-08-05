@@ -183,57 +183,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
         for (let c = 0; c < 72; c++) {
           const x = gap + c * cellSize;
           const y = gap + r * cellSize;
-          let pixelColor = pixelBuffer[r][c];
-
-          // 🌟 2-Pixel Radius Ambient Gradient Edge Glow Engine (Outer 100%, Inner 50% opacity)
-          const enableGlow = displayState?.enableEdgeGlow ?? true;
-          const glowOpacity = displayState?.edgeGlowOpacity ?? 0.3;
-          const glowMode = displayState?.edgeGlowMode || 'PULSE';
-
-          const isOuterPerimeter = r === 0 || r === 15 || c === 0 || c === 71;
-          const isInnerPerimeter = (r === 1 || r === 14) || (c === 1 || c === 70);
-
-          if (!pixelColor && enableGlow && glowMode !== 'NONE' && (isOuterPerimeter || isInnerPerimeter) && glowOpacity > 0) {
-            const glowHex = displayState?.ledColorHex || '#38BDF8';
-            const radiusFactor = isOuterPerimeter ? 1.0 : 0.5; // Outer layer 100%, inner 2nd layer 50% opacity
-            let alphaFactor = 1.0;
-
-            if (glowMode === 'PULSE') {
-              alphaFactor = 0.4 + 0.6 * Math.sin(time * 0.003);
-            } else if (glowMode === 'BLINKING') {
-              alphaFactor = (Math.floor(time / 250) % 2 === 0) ? 1.0 : 0.0;
-            } else if (glowMode === 'ROTATING') {
-              // 🔄 2-Pixel Perimeter Chaser Light travelling around outer screen borders
-              let pIdx = 0;
-              if (r === 0 || r === 1) pIdx = c; // Top edge: 0..71
-              else if (c === 71 || c === 70) pIdx = 72 + r; // Right edge: 72..86
-              else if (r === 15 || r === 14) pIdx = 87 + (71 - c); // Bottom edge: 87..158
-              else if (c === 0 || c === 1) pIdx = 159 + (15 - r); // Left edge: 159..173
-
-              const chaserHead = Math.floor((time * 0.05) % 174);
-              const dist = (chaserHead - pIdx + 174) % 174;
-              if (dist < 24) {
-                alphaFactor = (1 - dist / 24);
-              } else {
-                alphaFactor = 0.0;
-              }
-            }
-
-            const finalAlpha = Math.max(0, Math.min(1, glowOpacity * alphaFactor * radiusFactor));
-            if (finalAlpha > 0.01) {
-              pixelColor = glowHex;
-              ctx.shadowColor = glowHex;
-              ctx.shadowBlur = Math.round(3 * finalAlpha);
-              ctx.fillStyle = glowHex;
-              ctx.globalAlpha = finalAlpha;
-              ctx.beginPath();
-              ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 2, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.globalAlpha = 1.0;
-              ctx.shadowBlur = 0;
-              continue;
-            }
-          }
+          const pixelColor = pixelBuffer[r][c];
 
           if (pixelColor) {
             // Lit LED Diode with Emissive Bloom

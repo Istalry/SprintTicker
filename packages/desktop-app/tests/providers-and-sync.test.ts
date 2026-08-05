@@ -39,18 +39,76 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     expect(reconciliation.remoteLoggedTimeToday).toBe(8100);
   });
 
-  it('JiraProvider_LogTime_ValidPayload_ReturnsRemoteWorklogId', async () => {
-    const result = await jiraProvider.logTime({
-      taskId: 'PROJ-142',
-      durationSeconds: 3600,
-      startedAtUtc: new Date().toISOString(),
-      comment: 'UnitTest',
-      isAdHoc: false
+    it('JiraProvider_LogTime_ValidPayload_ReturnsRemoteWorklogId', async () => {
+      const provider = new JiraProvider();
+      const res = await provider.logTime({
+        taskId: 'PROJ-142',
+        durationSeconds: 3600,
+        comment: 'UnitTest',
+        startedAtUtc: new Date().toISOString()
+      });
+      expect(res.success).toBe(true);
+      expect(res.remoteWorklogId).toMatch(/^jira_wl_/);
     });
 
-    expect(result.success).toBe(true);
-    expect(result.remoteWorklogId).toContain('jira_wl_');
-  });
+    it('JiraProvider_LogTime_WithCredentials_SubmitsViaFetch', async () => {
+      // Create provider with credentials to hit the fetch path
+      const providerWithCreds = new JiraProvider();
+      await providerWithCreds.initialize({
+        email: 'test@example.com',
+        apiToken: 'secret',
+        domain: 'https://test.atlassian.net'
+      });
+      
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ id: 'remote_123' })
+      } as unknown as Response);
+
+      const res = await providerWithCreds.logTime({
+        taskId: 'PROJ-142',
+        durationSeconds: 3600,
+        comment: 'UnitTest'
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.remoteWorklogId).toBe('remote_123');
+      expect(global.fetch).toHaveBeenCalled();
+
+      global.fetch = originalFetch;
+    });
+
+    it('JiraProvider_GetCredentials_ReturnsConfiguredValues', async () => {
+      const provider = new JiraProvider();
+      await provider.initialize({ email: 'a', apiToken: 'b', domain: 'c' });
+      const creds = provider.getCredentials();
+      expect(creds.email).toBe('a');
+      expect(creds.apiToken).toBe('b');
+      expect(creds.domain).toBe('c');
+    });
+
+    it('JiraProvider_GetTasks_WithCredentials_FetchesFromApi', async () => {
+      const provider = new JiraProvider();
+      await provider.initialize({ email: 'a', apiToken: 'b', domain: 'https://c.net' });
+      
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          issues: [
+            { id: '1', key: 'TEST-1', fields: { summary: 'Task 1', status: { name: 'To Do' } } }
+          ]
+        })
+      } as unknown as Response);
+
+      const tasks = await provider.getTasks('TEST');
+      expect(tasks.length).toBe(1);
+      expect(tasks[0].id).toBe('TEST-1');
+      expect(global.fetch).toHaveBeenCalled();
+
+      global.fetch = originalFetch;
+    });
 
   it('JiraProvider_InvalidPayload_ThrowsError', async () => {
     await expect(jiraProvider.logTime({

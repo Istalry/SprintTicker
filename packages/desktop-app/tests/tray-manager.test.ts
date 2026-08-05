@@ -13,6 +13,7 @@ let lastMockTray: { setToolTip: ReturnType<typeof vi.fn>; setContextMenu: Return
 vi.mock('electron', () => {
   return {
     app: {
+      isPackaged: false,
       getLoginItemSettings: () => ({ openAtLogin: false }),
       setLoginItemSettings: vi.fn(),
       quit: vi.fn()

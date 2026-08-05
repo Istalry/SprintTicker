@@ -3,6 +3,7 @@ import { MessagingIntegrationService } from '../src/main/services/messaging-serv
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { MessagingSettingsDTO } from '../src/shared/dtos';
+import { WebhookServer } from '../src/main/api/webhook-server';
 
 describe('MessagingIntegrationService', () => {
   let settingsRepo: SettingsRepository;
@@ -25,6 +26,16 @@ describe('MessagingIntegrationService', () => {
   describe('constructor', () => {
     it('Constructor_NullSettingsRepo_ThrowsException', () => {
       expect(() => new MessagingIntegrationService(null as unknown as SettingsRepository)).toThrow();
+    });
+
+    it('Constructor_WithWebhookServer_RegistersListeners', () => {
+      const mockWebhookServer = {
+        onSlackEvent: vi.fn(),
+        onDiscordWebhookEvent: vi.fn()
+      } as unknown as WebhookServer;
+      new MessagingIntegrationService(settingsRepo, mockRenderer, mockWebhookServer);
+      expect(mockWebhookServer.onSlackEvent).toHaveBeenCalled();
+      expect(mockWebhookServer.onDiscordWebhookEvent).toHaveBeenCalled();
     });
   });
 
@@ -60,6 +71,16 @@ describe('MessagingIntegrationService', () => {
       expect(res.success).toBe(true);
       expect(res.channel).toBe('Slack Webhook');
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'Slack Webhook', 40, 'slack');
+    });
+
+    it('TestIntegration_DiscordChannel_DispatchesDiscordBanner', () => {
+      service.testIntegration('Discord Alerts');
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'Discord Alerts', 40, 'discord');
+    });
+
+    it('TestIntegration_GmailChannel_DispatchesGmailBanner', () => {
+      service.testIntegration('Gmail Work');
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'Gmail Work', 40, 'gmail');
     });
 
     it('TestIntegration_EmptyChannel_ThrowsException', () => {
