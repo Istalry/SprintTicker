@@ -240,6 +240,25 @@ export const DeviceDiagnosticsView: React.FC = () => {
           >
             <span>🔋 Test Battery Alert</span>
           </button>
+
+          <button
+            onClick={() => {
+              setActiveTestLog('Executing Snipping Tool Screenshot Test ([SNIPPING TOOL] Screenshot saved)...');
+              if (window.electronAPI?.simulateNotification) {
+                window.electronAPI.simulateNotification({
+                  appId: 'Microsoft.ScreenSketch_8wekyb3d8bbwe!App',
+                  appName: 'Snipping Tool',
+                  title: 'Screenshot saved to clipboard',
+                  body: 'Select to view screenshot details',
+                  iconPath: 'C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2602.49.0_x64__8wekyb3d8bbwe\\Assets\\SnippingToolAppList.scale-200.png'
+                });
+              }
+              setTimeout(() => setActiveTestLog(null), 3000);
+            }}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-cyan text-xs font-bold border border-border-dark rounded-lg transition-all"
+          >
+            <span>✂️ Test Screenshot</span>
+          </button>
         </div>
       </div>
 

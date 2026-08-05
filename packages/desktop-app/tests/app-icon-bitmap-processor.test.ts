@@ -44,4 +44,21 @@ describe('AppIconBitmapProcessor Unit Tests', () => {
     expect(result16[14][14]).toBe('#0000FF');
     expect(result16[15][15]).toBeNull();
   });
+
+  it('ProcessAppIcon_WithCacheKey_CachesAndReturnsSameResult', () => {
+    AppIconBitmapProcessor.clearCache();
+    const res1 = AppIconBitmapProcessor.processAppIcon('slack', 'slack_cache_id');
+    const res2 = AppIconBitmapProcessor.processAppIcon('slack', 'slack_cache_id');
+
+    expect(res1).toBe(res2);
+  });
+
+  it('ProcessAppIcon_Custom2DMatrixInput_ProcessesAndDownscales', () => {
+    const customMatrix: (string | null)[][] = Array.from({ length: 20 }, () => Array(20).fill('#FFAA00FF'));
+    const result = AppIconBitmapProcessor.processAppIcon(customMatrix);
+
+    expect(result.length).toBe(16);
+    expect(result[0].length).toBe(16);
+    expect(result[0][0]).toBe('#FFAA00FF');
+  });
 });

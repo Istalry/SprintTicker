@@ -621,10 +621,11 @@ export class DisplayRenderer {
     customIconData?: (string | null)[][],
     timeoutMs: number = 10000
   ): DisplayPayload {
+    console.log(`[DisplayRenderer] renderNotificationBanner for [${channelName}] ${senderName}. Using customIconData? ${!!customIconData}, iconId: ${iconId}`);
     const eventName = priority >= 90 ? 'highNotificationPriority' : 'messagingPriority';
     return this.requestRender(eventName, () => {
       const bitmapData = customIconData
-        ? AppIconBitmapProcessor.processAppIcon(customIconData)
+        ? customIconData
         : AppIconBitmapProcessor.processAppIcon(iconId);
 
       const isHighPriority = priority >= 90;
@@ -632,8 +633,8 @@ export class DisplayRenderer {
       const headerText = `[${channelName}] ${senderName}`;
 
       this.canvas.clear();
-      // Draw 15x15 icon centered (roughly) in the 16x16 space, offset by x=1, y=1 to avoid top/left edge glow
-      this.canvas.drawBitmap(bitmapData, 1, 1, 15, 15);
+      // Draw 16x16 icon data (which contains the 15x15 icon perfectly centered)
+      this.canvas.drawBitmap(bitmapData, 0, 0, 16, 16);
       this.canvas.drawTextClipped(headerText, 17, 5, accentColor, 55);
 
       const backElements = [

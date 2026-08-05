@@ -398,13 +398,14 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    ipcMain.handle(IPCChannel.SIMULATE_NOTIFICATION, async (_event, payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) => {
+    ipcMain.handle(IPCChannel.SIMULATE_NOTIFICATION, async (_event, payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId; iconPath?: string }) => {
       return this.windowsNotificationService.simulateNotification(
         payload.appId,
         payload.appName,
         payload.title,
         payload.body,
-        payload.iconId
+        payload.iconId,
+        payload.iconPath
       );
     });
 

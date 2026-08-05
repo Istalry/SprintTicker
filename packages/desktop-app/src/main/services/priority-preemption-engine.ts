@@ -163,6 +163,9 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     const previous = this._userMode;
     this._userMode = mode;
     if (mode === 'WORK') {
+      if (this._activeLockEventName === 'awayModePriority' || this._activeLockEventName === 'lunchModePriority') {
+        this.releaseActiveLock(this._activeLockEventName);
+      }
       this.drainQueue();
     }
     if (previous !== mode) {

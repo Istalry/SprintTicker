@@ -76,11 +76,24 @@ export const AnimationDebugPanel: React.FC = () => {
       window.electronAPI.simulateNotification({
         appId: 'slack',
         appName: 'Slack',
-        title: '[SLACK ALICE] Unread Alert',
-        body: 'Alice: PR #142 is ready for review!',
+        title: '[SLACK] Alice',
+        body: 'PR #142 is ready for review!',
         iconId: 'slack'
       });
       showStatus('Real IPC: Simulated Slack Notification');
+    }
+  };
+
+  const triggerSnippingTool = () => {
+    if (window.electronAPI && window.electronAPI.simulateNotification) {
+      window.electronAPI.simulateNotification({
+        appId: 'Microsoft.ScreenSketch_8wekyb3d8bbwe!App',
+        appName: 'Snipping Tool',
+        title: 'Screenshot saved to clipboard',
+        body: 'Select to view screenshot details',
+        iconPath: 'C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2602.49.0_x64__8wekyb3d8bbwe\\Assets\\SnippingToolAppList.scale-200.png'
+      });
+      showStatus('Real IPC: Simulated Snipping Tool Notification');
     }
   };
 
@@ -283,7 +296,7 @@ export const AnimationDebugPanel: React.FC = () => {
         {/* Category A: Messaging Notifications */}
         <div>
           <div className="text-[10px] text-text-secondary uppercase mb-2">1. Messaging Alerts (16×16 Icons + Masked Text)</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <button onClick={triggerSlack} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <MessageSquare className="w-3.5 h-3.5 text-[#36C5F0]" />
               <span>Slack Alert</span>
@@ -295,6 +308,10 @@ export const AnimationDebugPanel: React.FC = () => {
             <button onClick={triggerGmail} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <MessageSquare className="w-3.5 h-3.5 text-[#EA4335]" />
               <span>Gmail Alert</span>
+            </button>
+            <button onClick={triggerSnippingTool} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
+              <MessageSquare className="w-3.5 h-3.5 text-[#0078D7]" />
+              <span>Snipping Tool</span>
             </button>
           </div>
         </div>

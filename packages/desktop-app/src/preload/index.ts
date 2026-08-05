@@ -101,7 +101,7 @@ export interface IElectronAPI {
   testMessagingIntegration: (channelName: string) => Promise<MessagingTestResultDTO>;
   getNotificationSettings: () => Promise<WindowsNotificationSettingsDTO>;
   saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) => Promise<boolean>;
-  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) => Promise<WindowsNotificationEventDTO>;
+  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId; iconPath?: string }) => Promise<WindowsNotificationEventDTO>;
   getNotificationListenerStatus: () => Promise<{ status: NotificationListenerStatusDTO; logs: NotificationLogEntryDTO[] }>;
   onNotificationLog: (callback: (entry: NotificationLogEntryDTO) => void) => () => void;
   openNotificationSettings: () => Promise<boolean>;
@@ -232,7 +232,7 @@ const electronAPI: IElectronAPI = {
   getNotificationSettings: () => ipcRenderer.invoke(IPCChannel.GET_NOTIFICATION_SETTINGS),
   saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) =>
     ipcRenderer.invoke(IPCChannel.SAVE_NOTIFICATION_SETTINGS, settings),
-  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId }) =>
+  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId; iconPath?: string }) =>
     ipcRenderer.invoke(IPCChannel.SIMULATE_NOTIFICATION, payload),
   getNotificationListenerStatus: () => ipcRenderer.invoke(IPCChannel.GET_NOTIFICATION_LISTENER_STATUS),
   onNotificationLog: (callback: (entry: NotificationLogEntryDTO) => void) => {

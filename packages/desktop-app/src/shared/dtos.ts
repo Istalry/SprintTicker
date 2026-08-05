@@ -191,6 +191,8 @@ export interface WindowsNotificationEventDTO {
   body: string;
   iconId?: BitmapIconId;
   rawIconData?: (string | null)[][];
+  iconPath?: string;
+  iconBase64?: string;
   timestampUtc?: string;
 }
 

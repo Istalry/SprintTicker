@@ -14,6 +14,7 @@ import {
   NotificationListenerStatusDTO,
   BitmapIconId
 } from '../../shared/dtos';
+import { AppIconBitmapProcessor } from '../hardware/app-icon-bitmap-processor';
 
 /**
  * Service that captures Windows Action Center / System notifications,
@@ -215,6 +216,7 @@ export class WindowsNotificationListenerService {
               appName: data.appName,
               title: data.title,
               body: data.body,
+              iconPath: data.iconPath,
               timestampUtc: data.timestampUtc || new Date().toISOString()
             });
 
@@ -304,13 +306,28 @@ export class WindowsNotificationListenerService {
 
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
 
+    let rawIconData = event.rawIconData;
+    console.log(`[NotificationListener] handleNotification START | AppId: ${event.appId} | Title: ${event.title} | Priority: ${priorityScore}`);
+    console.log(`[NotificationListener] -> Provided iconPath: ${event.iconPath || 'None'}, rawIconData: ${!!rawIconData}`);
+    
+    if (!rawIconData && (event.iconPath || event.iconBase64)) {
+      const customInput = event.iconPath || event.iconBase64;
+      if (customInput) {
+        console.log(`[NotificationListener] -> Initiating custom icon processing via AppIconBitmapProcessor...`);
+        rawIconData = AppIconBitmapProcessor.processAppIcon(customInput, event.appId);
+        console.log(`[NotificationListener] -> Custom icon processing completed. Success: ${!!rawIconData}`);
+      }
+    } else if (!rawIconData) {
+       console.log(`[NotificationListener] -> No custom icon provided, falling back to iconId: ${iconId}`);
+    }
+
     if (this._renderer) {
       this._renderer.renderNotificationBanner(
         textBody || 'New Notification',
         channelLabel,
         priorityScore,
         iconId,
-        event.rawIconData,
+        rawIconData,
         timeoutMs
       );
     }
@@ -326,7 +343,8 @@ export class WindowsNotificationListenerService {
     appName: string,
     title: string,
     body: string,
-    iconId?: BitmapIconId
+    iconId?: BitmapIconId,
+    iconPath?: string
   ): WindowsNotificationEventDTO {
     const event: WindowsNotificationEventDTO = {
       id: `sim_${Date.now()}`,
@@ -335,6 +353,7 @@ export class WindowsNotificationListenerService {
       title,
       body,
       iconId: iconId ?? this.inferIconId(appId || appName),
+      iconPath,
       timestampUtc: new Date().toISOString()
     };
 
@@ -402,13 +421,40 @@ function Write-Error-Evt($code, $msg) {
   Write-Output $obj
 }
 
-function Write-Notification($id, $appId, $appName, $title, $body) {
+function Get-AppIconPath($aId) {
+  if (-not $aId) { return $null }
+  try {
+    $pkgName = ($aId -split '_')[0]
+    $pkg = Get-AppxPackage -Name "*$pkgName*" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pkg -and $pkg.InstallLocation -and (Test-Path $pkg.InstallLocation)) {
+      $manifestPath = Join-Path $pkg.InstallLocation 'AppxManifest.xml'
+      if (Test-Path $manifestPath) {
+        [xml]$xml = Get-Content $manifestPath -ErrorAction SilentlyContinue
+        $logoRel = $xml.Package.Applications.Application.VisualElements.Square44x44Logo
+        if (-not $logoRel) { $logoRel = $xml.Package.Applications.Application.VisualElements.Square150x150Logo }
+        if ($logoRel) {
+          $baseName = [System.IO.Path]::GetFileNameWithoutExtension($logoRel)
+          $parentDir = Join-Path $pkg.InstallLocation (Split-Path $logoRel -Parent)
+          $logoFile = Get-ChildItem $parentDir -Filter "$baseName*.png" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($logoFile -and (Test-Path $logoFile.FullName)) {
+            return $logoFile.FullName
+          }
+        }
+      }
+    }
+  } catch {}
+  return $null
+}
+
+function Write-Notification($id, $appId, $appName, $title, $body, $iconPath = $null) {
+  if (-not $iconPath) { $iconPath = Get-AppIconPath $appId }
   $obj = @{
     id = $id
     appId = $appId
     appName = $appName
     title = $title
     body = $body
+    iconPath = $iconPath
     timestampUtc = (Get-Date).ToUniversalTime().ToString("o")
   } | ConvertTo-Json -Compress
   Write-Output $obj
