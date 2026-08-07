@@ -306,10 +306,9 @@ export class IPCHandlerRegistry {
 
     // 7. Task Provider Config IPC Handlers
     ipcMain.handle(IPCChannel.GET_PROVIDERS, async () => {
-      const activeId = this.settingsRepo.getSetting('active_provider_id', 'jira');
+      const activeId = this.settingsRepo.getSetting('active_provider_id', 'openproject');
       const fallbackKey = this.settingsRepo.getSetting('fallback_ticket_key', 'MISC-1');
-      const jiraDomain = this.settingsRepo.getSetting('jira_domain', 'https://antigravity.atlassian.net');
-      const opDomain = this.settingsRepo.getSetting('op_domain', 'https://openproject.example.com');
+      const opDomain = this.settingsRepo.getSetting('op_domain', '');
       const opApiKey = this.settingsRepo.getSetting('op_api_key', '');
       const opStatusInProgress = this.settingsRepo.getSetting('op_status_in_progress', '');
       const opStatusToTest = this.settingsRepo.getSetting('op_status_to_test', '');
@@ -319,7 +318,6 @@ export class IPCHandlerRegistry {
       return {
         activeProviderId: activeId,
         fallbackTicketKey: fallbackKey,
-        jiraDomain: jiraDomain,
         opDomain,
         opApiKey,
         opStatusInProgress,
@@ -327,18 +325,14 @@ export class IPCHandlerRegistry {
         opStatusToReview,
         opCompletionAction,
         providers: [
-          { id: 'jira', name: 'Jira Cloud / Server Integration' },
-          { id: 'sheets', name: 'Google Sheets Sync' },
-          { id: 'notion', name: 'Notion Database' },
           { id: 'openproject', name: 'OpenProject' },
-          { id: 'adhoc', name: 'Ad-Hoc / Custom REST Fallback' }
+          { id: 'adhoc', name: 'Ad-Hoc / Custom Local Fallback' }
         ]
       };
     });
 
     ipcMain.handle(IPCChannel.SET_ACTIVE_PROVIDER, async (_event, payload: { 
       providerId: string; 
-      jiraDomain?: string; 
       fallbackTicketKey?: string;
       opDomain?: string;
       opApiKey?: string;
@@ -348,14 +342,20 @@ export class IPCHandlerRegistry {
       opCompletionAction?: string;
     }) => {
       if (payload.providerId) this.settingsRepo.setSetting('active_provider_id', payload.providerId);
-      if (payload.jiraDomain) this.settingsRepo.setSetting('jira_domain', payload.jiraDomain);
       if (payload.fallbackTicketKey) this.settingsRepo.setSetting('fallback_ticket_key', payload.fallbackTicketKey);
-      if (payload.opDomain) this.settingsRepo.setSetting('op_domain', payload.opDomain);
-      if (payload.opApiKey) this.settingsRepo.setSetting('op_api_key', payload.opApiKey);
-      if (payload.opStatusInProgress) this.settingsRepo.setSetting('op_status_in_progress', payload.opStatusInProgress);
-      if (payload.opStatusToTest) this.settingsRepo.setSetting('op_status_to_test', payload.opStatusToTest);
-      if (payload.opStatusToReview) this.settingsRepo.setSetting('op_status_to_review', payload.opStatusToReview);
-      if (payload.opCompletionAction) this.settingsRepo.setSetting('op_completion_action', payload.opCompletionAction);
+      if (payload.opDomain !== undefined) this.settingsRepo.setSetting('op_domain', payload.opDomain);
+      if (payload.opApiKey !== undefined) this.settingsRepo.setSetting('op_api_key', payload.opApiKey);
+      if (payload.opStatusInProgress !== undefined) this.settingsRepo.setSetting('op_status_in_progress', payload.opStatusInProgress);
+      if (payload.opStatusToTest !== undefined) this.settingsRepo.setSetting('op_status_to_test', payload.opStatusToTest);
+      if (payload.opStatusToReview !== undefined) this.settingsRepo.setSetting('op_status_to_review', payload.opStatusToReview);
+      if (payload.opCompletionAction !== undefined) this.settingsRepo.setSetting('op_completion_action', payload.opCompletionAction);
+
+      if (this.providerManager) {
+        this.providerManager.reinitializeProviders();
+        if (payload.providerId) {
+          this.providerManager.setActiveProviderId(payload.providerId);
+        }
+      }
       return true;
     });
 

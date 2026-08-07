@@ -18,8 +18,8 @@ export class OpenProjectProvider implements ITaskProvider {
   private defaultCompletionAction: string = 'to_test';
 
   public async initialize(credentials: Record<string, string>): Promise<boolean> {
-    this.domain = credentials.domain || '';
-    this.apiKey = credentials.apiToken || '';
+    this.domain = credentials.domain || credentials.opDomain || '';
+    this.apiKey = credentials.apiToken || credentials.apiKey || credentials.opApiKey || '';
     this.statusIdInProgress = credentials.opStatusInProgress || '';
     this.statusIdToTest = credentials.opStatusToTest || '';
     this.statusIdToReview = credentials.opStatusToReview || '';
@@ -35,6 +35,21 @@ export class OpenProjectProvider implements ITaskProvider {
     return this.domain.replace(/\/$/, '');
   }
 
+  /**
+   * Converts duration in seconds to ISO 8601 duration format (e.g. PT1H30M, PT15M, PT45S).
+   */
+  private formatIsoDuration(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remSec = seconds % 60;
+
+    let duration = 'PT';
+    if (hours > 0) duration += `${hours}H`;
+    if (minutes > 0) duration += `${minutes}M`;
+    if (remSec > 0 || (hours === 0 && minutes === 0)) duration += `${remSec}S`;
+    return duration;
+  }
+
   public async getProjects(): Promise<ProjectDTO[]> {
     if (!this.domain || !this.apiKey) return [];
 
@@ -47,14 +62,14 @@ export class OpenProjectProvider implements ITaskProvider {
         }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as { _embedded?: { elements?: unknown[] } };
+      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
       
       const elements = json?._embedded?.elements;
       if (Array.isArray(elements)) {
         return elements.map(p => ({
-          id: p.id.toString(),
-          key: p.identifier,
-          name: p.name
+          id: (p.id as number | string).toString(),
+          key: (p.identifier as string) || `proj_${p.id}`,
+          name: (p.name as string) || 'Untitled Project'
         }));
       }
     } catch (err) {
@@ -76,12 +91,13 @@ export class OpenProjectProvider implements ITaskProvider {
         }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as { _embedded?: { elements?: Record<string, unknown>[] } };
+      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
       
       const elements = json?._embedded?.elements;
       if (Array.isArray(elements)) {
         return elements.map(t => {
-          const opStatusId = t._links?.status?.href?.split('/').pop();
+          const links = (t._links || {}) as Record<string, { href?: string }>;
+          const opStatusId = links.status?.href?.split('/').pop();
           let localStatus: 'todo' | 'in_progress' | 'done' = 'todo';
           
           if (opStatusId === this.statusIdInProgress) {
@@ -90,11 +106,12 @@ export class OpenProjectProvider implements ITaskProvider {
             localStatus = 'done';
           }
 
+          const rawId = (t.id as number | string).toString();
           return {
-            id: t.id.toString(),
+            id: rawId,
             projectId,
-            key: `OP-${t.id}`,
-            title: t.subject || 'Untitled Task',
+            key: `OP-${rawId}`,
+            title: (t.subject as string) || 'Untitled Work Package',
             status: localStatus
           };
         });
@@ -109,13 +126,25 @@ export class OpenProjectProvider implements ITaskProvider {
     return { remoteLoggedTimeToday: 0 };
   }
 
+  /**
+   * Synchronizes time tracking with OpenProject by creating a time entry on the target work package.
+   */
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
-    if (!this.domain || !this.apiKey) return { success: false };
-    if (!payload.taskId || payload.durationSeconds <= 0) return { success: false };
+    if (!this.domain || !this.apiKey) {
+      console.warn('[OpenProjectProvider] Cannot log time: OpenProject domain or API key missing.');
+      return { success: false };
+    }
+    if (!payload.taskId || payload.durationSeconds <= 0) {
+      console.warn('[OpenProjectProvider] Cannot log time: Invalid task ID or duration <= 0.');
+      return { success: false };
+    }
 
     try {
       const url = `${this.getBaseUrl()}/api/v3/time_entries`;
-      const hours = (payload.durationSeconds / 3600).toFixed(2);
+      const isoDuration = this.formatIsoDuration(payload.durationSeconds);
+      const spentOnDate = payload.startedAtUtc ? payload.startedAtUtc.split('T')[0] : new Date().toISOString().split('T')[0];
+
+      const cleanTaskId = payload.taskId.replace(/^OP-/, '');
 
       const res = await fetch(url, {
         method: 'POST',
@@ -126,10 +155,10 @@ export class OpenProjectProvider implements ITaskProvider {
         },
         body: JSON.stringify({
           _links: {
-            workPackage: { href: `/api/v3/work_packages/${payload.taskId}` }
+            workPackage: { href: `/api/v3/work_packages/${cleanTaskId}` }
           },
-          hours,
-          spentOn: payload.startedAtUtc.split('T')[0],
+          hours: isoDuration,
+          spentOn: spentOnDate,
           comment: {
             raw: payload.comment || 'Logged via Antigravity BUSY Bar'
           }
@@ -138,10 +167,15 @@ export class OpenProjectProvider implements ITaskProvider {
 
       if (res.ok) {
         const json = await res.json() as { id?: number };
-        return { success: true, remoteWorklogId: json.id ? json.id.toString() : `op_wl_${Date.now()}` };
+        const remoteWorklogId = json.id ? json.id.toString() : `op_wl_${Date.now()}`;
+        console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId})`);
+        return { success: true, remoteWorklogId };
+      } else {
+        const errText = await res.text();
+        console.error(`[OpenProjectProvider] Failed to log time (HTTP ${res.status}): ${errText}`);
       }
     } catch (err) {
-      console.error('[OpenProjectProvider] Failed to log time:', err);
+      console.error('[OpenProjectProvider] Exception logging time:', err);
     }
     return { success: false };
   }
@@ -166,12 +200,13 @@ export class OpenProjectProvider implements ITaskProvider {
     }
 
     try {
-      const getUrl = `${this.getBaseUrl()}/api/v3/work_packages/${taskId}`;
+      const cleanTaskId = taskId.replace(/^OP-/, '');
+      const getUrl = `${this.getBaseUrl()}/api/v3/work_packages/${cleanTaskId}`;
       const getRes = await fetch(getUrl, { headers: { 'Authorization': this.getAuthHeader(), 'Accept': 'application/json' } });
-      if (!getRes.ok) throw new Error(`Failed to fetch WP ${taskId} for update`);
+      if (!getRes.ok) throw new Error(`Failed to fetch WP #${cleanTaskId} for status update`);
       const wp = await getRes.json() as { lockVersion?: number };
 
-      const patchUrl = `${this.getBaseUrl()}/api/v3/work_packages/${taskId}`;
+      const patchUrl = `${this.getBaseUrl()}/api/v3/work_packages/${cleanTaskId}`;
       const patchRes = await fetch(patchUrl, {
         method: 'PATCH',
         headers: {
@@ -194,3 +229,4 @@ export class OpenProjectProvider implements ITaskProvider {
     }
   }
 }
+

@@ -273,7 +273,7 @@ export class TimeTrackingEngine extends EventEmitter {
     const activeProvider = this.providerManager ? this.providerManager.getActiveProvider() : null;
     this.worklogRepo.enqueueSyncItem({
       id: `sync_${Date.now()}`,
-      providerId: activeProvider ? activeProvider.providerId : 'jira',
+      providerId: activeProvider ? activeProvider.providerId : 'openproject',
       taskId: active.taskId,
       durationSeconds: loggedSeconds,
       startedAtUtc: active.startTimeUtc,

@@ -12,7 +12,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   const [pingSuccess, setPingSuccess] = useState<boolean | null>(null);
   const [pingDetails, setPingDetails] = useState<string>('');
   const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
-  const [providerId, setProviderId] = useState<string>('jira');
+  const [providerId, setProviderId] = useState<string>('openproject');
   const [fallbackKey, setFallbackKey] = useState<string>('MISC-1');
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
@@ -152,9 +152,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                   onChange={e => setProviderId(e.target.value)}
                   className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
                 >
-                  <option value="jira">Jira Cloud / Atlassian REST API</option>
-                  <option value="notion">Notion Database</option>
-                  <option value="adhoc">Ad-Hoc / Custom REST Fallback</option>
+                  <option value="openproject">OpenProject (REST API v3)</option>
+                  <option value="adhoc">Ad-Hoc / Custom Local Fallback</option>
                 </select>
               </div>
 

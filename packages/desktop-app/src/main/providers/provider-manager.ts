@@ -1,19 +1,17 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
-import { JiraProvider } from './jira-provider';
 import { AdHocProvider } from './adhoc-provider';
-import { NotionProvider } from './notion-provider';
 import { OpenProjectProvider } from './openproject-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 
 /**
- * Service managing registered Task Providers (Jira, AdHoc, Notion), provider credentials,
+ * Service managing registered Task Providers (OpenProject and AdHoc), provider credentials,
  * active provider selection, and offline worklog queue flushing.
  */
 export class ProviderManager {
   private providers: Map<string, ITaskProvider> = new Map();
-  private activeProviderId: string = 'jira';
+  private activeProviderId: string = 'openproject';
   private settingsRepo: SettingsRepository;
   private worklogRepo: WorklogRepository;
 
@@ -21,12 +19,36 @@ export class ProviderManager {
     this.settingsRepo = settingsRepo || new SettingsRepository();
     this.worklogRepo = worklogRepo || new WorklogRepository();
 
-    this.registerProvider(new JiraProvider());
-    this.registerProvider(new AdHocProvider());
-    this.registerProvider(new NotionProvider());
-    this.registerProvider(new OpenProjectProvider());
+    const openProjectProvider = new OpenProjectProvider();
+    const adHocProvider = new AdHocProvider();
 
-    this.activeProviderId = this.settingsRepo.getSetting('active_provider_id', 'jira');
+    this.registerProvider(openProjectProvider);
+    this.registerProvider(adHocProvider);
+
+    this.reinitializeProviders();
+
+    this.activeProviderId = this.settingsRepo.getSetting('active_provider_id', 'openproject');
+  }
+
+  public reinitializeProviders(): void {
+    const opProvider = this.providers.get('openproject');
+    if (opProvider) {
+      opProvider.initialize({
+        domain: this.settingsRepo.getSetting('op_domain', ''),
+        apiToken: this.settingsRepo.getSetting('op_api_key', ''),
+        opStatusInProgress: this.settingsRepo.getSetting('op_status_in_progress', ''),
+        opStatusToTest: this.settingsRepo.getSetting('op_status_to_test', ''),
+        opStatusToReview: this.settingsRepo.getSetting('op_status_to_review', ''),
+        opCompletionAction: this.settingsRepo.getSetting('op_completion_action', 'to_test')
+      });
+    }
+
+    const adHocProvider = this.providers.get('adhoc');
+    if (adHocProvider) {
+      adHocProvider.initialize({
+        fallbackKey: this.settingsRepo.getSetting('fallback_ticket_key', 'MISC-1')
+      });
+    }
   }
 
   public registerProvider(provider: ITaskProvider): void {
@@ -34,7 +56,7 @@ export class ProviderManager {
   }
 
   public getActiveProvider(): ITaskProvider {
-    return this.providers.get(this.activeProviderId) || this.providers.get('jira')!;
+    return this.providers.get(this.activeProviderId) || this.providers.get('openproject')!;
   }
 
   public setActiveProviderId(providerId: string): void {
@@ -105,3 +127,4 @@ export class ProviderManager {
     return { syncedCount, failedCount };
   }
 }
+

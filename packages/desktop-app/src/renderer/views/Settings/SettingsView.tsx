@@ -10,8 +10,7 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
 
   // Settings State
   const [fallbackTicketKey, setFallbackTicketKey] = useState<string>('MISC-1');
-  const [providerId, setProviderId] = useState<string>('jira');
-  const [jiraDomain, setJiraDomain] = useState<string>('https://antigravity.atlassian.net');
+  const [providerId, setProviderId] = useState<string>('openproject');
   const [opDomain, setOpDomain] = useState<string>('');
   const [opApiKey, setOpApiKey] = useState<string>('');
   const [opStatusInProgress, setOpStatusInProgress] = useState<string>('');
@@ -25,7 +24,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
         if (res) {
           if (res.activeProviderId) setProviderId(res.activeProviderId);
           if (res.fallbackTicketKey) setFallbackTicketKey(res.fallbackTicketKey);
-          if (res.jiraDomain) setJiraDomain(res.jiraDomain);
           if (res.opDomain) setOpDomain(res.opDomain);
           if (res.opApiKey) setOpApiKey(res.opApiKey);
           if (res.opStatusInProgress) setOpStatusInProgress(res.opStatusInProgress);
@@ -41,7 +39,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
     if (window.electronAPI?.setActiveProvider) {
       await window.electronAPI.setActiveProvider({
         providerId,
-        jiraDomain,
         fallbackTicketKey,
         opDomain,
         opApiKey,
@@ -64,7 +61,7 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
             <CheckSquare className="w-5 h-5 text-accent-blue" />
             <span>TASK PROVIDERS & ACCOUNT CONFIGURATION</span>
           </h2>
-          <p className="text-xs text-text-secondary">Configure active time tracking integrations (Jira, Notion, Google Sheets, Ad-Hoc).</p>
+          <p className="text-xs text-text-secondary">Configure OpenProject REST API integration & time tracking synchronization.</p>
         </div>
 
         <button
@@ -87,25 +84,10 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
             onChange={e => setProviderId(e.target.value)}
             className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
           >
-            <option value="jira">Jira Cloud / Server Integration</option>
-            <option value="sheets">Google Sheets Sync</option>
-            <option value="notion">Notion Database</option>
-            <option value="openproject">OpenProject</option>
-            <option value="adhoc">Ad-Hoc / Custom REST Fallback</option>
+            <option value="openproject">OpenProject (REST API v3)</option>
+            <option value="adhoc">Ad-Hoc / Custom Local Fallback</option>
           </select>
         </div>
-
-        {providerId === 'jira' && (
-          <div>
-            <label className="block text-xs font-mono text-text-secondary mb-1">Jira Domain URL</label>
-            <input
-              type="text"
-              value={jiraDomain}
-              onChange={e => setJiraDomain(e.target.value)}
-              className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
-            />
-          </div>
-        )}
 
         {providerId === 'openproject' && (
           <div className="space-y-4">
@@ -168,3 +150,4 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
     </div>
   );
 };
+

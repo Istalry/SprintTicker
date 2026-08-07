@@ -9,7 +9,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { WebhookServer } from '../src/main/api/webhook-server';
-import { JiraProvider } from '../src/main/providers/jira-provider';
+import { ProviderManager } from '../src/main/providers/provider-manager';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
 
 describe('Full End-to-End System Simulation Test', () => {
@@ -23,32 +23,44 @@ describe('Full End-to-End System Simulation Test', () => {
   let renderer: DisplayRenderer;
   let decoder: InputDecoder;
   let webhookServer: WebhookServer;
-  let provider: JiraProvider;
+  let providerManager: ProviderManager;
   let syncWorker: OfflineSyncWorker;
 
+  let originalFetch: typeof global.fetch;
+
   beforeAll(async () => {
+    originalFetch = global.fetch;
+    const { vi } = await import('vitest');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 99, lockVersion: 1 })
+    } as unknown as Response);
+
     // 1. Boot Companion Engine & Database
     dbConn = new DatabaseConnection(':memory:');
     taskRepo = new TaskRepository(dbConn);
     worklogRepo = new WorklogRepository(dbConn);
     sessionRepo = new SessionRepository(dbConn);
     settingsRepo = new SettingsRepository(dbConn);
+    settingsRepo.setSetting('op_domain', 'https://op.test');
+    settingsRepo.setSetting('op_api_key', 'test_key');
 
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+    providerManager = new ProviderManager(settingsRepo, worklogRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager);
     driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();
 
     renderer = new DisplayRenderer(driver);
     decoder = new InputDecoder(driver, engine, settingsRepo);
 
-    provider = new JiraProvider();
-    syncWorker = new OfflineSyncWorker(provider, worklogRepo, 60000);
+    syncWorker = new OfflineSyncWorker(providerManager, worklogRepo, undefined, undefined, 60000);
 
     webhookServer = new WebhookServer(0);
     await webhookServer.start();
   });
 
   afterAll(async () => {
+    global.fetch = originalFetch;
     await webhookServer.stop();
     driver.disconnect();
     dbConn.close();
