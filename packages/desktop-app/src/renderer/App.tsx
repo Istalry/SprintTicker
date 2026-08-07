@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
+import { formatHoursAndMinutes as formatSeconds } from './utils/formatters';
 import { useTasks } from './hooks/useTasks';
 import { useWorklogs } from './hooks/useWorklogs';
 import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
@@ -73,12 +74,6 @@ export const App: React.FC = () => {
     }
     return undefined;
   }, []);
-
-  const formatSeconds = (totalSec: number): string => {
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
-  };
 
   const navItems = [
     { id: 'session', label: 'Active Session', icon: Clock },

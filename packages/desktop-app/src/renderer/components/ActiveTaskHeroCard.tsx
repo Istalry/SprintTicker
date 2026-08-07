@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Play, Pause, RefreshCw, Sparkles, Clock, CheckCircle2, X } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
+import { formatSeconds } from '../utils/formatters';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -19,13 +20,6 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   onOpenTaskModal
 }) => {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
-
-  const formatSeconds = (totalSec: number): string => {
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = totalSec % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handleFinishOption = (markDone: boolean) => {
     setIsFinishModalOpen(false);

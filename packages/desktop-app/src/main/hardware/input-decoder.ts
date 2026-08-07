@@ -13,22 +13,22 @@ export type ActionHandler = (action: string, inputKey: string) => void;
  * task pause/resume window focusing, and interactive paused state controls (STOP / FINISH).
  */
 export class InputDecoder {
-  private driver: BusyBarDriver;
-  private engine: TimeTrackingEngine;
-  private settingsRepo: SettingsRepository;
-  private priorityEngine?: IPriorityPreemptionEngine;
-  private renderer?: DisplayRenderer;
-  private windowFocusCallback?: () => void;
-  private actionHandlers: Set<ActionHandler> = new Set();
+  private _driver: BusyBarDriver;
+  private _engine: TimeTrackingEngine;
+  private _settingsRepo: SettingsRepository;
+  private _priorityEngine?: IPriorityPreemptionEngine;
+  private _renderer?: DisplayRenderer;
+  private _windowFocusCallback?: () => void;
+  private _actionHandlers: Set<ActionHandler> = new Set();
   
-  private isSelectingTask: boolean = false;
-  private selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
-  private projectsList: { id: string, name: string }[] = [];
-  private tasksList: { id: string, title: string, description: string }[] = [];
-  private selectedProjectIndex: number = 0;
-  private selectedTaskIndex: number = 0;
+  private _isSelectingTask: boolean = false;
+  private _selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
+  private _projectsList: { id: string, name: string }[] = [];
+  private _tasksList: { id: string, title: string, description: string }[] = [];
+  private _selectedProjectIndex: number = 0;
+  private _selectedTaskIndex: number = 0;
 
-  private defaultBindings: HardwareBindingConfig = {
+  private _defaultBindings: HardwareBindingConfig = {
     startButtonPress: 'TOGGLE_TRACK_PAUSE',
     wheelRotateLeft: 'NAVIGATE_QUEUE_PREV',
     wheelRotateRight: 'NAVIGATE_QUEUE_NEXT',
@@ -37,6 +37,9 @@ export class InputDecoder {
     backButtonLongPress: 'COMPLETE_AND_LOG_ACTIVE_TASK'
   };
 
+  /// <summary>
+  /// Instantiates InputDecoder, binding hardware driver event listeners.
+  /// </summary>
   constructor(
     driver: BusyBarDriver,
     engine: TimeTrackingEngine,
@@ -44,112 +47,130 @@ export class InputDecoder {
     priorityEngine?: IPriorityPreemptionEngine,
     renderer?: DisplayRenderer
   ) {
-    this.driver = driver;
-    this.engine = engine;
-    this.settingsRepo = settingsRepo || new SettingsRepository();
-    this.priorityEngine = priorityEngine;
-    this.renderer = renderer;
+    this._driver = driver;
+    this._engine = engine;
+    this._settingsRepo = settingsRepo || new SettingsRepository();
+    this._priorityEngine = priorityEngine;
+    this._renderer = renderer;
 
-    this.driver.on('input', (event: HardwareEvent) => this.handleHardwareInput(event));
+    this._driver.on('input', (event: HardwareEvent) => this.handleHardwareInput(event));
   }
 
+  /// <summary>
+  /// Injects PriorityPreemptionEngine reference for notification dismissal checks.
+  /// </summary>
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
-    this.priorityEngine = engine;
+    this._priorityEngine = engine;
   }
 
+  /// <summary>
+  /// Injects DisplayRenderer reference for matrix input feedback and selection screens.
+  /// </summary>
   public setRenderer(renderer: DisplayRenderer): void {
-    this.renderer = renderer;
+    this._renderer = renderer;
   }
 
+  /// <summary>
+  /// Sets callback invoked when hardware actions request desktop app window focus.
+  /// </summary>
   public setWindowFocusCallback(cb: () => void): void {
-    this.windowFocusCallback = cb;
+    this._windowFocusCallback = cb;
   }
 
+  /// <summary>
+  /// Retrieves current rebindable hardware key bindings from settings.
+  /// </summary>
   public getBindings(): HardwareBindingConfig {
-    return this.settingsRepo.getSetting<HardwareBindingConfig>('hardware_bindings', this.defaultBindings);
+    return this._settingsRepo.getSetting<HardwareBindingConfig>('hardware_bindings', this._defaultBindings);
   }
 
+  /// <summary>
+  /// Saves custom hardware key bindings to settings.
+  /// </summary>
   public saveBindings(config: HardwareBindingConfig): void {
-    this.settingsRepo.setSetting('hardware_bindings', config);
+    this._settingsRepo.setSetting('hardware_bindings', config);
   }
 
+  /// <summary>
+  /// Registers an action listener callback invoked when hardware actions execute.
+  /// </summary>
   public registerActionHandler(handler: ActionHandler): () => void {
-    this.actionHandlers.add(handler);
-    return () => this.actionHandlers.delete(handler);
+    this._actionHandlers.add(handler);
+    return () => this._actionHandlers.delete(handler);
   }
 
-  /**
-   * Decodes incoming hardware input events and handles active notifications,
-   * interactive paused task options (STOP vs FINISH), and mapped actions.
-   */
+  /// <summary>
+  /// Decodes incoming hardware input events and handles active notifications,
+  /// interactive paused task options (STOP vs FINISH), and mapped actions.
+  /// </summary>
   public handleHardwareInput(event: HardwareEvent): string {
     const bindings = this.getBindings();
     const normalizedKey = (event.key || '').toLowerCase();
     
-    if (this.renderer) {
-      this.renderer.logLastInputKey(normalizedKey);
+    if (this._renderer) {
+      this._renderer.logLastInputKey(normalizedKey);
     }
 
-    if (this.isSelectingTask && this.renderer) {
+    if (this._isSelectingTask && this._renderer) {
       if (normalizedKey === 'back') {
-        this.isSelectingTask = false;
-        this.renderer.renderIdle();
+        this._isSelectingTask = false;
+        this._renderer.renderIdle();
         return 'CANCEL_SELECTION';
       }
       
       const isUp = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
       const isDown = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
       
-      if (this.selectionStage === 'PROJECT') {
-        if (isUp) this.selectedProjectIndex = Math.max(0, this.selectedProjectIndex - 1);
-        if (isDown) this.selectedProjectIndex = Math.min(this.projectsList.length - 1, this.selectedProjectIndex + 1);
+      if (this._selectionStage === 'PROJECT') {
+        if (isUp) this._selectedProjectIndex = Math.max(0, this._selectedProjectIndex - 1);
+        if (isDown) this._selectedProjectIndex = Math.min(this._projectsList.length - 1, this._selectedProjectIndex + 1);
         
         if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
-          this.selectionStage = 'TASK';
-          const proj = this.projectsList[this.selectedProjectIndex];
+          this._selectionStage = 'TASK';
+          const proj = this._projectsList[this._selectedProjectIndex];
           if (proj) {
-            this.tasksList = this.engine.getTasksForProject(proj.id).map(t => ({
+            this._tasksList = this._engine.getTasksForProject(proj.id).map(t => ({
                id: t.id,
                title: t.title,
                description: t.description || 'No description'
             }));
           }
-          if (this.tasksList.length === 0) {
-            this.tasksList = [{ id: 'none', title: 'No Tasks', description: '' }];
+          if (this._tasksList.length === 0) {
+            this._tasksList = [{ id: 'none', title: 'No Tasks', description: '' }];
           }
-          this.selectedTaskIndex = 0;
+          this._selectedTaskIndex = 0;
         }
-      } else if (this.selectionStage === 'TASK') {
-        if (isUp) this.selectedTaskIndex = Math.max(0, this.selectedTaskIndex - 1);
-        if (isDown) this.selectedTaskIndex = Math.min(this.tasksList.length - 1, this.selectedTaskIndex + 1);
+      } else if (this._selectionStage === 'TASK') {
+        if (isUp) this._selectedTaskIndex = Math.max(0, this._selectedTaskIndex - 1);
+        if (isDown) this._selectedTaskIndex = Math.min(this._tasksList.length - 1, this._selectedTaskIndex + 1);
         
         if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
-          const task = this.tasksList[this.selectedTaskIndex];
+          const task = this._tasksList[this._selectedTaskIndex];
           if (task && task.id !== 'none') {
-             this.engine.startTask(task.id, false, task.title, this.projectsList[this.selectedProjectIndex].id);
+             this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
           }
-          this.isSelectingTask = false;
+          this._isSelectingTask = false;
           return 'START_TASK_FROM_SELECTION';
         }
       }
       
-      if (this.isSelectingTask) {
-        if (this.selectionStage === 'PROJECT') {
-          const proj = this.projectsList[this.selectedProjectIndex];
-          this.renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects');
+      if (this._isSelectingTask) {
+        if (this._selectionStage === 'PROJECT') {
+          const proj = this._projectsList[this._selectedProjectIndex];
+          this._renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects');
         } else {
-          const task = this.tasksList[this.selectedTaskIndex];
-          this.renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', task?.description);
+          const task = this._tasksList[this._selectedTaskIndex];
+          this._renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', task?.description);
         }
         return 'UPDATE_SELECTION';
       }
     }
     
-    const activeSession = this.engine.getCurrentSession();
+    const activeSession = this._engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
 
     // Interactive Paused State Controls: Wheel scroll toggles STOP/FINISH, wheel click validates choice
-    if (isPaused && this.renderer) {
+    if (isPaused && this._renderer) {
       const isWheelScroll =
         normalizedKey === 'up' ||
         normalizedKey === 'down' ||
@@ -159,21 +180,21 @@ export class InputDecoder {
         event.type === 'rotate_right';
 
       if (isWheelScroll) {
-        this.renderer.togglePausedSelection();
+        this._renderer.togglePausedSelection();
         this.notifyActionHandlers('TOGGLE_PAUSED_SELECTION', normalizedKey);
         return 'TOGGLE_PAUSED_SELECTION';
       }
 
       const isWheelClick = (normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type);
       if (isWheelClick) {
-        const choice = this.renderer.getPausedSelection();
+        const choice = this._renderer.getPausedSelection();
         if (choice === 'STOP') {
-          this.engine.stopSession('Stopped via BUSY Bar Paused Menu');
+          this._engine.stopSession('Stopped via BUSY Bar Paused Menu');
         } else {
-          if (this.renderer.renderTaskCompletionConfetti) {
-            this.renderer.renderTaskCompletionConfetti();
+          if (this._renderer.renderTaskCompletionConfetti) {
+            this._renderer.renderTaskCompletionConfetti();
           }
-          this.engine.stopSession('Completed via BUSY Bar Paused Menu');
+          this._engine.stopSession('Completed via BUSY Bar Paused Menu');
         }
         this.notifyActionHandlers('VALIDATE_PAUSED_SELECTION', normalizedKey);
         return 'VALIDATE_PAUSED_SELECTION';
@@ -207,49 +228,49 @@ export class InputDecoder {
     switch (action) {
       case 'TOGGLE_TRACK_PAUSE': {
         // If an active notification is currently displayed, dismiss it first
-        if (this.priorityEngine && this.priorityEngine.dismissNotification()) {
+        if (this._priorityEngine && this._priorityEngine.dismissNotification()) {
           console.log('[InputDecoder] Dismissed notification alert on start/pause press.');
           break;
         }
 
-        const active = this.engine.getCurrentSession();
+        const active = this._engine.getCurrentSession();
         if (!active) {
           this.startTaskSelection();
         } else if (active.status === 'TRACKING') {
-          this.engine.pauseSession();
-          if (this.windowFocusCallback) {
-            this.windowFocusCallback();
+          this._engine.pauseSession();
+          if (this._windowFocusCallback) {
+            this._windowFocusCallback();
           }
         } else if (active.status === 'PAUSED') {
-          this.engine.resumeSession();
+          this._engine.resumeSession();
         }
         break;
       }
       case 'DISMISS_NOTIFICATION_ALERT': {
-        if (this.priorityEngine) {
-          this.priorityEngine.dismissNotification();
+        if (this._priorityEngine) {
+          this._priorityEngine.dismissNotification();
         }
         break;
       }
       case 'COMPLETE_AND_LOG_ACTIVE_TASK': {
-        this.engine.stopSession('Completed via BUSY Bar Long Press');
+        this._engine.stopSession('Completed via BUSY Bar Long Press');
         break;
       }
       case 'TRIGGER_TASK_SELECTOR_MODAL': {
-        const active2 = this.engine.getCurrentSession();
+        const active2 = this._engine.getCurrentSession();
         if (!active2) {
           this.startTaskSelection();
         } else {
-          if (this.windowFocusCallback) {
-            this.windowFocusCallback();
+          if (this._windowFocusCallback) {
+            this._windowFocusCallback();
           }
         }
         break;
       }
       case 'NAVIGATE_QUEUE_PREV':
       case 'NAVIGATE_QUEUE_NEXT': {
-        if (this.windowFocusCallback) {
-          this.windowFocusCallback();
+        if (this._windowFocusCallback) {
+          this._windowFocusCallback();
         }
         break;
       }
@@ -259,7 +280,7 @@ export class InputDecoder {
   }
 
   private notifyActionHandlers(action: string, inputKey: string): void {
-    for (const handler of this.actionHandlers) {
+    for (const handler of this._actionHandlers) {
       try {
         handler(action, inputKey);
       } catch (err) {
@@ -269,15 +290,15 @@ export class InputDecoder {
   }
 
   private startTaskSelection() {
-    this.isSelectingTask = true;
-    this.selectionStage = 'PROJECT';
-    this.projectsList = this.engine.getProjects().map(p => ({ id: p.id, name: p.name }));
-    if (this.projectsList.length === 0) {
-      this.projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];
+    this._isSelectingTask = true;
+    this._selectionStage = 'PROJECT';
+    this._projectsList = this._engine.getProjects().map(p => ({ id: p.id, name: p.name }));
+    if (this._projectsList.length === 0) {
+      this._projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];
     }
-    this.selectedProjectIndex = 0;
-    if (this.renderer) {
-      this.renderer.renderTaskSelection('PROJECT', this.projectsList[0].name);
+    this._selectedProjectIndex = 0;
+    if (this._renderer) {
+      this._renderer.renderTaskSelection('PROJECT', this._projectsList[0].name);
     }
   }
 }

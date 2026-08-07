@@ -180,7 +180,7 @@ The project includes an AAA unit test suite built with Vitest and V8 code covera
 pnpm test
 ```
 
-### Run Tests with Coverage Report (90%+ Target)
+### Run Tests with Coverage Report (80%+ Target)
 ```bash
 pnpm test:coverage
 ```

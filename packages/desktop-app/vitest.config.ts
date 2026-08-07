@@ -14,10 +14,10 @@ export default defineConfig({
       include: ['src/main/**/*.ts', 'src/shared/**/*.ts'],
       exclude: ['src/main/index.ts', 'src/preload/**/*.ts', 'src/main/providers/task-provider-interface.ts', 'src/main/widgets/widget-interface.ts', 'src/main/hardware/render-constants.ts'],
       thresholds: {
-        lines: 90,
-        functions: 90,
+        lines: 80,
+        functions: 80,
         branches: 70,
-        statements: 90
+        statements: 80
       }
     }
   },

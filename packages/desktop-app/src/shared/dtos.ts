@@ -421,3 +421,17 @@ export class DTOValidator {
     );
   }
 }
+
+export class ArgumentNullException extends Error {
+  constructor(paramName: string) {
+    super(`Argument cannot be null or undefined: ${paramName}`);
+    this.name = 'ArgumentNullException';
+  }
+}
+
+export class ArgumentException extends Error {
+  constructor(message: string, paramName?: string) {
+    super(paramName ? `${message} (Parameter '${paramName}')` : message);
+    this.name = 'ArgumentException';
+  }
+}

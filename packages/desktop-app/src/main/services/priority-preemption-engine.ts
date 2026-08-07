@@ -1,4 +1,4 @@
-import { PriorityRule, PriorityMatrixConfig, UserMode, PriorityAction } from '../../shared/dtos';
+import { PriorityRule, PriorityMatrixConfig, UserMode, PriorityAction, ArgumentNullException, ArgumentException } from '../../shared/dtos';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 
 /**
@@ -344,19 +344,5 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       timestampMs: Date.now()
     };
     this._notificationQueue.push(item);
-  }
-}
-
-class ArgumentNullException extends Error {
-  constructor(paramName: string) {
-    super(`Argument cannot be null or undefined: ${paramName}`);
-    this.name = 'ArgumentNullException';
-  }
-}
-
-class ArgumentException extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ArgumentException';
   }
 }

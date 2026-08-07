@@ -12,7 +12,8 @@ import {
   NotificationLogEntryDTO,
   NotificationLogLevel,
   NotificationListenerStatusDTO,
-  BitmapIconId
+  BitmapIconId,
+  ArgumentNullException
 } from '../../shared/dtos';
 import { AppIconBitmapProcessor } from '../hardware/app-icon-bitmap-processor';
 
@@ -720,12 +721,5 @@ while ($true) {
     if (id.includes('battery') || id.includes('power')) return 'battery';
     if (id.includes('windows') || id.includes('system')) return 'windows';
     return 'bell';
-  }
-}
-
-class ArgumentNullException extends Error {
-  constructor(paramName: string) {
-    super(`Argument cannot be null or undefined: ${paramName}`);
-    this.name = 'ArgumentNullException';
   }
 }

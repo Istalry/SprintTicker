@@ -10,14 +10,17 @@ import { ProjectDTO, TaskDTO } from '../../shared/dtos';
  * active provider selection, and offline worklog queue flushing.
  */
 export class ProviderManager {
-  private providers: Map<string, ITaskProvider> = new Map();
-  private activeProviderId: string = 'openproject';
-  private settingsRepo: SettingsRepository;
-  private worklogRepo: WorklogRepository;
+  private _providers: Map<string, ITaskProvider> = new Map();
+  private _activeProviderId: string = 'openproject';
+  private _settingsRepo: SettingsRepository;
+  private _worklogRepo: WorklogRepository;
 
+  /// <summary>
+  /// Initializes the Task Provider Manager, registering default remote and fallback local providers.
+  /// </summary>
   constructor(settingsRepo?: SettingsRepository, worklogRepo?: WorklogRepository) {
-    this.settingsRepo = settingsRepo || new SettingsRepository();
-    this.worklogRepo = worklogRepo || new WorklogRepository();
+    this._settingsRepo = settingsRepo || new SettingsRepository();
+    this._worklogRepo = worklogRepo || new WorklogRepository();
 
     const openProjectProvider = new OpenProjectProvider();
     const adHocProvider = new AdHocProvider();
@@ -27,57 +30,81 @@ export class ProviderManager {
 
     this.reinitializeProviders();
 
-    this.activeProviderId = this.settingsRepo.getSetting('active_provider_id', 'openproject');
+    this._activeProviderId = this._settingsRepo.getSetting('active_provider_id', 'openproject');
   }
 
+  /// <summary>
+  /// Re-reads stored domain credentials and status mappings from database settings.
+  /// </summary>
   public reinitializeProviders(): void {
-    const opProvider = this.providers.get('openproject');
+    const opProvider = this._providers.get('openproject');
     if (opProvider) {
       opProvider.initialize({
-        domain: this.settingsRepo.getSetting('op_domain', ''),
-        apiToken: this.settingsRepo.getSetting('op_api_key', ''),
-        opStatusInProgress: this.settingsRepo.getSetting('op_status_in_progress', ''),
-        opStatusToTest: this.settingsRepo.getSetting('op_status_to_test', ''),
-        opStatusToReview: this.settingsRepo.getSetting('op_status_to_review', ''),
-        opCompletionAction: this.settingsRepo.getSetting('op_completion_action', 'to_test')
+        domain: this._settingsRepo.getSetting('op_domain', ''),
+        apiToken: this._settingsRepo.getSetting('op_api_key', ''),
+        opStatusInProgress: this._settingsRepo.getSetting('op_status_in_progress', ''),
+        opStatusToTest: this._settingsRepo.getSetting('op_status_to_test', ''),
+        opStatusToReview: this._settingsRepo.getSetting('op_status_to_review', ''),
+        opCompletionAction: this._settingsRepo.getSetting('op_completion_action', 'to_test')
       });
     }
 
-    const adHocProvider = this.providers.get('adhoc');
+    const adHocProvider = this._providers.get('adhoc');
     if (adHocProvider) {
       adHocProvider.initialize({
-        fallbackKey: this.settingsRepo.getSetting('fallback_ticket_key', 'MISC-1')
+        fallbackKey: this._settingsRepo.getSetting('fallback_ticket_key', 'MISC-1')
       });
     }
   }
 
+  /// <summary>
+  /// Registers a task provider instance with the provider registry.
+  /// </summary>
   public registerProvider(provider: ITaskProvider): void {
-    this.providers.set(provider.providerId, provider);
+    this._providers.set(provider.providerId, provider);
   }
 
+  /// <summary>
+  /// Retrieves the currently active task provider instance.
+  /// </summary>
   public getActiveProvider(): ITaskProvider {
-    return this.providers.get(this.activeProviderId) || this.providers.get('openproject')!;
+    return this._providers.get(this._activeProviderId) || this._providers.get('openproject')!;
   }
 
+  /// <summary>
+  /// Sets the active task provider identifier.
+  /// </summary>
   public setActiveProviderId(providerId: string): void {
-    if (this.providers.has(providerId)) {
-      this.activeProviderId = providerId;
-      this.settingsRepo.setSetting('active_provider_id', providerId);
+    if (this._providers.has(providerId)) {
+      this._activeProviderId = providerId;
+      this._settingsRepo.setSetting('active_provider_id', providerId);
     }
   }
 
+  /// <summary>
+  /// Fetches remote or local projects from the active provider.
+  /// </summary>
   public async getProjects(): Promise<ProjectDTO[]> {
     return this.getActiveProvider().getProjects();
   }
 
+  /// <summary>
+  /// Fetches remote or local tasks for a project from the active provider.
+  /// </summary>
   public async getTasks(projectId: string): Promise<TaskDTO[]> {
     return this.getActiveProvider().getTasks(projectId);
   }
 
+  /// <summary>
+  /// Updates remote task status on the active provider.
+  /// </summary>
   public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
     return this.getActiveProvider().updateTaskStatus(taskId, status);
   }
 
+  /// <summary>
+  /// Logs spent time to the active provider and triggers background queue flushing on success.
+  /// </summary>
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
     try {
       const result = await this.getActiveProvider().logTime(payload);
@@ -87,21 +114,21 @@ export class ProviderManager {
       }
       return result;
     } catch (err) {
-      console.warn(`[ProviderManager] Direct logTime to ${this.activeProviderId} failed. Worklog buffered locally.`, err);
+      console.warn(`[ProviderManager] Direct logTime to ${this._activeProviderId} failed. Worklog buffered locally.`, err);
       return { success: false };
     }
   }
 
-  /**
-   * Processes all pending worklogs in SQLite worklog_sync_queue.
-   */
+  /// <summary>
+  /// Processes all pending worklogs in SQLite worklog_sync_queue.
+  /// </summary>
   public async flushPendingSyncQueue(): Promise<{ syncedCount: number; failedCount: number }> {
-    const pendingItems = this.worklogRepo.getPendingQueueItems();
+    const pendingItems = this._worklogRepo.getPendingQueueItems();
     let syncedCount = 0;
     let failedCount = 0;
 
     for (const item of pendingItems) {
-      const provider = this.providers.get(item.providerId) || this.getActiveProvider();
+      const provider = this._providers.get(item.providerId) || this.getActiveProvider();
       try {
         const res = await provider.logTime({
           taskId: item.taskId,
@@ -112,14 +139,15 @@ export class ProviderManager {
         });
 
         if (res.success) {
-          this.worklogRepo.updateSyncItemStatus(item.id, 'SYNCED');
+          this._worklogRepo.updateSyncItemStatus(item.id, 'SYNCED');
           syncedCount++;
         } else {
-          this.worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
+          this._worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
           failedCount++;
         }
-      } catch {
-        this.worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
+      } catch (err) {
+        console.warn(`[ProviderManager] Failed to log queued worklog item ${item.id}:`, err);
+        this._worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
         failedCount++;
       }
     }

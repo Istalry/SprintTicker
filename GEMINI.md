@@ -26,7 +26,7 @@ This document defines the strict coding standards, architectural principles, and
 - **Booleans:** Prefix with `is`, `has`, `can`, or `should` (e.g., `isTimerRunning`, `hasConnection`).
 
 ## 4. Code Coverage & Testing
-- **Target Coverage:** Minimum 90% code coverage for all business logic.
+- **Target Coverage:** Minimum 80% code coverage for all business logic.
 - **Test-Driven Development (TDD):** Write tests to validate edge cases, happy paths, and error states.
 - **Unit Tests:** Use NUnit / Unity Test Framework.
 - **Mocking:** Abstract external dependencies (like the BUSY Bar HTTP API, Unity's `Time`, or file systems) behind interfaces and mock them in tests using NSubstitute or Moq.

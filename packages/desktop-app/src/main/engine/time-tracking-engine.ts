@@ -17,15 +17,15 @@ export type SessionStateCallback = (session: ActiveSessionDTO | null) => void;
  * absolute UTC timestamp delta calculations, crash/reboot resilience, and offline worklog buffering.
  */
 export class TimeTrackingEngine extends EventEmitter {
-  private sessionRepo: SessionRepository;
-  private worklogRepo: WorklogRepository;
-  private taskRepo: TaskRepository;
-  private projectRepo: ProjectRepository;
-  private providerManager: ProviderManager;
-  private listeners: Set<SessionStateCallback> = new Set();
-  private currentSession: ActiveSessionDTO | null = null;
-  private tickTimer: NodeJS.Timeout | null = null;
-  private syncWorker: OfflineSyncWorker;
+  private _sessionRepo: SessionRepository;
+  private _worklogRepo: WorklogRepository;
+  private _taskRepo: TaskRepository;
+  private _projectRepo: ProjectRepository;
+  private _providerManager: ProviderManager;
+  private _listeners: Set<SessionStateCallback> = new Set();
+  private _currentSession: ActiveSessionDTO | null = null;
+  private _tickTimer: NodeJS.Timeout | null = null;
+  private _syncWorker: OfflineSyncWorker;
 
   constructor(
     sessionRepo?: SessionRepository,
@@ -34,26 +34,26 @@ export class TimeTrackingEngine extends EventEmitter {
     providerManager?: ProviderManager
   ) {
     super();
-    this.sessionRepo = sessionRepo || new SessionRepository();
-    this.worklogRepo = worklogRepo || new WorklogRepository();
-    this.taskRepo = taskRepo || new TaskRepository();
-    this.projectRepo = new ProjectRepository();
-    this.providerManager = providerManager || new ProviderManager(undefined, this.worklogRepo);
+    this._sessionRepo = sessionRepo || new SessionRepository();
+    this._worklogRepo = worklogRepo || new WorklogRepository();
+    this._taskRepo = taskRepo || new TaskRepository();
+    this._projectRepo = new ProjectRepository();
+    this._providerManager = providerManager || new ProviderManager(undefined, this._worklogRepo);
     
-    this.syncWorker = new OfflineSyncWorker(
-      this.providerManager,
-      this.worklogRepo,
-      this.projectRepo,
-      this.taskRepo
+    this._syncWorker = new OfflineSyncWorker(
+      this._providerManager,
+      this._worklogRepo,
+      this._projectRepo,
+      this._taskRepo
     );
-    this.syncWorker.start();
+    this._syncWorker.start();
 
     this.reconcileStartupState();
   }
 
   private startTickLoop(): void {
-    if (this.tickTimer) return;
-    this.tickTimer = setInterval(() => {
+    if (this._tickTimer) return;
+    this._tickTimer = setInterval(() => {
       const active = this.getCurrentSession();
       if (!active || active.status !== 'TRACKING') {
         this.stopTickLoop();
@@ -66,45 +66,45 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   private stopTickLoop(): void {
-    if (this.tickTimer) {
-      clearInterval(this.tickTimer);
-      this.tickTimer = null;
+    if (this._tickTimer) {
+      clearInterval(this._tickTimer);
+      this._tickTimer = null;
     }
   }
 
-  /**
-   * Reconciles unfinalized sessions on application startup to ensure reboot & crash resilience.
-   */
+  /// <summary>
+  /// Reconciles unfinalized sessions on application startup to ensure reboot & crash resilience.
+  /// </summary>
   public reconcileStartupState(): ActiveSessionDTO | null {
-    const active = this.sessionRepo.getActiveSession();
+    const active = this._sessionRepo.getActiveSession();
     if (!active) {
       this.stopTickLoop();
-      this.currentSession = null;
+      this._currentSession = null;
       return null;
     }
 
     // If session was in TRACKING state during app crash/reboot, calculate accurate elapsed time
-    this.currentSession = active;
+    this._currentSession = active;
     if (active.status === 'TRACKING') {
       this.startTickLoop();
     } else {
       this.stopTickLoop();
     }
     this.notifyListeners();
-    return this.currentSession;
+    return this._currentSession;
   }
 
-  /**
-   * Subscribes a listener callback to engine state transitions.
-   */
+  /// <summary>
+  /// Subscribes a listener callback to engine state transitions.
+  /// </summary>
   public subscribe(callback: SessionStateCallback): () => void {
-    this.listeners.add(callback);
-    return () => this.listeners.delete(callback);
+    this._listeners.add(callback);
+    return () => this._listeners.delete(callback);
   }
 
   private notifyListeners(): void {
     const sessionCopy = this.getCurrentSession();
-    for (const listener of this.listeners) {
+    for (const listener of this._listeners) {
       try {
         listener(sessionCopy);
       } catch (err) {
@@ -113,25 +113,31 @@ export class TimeTrackingEngine extends EventEmitter {
     }
   }
 
-  /**
-   * Gets current active session with live calculated UTC elapsed time.
-   */
+  /// <summary>
+  /// Gets current active session with live calculated UTC elapsed time.
+  /// </summary>
   public getCurrentSession(): ActiveSessionDTO | null {
-    if (!this.currentSession) return null;
-    return this.sessionRepo.getActiveSession();
+    if (!this._currentSession) return null;
+    return this._sessionRepo.getActiveSession();
   }
 
+  /// <summary>
+  /// Retrieves all cached projects from local SQLite storage.
+  /// </summary>
   public getProjects(): ProjectDTO[] {
-    return this.projectRepo.getAllProjects();
+    return this._projectRepo.getAllProjects();
   }
 
+  /// <summary>
+  /// Retrieves all cached tasks for a given project from local SQLite storage.
+  /// </summary>
   public getTasksForProject(projectId: string): TaskDTO[] {
-    return this.taskRepo.getTasksByProjectId(projectId);
+    return this._taskRepo.getTasksByProjectId(projectId);
   }
 
-  /**
-   * Starts tracking a task session.
-   */
+  /// <summary>
+  /// Starts tracking a task session.
+  /// </summary>
   public startTask(
     taskId: string,
     isAdHoc: boolean = false,
@@ -142,7 +148,7 @@ export class TimeTrackingEngine extends EventEmitter {
     if (!taskId) throw new Error('Task ID is required to start a session');
 
     // Finalize any existing active session before starting new task
-    if (this.currentSession && this.currentSession.status !== 'COMPLETED') {
+    if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
       this.stopSession('Auto-completed due to new task start');
     }
 
@@ -150,17 +156,17 @@ export class TimeTrackingEngine extends EventEmitter {
     let finalKey = taskKey || taskId;
 
     if (isAdHoc && customTitle) {
-      const adHocTask = this.taskRepo.createAdHocTask(customTitle, 'MISC-1');
+      const adHocTask = this._taskRepo.createAdHocTask(customTitle, 'MISC-1');
       finalKey = adHocTask.key;
       finalTitle = adHocTask.title;
     } else if (taskId) {
       // Transition task from 'todo' to 'in_progress' when session starts
-      const existingTask = this.taskRepo.getTaskById(taskId);
+      const existingTask = this._taskRepo.getTaskById(taskId);
       if (existingTask && existingTask.status === 'todo') {
-        this.taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+        this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
         
         // Push status to remote provider asynchronously
-        this.providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
+        this._providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
           console.warn(`[TimeTrackingEngine] Failed to remote update task status:`, err);
         });
       }
@@ -181,17 +187,17 @@ export class TimeTrackingEngine extends EventEmitter {
       totalPausedSeconds: 0
     };
 
-    this.sessionRepo.saveSession(newSession);
-    this.currentSession = this.sessionRepo.getActiveSession();
+    this._sessionRepo.saveSession(newSession);
+    this._currentSession = this._sessionRepo.getActiveSession();
     this.startTickLoop();
     this.notifyListeners();
 
-    return this.currentSession!;
+    return this._currentSession!;
   }
 
-  /**
-   * Pauses the current active session.
-   */
+  /// <summary>
+  /// Pauses the current active session.
+  /// </summary>
   public pauseSession(): ActiveSessionDTO {
     const active = this.getCurrentSession();
     if (!active || active.status !== 'TRACKING') {
@@ -199,19 +205,19 @@ export class TimeTrackingEngine extends EventEmitter {
     }
 
     const nowIso = new Date().toISOString();
-    this.sessionRepo.updateStatus(active.sessionId, 'PAUSED', active.totalPausedSeconds, nowIso);
-    this.sessionRepo.recordPauseInterval(active.sessionId, nowIso);
+    this._sessionRepo.updateStatus(active.sessionId, 'PAUSED', active.totalPausedSeconds, nowIso);
+    this._sessionRepo.recordPauseInterval(active.sessionId, nowIso);
 
-    this.currentSession = this.sessionRepo.getActiveSession();
+    this._currentSession = this._sessionRepo.getActiveSession();
     this.stopTickLoop();
     this.notifyListeners();
 
-    return this.currentSession!;
+    return this._currentSession!;
   }
 
-  /**
-   * Resumes a paused session.
-   */
+  /// <summary>
+  /// Resumes a paused session.
+  /// </summary>
   public resumeSession(): ActiveSessionDTO {
     const active = this.getCurrentSession();
     if (!active || active.status !== 'PAUSED' || !active.lastPauseStartUtc) {
@@ -220,18 +226,18 @@ export class TimeTrackingEngine extends EventEmitter {
 
     // active.totalPausedSeconds already includes the live duration of the current pause
     // (calculated inside SessionRepository.getActiveSession), so we don't need to add it again.
-    this.sessionRepo.updateStatus(active.sessionId, 'TRACKING', active.totalPausedSeconds, undefined);
+    this._sessionRepo.updateStatus(active.sessionId, 'TRACKING', active.totalPausedSeconds, undefined);
     
-    this.currentSession = this.sessionRepo.getActiveSession();
+    this._currentSession = this._sessionRepo.getActiveSession();
     this.startTickLoop();
     this.notifyListeners();
 
-    return this.currentSession!;
+    return this._currentSession!;
   }
 
-  /**
-   * Stops and finalizes the active session, logging elapsed time and creating offline sync queue entry.
-   */
+  /// <summary>
+  /// Stops and finalizes the active session, logging elapsed time and creating offline sync queue entry.
+  /// </summary>
   public stopSession(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
     const active = this.getCurrentSession();
     if (!active) return { success: false, loggedSeconds: 0 };
@@ -240,26 +246,26 @@ export class TimeTrackingEngine extends EventEmitter {
 
     // If user selected to mark task as done on session stop
     if (markDone && !active.isAdHoc && active.taskId) {
-      const existingTask = this.taskRepo.getTaskById(active.taskId);
+      const existingTask = this._taskRepo.getTaskById(active.taskId);
       if (existingTask) {
-        this.taskRepo.updateTask({ ...existingTask, status: 'done' });
+        this._taskRepo.updateTask({ ...existingTask, status: 'done' });
         
         // Push completion status remotely
-        this.providerManager.updateTaskStatus(active.taskId, 'done').catch(err => {
+        this._providerManager.updateTaskStatus(active.taskId, 'done').catch(err => {
           console.warn(`[TimeTrackingEngine] Failed to remote update task status to done:`, err);
         });
       }
     }
 
     const loggedSeconds = active.elapsedSeconds;
-    this.sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
+    this._sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
 
     const nowIso = new Date().toISOString();
 
     const worklogComment = comment || 'Completed session via Antigravity BUSY Bar';
 
     // 1. Save worklog to SQLite
-    this.worklogRepo.saveWorklog({
+    this._worklogRepo.saveWorklog({
       id: `wl_${Date.now()}`,
       sessionId: active.sessionId,
       taskId: active.taskId,
@@ -270,8 +276,8 @@ export class TimeTrackingEngine extends EventEmitter {
     });
 
     // 2. Buffer to offline sync queue
-    const activeProvider = this.providerManager ? this.providerManager.getActiveProvider() : null;
-    this.worklogRepo.enqueueSyncItem({
+    const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
+    this._worklogRepo.enqueueSyncItem({
       id: `sync_${Date.now()}`,
       providerId: activeProvider ? activeProvider.providerId : 'openproject',
       taskId: active.taskId,
@@ -281,13 +287,13 @@ export class TimeTrackingEngine extends EventEmitter {
     });
 
     // 3. Attempt async flush with provider
-    if (this.providerManager) {
-      this.providerManager.flushPendingSyncQueue().catch(err => {
+    if (this._providerManager) {
+      this._providerManager.flushPendingSyncQueue().catch(err => {
         console.warn('[TimeTrackingEngine] Background sync queue flush failed:', err);
       });
     }
 
-    this.currentSession = null;
+    this._currentSession = null;
     this.notifyListeners();
 
     return { success: true, loggedSeconds };

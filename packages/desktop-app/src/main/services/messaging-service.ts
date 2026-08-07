@@ -1,6 +1,6 @@
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { MessagingSettingsDTO, MessagingTestResultDTO } from '../../shared/dtos';
+import { MessagingSettingsDTO, MessagingTestResultDTO, ArgumentNullException, ArgumentException } from '../../shared/dtos';
 import { WebhookServer, SlackEventPayload, DiscordWebhookPayload } from '../api/webhook-server';
 
 /**
@@ -102,19 +102,5 @@ export class MessagingIntegrationService {
       const author = payload.author || 'Bob';
       this.renderer.renderNotificationBanner(author, 'DISCORD', 40, 'discord');
     }
-  }
-}
-
-class ArgumentNullException extends Error {
-  constructor(paramName: string) {
-    super(`Argument cannot be null or undefined: ${paramName}`);
-    this.name = 'ArgumentNullException';
-  }
-}
-
-class ArgumentException extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ArgumentException';
   }
 }

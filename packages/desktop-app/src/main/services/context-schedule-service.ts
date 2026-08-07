@@ -4,7 +4,7 @@ import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { ScheduleSettingsDTO } from '../../shared/dtos';
+import { ScheduleSettingsDTO, ArgumentNullException } from '../../shared/dtos';
 
 /**
  * Service that automatically monitors Windows session locks/sleep events and lunch schedules,
@@ -252,12 +252,5 @@ export class ContextScheduleService {
 
   private startScheduleTimer(): void {
     this._timer = setInterval(() => this.evaluateSchedule(), ContextScheduleService.CHECK_INTERVAL_MS);
-  }
-}
-
-class ArgumentNullException extends Error {
-  constructor(paramName: string) {
-    super(`Argument cannot be null or undefined: ${paramName}`);
-    this.name = 'ArgumentNullException';
   }
 }

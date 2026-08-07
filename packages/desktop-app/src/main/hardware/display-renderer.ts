@@ -22,7 +22,7 @@ const APP_NAME = 'busybar_desktop';
  * Rear Display (160x80 OLED): Legacy element-based rendering retained for rear OLED.
  */
 export class DisplayRenderer {
-  private driver: BusyBarDriver;
+  private _driver: BusyBarDriver;
   private priorityEngine?: IPriorityPreemptionEngine;
   private colorTheme: ColorThemeId = 'emerald';
   private rearOledMode: RearOledMode = 'DIAGNOSTICS';
@@ -53,7 +53,7 @@ export class DisplayRenderer {
     if (!driver) {
       throw new ArgumentNullException('driver');
     }
-    this.driver = driver;
+    this._driver = driver;
     this.priorityEngine = priorityEngine;
     this.animationPlayer = new AnimationPlayer(driver);
     this.animationPlayer.setLedColorCallback(() => this.lastState.ledColorHex);
@@ -288,7 +288,7 @@ export class DisplayRenderer {
     }
 
     // Default DIAGNOSTICS Mode
-    const status = this.driver.getDeviceStatus();
+    const status = this._driver.getDeviceStatus();
     return [
       { id: 'rear_diag_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'BUSY BAR DIAGNOSTICS [USB/WiFi]', align: 'top_left' },
       { id: 'rear_diag_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: `IP: ${status.ipAddress} | Ping: ${status.webSocketPingMs}ms`, align: 'top_left' },
@@ -364,9 +364,12 @@ export class DisplayRenderer {
     const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
 
     // Fire-and-forget hardware transmission (non-blocking for render callers)
-    this.driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename).catch(err => {
-      console.error('[DisplayRenderer] sendPixelFrame failed:', err);
-    });
+    const sendPromise = this._driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename);
+    if (sendPromise && typeof sendPromise.catch === 'function') {
+      sendPromise.catch(err => {
+        console.error('[DisplayRenderer] sendPixelFrame failed:', err);
+      });
+    }
 
     this.lastState = {
       frontElements: frontElementsForEmulator as unknown as DisplayElementDTO[],
@@ -889,14 +892,5 @@ export class DisplayRenderer {
       this.transmitFrame('#EF4444FF', backElements, payload.frontElements);
       return payload;
     });
-  }
-
-
-}
-
-class ArgumentNullException extends Error {
-  constructor(paramName: string) {
-    super(`Argument cannot be null or undefined: ${paramName}`);
-    this.name = 'ArgumentNullException';
   }
 }

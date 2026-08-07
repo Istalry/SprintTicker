@@ -8,36 +8,39 @@ export class OpenProjectProvider implements ITaskProvider {
   public readonly providerId: string = 'openproject';
   public readonly providerName: string = 'OpenProject';
 
-  private domain: string = '';
-  private apiKey: string = '';
+  private _domain: string = '';
+  private _apiKey: string = '';
   
   // Status Mappings (populated from settings)
-  private statusIdInProgress: string = '';
-  private statusIdToTest: string = '';
-  private statusIdToReview: string = '';
-  private defaultCompletionAction: string = 'to_test';
+  private _statusIdInProgress: string = '';
+  private _statusIdToTest: string = '';
+  private _statusIdToReview: string = '';
+  private _defaultCompletionAction: string = 'to_test';
 
+  /// <summary>
+  /// Configures OpenProject domain, API credentials, and status ID mappings.
+  /// </summary>
   public async initialize(credentials: Record<string, string>): Promise<boolean> {
-    this.domain = credentials.domain || credentials.opDomain || '';
-    this.apiKey = credentials.apiToken || credentials.apiKey || credentials.opApiKey || '';
-    this.statusIdInProgress = credentials.opStatusInProgress || '';
-    this.statusIdToTest = credentials.opStatusToTest || '';
-    this.statusIdToReview = credentials.opStatusToReview || '';
-    this.defaultCompletionAction = credentials.opCompletionAction || 'to_test';
+    this._domain = credentials.domain || credentials.opDomain || '';
+    this._apiKey = credentials.apiToken || credentials.apiKey || credentials.opApiKey || '';
+    this._statusIdInProgress = credentials.opStatusInProgress || '';
+    this._statusIdToTest = credentials.opStatusToTest || '';
+    this._statusIdToReview = credentials.opStatusToReview || '';
+    this._defaultCompletionAction = credentials.opCompletionAction || 'to_test';
     return true;
   }
 
   private getAuthHeader(): string {
-    return `Basic ${Buffer.from(`apikey:${this.apiKey}`).toString('base64')}`;
+    return `Basic ${Buffer.from(`apikey:${this._apiKey}`).toString('base64')}`;
   }
 
   private getBaseUrl(): string {
-    return this.domain.replace(/\/$/, '');
+    return this._domain.replace(/\/$/, '');
   }
 
-  /**
-   * Converts duration in seconds to ISO 8601 duration format (e.g. PT1H30M, PT15M, PT45S).
-   */
+  /// <summary>
+  /// Converts duration in seconds to ISO 8601 duration format (e.g. PT1H30M, PT15M, PT45S).
+  /// </summary>
   private formatIsoDuration(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -50,8 +53,11 @@ export class OpenProjectProvider implements ITaskProvider {
     return duration;
   }
 
+  /// <summary>
+  /// Fetches accessible projects via OpenProject API v3 (/api/v3/projects).
+  /// </summary>
   public async getProjects(): Promise<ProjectDTO[]> {
-    if (!this.domain || !this.apiKey) return [];
+    if (!this._domain || !this._apiKey) return [];
 
     try {
       const url = `${this.getBaseUrl()}/api/v3/projects`;
@@ -78,8 +84,11 @@ export class OpenProjectProvider implements ITaskProvider {
     return [];
   }
 
+  /// <summary>
+  /// Fetches active work packages for a project via OpenProject API v3 (/api/v3/work_packages).
+  /// </summary>
   public async getTasks(projectId: string): Promise<TaskDTO[]> {
-    if (!this.domain || !this.apiKey) return [];
+    if (!this._domain || !this._apiKey) return [];
 
     try {
       const filter = `[{"project":{"operator":"=","values":["${projectId}"]}}]`;
@@ -100,9 +109,9 @@ export class OpenProjectProvider implements ITaskProvider {
           const opStatusId = links.status?.href?.split('/').pop();
           let localStatus: 'todo' | 'in_progress' | 'done' = 'todo';
           
-          if (opStatusId === this.statusIdInProgress) {
+          if (opStatusId === this._statusIdInProgress) {
             localStatus = 'in_progress';
-          } else if (opStatusId === this.statusIdToTest || opStatusId === this.statusIdToReview) {
+          } else if (opStatusId === this._statusIdToTest || opStatusId === this._statusIdToReview) {
             localStatus = 'done';
           }
 
@@ -122,15 +131,18 @@ export class OpenProjectProvider implements ITaskProvider {
     return [];
   }
 
+  /// <summary>
+  /// Reconciles remote time tracking metrics.
+  /// </summary>
   public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }> {
     return { remoteLoggedTimeToday: 0 };
   }
 
-  /**
-   * Synchronizes time tracking with OpenProject by creating a time entry on the target work package.
-   */
+  /// <summary>
+  /// Synchronizes time tracking with OpenProject by creating a time entry on the target work package (POST /api/v3/time_entries).
+  /// </summary>
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
-    if (!this.domain || !this.apiKey) {
+    if (!this._domain || !this._apiKey) {
       console.warn('[OpenProjectProvider] Cannot log time: OpenProject domain or API key missing.');
       return { success: false };
     }
@@ -180,18 +192,21 @@ export class OpenProjectProvider implements ITaskProvider {
     return { success: false };
   }
 
+  /// <summary>
+  /// Updates target work package status on OpenProject via PATCH /api/v3/work_packages/{id}.
+  /// </summary>
   public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
-    if (!this.domain || !this.apiKey) return false;
+    if (!this._domain || !this._apiKey) return false;
 
     let targetStatusId = '';
     if (status === 'in_progress') {
-      targetStatusId = this.statusIdInProgress;
+      targetStatusId = this._statusIdInProgress;
     } else if (status === 'to_test') {
-      targetStatusId = this.statusIdToTest;
+      targetStatusId = this._statusIdToTest;
     } else if (status === 'to_review') {
-      targetStatusId = this.statusIdToReview;
+      targetStatusId = this._statusIdToReview;
     } else if (status === 'done') {
-      targetStatusId = this.defaultCompletionAction === 'to_review' ? this.statusIdToReview : this.statusIdToTest;
+      targetStatusId = this._defaultCompletionAction === 'to_review' ? this._statusIdToReview : this._statusIdToTest;
     }
 
     if (!targetStatusId) {

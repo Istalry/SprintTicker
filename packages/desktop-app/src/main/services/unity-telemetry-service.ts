@@ -367,10 +367,3 @@ export class UnityTelemetryService {
   }
 }
 
-class ArgumentNullException extends Error {
-  constructor(paramName: string) {
-    super(`Argument cannot be null or undefined: ${paramName}`);
-    this.name = 'ArgumentNullException';
-  }
-}
-
