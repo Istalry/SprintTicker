@@ -44,6 +44,7 @@ export interface ProjectDTO {
   id: string;
   name: string;
   key: string;
+  providerId?: string;
 }
 
 export interface HardwareBindingConfig {

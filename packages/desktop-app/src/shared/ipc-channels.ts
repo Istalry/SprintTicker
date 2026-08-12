@@ -55,6 +55,8 @@ export enum IPCChannel {
   SAVE_SCHEDULE_SETTINGS = 'schedule:save-settings',
   TRIGGER_EOD_WRAP_UP = 'schedule:trigger-eod-wrapup',
   CANCEL_EOD_WRAP_UP = 'schedule:cancel-eod-wrapup',
+  TRIGGER_STANDUP_PROMPT = 'schedule:trigger-standup-prompt',
+  CANCEL_STANDUP_PROMPT = 'schedule:cancel-standup-prompt',
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
 

@@ -179,4 +179,39 @@ export class TaskRepository {
     }
     return imported;
   }
+
+  /**
+   * Deletes all tasks for a given project that are NOT in the provided active list.
+   * Excludes tasks starting with 'adhoc_'.
+   */
+  public deleteTasksNotIn(projectId: string, activeTaskIds: string[]): void {
+    if (!projectId || !Array.isArray(activeTaskIds)) return;
+
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return;
+
+      if (activeTaskIds.length === 0) {
+        // If there are no active tasks, delete all tasks for this project (except adhoc)
+        const stmt = db.prepare('DELETE FROM tasks WHERE project_id = ? AND id NOT LIKE ?');
+        stmt.run(projectId, 'adhoc_%');
+        return;
+      }
+
+      // Dynamically build the query parameters
+      const placeholders = activeTaskIds.map(() => '?').join(',');
+      const params = [projectId, ...activeTaskIds, 'adhoc_%'];
+
+      const stmt = db.prepare(`
+        DELETE FROM tasks 
+        WHERE project_id = ? 
+          AND id NOT IN (${placeholders}) 
+          AND id NOT LIKE ?
+      `);
+
+      stmt.run(...params);
+    } catch (err) {
+      console.warn(`[TaskRepository] Failed to delete outdated tasks for project ${projectId}:`, err);
+    }
+  }
 }

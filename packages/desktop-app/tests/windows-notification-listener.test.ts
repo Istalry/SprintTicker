@@ -79,7 +79,7 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     expect(priorityEngine.evaluateRequest).toHaveBeenCalledWith('messagingPriority');
     expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
       'Bob: PR review',
-      'Slack',
+      'Message',
       40,
       'slack',
       undefined,
@@ -105,7 +105,7 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     expect(priorityEngine.evaluateRequest).toHaveBeenCalledWith('highNotificationPriority');
     expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
       'Alice: Urgent build',
-      'Discord',
+      'Message',
       95,
       'discord',
       undefined,

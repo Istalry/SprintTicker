@@ -67,13 +67,24 @@ export class OfflineSyncWorker {
     try {
       console.log(`[OfflineSyncWorker] Fetching latest projects and tasks...`);
       const projects = await this.providerManager.getProjects();
+      const activeProjectIds = projects.map(p => p.id);
+
       for (const p of projects) {
         this.projectRepo.saveProject(p);
         const tasks = await this.providerManager.getTasks(p.id);
+        const activeTaskIds = tasks.map(t => t.id);
+
         for (const t of tasks) {
           this.taskRepo.saveTask(t);
         }
+        
+        // Delete tasks that were removed or closed on the remote provider
+        this.taskRepo.deleteTasksNotIn(p.id, activeTaskIds);
       }
+
+      // Delete projects that were removed on the remote provider
+      this.projectRepo.deleteProjectsNotIn(activeProjectIds);
+
       console.log(`[OfflineSyncWorker] Successfully synced projects and tasks.`);
     } catch (e) {
       console.error(`[OfflineSyncWorker] Failed to sync tasks and projects:`, e);

@@ -80,11 +80,13 @@ export class OpenProjectProvider implements ITaskProvider {
       
       const elements = json?._embedded?.elements;
       if (Array.isArray(elements)) {
-        return elements.map(p => ({
-          id: (p.id as number | string).toString(),
-          key: (p.identifier as string) || `proj_${p.id}`,
-          name: (p.name as string) || 'Untitled Project'
-        }));
+        return elements
+          .filter(p => p.templated !== true && !(p.name as string || '').toLowerCase().includes('template'))
+          .map(p => ({
+            id: (p.id as number | string).toString(),
+            key: (p.identifier as string) || `proj_${p.id}`,
+            name: (p.name as string) || 'Untitled Project'
+          }));
       }
     } catch (err) {
       console.error('[OpenProjectProvider] Failed to fetch projects:', err);
@@ -99,8 +101,8 @@ export class OpenProjectProvider implements ITaskProvider {
     if (!this._domain || !this._apiKey) return [];
 
     try {
-      // Filter: Project ID, Assignee = me
-      const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}}]`;
+      // Filter: Project ID, Assignee = me, Status = open ("o")
+      const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]`;
       const url = `${this.getBaseUrl()}/api/v3/work_packages?filters=${encodeURIComponent(filter)}`;
       const res = await fetch(url, {
         headers: {
@@ -114,7 +116,7 @@ export class OpenProjectProvider implements ITaskProvider {
       const elements = json?._embedded?.elements;
       if (Array.isArray(elements)) {
         return elements.map(t => {
-          const links = (t._links || {}) as Record<string, { href?: string }>;
+          const links = (t._links || {}) as Record<string, { href?: string; title?: string }>;
           const opStatusId = links.status?.href?.split('/').pop();
           const typeName = (links.type?.title as string) || '';
           

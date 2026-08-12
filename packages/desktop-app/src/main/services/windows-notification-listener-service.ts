@@ -302,7 +302,11 @@ export class WindowsNotificationListenerService {
     const priorityScore = evalResult.evaluatedPriority;
 
     const iconId: BitmapIconId = event.iconId ?? matchedRule?.iconId ?? this.inferIconId(event.appId || event.appName);
-    const channelLabel = event.appName || matchedRule?.appName || 'ALERT';
+    let channelLabel = event.appName || matchedRule?.appName || 'ALERT';
+    const lowerLabel = channelLabel.toLowerCase();
+    if (lowerLabel.includes('discord') || lowerLabel.includes('slack')) {
+      channelLabel = 'Message';
+    }
     const textBody = `${event.title ? event.title + ': ' : ''}${event.body || ''}`.trim();
 
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;

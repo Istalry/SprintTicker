@@ -273,19 +273,17 @@ export const App: React.FC = () => {
       {/* Daily Stand-Up Meeting Prompt Modal */}
       <StandupPromptModal
         isOpen={isStandupModalOpen}
-        onClose={() => setIsStandupModalOpen(false)}
+        onClose={async () => {
+          setIsStandupModalOpen(false);
+          if (window.electronAPI?.cancelStandupPrompt) {
+            await window.electronAPI.cancelStandupPrompt();
+          }
+        }}
         onSnooze={async (minutes) => {
           setIsStandupModalOpen(false);
           if (window.electronAPI?.snoozeCeremony) {
             await window.electronAPI.snoozeCeremony('STANDUP', minutes);
           }
-        }}
-        onAccept={async () => {
-          setIsStandupModalOpen(false);
-          if (session && session.status === 'TRACKING') {
-            await pause();
-          }
-          await startTask('STANDUP-1', true, 'Daily Stand-Up');
         }}
       />
 

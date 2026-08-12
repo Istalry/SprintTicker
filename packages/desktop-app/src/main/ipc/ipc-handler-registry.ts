@@ -235,6 +235,11 @@ export class IPCHandlerRegistry {
       return true;
     });
 
+    ipcMain.handle(IPCChannel.TRIGGER_STANDUP_PROMPT, async () => {
+      this.contextScheduleService.triggerStandupPrompt();
+      return { success: true };
+    });
+
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
       const activeSession = this.engine.getCurrentSession();
       if (activeSession) {
@@ -267,6 +272,14 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.CANCEL_EOD_WRAP_UP, async () => {
+      this.priorityEngine.releaseActiveLock('standupPromptPriority');
+      const activeSession = this.engine.getCurrentSession();
+      this.renderer.renderActiveSession(activeSession);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.CANCEL_STANDUP_PROMPT, async () => {
+      this.priorityEngine.releaseActiveLock('standupPromptPriority');
       const activeSession = this.engine.getCurrentSession();
       this.renderer.renderActiveSession(activeSession);
       return true;

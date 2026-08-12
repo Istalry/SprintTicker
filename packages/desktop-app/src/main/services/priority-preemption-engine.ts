@@ -280,7 +280,9 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   public hasActiveNotification(): boolean {
     return (
       this._activeLockEventName === 'messagingPriority' ||
-      this._activeLockEventName === 'highNotificationPriority'
+      this._activeLockEventName === 'highNotificationPriority' ||
+      this._activeLockEventName === 'standupPromptPriority' ||
+      this._activeLockEventName === 'eodWrapUpPriority'
     );
   }
 

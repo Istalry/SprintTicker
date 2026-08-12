@@ -82,7 +82,7 @@ export const CeremoniesView: React.FC = () => {
             <Clock className="w-5 h-5 text-accent-blue" />
             <h3>Daily Stand-Up Ceremonies</h3>
           </div>
-          <p className="text-xs text-text-secondary">Pops up a confirmation dialog to pause active task and track stand-up stopwatch.</p>
+          <p className="text-xs text-text-secondary">Pops up a visual notification on your screen and the BUSY Bar to remind you that the Stand-Up is starting.</p>
 
           <div className="space-y-3">
             <div>
@@ -95,10 +95,19 @@ export const CeremoniesView: React.FC = () => {
               />
             </div>
 
-            <label className="flex items-center space-x-3 text-xs text-white cursor-pointer select-none pt-2">
-              <input type="checkbox" defaultChecked className="rounded bg-dark-900 border-border-dark text-accent-blue focus:ring-0" />
-              <span>Auto-pause active task during Stand-Up</span>
-            </label>
+            <div className="pt-1 flex items-center justify-between">
+              <button
+                onClick={async () => {
+                  if (window.electronAPI?.triggerStandupPrompt) {
+                    await window.electronAPI.triggerStandupPrompt();
+                  }
+                }}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue border border-accent-blue/30 rounded-lg text-xs font-semibold transition-all"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>Test Trigger Stand-Up</span>
+              </button>
+            </div>
           </div>
         </div>
 

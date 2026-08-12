@@ -162,19 +162,22 @@ export const AnimationDebugPanel: React.FC = () => {
       [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'CEREMONY PROMPT: EOD WRAP-UP' }],
       '#A855F7FF',
       'PULSE_ALERT',
-      'Dispatched EOD Ceremony Prompt (PULSE_ALERT Glow)',
-      'PULSE',
-      'FADE'
+      'Dispatched EOD Ceremony Prompt (PULSE_ALERT Glow)'
     );
   };
 
   const triggerStandupTask = () => {
-    if (window.electronAPI && window.electronAPI.startTask) {
-      window.electronAPI.startTask('DEBUG_STANDUP', true, 'Daily Standup');
-      showStatus('Real IPC: Dispatched Daily Standup Task');
-    } else {
-      showStatus('Error: electronAPI.startTask not available');
-    }
+    dispatchState(
+      [
+        { type: 'bitmap', iconId: 'clock', bitmapData: getBitmapById('clock'), x: 0, y: 0 },
+        { type: 'text', font: 'bold', x: 16, y: 0, color: '#3B82F6FF', text: 'STAND-UP' },
+        { type: 'text', font: 'small', x: 16, y: 8, width: 56, color: '#FFFFFFFF', text: 'Daily Meeting Starting', scroll_rate: 60 }
+      ],
+      [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#3B82F6FF', text: 'CEREMONY PROMPT: STAND-UP' }],
+      '#3B82F6FF',
+      'PULSE_ALERT',
+      'Dispatched Standup Prompt Visually'
+    );
   };
 
   const triggerWave = () => dispatchState(

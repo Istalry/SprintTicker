@@ -109,4 +109,48 @@ export class ProjectRepository {
       console.warn('[ProjectRepository] Failed to delete project:', err);
     }
   }
+
+  /**
+   * Deletes all projects (and their tasks) that are NOT in the provided active list.
+   * Excludes the 'ADHOC' built-in project.
+   */
+  public deleteProjectsNotIn(activeProjectIds: string[]): void {
+    if (!Array.isArray(activeProjectIds)) return;
+
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return;
+
+      // Ensure ADHOC is never deleted
+      const safeProjectIds = [...activeProjectIds, 'ADHOC'];
+
+      // We need to dynamically build the query parameters
+      const placeholders = safeProjectIds.map(() => '?').join(',');
+      
+      // First find which projects we are going to delete, so we can delete their tasks too
+      const findStmt = db.prepare(`SELECT id FROM projects WHERE id NOT IN (${placeholders})`);
+      const projectsToDelete = findStmt.all(...safeProjectIds) as { id: string }[];
+
+      if (projectsToDelete.length === 0) return;
+
+      console.log(`[ProjectRepository] Deleting ${projectsToDelete.length} outdated projects...`);
+
+      // Delete tasks for those projects
+      const deleteTasksStmt = db.prepare('DELETE FROM tasks WHERE project_id = ?');
+      // Delete the projects themselves
+      const deleteProjStmt = db.prepare('DELETE FROM projects WHERE id = ?');
+
+      const transaction = db.transaction((projects: { id: string }[]) => {
+        for (const p of projects) {
+          deleteTasksStmt.run(p.id);
+          deleteProjStmt.run(p.id);
+        }
+      });
+
+      transaction(projectsToDelete);
+      
+    } catch (err) {
+      console.warn('[ProjectRepository] Failed to delete outdated projects:', err);
+    }
+  }
 }
