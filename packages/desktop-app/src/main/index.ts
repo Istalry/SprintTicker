@@ -19,6 +19,7 @@ import { UnityTelemetryService } from './services/unity-telemetry-service';
 import { MessagingIntegrationService } from './services/messaging-service';
 import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
 import { WebhookServer } from './api/webhook-server';
+import { ProviderManager } from './providers/provider-manager';
 
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
 import { TrayManager } from './tray/tray-manager';
@@ -88,8 +89,10 @@ app.whenReady().then(async () => {
   const settingsRepo = new SettingsRepository(dbConnection);
   const sessionRepo = new SessionRepository(dbConnection);
 
+  const providerManager = new ProviderManager(settingsRepo, worklogRepo);
+
   // 2. Initialize Time Tracking Engine
-  engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+  engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager);
 
   // 3. Initialize Hardware Driver, Display Renderer & Input Decoder
   const forceMock = process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
@@ -125,7 +128,7 @@ app.whenReady().then(async () => {
   });
 
   const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine, priorityEngine);
-  const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer);
+  const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer, providerManager);
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   windowsNotificationService.startListening();
 

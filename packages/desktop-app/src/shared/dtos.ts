@@ -30,6 +30,16 @@ export interface OpStatusDTO {
   isClosed: boolean;
 }
 
+export interface OpenProjectNotificationDTO {
+  id: string;
+  subject: string;
+  action: string;
+  actorName: string;
+  readIAN: boolean;
+  reason: string;
+  createdAt: string;
+}
+
 export interface ProjectDTO {
   id: string;
   name: string;
@@ -169,6 +179,8 @@ export interface MessagingSettingsDTO {
   enableSlackPreview: boolean;
   gmailQuery: string;
   enableGmailLed: boolean;
+  enableOpenProjectNotifications?: boolean;
+  openProjectPollingIntervalSeconds?: number;
   notificationTimeoutSeconds?: number; // Auto-dismiss notification banner duration in seconds (default: 10)
   stealthClockIdleTimeoutMins?: number; // Idle duration before switching OLED to stealth clock (default: 15)
 }
@@ -229,7 +241,7 @@ export interface MessagingTestResultDTO {
 }
 
 export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
-export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows' | 'bell';
+export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows' | 'bell' | 'openproject';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 

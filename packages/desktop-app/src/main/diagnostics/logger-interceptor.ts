@@ -23,23 +23,23 @@ export class LoggerInterceptor {
   }
 
   public intercept(): void {
-    console.log = (...args: any[]) => {
+    console.log = (...args: unknown[]) => {
       this.capture('INFO', ...args);
       this.originalLog.apply(console, args);
     };
 
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
       this.capture('WARN', ...args);
       this.originalWarn.apply(console, args);
     };
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       this.capture('ERROR', ...args);
       this.originalError.apply(console, args);
     };
   }
 
-  private capture(level: string, ...args: any[]): void {
+  private capture(level: string, ...args: unknown[]): void {
     const timestamp = new Date().toISOString();
     const message = util.format(...args);
     this.logs.push(`[${timestamp}] [${level}] ${message}`);

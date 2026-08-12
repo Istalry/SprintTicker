@@ -65,6 +65,13 @@ export class ProviderManager {
   }
 
   /// <summary>
+  /// Retrieves a specific task provider by its ID.
+  /// </summary>
+  public getProvider(providerId: string): ITaskProvider | undefined {
+    return this._providers.get(providerId);
+  }
+
+  /// <summary>
   /// Retrieves the currently active task provider instance.
   /// </summary>
   public getActiveProvider(): ITaskProvider {

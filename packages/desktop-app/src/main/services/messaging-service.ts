@@ -2,6 +2,8 @@ import { SettingsRepository } from '../db/repositories/settings-repository';
 import { DisplayRenderer } from '../hardware/display-renderer';
 import { MessagingSettingsDTO, MessagingTestResultDTO, ArgumentNullException, ArgumentException } from '../../shared/dtos';
 import { WebhookServer, SlackEventPayload, DiscordWebhookPayload } from '../api/webhook-server';
+import { ProviderManager } from '../providers/provider-manager';
+import { OpenProjectProvider } from '../providers/openproject-provider';
 
 /**
  * Service managing third-party notification channels (Discord, Slack, Gmail)
@@ -10,8 +12,11 @@ import { WebhookServer, SlackEventPayload, DiscordWebhookPayload } from '../api/
 export class MessagingIntegrationService {
   private settingsRepo: SettingsRepository;
   private renderer?: DisplayRenderer;
+  private providerManager?: ProviderManager;
+  private opPollingInterval: NodeJS.Timeout | null = null;
+  private knownOpNotifications = new Set<string>();
 
-  constructor(settingsRepo: SettingsRepository, renderer?: DisplayRenderer, webhookServer?: WebhookServer) {
+  constructor(settingsRepo: SettingsRepository, renderer?: DisplayRenderer, webhookServer?: WebhookServer, providerManager?: ProviderManager) {
     if (!settingsRepo) {
       throw new ArgumentNullException('settingsRepo');
     }
@@ -21,6 +26,50 @@ export class MessagingIntegrationService {
     if (webhookServer) {
       webhookServer.onSlackEvent((payload) => this.handleSlackEvent(payload));
       webhookServer.onDiscordWebhookEvent((payload) => this.handleDiscordWebhook(payload));
+    }
+    
+    this.providerManager = providerManager;
+    this.restartOpenProjectPolling();
+  }
+
+  /// <summary>
+  /// Manages the OpenProject API polling interval based on current settings.
+  /// </summary>
+  public restartOpenProjectPolling(): void {
+    if (this.opPollingInterval) {
+      clearInterval(this.opPollingInterval);
+      this.opPollingInterval = null;
+    }
+    const settings = this.getSettings();
+    if (settings.enableOpenProjectNotifications && this.providerManager) {
+      const intervalMs = (settings.openProjectPollingIntervalSeconds || 60) * 1000;
+      this.opPollingInterval = setInterval(() => this.pollOpenProjectNotifications(), intervalMs);
+      // Execute an immediate initial poll
+      setTimeout(() => this.pollOpenProjectNotifications(), 2000);
+    }
+  }
+
+  private async pollOpenProjectNotifications(): Promise<void> {
+    if (!this.providerManager || !this.renderer) return;
+    const opProvider = this.providerManager.getProvider('openproject') as OpenProjectProvider;
+    if (!opProvider) return;
+
+    try {
+      const notifications = await opProvider.fetchUnreadNotifications();
+      for (const n of notifications) {
+        if (!this.knownOpNotifications.has(n.id)) {
+          this.knownOpNotifications.add(n.id);
+          this.renderer.renderNotificationBanner(n.actorName, 'OPENPROJECT', 40, 'openproject');
+        }
+      }
+      
+      // Cleanup old known notifications if the set gets too large to prevent memory leaks
+      if (this.knownOpNotifications.size > 500) {
+        const arr = Array.from(this.knownOpNotifications);
+        this.knownOpNotifications = new Set(arr.slice(arr.length - 100));
+      }
+    } catch (err) {
+      console.warn('[MessagingService] Error polling OpenProject notifications:', err);
     }
   }
 
@@ -35,6 +84,8 @@ export class MessagingIntegrationService {
       enableSlackPreview: true,
       gmailQuery: 'is:unread label:urgent',
       enableGmailLed: true,
+      enableOpenProjectNotifications: true,
+      openProjectPollingIntervalSeconds: 60,
       notificationTimeoutSeconds: 10,
       stealthClockIdleTimeoutMins: 15,
       enableEdgeGlow: true,
@@ -52,6 +103,7 @@ export class MessagingIntegrationService {
       throw new ArgumentNullException('settings');
     }
     this.settingsRepo.setSetting('messaging_settings', settings);
+    this.restartOpenProjectPolling();
   }
 
   /// <summary>
@@ -66,6 +118,8 @@ export class MessagingIntegrationService {
       ? 'discord'
       : channel.toLowerCase().includes('gmail')
       ? 'gmail'
+      : channel.toLowerCase().includes('openproject')
+      ? 'openproject'
       : 'slack';
 
     const testSender = 'Alice';

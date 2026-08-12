@@ -389,6 +389,8 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return WINDOWS_16X16_BITMAP;
     case 'bell':
       return BELL_16X16_BITMAP;
+    case 'openproject':
+      return OPENPROJECT_16X16_BITMAP;
     case 'burger':
       return BURGER_16X16_BITMAP;
     case 'clock':
@@ -421,4 +423,22 @@ export function getBitmap16ById(iconId: string): (string | null)[][] {
   return getBitmapById(iconId);
 }
 
-
+// 🏢 OpenProject 16x16 PixelIt Bitmap
+export const OPENPROJECT_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', null, null],
+  [null, null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null],
+  [null, null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', null, null, '#4285F4', '#4285F4', null],
+  [null, null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', null, null, '#4285F4', '#4285F4', null],
+  [null, null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', null, null, '#4285F4', '#4285F4', null],
+  [null, null, null, null, null, null, null, null, null, '#4285F4', '#4285F4', null, null, '#4285F4', '#4285F4', null],
+  [null, null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null],
+  [null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null, null],
+  [null, '#4285F4', '#4285F4', null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, '#4285F4', '#4285F4', null, null, null, '#4285F4', '#4285F4', null, '#4285F4', '#4285F4', null, null, null, null, null],
+  [null, '#4285F4', '#4285F4', null, null, null, '#4285F4', '#4285F4', null, '#4285F4', '#4285F4', null, null, null, null, null],
+  [null, '#4285F4', '#4285F4', null, null, null, '#4285F4', '#4285F4', null, '#4285F4', '#4285F4', null, null, null, null, null],
+  [null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null],
+  [null, null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];

@@ -1,5 +1,5 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
-import { ProjectDTO, TaskDTO, OpStatusDTO } from '../../shared/dtos';
+import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO } from '../../shared/dtos';
 
 /**
  * Concrete task provider adapter for OpenProject API v3.
@@ -139,6 +139,45 @@ export class OpenProjectProvider implements ITaskProvider {
       }
     } catch (err) {
       console.error('[OpenProjectProvider] Failed to fetch tasks:', err);
+    }
+    return [];
+  }
+
+  /// <summary>
+  /// Fetches unread notifications for the current user from OpenProject API v3 (/api/v3/notifications).
+  /// </summary>
+  public async fetchUnreadNotifications(): Promise<OpenProjectNotificationDTO[]> {
+    if (!this._domain || !this._apiKey) return [];
+
+    try {
+      const filter = `[{"readIAN":{"operator":"=","values":["f"]}}]`;
+      const url = `${this.getBaseUrl()}/api/v3/notifications?filters=${encodeURIComponent(filter)}`;
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': this.getAuthHeader(),
+          'Accept': 'application/json'
+        }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
+      
+      const elements = json?._embedded?.elements;
+      if (Array.isArray(elements)) {
+        return elements.map(n => {
+          const links = (n._links || {}) as Record<string, { title?: string }>;
+          return {
+            id: (n.id as number | string).toString(),
+            subject: (n.subject as string) || 'Notification',
+            action: (n.action as string) || '',
+            actorName: links.actor?.title || 'OpenProject',
+            readIAN: !!n.readIAN,
+            reason: (n.reason as string) || '',
+            createdAt: (n.createdAt as string) || new Date().toISOString()
+          };
+        });
+      }
+    } catch (err) {
+      console.error('[OpenProjectProvider] Failed to fetch unread notifications:', err);
     }
     return [];
   }

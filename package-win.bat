@@ -20,4 +20,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 echo [SUCCESS] Windows package created in packages/desktop-app/dist-electron/
+echo.
+echo Copying unity-plugin to win-unpacked directory...
+xcopy "packages\unity-plugin" "packages\desktop-app\dist-electron\win-unpacked\packages\unity-plugin" /E /I /H /Y
+echo.
 pause

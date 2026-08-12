@@ -14,6 +14,10 @@ export const MessagingView: React.FC = () => {
   const [gmailQuery, setGmailQuery] = useState<string>('is:unread label:urgent');
   const [enableGmailLed, setEnableGmailLed] = useState<boolean>(true);
 
+  // OpenProject State
+  const [enableOpenProjectNotifications, setEnableOpenProjectNotifications] = useState<boolean>(true);
+  const [openProjectPollingIntervalSeconds, setOpenProjectPollingIntervalSeconds] = useState<number>(60);
+
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [testNotificationMessage, setTestNotificationMessage] = useState<string | null>(null);
 
@@ -27,6 +31,8 @@ export const MessagingView: React.FC = () => {
           setEnableSlackPreview(s.enableSlackPreview);
           setGmailQuery(s.gmailQuery);
           setEnableGmailLed(s.enableGmailLed);
+          setEnableOpenProjectNotifications(s.enableOpenProjectNotifications ?? true);
+          setOpenProjectPollingIntervalSeconds(s.openProjectPollingIntervalSeconds ?? 60);
         }
       }).catch(err => console.error('[MessagingView] Error fetching messaging settings:', err));
     }
@@ -40,7 +46,9 @@ export const MessagingView: React.FC = () => {
         slackWebhookUrl,
         enableSlackPreview,
         gmailQuery,
-        enableGmailLed
+        enableGmailLed,
+        enableOpenProjectNotifications,
+        openProjectPollingIntervalSeconds
       });
     }
     setSavedSuccess(true);
@@ -224,6 +232,53 @@ export const MessagingView: React.FC = () => {
                 className="rounded bg-dark-900 border-border-dark text-accent-blue focus:ring-0"
               />
               <span>Flash Red LED Matrix on matching unread email</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Card 4: OpenProject Notifications */}
+        <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-lg bg-[#00A1E0]/20 border border-[#00A1E0]/40 flex items-center justify-center font-bold text-[#00A1E0]">
+                O
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">OpenProject API Polling</h3>
+                <p className="text-xs text-text-secondary">Poll unread notifications and display banner.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleSendTestAlert('OpenProject')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-dark-900 hover:bg-dark-700 text-accent-purple border border-border-dark rounded-lg text-xs font-semibold transition-all"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Test Alert</span>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Polling Interval (Seconds)</label>
+              <input
+                type="number"
+                value={openProjectPollingIntervalSeconds}
+                onChange={e => setOpenProjectPollingIntervalSeconds(Number(e.target.value))}
+                min="10"
+                max="3600"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-xs text-white focus:outline-none focus:border-accent-blue"
+              />
+            </div>
+
+            <label className="flex items-center space-x-3 text-xs text-white cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={enableOpenProjectNotifications}
+                onChange={e => setEnableOpenProjectNotifications(e.target.checked)}
+                className="rounded bg-dark-900 border-border-dark text-accent-blue focus:ring-0"
+              />
+              <span>Enable automatic OpenProject notifications polling</span>
             </label>
           </div>
         </div>

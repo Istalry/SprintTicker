@@ -69,6 +69,7 @@ export class IPCHandlerRegistry {
     this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     this.worklogRepo = worklogRepo || new WorklogRepository();
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
+    this.messagingService = messagingService || new MessagingIntegrationService(settingsRepo, renderer);
     this.priorityEngine = priorityEngine || new PriorityPreemptionEngine(settingsRepo);
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);

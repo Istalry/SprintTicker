@@ -29,7 +29,7 @@
   "npmRebuild": true,
   "asar": true,
   "win": {
-    "icon": "build/icon.ico",
+    "icon": "build/icon.png",
     "target": [
       {
         "target": "nsis",

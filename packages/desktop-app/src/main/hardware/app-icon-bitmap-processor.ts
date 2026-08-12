@@ -38,7 +38,7 @@ export class AppIconBitmapProcessor {
     const knownIcons = [
       'checkmark', 'slack', 'discord', 'gmail', 'antigravity', 'battery',
       'windows', 'bell', 'burger', 'clock', 'wave', 'pause', 'play',
-      'resume', 'stop', 'error', 'compiling', 'playmode', 'unity'
+      'resume', 'stop', 'error', 'compiling', 'playmode', 'unity', 'openproject'
     ];
 
     if (typeof iconInput === 'string') {

@@ -4,6 +4,8 @@ import { SettingsRepository } from '../src/main/db/repositories/settings-reposit
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { MessagingSettingsDTO } from '../src/shared/dtos';
 import { WebhookServer } from '../src/main/api/webhook-server';
+import { ProviderManager } from '../src/main/providers/provider-manager';
+import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
 
 describe('MessagingIntegrationService', () => {
   let settingsRepo: SettingsRepository;
@@ -83,6 +85,11 @@ describe('MessagingIntegrationService', () => {
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'Gmail Work', 40, 'gmail');
     });
 
+    it('TestIntegration_OpenProjectChannel_DispatchesOpenProjectBanner', () => {
+      service.testIntegration('OpenProject Alerts');
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'OpenProject Alerts', 40, 'openproject');
+    });
+
     it('TestIntegration_EmptyChannel_ThrowsException', () => {
       expect(() => service.testIntegration('')).toThrow();
     });
@@ -97,6 +104,31 @@ describe('MessagingIntegrationService', () => {
     it('HandleDiscordWebhook_EnabledLed_DispatchesDiscordBanner', () => {
       service.handleDiscordWebhook({ author: 'Bob', content: 'Bug urgent fix needed' });
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Bob', 'DISCORD', 40, 'discord');
+    });
+  });
+
+  describe('OpenProject Polling', () => {
+    it('PollOpenProjectNotifications_FetchesUnreadAndDispatchesBanner', async () => {
+      const mockOpProvider = {
+        fetchUnreadNotifications: vi.fn().mockResolvedValue([
+          { id: '1', actorName: 'Charlie' },
+          { id: '2', actorName: 'Dave' }
+        ])
+      } as unknown as OpenProjectProvider;
+      
+      const mockProviderManager = {
+        getProvider: vi.fn().mockReturnValue(mockOpProvider)
+      } as unknown as ProviderManager;
+
+      vi.useFakeTimers();
+      new MessagingIntegrationService(settingsRepo, mockRenderer, undefined, mockProviderManager);
+      
+      await vi.advanceTimersByTimeAsync(2500);
+      
+      expect(mockOpProvider.fetchUnreadNotifications).toHaveBeenCalled();
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Charlie', 'OPENPROJECT', 40, 'openproject');
+      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Dave', 'OPENPROJECT', 40, 'openproject');
+      vi.useRealTimers();
     });
   });
 });
