@@ -3,10 +3,10 @@ import { Calendar, Clock, Moon, Save, Check, Play, ShieldAlert } from 'lucide-re
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
 
 export const CeremoniesView: React.FC = () => {
-  const [standupTime, setStandupTime] = useState<string>('10:00');
-  const [lunchStart, setLunchStart] = useState<string>('12:30');
-  const [lunchEnd, setLunchEnd] = useState<string>('13:30');
-  const [eodTime, setEodTime] = useState<string>('18:00');
+  const [standupTime, setStandupTime] = useState<string>('10:05');
+  const [lunchStart, setLunchStart] = useState<string>('12:18');
+  const [lunchEnd, setLunchEnd] = useState<string>('13:00');
+  const [eodTime, setEodTime] = useState<string>('17:30');
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [testStatusMessage, setTestStatusMessage] = useState<string | null>(null);

@@ -1,5 +1,9 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { LoggerInterceptor } from './diagnostics/logger-interceptor';
+
+// Initialize memory log interceptor immediately
+LoggerInterceptor.getInstance().intercept();
 import { DatabaseConnection } from './db/database-connection';
 import { TaskRepository } from './db/repositories/task-repository';
 import { WorklogRepository } from './db/repositories/worklog-repository';

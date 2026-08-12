@@ -168,6 +168,7 @@ describe('UnityTelemetryService', () => {
 
     it('HandleConsole_Exception_TriggersDisplayRendererException', () => {
       const mockRenderer = { renderException: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
+      settingsRepo.getSetting = vi.fn().mockReturnValue({ showUnityErrors: true });
       const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer);
       s.handleConsole({ type: 'exception', projectName: 'CyberGame', message: 'NullReferenceException' });
 

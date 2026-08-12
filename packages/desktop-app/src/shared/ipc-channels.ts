@@ -19,6 +19,7 @@ export enum IPCChannel {
   GET_TASKS = 'provider:get-tasks',
   CREATE_AD_HOC_TASK = 'provider:create-adhoc',
   RECONCILE_REMOTE_STATE = 'provider:reconcile',
+  FETCH_OP_STATUSES = 'provider:fetch-op-statuses',
 
   // Projects & Tasks Management
   CREATE_PROJECT = 'projects:create',
@@ -91,5 +92,8 @@ export enum IPCChannel {
   CYCLE_WIDGET = 'display:cycle-widget',
   SET_REAR_OLED_MODE = 'display:set-rear-oled-mode',
   SET_COLOR_THEME = 'display:set-color-theme',
-  TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst'
+  TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst',
+
+  // Diagnostics
+  EXPORT_DIAGNOSTIC_LOGS = 'diagnostics:export-logs'
 }

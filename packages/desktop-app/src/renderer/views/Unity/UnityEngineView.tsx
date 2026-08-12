@@ -8,7 +8,7 @@ export const UnityEngineView: React.FC = () => {
   const [buildChime, setBuildChime] = useState<string>('chime_1');
   const [enableFailureSound, setEnableFailureSound] = useState<boolean>(true);
   const [enablePlayModeDnd, setEnablePlayModeDnd] = useState<boolean>(true);
-  const [showUnityErrors, setShowUnityErrors] = useState<boolean>(true);
+  const [showUnityErrors, setShowUnityErrors] = useState<boolean>(false);
   const [errorDurationSeconds, setErrorDurationSeconds] = useState<number>(5);
   const [isSaved, setIsSaved] = useState<boolean>(false);
 

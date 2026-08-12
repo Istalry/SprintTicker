@@ -24,6 +24,12 @@ export interface TaskDTO {
   status: 'todo' | 'in_progress' | 'done';
 }
 
+export interface OpStatusDTO {
+  id: string;
+  name: string;
+  isClosed: boolean;
+}
+
 export interface ProjectDTO {
   id: string;
   name: string;

@@ -53,12 +53,12 @@ export class ContextScheduleService {
   public evaluateSchedule(): void {
     try {
       const settings = this._settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {
-        standupTime: '10:00',
+        standupTime: '10:05',
         enableStandupPrompt: true,
-        lunchStartTime: '12:30',
-        lunchEndTime: '13:30',
+        lunchStartTime: '12:18',
+        lunchEndTime: '13:00',
         enableLunchMute: true,
-        eodWrapUpTime: '18:00',
+        eodWrapUpTime: '17:30',
         promptTimeoutSeconds: 0
       });
 

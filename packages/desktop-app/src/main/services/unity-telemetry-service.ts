@@ -64,7 +64,7 @@ export class UnityTelemetryService {
       buildChime: 'chime_1',
       enableFailureSound: true,
       enablePlayModeDnd: true,
-      showUnityErrors: true,
+      showUnityErrors: false,
       errorDurationSeconds: 5,
       scanFolder: ''
     });

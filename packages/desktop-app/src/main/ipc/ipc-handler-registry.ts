@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow, dialog, shell } from 'electron';
+import * as fs from 'fs';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
@@ -15,7 +16,9 @@ import { MessagingIntegrationService } from '../services/messaging-service';
 import { WindowsNotificationListenerService } from '../services/windows-notification-listener-service';
 import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { ContextScheduleService } from '../services/context-schedule-service';
+import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId } from '../../shared/dtos';
+import { OpenProjectProvider } from '../providers/openproject-provider';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -36,6 +39,7 @@ export class IPCHandlerRegistry {
   private windowsNotificationService: WindowsNotificationListenerService;
   private priorityEngine: PriorityPreemptionEngine;
   private contextScheduleService: ContextScheduleService;
+  private diagnosticExporter: DiagnosticExporter;
   private getWindow: () => BrowserWindow | null;
 
   constructor(
@@ -69,6 +73,7 @@ export class IPCHandlerRegistry {
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer);
+    this.diagnosticExporter = new DiagnosticExporter(driver);
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -215,10 +220,10 @@ export class IPCHandlerRegistry {
     // 5. Ceremonies & Schedule IPC Handlers
     ipcMain.handle(IPCChannel.GET_SCHEDULE_SETTINGS, async () => {
       return this.settingsRepo.getSetting('schedule_settings', {
-        standupTime: '10:00',
-        lunchStart: '12:30',
-        lunchEnd: '13:30',
-        eodTime: '18:00',
+        standupTime: '10:05',
+        lunchStart: '12:18',
+        lunchEnd: '13:00',
+        eodTime: '17:30',
         autoDismissSeconds: 0
       });
     });
@@ -308,12 +313,12 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.GET_PROVIDERS, async () => {
       const activeId = this.settingsRepo.getSetting('active_provider_id', 'openproject');
       const fallbackKey = this.settingsRepo.getSetting('fallback_ticket_key', 'MISC-1');
-      const opDomain = this.settingsRepo.getSetting('op_domain', '');
+      const opDomain = this.settingsRepo.getSetting('op_domain', 'http://192.168.0.139:8090/');
       const opApiKey = this.settingsRepo.getSetting('op_api_key', '');
-      const opStatusInProgress = this.settingsRepo.getSetting('op_status_in_progress', '');
-      const opStatusToTest = this.settingsRepo.getSetting('op_status_to_test', '');
-      const opStatusToReview = this.settingsRepo.getSetting('op_status_to_review', '');
-      const opCompletionAction = this.settingsRepo.getSetting('op_completion_action', 'to_test');
+      const opStatusInProgress = this.settingsRepo.getSetting('op_status_in_progress', 'In progress');
+      const opStatusToTest = this.settingsRepo.getSetting('op_status_to_test', 'In testing');
+      const opStatusToReview = this.settingsRepo.getSetting('op_status_to_review', 'Developed');
+      const opCompletionAction = this.settingsRepo.getSetting('op_completion_action', 'to_review');
 
       return {
         activeProviderId: activeId,
@@ -357,6 +362,10 @@ export class IPCHandlerRegistry {
         }
       }
       return true;
+    });
+
+    ipcMain.handle(IPCChannel.FETCH_OP_STATUSES, async (_event, payload: { domain: string, apiKey: string }) => {
+      return OpenProjectProvider.fetchStatuses(payload.domain, payload.apiKey);
     });
 
     // 8. Unity Injector & Gitignore IPC Handlers
@@ -481,6 +490,32 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.TRIGGER_CONFETTI_BURST, async () => {
       this.renderer.renderTaskCompletionConfetti();
       return true;
+    });
+
+    // 10. Diagnostics Handlers
+    ipcMain.handle(IPCChannel.EXPORT_DIAGNOSTIC_LOGS, async () => {
+      try {
+        const bundle = await this.diagnosticExporter.generateDiagnosticBundle();
+        const jsonStr = JSON.stringify(bundle, null, 2);
+        const win = this.getWindow();
+        if (!win) return false;
+
+        const { canceled, filePath } = await dialog.showSaveDialog(win, {
+          title: 'Export Diagnostic Logs',
+          defaultPath: `busybar-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
+          filters: [{ name: 'JSON', extensions: ['json'] }]
+        });
+
+        if (canceled || !filePath) {
+          return false;
+        }
+
+        fs.writeFileSync(filePath, jsonStr, 'utf-8');
+        return true;
+      } catch (err) {
+        console.error('Failed to export diagnostic logs:', err);
+        return false;
+      }
     });
 
     // 13. Wire Bi-directional State Broadcasts

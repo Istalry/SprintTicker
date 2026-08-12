@@ -1,5 +1,5 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
-import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { ProjectDTO, TaskDTO, OpStatusDTO } from '../../shared/dtos';
 
 /**
  * Concrete task provider adapter for OpenProject API v3.
@@ -30,12 +30,20 @@ export class OpenProjectProvider implements ITaskProvider {
     return true;
   }
 
+  public static sanitizeDomain(domain: string): string {
+    let clean = domain.trim().replace(/\/api\/v3\/?$/, '').replace(/\/$/, '');
+    if (clean && !clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'http://' + clean;
+    }
+    return clean;
+  }
+
   private getAuthHeader(): string {
-    return `Basic ${Buffer.from(`apikey:${this._apiKey}`).toString('base64')}`;
+    return `Basic ${Buffer.from(`apikey:${this._apiKey.trim()}`).toString('base64')}`;
   }
 
   private getBaseUrl(): string {
-    return this._domain.replace(/\/$/, '');
+    return OpenProjectProvider.sanitizeDomain(this._domain);
   }
 
   /// <summary>
@@ -91,7 +99,8 @@ export class OpenProjectProvider implements ITaskProvider {
     if (!this._domain || !this._apiKey) return [];
 
     try {
-      const filter = `[{"project":{"operator":"=","values":["${projectId}"]}}]`;
+      // Filter: Project ID, Assignee = me
+      const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}}]`;
       const url = `${this.getBaseUrl()}/api/v3/work_packages?filters=${encodeURIComponent(filter)}`;
       const res = await fetch(url, {
         headers: {
@@ -107,6 +116,8 @@ export class OpenProjectProvider implements ITaskProvider {
         return elements.map(t => {
           const links = (t._links || {}) as Record<string, { href?: string }>;
           const opStatusId = links.status?.href?.split('/').pop();
+          const typeName = (links.type?.title as string) || '';
+          
           let localStatus: 'todo' | 'in_progress' | 'done' = 'todo';
           
           if (opStatusId === this._statusIdInProgress) {
@@ -121,9 +132,10 @@ export class OpenProjectProvider implements ITaskProvider {
             projectId,
             key: `OP-${rawId}`,
             title: (t.subject as string) || 'Untitled Work Package',
-            status: localStatus
+            status: localStatus,
+            _opType: typeName // Temporary prop for filtering
           };
-        });
+        }).filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone');
       }
     } catch (err) {
       console.error('[OpenProjectProvider] Failed to fetch tasks:', err);
@@ -132,9 +144,48 @@ export class OpenProjectProvider implements ITaskProvider {
   }
 
   /// <summary>
-  /// Reconciles remote time tracking metrics.
+  /// Reconciles remote time tracking metrics (total time logged today by the user).
   /// </summary>
   public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }> {
+    if (!this._domain || !this._apiKey) return { remoteLoggedTimeToday: 0 };
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const filter = `[{"spentOn":{"operator":"=","values":["${today}"]}},{"user":{"operator":"=","values":["me"]}}]`;
+      const url = `${this.getBaseUrl()}/api/v3/time_entries?filters=${encodeURIComponent(filter)}`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': this.getAuthHeader(),
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (res.ok) {
+        const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
+        const elements = json?._embedded?.elements;
+        if (Array.isArray(elements)) {
+          let totalSeconds = 0;
+          for (const entry of elements) {
+            const isoDuration = entry.hours as string;
+            // Parse PTnHnMnS
+            if (isoDuration && isoDuration.startsWith('PT')) {
+              let h = 0, m = 0, s = 0;
+              const hMatch = isoDuration.match(/(\d+)H/);
+              if (hMatch) h = parseInt(hMatch[1], 10);
+              const mMatch = isoDuration.match(/(\d+)M/);
+              if (mMatch) m = parseInt(mMatch[1], 10);
+              const sMatch = isoDuration.match(/(\d+)S/);
+              if (sMatch) s = parseInt(sMatch[1], 10);
+              totalSeconds += h * 3600 + m * 60 + s;
+            }
+          }
+          return { remoteLoggedTimeToday: totalSeconds };
+        }
+      }
+    } catch (err) {
+      console.error('[OpenProjectProvider] Failed to reconcile remote state:', err);
+    }
     return { remoteLoggedTimeToday: 0 };
   }
 
@@ -241,6 +292,52 @@ export class OpenProjectProvider implements ITaskProvider {
     } catch (err) {
       console.error('[OpenProjectProvider] Failed to update task status:', err);
       return false;
+    }
+  }
+
+  /// <summary>
+  /// Fetches available statuses statically from the given OpenProject domain using the provided API key.
+  /// </summary>
+  public static async fetchStatuses(domain: string, apiKey: string): Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }> {
+    if (!domain || !apiKey) return { success: false, error: 'Domain or API key is missing.' };
+    
+    try {
+      const baseUrl = OpenProjectProvider.sanitizeDomain(domain);
+      const authHeader = `Basic ${Buffer.from(`apikey:${apiKey.trim()}`).toString('base64')}`;
+      const url = `${baseUrl}/api/v3/statuses`;
+      
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': authHeader,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!res.ok) {
+        let errorText = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json() as { message?: string };
+          if (errJson.message) errorText += ` - ${errJson.message}`;
+        } catch { /* Ignore json parse error */ }
+        return { success: false, error: errorText };
+      }
+      
+      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
+      const elements = json?._embedded?.elements;
+      
+      if (Array.isArray(elements)) {
+        const statuses = elements.map(s => ({
+          id: (s.id as number | string).toString(),
+          name: (s.name as string) || 'Unknown',
+          isClosed: !!s.isClosed
+        }));
+        return { success: true, data: statuses };
+      } else {
+        return { success: false, error: 'Unexpected response format from OpenProject.' };
+      }
+    } catch (err) {
+      console.error('[OpenProjectProvider] Failed to fetch statuses statically:', err);
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown network error' };
     }
   }
 }

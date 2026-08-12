@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard } from 'lucide-react';
+import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 
@@ -31,17 +31,30 @@ export const DeviceDiagnosticsView: React.FC = () => {
           <p className="text-xs text-text-secondary">Inspect hardware connection topology, real-time WebSocket latency, battery health, and display properties.</p>
         </div>
 
-        <button
-          onClick={() => {
-            if (window.electronAPI?.getDeviceStatus) {
-              window.electronAPI.getDeviceStatus();
-            }
-          }}
-          className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-white font-mono text-xs rounded-lg border border-border-dark transition-all"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh Status</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={async () => {
+              if (window.electronAPI?.exportDiagnosticLogs) {
+                await window.electronAPI.exportDiagnosticLogs();
+              }
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-accent-blue font-mono text-xs rounded-lg border border-border-dark transition-all"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Logs</span>
+          </button>
+          <button
+            onClick={() => {
+              if (window.electronAPI?.getDeviceStatus) {
+                window.electronAPI.getDeviceStatus();
+              }
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-white font-mono text-xs rounded-lg border border-border-dark transition-all"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Refresh Status</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid Status Cards */}

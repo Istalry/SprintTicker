@@ -162,10 +162,12 @@ export class TimeTrackingEngine extends EventEmitter {
     } else if (taskId) {
       // Transition task from 'todo' to 'in_progress' when session starts
       const existingTask = this._taskRepo.getTaskById(taskId);
-      if (existingTask && existingTask.status === 'todo') {
-        this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+      if (existingTask) {
+        if (existingTask.status !== 'in_progress') {
+          this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+        }
         
-        // Push status to remote provider asynchronously
+        // Always attempt to push status to remote provider asynchronously to ensure consistency
         this._providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
           console.warn(`[TimeTrackingEngine] Failed to remote update task status:`, err);
         });

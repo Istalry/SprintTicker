@@ -73,9 +73,9 @@ export class WindowsNotificationListenerService {
         notificationTimeoutSeconds: 10,
         pollingIntervalSeconds: WindowsNotificationListenerService.DEFAULT_POLLING_INTERVAL_SECONDS,
         sourceRules: [
-          { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'HIGH_PRIORITY' },
-          { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT' },
-          { appId: 'antigravity', appName: 'Antigravity', iconId: 'antigravity', priorityMode: 'HIGH_PRIORITY' },
+          { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' },
+          { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY' },
+          { appId: 'antigravity', appName: 'Antigravity', iconId: 'antigravity', priorityMode: 'DEFAULT' },
           { appId: 'gmail', appName: 'Gmail / Outlook', iconId: 'gmail', priorityMode: 'DEFAULT' },
           { appId: 'battery', appName: 'System Battery', iconId: 'battery', priorityMode: 'HIGH_PRIORITY' },
           { appId: 'windows', appName: 'Windows System', iconId: 'windows', priorityMode: 'DEFAULT' }

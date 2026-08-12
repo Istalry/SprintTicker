@@ -52,76 +52,76 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
 
   private static readonly DEFAULT_RULES: PriorityRule[] = [
     {
-      id: 'unity_exception',
-      eventName: 'unityBuildFailurePriority',
+      id: 'away_mode',
+      eventName: 'awayModePriority',
       priority: 100,
       actionOnWork: 'DISPLAY',
-      actionOnLunch: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
       actionOnAway: 'DISPLAY'
     },
     {
-      id: 'high_notification',
-      eventName: 'highNotificationPriority',
+      id: 'lunch_mode',
+      eventName: 'lunchModePriority',
       priority: 95,
       actionOnWork: 'DISPLAY',
       actionOnLunch: 'DISPLAY',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'unity_playmode',
-      eventName: 'unityPlayModePriority',
-      priority: 90,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'unity_compiling',
-      eventName: 'unityCompilingPriority',
-      priority: 80,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
       actionOnAway: 'SUPPRESS'
     },
     {
-      id: 'away_mode',
-      eventName: 'awayModePriority',
+      id: 'standup_prompt',
+      eventName: 'standupPromptPriority',
       priority: 75,
       actionOnWork: 'DISPLAY',
       actionOnLunch: 'SUPPRESS',
       actionOnAway: 'DISPLAY'
     },
     {
-      id: 'standup_prompt',
-      eventName: 'standupPromptPriority',
+      id: 'high_notification',
+      eventName: 'highNotificationPriority',
       priority: 70,
       actionOnWork: 'DISPLAY',
-      actionOnLunch: 'QUEUE',
-      actionOnAway: 'QUEUE'
-    },
-    {
-      id: 'lunch_mode',
-      eventName: 'lunchModePriority',
-      priority: 65,
-      actionOnWork: 'DISPLAY',
       actionOnLunch: 'DISPLAY',
-      actionOnAway: 'SUPPRESS'
+      actionOnAway: 'DISPLAY'
     },
     {
       id: 'messaging_alert',
       eventName: 'messagingPriority',
-      priority: 40,
+      priority: 65,
       actionOnWork: 'DISPLAY',
       actionOnLunch: 'SUPPRESS',
       actionOnAway: 'SUPPRESS'
     },
     {
+      id: 'unity_exception',
+      eventName: 'unityBuildFailurePriority',
+      priority: 60,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
+      actionOnAway: 'SUPPRESS'
+    },
+    {
+      id: 'unity_compiling',
+      eventName: 'unityCompilingPriority',
+      priority: 55,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
+      actionOnAway: 'SUPPRESS'
+    },
+    {
+      id: 'unity_playmode',
+      eventName: 'unityPlayModePriority',
+      priority: 50,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
+      actionOnAway: 'DISPLAY'
+    },
+    {
       id: 'active_tracker',
       eventName: 'activeTrackerPriority',
-      priority: 20,
+      priority: 45,
       actionOnWork: 'DISPLAY',
-      actionOnLunch: 'DISPLAY',
-      actionOnAway: 'DISPLAY'
+      actionOnLunch: 'QUEUE',
+      actionOnAway: 'QUEUE'
     }
   ];
 

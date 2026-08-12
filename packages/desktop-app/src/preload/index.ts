@@ -19,7 +19,8 @@ import {
   NotificationLogEntryDTO,
   NotificationListenerStatusDTO,
   BitmapIconId,
-  HardwareDisplayStateDTO
+  HardwareDisplayStateDTO,
+  OpStatusDTO
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -47,6 +48,7 @@ export interface IElectronAPI {
   // Providers, Projects & Tasks
   getProviders: () => Promise<{ activeProviderId: string; fallbackTicketKey: string; jiraDomain: string; providers: Array<{ id: string; name: string }> }>;
   setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) => Promise<boolean>;
+  fetchOpenProjectStatuses: (domain: string, apiKey: string) => Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }>;
   getProjects: () => Promise<ProjectDTO[]>;
   createProject: (payload: { id: string; key: string; name: string; providerId?: string }) => Promise<boolean>;
   renameProject: (payload: { id: string; name: string; key: string }) => Promise<boolean>;
@@ -116,6 +118,9 @@ export interface IElectronAPI {
   // Database Management
   wipeAllData: () => Promise<boolean>;
 
+  // Diagnostics
+  exportDiagnosticLogs: () => Promise<boolean>;
+
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;
 }
@@ -147,6 +152,8 @@ const electronAPI: IElectronAPI = {
   getProviders: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDERS),
   setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) =>
     ipcRenderer.invoke(IPCChannel.SET_ACTIVE_PROVIDER, payload),
+  fetchOpenProjectStatuses: (domain: string, apiKey: string) =>
+    ipcRenderer.invoke(IPCChannel.FETCH_OP_STATUSES, { domain, apiKey }),
   getProjects: () => ipcRenderer.invoke(IPCChannel.GET_PROJECTS),
   createProject: (payload: { id: string; key: string; name: string; providerId?: string }) =>
     ipcRenderer.invoke(IPCChannel.CREATE_PROJECT, payload),
@@ -252,6 +259,9 @@ const electronAPI: IElectronAPI = {
   setRearOledMode: (mode: string) => ipcRenderer.invoke(IPCChannel.SET_REAR_OLED_MODE, mode),
   setColorTheme: (theme: string) => ipcRenderer.invoke(IPCChannel.SET_COLOR_THEME, theme),
   triggerConfettiBurst: () => ipcRenderer.invoke(IPCChannel.TRIGGER_CONFETTI_BURST),
+
+  // Diagnostics
+  exportDiagnosticLogs: () => ipcRenderer.invoke(IPCChannel.EXPORT_DIAGNOSTIC_LOGS),
 
   // Unity Plugin Injector & Gitignore
   unityInjector: {

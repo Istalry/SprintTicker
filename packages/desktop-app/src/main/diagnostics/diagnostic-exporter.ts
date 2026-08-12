@@ -1,5 +1,6 @@
 import { DatabaseConnection } from '../db/database-connection';
 import { BusyBarDriver } from '../hardware/busybar-driver';
+import { LoggerInterceptor } from './logger-interceptor';
 
 export interface DiagnosticBundle {
   timestampUtc: string;
@@ -9,6 +10,7 @@ export interface DiagnosticBundle {
   databaseIntegrity: 'OK' | 'CORRUPTED';
   hardwareStatus: Record<string, unknown>;
   webhookServerStatus: { listening: boolean; port: number };
+  applicationLogs: string[];
 }
 
 /**
@@ -46,7 +48,8 @@ export class DiagnosticExporter {
       webhookServerStatus: {
         listening: true,
         port: 39123
-      }
+      },
+      applicationLogs: LoggerInterceptor.getInstance().getLogs()
     };
   }
 }

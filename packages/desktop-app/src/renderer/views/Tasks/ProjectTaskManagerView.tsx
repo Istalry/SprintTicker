@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { FolderPlus, Plus, Trash2, Edit3, Upload, FileText, CheckCircle, AlertCircle, X, CheckCircle2, Clock } from 'lucide-react';
-import { ProjectDTO, TaskDTO } from '../../../shared/dtos';
+import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
 import { triggerDesktopConfetti } from '../../utils/confetti-fx';
+import { FinishSessionModal } from '../../components/FinishSessionModal';
 
 export const ProjectTaskManagerView: React.FC = () => {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [tasks, setTasks] = useState<TaskDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeSession, setActiveSession] = useState<ActiveSessionDTO | null>(null);
 
   // Modals
+  const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
   const [isAddProjOpen, setIsAddProjOpen] = useState<boolean>(false);
   const [newProjKey, setNewProjKey] = useState<string>('');
   const [newProjName, setNewProjName] = useState<string>('');
@@ -50,6 +53,13 @@ export const ProjectTaskManagerView: React.FC = () => {
 
   useEffect(() => {
     fetchProjects();
+    
+    if (window.electronAPI?.getCurrentSession) {
+      window.electronAPI.getCurrentSession().then(setActiveSession);
+    }
+    if (window.electronAPI?.onSessionUpdated) {
+      return window.electronAPI.onSessionUpdated(setActiveSession);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -140,23 +150,6 @@ export const ProjectTaskManagerView: React.FC = () => {
     }
   };
 
-  // Handle Task Status Update with confetti burst on done
-  const handleSetTaskStatus = async (task: TaskDTO, newStatus: 'todo' | 'in_progress' | 'done') => {
-    if (!window.electronAPI?.updateTask) return;
-
-    await window.electronAPI.updateTask({ ...task, status: newStatus });
-
-    if (newStatus === 'done') {
-      triggerDesktopConfetti();
-      if (window.electronAPI?.triggerConfettiBurst) {
-        window.electronAPI.triggerConfettiBurst().catch(err =>
-          console.warn('[TaskDone] Hardware confetti burst warning:', err)
-        );
-      }
-    }
-
-    await fetchTasks(selectedProjectId);
-  };
 
   // Handle CSV / JSON Task Import
   const handleImportTasks = async () => {
@@ -331,43 +324,39 @@ export const ProjectTaskManagerView: React.FC = () => {
 
                   <div className="flex items-center space-x-2">
                     {/* Status cycle buttons */}
-                    <div className="flex items-center space-x-1 bg-dark-700/60 border border-border-dark rounded-lg p-1">
-                      <button
-                        title="Mark To Do"
-                        onClick={() => handleSetTaskStatus(task, 'todo')}
-                        className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
-                          task.status === 'todo'
-                            ? 'bg-dark-600 border border-border-dark text-text-primary'
-                            : 'text-text-secondary hover:text-text-primary'
-                        }`}
-                      >
-                        <AlertCircle className="w-3 h-3" />
-                        <span>To Do</span>
-                      </button>
-                      <button
-                        title="Mark In Progress"
-                        onClick={() => handleSetTaskStatus(task, 'in_progress')}
-                        className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
-                          task.status === 'in_progress'
-                            ? 'bg-accent-blue/20 border border-accent-blue/40 text-accent-blue'
-                            : 'text-text-secondary hover:text-accent-blue'
-                        }`}
-                      >
-                        <Clock className="w-3 h-3" />
-                        <span>In Progress</span>
-                      </button>
-                      <button
-                        title="Mark as Done 🎉"
-                        onClick={() => handleSetTaskStatus(task, 'done')}
-                        className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
-                          task.status === 'done'
-                            ? 'bg-accent-green/20 border border-accent-green/40 text-accent-green'
-                            : 'text-text-secondary hover:text-accent-green'
-                        }`}
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Done</span>
-                      </button>
+                    <div className="flex items-center space-x-1">
+                      {/* Status Label */}
+                      <div className="px-3 py-1 bg-dark-700/60 border border-border-dark rounded-lg text-[10px] font-bold text-text-secondary mr-2 flex items-center space-x-1 uppercase tracking-wider">
+                        {task.status === 'todo' && <><AlertCircle className="w-3.5 h-3.5 text-text-primary"/><span className="text-text-primary">To Do</span></>}
+                        {task.status === 'in_progress' && <><Clock className="w-3.5 h-3.5 text-accent-blue"/><span className="text-accent-blue">In Progress</span></>}
+                        {task.status === 'done' && <><CheckCircle2 className="w-3.5 h-3.5 text-accent-green"/><span className="text-accent-green">Done</span></>}
+                      </div>
+
+                      {activeSession?.taskId === task.id ? (
+                        <button
+                          title="Stop Timer"
+                          onClick={() => setIsFinishModalOpen(true)}
+                          className="px-3 py-1 bg-accent-red/20 text-accent-red border border-accent-red/40 hover:bg-accent-red/30 font-bold text-xs rounded transition-colors"
+                        >
+                          Stop
+                        </button>
+                      ) : (
+                        <button
+                          title="Start working on this task"
+                          onClick={async () => {
+                            if (!window.electronAPI) return;
+                            if (activeSession) {
+                              // If there is already an active session, stop it without finishing the task
+                              await window.electronAPI.completeSession(undefined, false);
+                            }
+                            await window.electronAPI.startTask(task.id, false);
+                            await fetchTasks(selectedProjectId);
+                          }}
+                          className="px-3 py-1 bg-accent-blue/10 text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/20 font-bold text-xs rounded transition-colors"
+                        >
+                          Switch
+                        </button>
+                      )}
                     </div>
 
                     <button
@@ -591,6 +580,27 @@ export const ProjectTaskManagerView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Finish Session Modal */}
+      <FinishSessionModal 
+        isOpen={isFinishModalOpen} 
+        session={activeSession} 
+        onClose={() => setIsFinishModalOpen(false)} 
+        onFinishOption={async (markDone) => {
+          setIsFinishModalOpen(false);
+          if (!window.electronAPI) return;
+          await window.electronAPI.completeSession(undefined, markDone);
+          if (markDone) {
+            triggerDesktopConfetti();
+            if (window.electronAPI.triggerConfettiBurst) {
+              window.electronAPI.triggerConfettiBurst().catch(err => 
+                console.warn('[Confetti] Hardware trigger warning:', err)
+              );
+            }
+          }
+          await fetchTasks(selectedProjectId);
+        }} 
+      />
     </div>
   );
 };

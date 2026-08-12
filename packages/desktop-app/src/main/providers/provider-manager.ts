@@ -40,12 +40,12 @@ export class ProviderManager {
     const opProvider = this._providers.get('openproject');
     if (opProvider) {
       opProvider.initialize({
-        domain: this._settingsRepo.getSetting('op_domain', ''),
+        domain: this._settingsRepo.getSetting('op_domain', 'http://192.168.0.139:8090/'),
         apiToken: this._settingsRepo.getSetting('op_api_key', ''),
-        opStatusInProgress: this._settingsRepo.getSetting('op_status_in_progress', ''),
-        opStatusToTest: this._settingsRepo.getSetting('op_status_to_test', ''),
-        opStatusToReview: this._settingsRepo.getSetting('op_status_to_review', ''),
-        opCompletionAction: this._settingsRepo.getSetting('op_completion_action', 'to_test')
+        opStatusInProgress: this._settingsRepo.getSetting('op_status_in_progress', 'In progress'),
+        opStatusToTest: this._settingsRepo.getSetting('op_status_to_test', 'In testing'),
+        opStatusToReview: this._settingsRepo.getSetting('op_status_to_review', 'Developed'),
+        opCompletionAction: this._settingsRepo.getSetting('op_completion_action', 'to_review')
       });
     }
 
