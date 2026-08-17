@@ -9,8 +9,12 @@ export const DeviceDiagnosticsView: React.FC = () => {
   const [wiping, setWiping] = useState<boolean>(false);
   const [activeTestLog, setActiveTestLog] = useState<string | null>(null);
   const [hardwareLogs, setHardwareLogs] = useState<{ time: string; key: string; action: string }[]>([]);
+  const [deviceConfig, setDeviceConfig] = useState<{ showIdleClockFallback: boolean }>({ showIdleClockFallback: true });
 
   useEffect(() => {
+    if (window.electronAPI?.getDeviceConfig) {
+      window.electronAPI.getDeviceConfig().then(config => setDeviceConfig(config));
+    }
     if (window.electronAPI?.onHardwareInputEvent) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
         const timeStr = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
@@ -157,6 +161,28 @@ export const DeviceDiagnosticsView: React.FC = () => {
               <option value="retro_arcade">Retro Arcade (#F59E0B)</option>
               <option value="nordic_cyan">Nordic Cyan (#06B6D4)</option>
             </select>
+          </div>
+
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary flex flex-col">
+              <span>Enable Idle Hardware Clock Fallback</span>
+              <span className="text-[10px] text-dark-400">Clears app display when idle to show device native clock. LED will turn off.</span>
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer"
+                checked={deviceConfig.showIdleClockFallback}
+                onChange={(e) => {
+                  const newConfig = { ...deviceConfig, showIdleClockFallback: e.target.checked };
+                  setDeviceConfig(newConfig);
+                  if (window.electronAPI?.setDeviceConfig) {
+                    window.electronAPI.setDeviceConfig(newConfig);
+                  }
+                }}
+              />
+              <div className="w-9 h-5 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-blue"></div>
+            </label>
           </div>
         </div>
       </div>

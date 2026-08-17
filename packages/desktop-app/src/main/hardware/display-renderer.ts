@@ -45,6 +45,7 @@ export class DisplayRenderer {
   private lastSessionCache: ActiveSessionDTO | null = null;
   private animationPlayer: AnimationPlayer;
   private frameBufferToggle: boolean = false;
+  private showIdleClockFallback: boolean = false;
 
   /** The software 72×16 pixel canvas that is encoded and uploaded each frame. */
   private canvas: PixelCanvas = new PixelCanvas(72, 16);
@@ -139,6 +140,13 @@ export class DisplayRenderer {
   /// </summary>
   public setActiveWidgetId(widgetId: string): void {
     this.activeWidgetId = widgetId;
+  }
+
+  /// <summary>
+  /// Sets whether the hardware display should fallback to its native clock when idle.
+  /// </summary>
+  public setShowIdleClockFallback(enabled: boolean): void {
+    this.showIdleClockFallback = enabled;
   }
 
   private pausedSelection: 'STOP' | 'FINISH' = 'FINISH';
@@ -519,6 +527,40 @@ export class DisplayRenderer {
         backElements: this.lastState.backElements as unknown as Array<Record<string, unknown>>,
         ledColorHex: this.lastState.ledColorHex
       };
+    }
+
+    if (!session && this.showIdleClockFallback) {
+      this._driver.clearDisplay(APP_NAME);
+      
+      const payload: DisplayPayload = {
+        frontElements: [],
+        backElements: [],
+        ledColorHex: '#00000000'
+      };
+
+      this.lastState = {
+        frontElements: [],
+        backElements: [],
+        ledColorHex: '#00000000',
+        ledMode: 'SOLID',
+        colorTheme: this.colorTheme,
+        rearOledMode: this.rearOledMode,
+        activeWidgetId: this.activeWidgetId
+      };
+
+      for (const callback of this.stateChangeCallbacks) {
+        callback(this.lastState);
+      }
+
+      // We explicitly clear display and turn off the LED, and do not transmit a frame
+      this._driver.sendDisplayPayload({
+        application_name: APP_NAME,
+        priority: 95,
+        elements: [],
+        led_notification_color: '#00000000'
+      });
+
+      return payload;
     }
 
     const colors = this.getThemeColors();

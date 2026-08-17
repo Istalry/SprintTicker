@@ -41,6 +41,7 @@ BUSY_Bar/
 - **Rear OLED Screen (160×80):** Renders secondary status, timer counts, and detailed session telemetry.
 - **Built-In Display Emulator:** Integrated canvas display emulator in both the desktop app dashboard and browser workspace for real-time visual testing without requiring physical hardware.
 - **Mock Hardware Mode:** Run the desktop application with `--mock-hardware` or set `MOCK_HARDWARE=true` to emulate TCP/UDP hardware socket communication.
+- **Idle Clock Fallback:** Toggleable setting to clear the display buffer and turn off LEDs when no active task is running, allowing the hardware device to fall back to its native clock applications.
 
 ### 🎛️ Physical Input Decoder & Remote Control
 - **Rotary Encoder Wheel:** Decodes physical hardware inputs into application actions (rotary turns, short clicks, double clicks, long presses, button 1/2).

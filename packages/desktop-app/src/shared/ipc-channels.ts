@@ -47,6 +47,7 @@ export enum IPCChannel {
 
   // Device Management & SDK
   GET_DEVICE_STATUS = 'device:get-status',
+  GET_DEVICE_CONFIG = 'device:get-config',
   SET_DEVICE_CONFIG = 'device:set-config',
   ON_DEVICE_STATUS_CHANGED = 'device:on-status-changed',
 

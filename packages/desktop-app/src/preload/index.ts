@@ -20,7 +20,8 @@ import {
   NotificationListenerStatusDTO,
   BitmapIconId,
   HardwareDisplayStateDTO,
-  OpStatusDTO
+  OpStatusDTO,
+  DeviceConfigDTO
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -81,6 +82,8 @@ export interface IElectronAPI {
 
   // Device Management
   getDeviceStatus: () => Promise<DeviceStatusDTO>;
+  getDeviceConfig: () => Promise<DeviceConfigDTO>;
+  setDeviceConfig: (config: DeviceConfigDTO) => Promise<boolean>;
   onDeviceStatusChanged: (callback: (status: DeviceStatusDTO) => void) => () => void;
 
   // Schedule & Ceremonies
@@ -199,6 +202,8 @@ const electronAPI: IElectronAPI = {
 
   // Device Management
   getDeviceStatus: () => ipcRenderer.invoke(IPCChannel.GET_DEVICE_STATUS),
+  getDeviceConfig: () => ipcRenderer.invoke(IPCChannel.GET_DEVICE_CONFIG),
+  setDeviceConfig: (config: DeviceConfigDTO) => ipcRenderer.invoke(IPCChannel.SET_DEVICE_CONFIG, config),
   onDeviceStatusChanged: (callback: (status: DeviceStatusDTO) => void) => {
     const handler = (_event: IpcRendererEvent, status: DeviceStatusDTO) => callback(status);
     ipcRenderer.on(IPCChannel.ON_DEVICE_STATUS_CHANGED, handler);

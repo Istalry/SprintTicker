@@ -17,7 +17,7 @@ import { WindowsNotificationListenerService } from '../services/windows-notifica
 import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO } from '../../shared/dtos';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 
 /**
@@ -216,6 +216,21 @@ export class IPCHandlerRegistry {
     // 4. Device Status & Config IPC Handlers
     ipcMain.handle(IPCChannel.GET_DEVICE_STATUS, async () => {
       return this.driver.getDeviceStatus();
+    });
+
+    ipcMain.handle(IPCChannel.GET_DEVICE_CONFIG, async () => {
+      return this.settingsRepo.getSetting<DeviceConfigDTO>('device_config', {
+        showIdleClockFallback: true
+      });
+    });
+
+    ipcMain.handle(IPCChannel.SET_DEVICE_CONFIG, async (_event, config: DeviceConfigDTO) => {
+      this.settingsRepo.setSetting('device_config', config);
+      this.renderer.setShowIdleClockFallback(config.showIdleClockFallback);
+      // Re-evaluate display state if needed
+      const activeSession = this.engine.getCurrentSession();
+      this.renderer.renderActiveSession(activeSession);
+      return true;
     });
 
     // 5. Ceremonies & Schedule IPC Handlers

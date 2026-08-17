@@ -100,6 +100,8 @@ app.whenReady().then(async () => {
   await driver.connect();
 
   renderer = new DisplayRenderer(driver);
+  const deviceConfig = settingsRepo.getSetting<{ showIdleClockFallback: boolean }>('device_config', { showIdleClockFallback: true });
+  renderer.setShowIdleClockFallback(deviceConfig.showIdleClockFallback);
   inputDecoder = new InputDecoder(driver, engine, settingsRepo);
 
   // 4. Initialize Local Fastify Webhook Server

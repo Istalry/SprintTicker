@@ -56,6 +56,10 @@ export interface HardwareBindingConfig {
   backButtonLongPress: string;
 }
 
+export interface DeviceConfigDTO {
+  showIdleClockFallback: boolean;
+}
+
 export interface DeviceStatusDTO {
   connected: boolean;
   ipAddress: string;
