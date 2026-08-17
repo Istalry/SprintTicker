@@ -178,6 +178,7 @@ export class BusyBarDriver extends EventEmitter {
   private pendingFrameArgs: Parameters<BusyBarDriver['sendPixelFrame']> | null = null;
   private framesSent: number = 0;
   private framesFailed: number = 0;
+  private displayVersion: number = 0;
 
   constructor(ipAddressOrOptions: string | BusyBarDriverOptions = DEFAULT_USB_IP, forceMock: boolean = false) {
     super();
@@ -578,6 +579,9 @@ export class BusyBarDriver extends EventEmitter {
    * Clears display elements for application: DELETE /api/display/draw?application_name={app}
    */
   public async clearDisplay(applicationName: string = 'busybar_desktop'): Promise<boolean> {
+    this.displayVersion++;
+    this.pendingFrameArgs = null;
+
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK CLEAR] app=${applicationName}`);
       return true;
@@ -619,9 +623,18 @@ export class BusyBarDriver extends EventEmitter {
       return false; // Skip this hardware transmission to avoid queue flooding
     }
 
+    const currentVersion = this.displayVersion;
     this.frameInFlight = true;
     try {
       const uploadOk = await this.uploadAsset(applicationName, cleanFilename, pngBuffer);
+      
+      // If a clearDisplay or sendDisplayPayload was called during the asset upload, abort the draw
+      if (this.displayVersion !== currentVersion) {
+        this.frameInFlight = false;
+        this.checkPendingFrame();
+        return false;
+      }
+
       if (!uploadOk) {
         console.warn(`[BusyBarDriver] PNG asset upload failed for ${cleanFilename}, skipping draw.`);
         this.framesFailed++;
@@ -685,6 +698,9 @@ export class BusyBarDriver extends EventEmitter {
    * Posts draw payload to POST /api/display/draw.
    */
   public async sendDisplayPayload(payload: Record<string, unknown>): Promise<boolean> {
+    this.displayVersion++;
+    this.pendingFrameArgs = null;
+    
     const formattedPayload = this.formatHardwarePayload(payload);
 
     if (this.isMockMode) {
