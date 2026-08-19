@@ -3,6 +3,15 @@ import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import fs from 'fs';
 
+vi.mock('electron', () => ({
+  app: { isPackaged: false },
+  powerSaveBlocker: {
+    start: vi.fn().mockReturnValue(123),
+    stop: vi.fn(),
+    isStarted: vi.fn().mockReturnValue(true)
+  }
+}));
+
 vi.mock('fs');
 vi.mock('path', async () => {
   const actual = await vi.importActual('path') as Record<string, unknown>;

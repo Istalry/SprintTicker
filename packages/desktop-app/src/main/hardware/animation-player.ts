@@ -1,4 +1,4 @@
-import { app } from 'electron';
+import { app, powerSaveBlocker } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { BusyBarDriver } from './busybar-driver';
@@ -25,6 +25,7 @@ export class AnimationPlayer {
   private getLedColorCallback?: () => string | undefined;
   private onFrameCallback?: (frameBuffer: Buffer, frameIndex: number) => void;
   private loop: boolean = true;
+  private _powerSaveBlockerId: number | null = null;
 
   constructor(driver: BusyBarDriver, animationsDir?: string) {
     this.driver = driver;
@@ -149,6 +150,11 @@ export class AnimationPlayer {
     this.isPlaying = true;
     this.frameIndex = 0;
 
+    if (this._powerSaveBlockerId === null) {
+      this._powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension');
+      console.log(`[AnimationPlayer] Started power save blocker (ID: ${this._powerSaveBlockerId}) to prevent app suspension during animation.`);
+    }
+
     const frameIntervalMs = Math.floor(1000 / animData.fps);
 
     // Initial draw immediately
@@ -168,6 +174,12 @@ export class AnimationPlayer {
    * Stop the currently playing animation.
    */
   public stop(): void {
+    if (this._powerSaveBlockerId !== null && powerSaveBlocker.isStarted(this._powerSaveBlockerId)) {
+      powerSaveBlocker.stop(this._powerSaveBlockerId);
+      console.log(`[AnimationPlayer] Stopped power save blocker (ID: ${this._powerSaveBlockerId}).`);
+      this._powerSaveBlockerId = null;
+    }
+
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -201,7 +213,7 @@ export class AnimationPlayer {
       frameBuffer,
       ledColor,
       'busybar_desktop',
-      `anim_${this.frameIndex}.png`,
+      'anim_frame.png',
       95
     ).catch(err => console.error(`[AnimationPlayer] Frame draw failed:`, err));
 

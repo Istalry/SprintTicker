@@ -228,6 +228,7 @@ describe('BusyBarDriver Unit Tests', () => {
     const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', apiToken: 'token123', forceMock: false });
 
     try {
+      await liveDriver.connect();
       await liveDriver.sendDisplayPayload({ elements: [{ id: '1', type: 'text', text: 'hi' }] });
       await liveDriver.uploadAsset('app1', 'test.png', Buffer.from('png'));
       await liveDriver.deleteAppAssets('app1');
@@ -327,5 +328,51 @@ describe('BusyBarDriver Unit Tests', () => {
 
     expect(statusFired).toBe(true);
     vi.useRealTimers();
+  });
+
+  it('BusyBarDriver_Reconnect_RestartsStateStreamAndSendsPendingFrame', async () => {
+    vi.useFakeTimers();
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+    
+    let fetchOk = false;
+    const originalFetch = globalThis.fetch;
+    
+    globalThis.fetch = (async (url: string) => {
+      if (!fetchOk && url.includes('/api/status')) {
+        throw new Error('Network offline');
+      }
+      if (url.includes('/api/status')) {
+        return { ok: fetchOk, json: async () => ({ power: { battery_charge: 100 } }) } as Response;
+      }
+      if (url.includes('/api/assets/upload') || url.includes('/api/display/draw')) {
+        return { ok: true } as Response;
+      }
+      return { ok: false } as Response;
+    }) as typeof fetch;
+
+    try {
+      await liveDriver.connect();
+      
+      // Let ping loop run once while network is "offline"
+      await vi.advanceTimersByTimeAsync(3500);
+      expect(liveDriver.getDeviceStatus().connected).toBe(false);
+
+      await liveDriver.sendPixelFrame(Buffer.from('test'), '#FFF', 'app', 'frame.png');
+      expect((liveDriver as any).pendingFrameArgs).not.toBeNull();
+
+      fetchOk = true;
+      let stateStreamRestarted = false;
+      liveDriver.startStateStreamListener = () => { stateStreamRestarted = true; };
+
+      await vi.advanceTimersByTimeAsync(3500);
+
+      expect(liveDriver.getDeviceStatus().connected).toBe(true);
+      expect(stateStreamRestarted).toBe(true);
+      expect((liveDriver as any).pendingFrameArgs).toBeNull();
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
   });
 });

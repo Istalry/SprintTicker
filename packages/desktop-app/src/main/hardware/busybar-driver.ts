@@ -525,6 +525,9 @@ export class BusyBarDriver extends EventEmitter {
    * Validates filename strictly against regex ^[a-zA-Z0-9._-]+$.
    */
   public async uploadAsset(applicationName: string, filename: string, binaryData: Buffer | Uint8Array): Promise<boolean> {
+    if (!this.isConnected && !this.isMockMode) {
+      return false;
+    }
     const cleanFilename = filename.replace(/^.*[\\/]/, '');
     if (!ASSET_FILENAME_REGEX.test(cleanFilename)) {
       console.error(`[BusyBarDriver] Invalid asset filename '${filename}'. Must match ${ASSET_FILENAME_REGEX}`);
@@ -579,6 +582,9 @@ export class BusyBarDriver extends EventEmitter {
    * Clears display elements for application: DELETE /api/display/draw?application_name={app}
    */
   public async clearDisplay(applicationName: string = 'busybar_desktop'): Promise<boolean> {
+    if (!this.isConnected && !this.isMockMode) {
+      return false;
+    }
     this.displayVersion++;
     this.pendingFrameArgs = null;
 
@@ -610,6 +616,10 @@ export class BusyBarDriver extends EventEmitter {
     filename: string = 'frame.png',
     priority: number = DEFAULT_DRAW_PRIORITY
   ): Promise<boolean> {
+    if (!this.isConnected && !this.isMockMode) {
+      this.pendingFrameArgs = [pngBuffer, ledColorHex, applicationName, filename, priority];
+      return false;
+    }
     const cleanFilename = filename.replace(/^.*[\\/]/, '');
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK PIXEL FRAME] app=${applicationName}, file=${cleanFilename}, bytes=${pngBuffer.byteLength}, led=${ledColorHex ?? 'none'}`);
@@ -698,6 +708,9 @@ export class BusyBarDriver extends EventEmitter {
    * Posts draw payload to POST /api/display/draw.
    */
   public async sendDisplayPayload(payload: Record<string, unknown>): Promise<boolean> {
+    if (!this.isConnected && !this.isMockMode) {
+      return false;
+    }
     this.displayVersion++;
     this.pendingFrameArgs = null;
     
@@ -981,12 +994,19 @@ export class BusyBarDriver extends EventEmitter {
 
         const elapsed = Date.now() - start;
         this.pingMs = Math.max(1, elapsed);
+        
+        const wasConnected = this.isConnected;
         this.isConnected = res ? res.ok : false;
 
         if (res && res.ok) {
           const data = await res.json().catch(() => null);
           if (data) {
             this.parseTelemetryData(data);
+          }
+          if (!wasConnected) {
+            console.log('[BusyBarDriver] Connection recovered in ping loop. Restarting StateStream...');
+            this.startStateStreamListener();
+            this.checkPendingFrame();
           }
         }
       } catch {

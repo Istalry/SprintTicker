@@ -24,6 +24,7 @@ export class ContextScheduleService {
   private _standupSnoozeUntilTimestamp: number | null = null;
   private _eodSnoozeUntilTimestamp: number | null = null;
   private _isInitialCheck = true;
+  private _autoStoppedTaskDataForLunch: { taskId: string, isAdHoc: boolean, customTitle?: string, projectId: string, taskKey?: string } | null = null;
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,
@@ -187,8 +188,14 @@ export class ContextScheduleService {
   public enterLunchMode(): void {
     const session = this._engine.getCurrentSession();
     if (session && session.status === 'TRACKING') {
-      this._wasTaskAutoPausedForLunch = true;
-      this._engine.pauseSession();
+      this._autoStoppedTaskDataForLunch = {
+        taskId: session.taskId,
+        isAdHoc: session.isAdHoc,
+        customTitle: session.taskTitle,
+        projectId: session.projectId,
+        taskKey: session.taskKey
+      };
+      this._engine.stopSession('Auto-completed for Lunch Break split', false);
     }
 
     this._priorityEngine.setUserMode('LUNCH');
@@ -202,11 +209,13 @@ export class ContextScheduleService {
     this._priorityEngine.setUserMode('WORK');
     this._renderer.setContextMode('WORK');
 
-    if (this._wasTaskAutoPausedForLunch) {
-      this._wasTaskAutoPausedForLunch = false;
-      const session = this._engine.getCurrentSession();
-      if (session && session.status === 'PAUSED') {
-        this._engine.resumeSession();
+    if (this._autoStoppedTaskDataForLunch) {
+      const data = this._autoStoppedTaskDataForLunch;
+      this._autoStoppedTaskDataForLunch = null;
+      
+      const currentSession = this._engine.getCurrentSession();
+      if (!currentSession) {
+        this._engine.startTask(data.taskId, data.isAdHoc, data.customTitle, data.projectId, data.taskKey);
       }
     }
   }
