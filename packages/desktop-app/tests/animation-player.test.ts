@@ -28,7 +28,9 @@ describe('AnimationPlayer Unit Tests', () => {
   beforeEach(() => {
     vi.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => false } as unknown as fs.Stats);
     driver = {
-      sendPixelFrame: vi.fn().mockResolvedValue(true)
+      sendPixelFrame: vi.fn().mockResolvedValue(true),
+      uploadAsset: vi.fn().mockResolvedValue(true),
+      sendDisplayPayload: vi.fn().mockResolvedValue(true)
     } as unknown as BusyBarDriver;
     player = new AnimationPlayer(driver, '/mock/animations');
     vi.useFakeTimers();
@@ -50,7 +52,10 @@ describe('AnimationPlayer Unit Tests', () => {
   });
 
   it('AnimationPlayer_Play_ValidAnimationWithMeta_PlaysAtCorrectFps', async () => {
-    vi.spyOn(fs, 'existsSync').mockImplementation((_p: unknown) => true);
+    vi.spyOn(fs, 'existsSync').mockImplementation((p: unknown) => {
+      if (String(p).endsWith('.anim')) return false;
+      return true;
+    });
     vi.spyOn(fs, 'readFileSync').mockImplementation((p: unknown) => {
       if (String(p).includes('meta.json')) {
         return JSON.stringify({ fps: 20 });
@@ -78,7 +83,10 @@ describe('AnimationPlayer Unit Tests', () => {
   });
 
   it('AnimationPlayer_Play_InvalidMetaJson_DefaultsTo10Fps', async () => {
-    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs, 'existsSync').mockImplementation((p: unknown) => {
+      if (String(p).endsWith('.anim')) return false;
+      return true;
+    });
     vi.spyOn(fs, 'readFileSync').mockImplementation((p: unknown) => {
       if (String(p).includes('meta.json')) {
         throw new Error('Parse error');
@@ -117,7 +125,10 @@ describe('AnimationPlayer Unit Tests', () => {
   });
 
   it('AnimationPlayer_DrawCurrentFrame_SendsFrameViaDriver', async () => {
-    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs, 'existsSync').mockImplementation((p: unknown) => {
+      if (String(p).endsWith('.anim')) return false;
+      return true;
+    });
     vi.spyOn(fs, 'readFileSync').mockImplementation((p: unknown) => {
       if (String(p).includes('meta.json')) return JSON.stringify({ fps: 10 });
       return Buffer.from(`mock_${p}`);
@@ -133,7 +144,10 @@ describe('AnimationPlayer Unit Tests', () => {
   });
 
   it('AnimationPlayer_DrawCurrentFrame_NoData_DoesNotThrow', async () => {
-    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs, 'existsSync').mockImplementation((p: unknown) => {
+      if (String(p).endsWith('.anim')) return false;
+      return true;
+    });
     vi.spyOn(fs, 'readdirSync').mockReturnValue(['frame_0.png'] as never);
     vi.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('data'));
     

@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+
+import struct
+import json
+from io import BufferedWriter
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from PIL import Image
+from zipfile import PyZipFile
+from typing import Tuple
+from dataclasses import dataclass
+from logging import Logger
+
+from flipper.app import App
+from flipper import rle
+
+def number_in_str(input: str) -> int:
+    return int("".join(filter(str.isdigit, input))) or 0
+
+@dataclass
+class Header:
+    FORMAT = "<8s BBBB BHB II III"
+    SIGNATURE = b"bicycle0" # Busybar Image Container speciallY Crafted for file Length Eradication, ver. 0
+    flags: int
+    width: int
+    height: int
+    color_mode: int
+    fps: int
+    max_encoded_len: int
+    sections_chunk_len: int
+    frames_chunk_len: int
+    section_count: int
+    file_frame_count: int
+    display_frame_count: int
+
+    @staticmethod
+    def length() -> int:
+        return struct.calcsize(Header.FORMAT)
+    
+    def to_bytes(self) -> bytes:
+        return struct.pack(
+            self.FORMAT,
+            self.SIGNATURE,
+
+            self.flags,
+            self.width,
+            self.height,
+            self.color_mode,
+
+            self.fps,
+            self.max_encoded_len,
+            0,
+
+            self.sections_chunk_len,
+            self.frames_chunk_len,
+
+            self.section_count,
+            self.file_frame_count,
+            self.display_frame_count,
+        )
+
+@dataclass
+class Section:
+    FORMAT = "<IIIB"
+    start: int
+    end: int
+    frame_offs: int
+    duration_override: int
+    name: str
+
+    def length(self) -> int:
+        return struct.calcsize(self.FORMAT) + len(self.name) + 1
+
+    def to_bytes(self) -> bytes:
+        return struct.pack(
+            self.FORMAT,
+            self.start,
+            self.end,
+            self.frame_offs,
+            self.duration_override,
+        ) + bytes(self.name, "utf8") + bytes([0])
+
+@dataclass
+class FileFrame:
+    FORMAT = "<BBH"
+    encoding: int
+    duration: int
+    encoded: bytes
+
+    def length(self) -> int:
+        return struct.calcsize(self.FORMAT) + len(self.encoded)
+
+    def to_bytes(self) -> bytes:
+        return struct.pack(
+            self.FORMAT,
+            self.encoding,
+            self.duration,
+            len(self.encoded),
+        ) + self.encoded
+
+    @staticmethod
+    def pack(frame: bytes, mode: str) -> bytes:
+        packed = bytearray()
+
+        if mode == "rgb888":
+            # actually BGR888
+            for i in range(0, len(frame), 4):
+                packed.extend([frame[i + 2], frame[i + 1], frame[i + 0]])
+        
+        elif mode == "gray4":
+            for i in range(0, len(frame), 8):
+                px1 = frame[i + 0] & 0xF0
+                px2 = frame[i + 4] & 0xF0
+                packed.append(px1 | (px2 >> 4))
+        
+        elif mode == "argb8888":
+            # actually BGRA8888
+            for i in range(0, len(frame), 4):
+                packed.extend([frame[i + 2], frame[i + 1], frame[i + 0], frame[i + 3]])
+        
+        else:
+            raise NotImplemented
+        
+        return bytes(packed)
+        
+    @staticmethod
+    def encode(frame: bytes, mode: str) -> "FileFrame":
+        raw = frame
+        blk_size = {"rgb888": 3, "gray4": 1, "argb8888": 4}[mode]
+        rle_encoded = rle.compress(frame, blk_size)
+
+        if len(rle_encoded) < len(raw):
+            return FileFrame(encoding=1, duration=1, encoded=rle_encoded)
+        else:
+            return FileFrame(encoding=0, duration=1, encoded=raw)
+
+@dataclass
+class ConversionInfo:
+    display_frame_cnt: int
+    file_frame_cnt: int
+    max_encoded_len: int
+    raw_len: int
+    mean_compression_ratio: float
+
+class ConversionError(Exception):
+    pass
+
+class BSBAnimConverter:
+    def _do_convert(self, meta: dict, frames: list[Path], output: BufferedWriter) -> ConversionInfo:
+        # 1. encode frames
+        size: None | Tuple[int, int] = None
+        encoded_frames: list[FileFrame] = []
+        frames_chunk_len = 0
+        max_encoded_len = 0
+        last_frame = None
+
+        for i, frame in enumerate(frames):
+            with Image.open(frame) as frame:
+                frame = frame.convert("RGBA")
+                if size and frame.size != size:
+                    raise ConversionError(f"frame {i} has a different size than previous frames")
+                size = frame.size
+
+                frame = frame.tobytes()
+                if frame == last_frame:
+                    encoded_frames[-1].duration += 1
+                    continue
+
+                last_frame = frame
+                frame = FileFrame.pack(frame, meta["color_mode"])
+                frame = FileFrame.encode(frame, meta["color_mode"])
+
+                encoded_frames.append(frame)
+                frames_chunk_len += frame.length()
+                max_encoded_len = max(max_encoded_len, len(frame.encoded))
+
+        # 2. encode sections
+        encoded_sections: list[Section] = []
+        sections_chunk_len = 0
+        sections = [{"name": "default", "start": 0, "end": len(frames) - 1}] + meta["sections"]
+        for i, section in enumerate(sections):
+            if set(section.keys()) != {"name", "start", "end"}:
+                raise ConversionError(f"Invalid metadata: 'sections' children must only have 'name', 'start' and 'end' fields")
+            if section["start"] < 0:
+                raise ConversionError(f"Invalid metadata: section '{section['name']}' has start < 0")
+            if section["end"] >= len(frames):
+                raise ConversionError(f"Invalid metadata: section '{section['name']}' has end past the last frame")
+            if section["start"] > section["end"]:
+                raise ConversionError(f"Invalid metadata: section '{section['name']}' has start > end")
+            if i > 0 and section["name"] == "default":
+                raise ConversionError(f"Invalid metadata: section name \"default\" is reserved")
+
+            section = Section(
+                start=section["start"],
+                end=section["end"],
+                name=section["name"],
+                # precomputed start info to be filled later
+                frame_offs=0,
+                duration_override=0,
+            )
+            encoded_sections.append(section)
+            sections_chunk_len += section.length()
+
+        # 3. fill section precomputed start info, now that file offsets are known
+        display_frame_start: list[Tuple[int, int]] = []
+        file_frame_offs = Header.length() + sections_chunk_len
+        disp_frame_idx = 0
+        for file_frame in encoded_frames:
+            for disp_offset in range(file_frame.duration, 0, -1):
+                display_frame_start.append((file_frame_offs, disp_offset))
+            disp_frame_idx += file_frame.duration
+            file_frame_offs += file_frame.length()
+        
+        for section in encoded_sections:
+            section.frame_offs, section.duration_override = display_frame_start[section.start]
+
+        # 4. assemble header and write data
+        assert size
+        width, height = size
+        color_fmt_map = {"rgb888": 0, "gray4": 1, "argb8888": 2}
+        header = Header(
+            flags=0,
+            width=width,
+            height=height,
+            color_mode=color_fmt_map[meta["color_mode"]],
+            fps=meta["fps"],
+            max_encoded_len=max_encoded_len,
+            sections_chunk_len=sections_chunk_len,
+            frames_chunk_len=frames_chunk_len,
+            section_count=len(encoded_sections),
+            file_frame_count=len(encoded_frames),
+            display_frame_count=len(frames),
+        )
+        output.write(header.to_bytes())
+        for section in encoded_sections:
+            output.write(section.to_bytes())
+        for frame in encoded_frames:
+            output.write(frame.to_bytes())
+
+        # 5. assemble info about file
+        compression_ratio = (len(frames) * width * height * 3) / frames_chunk_len
+        return ConversionInfo(
+            disp_frame_idx,
+            len(encoded_frames),
+            max_encoded_len,
+            width * height * 3,
+            compression_ratio
+        )
+
+    def convert_dir(self, input: Path, output: Path) -> ConversionInfo:
+        meta: dict = json.loads((input / "meta.json").read_text())
+
+        frames = list(input.glob("*.png"))
+        frames.sort(key=lambda x: number_in_str(x.stem))
+
+        for i in range(len(frames)):
+            if number_in_str(frames[i].stem) != i:
+                raise ConversionError(f"Invalid frame numbering: missing *{i}.png")
+            
+        if "fps" not in meta:
+            raise ConversionError(f"Invalid meta.json: must have 'fps'")
+        if "color_mode" not in meta:
+            raise ConversionError(f"Invalid meta.json: must have 'color_mode' ('argb8888', 'rgb888' or 'gray4')")
+        if meta["color_mode"] not in ["argb8888", "rgb888", "gray4"]:
+            raise ConversionError(f"Invalid meta.json: 'color_mode' must be one of: 'argb8888', 'rgb888' or 'gray4'")
+        if "sections" not in meta:
+            raise ConversionError(f"Invalid meta.json: must have 'sections' (even an empty array is fine)")
+        
+        with open(output, "wb") as output_writer:
+            return self._do_convert(meta, frames, output_writer)
+
+    def convert_zip(self, input: Path, output: Path) -> ConversionInfo:
+        with TemporaryDirectory(prefix="bsb-seq2anim-") as temp_dir:
+            input_zip = PyZipFile(str(input))
+            input_zip.extractall(temp_dir)
+            return self.convert_dir(Path(temp_dir) / input.stem, output)
+
+class Main(App):
+    def init(self):
+        self.parser.add_argument("-o", "--output", required=True, type=Path, help="Output .anim file")
+        self.parser.add_argument("input", type=Path, help="Input .zip file or directory")
+        self.parser.set_defaults(func=self.main)
+
+    def main(self):
+        args = self.args
+        converter = BSBAnimConverter()
+        try:
+            if args.input.is_dir():
+                info = converter.convert_dir(args.input, args.output)
+            else:
+                info = converter.convert_zip(args.input, args.output)
+            self.logger.debug(info)
+            return 0
+        except ConversionError as e:
+            self.logger.error(f"Failed to convert {args.input}: {str(e)}")
+            return 1
+
+if __name__ == "__main__":
+    Main()()

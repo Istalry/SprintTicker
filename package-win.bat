@@ -2,6 +2,17 @@
 echo ========================================================
 echo  Packaging Antigravity BUSY Bar Desktop App (Windows)
 echo ========================================================
+rem Compile animations
+echo Compiling .anim files...
+node scripts\build-anims.js
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] Animation compilation failed.
+    pause
+    exit /b %ERRORLEVEL%
+)
+echo.
+
 rem Bundles Fastify into main process bundle and packages Windows binaries via electron-builder
 taskkill /F /IM "Antigravity BUSY Bar Companion.exe" >nul 2>&1
 call pnpm package:win

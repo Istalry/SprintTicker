@@ -7,6 +7,7 @@ interface AnimationData {
   name: string;
   fps: number;
   frames: Buffer[];
+  animBuffer?: Buffer;
 }
 
 /**
@@ -100,9 +101,15 @@ export class AnimationPlayer {
         frames.push(fs.readFileSync(filePath));
       }
 
-      const animData: AnimationData = { name: animName, fps, frames };
+      let animBuffer: Buffer | undefined;
+      const animFilePath = path.join(targetDir, `${animName}.anim`);
+      if (fs.existsSync(animFilePath)) {
+        animBuffer = fs.readFileSync(animFilePath);
+      }
+
+      const animData: AnimationData = { name: animName, fps, frames, animBuffer };
       this.animations.set(animName, animData);
-      console.log(`[AnimationPlayer] Loaded animation '${animName}' with ${frames.length} frames at ${fps} fps`);
+      console.log(`[AnimationPlayer] Loaded animation '${animName}' with ${frames.length} frames at ${fps} fps${animBuffer ? ' (Hardware Accelerated)' : ''}`);
       
       return animData;
     } catch (err) {
@@ -157,6 +164,28 @@ export class AnimationPlayer {
 
     const frameIntervalMs = Math.floor(1000 / animData.fps);
 
+    if (animData.animBuffer) {
+      // Hardware accelerated playback
+      this.driver.uploadAsset('busybar_desktop', `${animName}.anim`, animData.animBuffer).then(() => {
+        if (!this.isPlaying || this.currentAnimation !== animName) return; // aborted
+        this.driver.sendDisplayPayload({
+          application_name: 'busybar_desktop',
+          priority: 95,
+          led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
+          elements: [{
+            id: 'hardware_anim',
+            type: 'animation',
+            path: `${animName}.anim`,
+            x: 0,
+            y: 0,
+            display: 'front',
+            loop: this.loop,
+            section: 'default'
+          }]
+        }).catch(err => console.error(`[AnimationPlayer] Hardware anim start failed:`, err));
+      }).catch(err => console.error(`[AnimationPlayer] Hardware anim upload failed:`, err));
+    }
+
     // Initial draw immediately
     this.drawCurrentFrame();
 
@@ -205,17 +234,20 @@ export class AnimationPlayer {
     const frameBuffer = animData.frames[this.frameIndex];
     if (!frameBuffer) return;
 
-    const ledColor = this.getLedColorCallback ? this.getLedColorCallback() : undefined;
-    
-    // We send the PNG buffer directly to the hardware using an image element payload.
-    // The driver uploads the frame and executes POST /api/display/draw
-    this.driver.sendPixelFrame(
-      frameBuffer,
-      ledColor,
-      'busybar_desktop',
-      'anim_frame.png',
-      95
-    ).catch(err => console.error(`[AnimationPlayer] Frame draw failed:`, err));
+    // Only stream to hardware if we lack the native .anim file (Fallback mode)
+    if (!animData.animBuffer) {
+      const ledColor = this.getLedColorCallback ? this.getLedColorCallback() : undefined;
+      
+      // We send the PNG buffer directly to the hardware using an image element payload.
+      // The driver uploads the frame and executes POST /api/display/draw
+      this.driver.sendPixelFrame(
+        frameBuffer,
+        ledColor,
+        'busybar_desktop',
+        'anim_frame.png',
+        95
+      ).catch(err => console.error(`[AnimationPlayer] Frame draw failed:`, err));
+    }
 
     if (this.onFrameCallback) {
       this.onFrameCallback(frameBuffer, this.frameIndex);

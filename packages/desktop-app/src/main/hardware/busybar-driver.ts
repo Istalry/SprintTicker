@@ -164,6 +164,7 @@ export function decodeProtobufInput(data: Uint8Array): { key: string; type: 'pre
  * for physical BUSY Bar hardware (72×16 matrix) per OpenAPI v25 and Developer Guide specs.
  */
 export class BusyBarDriver extends EventEmitter {
+  private static readonly NETWORK_THROTTLE_MS = 35;
   private isMockMode: boolean = false;
   private isConnected: boolean = false;
   private ipAddress: string = DEFAULT_USB_IP;
@@ -471,7 +472,7 @@ export class BusyBarDriver extends EventEmitter {
         elem.fill_colors = colors;
       }
 
-      if (elem.type === 'image') {
+      if (elem.type === 'image' || elem.type === 'animation') {
         if (typeof elem.path === 'string') {
           elem.path = elem.path.replace(/^.*[\\/]/, '');
         }
@@ -699,8 +700,12 @@ export class BusyBarDriver extends EventEmitter {
     if (this.pendingFrameArgs) {
       const args = this.pendingFrameArgs;
       this.pendingFrameArgs = null;
-      // Fire next frame asynchronously without blocking
-      this.sendPixelFrame(...args).catch(() => {});
+      // Fire next frame asynchronously without blocking, with a 35ms network throttle
+      setTimeout(() => {
+        this.sendPixelFrame(...args).catch(err => {
+          console.warn(`[BusyBarDriver] Throttled frame dropped: ${err}`);
+        });
+      }, BusyBarDriver.NETWORK_THROTTLE_MS);
     }
   }
 
