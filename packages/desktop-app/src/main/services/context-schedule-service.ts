@@ -25,6 +25,7 @@ export class ContextScheduleService {
   private _eodSnoozeUntilTimestamp: number | null = null;
   private _isInitialCheck = true;
   private _autoStoppedTaskDataForLunch: { taskId: string, isAdHoc: boolean, customTitle?: string, projectId: string, taskKey?: string } | null = null;
+  private _timer?: NodeJS.Timeout;
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,

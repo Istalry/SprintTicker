@@ -62,7 +62,7 @@ BUSY_Bar/
 
 ### 📅 Agile Ceremonies & Context Schedules
 - **Daily Standup Assistant:** Automated standup prompts, interactive answer collection modal, and formatted summary generation.
-- **End-Of-Day (EOD) Wrap-Up:** Daily wrap-up summary prompt with automated worklog export and report generator.
+- **End-Of-Day (EOD) Wrap-Up:** Daily wrap-up summary prompt with automated worklog export and report generator. Can be confirmed via hardware **START** button (two presses to confirm) or dismissed using **BACK/CANCEL** button.
 - **Context Schedule Service:** Configurable working hours, lunch break alerts, away time detection, and scheduled ceremony notifications.
 
 ### 💬 Messaging & Presence Sync

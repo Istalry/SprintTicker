@@ -261,18 +261,42 @@ export class IPCHandlerRegistry {
         this.engine.stopSession('Finalized during End-of-Day Wrap-Up');
       }
 
-      // Instruct VS Code to save open dirty files
+      // 1. Issue RPC save scenes request to Unity Editors
+      let savedUnityScenes = false;
+      try {
+        const ports = [8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089];
+        const fetchPromises = ports.map(async (port) => {
+          try {
+            const response = await fetch(`http://localhost:${port}/antigravity/save-scenes/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: AbortSignal.timeout(1500)
+            });
+            if (response.ok) savedUnityScenes = true;
+          } catch {
+            // Ignore inactive ports
+          }
+        });
+        await Promise.all(fetchPromises);
+      } catch (err) {
+        console.log('[EOD] Unity scene save error:', err);
+      }
+
+      // 2. Instruct VS Code to save open dirty files
       let savedVSCode = false;
       try {
         const { exec } = await import('child_process');
-        exec('code --command workbench.action.files.saveAll', (err) => {
-          if (!err) savedVSCode = true;
+        savedVSCode = await new Promise((resolve) => {
+          exec('code --command workbench.action.files.saveAll', (err) => {
+            resolve(!err);
+          });
         });
       } catch {
         console.log('[EOD] VS Code CLI not in system PATH, skipping VS Code save command.');
       }
 
-      if (options?.shouldShutdown) {
+      // 3. Trigger Shutdown if requested and not in test environment
+      if (options?.shouldShutdown && process.env.NODE_ENV !== 'test') {
         try {
           const { exec } = await import('child_process');
           exec('shutdown /s /t 30', (err) => {
@@ -281,13 +305,16 @@ export class IPCHandlerRegistry {
         } catch (e) {
           console.error('[EOD] Failed to execute shutdown command:', e);
         }
+      } else if (options?.shouldShutdown && process.env.NODE_ENV === 'test') {
+        console.log('[EOD] Shutdown bypassed because NODE_ENV === "test"');
       }
 
-      return { success: true, savedUnityScenes: true, savedVSCode };
+      return { success: true, savedUnityScenes, savedVSCode };
     });
 
     ipcMain.handle(IPCChannel.CANCEL_EOD_WRAP_UP, async () => {
       this.priorityEngine.releaseActiveLock('standupPromptPriority');
+      this.priorityEngine.releaseActiveLock('eodPromptPriority');
       const activeSession = this.engine.getCurrentSession();
       this.renderer.renderActiveSession(activeSession);
       return true;

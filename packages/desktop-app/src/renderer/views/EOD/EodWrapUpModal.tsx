@@ -18,6 +18,7 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
   const [unitySaved, setUnitySaved] = useState<boolean>(false);
   const [shouldShutdown, setShouldShutdown] = useState<boolean>(false);
   const [completed, setCompleted] = useState<boolean>(false);
+  const [confirmStep, setConfirmStep] = useState<number>(0);
   const [summary, setSummary] = useState<{ totalSeconds: number; tasksCount: number; items: Array<{ key: string; title: string; durationSeconds: number }> }>({
     totalSeconds: 0,
     tasksCount: 0,
@@ -29,7 +30,34 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
       const todayStr = new Date().toISOString().split('T')[0];
       window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
     }
+    if (!isOpen) {
+      setConfirmStep(0);
+    }
   }, [isOpen]);
+
+  // Handle Hardware Buttons (START to confirm, BACK/CANCEL to dismiss)
+  useEffect(() => {
+    if (!isOpen || completed || executing) return;
+
+    if (window.electronAPI?.onHardwareInputEvent) {
+      const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
+        if (event.actionAssigned === 'cancel' || event.actionAssigned === 'back') {
+          onClose(); // This completely dismisses the EOD prompt for the day
+        } else if (event.actionAssigned === 'start') {
+          setConfirmStep((prev) => {
+            if (prev === 0) {
+              return 1;
+            } else if (prev === 1) {
+              handleExecuteEod();
+              return 2;
+            }
+            return prev;
+          });
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [isOpen, completed, executing, shouldShutdown]);
 
   if (!isOpen) return null;
 
@@ -209,11 +237,15 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={handleExecuteEod}
+                  onClick={() => confirmStep === 0 ? setConfirmStep(1) : handleExecuteEod()}
                   disabled={executing}
-                  className="px-5 py-2 bg-accent-purple hover:bg-purple-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
+                  className={`px-5 py-2 text-white text-xs font-semibold rounded-lg shadow-md transition-all ${
+                    confirmStep === 1 
+                      ? 'bg-accent-red hover:bg-red-600 animate-pulse' 
+                      : 'bg-accent-purple hover:bg-purple-600'
+                  }`}
                 >
-                  {executing ? 'Executing...' : 'Execute Wrap-Up Now'}
+                  {executing ? 'Executing...' : confirmStep === 1 ? 'Press START (or click) to Confirm' : 'Execute Wrap-Up Now'}
                 </button>
               </div>
             </>
