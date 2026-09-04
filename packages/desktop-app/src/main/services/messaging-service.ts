@@ -1,7 +1,6 @@
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { DisplayRenderer } from '../hardware/display-renderer';
 import { MessagingSettingsDTO, MessagingTestResultDTO, ArgumentNullException, ArgumentException } from '../../shared/dtos';
-import { WebhookServer, SlackEventPayload, DiscordWebhookPayload } from '../api/webhook-server';
 import { ProviderManager } from '../providers/provider-manager';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 
@@ -16,17 +15,13 @@ export class MessagingIntegrationService {
   private opPollingInterval: NodeJS.Timeout | null = null;
   private knownOpNotifications = new Set<string>();
 
-  constructor(settingsRepo: SettingsRepository, renderer?: DisplayRenderer, webhookServer?: WebhookServer, providerManager?: ProviderManager) {
+  constructor(settingsRepo: SettingsRepository, renderer?: DisplayRenderer, providerManager?: ProviderManager) {
     if (!settingsRepo) {
       throw new ArgumentNullException('settingsRepo');
     }
     this.settingsRepo = settingsRepo;
     this.renderer = renderer;
 
-    if (webhookServer) {
-      webhookServer.onSlackEvent((payload) => this.handleSlackEvent(payload));
-      webhookServer.onDiscordWebhookEvent((payload) => this.handleDiscordWebhook(payload));
-    }
     
     this.providerManager = providerManager;
     this.restartOpenProjectPolling();
@@ -86,16 +81,9 @@ export class MessagingIntegrationService {
   /// </summary>
   public getSettings(): MessagingSettingsDTO {
     return this.settingsRepo.getSetting('messaging_settings', {
-      discordWebhookUrl: 'https://discord.com/api/webhooks/demo',
-      enableDiscordLed: true,
-      slackWebhookUrl: 'https://hooks.slack.com/services/demo',
-      enableSlackPreview: true,
-      gmailQuery: 'is:unread label:urgent',
-      enableGmailLed: true,
       enableOpenProjectNotifications: true,
       openProjectPollingIntervalSeconds: 60,
       notificationTimeoutSeconds: 10,
-      stealthClockIdleTimeoutMins: 15,
       enableEdgeGlow: true,
       edgeGlowOpacity: 0.3,
       edgeGlowMode: 'PULSE',
@@ -142,27 +130,4 @@ export class MessagingIntegrationService {
     };
   }
 
-  /// <summary>
-  /// Processes incoming Slack event payloads and updates front matrix display.
-  /// </summary>
-  public handleSlackEvent(payload: SlackEventPayload): void {
-    if (!payload) return;
-    const settings = this.getSettings();
-    if (settings.enableSlackPreview && this.renderer) {
-      const sender = payload.sender || 'Alice';
-      this.renderer.renderNotificationBanner(sender, 'SLACK', 40, 'slack');
-    }
-  }
-
-  /// <summary>
-  /// Processes incoming Discord webhook payloads and updates front matrix display.
-  /// </summary>
-  public handleDiscordWebhook(payload: DiscordWebhookPayload): void {
-    if (!payload) return;
-    const settings = this.getSettings();
-    if (settings.enableDiscordLed && this.renderer) {
-      const author = payload.author || 'Bob';
-      this.renderer.renderNotificationBanner(author, 'DISCORD', 40, 'discord');
-    }
-  }
 }

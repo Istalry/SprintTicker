@@ -44,19 +44,6 @@ export interface UnityHeartbeatPayload {
   savePort?: number;
 }
 
-export interface SlackEventPayload {
-  sender?: string;
-  message?: string;
-  channel?: string;
-  isUrgent?: boolean;
-}
-
-export interface DiscordWebhookPayload {
-  author?: string;
-  content?: string;
-  mentionUrgent?: boolean;
-}
-
 export interface InjectOptions {
   method: string;
   url: string;
@@ -83,8 +70,6 @@ export class WebhookServer {
   private consoleCallbacks: Set<(payload: UnityConsolePayload) => void> = new Set();
   private vsCodeCallbacks: Set<(payload: VSCodeActivityPayload) => void> = new Set();
   private heartbeatCallbacks: Set<(payload: UnityHeartbeatPayload) => void> = new Set();
-  private slackCallbacks: Set<(payload: SlackEventPayload) => void> = new Set();
-  private discordCallbacks: Set<(payload: DiscordWebhookPayload) => void> = new Set();
   private inputCallbacks: Set<(key: string) => void> = new Set();
 
   constructor(port: number = 39123) {
@@ -138,20 +123,6 @@ export class WebhookServer {
   }
 
   /// <summary>
-  /// Registers a callback listener for Slack event notifications.
-  /// </summary>
-  public onSlackEvent(cb: (payload: SlackEventPayload) => void): void {
-    this.slackCallbacks.add(cb);
-  }
-
-  /// <summary>
-  /// Registers a callback listener for Discord webhook notifications.
-  /// </summary>
-  public onDiscordWebhookEvent(cb: (payload: DiscordWebhookPayload) => void): void {
-    this.discordCallbacks.add(cb);
-  }
-
-  /// <summary>
   /// Asynchronously processes incoming HTTP requests and routes JSON POST webhooks.
   /// </summary>
   private handleRequest(req: IncomingMessage, res: ServerResponse): void {
@@ -197,10 +168,6 @@ export class WebhookServer {
         return this.handleApiV1Console(body, res);
       case '/api/v1/unity/heartbeat':
         return this.handleApiV1UnityHeartbeat(body, res);
-      case '/api/v1/slack/events':
-        return this.handleApiV1SlackEvents(body, res);
-      case '/api/v1/discord/webhook':
-        return this.handleApiV1DiscordWebhook(body, res);
       case '/api/v1/vscode/activity':
         return this.handleApiV1VSCodeActivity(body, res);
       case '/unity/compile-start':
@@ -281,24 +248,6 @@ export class WebhookServer {
       return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Unity heartbeat payload' });
     }
     for (const cb of this.heartbeatCallbacks) cb(p);
-    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
-  }
-
-  private handleApiV1SlackEvents(body: unknown, res: ServerResponse): void {
-    const p = body as SlackEventPayload;
-    if (!p || typeof p !== 'object') {
-      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Slack payload' });
-    }
-    for (const cb of this.slackCallbacks) cb(p);
-    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
-  }
-
-  private handleApiV1DiscordWebhook(body: unknown, res: ServerResponse): void {
-    const p = body as DiscordWebhookPayload;
-    if (!p || typeof p !== 'object') {
-      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Discord payload' });
-    }
-    for (const cb of this.discordCallbacks) cb(p);
     return this.sendJSON(res, 200, { status: 'ACCEPTED' });
   }
 

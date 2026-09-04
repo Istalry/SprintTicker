@@ -140,7 +140,7 @@ void app.whenReady().then(async () => {
   });
 
   const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine, priorityEngine);
-  const messagingService = new MessagingIntegrationService(settingsRepo, renderer, webhookServer, providerManager);
+  const messagingService = new MessagingIntegrationService(settingsRepo, renderer, providerManager);
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   windowsNotificationService.startListening();
 

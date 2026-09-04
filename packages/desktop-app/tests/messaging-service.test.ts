@@ -3,7 +3,6 @@ import { MessagingIntegrationService } from '../src/main/services/messaging-serv
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { MessagingSettingsDTO } from '../src/shared/dtos';
-import { WebhookServer } from '../src/main/api/webhook-server';
 import { ProviderManager } from '../src/main/providers/provider-manager';
 import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
 
@@ -30,14 +29,8 @@ describe('MessagingIntegrationService', () => {
       expect(() => new MessagingIntegrationService(null as unknown as SettingsRepository)).toThrow();
     });
 
-    it('Constructor_WithWebhookServer_RegistersListeners', () => {
-      const mockWebhookServer = {
-        onSlackEvent: vi.fn(),
-        onDiscordWebhookEvent: vi.fn()
-      } as unknown as WebhookServer;
-      new MessagingIntegrationService(settingsRepo, mockRenderer, mockWebhookServer);
-      expect(mockWebhookServer.onSlackEvent).toHaveBeenCalled();
-      expect(mockWebhookServer.onDiscordWebhookEvent).toHaveBeenCalled();
+    it('Constructor_ValidSettingsRepo_ConstructsWithoutThrowing', () => {
+      expect(() => new MessagingIntegrationService(settingsRepo, mockRenderer)).not.toThrow();
     });
   });
 
@@ -45,18 +38,15 @@ describe('MessagingIntegrationService', () => {
     it('GetSettings_Default_ReturnsDefaultDTO', () => {
       const settings = service.getSettings();
       expect(settings).toBeDefined();
-      expect(settings.discordWebhookUrl).toBe('https://discord.com/api/webhooks/demo');
-      expect(settings.enableDiscordLed).toBe(true);
+      expect(settings.enableOpenProjectNotifications).toBe(true);
+      expect(settings.openProjectPollingIntervalSeconds).toBeGreaterThan(0);
     });
 
     it('SaveSettings_ValidDTO_CallsSettingsRepo', () => {
-      const dto = {
-        discordWebhookUrl: 'https://discord.com/test',
-        enableDiscordLed: false,
-        slackWebhookUrl: 'https://slack.com/test',
-        enableSlackPreview: true,
-        gmailQuery: 'is:unread',
-        enableGmailLed: true
+      const dto: MessagingSettingsDTO = {
+        enableOpenProjectNotifications: true,
+        openProjectPollingIntervalSeconds: 120,
+        notificationTimeoutSeconds: 8
       };
       service.saveSettings(dto);
       expect(settingsRepo.setSetting).toHaveBeenCalledWith('messaging_settings', dto);
@@ -95,18 +85,6 @@ describe('MessagingIntegrationService', () => {
     });
   });
 
-  describe('handleSlackEvent & handleDiscordWebhook', () => {
-    it('HandleSlackEvent_EnabledPreview_DispatchesSlackBanner', () => {
-      service.handleSlackEvent({ sender: 'Alice', message: 'Deployment complete!' });
-      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Alice', 'SLACK', 40, 'slack');
-    });
-
-    it('HandleDiscordWebhook_EnabledLed_DispatchesDiscordBanner', () => {
-      service.handleDiscordWebhook({ author: 'Bob', content: 'Bug urgent fix needed' });
-      expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith('Bob', 'DISCORD', 40, 'discord');
-    });
-  });
-
   describe('OpenProject Polling', () => {
     it('PollOpenProjectNotifications_FetchesUnreadAndDispatchesBanner', async () => {
       const mockOpProvider = {
@@ -121,7 +99,7 @@ describe('MessagingIntegrationService', () => {
       } as unknown as ProviderManager;
 
       vi.useFakeTimers();
-      new MessagingIntegrationService(settingsRepo, mockRenderer, undefined, mockProviderManager);
+      new MessagingIntegrationService(settingsRepo, mockRenderer, mockProviderManager);
       
       await vi.advanceTimersByTimeAsync(2500);
       

@@ -222,16 +222,9 @@ export interface UnityTelemetryDTO {
 }
 
 export interface MessagingSettingsDTO {
-  discordWebhookUrl: string;
-  enableDiscordLed: boolean;
-  slackWebhookUrl: string;
-  enableSlackPreview: boolean;
-  gmailQuery: string;
-  enableGmailLed: boolean;
   enableOpenProjectNotifications?: boolean;
   openProjectPollingIntervalSeconds?: number;
   notificationTimeoutSeconds?: number; // Auto-dismiss notification banner duration in seconds (default: 10)
-  stealthClockIdleTimeoutMins?: number; // Idle duration before switching OLED to stealth clock (default: 15)
 }
 
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';

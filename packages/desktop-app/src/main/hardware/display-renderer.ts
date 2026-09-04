@@ -284,8 +284,8 @@ export class DisplayRenderer {
     }
   }
 
-  private buildRearElements(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean): Array<Record<string, unknown>> {
-    if (this.rearOledMode === 'STEALTH_CLOCK' || isIdleOver15Mins) {
+  private buildRearElements(session: ActiveSessionDTO | null): Array<Record<string, unknown>> {
+    if (this.rearOledMode === 'STEALTH_CLOCK') {
       return [
         { id: 'rear_clock_0', type: 'text', font: 'bold', x: 20, y: 15, color: '#FFFFFFFF', text: new Date().toLocaleTimeString(), align: 'top_left' },
         { id: 'rear_clock_1', type: 'text', font: 'tiny', x: 25, y: 45, color: '#888888FF', text: 'BUSY BAR STEALTH MODE', align: 'top_left' }
@@ -554,7 +554,7 @@ export class DisplayRenderer {
    *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), and right side (x=47..71) displays
    *    interactive STOP vs FINISH controls selectable via scroll wheel.
    */
-  public renderActiveSession(session: ActiveSessionDTO | null, isIdleOver15Mins: boolean = false): DisplayPayload {
+  public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
 
     if (session && session.status === 'TRACKING' && this.isCelebrating) {
@@ -654,7 +654,7 @@ export class DisplayRenderer {
       this.canvas.drawSmallText(timerText, 17, 8, row1Color, 55);
     }
 
-    const backElements = this.buildRearElements(session, isIdleOver15Mins);
+    const backElements = this.buildRearElements(session);
     const frontEls = this.canvasToEmulatorElements();
 
     const payload: DisplayPayload = {
