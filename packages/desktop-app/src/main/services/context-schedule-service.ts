@@ -198,7 +198,13 @@ export class ContextScheduleService {
   }
 
   /// <summary>
-  /// Manually or automatically triggers transition into LUNCH mode, auto-pausing active tasks.
+  /// Manually or automatically triggers transition into LUNCH mode.
+  ///
+  /// The active session is *stopped*, not paused, and a fresh one is started on
+  /// exit. That is deliberate: it produces two separate worklog entries either
+  /// side of the break, which tracks time more accurately than one entry with a
+  /// pause gap in it. The task itself is reused, so the split does not create a
+  /// duplicate ad-hoc task.
   /// </summary>
   public enterLunchMode(): void {
     const session = this._engine.getCurrentSession();

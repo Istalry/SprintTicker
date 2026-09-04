@@ -3,7 +3,8 @@ import { isProviderRequestError } from '../providers/provider-errors';
 import {
   MAX_SYNC_ATTEMPTS,
   SYNC_CLAIM_TIMEOUT_MS,
-  computeBackoffMs
+  computeBackoffMs,
+  withSyncMarker
 } from './sync-constants';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ProjectRepository } from '../db/repositories/project-repository';
@@ -185,7 +186,8 @@ export class OfflineSyncWorker {
             taskId: item.taskId,
             durationSeconds: item.durationSeconds,
             startedAtUtc: item.startedAtUtc,
-            comment: item.comment,
+            // Tagged so a re-POST after a crashed claim is identifiable.
+            comment: withSyncMarker(item.comment, item.id),
             isAdHoc: item.providerId === 'adhoc'
           });
 

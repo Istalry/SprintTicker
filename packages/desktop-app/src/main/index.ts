@@ -202,20 +202,46 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('will-quit', async () => {
-  if (contextScheduleService) {
-    contextScheduleService.dispose();
-  }
-  if (windowsNotificationService) {
-    windowsNotificationService.stopListening();
-  }
-  if (webhookServer) {
-    await webhookServer.stop();
-  }
-  if (driver) {
-    driver.disconnect();
-  }
-  if (dbConnection) {
-    DatabaseConnection.resetInstance();
-  }
+/**
+ * Guards against re-entering shutdown: app.exit() below re-emits will-quit.
+ */
+let isShuttingDown = false;
+
+app.on('will-quit', event => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  // Electron does not await an async will-quit listener. The previous handler
+  // was `async`, so the process exited at its first await and everything after
+  // it -- disconnecting the driver, closing the database -- silently never ran.
+  // preventDefault() holds the quit open until the teardown finishes, then
+  // app.exit() ends it for real.
+  event.preventDefault();
+
+  void (async () => {
+    try {
+      if (contextScheduleService) {
+        contextScheduleService.dispose();
+      }
+      if (windowsNotificationService) {
+        windowsNotificationService.stopListening();
+      }
+      if (engine) {
+        engine.dispose();
+      }
+      if (webhookServer) {
+        await webhookServer.stop();
+      }
+      if (driver) {
+        driver.disconnect();
+      }
+      if (dbConnection) {
+        DatabaseConnection.resetInstance();
+      }
+    } catch (err) {
+      console.error('[Main] Error during shutdown:', err);
+    } finally {
+      app.exit(0);
+    }
+  })();
 });

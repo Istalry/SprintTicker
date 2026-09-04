@@ -192,7 +192,12 @@ export class TimeTrackingEngine extends EventEmitter {
     projectId: string = 'PROJ',
     taskKey?: string
   ): ActiveSessionDTO {
-    if (!taskId) throw new Error('Task ID is required to start a session');
+    // A new ad-hoc task is the one case with no id to supply: the caller has a
+    // title, and this process mints the row and its identifier below.
+    const isNewAdHocTask = isAdHoc && Boolean(customTitle);
+    if (!taskId && !isNewAdHocTask) {
+      throw new Error('Task ID is required to start a session');
+    }
 
     // Finalize any existing active session before starting new task
     if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
@@ -201,11 +206,29 @@ export class TimeTrackingEngine extends EventEmitter {
 
     let finalTitle = customTitle || 'Active Task';
     let finalKey = taskKey || taskId;
+    // The session must reference a task row that actually exists. The renderer
+    // used to invent its own `adhoc_<timestamp>` id while the main process
+    // created a different row, so every ad-hoc session pointed at a task that
+    // was never stored, and every start orphaned the row it did create.
+    let effectiveTaskId = taskId;
 
     if (isAdHoc && customTitle) {
-      const adHocTask = this._taskRepo.createAdHocTask(customTitle, 'MISC-1');
-      finalKey = adHocTask.key;
-      finalTitle = adHocTask.title;
+      // Resuming an ad-hoc task -- after the lunch split, for instance -- must
+      // reuse its existing row rather than making a second one. The lunch
+      // stop/start is intended behaviour; the duplicate rows were not.
+      const existing = this._taskRepo.getTaskById(taskId);
+      if (existing) {
+        if (existing.title !== customTitle || existing.status !== 'in_progress') {
+          this._taskRepo.updateTask({ ...existing, title: customTitle, status: 'in_progress' });
+        }
+        finalKey = existing.key;
+        finalTitle = customTitle;
+      } else {
+        const adHocTask = this._taskRepo.createAdHocTask(customTitle, 'MISC-1');
+        effectiveTaskId = adHocTask.id;
+        finalKey = adHocTask.key;
+        finalTitle = adHocTask.title;
+      }
     } else if (taskId) {
       // Transition task from 'todo' to 'in_progress' when session starts
       const existingTask = this._taskRepo.getTaskById(taskId);
@@ -227,7 +250,7 @@ export class TimeTrackingEngine extends EventEmitter {
     const newSession: Omit<ActiveSessionDTO, 'elapsedSeconds'> = {
       sessionId,
       projectId,
-      taskId,
+      taskId: effectiveTaskId,
       taskKey: finalKey,
       taskTitle: finalTitle,
       isAdHoc,

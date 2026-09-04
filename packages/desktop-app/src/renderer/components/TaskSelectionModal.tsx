@@ -108,7 +108,8 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
         if (step === 2) {
           if (isAdHocMode) {
             if (customTitle.trim()) {
-              onSelectTask(`adhoc_${Date.now()}`, true, customTitle.trim());
+              // Empty id: the main process owns ad-hoc task identity and returns the row it creates.
+              onSelectTask('', true, customTitle.trim());
               onClose();
             }
           } else if (filteredTasks[selectedIndex]) {
@@ -314,7 +315,8 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
               <button
                 onClick={() => {
                   if (customTitle.trim()) {
-                    onSelectTask(`adhoc_${Date.now()}`, true, customTitle.trim());
+                    // Empty id: the main process owns ad-hoc task identity and returns the row it creates.
+              onSelectTask('', true, customTitle.trim());
                     onClose();
                   }
                 }}

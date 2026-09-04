@@ -46,3 +46,24 @@ export function computeBackoffMs(retryCount: number): number {
   const capped = Math.min(exponential, SYNC_BACKOFF_MAX_MS);
   return Math.floor(capped / 2 + Math.random() * (capped / 2));
 }
+
+/**
+ * A short, stable tag identifying which queue row produced a worklog.
+ *
+ * OpenProject v3 has no idempotency key, so a worklog the provider accepted
+ * just before the app died can be re-sent when its claim is reclaimed. Both
+ * copies carry the same tag, which makes the duplicate findable by search
+ * rather than by comparing durations by eye.
+ *
+ * Deliberately short: this text lands in a user-visible worklog comment on
+ * every entry, so it uses the last 8 characters of the row id rather than the
+ * whole thing.
+ */
+export function syncMarker(syncItemId: string): string {
+  return `[#${syncItemId.slice(-8)}]`;
+}
+
+/** Appends the marker to a worklog comment. */
+export function withSyncMarker(comment: string, syncItemId: string): string {
+  return `${comment} ${syncMarker(syncItemId)}`.trim();
+}

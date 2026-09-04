@@ -54,7 +54,17 @@ export class InputDecoder {
     this._priorityEngine = priorityEngine;
     this._renderer = renderer;
 
-    this._driver.on('input', (event: HardwareEvent) => this.handleHardwareInput(event));
+    // Guard the listener itself, not just the action handlers. handleHardwareInput
+    // calls engine.startTask() and stopSession(), both of which throw on invalid
+    // state -- and a throw inside an EventEmitter listener with no error handler
+    // terminates the main process, taking the whole app down on a button press.
+    this._driver.on('input', (event: HardwareEvent) => {
+      try {
+        this.handleHardwareInput(event);
+      } catch (err) {
+        console.error('[InputDecoder] Unhandled error while processing hardware input:', err);
+      }
+    });
   }
 
   /// <summary>
