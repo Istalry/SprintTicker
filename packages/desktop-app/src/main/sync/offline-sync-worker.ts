@@ -1,4 +1,6 @@
 import { WorklogRepository } from '../db/repositories/worklog-repository';
+import { isProviderRequestError } from '../providers/provider-errors';
+import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProviderManager } from '../providers/provider-manager';
@@ -68,32 +70,65 @@ export class OfflineSyncWorker {
     this.isOnline = online;
   }
 
+  /**
+   * Mirrors the remote provider's projects and tasks into the local cache.
+   *
+   * Fetch-then-commit, in two distinct phases. Nothing is written or pruned
+   * until every request has succeeded, because pruning is destructive and
+   * measured against whatever the fetch returned: a failure part-way through
+   * used to leave the cache reconciled against a partial view, deleting
+   * everything the interrupted half would have contained.
+   *
+   * Any ProviderRequestError aborts the whole pass and leaves the cache exactly
+   * as it was. That includes `not_configured`, which is the ordinary state
+   * before the user enters credentials -- previously it returned an empty list
+   * that the prune read as "the remote has nothing", wiping local data on first
+   * launch.
+   */
   public async syncTasksAndProjects(): Promise<void> {
     if (!this.isOnline) return;
+
+    let projects: ProjectDTO[];
+    const tasksByProject = new Map<string, TaskDTO[]>();
+
+    // Phase 1: fetch everything. No writes.
     try {
       console.log(`[OfflineSyncWorker] Fetching latest projects and tasks...`);
-      const projects = await this.providerManager.getProjects();
-      const activeProjectIds = projects.map(p => p.id);
+      projects = await this.providerManager.getProjects();
+      for (const p of projects) {
+        tasksByProject.set(p.id, await this.providerManager.getTasks(p.id));
+      }
+    } catch (e) {
+      if (isProviderRequestError(e) && e.kind === 'not_configured') {
+        console.log(`[OfflineSyncWorker] Skipping sync: ${e.message}`);
+      } else {
+        console.error(
+          `[OfflineSyncWorker] Fetch failed; local cache left untouched:`,
+          e
+        );
+      }
+      return;
+    }
 
+    // Phase 2: commit the complete, verified snapshot.
+    try {
       for (const p of projects) {
         this.projectRepo.saveProject(p);
-        const tasks = await this.providerManager.getTasks(p.id);
-        const activeTaskIds = tasks.map(t => t.id);
-
+        const tasks = tasksByProject.get(p.id) ?? [];
         for (const t of tasks) {
           this.taskRepo.saveTask(t);
         }
-        
-        // Delete tasks that were removed or closed on the remote provider
-        this.taskRepo.deleteTasksNotIn(p.id, activeTaskIds);
+        // Remove tasks closed or deleted on the remote provider.
+        this.taskRepo.deleteTasksNotIn(p.id, tasks.map(t => t.id));
       }
+      this.projectRepo.deleteProjectsNotIn(projects.map(p => p.id));
 
-      // Delete projects that were removed on the remote provider
-      this.projectRepo.deleteProjectsNotIn(activeProjectIds);
-
-      console.log(`[OfflineSyncWorker] Successfully synced projects and tasks.`);
+      console.log(
+        `[OfflineSyncWorker] Synced ${projects.length} project(s) and ` +
+          `${[...tasksByProject.values()].reduce((n, t) => n + t.length, 0)} task(s).`
+      );
     } catch (e) {
-      console.error(`[OfflineSyncWorker] Failed to sync tasks and projects:`, e);
+      console.error(`[OfflineSyncWorker] Failed to commit synced projects and tasks:`, e);
     }
   }
 

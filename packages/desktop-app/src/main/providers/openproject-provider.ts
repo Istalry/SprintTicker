@@ -1,5 +1,7 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO } from '../../shared/dtos';
+import { ProviderRequestError } from './provider-errors';
+import { isOpenProjectConfigured } from '../../shared/provider-settings';
 
 /**
  * Concrete task provider adapter for OpenProject API v3.
@@ -65,57 +67,110 @@ export class OpenProjectProvider implements ITaskProvider {
   /// Fetches accessible projects via OpenProject API v3 (/api/v3/projects).
   /// </summary>
   public async getProjects(): Promise<ProjectDTO[]> {
-    if (!this._domain || !this._apiKey) return [];
+    if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
+      throw ProviderRequestError.notConfigured(this.providerId);
+    }
 
+    let res: Response;
     try {
-      const url = `${this.getBaseUrl()}/api/v3/projects`;
-      const res = await fetch(url, {
+      res = await fetch(`${this.getBaseUrl()}/api/v3/projects`, {
         headers: {
           'Authorization': this.getAuthHeader(),
           'Accept': 'application/json'
         }
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-      
-      const elements = json?._embedded?.elements;
-      if (Array.isArray(elements)) {
-        return elements
-          .filter(p => p.templated !== true && !(p.name as string || '').toLowerCase().includes('template'))
-          .map(p => ({
-            id: (p.id as number | string).toString(),
-            key: (p.identifier as string) || `proj_${p.id}`,
-            name: (p.name as string) || 'Untitled Project'
-          }));
-      }
     } catch (err) {
-      console.error('[OpenProjectProvider] Failed to fetch projects:', err);
+      throw ProviderRequestError.fromTransport(this.providerId, 'Fetching projects', err);
     }
-    return [];
+
+    if (!res.ok) {
+      throw ProviderRequestError.fromStatus(this.providerId, res.status, 'Fetching projects');
+    }
+
+    let json: { _embedded?: { elements?: Array<Record<string, unknown>> } };
+    try {
+      json = (await res.json()) as { _embedded?: { elements?: Array<Record<string, unknown>> } };
+    } catch (err) {
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        'Fetching projects failed: response body was not valid JSON',
+        { cause: err }
+      );
+    }
+
+    const elements = json?._embedded?.elements;
+    if (!Array.isArray(elements)) {
+      // An empty result is legitimate; a missing collection is not, and must not
+      // be reported as "the user has no projects" -- the sync worker would prune
+      // the entire local cache on the strength of it.
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        'Fetching projects failed: response had no _embedded.elements collection'
+      );
+    }
+
+    return elements
+      .filter(p => p.templated !== true && !((p.name as string) || '').toLowerCase().includes('template'))
+      .map(p => ({
+        id: (p.id as number | string).toString(),
+        key: (p.identifier as string) || `proj_${p.id}`,
+        name: (p.name as string) || 'Untitled Project'
+      }));
   }
 
   /// <summary>
   /// Fetches active work packages for a project via OpenProject API v3 (/api/v3/work_packages).
   /// </summary>
   public async getTasks(projectId: string): Promise<TaskDTO[]> {
-    if (!this._domain || !this._apiKey) return [];
+    if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
+      throw ProviderRequestError.notConfigured(this.providerId);
+    }
 
+    // Filter: Project ID, Assignee = me, Status = open ("o")
+    const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]`;
+    const url = `${this.getBaseUrl()}/api/v3/work_packages?filters=${encodeURIComponent(filter)}`;
+
+    let res: Response;
     try {
-      // Filter: Project ID, Assignee = me, Status = open ("o")
-      const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]`;
-      const url = `${this.getBaseUrl()}/api/v3/work_packages?filters=${encodeURIComponent(filter)}`;
-      const res = await fetch(url, {
+      res = await fetch(url, {
         headers: {
           'Authorization': this.getAuthHeader(),
           'Accept': 'application/json'
         }
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-      
-      const elements = json?._embedded?.elements;
-      if (Array.isArray(elements)) {
-        return elements.map(t => {
+    } catch (err) {
+      throw ProviderRequestError.fromTransport(this.providerId, `Fetching tasks for project ${projectId}`, err);
+    }
+
+    if (!res.ok) {
+      throw ProviderRequestError.fromStatus(this.providerId, res.status, `Fetching tasks for project ${projectId}`);
+    }
+
+    let json: { _embedded?: { elements?: Array<Record<string, unknown>> } };
+    try {
+      json = (await res.json()) as { _embedded?: { elements?: Array<Record<string, unknown>> } };
+    } catch (err) {
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        `Fetching tasks for project ${projectId} failed: response body was not valid JSON`,
+        { cause: err }
+      );
+    }
+
+    const elements = json?._embedded?.elements;
+    if (!Array.isArray(elements)) {
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        `Fetching tasks for project ${projectId} failed: response had no _embedded.elements collection`
+      );
+    }
+
+    return elements
+      .map(t => {
           const links = (t._links || {}) as Record<string, { href?: string; title?: string }>;
           const opStatusId = links.status?.href?.split('/').pop();
           const typeName = (links.type?.title as string) || '';
@@ -137,12 +192,8 @@ export class OpenProjectProvider implements ITaskProvider {
             status: localStatus,
             _opType: typeName // Temporary prop for filtering
           };
-        }).filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone');
-      }
-    } catch (err) {
-      console.error('[OpenProjectProvider] Failed to fetch tasks:', err);
-    }
-    return [];
+      })
+      .filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone');
   }
 
   /// <summary>
