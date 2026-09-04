@@ -4,6 +4,7 @@ import { OpenProjectProvider } from './openproject-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
 /**
  * Service managing registered Task Providers (OpenProject and AdHoc), provider credentials,
@@ -34,25 +35,32 @@ export class ProviderManager {
   }
 
   /// <summary>
+  /// Reads a provider setting, falling back to the single shared default for that key.
+  /// </summary>
+  private readSetting(key: ProviderSettingKeyValue): string {
+    return this._settingsRepo.getSetting(key, PROVIDER_SETTING_DEFAULTS[key]);
+  }
+
+  /// <summary>
   /// Re-reads stored domain credentials and status mappings from database settings.
   /// </summary>
   public reinitializeProviders(): void {
     const opProvider = this._providers.get('openproject');
     if (opProvider) {
       opProvider.initialize({
-        domain: this._settingsRepo.getSetting('op_domain', 'http://192.168.0.139:8090/'),
-        apiToken: this._settingsRepo.getSetting('op_api_key', ''),
-        opStatusInProgress: this._settingsRepo.getSetting('op_status_in_progress', 'In progress'),
-        opStatusToTest: this._settingsRepo.getSetting('op_status_to_test', 'In testing'),
-        opStatusToReview: this._settingsRepo.getSetting('op_status_to_review', 'Developed'),
-        opCompletionAction: this._settingsRepo.getSetting('op_completion_action', 'to_review')
+        domain: this.readSetting(ProviderSettingKey.OP_DOMAIN),
+        apiToken: this.readSetting(ProviderSettingKey.OP_API_KEY),
+        opStatusInProgress: this.readSetting(ProviderSettingKey.OP_STATUS_IN_PROGRESS),
+        opStatusToTest: this.readSetting(ProviderSettingKey.OP_STATUS_TO_TEST),
+        opStatusToReview: this.readSetting(ProviderSettingKey.OP_STATUS_TO_REVIEW),
+        opCompletionAction: this.readSetting(ProviderSettingKey.OP_COMPLETION_ACTION)
       });
     }
 
     const adHocProvider = this._providers.get('adhoc');
     if (adHocProvider) {
       adHocProvider.initialize({
-        fallbackKey: this._settingsRepo.getSetting('fallback_ticket_key', 'MISC-1')
+        fallbackKey: this.readSetting(ProviderSettingKey.FALLBACK_TICKET_KEY)
       });
     }
   }

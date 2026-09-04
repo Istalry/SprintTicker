@@ -20,6 +20,7 @@ import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO } from '../../shared/dtos';
 import { OpenProjectProvider } from '../providers/openproject-provider';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -393,14 +394,17 @@ export class IPCHandlerRegistry {
 
     // 7. Task Provider Config IPC Handlers
     ipcMain.handle(IPCChannel.GET_PROVIDERS, async () => {
-      const activeId = this.settingsRepo.getSetting('active_provider_id', 'openproject');
-      const fallbackKey = this.settingsRepo.getSetting('fallback_ticket_key', 'MISC-1');
-      const opDomain = this.settingsRepo.getSetting('op_domain', 'http://192.168.0.139:8090/');
-      const opApiKey = this.settingsRepo.getSetting('op_api_key', '');
-      const opStatusInProgress = this.settingsRepo.getSetting('op_status_in_progress', 'In progress');
-      const opStatusToTest = this.settingsRepo.getSetting('op_status_to_test', 'In testing');
-      const opStatusToReview = this.settingsRepo.getSetting('op_status_to_review', 'Developed');
-      const opCompletionAction = this.settingsRepo.getSetting('op_completion_action', 'to_review');
+      const read = (key: ProviderSettingKeyValue): string =>
+        this.settingsRepo.getSetting(key, PROVIDER_SETTING_DEFAULTS[key]);
+
+      const activeId = read(ProviderSettingKey.ACTIVE_PROVIDER_ID);
+      const fallbackKey = read(ProviderSettingKey.FALLBACK_TICKET_KEY);
+      const opDomain = read(ProviderSettingKey.OP_DOMAIN);
+      const opApiKey = read(ProviderSettingKey.OP_API_KEY);
+      const opStatusInProgress = read(ProviderSettingKey.OP_STATUS_IN_PROGRESS);
+      const opStatusToTest = read(ProviderSettingKey.OP_STATUS_TO_TEST);
+      const opStatusToReview = read(ProviderSettingKey.OP_STATUS_TO_REVIEW);
+      const opCompletionAction = read(ProviderSettingKey.OP_COMPLETION_ACTION);
 
       return {
         activeProviderId: activeId,
