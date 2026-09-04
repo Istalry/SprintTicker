@@ -2,16 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { AppIconResolver, buildNameTokens, splitAumid } from '../src/main/services/app-icon-resolver';
 
 /**
- * Icon resolution has to cover two different worlds. Packaged apps -- Slack and
- * Teams are both MSIX on a typical machine -- declare a logo in their manifest.
- * Unpackaged Win32 apps such as Discord only reach us as an AUMID that has to be
- * traced back through a Start-Menu shortcut to an executable.
+ * Icon resolution has to cover two different worlds. Packaged apps -- Slack
+ * ships as MSIX -- declare a logo in their manifest. Unpackaged Win32 apps such
+ * as Discord only reach us as an AUMID that has to be traced back through a
+ * Start-Menu shortcut to an executable.
  *
- * The audit assumed all three were Win32 and that `Get-AppxPackage` simply could
- * not see them. It could: Slack resolved correctly all along, and Teams failed
- * for an unrelated reason -- its manifest declares three `<Application>` nodes,
- * so reading `Applications.Application.VisualElements.Square44x44Logo` returned
- * an array and every string operation after it failed silently.
+ * The audit assumed both were Win32 and that `Get-AppxPackage` could not see
+ * them. It could: Slack resolved correctly all along. Checking that assumption
+ * turned up a different defect -- a package declaring several `<Application>`
+ * nodes made `Applications.Application.VisualElements.Square44x44Logo` return an
+ * array, and every string operation after it failed silently.
  */
 describe('AppIconResolver', () => {
   const AUMID_SLACK = 'com.tinyspeck.slackdesktop_8yrtsj140pw4g!com.tinyspeck.slackdesktop';
@@ -53,7 +53,7 @@ describe('AppIconResolver', () => {
   });
 
   it('Resolve_PackagedApp_SelectsTheApplicationNamedByTheAumid', () => {
-    // Teams declares three; picking the wrong one -- or none -- was the bug.
+    // A package may declare several; picking none was the bug.
     const runner = vi.fn().mockResolvedValue('');
     const resolver = new AppIconResolver(runner, async () => null);
 

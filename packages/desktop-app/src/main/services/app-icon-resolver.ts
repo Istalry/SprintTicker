@@ -43,7 +43,7 @@ const LOGO_VARIANT_PREFERENCE = [
  *
  * - **MSIX / packaged apps** report `PackageFamilyName!ApplicationId`, e.g.
  *   `com.tinyspeck.slackdesktop_8yrtsj140pw4g!com.tinyspeck.slackdesktop`. The
- *   package manifest names a logo asset. Slack and Teams are both packaged.
+ *   package manifest names a logo asset. Slack ships this way.
  * - **Win32 apps** report a bare AUMID that maps to a Start-Menu shortcut, e.g.
  *   Discord. The shortcut's target executable holds the icon.
  *
@@ -130,13 +130,17 @@ export class AppIconResolver {
    * Finds the logo asset declared by a packaged app's manifest.
    *
    * The AUMID's suffix after `!` names which `<Application>` inside the package
-   * sent the notification, and it matters: Microsoft Teams declares three of
-   * them. The previous implementation read
+   * sent the notification, and it matters: a package may declare several. The
+   * previous implementation read
    * `$xml.Package.Applications.Application.VisualElements.Square44x44Logo`
-   * without selecting one, so on any multi-application package that expression
-   * produced an array, every downstream string operation failed silently, and
-   * Teams fell back to a hand-drawn bitmap for that reason alone -- not, as
-   * assumed, because it was an unpackaged Win32 app.
+   * without selecting one, so on any such package that expression produced an
+   * array and every downstream string operation failed silently under
+   * `SilentlyContinue` -- no logo, no error, a hand-drawn fallback.
+   *
+   * Found by checking the assumption that Slack, Discord and Teams all failed
+   * because `Get-AppxPackage` could not see them. Slack resolved correctly
+   * already; the multi-application case was a separate defect, reproduced
+   * against the MSTeams package Windows registers whether or not anyone uses it.
    */
   private async resolvePackagedLogo(appId: string): Promise<string | null> {
     const [familyName, applicationId] = splitAumid(appId);

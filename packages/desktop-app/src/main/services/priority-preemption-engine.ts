@@ -33,8 +33,9 @@ export interface PreemptionEvaluationResult {
  *
  * Named rather than derived: `renderNotificationBanner` used to recompute this
  * from a numeric threshold (`priority >= 90`), which no notification rule ever
- * meets, so every high-priority alert silently re-entered as `messagingPriority`
- * and was suppressed during Lunch and Away.
+ * meets. A high-priority alert was therefore raised twice -- once correctly at
+ * 70, then again as `messagingPriority` at 65, which the first request's own
+ * lock refused. The banner never drew and the lock was never released.
  */
 export type NotificationEventName = 'highNotificationPriority' | 'messagingPriority';
 

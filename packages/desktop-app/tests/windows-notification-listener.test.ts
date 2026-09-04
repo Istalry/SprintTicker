@@ -12,9 +12,12 @@ import { WindowsNotificationSettingsDTO } from '../src/shared/dtos';
  * The previous suite stubbed it and asserted that a HIGH_PRIORITY notification
  * evaluated to priority 95. No rule in the engine produces 95 for a
  * notification -- the real value is 70 -- so the suite agreed with itself while
- * the feature was broken end to end: the banner re-derived its own event name
- * from `priority >= 90`, 70 failed that test, and every high-priority alert
- * re-entered as `messagingPriority`, which is SUPPRESS during Lunch and Away.
+ * the feature was broken end to end.
+ *
+ * Priority ordering is the user's to set, and these tests must not assume one.
+ * They cover what the code owes the configuration: raise each notification under
+ * the class its rule names, exactly once, and report honestly whether it
+ * reached the display.
  */
 describe('WindowsNotificationListenerService Unit Tests', () => {
   let settingsRepo: SettingsRepository;
@@ -141,11 +144,12 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     expect(bannerCalls[0].eventName).toBe('highNotificationPriority');
   });
 
-  it('HandleNotification_HighPriorityDuringLunch_StillReachesTheDisplay', () => {
-    // The whole point of the setting. `highNotificationPriority` is DISPLAY in
-    // all three modes; the old code turned it into `messagingPriority`, which is
-    // SUPPRESS during Lunch, so this notification never appeared.
-    priorityEngine.setUserMode('LUNCH');
+  it('HandleNotification_HighPriorityDuringWork_ReachesTheDisplay', () => {
+    // This is what the fix restores. The old code raised the request under
+    // `highNotificationPriority` (70), then re-derived `messagingPriority` (65)
+    // and evaluated a second time -- against the lock the first evaluation had
+    // just taken. 65 < 70, so the banner was refused by its own request and the
+    // display stayed pinned at 70 with no release scheduled.
     withRules([{ appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY' }]);
 
     const result = service.handleNotification({ appId: 'slack', appName: 'Slack', title: 'Ops', body: 'Prod down' });
@@ -155,10 +159,35 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     expect(priorityEngine.getActiveLockEventName()).toBe('highNotificationPriority');
   });
 
+  it('HandleNotification_HighPriorityWhileLunchHoldsTheDisplay_DoesNotInterrupt', () => {
+    // Lunch and Away outrank both notification classes in the shipped ordering,
+    // so a break stays a break. That is the priority panel doing its job, not a
+    // defect, and the fix above must not change it: the banner is still refused,
+    // just for the right reason -- 70 is below the 95 Lunch mode holds.
+    priorityEngine.setUserMode('LUNCH');
+    priorityEngine.evaluateRequest('lunchModePriority', undefined, () => undefined);
+    withRules([{ appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY' }]);
+
+    const result = service.handleNotification({ appId: 'slack', appName: 'Slack', title: 'Ops', body: 'Prod down' });
+
+    expect(result).toBe(false);
+    expect(priorityEngine.getActiveLockEventName()).toBe('lunchModePriority');
+  });
+
+  it('HandleNotification_HighPriorityWhileAwayHoldsTheDisplay_DoesNotInterrupt', () => {
+    priorityEngine.setUserMode('AWAY');
+    priorityEngine.evaluateRequest('awayModePriority', undefined, () => undefined);
+    withRules([{ appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY' }]);
+
+    const result = service.handleNotification({ appId: 'slack', appName: 'Slack', title: 'Ops', body: 'Prod down' });
+
+    expect(result).toBe(false);
+    expect(priorityEngine.getActiveLockEventName()).toBe('awayModePriority');
+  });
+
   it('HandleNotification_DefaultPriorityDuringAway_IsReportedAsSuppressed', () => {
-    // `messagingPriority` is SUPPRESS when Away, so the banner must not take the
-    // lock -- and the caller must be told, or the status panel counts a
-    // suppressed notification as captured.
+    // The caller has to be told, or the status panel counts a notification that
+    // never reached the display as captured.
     priorityEngine.setUserMode('AWAY');
     withRules([{ appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT' }]);
 

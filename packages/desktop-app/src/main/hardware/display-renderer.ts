@@ -777,9 +777,14 @@ export class DisplayRenderer {
    *
    * The caller supplies `eventName` because only the caller knows which priority
    * class the matched source rule assigned. Deriving it here from a number was
-   * the defect: no notification rule reaches 90, so `HIGH_PRIORITY` alerts
-   * re-entered as `messagingPriority` -- suppressed during Lunch and Away, which
-   * is the exact opposite of what the setting promises.
+   * the defect: no notification rule reaches 90, so a `HIGH_PRIORITY` alert
+   * raised at 70 was re-raised as `messagingPriority` at 65 and refused by the
+   * lock its own first request had just taken.
+   *
+   * Whether a notification outranks Lunch or Away is a separate question, and
+   * one the priority panel answers. In the shipped ordering both break screens
+   * sit above both notification classes, so a break is not interrupted -- that
+   * is configuration working, and this method must not second-guess it.
    */
   public renderNotificationBanner(options: NotificationBannerOptions): DisplayPayload {
     const {

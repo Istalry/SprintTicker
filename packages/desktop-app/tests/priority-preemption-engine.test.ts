@@ -113,4 +113,31 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
     expect(result).toBe(true);
     expect(engine.hasActiveNotification()).toBe(false);
   });
+
+  it('EvaluateRequest_SameNotificationRaisedTwiceUnderDifferentNames_IsRefusedBySelf', () => {
+    // This is why one notification must produce exactly one evaluation. The
+    // listener raised a high-priority alert correctly at 70; the banner then
+    // re-derived `messagingPriority` and raised it again at 65, which the lock
+    // the first call had just taken refused. The alert never drew, and the
+    // release timer lived inside the render that never ran, so the lock stayed.
+    const first = engine.evaluateRequest('highNotificationPriority');
+    const second = engine.evaluateRequest('messagingPriority', undefined, () => undefined);
+
+    expect(first.shouldRender).toBe(true);
+    expect(second.shouldRender).toBe(false);
+    expect(engine.getActiveLockEventName()).toBe('highNotificationPriority');
+  });
+
+  it('GetEventPriority_KnownEvent_ReadsTheRuleWithoutTakingTheLock', () => {
+    // The banner needs the number for its rear-panel text. Asking through
+    // `evaluateRequest` is what caused the second acquisition above.
+    const priority = engine.getEventPriority('highNotificationPriority');
+
+    expect(priority).toBe(70);
+    expect(engine.getActiveLockEventName()).toBeNull();
+  });
+
+  it('GetEventPriority_UnknownEvent_FallsBackToTheDefault', () => {
+    expect(engine.getEventPriority('menuPriority')).toBe(50);
+  });
 });
