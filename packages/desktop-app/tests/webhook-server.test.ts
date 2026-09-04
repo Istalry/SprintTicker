@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { WebhookServer } from '../src/main/api/webhook-server';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { MAX_WEBHOOK_BODY_BYTES, WebhookServer } from '../src/main/api/webhook-server';
 
 describe('WebhookServer Unit Tests', () => {
   let webhookServer: WebhookServer;
@@ -14,331 +14,279 @@ describe('WebhookServer Unit Tests', () => {
     await webhookServer.stop();
   });
 
-  it('PostCompileStart_ValidPayload_Returns200Accepted', async () => {
-    // Arrange
-    const payload = {
-      project: 'MyFantasyGame',
-      unityVersion: '2022.3.10f1',
-      timestampUtc: '2026-07-27T09:30:00.000Z'
-    };
+  describe('request screening', () => {
+    /**
+     * Loopback is not a security boundary. Any page in any browser on this
+     * machine can POST to 127.0.0.1, and this API injects hardware input, so
+     * a request that looks like it came from a web page is refused.
+     */
+    it('Post_WithBrowserOriginHeader_IsRejected', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/heartbeat',
+        payload: { projectName: 'Game' },
+        headers: { Origin: 'https://example.com' }
+      });
 
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/compile-start',
-      payload
+      expect(response.statusCode).toBe(403);
+      expect(JSON.parse(response.payload).error).toBe('FORBIDDEN_ORIGIN');
     });
 
-    // Assert
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
+    it('Post_WithFormContentType_IsRejected', async () => {
+      // The content type is what actually closes the hole: a cross-origin POST
+      // may skip the CORS preflight only while it stays "simple", and
+      // form-encoded is one of the three types that qualify.
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/heartbeat',
+        payload: { projectName: 'Game' },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      expect(response.statusCode).toBe(415);
+    });
+
+    it('Post_WithTextPlainContentType_IsRejected', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/heartbeat',
+        payload: { projectName: 'Game' },
+        headers: { 'Content-Type': 'text/plain' }
+      });
+
+      expect(response.statusCode).toBe(415);
+    });
+
+    it('Post_WithCharsetParameterOnJson_IsAccepted', async () => {
+      // A native client is entitled to send `application/json; charset=utf-8`.
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/heartbeat',
+        payload: { projectName: 'Game' },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' }
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('Get_AnyUrl_IsRejectedAsMethodNotAllowed', async () => {
+      const response = await webhookServer.inject({
+        method: 'GET',
+        url: '/api/v1/unity/heartbeat'
+      });
+
+      expect(response.statusCode).toBe(405);
+    });
+
+    it('Post_BodyOverTheCap_IsRejectedWithoutBuffering', async () => {
+      // There was no cap: the body was accumulated a chunk at a time into a
+      // string, so a client could make the main process allocate without limit.
+      const oversized = 'x'.repeat(MAX_WEBHOOK_BODY_BYTES + 1024);
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/console',
+        rawBody: JSON.stringify({ projectName: 'Game', message: oversized })
+      });
+
+      expect(response.statusCode).toBe(413);
+    });
+
+    it('Post_MalformedJson_Returns400', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/heartbeat',
+        rawBody: '{ not json'
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.payload).error).toBe('INVALID_JSON');
+    });
   });
 
-  it('PostCompileStart_InvalidPayload_Returns400BadRequest', async () => {
-    // Arrange
-    const payload = { invalidField: 'test' };
+  describe('routes', () => {
+    it('PostApiV1UnityCompile_ValidPayload_Returns200Accepted', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/compile',
+        payload: { projectName: 'Game', state: 'started', unityVersion: '2022.3.10f1' }
+      });
 
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/compile-start',
-      payload
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
     });
 
-    // Assert
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
+    it('PostApiV1UnityCompile_InvalidPayload_Returns400', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/compile',
+        payload: { projectName: 'Game', state: 'exploded' }
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('PostApiV1UnityPlaymode_ValidPayload_Returns200Accepted', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/playmode',
+        payload: { projectName: 'Game', state: 'entered' }
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('PostApiV1UnityPlaymode_InvalidPayload_Returns400', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/playmode',
+        payload: { projectName: 'Game', state: 'paused' }
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('PostApiV1UnityHeartbeat_ValidPayload_Returns200Accepted', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/heartbeat',
+        payload: { projectName: 'Game' }
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('PostApiV1UnityConsole_InvalidPayload_Returns400', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/console',
+        payload: { projectName: 'Game' }
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('PostInput_ValidPayload_TriggersCallbackAndReturns200Accepted', async () => {
+      let capturedKey = '';
+      webhookServer.onInputEvent(key => {
+        capturedKey = key;
+      });
+
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/input?key=ok',
+        payload: {}
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(capturedKey).toBe('ok');
+    });
+
+    it('Post_RemovedLegacyUnityRoute_Returns404', async () => {
+      // The four /unity/* routes had no caller in the plugin, the docs or the
+      // repository; they were reachable, unauthenticated, and unused.
+      for (const url of [
+        '/unity/compile-start',
+        '/unity/compile-finish',
+        '/unity/playmode',
+        '/unity/exception'
+      ]) {
+        const response = await webhookServer.inject({ method: 'POST', url, payload: {} });
+        expect(response.statusCode, url).toBe(404);
+      }
+    });
+
+    it('Post_RemovedVsCodeRoute_Returns404', async () => {
+      const response = await webhookServer.inject({
+        method: 'POST',
+        url: '/api/v1/vscode/activity',
+        payload: { workspaceName: 'busy-bar' }
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
   });
 
-  it('PostCompileFinish_ValidPayload_Returns200Accepted', async () => {
-    // Arrange
-    const payload = {
-      project: 'MyFantasyGame',
-      success: true,
-      elapsedSeconds: 14.2,
-      errorCount: 0,
-      warningCount: 3
-    };
+  describe('Unity console throttling', () => {
+    let throttleServer: WebhookServer;
+    let received: number;
 
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/compile-finish',
-      payload
+    beforeEach(async () => {
+      throttleServer = new WebhookServer(0);
+      await throttleServer.start();
+      received = 0;
+      throttleServer.onConsoleEvent(() => {
+        received++;
+      });
     });
 
-    // Assert
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
-  });
+    it('PostConsole_BurstOfErrors_ReachesTheHandlerOnce', async () => {
+      // A script throwing inside Update posts once per frame, and every one used
+      // to redraw the banner already on the display.
+      for (let i = 0; i < 20; i++) {
+        await throttleServer.inject({
+          method: 'POST',
+          url: '/api/v1/unity/console',
+          payload: { projectName: 'Game', message: `NullReferenceException ${i}` }
+        });
+      }
 
-  it('PostCompileFinish_InvalidPayload_Returns400BadRequest', async () => {
-    // Arrange
-    const payload = { project: 'MyFantasyGame', success: 'not-a-boolean' };
-
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/compile-finish',
-      payload
+      expect(received).toBe(1);
+      await throttleServer.stop();
     });
 
-    // Assert
-    expect(response.statusCode).toBe(400);
-  });
+    it('PostConsole_Throttled_StillReportsSuccessSoThePluginDoesNotRetry', async () => {
+      await throttleServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/console',
+        payload: { projectName: 'Game', message: 'first' }
+      });
+      const second = await throttleServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/console',
+        payload: { projectName: 'Game', message: 'second' }
+      });
 
-  it('PostPlayMode_ValidPayload_Returns200Accepted', async () => {
-    // Arrange
-    const payload = {
-      project: 'MyFantasyGame',
-      state: 'EnteredPlayMode'
-    };
-
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/playmode',
-      payload
+      expect(second.statusCode).toBe(200);
+      expect(JSON.parse(second.payload).status).toBe('THROTTLED');
+      await throttleServer.stop();
     });
 
-    // Assert
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
-  });
+    it('PostConsole_AfterTheThrottleWindow_ReachesTheHandlerAgain', async () => {
+      const now = Date.now();
+      await throttleServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/console',
+        payload: { projectName: 'Game', message: 'first' }
+      });
 
-  it('PostPlayMode_InvalidState_Returns400BadRequest', async () => {
-    // Arrange
-    const payload = {
-      project: 'MyFantasyGame',
-      state: 'UnknownState'
-    };
+      vi.spyOn(Date, 'now').mockReturnValue(now + 10_000);
+      await throttleServer.inject({
+        method: 'POST',
+        url: '/api/v1/unity/console',
+        payload: { projectName: 'Game', message: 'later' }
+      });
+      vi.restoreAllMocks();
 
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/playmode',
-      payload
+      expect(received).toBe(2);
+      await throttleServer.stop();
     });
-
-    // Assert
-    expect(response.statusCode).toBe(400);
-  });
-
-  it('PostException_ValidPayload_Returns200Accepted', async () => {
-    // Arrange
-    const payload = {
-      project: 'MyFantasyGame',
-      exceptionType: 'NullReferenceException',
-      message: 'Object reference not set to an instance of an object',
-      stackTrace: 'at PlayerController.Update () in PlayerController.cs:24'
-    };
-
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/exception',
-      payload
-    });
-
-    // Assert
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
-  });
-
-  it('PostException_InvalidPayload_Returns400BadRequest', async () => {
-    // Arrange
-    const payload = { message: 'Missing fields' };
-
-    // Act
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/exception',
-      payload
-    });
-
-    // Assert
-    expect(response.statusCode).toBe(400);
-  });
-
-  it('PostApiV1UnityCompile_ValidPayload_Returns200Accepted', async () => {
-    const payload = { state: 'started', projectName: 'MyFantasyGame' };
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/compile',
-      payload
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
-  });
-
-  it('PostApiV1UnityPlaymode_ValidPayload_Returns200Accepted', async () => {
-    const payload = { state: 'entered', projectName: 'MyFantasyGame' };
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/playmode',
-      payload
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED' });
-  });
-
-  it('PostApiV1VSCodeActivity_ValidPayload_Returns200Accepted', async () => {
-    const payload = { workspaceName: 'BUSY_Bar', fileName: 'App.tsx', action: 'edit' };
-
-    let callbackTriggered = false;
-    webhookServer.onVSCodeEvent((p) => {
-      if (p.workspaceName === 'BUSY_Bar') callbackTriggered = true;
-    });
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/vscode/activity',
-      payload
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(callbackTriggered).toBe(true);
-  });
-
-  it('PostApiV1UnityConsole_ValidPayload_TriggersConsoleCallbacks', async () => {
-    const payload = { type: 'exception', message: 'NullRef', projectName: 'MyGame' };
-
-    let callbackTriggered = false;
-    webhookServer.onConsoleEvent((p) => {
-      if (p.projectName === 'MyGame') callbackTriggered = true;
-    });
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/console',
-      payload
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(callbackTriggered).toBe(true);
-  });
-
-  it('PostApiV1UnityConsole_InvalidPayload_Returns400', async () => {
-    const payload = { type: 'error' }; // missing projectName and message
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/console',
-      payload
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
-  });
-
-  it('PostApiV1UnityCompile_InvalidPayload_Returns400', async () => {
-    const payload = { state: 'invalid-state', projectName: 'MyGame' };
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/compile',
-      payload
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
-  });
-
-  it('PostApiV1UnityPlaymode_InvalidPayload_Returns400', async () => {
-    const payload = { state: 'bad-state', projectName: 'MyGame' };
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/playmode',
-      payload
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
-  });
-
-  it('PostApiV1VSCodeActivity_InvalidPayload_Returns400', async () => {
-    const payload = { fileName: 'App.tsx' }; // missing workspaceName
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/vscode/activity',
-      payload
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.payload).error).toBe('INVALID_PAYLOAD');
-  });
-
-  it('OnCompileEvent_CallbackFired_WhenLegacyCompileStartPosted', async () => {
-    let callbackPayload: unknown = null;
-
-    webhookServer.onCompileEvent((p) => {
-      callbackPayload = p;
-    });
-
-    await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/compile-start',
-      payload: { project: 'MyGame', unityVersion: '2022.3.10f1', timestampUtc: new Date().toISOString() }
-    });
-
-    expect(callbackPayload).not.toBeNull();
-    expect(callbackPayload.state).toBe('started');
-    expect(callbackPayload.projectName).toBe('MyGame');
-  });
-
-  it('OnPlayModeEvent_ExitedPlayMode_MapsStateToExited', async () => {
-    let mappedState: string | null = null;
-
-    webhookServer.onPlayModeEvent((p) => {
-      mappedState = p.state;
-    });
-
-    await webhookServer.inject({
-      method: 'POST',
-      url: '/unity/playmode',
-      payload: { project: 'MyGame', state: 'ExitedPlayMode' }
-    });
-
-    expect(mappedState).toBe('exited');
   });
 
   it('Stop_CalledTwice_DoesNotThrow', async () => {
     const server = new WebhookServer(0);
     await server.start();
-    await expect(server.stop()).resolves.not.toThrow();
-  });
-
-  it('PostInput_ValidPayload_TriggersCallbackAndReturns200Accepted', async () => {
-    let capturedKey: string | null = null;
-    webhookServer.onInputEvent((k) => {
-      capturedKey = k;
-    });
-
-    const response = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/input?key=ok'
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.payload)).toEqual({ status: 'ACCEPTED', key: 'ok' });
-    expect(capturedKey).toBe('ok');
+    await server.stop();
+    await expect(server.stop()).resolves.toBeUndefined();
   });
 
   it('Start_ErrorOnPortConflict_ThrowsError', async () => {
-    // Arrange: start first server on a fixed port then try to bind again on same port
-    const server1 = new WebhookServer(0);
-    const address = await server1.start();
-    const port = parseInt(new URL(address).port, 10);
+    const first = new WebhookServer(0);
+    const address = await first.start();
+    const port = Number(new URL(address).port);
 
-    const server2 = new WebhookServer(port);
-    await expect(server2.start()).rejects.toThrow();
+    const second = new WebhookServer(port);
+    await expect(second.start()).rejects.toThrow();
 
-    await server1.stop();
+    await first.stop();
   });
 });

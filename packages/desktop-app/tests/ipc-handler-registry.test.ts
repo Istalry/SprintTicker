@@ -42,15 +42,15 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const renderer = new DisplayRenderer(driver);
     const decoder = new InputDecoder(driver, engine, settingsRepo);
 
-    registry = new IPCHandlerRegistry(
+    registry = new IPCHandlerRegistry({
       engine,
       taskRepo,
       settingsRepo,
       driver,
-      decoder,
+      inputDecoder: decoder,
       renderer,
-      () => null
-    );
+      getWindow: () => null
+    });
   });
 
   afterEach(() => {
@@ -100,15 +100,15 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const renderer2 = new DisplayRenderer(driver2);
     const decoder2 = new InputDecoder(driver2, engine2, settingsRepo2);
 
-    const reg2 = new IPCHandlerRegistry(
-      engine2,
-      taskRepo2,
-      settingsRepo2,
-      driver2,
-      decoder2,
-      renderer2,
-      () => mockWindow
-    );
+    const reg2 = new IPCHandlerRegistry({
+      engine: engine2,
+      taskRepo: taskRepo2,
+      settingsRepo: settingsRepo2,
+      driver: driver2,
+      inputDecoder: decoder2,
+      renderer: renderer2,
+      getWindow: () => mockWindow
+    });
     reg2.registerAllHandlers();
 
     // Act: trigger an engine state change which should broadcast via IPC

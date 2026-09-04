@@ -26,6 +26,34 @@ import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue 
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
  * state broadcasting between Main, Renderer, and Hardware display layers.
  */
+/**
+ * Everything the registry needs, by name.
+ *
+ * Sixteen positional parameters, nine of them optional and eight of those
+ * structurally similar service objects, meant a caller could swap two and get a
+ * runtime failure somewhere unrelated rather than a compile error. Naming them
+ * also removes the pressure to append rather than insert -- `providerManager`
+ * had been added last purely because it was the cheapest place to put it.
+ */
+export interface IPCHandlerRegistryDeps {
+  engine: TimeTrackingEngine;
+  taskRepo: TaskRepository;
+  settingsRepo: SettingsRepository;
+  driver: BusyBarDriver;
+  inputDecoder: InputDecoder;
+  renderer: DisplayRenderer;
+  getWindow: () => BrowserWindow | null;
+  unityInjectorService?: UnityInjectorService;
+  worklogRepo?: WorklogRepository;
+  unityTelemetryService?: UnityTelemetryService;
+  messagingService?: MessagingIntegrationService;
+  priorityEngine?: PriorityPreemptionEngine;
+  contextScheduleService?: ContextScheduleService;
+  windowsNotificationService?: WindowsNotificationListenerService;
+  systemAutomationService?: ISystemAutomationService;
+  providerManager?: ProviderManager;
+}
+
 export class IPCHandlerRegistry {
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
@@ -46,24 +74,26 @@ export class IPCHandlerRegistry {
   private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
 
-  constructor(
-    engine: TimeTrackingEngine,
-    taskRepo: TaskRepository,
-    settingsRepo: SettingsRepository,
-    driver: BusyBarDriver,
-    inputDecoder: InputDecoder,
-    renderer: DisplayRenderer,
-    getWindow: () => BrowserWindow | null,
-    unityInjectorService?: UnityInjectorService,
-    worklogRepo?: WorklogRepository,
-    unityTelemetryService?: UnityTelemetryService,
-    messagingService?: MessagingIntegrationService,
-    priorityEngine?: PriorityPreemptionEngine,
-    contextScheduleService?: ContextScheduleService,
-    windowsNotificationService?: WindowsNotificationListenerService,
-    systemAutomationService?: ISystemAutomationService,
-    providerManager?: ProviderManager
-  ) {
+  constructor(deps: IPCHandlerRegistryDeps) {
+    const {
+      engine,
+      taskRepo,
+      settingsRepo,
+      driver,
+      inputDecoder,
+      renderer,
+      getWindow,
+      unityInjectorService,
+      worklogRepo,
+      unityTelemetryService,
+      messagingService,
+      priorityEngine,
+      contextScheduleService,
+      windowsNotificationService,
+      systemAutomationService,
+      providerManager
+    } = deps;
+
     this.engine = engine;
     this.taskRepo = taskRepo;
     this.providerManager = providerManager;

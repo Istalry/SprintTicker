@@ -227,16 +227,35 @@ Convenient Windows batch scripts are available in the repository root directory:
 
 ## 🔌 Embedded Webhook Server API Endpoints
 
-The Electron Main process hosts a Fastify HTTP server on `http://127.0.0.1:39123` for local IDE, Unity, and telemetry integrations.
+The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for the Unity Editor plugin.
 
 | Route | Method | Description |
 | :--- | :--- | :--- |
 | `/api/v1/unity/compile` | `POST` | Compilation state (`started`, `finished`) & progress bar display |
 | `/api/v1/unity/playmode` | `POST` | Toggles "ON AIR" red display mode during Unity Play Mode (`entered`, `exited`) |
-| `/api/v1/unity/console` | `POST` | Flashes red LED and displays exception/warning details |
+| `/api/v1/unity/console` | `POST` | Flashes red LED and displays exception details. Throttled to one event every 3s |
 | `/api/v1/unity/heartbeat` | `POST` | Unity Editor C# plugin active connection heartbeat pings |
-| `/api/v1/vscode/activity` | `POST` | VS Code workspace & active file editing activity telemetry |
-| `/api/v1/input/inject` | `POST` | Inject physical hardware key events (`up`, `down`, `start`, `ok`, etc.) |
+| `/api/input` | `POST` | Inject physical hardware key events (`up`, `down`, `start`, `ok`, etc.) |
+
+### Security
+
+Loopback is not a security boundary: any page in any browser on this machine can
+POST to `127.0.0.1`, and this API can drive the hardware and inject input events.
+Requests are screened before routing:
+
+- **`Content-Type: application/json` is required.** A browser may send a
+  cross-origin POST without permission only while the request stays "simple",
+  which restricts it to form, plain-text and multipart bodies. Requiring JSON
+  forces a CORS preflight, and no `Access-Control-Allow-Origin` is ever sent, so
+  that preflight fails and the real request is never made.
+- **Requests carrying an `Origin` header are refused.** Browsers set it, native
+  clients do not.
+- **Bodies are capped at 64 KB.**
+
+This is not authentication. Any local program can still call this API; what the
+checks close is the path from a web page you happen to be visiting to your
+hardware. The server binds to `127.0.0.1` only and is never reachable from the
+network.
 
 ---
 

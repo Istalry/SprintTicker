@@ -173,14 +173,14 @@ async function startApplication(): Promise<void> {
     () => mainWindow
   );
 
-  ipcRegistry = new IPCHandlerRegistry(
+  ipcRegistry = new IPCHandlerRegistry({
     engine,
     taskRepo,
     settingsRepo,
     driver,
     inputDecoder,
     renderer,
-    () => mainWindow,
+    getWindow: () => mainWindow,
     unityInjectorService,
     worklogRepo,
     unityTelemetryService,
@@ -188,9 +188,8 @@ async function startApplication(): Promise<void> {
     priorityEngine,
     contextScheduleService,
     windowsNotificationService,
-    undefined,
     providerManager
-  );
+  });
   ipcRegistry.registerAllHandlers();
 
   // 6. Create Window & Render Initial State

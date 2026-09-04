@@ -118,33 +118,6 @@ export interface PriorityMatrixConfig {
   rules: PriorityRule[];
 }
 
-// Local Unity HTTP Webhook DTOs
-export interface UnityCompileStartDTO {
-  project: string;
-  unityVersion: string;
-  timestampUtc: string;
-}
-
-export interface UnityCompileFinishDTO {
-  project: string;
-  success: boolean;
-  elapsedSeconds: number;
-  errorCount: number;
-  warningCount: number;
-}
-
-export interface UnityPlayModeDTO {
-  project: string;
-  state: 'EnteredPlayMode' | 'ExitedPlayMode';
-}
-
-export interface UnityExceptionDTO {
-  project: string;
-  exceptionType: string;
-  message: string;
-  stackTrace: string;
-}
-
 export interface UnityProjectInjectionResult {
   projectName: string;
   projectPath: string;
@@ -480,50 +453,6 @@ export interface HardwareDrawPayloadDTO {
 /**
  * Validation helpers for incoming API payloads
  */
-export class DTOValidator {
-  public static isValidCompileStart(data: unknown): data is UnityCompileStartDTO {
-    if (typeof data !== 'object' || data === null) return false;
-    const obj = data as Record<string, unknown>;
-    return (
-      typeof obj.project === 'string' &&
-      typeof obj.unityVersion === 'string' &&
-      typeof obj.timestampUtc === 'string'
-    );
-  }
-
-  public static isValidCompileFinish(data: unknown): data is UnityCompileFinishDTO {
-    if (typeof data !== 'object' || data === null) return false;
-    const obj = data as Record<string, unknown>;
-    return (
-      typeof obj.project === 'string' &&
-      typeof obj.success === 'boolean' &&
-      typeof obj.elapsedSeconds === 'number' &&
-      typeof obj.errorCount === 'number' &&
-      typeof obj.warningCount === 'number'
-    );
-  }
-
-  public static isValidPlayMode(data: unknown): data is UnityPlayModeDTO {
-    if (typeof data !== 'object' || data === null) return false;
-    const obj = data as Record<string, unknown>;
-    return (
-      typeof obj.project === 'string' &&
-      (obj.state === 'EnteredPlayMode' || obj.state === 'ExitedPlayMode')
-    );
-  }
-
-  public static isValidException(data: unknown): data is UnityExceptionDTO {
-    if (typeof data !== 'object' || data === null) return false;
-    const obj = data as Record<string, unknown>;
-    return (
-      typeof obj.project === 'string' &&
-      typeof obj.exceptionType === 'string' &&
-      typeof obj.message === 'string' &&
-      typeof obj.stackTrace === 'string'
-    );
-  }
-}
-
 export class ArgumentNullException extends Error {
   constructor(paramName: string) {
     super(`Argument cannot be null or undefined: ${paramName}`);
