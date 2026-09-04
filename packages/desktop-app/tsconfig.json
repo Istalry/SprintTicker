@@ -7,16 +7,27 @@
     "declaration": false,
     "declarationMap": false,
     "baseUrl": ".",
-    "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@shared/*": ["src/shared/*"],
-      "@main/*": ["src/main/*"],
-      "@preload/*": ["src/preload/*"],
-      "@renderer/*": ["src/renderer/*"]
-    }
+      "@shared/*": [
+        "src/shared/*"
+      ],
+      "@main/*": [
+        "src/main/*"
+      ],
+      "@preload/*": [
+        "src/preload/*"
+      ],
+      "@renderer/*": [
+        "src/renderer/*"
+      ]
+    },
+    "noEmit": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/renderer/**/*"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/renderer/**/*"
+  ]
 }
-

@@ -19,6 +19,8 @@ export const StandupPromptModal: React.FC<StandupPromptModalProps> = ({
       }, 10000);
       return () => clearTimeout(timer);
     }
+    // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
+    return undefined;
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;

@@ -139,16 +139,58 @@ export interface UnityProjectInjectionResult {
   error?: string;
 }
 
+/**
+ * A completed worklog as sent to the renderer.
+ *
+ * This mirrors the `worklogs` table, which is what GET_WORKLOGS actually
+ * returns. The previous declaration promised taskKey, taskTitle, providerId,
+ * syncStatus and completedAtUtc -- none of which that channel populates -- while
+ * omitting `startedAtUtc`, the one field the history view reads. Anything
+ * consuming the aspirational fields would have rendered `undefined`.
+ *
+ * Enriching this with task metadata and sync state is a feature, not a typo;
+ * it needs a join in the repository first.
+ */
+/**
+ * Task-provider configuration as exchanged over IPC.
+ *
+ * The preload contract previously described this inline with a `jiraDomain`
+ * field left over from an earlier Jira integration. The main handler has long
+ * returned the OpenProject fields instead, so the settings screen's correct code
+ * failed to compile against its own API.
+ */
+export interface ProviderSettingsDTO {
+  activeProviderId: string;
+  fallbackTicketKey: string;
+  opDomain: string;
+  opApiKey: string;
+  opStatusInProgress: string;
+  opStatusToTest: string;
+  opStatusToReview: string;
+  opCompletionAction: string;
+  providers: Array<{ id: string; name: string }>;
+}
+
+/** Partial update; every field is optional and only supplied keys are written. */
+export interface ProviderSettingsUpdateDTO {
+  providerId?: string;
+  fallbackTicketKey?: string;
+  opDomain?: string;
+  opApiKey?: string;
+  opStatusInProgress?: string;
+  opStatusToTest?: string;
+  opStatusToReview?: string;
+  opCompletionAction?: string;
+}
+
 export interface WorklogDTO {
   id: string;
+  sessionId: string;
   taskId: string;
-  taskKey: string;
-  taskTitle: string;
   durationSeconds: number;
-  providerId: string;
-  syncStatus: 'SYNCED' | 'QUEUED' | 'FAILED';
-  completedAtUtc: string;
-  comment?: string;
+  startedAtUtc: string;
+  comment: string;
+  createdAtUtc: string;
 }
 
 export interface UnitySettingsDTO {
@@ -248,12 +290,27 @@ export interface MessagingTestResultDTO {
 }
 
 export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
-export type BitmapIconId = 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark' | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows' | 'bell' | 'openproject';
+/**
+ * Ids accepted by `getBitmapById`.
+ *
+ * The union previously omitted wave, pause, play, resume and stop, all of which
+ * the resolver has always handled and the debug panel dispatches -- so passing
+ * one was a type error against a call that works.
+ */
+export type BitmapIconId =
+  | 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark'
+  | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows'
+  | 'bell' | 'openproject' | 'wave' | 'pause' | 'play' | 'resume' | 'stop';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 
 export interface DisplayElementDTO {
-  type: 'text' | 'bitmap' | 'rectangle';
+  /**
+   * 'image' is what the driver emits for uploaded assets and what the emulator
+   * already branches on; it was missing here, so those comparisons were flagged
+   * as having no overlap.
+   */
+  type: 'text' | 'bitmap' | 'rectangle' | 'image';
   x: number;
   y: number;
   text?: string;
@@ -264,6 +321,13 @@ export interface DisplayElementDTO {
   width?: number;
   height?: number;
   fill?: string;
+  /**
+   * Hardware fill colours. Exactly one entry for a solid fill, exactly two for
+   * a gradient -- any other count reboots the device (Guide section 8).
+   */
+  fill_colors?: string[];
+  /** Image source for `type: 'image'` -- a device asset path or data URL. */
+  data?: string;
   scroll_rate?: number;
 }
 

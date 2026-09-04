@@ -163,7 +163,9 @@ app.whenReady().then(async () => {
     messagingService,
     priorityEngine,
     contextScheduleService,
-    windowsNotificationService
+    windowsNotificationService,
+    undefined,
+    providerManager
   );
   ipcRegistry.registerAllHandlers();
 

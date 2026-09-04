@@ -22,7 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dev:mock": "cross-env MOCK_HARDWARE=true pnpm dev"
+    "dev:mock": "cross-env MOCK_HARDWARE=true pnpm dev",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.renderer.json"
   },
   "dependencies": {
     "@busy-app/busy-lib": "^0.17.0",

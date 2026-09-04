@@ -91,6 +91,8 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
       });
       return () => unsubscribe();
     }
+    // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
+    return undefined;
   }, [isOpen, completed, executing, handleExecuteEod, onClose]);
 
   if (!isOpen) return null;

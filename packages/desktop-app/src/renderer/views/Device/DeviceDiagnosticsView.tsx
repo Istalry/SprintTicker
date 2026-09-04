@@ -22,6 +22,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
       });
       return () => unsubscribe();
     }
+    // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
+    return undefined;
   }, []);
 
   return (

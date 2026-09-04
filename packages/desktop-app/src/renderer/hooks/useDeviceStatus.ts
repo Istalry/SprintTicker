@@ -13,6 +13,8 @@ export function useDeviceStatus() {
     backBrightness: 100,
     batteryPercent: 98,
     firmwareVersion: '1.4.2',
+    framesSent: 0,
+    framesFailed: 0,
     webSocketPingMs: 4
   });
 

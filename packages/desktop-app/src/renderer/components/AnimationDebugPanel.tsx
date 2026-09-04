@@ -27,11 +27,11 @@ export const AnimationDebugPanel: React.FC = () => {
   const [scrollRate, setScrollRate] = useState<number>(60);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const [debugTimer, setDebugTimer] = useState<NodeJS.Timeout | null>(null);
+  const [debugTimer, setDebugTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const dispatchState = (
-    frontElements: Array<Record<string, unknown>>,
-    backElements: Array<Record<string, unknown>>,
+    frontElements: DisplayElementDTO[],
+    backElements: DisplayElementDTO[],
     ledColorHex: string = '#10B981FF',
     ledMode: 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION' = 'SOLID',
     msg?: string
@@ -41,8 +41,8 @@ export const AnimationDebugPanel: React.FC = () => {
     }
 
     const state: HardwareDisplayStateDTO = {
-      frontElements: frontElements as DisplayElementDTO[],
-      backElements: backElements as DisplayElementDTO[],
+      frontElements,
+      backElements,
       ledColorHex,
       ledMode,
       colorTheme: 'emerald',
@@ -189,8 +189,7 @@ export const AnimationDebugPanel: React.FC = () => {
     [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: 'REFERENCE: GREAT WAVE VIEW' }],
     '#38BDF8FF',
     'SOLID',
-    'Dispatched Great Wave View (NONE Edge Glow)',
-    'NONE'
+    'Dispatched Great Wave View'
   );
 
   // 3. Unity & Build Animations
@@ -205,9 +204,7 @@ export const AnimationDebugPanel: React.FC = () => {
     [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFF', text: `Compiling MyFantasyGame (${progress}%)` }],
     '#3B82F6FF',
     'FLASH_BURST',
-    `Dispatched Unity Compilation (${progress}%) (ROTATING Chaser)`,
-    'ROTATING',
-    'FADE'
+    `Dispatched Unity Compilation (${progress}%)`
   );
 
   const triggerUnityError = () => dispatchState(
@@ -219,9 +216,7 @@ export const AnimationDebugPanel: React.FC = () => {
     [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#EF4444FF', text: 'EXCEPTION: NullReferenceException' }],
     '#EF4444FF',
     'PULSE_ALERT',
-    'Dispatched Unity Exception Alert (BLINKING Strobe)',
-    'BLINKING',
-    'INSTANT'
+    'Dispatched Unity Exception Alert'
   );
 
   const triggerPlayMode = () => dispatchState(
@@ -233,9 +228,7 @@ export const AnimationDebugPanel: React.FC = () => {
     [{ type: 'text', font: 'tiny', x: 0, y: 0, color: '#FF0000FF', text: 'UNITY PLAY MODE ACTIVE' }],
     '#FF0000FF',
     'PULSE_ALERT',
-    'Dispatched Unity Play Mode ON AIR (STATIC Glow)',
-    'STATIC',
-    'FADE'
+    'Dispatched Unity Play Mode ON AIR'
   );
 
   // 4. Task Session States & Confetti

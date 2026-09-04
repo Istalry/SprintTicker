@@ -2,7 +2,7 @@ import { SettingsRepository } from '../db/repositories/settings-repository';
 import { UnitySettingsDTO, UnityTelemetryDTO, UnityInstanceDTO } from '../../shared/dtos';
 import { WebhookServer, UnityHeartbeatPayload, UnityCompilePayload, UnityPlayModePayload } from '../api/webhook-server';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { TimeTrackingEngine } from './time-tracking-engine';
+import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { IPriorityPreemptionEngine } from './priority-preemption-engine';
 import { ArgumentNullException } from '../../shared/dtos';
 
@@ -14,7 +14,7 @@ export class UnityTelemetryService {
   private settingsRepo: SettingsRepository;
   private listeners: Set<(telemetry: UnityTelemetryDTO) => void> = new Set();
   private activeInstances: Map<string, UnityInstanceDTO> = new Map();
-  private pruneTimer?: NodeJS.Timeout;
+  private pruneTimer: NodeJS.Timeout | null = null;
   private renderer?: DisplayRenderer;
   private engine?: TimeTrackingEngine;
   private priorityEngine?: IPriorityPreemptionEngine;
@@ -358,11 +358,11 @@ export class UnityTelemetryService {
   public dispose(): void {
     if (this.pruneTimer) {
       clearInterval(this.pruneTimer);
-      this.pruneTimer = undefined;
+      this.pruneTimer = null;
     }
     if (this.exceptionTimer) {
       clearTimeout(this.exceptionTimer);
-      this.exceptionTimer = undefined;
+      this.exceptionTimer = null;
     }
   }
 }

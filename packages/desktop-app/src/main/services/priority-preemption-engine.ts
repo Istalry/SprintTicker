@@ -1,5 +1,6 @@
 import { PriorityRule, PriorityMatrixConfig, UserMode, PriorityAction, ArgumentNullException, ArgumentException } from '../../shared/dtos';
 import { SettingsRepository } from '../db/repositories/settings-repository';
+import type { DisplayRenderer } from '../hardware/display-renderer';
 
 /**
  * Encapsulates a queued display notification request waiting to be replayed.
@@ -195,7 +196,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       loadedRules = raw.rules as PriorityRule[];
     } else {
       loadedRules = PriorityPreemptionEngine.DEFAULT_RULES.map(rule => {
-        const score = typeof raw[rule.eventName] === 'number' ? raw[rule.eventName] : rule.priority;
+        const stored = raw[rule.eventName];
+        const score = typeof stored === 'number' ? stored : rule.priority;
         return { ...rule, priority: score };
       });
     }

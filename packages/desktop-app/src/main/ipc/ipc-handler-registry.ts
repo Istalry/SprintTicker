@@ -17,8 +17,9 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId } from '../../shared/dtos';
 import { OpenProjectProvider } from '../providers/openproject-provider';
+import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
 /**
@@ -29,6 +30,7 @@ export class IPCHandlerRegistry {
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
   private projectRepo: ProjectRepository;
+  private providerManager?: ProviderManager;
   private settingsRepo: SettingsRepository;
   private worklogRepo: WorklogRepository;
   private driver: BusyBarDriver;
@@ -59,10 +61,12 @@ export class IPCHandlerRegistry {
     priorityEngine?: PriorityPreemptionEngine,
     contextScheduleService?: ContextScheduleService,
     windowsNotificationService?: WindowsNotificationListenerService,
-    systemAutomationService?: ISystemAutomationService
+    systemAutomationService?: ISystemAutomationService,
+    providerManager?: ProviderManager
   ) {
     this.engine = engine;
     this.taskRepo = taskRepo;
+    this.providerManager = providerManager;
     // Bound to the settings repository's connection rather than the
     // DatabaseConnection singleton, which would open a second, on-disk database
     // even when the caller supplied an in-memory one.
@@ -452,6 +456,14 @@ export class IPCHandlerRegistry {
         if (payload.providerId) {
           this.providerManager.setActiveProviderId(payload.providerId);
         }
+      } else {
+        // Previously `providerManager` was neither a field nor a parameter, so
+        // this branch was always taken and silently did nothing: credentials
+        // were persisted but the live provider kept the old ones until restart.
+        console.warn(
+          '[IPCHandlerRegistry] No ProviderManager wired; saved provider settings ' +
+            'will not take effect until the app restarts.'
+        );
       }
       return true;
     });

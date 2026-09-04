@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HardwareDisplayStateDTO, DisplayElementDTO } from '../../shared/dtos';
-import { FONT_4X6 } from '../../main/hardware/pixel-canvas.ts';
+import { FONT_4X6 } from '../../shared/pixel-fonts';
 
 /**
  * Physical Hardware Display Emulator Component.
@@ -40,6 +40,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
         window.removeEventListener('debug-display-update', handleDebugUpdate);
       };
     }
+    // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
+    return undefined;
   }, []);
 
   // Pre-load images from displayState
@@ -265,8 +267,11 @@ export const HardwareDisplayEmulator: React.FC = () => {
   const ledColor = displayState?.ledColorHex || '#10B981';
   const isAlert = displayState?.ledMode === 'PULSE_ALERT' || displayState?.ledMode === 'BREATHING';
 
-  const enableEdgeGlow = displayState?.enableEdgeGlow ?? true;
-  const edgeGlowOpacity = displayState?.edgeGlowOpacity ?? 0.3;
+  // Edge glow is decorative and not configurable: HardwareDisplayStateDTO has
+  // never carried these fields, so the optional reads always fell through to
+  // these same constants. Stated directly rather than implying a setting exists.
+  const enableEdgeGlow = true;
+  const edgeGlowOpacity = 0.3;
   const edgeGlowHex = displayState?.ledColorHex || '#38BDF8';
   const glowBoxShadow = enableEdgeGlow && edgeGlowOpacity > 0
     ? `0 0 16px rgba(${parseInt(edgeGlowHex.slice(1, 3) || '38', 16)}, ${parseInt(edgeGlowHex.slice(3, 5) || 'BD', 16)}, ${parseInt(edgeGlowHex.slice(5, 7) || 'F8', 16)}, ${edgeGlowOpacity})`

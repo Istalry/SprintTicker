@@ -116,7 +116,7 @@ export const App: React.FC = () => {
                       <th className="py-3 px-4 font-semibold">Task Key</th>
                       <th className="py-3 px-4 font-semibold">Comment / Description</th>
                       <th className="py-3 px-4 font-semibold">Logged Duration</th>
-                      <th className="py-3 px-4 font-semibold">Provider Sync</th>
+                      <th className="py-3 px-4 font-semibold">Started</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-dark text-sm">
@@ -140,10 +140,8 @@ export const App: React.FC = () => {
                         <td className="py-3 px-4 font-mono text-accent-blue font-bold">
                           {formatSeconds(log.durationSeconds)}
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green">
-                            {log.syncStatus || 'Synced'} ({log.providerId || 'Jira'})
-                          </span>
+                        <td className="py-3 px-4 text-xs text-text-secondary font-mono">
+                          {new Date(log.startedAtUtc).toLocaleTimeString()}
                         </td>
                       </tr>
                     ))}

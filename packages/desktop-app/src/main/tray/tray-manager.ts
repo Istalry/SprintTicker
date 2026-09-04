@@ -19,7 +19,7 @@ export class TrayManager {
 
   public initialize(): void {
     const trayIconPath = path.join(__dirname, '../../build/tray-icon.png');
-    let image: nativeImage;
+    let image: Electron.NativeImage;
     if (fs.existsSync(trayIconPath)) {
       image = nativeImage.createFromPath(trayIconPath);
     } else {

@@ -60,6 +60,8 @@ export const ProjectTaskManagerView: React.FC = () => {
     if (window.electronAPI?.onSessionUpdated) {
       return window.electronAPI.onSessionUpdated(setActiveSession);
     }
+    // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

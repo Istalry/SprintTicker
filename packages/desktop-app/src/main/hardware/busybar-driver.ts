@@ -222,7 +222,15 @@ export class BusyBarDriver extends EventEmitter {
   private parseTelemetryData(data: Record<string, unknown>): void {
     if (!data || typeof data !== 'object') return;
 
-    const rawBattery = data.power?.battery_charge ?? data.battery_charge ?? data.battery_level ?? data.batteryPercent;
+    // The device nests some fields (power.battery_charge, firmware.version) and
+    // reports others flat, depending on firmware. Optional chaining through an
+    // `unknown` value silently produced `{}` rather than reading the field, so
+    // the nested forms were never picked up.
+    const nested = (key: string): Record<string, unknown> =>
+      (typeof data[key] === 'object' && data[key] !== null ? data[key] : {}) as Record<string, unknown>;
+
+    const rawBattery =
+      nested('power').battery_charge ?? data.battery_charge ?? data.battery_level ?? data.batteryPercent;
     if (rawBattery !== undefined && rawBattery !== null) {
       const parsedNum = Number(rawBattery);
       if (!isNaN(parsedNum)) {
@@ -230,7 +238,8 @@ export class BusyBarDriver extends EventEmitter {
       }
     }
 
-    const rawFirmware = data.firmware?.version ?? data.version ?? data.firmware_version ?? data.firmwareVersion;
+    const rawFirmware =
+      nested('firmware').version ?? data.version ?? data.firmware_version ?? data.firmwareVersion;
     if (rawFirmware) {
       this.firmwareVersion = String(rawFirmware);
     }
@@ -545,7 +554,16 @@ export class BusyBarDriver extends EventEmitter {
       const response = await fetch(url, {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
-        body: binaryData,
+        // Buffer is not part of the DOM BodyInit union TypeScript models for
+        // fetch. A Uint8Array view over the same bytes is, with no copy. The
+        // ArrayBuffer assertion is needed because TypedArrays became generic
+        // over their backing buffer in TS 5.7, and the default ArrayBufferLike
+        // admits SharedArrayBuffer, which BodyInit excludes.
+        body: new Uint8Array(
+          binaryData.buffer as ArrayBuffer,
+          binaryData.byteOffset,
+          binaryData.byteLength
+        ),
         signal: AbortSignal.timeout(2000)
       }).catch(() => null);
 

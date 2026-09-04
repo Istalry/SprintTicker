@@ -1,0 +1,19 @@
+{
+  // Renderer type-check only. Vite does the actual build.
+  //
+  // Separate from tsconfig.json rather than a project reference: references
+  // require composite -> declaration -> emitted artefacts, and nothing here
+  // emits via tsc at all.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Renderer code is bundled as ESM by Vite, not CommonJS like main.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  // electron-api.d.ts supplies the Window.electronAPI global. It is types only,
+  // so including it does not drag `electron` into the renderer graph.
+  "include": ["src/renderer/**/*", "src/shared/**/*", "src/preload/electron-api.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

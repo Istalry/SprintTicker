@@ -1,5 +1,5 @@
 import { BusyBarDriver } from './busybar-driver';
-import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, ArgumentNullException } from '../../shared/dtos';
+import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentNullException } from '../../shared/dtos';
 import { getBitmapById } from './pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
@@ -245,17 +245,32 @@ export class DisplayRenderer {
     return strips;
   }
 
+  /**
+   * Palette for the active colour theme.
+   *
+   * The switch previously handled 'neon_night' and 'default', neither of which
+   * is a ColorThemeId. The two real themes it failed to name -- 'emerald' and
+   * 'nordic_cyan' -- both fell through to the same branch, so selecting Nordic
+   * Cyan rendered exactly like Emerald.
+   *
+   * The exhaustiveness check makes adding a theme to ColorThemeId a compile
+   * error here rather than a silent fallthrough.
+   */
   private getThemeColors(): { keyColor: string; primaryColor: string } {
     switch (this.colorTheme) {
       case 'cyberpunk':
         return { keyColor: '#EC4899FF', primaryColor: '#8B5CF6' };
       case 'retro_arcade':
         return { keyColor: '#FBBF24FF', primaryColor: '#F59E0B' };
-      case 'neon_night':
-        return { keyColor: '#00FFCCFF', primaryColor: '#FF00FF' };
-      case 'default':
-      default:
+      case 'nordic_cyan':
+        return { keyColor: '#88C0D0FF', primaryColor: '#5E81AC' };
+      case 'emerald':
         return { keyColor: '#3B82F6FF', primaryColor: '#10B981' };
+      default: {
+        const unhandled: never = this.colorTheme;
+        console.warn(`[DisplayRenderer] Unhandled colour theme: ${String(unhandled)}`);
+        return { keyColor: '#3B82F6FF', primaryColor: '#10B981' };
+      }
     }
   }
 
@@ -524,7 +539,7 @@ export class DisplayRenderer {
         { id: 'rear_eod_done_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'All tasks logged & scenes saved.', align: 'top_left' }
       ];
 
-      this.ledMode = 'STATIC';
+      this.ledMode = 'SOLID';
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
         backElements,
@@ -803,7 +818,7 @@ export class DisplayRenderer {
     this.celebrationTimeout = setInterval(renderFrame, 100);
 
     return {
-      frontElements: this.lastState.frontElements as unknown as DisplayElementDTO[],
+      frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
       backElements,
       ledColorHex: '#10B981FF'
     };

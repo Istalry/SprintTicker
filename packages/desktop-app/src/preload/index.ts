@@ -1,136 +1,26 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import { IPCChannel } from '../shared/ipc-channels';
-import {
+import type { IElectronAPI } from './electron-api';
+import type {
   ActiveSessionDTO,
+  BitmapIconId,
   TaskDTO,
-  ProjectDTO,
-  HardwareBindingConfig,
   DeviceStatusDTO,
+  HardwareBindingConfig,
   PriorityMatrixConfig,
+  PriorityRule,
+  ProviderSettingsUpdateDTO,
   ScheduleSettingsDTO,
-  UnityProjectInjectionResult,
+  UserMode,
   WorklogDTO,
   UnitySettingsDTO,
   UnityTelemetryDTO,
   MessagingSettingsDTO,
-  MessagingTestResultDTO,
   WindowsNotificationSettingsDTO,
-  WindowsNotificationEventDTO,
   NotificationLogEntryDTO,
-  NotificationListenerStatusDTO,
-  BitmapIconId,
   HardwareDisplayStateDTO,
-  OpStatusDTO,
   DeviceConfigDTO
 } from '../shared/dtos';
-
-export interface UnityInjectorAPI {
-  setupGitignore: () => Promise<{ success: boolean; path: string; message: string }>;
-  checkGitignore: () => Promise<{ configured: boolean; path?: string }>;
-  scanAndInject: (rootFolder: string) => Promise<UnityProjectInjectionResult[]>;
-  removeInjection: (projectPath: string) => Promise<boolean>;
-  openFolderPicker: () => Promise<string | null>;
-}
-
-export interface IElectronAPI {
-  // Session Controls
-  getCurrentSession: () => Promise<ActiveSessionDTO | null>;
-  startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<ActiveSessionDTO>;
-  pauseSession: () => Promise<ActiveSessionDTO>;
-  resumeSession: () => Promise<ActiveSessionDTO>;
-  completeSession: (comment?: string, markDone?: boolean) => Promise<{ success: boolean; loggedSeconds: number }>;
-  discardSession: () => Promise<boolean>;
-  onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
-
-  // Worklogs
-  getTodaysWorklogs: () => Promise<WorklogDTO[]>;
-  onWorklogsUpdated: (callback: (worklogs: WorklogDTO[]) => void) => () => void;
-
-  // Providers, Projects & Tasks
-  getProviders: () => Promise<{ activeProviderId: string; fallbackTicketKey: string; jiraDomain: string; providers: Array<{ id: string; name: string }> }>;
-  setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) => Promise<boolean>;
-  fetchOpenProjectStatuses: (domain: string, apiKey: string) => Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }>;
-  getProjects: () => Promise<ProjectDTO[]>;
-  createProject: (payload: { id: string; key: string; name: string; providerId?: string }) => Promise<boolean>;
-  renameProject: (payload: { id: string; name: string; key: string }) => Promise<boolean>;
-  deleteProject: (id: string) => Promise<boolean>;
-  getTasks: (projectId: string) => Promise<TaskDTO[]>;
-  deleteTask: (taskId: string) => Promise<boolean>;
-  updateTask: (task: TaskDTO) => Promise<boolean>;
-  importTasks: (projectId: string, tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }>) => Promise<TaskDTO[]>;
-  reconcileRemoteState: () => Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }>;
-
-  // Worklog History & Reports
-  getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;
-  getDailyWorklogSummary: (dateString: string) => Promise<{
-    date: string;
-    totalSeconds: number;
-    tasksCount: number;
-    items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string }>;
-  }>;
-
-  // Hardware Rebindings
-  getInputBindings: () => Promise<HardwareBindingConfig>;
-  saveInputBindings: (config: HardwareBindingConfig) => Promise<boolean>;
-  injectRemoteKey: (key: string) => Promise<boolean>;
-  onHardwareInputEvent: (callback: (event: { inputKey: string; actionAssigned: string }) => void) => () => void;
-
-  // Priority Rules
-  getPriorityRules: () => Promise<PriorityMatrixConfig>;
-  savePriorityRules: (config: PriorityMatrixConfig) => Promise<boolean>;
-  onUserModeUpdated?: (callback: (mode: UserMode) => void) => () => void;
-
-  // Device Management
-  getDeviceStatus: () => Promise<DeviceStatusDTO>;
-  getDeviceConfig: () => Promise<DeviceConfigDTO>;
-  setDeviceConfig: (config: DeviceConfigDTO) => Promise<boolean>;
-  onDeviceStatusChanged: (callback: (status: DeviceStatusDTO) => void) => () => void;
-
-  // Schedule & Ceremonies
-  getScheduleSettings: () => Promise<ScheduleSettingsDTO>;
-  saveScheduleSettings: (settings: ScheduleSettingsDTO) => Promise<boolean>;
-  triggerStandupPrompt: () => Promise<{ success: boolean }>;
-  cancelStandupPrompt: () => Promise<boolean>;
-  triggerEodPrompt: () => Promise<{ success: boolean }>;
-  triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
-  cancelEodWrapUp: () => Promise<boolean>;
-  updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => Promise<boolean>;
-  snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes?: number) => Promise<boolean>;
-  onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
-
-  // Unity Telemetry & Audio Settings
-  getUnitySettings: () => Promise<UnitySettingsDTO>;
-  saveUnitySettings: (settings: UnitySettingsDTO) => Promise<boolean>;
-  getUnityTelemetry: () => Promise<UnityTelemetryDTO>;
-  onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => () => void;
-
-  // Messaging Integration & Windows Notification Listener
-  getMessagingSettings: () => Promise<MessagingSettingsDTO>;
-  saveMessagingSettings: (settings: MessagingSettingsDTO) => Promise<boolean>;
-  testMessagingIntegration: (channelName: string) => Promise<MessagingTestResultDTO>;
-  getNotificationSettings: () => Promise<WindowsNotificationSettingsDTO>;
-  saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) => Promise<boolean>;
-  simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId; iconPath?: string }) => Promise<WindowsNotificationEventDTO>;
-  getNotificationListenerStatus: () => Promise<{ status: NotificationListenerStatusDTO; logs: NotificationLogEntryDTO[] }>;
-  onNotificationLog: (callback: (entry: NotificationLogEntryDTO) => void) => () => void;
-  openNotificationSettings: () => Promise<boolean>;
-
-  // Hardware Display Animation & Screen Emulator
-  getDisplayState: () => Promise<HardwareDisplayStateDTO>;
-  onDisplayStateUpdated: (callback: (state: HardwareDisplayStateDTO) => void) => () => void;
-  setRearOledMode: (mode: string) => Promise<boolean>;
-  setColorTheme: (theme: string) => Promise<boolean>;
-  triggerConfettiBurst: () => Promise<boolean>;
-
-  // Database Management
-  wipeAllData: () => Promise<boolean>;
-
-  // Diagnostics
-  exportDiagnosticLogs: () => Promise<boolean>;
-
-  // Unity Plugin Injector & Gitignore
-  unityInjector: UnityInjectorAPI;
-}
 
 const electronAPI: IElectronAPI = {
   // Session Controls
@@ -157,7 +47,7 @@ const electronAPI: IElectronAPI = {
 
   // Providers, Projects & Tasks
   getProviders: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDERS),
-  setActiveProvider: (payload: { providerId: string; jiraDomain?: string; fallbackTicketKey?: string }) =>
+  setActiveProvider: (payload: ProviderSettingsUpdateDTO) =>
     ipcRenderer.invoke(IPCChannel.SET_ACTIVE_PROVIDER, payload),
   fetchOpenProjectStatuses: (domain: string, apiKey: string) =>
     ipcRenderer.invoke(IPCChannel.FETCH_OP_STATUSES, { domain, apiKey }),
@@ -287,9 +177,3 @@ const electronAPI: IElectronAPI = {
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
-
-declare global {
-  interface Window {
-    electronAPI: IElectronAPI;
-  }
-}

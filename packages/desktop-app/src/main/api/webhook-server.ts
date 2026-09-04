@@ -306,9 +306,8 @@ export class WebhookServer {
     if (!DTOValidator.isValidCompileStart(body)) {
       return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid compile start payload' });
     }
-    const b = body as Record<string, unknown>;
     for (const cb of this.compileCallbacks) {
-      cb({ state: 'started', projectName: b.project as string, unityVersion: b.unityVersion as string });
+      cb({ state: 'started', projectName: body.project, unityVersion: body.unityVersion });
     }
     return this.sendJSON(res, 200, { status: 'ACCEPTED' });
   }
@@ -317,15 +316,14 @@ export class WebhookServer {
     if (!DTOValidator.isValidCompileFinish(body)) {
       return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid compile finish payload' });
     }
-    const b = body as Record<string, unknown>;
     for (const cb of this.compileCallbacks) {
       cb({
         state: 'finished',
-        projectName: b.project as string,
-        success: b.success as boolean,
-        elapsedSeconds: b.elapsedSeconds as number,
-        errorCount: b.errorCount as number,
-        warningCount: b.warningCount as number
+        projectName: body.project,
+        success: body.success,
+        elapsedSeconds: body.elapsedSeconds,
+        errorCount: body.errorCount,
+        warningCount: body.warningCount
       });
     }
     return this.sendJSON(res, 200, { status: 'ACCEPTED' });
@@ -335,11 +333,10 @@ export class WebhookServer {
     if (!DTOValidator.isValidPlayMode(body)) {
       return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid playmode payload' });
     }
-    const b = body as Record<string, unknown>;
     for (const cb of this.playModeCallbacks) {
       cb({
-        state: b.state === 'EnteredPlayMode' ? 'entered' : 'exited',
-        projectName: b.project as string
+        state: body.state === 'EnteredPlayMode' ? 'entered' : 'exited',
+        projectName: body.project
       });
     }
     return this.sendJSON(res, 200, { status: 'ACCEPTED' });
@@ -349,13 +346,12 @@ export class WebhookServer {
     if (!DTOValidator.isValidException(body)) {
       return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid exception payload' });
     }
-    const b = body as Record<string, unknown>;
     for (const cb of this.consoleCallbacks) {
       cb({
         type: 'exception',
-        projectName: b.project as string,
-        message: b.message as string,
-        stackTrace: b.stackTrace as string
+        projectName: body.project,
+        message: body.message,
+        stackTrace: body.stackTrace
       });
     }
     return this.sendJSON(res, 200, { status: 'ACCEPTED' });

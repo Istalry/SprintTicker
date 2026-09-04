@@ -1,0 +1,14 @@
+{
+  // Widest program, used only by ESLint's type-aware rules.
+  //
+  // parserOptions.project must cover every file ESLint lints, or an unlisted
+  // file fails with a parser error rather than a lint error. That means tests
+  // and the Vite configs too, which the build tsconfigs deliberately exclude.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src/**/*", "tests/**/*", "*.ts", "*.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

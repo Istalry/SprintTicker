@@ -237,10 +237,13 @@ export class InputDecoder {
           this._selectionStage = 'TASK';
           const proj = this._projectsList[this._selectedProjectIndex];
           if (proj) {
+            // TaskDTO carries no description; `t.description` was always
+            // undefined, so every row read "No description". The key is real
+            // data and identifies the task. A description field is Phase 2.
             this._tasksList = this._engine.getTasksForProject(proj.id).map(t => ({
                id: t.id,
                title: t.title,
-               description: t.description || 'No description'
+               description: t.key
             }));
           }
           if (this._tasksList.length === 0) {
