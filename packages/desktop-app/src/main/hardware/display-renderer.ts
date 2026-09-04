@@ -27,7 +27,6 @@ export class DisplayRenderer {
   private colorTheme: ColorThemeId = 'emerald';
   private rearOledMode: RearOledMode = 'DIAGNOSTICS';
   private ledMode: LedAnimationMode = 'SOLID';
-  private activeWidgetId: string = 'task_tracker';
 
   private lastState: HardwareDisplayStateDTO = {
     frontElements: [],
@@ -35,8 +34,7 @@ export class DisplayRenderer {
     ledColorHex: '#10B981FF',
     ledMode: 'SOLID',
     colorTheme: 'emerald',
-    rearOledMode: 'DIAGNOSTICS',
-    activeWidgetId: 'task_tracker'
+    rearOledMode: 'DIAGNOSTICS'
   };
 
   private stateChangeCallbacks: Set<(state: HardwareDisplayStateDTO) => void> = new Set();
@@ -133,13 +131,6 @@ export class DisplayRenderer {
   /// </summary>
   public setRearOledMode(mode: RearOledMode): void {
     this.rearOledMode = mode;
-  }
-
-  /// <summary>
-  /// Sets current active widget ID.
-  /// </summary>
-  public setActiveWidgetId(widgetId: string): void {
-    this.activeWidgetId = widgetId;
   }
 
   /// <summary>
@@ -399,8 +390,7 @@ export class DisplayRenderer {
       ledColorHex,
       ledMode: this.ledMode,
       colorTheme: this.colorTheme,
-      rearOledMode: this.rearOledMode,
-      activeWidgetId: this.activeWidgetId
+      rearOledMode: this.rearOledMode
     };
 
     for (const callback of this.stateChangeCallbacks) {
@@ -599,8 +589,7 @@ export class DisplayRenderer {
         ledColorHex: '#00000000',
         ledMode: 'SOLID',
         colorTheme: this.colorTheme,
-        rearOledMode: this.rearOledMode,
-        activeWidgetId: this.activeWidgetId
+        rearOledMode: this.rearOledMode
       };
 
       for (const callback of this.stateChangeCallbacks) {

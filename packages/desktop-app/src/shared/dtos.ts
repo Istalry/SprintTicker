@@ -338,7 +338,6 @@ export interface HardwareDisplayStateDTO {
   ledMode: LedAnimationMode;
   colorTheme: ColorThemeId;
   rearOledMode: RearOledMode;
-  activeWidgetId: string;
 }
 
 // OpenAPI v25 System Status & Power Telemetry DTOs

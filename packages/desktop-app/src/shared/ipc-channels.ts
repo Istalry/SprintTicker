@@ -94,7 +94,6 @@ export enum IPCChannel {
   // Hardware Display Animation & Live Emulator
   GET_DISPLAY_STATE = 'display:get-state',
   ON_DISPLAY_STATE_UPDATED = 'display:on-state-updated',
-  CYCLE_WIDGET = 'display:cycle-widget',
   SET_REAR_OLED_MODE = 'display:set-rear-oled-mode',
   SET_COLOR_THEME = 'display:set-color-theme',
   TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst',

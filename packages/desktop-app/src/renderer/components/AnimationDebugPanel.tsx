@@ -46,8 +46,7 @@ export const AnimationDebugPanel: React.FC = () => {
       ledColorHex,
       ledMode,
       colorTheme: 'emerald',
-      rearOledMode: 'DIAGNOSTICS',
-      activeWidgetId: 'debug'
+      rearOledMode: 'DIAGNOSTICS'
     };
 
     window.dispatchEvent(new CustomEvent('debug-display-update', { detail: state }));
