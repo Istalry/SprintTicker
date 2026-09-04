@@ -12,6 +12,17 @@ export class TaskRepository {
   }
 
   /**
+   * The connection this repository reads and writes through.
+   *
+   * Exposed so a collaborator constructed as a fallback can bind to the *same*
+   * database rather than silently resolving the DatabaseConnection singleton,
+   * which opens a second, on-disk connection and deadlocks schema migrations.
+   */
+  public getConnection(): DatabaseConnection {
+    return this.dbConn;
+  }
+
+  /**
    * Retrieves tasks for a given project ID.
    */
   public getTasksByProjectId(projectId: string): TaskDTO[] {

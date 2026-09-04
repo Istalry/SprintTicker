@@ -12,6 +12,17 @@ export class SessionRepository {
   }
 
   /**
+   * The connection this repository reads and writes through.
+   *
+   * Exposed so a collaborator constructed as a fallback can bind to the *same*
+   * database rather than silently resolving the DatabaseConnection singleton,
+   * which opens a second, on-disk connection and deadlocks schema migrations.
+   */
+  public getConnection(): DatabaseConnection {
+    return this.dbConn;
+  }
+
+  /**
    * Retrieves the currently active or paused tracking session.
    * Calculates accurate elapsed time using absolute UTC timestamps.
    */

@@ -26,8 +26,14 @@ export class OfflineSyncWorker {
   ) {
     this.providerManager = providerManager;
     this.worklogRepo = worklogRepo || new WorklogRepository();
-    this.projectRepo = projectRepo || new ProjectRepository();
-    this.taskRepo = taskRepo || new TaskRepository();
+    // Fallback repositories bind to the worklog repository's connection. A bare
+    // constructor here resolves the DatabaseConnection singleton, which opens a
+    // second, on-disk database even when the caller passed an in-memory one --
+    // so the worker would prune a completely different dataset from the one it
+    // was told to sync.
+    const conn = this.worklogRepo.getConnection();
+    this.projectRepo = projectRepo || new ProjectRepository(conn);
+    this.taskRepo = taskRepo || new TaskRepository(conn);
     this.syncIntervalMs = syncIntervalMs;
   }
 

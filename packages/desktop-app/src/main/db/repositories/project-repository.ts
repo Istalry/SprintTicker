@@ -12,6 +12,17 @@ export class ProjectRepository {
   }
 
   /**
+   * The connection this repository reads and writes through.
+   *
+   * Exposed so a collaborator constructed as a fallback can bind to the *same*
+   * database rather than silently resolving the DatabaseConnection singleton,
+   * which opens a second, on-disk connection and deadlocks schema migrations.
+   */
+  public getConnection(): DatabaseConnection {
+    return this.dbConn;
+  }
+
+  /**
    * Retrieves all project records from SQLite.
    */
   public getAllProjects(): ProjectDTO[] {

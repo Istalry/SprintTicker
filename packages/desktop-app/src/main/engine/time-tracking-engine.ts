@@ -3,6 +3,7 @@ import { SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
+import { SettingsRepository } from '../db/repositories/settings-repository';
 import { ActiveSessionDTO, TaskDTO, ProjectDTO } from '../../shared/dtos';
 
 import { ProviderManager } from '../providers/provider-manager';
@@ -26,29 +27,62 @@ export class TimeTrackingEngine extends EventEmitter {
   private _currentSession: ActiveSessionDTO | null = null;
   private _tickTimer: NodeJS.Timeout | null = null;
   private _syncWorker: OfflineSyncWorker;
+  private _initialized = false;
 
+  /**
+   * Wires dependencies only. Deliberately free of side effects: call
+   * `initialize()` to start the background sync worker and recover a session
+   * left behind by a crash, and `dispose()` to shut both down.
+   *
+   * Constructing was previously enough to start a 5-minute timer and touch the
+   * database, which made the engine impossible to build in a test without also
+   * spawning a live worker.
+   */
   constructor(
     sessionRepo?: SessionRepository,
     worklogRepo?: WorklogRepository,
     taskRepo?: TaskRepository,
-    providerManager?: ProviderManager
+    providerManager?: ProviderManager,
+    projectRepo?: ProjectRepository
   ) {
     super();
     this._sessionRepo = sessionRepo || new SessionRepository();
     this._worklogRepo = worklogRepo || new WorklogRepository();
     this._taskRepo = taskRepo || new TaskRepository();
-    this._projectRepo = new ProjectRepository();
-    this._providerManager = providerManager || new ProviderManager(undefined, this._worklogRepo);
-    
+    // Must be injectable. A bare `new ProjectRepository()` resolves the
+    // DatabaseConnection singleton regardless of the connection the other
+    // repositories were given, so a test using an in-memory database still
+    // opened -- and wrote -- a real on-disk antigravity-busybar.db beside the
+    // repo, and that second connection deadlocked schema migrations.
+    this._projectRepo = projectRepo || new ProjectRepository();
+    this._providerManager =
+      providerManager ||
+      new ProviderManager(
+        new SettingsRepository(this._worklogRepo.getConnection()),
+        this._worklogRepo
+      );
+
     this._syncWorker = new OfflineSyncWorker(
       this._providerManager,
       this._worklogRepo,
       this._projectRepo,
       this._taskRepo
     );
-    this._syncWorker.start();
+  }
 
-    this.reconcileStartupState();
+  /**
+   * Starts background work and restores any session interrupted by a crash.
+   *
+   * Separate from the constructor so ownership of the sync timer is explicit:
+   * whoever calls `initialize()` is responsible for calling `dispose()`.
+   * Idempotent.
+   */
+  public initialize(): ActiveSessionDTO | null {
+    if (this._initialized) return this.getCurrentSession();
+    this._initialized = true;
+
+    this._syncWorker.start();
+    return this.reconcileStartupState();
   }
 
   private startTickLoop(): void {
@@ -80,6 +114,7 @@ export class TimeTrackingEngine extends EventEmitter {
   /// Disposes background interval timers and sync worker.
   /// </summary>
   public dispose(): void {
+    this._initialized = false;
     this.stopTickLoop();
     if (this._syncWorker) {
       this._syncWorker.stop();

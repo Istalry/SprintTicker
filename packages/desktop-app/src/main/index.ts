@@ -9,6 +9,7 @@ import { TaskRepository } from './db/repositories/task-repository';
 import { WorklogRepository } from './db/repositories/worklog-repository';
 import { SettingsRepository } from './db/repositories/settings-repository';
 import { SessionRepository } from './db/repositories/session-repository';
+import { ProjectRepository } from './db/repositories/project-repository';
 import { TimeTrackingEngine } from './engine/time-tracking-engine';
 import { BusyBarDriver } from './hardware/busybar-driver';
 import { DisplayRenderer } from './hardware/display-renderer';
@@ -90,11 +91,15 @@ app.whenReady().then(async () => {
   const worklogRepo = new WorklogRepository(dbConnection);
   const settingsRepo = new SettingsRepository(dbConnection);
   const sessionRepo = new SessionRepository(dbConnection);
+  const projectRepo = new ProjectRepository(dbConnection);
 
   const providerManager = new ProviderManager(settingsRepo, worklogRepo);
 
-  // 2. Initialize Time Tracking Engine
-  engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager);
+  // 2. Initialize Time Tracking Engine.
+  // Construction is side-effect free; initialize() starts the sync worker and
+  // recovers a session left behind by a crash.
+  engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager, projectRepo);
+  engine.initialize();
 
   // 3. Initialize Hardware Driver, Display Renderer & Input Decoder
   const forceMock = process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';

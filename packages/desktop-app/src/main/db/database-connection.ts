@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import { runMigrations, LATEST_SCHEMA_VERSION } from './migrations';
 
 /**
  * Singleton database connection wrapper managing SQLite database lifecycle,
@@ -28,7 +29,7 @@ export class DatabaseConnection {
     } catch {
       // Memory databases or test instances skip WAL pragma safely
     }
-    this.initTables();
+    runMigrations(this.db);
   }
 
   public static getInstance(dbPath?: string): DatabaseConnection {
@@ -50,77 +51,18 @@ export class DatabaseConnection {
   }
 
   /**
-   * Initializes all required database tables matching technical specifications.
+   * Schema version currently applied to this database.
+   *
+   * Exposed for diagnostics and tests; the runner keeps it at
+   * LATEST_SCHEMA_VERSION after a successful open.
    */
-  private initTables(): void {
-    const schemaSql = `
-      CREATE TABLE IF NOT EXISTS projects (
-          id TEXT PRIMARY KEY,
-          key TEXT NOT NULL UNIQUE,
-          name TEXT NOT NULL,
-          provider_id TEXT NOT NULL DEFAULT 'local',
-          created_at_utc TEXT NOT NULL
-      );
+  public getSchemaVersion(): number {
+    return this.db.pragma('user_version', { simple: true }) as number;
+  }
 
-      CREATE TABLE IF NOT EXISTS tasks (
-          id TEXT PRIMARY KEY,
-          project_id TEXT NOT NULL,
-          key TEXT NOT NULL,
-          title TEXT NOT NULL,
-          status TEXT NOT NULL CHECK(status IN ('todo', 'in_progress', 'done')),
-          created_at_utc TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS active_sessions (
-          id TEXT PRIMARY KEY,
-          project_id TEXT NOT NULL,
-          task_id TEXT NOT NULL,
-          task_key TEXT NOT NULL,
-          task_title TEXT NOT NULL,
-          is_ad_hoc INTEGER NOT NULL DEFAULT 0,
-          start_time_utc TEXT NOT NULL,
-          status TEXT NOT NULL CHECK(status IN ('TRACKING', 'PAUSED', 'COMPLETED')),
-          total_paused_seconds INTEGER NOT NULL DEFAULT 0,
-          last_pause_start_utc TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS paused_intervals (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          session_id TEXT NOT NULL,
-          paused_at_utc TEXT NOT NULL,
-          resumed_at_utc TEXT,
-          FOREIGN KEY(session_id) REFERENCES active_sessions(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS worklogs (
-          id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL,
-          task_id TEXT NOT NULL,
-          duration_seconds INTEGER NOT NULL,
-          started_at_utc TEXT NOT NULL,
-          comment TEXT NOT NULL,
-          created_at_utc TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS worklog_sync_queue (
-          id TEXT PRIMARY KEY,
-          provider_id TEXT NOT NULL,
-          task_id TEXT NOT NULL,
-          duration_seconds INTEGER NOT NULL,
-          started_at_utc TEXT NOT NULL,
-          comment TEXT NOT NULL,
-          created_at_utc TEXT NOT NULL,
-          retry_count INTEGER NOT NULL DEFAULT 0,
-          status TEXT NOT NULL CHECK(status IN ('PENDING', 'SYNCED', 'FAILED'))
-      );
-
-      CREATE TABLE IF NOT EXISTS settings (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL
-      );
-    `;
-
-    this.db.exec(schemaSql);
+  /** Schema version this build expects. */
+  public static get latestSchemaVersion(): number {
+    return LATEST_SCHEMA_VERSION;
   }
 
   public close(): void {

@@ -4,6 +4,7 @@ import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
+import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { app, Menu, BrowserWindow } from 'electron';
 
@@ -49,7 +50,7 @@ describe('TrayManager Unit Tests', () => {
     sessionRepo = new SessionRepository(dbConn);
     worklogRepo = new WorklogRepository(dbConn);
     taskRepo = new TaskRepository(dbConn);
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn));
 
     mockWindow = {
       isMinimized: vi.fn().mockReturnValue(false),
@@ -62,6 +63,7 @@ describe('TrayManager Unit Tests', () => {
   });
 
   afterEach(() => {
+    engine.dispose();
     dbConn.close();
   });
 

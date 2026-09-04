@@ -4,6 +4,7 @@ import { SettingsRepository } from '../src/main/db/repositories/settings-reposit
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
+import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
@@ -23,7 +24,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const taskRepo = new TaskRepository(dbConn);
     const settingsRepo = new SettingsRepository(dbConn);
 
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn));
     driver = new BusyBarDriver('10.0.4.20', true); // Mock Mode
     await driver.connect();
 
@@ -32,6 +33,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   });
 
   afterEach(() => {
+    engine.dispose();
     driver.disconnect();
     dbConn.close();
   });

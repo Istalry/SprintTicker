@@ -4,6 +4,7 @@ import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
+import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
@@ -34,7 +35,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const taskRepo = new TaskRepository(dbConn);
     const settingsRepo = new SettingsRepository(dbConn);
 
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn));
     const driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();
 
@@ -93,7 +94,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const worklogRepo2 = new WorklogRepository(dbConn2);
     const taskRepo2 = new TaskRepository(dbConn2);
     const settingsRepo2 = new SettingsRepository(dbConn2);
-    const engine2 = new TimeTrackingEngine(sessionRepo2, worklogRepo2, taskRepo2);
+    const engine2 = new TimeTrackingEngine(sessionRepo2, worklogRepo2, taskRepo2, undefined, new ProjectRepository(dbConn2));
     const driver2 = new BusyBarDriver('10.0.4.20', true);
     await driver2.connect();
     const renderer2 = new DisplayRenderer(driver2);

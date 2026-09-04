@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
+import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -46,7 +47,7 @@ describe('Full End-to-End System Simulation Test', () => {
     settingsRepo.setSetting('op_api_key', 'test_key');
 
     providerManager = new ProviderManager(settingsRepo, worklogRepo);
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager, new ProjectRepository(dbConn));
     driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();
 
@@ -63,6 +64,7 @@ describe('Full End-to-End System Simulation Test', () => {
     global.fetch = originalFetch;
     await webhookServer.stop();
     driver.disconnect();
+    engine.dispose();
     dbConn.close();
   });
 

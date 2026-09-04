@@ -5,7 +5,6 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { DatabaseConnection } from '../db/database-connection';
 import { BusyBarDriver } from '../hardware/busybar-driver';
 import { InputDecoder } from '../hardware/input-decoder';
 import { DisplayRenderer } from '../hardware/display-renderer';
@@ -64,21 +63,24 @@ export class IPCHandlerRegistry {
   ) {
     this.engine = engine;
     this.taskRepo = taskRepo;
-    this.projectRepo = new ProjectRepository();
+    // Bound to the settings repository's connection rather than the
+    // DatabaseConnection singleton, which would open a second, on-disk database
+    // even when the caller supplied an in-memory one.
+    this.projectRepo = new ProjectRepository(settingsRepo.getConnection());
     this.settingsRepo = settingsRepo;
     this.driver = driver;
     this.inputDecoder = inputDecoder;
     this.renderer = renderer;
     this.getWindow = getWindow;
     this.unityInjectorService = unityInjectorService || new UnityInjectorService();
-    this.worklogRepo = worklogRepo || new WorklogRepository();
+    this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
     this.messagingService = messagingService || new MessagingIntegrationService(settingsRepo, renderer);
     this.priorityEngine = priorityEngine || new PriorityPreemptionEngine(settingsRepo);
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer, this.getWindow);
-    this.diagnosticExporter = new DiagnosticExporter(driver);
+    this.diagnosticExporter = new DiagnosticExporter(driver, settingsRepo.getConnection());
     this.systemAutomationService = systemAutomationService || new SystemAutomationService();
   }
 
@@ -189,7 +191,11 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.WIPE_ALL_DATA, async () => {
-      DatabaseConnection.getInstance().wipeAllData();
+      // Wipe the connection this registry was built on, not the singleton.
+      // getInstance() ignores the injected connection entirely, so the handler
+      // would open (and clear) a different database than the one the rest of
+      // the app is using.
+      this.settingsRepo.getConnection().wipeAllData();
       return true;
     });
 
