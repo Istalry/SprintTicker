@@ -36,6 +36,8 @@ export class WindowsNotificationListenerService {
   private static readonly DB_SETTINGS_KEY = 'windows_notification_settings';
   private static readonly DEFAULT_POLLING_INTERVAL_SECONDS = 2;
   private static readonly MAX_LOG_ENTRIES = 200;
+  private static readonly MAX_RESTART_ATTEMPTS = 5;
+  private static readonly RESTART_BASE_DELAY_MS = 2000;
 
   private readonly _settingsRepo: SettingsRepository;
   private readonly _priorityEngine: PriorityPreemptionEngine;
@@ -43,6 +45,9 @@ export class WindowsNotificationListenerService {
   private readonly _iconResolver: AppIconResolver;
 
   private _psProcess: ChildProcess | null = null;
+  private _restartTimer: NodeJS.Timeout | null = null;
+  private _restartAttempts = 0;
+  private _stopRequested = false;
   private _readlineInterface: readline.Interface | null = null;
   private _isListening: boolean = false;
 
@@ -135,7 +140,6 @@ export class WindowsNotificationListenerService {
    */
   public startListening(): void {
     if (this._isListening) return;
-    this._isListening = true;
 
     if (process.platform !== 'win32') {
       this.emitLog('warn', 'Non-Windows OS platform detected. OS listener suspended.');
@@ -147,6 +151,11 @@ export class WindowsNotificationListenerService {
       this.emitLog('info', 'Notification listener is disabled in settings.');
       return;
     }
+
+    // Set only once the poller is actually going to start. Setting it up front
+    // meant a listener that bailed out -- disabled in settings, wrong platform --
+    // still counted as listening, so enabling it later did nothing.
+    this._isListening = true;
 
     const pollingIntervalMs = (settings.pollingIntervalSeconds || WindowsNotificationListenerService.DEFAULT_POLLING_INTERVAL_SECONDS) * 1000;
 
@@ -220,6 +229,7 @@ export class WindowsNotificationListenerService {
 
             if (handled) {
               this._totalCaptured++;
+              this._restartAttempts = 0;
               this.emitLog(
                 'notification',
                 `[${data.appName}][${data.id}] ${redactNotificationSummary(data.title, data.body)}`.trim()
@@ -244,15 +254,20 @@ export class WindowsNotificationListenerService {
         }
       });
 
-      this._psProcess.on('exit', (code) => {
+      this._psProcess.on('exit', code => {
         this.emitLog('warn', `PowerShell process exited with code ${code}`);
         this._isListening = false;
         this._psProcess = null;
         this._readlineInterface = null;
         this._strategy = 'NONE';
+        this.scheduleRestart();
       });
 
       this.emitLog('info', `Listener started (polling interval: ${pollingIntervalMs}ms).`);
+      // A process that stays up long enough to emit its first notification has
+      // recovered; the counter resets there rather than here, so a crash loop
+      // still exhausts its attempts.
+      this._stopRequested = false;
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.emitLog('error', `Failed to launch PowerShell notification listener: ${errMsg}`);
@@ -262,9 +277,49 @@ export class WindowsNotificationListenerService {
   }
 
   /**
+   * Brings the poller back after an unexpected exit.
+   *
+   * The PowerShell process can die on its own -- a transient failure reading a
+   * locked notification database is enough -- and nothing restarted it, so
+   * notifications stopped reaching the bar for the rest of the session with no
+   * indication beyond one warning in a log nobody was reading.
+   *
+   * Backs off so a poller that cannot start is not relaunched twice a second
+   * forever, and gives up after a handful of attempts rather than retrying for
+   * the lifetime of the app.
+   */
+  private scheduleRestart(): void {
+    if (this._stopRequested) return;
+    if (this._restartAttempts >= WindowsNotificationListenerService.MAX_RESTART_ATTEMPTS) {
+      this.emitLog(
+        'error',
+        `Listener did not stay up after ${this._restartAttempts} restarts; giving up until it is started again.`
+      );
+      return;
+    }
+
+    const delayMs =
+      WindowsNotificationListenerService.RESTART_BASE_DELAY_MS * Math.pow(2, this._restartAttempts);
+    this._restartAttempts++;
+    this.emitLog('info', `Restarting listener in ${Math.round(delayMs / 1000)}s.`);
+
+    this._restartTimer = setTimeout(() => {
+      this._restartTimer = null;
+      if (this._stopRequested) return;
+      this.startListening();
+    }, delayMs);
+    this._restartTimer.unref?.();
+  }
+
+  /**
    * Stops the active Windows notification listener process cleanly.
    */
   public stopListening(): void {
+    this._stopRequested = true;
+    if (this._restartTimer) {
+      clearTimeout(this._restartTimer);
+      this._restartTimer = null;
+    }
     if (this._readlineInterface) {
       this._readlineInterface.close();
       this._readlineInterface = null;
@@ -453,8 +508,25 @@ $notifDbPath = "${escapedDbPath}"
 $pollingMs = ${pollingIntervalMs}
 $lastArrivalTime = 0
 $seenPayloadHashes = @{}
+$lastDbStamp = $null
 
 # ---- Helpers ----
+# Returns the newest write time across the notification database and its WAL,
+# or $null if neither can be read. Windows appends to the WAL and only folds it
+# into the main file at a checkpoint, so both have to be considered.
+function Get-NotifDbStamp($dbPath) {
+  $newest = $null
+  foreach ($candidate in @($dbPath, "$dbPath-wal")) {
+    try {
+      if (Test-Path -LiteralPath $candidate) {
+        $stamp = (Get-Item -LiteralPath $candidate).LastWriteTimeUtc.Ticks
+        if ($null -eq $newest -or $stamp -gt $newest) { $newest = $stamp }
+      }
+    } catch {}
+  }
+  return $newest
+}
+
 function Write-Status($msg) {
   $obj = @{ type = 'status'; message = $msg } | ConvertTo-Json -Compress
   Write-Output $obj
@@ -610,12 +682,20 @@ while ($true) {
   # ---- B. Poll Windows Notification Database via sqlite3 CLI ----
   if ($hasDbPolling) {
     try {
-      $tempDb = "$env:TEMP\\busybar_wpndb_poll.db"
-      Copy-Item $notifDbPath $tempDb -Force 2>$null
-      if (Test-Path "$notifDbPath-wal") { Copy-Item "$notifDbPath-wal" "$tempDb-wal" -Force 2>$null }
-      if (Test-Path "$notifDbPath-shm") { Copy-Item "$notifDbPath-shm" "$tempDb-shm" -Force 2>$null }
+      # Copying a multi-megabyte database and its sidecars every two seconds
+      # regardless of whether anything arrived was most of this loop's cost.
+      $currentStamp = Get-NotifDbStamp $notifDbPath
+      $unchanged = ($null -ne $currentStamp) -and ($currentStamp -eq $lastDbStamp)
+      if ($unchanged) { $skipDbPass = $true } else { $skipDbPass = $false; $lastDbStamp = $currentStamp }
 
-      if (Test-Path $tempDb) {
+      $tempDb = "$env:TEMP\\busybar_wpndb_poll.db"
+      if (-not $skipDbPass) {
+        Copy-Item $notifDbPath $tempDb -Force 2>$null
+        if (Test-Path "$notifDbPath-wal") { Copy-Item "$notifDbPath-wal" "$tempDb-wal" -Force 2>$null }
+        if (Test-Path "$notifDbPath-shm") { Copy-Item "$notifDbPath-shm" "$tempDb-shm" -Force 2>$null }
+      }
+
+      if (-not $skipDbPass -and (Test-Path $tempDb)) {
         $query = "SELECT n.Id, n.ArrivalTime, h.PrimaryId, replace(replace(cast(n.Payload as text), char(10), ' '), char(13), ' ') FROM Notification n LEFT JOIN NotificationHandler h ON n.HandlerId = h.RecordId WHERE n.ArrivalTime > $lastArrivalTime AND n.Type = 'toast' ORDER BY n.ArrivalTime ASC LIMIT 20;"
         $rows = & $sqlite3Cmd -separator '|BUSYSEP|' $tempDb $query 2>$null
 
@@ -671,7 +751,9 @@ while ($true) {
           }
         }
 
-        Remove-Item $tempDb -Force -ErrorAction SilentlyContinue
+        # The wildcard matters: removing only the base file left
+        # busybar_wpndb_poll.db-wal and -shm behind on every single pass.
+        Remove-Item "$tempDb*" -Force -ErrorAction SilentlyContinue
       }
     } catch {
       Write-Error-Evt "DB_POLL_ERROR" "Database polling error: $($_.Exception.Message)"
@@ -680,9 +762,12 @@ while ($true) {
     # ---- C. Native Direct String Extraction Fallback (No sqlite3.exe) ----
     try {
       $tempDb = "$env:TEMP\\busybar_wpndb_raw.db"
-      Copy-Item $notifDbPath $tempDb -Force 2>$null
+      $currentStamp = Get-NotifDbStamp $notifDbPath
+      if (($null -ne $currentStamp) -and ($currentStamp -eq $lastDbStamp)) { $skipRawPass = $true }
+      else { $skipRawPass = $false; $lastDbStamp = $currentStamp }
+      if (-not $skipRawPass) { Copy-Item $notifDbPath $tempDb -Force 2>$null }
 
-      if (Test-Path $tempDb) {
+      if (-not $skipRawPass -and (Test-Path $tempDb)) {
         $rawBytes = [System.IO.File]::ReadAllBytes($tempDb)
         $rawText = [System.Text.Encoding]::UTF8.GetString($rawBytes)
 
@@ -707,7 +792,7 @@ while ($true) {
           }
         }
 
-        Remove-Item $tempDb -Force -ErrorAction SilentlyContinue
+        Remove-Item "$tempDb*" -Force -ErrorAction SilentlyContinue
       }
     } catch {}
   }

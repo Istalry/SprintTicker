@@ -225,10 +225,81 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     expect(logged).toContain('Slack');
   });
 
+  describe('generated PowerShell poller', () => {
+    /**
+     * The poller is a generated script, so it is unreachable by ordinary unit
+     * tests -- but it is also where the expensive and leaky behaviour lived, and
+     * running it for real means spawning PowerShell against the developer's own
+     * notification database. Asserting on the generated text is the honest
+     * middle ground: it pins the fixes without the side effects.
+     */
+    function generatedScript(): string {
+      return (
+        service as unknown as { buildPowerShellScript(intervalMs: number): string }
+      ).buildPowerShellScript(2000);
+    }
+
+    it('BuildPowerShellScript_TempDatabaseCleanup_RemovesTheWalAndShmSidecars', () => {
+      // `Remove-Item $tempDb` deleted only the base file, so every pass left a
+      // busybar_wpndb_poll.db-wal and -shm behind in %TEMP% forever. One such
+      // WAL -- 3.9 MB of real notifications -- was committed to this repository.
+      const script = generatedScript();
+
+      expect(script).not.toMatch(/Remove-Item \$tempDb\s+-Force/);
+      expect(script.match(/Remove-Item "\$tempDb\*"/g)?.length).toBe(3);
+    });
+
+    it('BuildPowerShellScript_IdleMachine_SkipsCopyingTheDatabase', () => {
+      // A multi-megabyte database and two sidecars were copied every two
+      // seconds whether or not anything had arrived.
+      const script = generatedScript();
+
+      expect(script).toContain('function Get-NotifDbStamp');
+      expect(script).toContain('$currentStamp -eq $lastDbStamp');
+      expect(script).toContain('if (-not $skipDbPass)');
+    });
+
+    it('BuildPowerShellScript_StampCheck_ConsidersTheWalNotJustTheDatabase', () => {
+      // Windows appends to the WAL and only folds it into the main file at a
+      // checkpoint, so watching the .db alone would miss every new notification.
+      expect(generatedScript()).toContain('"$dbPath-wal"');
+    });
+
+    it('BuildPowerShellScript_PollingInterval_IsTakenFromSettings', () => {
+      expect(generatedScript()).toContain('$pollingMs = 2000');
+    });
+  });
+
   it('StartListening_AlreadyListening_DoesNotThrowException', () => {
+    // Listener disabled so the suite does not spawn a real PowerShell poller
+    // against the developer's own notification database -- which it did, on
+    // every run, copying that database into %TEMP%.
+    withRules([]);
+    settingsRepo.getSetting = vi.fn().mockReturnValue({
+      enableListener: false,
+      notificationTimeoutSeconds: 10,
+      pollingIntervalSeconds: 2,
+      sourceRules: []
+    });
+
     expect(() => {
       service.startListening();
       service.startListening();
     }).not.toThrow();
+  });
+
+  it('StartListening_DisabledInSettings_LeavesTheServiceRestartable', () => {
+    // `_isListening` was set before the enabled check, so a listener that bailed
+    // out still counted as running and could never be started afterwards.
+    settingsRepo.getSetting = vi.fn().mockReturnValue({
+      enableListener: false,
+      notificationTimeoutSeconds: 10,
+      pollingIntervalSeconds: 2,
+      sourceRules: []
+    });
+
+    service.startListening();
+
+    expect(service.getListenerStatus().isListening).toBe(false);
   });
 });
