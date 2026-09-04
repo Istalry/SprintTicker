@@ -27,6 +27,17 @@ describe('AnimationPlayer Unit Tests', () => {
 
   beforeEach(() => {
     vi.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => false } as unknown as fs.Stats);
+
+    // Frame loading is asynchronous so it does not block the main process, but
+    // each test still describes the filesystem through the synchronous mocks.
+    // Bridging here keeps those descriptions as the single source of truth.
+    vi.spyOn(fs.promises, 'readdir').mockImplementation(
+      async (dir: never) => fs.readdirSync(dir) as never
+    );
+    vi.spyOn(fs.promises, 'readFile').mockImplementation(
+      async (file: never) => fs.readFileSync(file) as never
+    );
+
     driver = {
       sendPixelFrame: vi.fn().mockResolvedValue(true),
       uploadAsset: vi.fn().mockResolvedValue(true),

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DEFAULT_USB_IP } from '../../shared/device-constants';
 import { X, Wifi, Plug, Gamepad2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 
 interface OnboardingWizardModalProps {
@@ -8,7 +9,10 @@ interface OnboardingWizardModalProps {
 
 export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [ipAddress, setIpAddress] = useState<string>('10.0.4.20');
+  // Not editable state. The bar answers on a fixed address over the USB
+  // Ethernet link; the field that used to accept a different one was never read
+  // by anything, so typing in it changed nothing but implied otherwise.
+  const deviceAddress = DEFAULT_USB_IP;
   const [pingSuccess, setPingSuccess] = useState<boolean | null>(null);
   const [pingDetails, setPingDetails] = useState<string>('');
   const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
@@ -22,26 +26,39 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
     setPingSuccess(null);
     setIsTestingPing(true);
     try {
-      const win = window as unknown as { electronAPI?: { getDeviceStatus: () => Promise<{ connected: boolean; firmwareVersion?: string; connectionType?: string; webSocketPingMs?: number; batteryPercent?: number }> } };
-      if (typeof window !== 'undefined' && win.electronAPI?.getDeviceStatus) {
-        const status = await win.electronAPI.getDeviceStatus();
-        if (status && status.connected) {
-          setPingSuccess(true);
-          const modeLabel = status.firmwareVersion?.includes('mock') ? 'Mock Hardware Ready' : `${status.connectionType?.toUpperCase() || 'USB'} Hardware Connected`;
-          setPingDetails(`Connection Verified! Latency: ${status.webSocketPingMs || 4}ms (${modeLabel}) - Battery: ${status.batteryPercent}% - Firmware: v${status.firmwareVersion}`);
-        } else {
-          setPingSuccess(false);
-          setPingDetails(`Connection Failed: Hardware at ${ipAddress} is offline or unreachable.`);
-        }
-      } else {
-        setTimeout(() => {
-          setPingSuccess(true);
-          setPingDetails('Connection Verified! Response time: 4ms (Mock Hardware Ready)');
-        }, 600);
+      const status = await window.electronAPI?.getDeviceStatus?.();
+      if (!status) {
+        // No bridge means no way to ask the device. Previously this branch
+        // waited 600ms and then reported success, so the wizard congratulated
+        // the user on a connection it had not attempted.
+        setPingSuccess(false);
+        setPingDetails('Cannot reach the main process to test the connection.');
+        return;
       }
+
+      if (!status.connected) {
+        setPingSuccess(false);
+        setPingDetails(`No response from the BUSY Bar at ${deviceAddress}.`);
+        return;
+      }
+
+      setPingSuccess(true);
+      const isMock = status.firmwareVersion?.includes('mock');
+      const modeLabel = isMock
+        ? 'mock hardware'
+        : `${status.connectionType?.toUpperCase() || 'USB'} connection`;
+      const details = [
+        `Connected over ${modeLabel}`,
+        status.webSocketPingMs !== undefined ? `latency ${status.webSocketPingMs}ms` : null,
+        status.batteryPercent !== undefined ? `battery ${status.batteryPercent}%` : null,
+        status.firmwareVersion ? `firmware v${status.firmwareVersion}` : null
+      ]
+        .filter(Boolean)
+        .join(' - ');
+      setPingDetails(details);
     } catch {
       setPingSuccess(false);
-      setPingDetails(`Connection Failed: Unable to reach ${ipAddress}`);
+      setPingDetails(`Connection Failed: Unable to reach ${deviceAddress}`);
     } finally {
       setIsTestingPing(false);
     }
@@ -101,18 +118,16 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             <div className="space-y-4">
               <h4 className="text-sm font-bold font-mono text-white">1. Physical BUSY Bar Hardware Connection</h4>
               <p className="text-xs text-text-secondary">
-                Connect your BUSY Bar hardware via USB Ethernet or local Wi-Fi subnet. Specify the static Virtual Ethernet IP address:
+                Connect your BUSY Bar over USB. It presents a virtual Ethernet adapter and always answers on the
+                address below, so there is nothing to configure -- use Test Ping to confirm the link is up.
               </p>
 
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Device IP Address</label>
+                <label className="block text-xs font-mono text-text-secondary mb-1">Device Address</label>
                 <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={ipAddress}
-                    onChange={e => setIpAddress(e.target.value)}
-                    className="flex-1 bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
-                  />
+                  <div className="flex-1 bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono">
+                    {deviceAddress}
+                  </div>
                   <button
                     onClick={handleTestPing}
                     disabled={isTestingPing}

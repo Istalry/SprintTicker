@@ -92,8 +92,13 @@ export class TimeTrackingEngine extends EventEmitter {
           this.stopTickLoop();
           return;
         }
+        // One event per tick. `sessionUpdated` was emitted here and nowhere
+        // else, with the same payload, and its only listener did exactly what
+        // the `tick` listener did -- so every second produced two identical
+        // renders, two asset uploads, two draws, and two IPC messages to the
+        // renderer. Genuine state changes (start, pause, stop) render directly
+        // from the IPC handlers and the input decoder, not from this loop.
         this.emit('tick', active);
-        this.emit('sessionUpdated', active);
         this.notifyListeners();
       } catch {
         this.stopTickLoop();

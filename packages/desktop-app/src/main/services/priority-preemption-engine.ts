@@ -65,6 +65,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   private static readonly DB_SETTINGS_KEY = 'priority_rules';
   /** Priority assumed for an event with no configured rule. */
   private static readonly DEFAULT_EVENT_PRIORITY = 50;
+  /** Ceiling on replayable alerts; the oldest are dropped past this. */
+  private static readonly MAX_QUEUED_REQUESTS = 20;
 
   private readonly _settingsRepo: SettingsRepository;
   private _userMode: UserMode = 'WORK';
@@ -326,5 +328,14 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       timestampMs: Date.now()
     };
     this._notificationQueue.push(item);
+
+    // The queue exists to replay alerts that arrived while something more
+    // important held the display, and alerts are rare. A caller that repeats --
+    // the session tracker ticks once a second -- should pass `queueOnPreempt:
+    // false` instead of relying on this, but an unbounded queue is a memory leak
+    // waiting for the next such caller.
+    while (this._notificationQueue.length > PriorityPreemptionEngine.MAX_QUEUED_REQUESTS) {
+      this._notificationQueue.shift();
+    }
   }
 }

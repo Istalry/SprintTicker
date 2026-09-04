@@ -81,7 +81,28 @@ const createWindow = (): void => {
   });
 };
 
-void app.whenReady().then(async () => {
+void bootstrap();
+
+/**
+ * Runs first-instance startup.
+ *
+ * Guarded by the single-instance lock rather than registered unconditionally:
+ * `app.quit()` does not stop the current tick, so without this a second launch
+ * still ran the whole of startup -- opening the database, spawning the
+ * notification poller, connecting to the hardware -- before the process died.
+ */
+async function bootstrap(): Promise<void> {
+  if (!gotTheLock) return;
+  await app.whenReady();
+  try {
+    await startApplication();
+  } catch (err) {
+    console.error('[Main] Fatal error during startup:', err);
+    app.quit();
+  }
+}
+
+async function startApplication(): Promise<void> {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.busybar.desktop');
   }
@@ -181,14 +202,7 @@ void app.whenReady().then(async () => {
   renderer.renderActiveSession(engine.getCurrentSession());
 
   // Connect engine ticks to display renderer and IPC window broadcast for live matrix timer updates
-  engine.on('tick', (session) => {
-    renderer?.renderActiveSession(session);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPCChannel.ON_SESSION_UPDATED, session);
-    }
-  });
-
-  engine.on('sessionUpdated', (session) => {
+  engine.on('tick', session => {
     renderer?.renderActiveSession(session);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(IPCChannel.ON_SESSION_UPDATED, session);
@@ -199,10 +213,7 @@ void app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-}).catch(err => {
-  console.error('[Main] Fatal error during startup:', err);
-  app.quit();
-});
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -241,6 +252,12 @@ app.on('will-quit', event => {
         await webhookServer.stop();
       }
       if (driver) {
+        // Hand the bar back before letting go of it. Without this the display
+        // keeps showing the last frame -- "Working on FEAT-42" hours after the
+        // app closed -- and every frame_0/frame_1 PNG ever uploaded stays in
+        // the device's own storage under our application name.
+        await driver.clearDisplay('busybar_desktop');
+        await driver.deleteAppAssets('busybar_desktop');
         driver.disconnect();
       }
       if (dbConnection) {

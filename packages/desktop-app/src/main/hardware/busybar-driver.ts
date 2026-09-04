@@ -1,5 +1,7 @@
 import { EventEmitter } from 'events';
+import WebSocket from 'ws';
 import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO } from '../../shared/dtos';
+import { DEFAULT_USB_IP } from '../../shared/device-constants';
 
 export interface HardwareEvent {
   key: string;
@@ -13,9 +15,79 @@ export interface BusyBarDriverOptions {
   forceMock?: boolean;
 }
 
-export const DEFAULT_USB_IP = '10.0.4.20';
+// Re-exported rather than redeclared: the onboarding wizard displays this and
+// the renderer must not import from src/main, so the value itself lives in
+// shared. Two literals would drift the moment one of them changed.
+export { DEFAULT_USB_IP } from '../../shared/device-constants';
 export const DEFAULT_DRAW_PRIORITY = 95;
 export const ASSET_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
+
+/**
+ * Per-request timeout for device calls.
+ *
+ * The bar is on a USB link, so a healthy response is milliseconds away. Without
+ * a timeout a single unresponsive socket blocks the caller indefinitely: most
+ * of these run from render paths that must not stall, and `frameInFlight` gates
+ * every later frame behind the one in progress.
+ */
+export const DEVICE_REQUEST_TIMEOUT_MS = 2000;
+
+/** Longer, because an asset upload carries a payload rather than a few bytes. */
+export const DEVICE_UPLOAD_TIMEOUT_MS = 5000;
+
+/**
+ * What the device meant by a non-2xx status, per the API guide.
+ *
+ * These were treated identically -- as "false" -- which conflated three
+ * different situations: another application legitimately owning the display, a
+ * payload this build should never have constructed, and a device asking to be
+ * asked again.
+ */
+export type DeviceResponseKind = 'ok' | 'conflict' | 'too_large' | 'busy' | 'error' | 'unreachable';
+
+/** Promise-based pause, for the single 503 retry. */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Classifies a device response, or its absence. */
+export function classifyDeviceResponse(response: Response | null): DeviceResponseKind {
+  if (!response) return 'unreachable';
+  if (response.ok) return 'ok';
+  switch (response.status) {
+    // Something with a higher draw priority owns the display. Expected, not a
+    // fault: the frame is genuinely not wanted right now.
+    case 409:
+      return 'conflict';
+    // The payload exceeded what the device accepts. Retrying sends the same
+    // bytes, so it is pointless; this is a bug in whatever built the payload.
+    case 413:
+      return 'too_large';
+    case 503:
+      return 'busy';
+    default:
+      return 'error';
+  }
+}
+
+/**
+ * Formats an ISO 8601 timestamp with the local UTC offset.
+ *
+ * `Date.prototype.toISOString` always renders UTC with a `Z` suffix. The device
+ * sets its real-time clock from what it is given and applies no conversion, so
+ * a `Z` timestamp leaves the bar showing UTC -- two hours behind for a user in
+ * Paris in summer.
+ */
+export function toIsoWithLocalOffset(date: Date = new Date()): string {
+  const pad = (value: number): string => String(Math.floor(Math.abs(value))).padStart(2, '0');
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+    `${sign}${pad(offsetMinutes / 60)}:${pad(offsetMinutes % 60)}`
+  );
+}
 export const VALID_HARDWARE_KEYS = [
   'up',
   'down',
@@ -260,16 +332,16 @@ export class BusyBarDriver extends EventEmitter {
     try {
       console.log(`[BusyBarDriver] Connecting to BUSY Bar hardware at ${this.ipAddress}...`);
 
-      let response = await fetch(`http://${this.ipAddress}/api/status`, {
+      let response = await this.deviceFetch(`http://${this.ipAddress}/api/status`, {
         method: 'GET',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       if (!response || !response.ok) {
-        response = await fetch(`http://${this.ipAddress}/api/status/power`, {
+        response = await this.deviceFetch(`http://${this.ipAddress}/api/status/power`, {
           method: 'GET',
           headers: this.getHeaders()
-        }).catch(() => null);
+        });
       }
 
       if (response && response.ok) {
@@ -279,10 +351,10 @@ export class BusyBarDriver extends EventEmitter {
           this.parseTelemetryData(data);
         }
         if (this.firmwareVersion === '1.4.2') {
-          const fwRes = await fetch(`http://${this.ipAddress}/api/status/firmware`, {
+          const fwRes = await this.deviceFetch(`http://${this.ipAddress}/api/status/firmware`, {
             method: 'GET',
             headers: this.getHeaders()
-          }).catch(() => null);
+          });
           if (fwRes && fwRes.ok) {
             const fwData = await fwRes.json().catch(() => null);
             if (fwData) this.parseTelemetryData(fwData);
@@ -328,8 +400,10 @@ export class BusyBarDriver extends EventEmitter {
 
       console.log(`[BusyBarDriver] Starting WebSocket StateStream listener on ${wsUrl}`);
       
-      const WsCtor = eval('require("ws")');
-      const ws = new WsCtor(wsUrl);
+      // Previously `eval('require("ws")')`, which defeated bundler analysis to
+      // work around a resolution problem that no longer exists: 'ws' is listed
+      // in ELECTRON_EXTERNALS, so a plain import is left external anyway.
+      const ws = new WebSocket(wsUrl);
       this.wsClient = ws;
 
       ws.onopen = () => {
@@ -551,23 +625,27 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(cleanFilename)}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
-        // Buffer is not part of the DOM BodyInit union TypeScript models for
-        // fetch. A Uint8Array view over the same bytes is, with no copy. The
-        // ArrayBuffer assertion is needed because TypedArrays became generic
-        // over their backing buffer in TS 5.7, and the default ArrayBufferLike
-        // admits SharedArrayBuffer, which BodyInit excludes.
-        body: new Uint8Array(
-          binaryData.buffer as ArrayBuffer,
-          binaryData.byteOffset,
-          binaryData.byteLength
-        ),
-        signal: AbortSignal.timeout(2000)
-      }).catch(() => null);
+      const response = await this.deviceFetch(
+        url,
+        {
+          method: 'POST',
+          headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
+          // Buffer is not part of the DOM BodyInit union TypeScript models for
+          // fetch. A Uint8Array view over the same bytes is, with no copy. The
+          // ArrayBuffer assertion is needed because TypedArrays became generic
+          // over their backing buffer in TS 5.7, and the default ArrayBufferLike
+          // admits SharedArrayBuffer, which BodyInit excludes.
+          body: new Uint8Array(
+            binaryData.buffer as ArrayBuffer,
+            binaryData.byteOffset,
+            binaryData.byteLength
+          )
+        },
+        // An upload carries a payload rather than a few bytes of JSON.
+        DEVICE_UPLOAD_TIMEOUT_MS
+      );
 
-      return response ? response.ok : false;
+      return this.reportDeviceResponse(`asset upload ${cleanFilename}`, response) === 'ok';
     } catch (err) {
       console.error(`[BusyBarDriver] Asset upload failed for ${cleanFilename}:`, err);
       return false;
@@ -585,10 +663,10 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}`;
-      const response = await fetch(url, {
+      const response = await this.deviceFetch(url, {
         method: 'DELETE',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       return response ? response.ok : false;
     } catch (err) {
@@ -614,10 +692,10 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
-      const response = await fetch(url, {
+      const response = await this.deviceFetch(url, {
         method: 'DELETE',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
       return response ? response.ok : false;
     } catch (err) {
       console.error(`[BusyBarDriver] Clear display failed:`, err);
@@ -689,22 +767,37 @@ export class BusyBarDriver extends EventEmitter {
         drawPayload.led_notification_color = ledColorHex;
       }
 
-      const drawResponse = await fetch(`http://${this.ipAddress}/api/display/draw`, {
+      const drawUrl = `http://${this.ipAddress}/api/display/draw`;
+      const drawInit: RequestInit = {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(drawPayload),
-        signal: AbortSignal.timeout(2000)
-      }).catch(() => null);
+        body: JSON.stringify(drawPayload)
+      };
 
-      if (drawResponse && drawResponse.ok) {
+      let drawResponse = await this.deviceFetch(drawUrl, drawInit);
+      let kind = this.reportDeviceResponse('draw', drawResponse);
+
+      // 503 means "ask again", and it is the one status where a retry is both
+      // correct and cheap. Once only: a device that is still busy after a
+      // throttle interval will be sent the next frame anyway.
+      if (kind === 'busy') {
+        await delay(BusyBarDriver.NETWORK_THROTTLE_MS);
+        drawResponse = await this.deviceFetch(drawUrl, drawInit);
+        kind = this.reportDeviceResponse('draw retry', drawResponse);
+      }
+
+      if (kind === 'ok') {
         this.framesSent++;
-      } else {
+      } else if (kind !== 'conflict') {
+        // A 409 is the display legitimately belonging to something else, not a
+        // transmission that went wrong, so it does not count against the frame
+        // statistics the diagnostics panel reports.
         this.framesFailed++;
       }
 
       this.frameInFlight = false;
       this.checkPendingFrame();
-      return drawResponse ? drawResponse.ok : false;
+      return kind === 'ok';
     } catch (err) {
       console.error(`[BusyBarDriver] sendPixelFrame failed:`, err);
       this.framesFailed++;
@@ -712,6 +805,58 @@ export class BusyBarDriver extends EventEmitter {
       this.checkPendingFrame();
       return false;
     }
+  }
+
+  /**
+   * Performs a device request with a timeout, returning null if it did not
+   * complete.
+   *
+   * Centralised so a new call site cannot forget the timeout, which is how ten
+   * of the eighteen ended up without one.
+   */
+  private async deviceFetch(
+    url: string,
+    init: RequestInit = {},
+    timeoutMs: number = DEVICE_REQUEST_TIMEOUT_MS
+  ): Promise<Response | null> {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    } catch {
+      // Timeout, abort, DNS, refused connection: from the caller's point of
+      // view these are the same event -- no answer from the device.
+      return null;
+    }
+  }
+
+  /**
+   * Logs a device response and says whether the caller should treat it as a
+   * failure worth counting.
+   */
+  private reportDeviceResponse(operation: string, response: Response | null): DeviceResponseKind {
+    const kind = classifyDeviceResponse(response);
+    switch (kind) {
+      case 'ok':
+        break;
+      case 'conflict':
+        // Another application holds the display at a higher priority.
+        console.log(`[BusyBarDriver] ${operation}: display owned by a higher priority (409).`);
+        break;
+      case 'too_large':
+        console.error(
+          `[BusyBarDriver] ${operation}: device rejected the payload as too large (413). ` +
+            'This is a payload construction bug; retrying sends the same bytes.'
+        );
+        break;
+      case 'busy':
+        console.warn(`[BusyBarDriver] ${operation}: device busy (503), will retry.`);
+        break;
+      case 'unreachable':
+        console.warn(`[BusyBarDriver] ${operation}: no response from ${this.ipAddress}.`);
+        break;
+      default:
+        console.warn(`[BusyBarDriver] ${operation}: device returned ${response?.status}.`);
+    }
+    return kind;
   }
 
   private checkPendingFrame() {
@@ -745,14 +890,13 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const response = await fetch(`http://${this.ipAddress}/api/display/draw`, {
+      const response = await this.deviceFetch(`http://${this.ipAddress}/api/display/draw`, {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(formattedPayload),
-        signal: AbortSignal.timeout(2000)
-      }).catch(() => null);
+        body: JSON.stringify(formattedPayload)
+      });
 
-      return response ? response.ok : false;
+      return this.reportDeviceResponse('display payload', response) === 'ok';
     } catch (err) {
       console.error(`[BusyBarDriver] Error posting display payload to http://${this.ipAddress}/api/display/draw:`, err);
       return false;
@@ -781,14 +925,19 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/input?key=${encodeURIComponent(lowerKey)}`;
-      const res = await fetch(url, {
+      const res = await this.deviceFetch(url, {
         method: 'POST',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
-      return res ? res.ok : true;
-    } catch {
-      return true;
+      // Previously `res ? res.ok : true`, and `true` again from the catch, so a
+      // device that never answered was reported as having accepted the key.
+      // The local event above was still emitted -- that part did happen -- but
+      // callers asking whether the hardware took it were told yes regardless.
+      return this.reportDeviceResponse('input injection', res) === 'ok';
+    } catch (err) {
+      console.warn('[BusyBarDriver] Input injection failed:', err);
+      return false;
     }
   }
 
@@ -803,10 +952,10 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/display/brightness?value=${encodeURIComponent(String(value))}`;
-      const res = await fetch(url, {
+      const res = await this.deviceFetch(url, {
         method: 'POST',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       return res ? res.ok : false;
     } catch (err) {
@@ -824,10 +973,10 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const res = await fetch(`http://${this.ipAddress}/api/display/brightness`, {
+      const res = await this.deviceFetch(`http://${this.ipAddress}/api/display/brightness`, {
         method: 'GET',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       if (res && res.ok) {
         return (await res.json()) as BrightnessDTO;
@@ -853,10 +1002,10 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/audio/volume?volume=${clampedVolume}&silent=${silentParam}`;
-      const res = await fetch(url, {
+      const res = await this.deviceFetch(url, {
         method: 'POST',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       return res ? res.ok : false;
     } catch (err) {
@@ -875,11 +1024,11 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const res = await fetch(`http://${this.ipAddress}/api/audio/play`, {
+      const res = await this.deviceFetch(`http://${this.ipAddress}/api/audio/play`, {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ application_name: applicationName, path: soundPath })
-      }).catch(() => null);
+      });
 
       return res ? res.ok : false;
     } catch (err) {
@@ -898,10 +1047,10 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const res = await fetch(`http://${this.ipAddress}/api/audio/play`, {
+      const res = await this.deviceFetch(`http://${this.ipAddress}/api/audio/play`, {
         method: 'DELETE',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       return res ? res.ok : false;
     } catch (err) {
@@ -914,7 +1063,8 @@ export class BusyBarDriver extends EventEmitter {
    * Synchronizes system RTC clock: POST /api/time/timestamp?timestamp={iso}
    */
   public async syncRtcTime(timestampIso?: string): Promise<boolean> {
-    const ts = timestampIso || new Date().toISOString();
+    // Local offset, not `Z`. See `toIsoWithLocalOffset`.
+    const ts = timestampIso || toIsoWithLocalOffset();
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK RTC TIME SYNC] timestamp=${ts}`);
@@ -923,10 +1073,10 @@ export class BusyBarDriver extends EventEmitter {
 
     try {
       const url = `http://${this.ipAddress}/api/time/timestamp?timestamp=${encodeURIComponent(ts)}`;
-      const res = await fetch(url, {
+      const res = await this.deviceFetch(url, {
         method: 'POST',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       return res ? res.ok : false;
     } catch (err) {
@@ -944,10 +1094,10 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     try {
-      const res = await fetch(`http://${this.ipAddress}/api/access`, {
+      const res = await this.deviceFetch(`http://${this.ipAddress}/api/access`, {
         method: 'GET',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       if (res && res.ok) {
         return (await res.json()) as AccessSettingsDTO;
@@ -976,10 +1126,10 @@ export class BusyBarDriver extends EventEmitter {
         url += `&key=${encodeURIComponent(key)}`;
       }
 
-      const res = await fetch(url, {
+      const res = await this.deviceFetch(url, {
         method: 'POST',
         headers: this.getHeaders()
-      }).catch(() => null);
+      });
 
       if (res && res.ok && mode === 'key' && key) {
         this.setApiToken(key);
@@ -1008,11 +1158,11 @@ export class BusyBarDriver extends EventEmitter {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-          const res = await fetch(`http://${this.ipAddress}/api/status`, {
+          const res = await this.deviceFetch(`http://${this.ipAddress}/api/status`, {
             method: 'GET',
             headers: this.getHeaders(),
             signal: controller.signal
-          }).catch(() => null);
+          });
 
           clearTimeout(timeoutId);
 

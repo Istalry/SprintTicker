@@ -3,6 +3,20 @@ import fs from 'fs';
 import path from 'path';
 import { BusyBarDriver } from './busybar-driver';
 
+/**
+ * Extracts the frame index from a file name.
+ *
+ * The previous implementation stripped every non-digit and parsed what was
+ * left, so `anim2_frame_10.png` sorted as 210. It happened to work only because
+ * the shipped animations have no digits before the frame number. Taking the
+ * last run of digits is what was meant.
+ */
+function frameNumber(fileName: string): number {
+  const groups = fileName.match(/\d+/g);
+  if (!groups || groups.length === 0) return 0;
+  return parseInt(groups[groups.length - 1], 10);
+}
+
 interface AnimationData {
   name: string;
   fps: number;
@@ -16,6 +30,28 @@ interface AnimationData {
  * frame-by-frame via the BusyBarDriver.
  */
 export class AnimationPlayer {
+  /**
+   * How many decoded animations may stay resident.
+   *
+   * The six shipped animations total 15 MB of PNG frames -- lunch alone is 1,080
+   * of them -- and every one ever played was kept for the life of the process.
+   * Only one plays at a time; a second slot means switching back and forth
+   * between two screens does not re-read either from disk.
+   */
+  private static readonly MAX_CACHED_ANIMATIONS = 2;
+
+  /** Frames read concurrently while loading. */
+  private static readonly FRAME_READ_CONCURRENCY = 16;
+
+  /**
+   * Ceiling on the preview tick while the device plays an animation itself.
+   *
+   * With a native `.anim` the device animates at full rate on its own; this
+   * interval then exists only to drive the on-screen emulator, which does not
+   * need 60 updates a second.
+   */
+  private static readonly HARDWARE_PREVIEW_MAX_FPS = 15;
+
   private driver: BusyBarDriver;
   private currentAnimation: string | null = null;
   private intervalId: NodeJS.Timeout | null = null;
@@ -49,8 +85,11 @@ export class AnimationPlayer {
    * containing a meta.json and a sequence of PNG files (frame_0.png, frame_1.png, ...).
    */
   private async loadAnimation(animName: string): Promise<AnimationData | null> {
-    if (this.animations.has(animName)) {
-      return this.animations.get(animName)!;
+    const cached = this.animations.get(animName);
+    if (cached) {
+      // Re-insert so this counts as the most recently used.
+      this.cacheAnimation(animName, cached);
+      return cached;
     }
 
     try {
@@ -80,41 +119,67 @@ export class AnimationPlayer {
         }
       }
 
-      const files = fs.readdirSync(targetDir);
+      const files = await fs.promises.readdir(targetDir);
       const frameFiles = files
         .filter(f => f.endsWith('.png'))
-        .sort((a, b) => {
-          // Sort numerically based on frame_X.png
-          const numA = parseInt(a.replace(/[^0-9]/g, ''), 10) || 0;
-          const numB = parseInt(b.replace(/[^0-9]/g, ''), 10) || 0;
-          return numA - numB;
-        });
+        .sort((a, b) => frameNumber(a) - frameNumber(b));
 
       if (frameFiles.length === 0) {
         console.warn(`[AnimationPlayer] No PNG frames found for animation: ${animName}`);
         return null;
       }
 
-      const frames: Buffer[] = [];
-      for (const file of frameFiles) {
-        const filePath = path.join(targetDir, file);
-        frames.push(fs.readFileSync(filePath));
+      // Asynchronously and in batches. 1,080 synchronous reads blocked the main
+      // process -- and with it every IPC reply, the tray, and the window -- for
+      // as long as the whole animation took to load off disk.
+      const frames: Buffer[] = new Array(frameFiles.length);
+      for (let i = 0; i < frameFiles.length; i += AnimationPlayer.FRAME_READ_CONCURRENCY) {
+        const batch = frameFiles.slice(i, i + AnimationPlayer.FRAME_READ_CONCURRENCY);
+        const buffers = await Promise.all(
+          batch.map(file => fs.promises.readFile(path.join(targetDir, file)))
+        );
+        buffers.forEach((buffer, offset) => {
+          frames[i + offset] = buffer;
+        });
+
+        // Another animation was requested while this one was loading.
+        if (this.currentAnimation !== null && this.currentAnimation !== animName) {
+          return null;
+        }
       }
 
       let animBuffer: Buffer | undefined;
       const animFilePath = path.join(targetDir, `${animName}.anim`);
       if (fs.existsSync(animFilePath)) {
-        animBuffer = fs.readFileSync(animFilePath);
+        animBuffer = await fs.promises.readFile(animFilePath);
       }
 
       const animData: AnimationData = { name: animName, fps, frames, animBuffer };
-      this.animations.set(animName, animData);
+      this.cacheAnimation(animName, animData);
       console.log(`[AnimationPlayer] Loaded animation '${animName}' with ${frames.length} frames at ${fps} fps${animBuffer ? ' (Hardware Accelerated)' : ''}`);
       
       return animData;
     } catch (err) {
       console.error(`[AnimationPlayer] Error loading animation ${animName}:`, err);
       return null;
+    }
+  }
+
+  /**
+   * Stores a decoded animation, evicting the least recently used if needed.
+   *
+   * A `Map` preserves insertion order, so re-inserting on a hit is enough to
+   * make the first key the oldest.
+   */
+  private cacheAnimation(animName: string, animData: AnimationData): void {
+    this.animations.delete(animName);
+    this.animations.set(animName, animData);
+
+    while (this.animations.size > AnimationPlayer.MAX_CACHED_ANIMATIONS) {
+      const oldest = this.animations.keys().next().value;
+      // Never evict what is on screen, however long ago it started.
+      if (oldest === undefined || oldest === this.currentAnimation) break;
+      this.animations.delete(oldest);
     }
   }
 
@@ -157,12 +222,26 @@ export class AnimationPlayer {
     this.isPlaying = true;
     this.frameIndex = 0;
 
-    if (this._powerSaveBlockerId === null) {
+    // Held only while this process is the one producing frames, and only for an
+    // animation that ends. A looping idle animation -- the lunch screen, the
+    // away screen while the machine is locked -- used to hold it for the entire
+    // break, which is precisely when the machine should be allowed to sleep.
+    // With a native `.anim` the device animates on its own and nothing here
+    // needs to stay awake at all.
+    const needsPowerBlocker = !animData.animBuffer && !this.loop;
+    if (needsPowerBlocker && this._powerSaveBlockerId === null) {
       this._powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension');
-      console.log(`[AnimationPlayer] Started power save blocker (ID: ${this._powerSaveBlockerId}) to prevent app suspension during animation.`);
+      console.log(
+        `[AnimationPlayer] Started power save blocker (ID: ${this._powerSaveBlockerId}) for '${animName}'.`
+      );
     }
 
-    const frameIntervalMs = Math.floor(1000 / animData.fps);
+    // With hardware playback this interval only advances the on-screen preview,
+    // so it does not have to keep up with the device.
+    const effectiveFps = animData.animBuffer
+      ? Math.min(animData.fps, AnimationPlayer.HARDWARE_PREVIEW_MAX_FPS)
+      : animData.fps;
+    const frameIntervalMs = Math.max(1, Math.floor(1000 / effectiveFps));
 
     if (animData.animBuffer) {
       // Hardware accelerated playback

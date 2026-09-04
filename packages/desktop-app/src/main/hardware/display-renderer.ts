@@ -1,4 +1,5 @@
 import { BusyBarDriver } from './busybar-driver';
+import { createHash } from 'crypto';
 import * as os from 'os';
 import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentNullException } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
@@ -17,6 +18,17 @@ import { AnimationPlayer } from './animation-player';
  * was not among them and had to be guessed from the priority number.
  * The number itself is no longer passed at all: the engine owns it.
  */
+/** Behaviour switches for {@link DisplayRenderer.requestRender}. */
+export interface RequestRenderOptions {
+  /**
+   * Whether a preempted request should be replayed once the display frees.
+   *
+   * Defaults to true, which is right for one-shot screens such as alerts and
+   * ceremony prompts. False for anything drawn on a repeating timer.
+   */
+  queueOnPreempt?: boolean;
+}
+
 export interface NotificationBannerOptions {
   /** Text shown after the channel label; already assembled by the caller. */
   senderName: string;
@@ -48,6 +60,14 @@ const APP_NAME = 'busybar_desktop';
  */
 export class DisplayRenderer {
   private _driver: BusyBarDriver;
+  /**
+   * Signature of the frame the device is believed to be showing.
+   *
+   * Null means "unknown, transmit regardless" -- after a failure, a manual
+   * clear, or a reconnect, where the device's actual contents no longer follow
+   * from what we last sent.
+   */
+  private lastTransmittedSignature: string | null = null;
   private priorityEngine?: IPriorityPreemptionEngine;
   private colorTheme: ColorThemeId = 'emerald';
   private rearOledMode: RearOledMode = 'DIAGNOSTICS';
@@ -88,6 +108,13 @@ export class DisplayRenderer {
   }
 
   private onAnimationFrame(frameBuffer: Buffer, _frameIndex: number) {
+    this.lastTransmittedSignature = null;
+
+    // Nobody is watching the emulator, so there is nothing to encode. This ran
+    // per frame for the whole of a looping animation -- base64 of every frame
+    // of a 1,080-frame lunch screen -- whether or not the window was even open.
+    if (this.stateChangeCallbacks.size === 0) return;
+
     const base64 = frameBuffer.toString('base64');
     const imgElement = { id: 'anim_frame', type: 'image', x: 0, y: 0, data: `data:image/png;base64,${base64}` };
     this.lastState.frontElements = [imgElement as unknown as DisplayElementDTO];
@@ -100,16 +127,36 @@ export class DisplayRenderer {
     this.priorityEngine = engine;
   }
 
+  /**
+   * Forgets what the device is believed to be showing.
+   *
+   * Call after anything that changes the display outside `transmitFrame` -- a
+   * clear, a reconnect, an animation taking over the panel -- otherwise the
+   * next identical frame is deduplicated against a device that is no longer
+   * showing it, and the display stays blank.
+   */
+  public invalidateFrameCache(): void {
+    this.lastTransmittedSignature = null;
+  }
+
   /// <summary>
   /// Mandatorily evaluates the requested display draw against the Priority Preemption Engine.
   /// If evaluated as suppressed or preempted, hardware transmission is strictly blocked.
   /// </summary>
-  public requestRender(eventName: string, renderFn: () => DisplayPayload): DisplayPayload {
+  public requestRender(
+    eventName: string,
+    renderFn: () => DisplayPayload,
+    options: RequestRenderOptions = {}
+  ): DisplayPayload {
     if (!eventName) throw new ArgumentNullException('eventName');
     if (!renderFn) throw new ArgumentNullException('renderFn');
 
     if (this.priorityEngine) {
-      const evalResult = this.priorityEngine.evaluateRequest(eventName, undefined, renderFn);
+      // A screen that redraws on a timer must not be queued for replay: by the
+      // time the lock frees, every queued frame is stale, and the tracker is
+      // redrawn anyway when `releaseActiveLock` restores the context mode.
+      const queueCallback = options.queueOnPreempt === false ? undefined : renderFn;
+      const evalResult = this.priorityEngine.evaluateRequest(eventName, undefined, queueCallback);
       if (!evalResult || !evalResult.shouldRender) {
         // Suppressed or queued. `evaluateRequest` does not take the lock on
         // either path, so there is nothing to release here.
@@ -305,11 +352,30 @@ export class DisplayRenderer {
     }
   }
 
-  private formatTime(totalSec: number): string {
+  /**
+   * Formats elapsed time for the front display.
+   *
+   * Seconds are omitted while tracking. The front display is a rasterised PNG
+   * uploaded in full on every change, so a ticking seconds digit meant a fresh
+   * upload and draw every second for as long as a session ran -- around 28,800
+   * requests a day doing nothing but advancing one character. At minute
+   * resolution the frame is identical for 59 of every 60 ticks and the dedupe in
+   * `transmitFrame` drops them.
+   *
+   * The paused screen does not keep seconds either, though for a different
+   * reason: it shares the row with the STOP/FINISH controls, leaving 26 pixels
+   * for the timer, and the 3x5 font fits six characters in that. `01:02:05`
+   * rendered as `01:02:` -- a trailing colon and nothing after it. Rather than
+   * drop the hours or shrink the controls, both screens read HH:MM.
+   */
+  private formatTime(totalSec: number, includeSeconds: boolean = true): string {
     const hrs = Math.floor(totalSec / 3600);
     const mins = Math.floor((totalSec % 3600) / 60);
     const secs = totalSec % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    const hh = hrs.toString().padStart(2, '0');
+    const mm = mins.toString().padStart(2, '0');
+    if (!includeSeconds) return `${hh}:${mm}`;
+    return `${hh}:${mm}:${secs.toString().padStart(2, '0')}`;
   }
 
   private lastInputKey: string = 'NONE';
@@ -443,15 +509,33 @@ export class DisplayRenderer {
       DISPLAY_CONSTANTS.FRONT_GRID_WIDTH,
       DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT
     );
-    this.frameBufferToggle = !this.frameBufferToggle;
-    const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
 
-    // Fire-and-forget hardware transmission (non-blocking for render callers)
-    void this._driver
-      .sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename)
-      .catch(err => {
-        console.error('[DisplayRenderer] sendPixelFrame failed:', err);
-      });
+    // Every transmission is an asset upload plus a draw -- two HTTP requests --
+    // and the tracker redraws once a second whether or not anything changed.
+    // Comparing what we are about to send with what the device already has
+    // costs one hash of a 72x16 PNG.
+    const frameSignature = createHash('sha1')
+      .update(pngBuffer)
+      .update(ledColorHex)
+      .update(this.ledMode)
+      .digest('hex');
+
+    if (frameSignature !== this.lastTransmittedSignature) {
+      this.lastTransmittedSignature = frameSignature;
+      this.frameBufferToggle = !this.frameBufferToggle;
+      const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
+
+      // Fire-and-forget hardware transmission (non-blocking for render callers)
+      void this._driver
+        .sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename)
+        .catch(err => {
+          console.error('[DisplayRenderer] sendPixelFrame failed:', err);
+          // The device may or may not have taken the frame. Forget the
+          // signature so the next render transmits rather than assuming the
+          // display already shows this.
+          this.lastTransmittedSignature = null;
+        });
+    }
 
     this.lastState = {
       frontElements: frontElementsForEmulator as unknown as DisplayElementDTO[],
@@ -643,6 +727,7 @@ export class DisplayRenderer {
     }
 
     if (!session && this.showIdleClockFallback) {
+      this.invalidateFrameCache();
       void this._driver.clearDisplay(APP_NAME)
         .catch(err => console.error('[DisplayRenderer] _driver.clearDisplay failed:', err));
       
@@ -677,64 +762,78 @@ export class DisplayRenderer {
       return payload;
     }
 
-    const colors = this.getThemeColors();
-    const isPaused = session?.status === 'PAUSED';
-    const isTracking = session?.status === 'TRACKING';
-    const isStandup = session?.taskTitle?.toLowerCase().includes('standup');
+    // The one screen that used to bypass the priority engine. Because it
+    // redraws every second, it overwrote any notification banner within a
+    // second of it appearing -- a 10-second alert was visible for one -- and the
+    // "Active Session Tracker" row in the priority panel governed nothing.
+    //
+    // Not queued on preemption: a tracker frame held for the length of an alert
+    // is stale by the time it would replay, and releasing the lock restores the
+    // context mode, which redraws this anyway.
+    return this.requestRender(
+      'activeTrackerPriority',
+      () => {
+      const colors = this.getThemeColors();
+      const isPaused = session?.status === 'PAUSED';
+      const isTracking = session?.status === 'TRACKING';
+      const isStandup = session?.taskTitle?.toLowerCase().includes('standup');
 
-    const titleText = session ? `${session.taskKey}: ${session.taskTitle}` : 'No Active Task';
-    const timerText = session ? this.formatTime(session.elapsedSeconds) : '00:00:00';
+      const titleText = session ? `${session.taskKey}: ${session.taskTitle}` : 'No Active Task';
+      const timerText = session ? this.formatTime(session.elapsedSeconds, false) : '00:00';
 
-    const row0Color = isPaused ? '#F59E0B' : session ? colors.keyColor : '#888888';
-    const row1Color = isPaused ? '#F59E0B' : session ? '#FFFFFF' : '#888888';
-    // Remove edge glow during active tracking tasks by modifying ledMode if needed, but LED must remain green
-    const ledColor = isPaused ? '#F59E0BFF' : session ? '#10B981FF' : '#2D3440FF';
+      const row0Color = isPaused ? '#F59E0B' : session ? colors.keyColor : '#888888';
+      const row1Color = isPaused ? '#F59E0B' : session ? '#FFFFFF' : '#888888';
+      // Remove edge glow during active tracking tasks by modifying ledMode if needed, but LED must remain green
+      const ledColor = isPaused ? '#F59E0BFF' : session ? '#10B981FF' : '#2D3440FF';
 
-    this.ledMode = session ? (isTracking ? 'SOLID' : 'BREATHING') : 'SOLID';
+      this.ledMode = session ? (isTracking ? 'SOLID' : 'BREATHING') : 'SOLID';
 
-    this.canvas.clear();
-    if (isStandup && isTracking) {
-      void this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame })
-        .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
-    } else {
-      this.animationPlayer.stop();
-      this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
-    }
-
-    if (isPaused) {
-      // Clipped title & timer on left, interactive STOP/FINISH selection on right
-      this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 26);
-      this.canvas.drawSmallText(timerText, 17, 8, row1Color, 26);
-
-      // Render STOP vs FINISH controls moved down 1px to y=1 and y=9
-      if (this.pausedSelection === 'STOP') {
-        this.canvas.drawRect(44, 1, 27, 7, '#F59E0B');
-        this.canvas.drawSmallText('STOP', 45, 2, '#000000', 26);
-        this.canvas.drawSmallText('FINISH', 45, 10, '#888888', 26);
+      this.canvas.clear();
+      if (isStandup && isTracking) {
+        void this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame })
+          .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       } else {
-        this.canvas.drawSmallText('STOP', 45, 2, '#888888', 26);
-        this.canvas.drawRect(44, 9, 27, 7, '#F59E0B');
-        this.canvas.drawSmallText('FINISH', 45, 10, '#000000', 26);
+        this.animationPlayer.stop();
+        this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
       }
-    } else {
-      // Row 0: Task Title
-      this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 55);
-      // Row 1: Task Timer (HH:MM:SS)
-      this.canvas.drawSmallText(timerText, 17, 8, row1Color, 55);
-    }
 
-    const backElements = this.buildRearElements(session);
-    const frontEls = this.canvasToEmulatorElements();
+      if (isPaused) {
+        // Clipped title & timer on left, interactive STOP/FINISH selection on right
+        this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 26);
+        this.canvas.drawSmallText(timerText, 17, 8, row1Color, 26);
 
-    const payload: DisplayPayload = {
-      frontElements: frontEls,
-      backElements,
-      ledColorHex: ledColor
-    };
+        // Render STOP vs FINISH controls moved down 1px to y=1 and y=9
+        if (this.pausedSelection === 'STOP') {
+          this.canvas.drawRect(44, 1, 27, 7, '#F59E0B');
+          this.canvas.drawSmallText('STOP', 45, 2, '#000000', 26);
+          this.canvas.drawSmallText('FINISH', 45, 10, '#888888', 26);
+        } else {
+          this.canvas.drawSmallText('STOP', 45, 2, '#888888', 26);
+          this.canvas.drawRect(44, 9, 27, 7, '#F59E0B');
+          this.canvas.drawSmallText('FINISH', 45, 10, '#000000', 26);
+        }
+      } else {
+        // Row 0: Task Title
+        this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 55);
+        // Row 1: Task Timer (HH:MM:SS)
+        this.canvas.drawSmallText(timerText, 17, 8, row1Color, 55);
+      }
 
-    void this.transmitFrame(ledColor, backElements, frontEls)
-      .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-    return payload;
+      const backElements = this.buildRearElements(session);
+      const frontEls = this.canvasToEmulatorElements();
+
+      const payload: DisplayPayload = {
+        frontElements: frontEls,
+        backElements,
+        ledColorHex: ledColor
+      };
+
+      void this.transmitFrame(ledColor, backElements, frontEls)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
+      return payload;
+        },
+      { queueOnPreempt: false }
+    );
   }
 
   /**
