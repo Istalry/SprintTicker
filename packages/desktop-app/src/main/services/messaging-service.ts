@@ -83,11 +83,7 @@ export class MessagingIntegrationService {
     return this.settingsRepo.getSetting('messaging_settings', {
       enableOpenProjectNotifications: true,
       openProjectPollingIntervalSeconds: 60,
-      notificationTimeoutSeconds: 10,
-      enableEdgeGlow: true,
-      edgeGlowOpacity: 0.3,
-      edgeGlowMode: 'PULSE',
-      edgeGlowTransition: 'FADE'
+      notificationTimeoutSeconds: 10
     });
   }
 
