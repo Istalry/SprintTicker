@@ -1,7 +1,7 @@
 import { nativeImage } from 'electron';
 import fs from 'fs';
 import { BitmapIconId } from '../../shared/dtos';
-import { getBitmapById } from './pixel-bitmaps';
+import { getBitmapById } from '../../shared/pixel-bitmaps';
 
 /**
  * Utility processor that converts, downscales, and centers notification application icons

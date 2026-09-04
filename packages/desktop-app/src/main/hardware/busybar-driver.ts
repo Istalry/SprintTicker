@@ -994,49 +994,51 @@ export class BusyBarDriver extends EventEmitter {
   private startPingLoop(): void {
     if (this.pingTimer) clearInterval(this.pingTimer);
 
-    this.pingTimer = setInterval(async () => {
-      if (this.isMockMode) {
-        this.pingMs = Math.floor(Math.random() * 4) + 3;
-        this.isConnected = true;
-        this.emit('statusChanged', this.getDeviceStatus());
-        return;
-      }
-
-      const start = Date.now();
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-        const res = await fetch(`http://${this.ipAddress}/api/status`, {
-          method: 'GET',
-          headers: this.getHeaders(),
-          signal: controller.signal
-        }).catch(() => null);
-
-        clearTimeout(timeoutId);
-
-        const elapsed = Date.now() - start;
-        this.pingMs = Math.max(1, elapsed);
-        
-        const wasConnected = this.isConnected;
-        this.isConnected = res ? res.ok : false;
-
-        if (res && res.ok) {
-          const data = await res.json().catch(() => null);
-          if (data) {
-            this.parseTelemetryData(data);
-          }
-          if (!wasConnected) {
-            console.log('[BusyBarDriver] Connection recovered in ping loop. Restarting StateStream...');
-            this.startStateStreamListener();
-            this.checkPendingFrame();
-          }
+    this.pingTimer = setInterval(() => {
+      void (async () => {
+        if (this.isMockMode) {
+          this.pingMs = Math.floor(Math.random() * 4) + 3;
+          this.isConnected = true;
+          this.emit('statusChanged', this.getDeviceStatus());
+          return;
         }
-      } catch {
-        this.isConnected = false;
-      }
 
-      this.emit('statusChanged', this.getDeviceStatus());
+        const start = Date.now();
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+          const res = await fetch(`http://${this.ipAddress}/api/status`, {
+            method: 'GET',
+            headers: this.getHeaders(),
+            signal: controller.signal
+          }).catch(() => null);
+
+          clearTimeout(timeoutId);
+
+          const elapsed = Date.now() - start;
+          this.pingMs = Math.max(1, elapsed);
+        
+          const wasConnected = this.isConnected;
+          this.isConnected = res ? res.ok : false;
+
+          if (res && res.ok) {
+            const data = await res.json().catch(() => null);
+            if (data) {
+              this.parseTelemetryData(data);
+            }
+            if (!wasConnected) {
+              console.log('[BusyBarDriver] Connection recovered in ping loop. Restarting StateStream...');
+              this.startStateStreamListener();
+              this.checkPendingFrame();
+            }
+          }
+        } catch {
+          this.isConnected = false;
+        }
+
+        this.emit('statusChanged', this.getDeviceStatus());
+      })().catch(err => console.error('[BusyBarDriver] Ping loop error:', err));
     }, 3000);
   }
 

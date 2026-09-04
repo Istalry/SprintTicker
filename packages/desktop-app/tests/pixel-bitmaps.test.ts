@@ -8,7 +8,7 @@ import {
   CLOCK_16X16_BITMAP,
   WAVE_16X16_BITMAP,
   getBitmapById
-} from '../src/main/hardware/pixel-bitmaps';
+} from '../src/shared/pixel-bitmaps';
 import { BitmapIconId } from '../src/shared/dtos';
 
 describe('PixelBitmaps Unit Tests', () => {

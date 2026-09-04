@@ -43,9 +43,17 @@ export class MessagingIntegrationService {
     const settings = this.getSettings();
     if (settings.enableOpenProjectNotifications && this.providerManager) {
       const intervalMs = (settings.openProjectPollingIntervalSeconds || 60) * 1000;
-      this.opPollingInterval = setInterval(() => this.pollOpenProjectNotifications(), intervalMs);
+      this.opPollingInterval = setInterval(() => {
+        void this.pollOpenProjectNotifications().catch(err =>
+          console.warn('[MessagingService] OpenProject notification poll failed:', err)
+        );
+      }, intervalMs);
       // Execute an immediate initial poll
-      setTimeout(() => this.pollOpenProjectNotifications(), 2000);
+      setTimeout(() => {
+        void this.pollOpenProjectNotifications().catch(err =>
+          console.warn('[MessagingService] Initial OpenProject notification poll failed:', err)
+        );
+      }, 2000);
     }
   }
 

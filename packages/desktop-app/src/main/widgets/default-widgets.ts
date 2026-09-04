@@ -1,6 +1,6 @@
 import { IWidget, WidgetContext, HardwareInputEvent } from './widget-interface';
 import { DisplayPayload } from '../hardware/display-renderer';
-import { getBitmapById } from '../hardware/pixel-bitmaps';
+import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { BitmapIconId } from '../../shared/dtos';
 
 /**

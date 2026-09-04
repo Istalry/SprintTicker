@@ -69,9 +69,11 @@ const createWindow = (): void => {
   mainWindow.setMenu(null);
 
   if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+      .catch(err => console.error('[Main] mainWindow.loadURL failed:', err));
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    void mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+      .catch(err => console.error('[Main] mainWindow.loadFile failed:', err));
   }
 
   mainWindow.on('closed', () => {
@@ -79,7 +81,7 @@ const createWindow = (): void => {
   });
 };
 
-app.whenReady().then(async () => {
+void app.whenReady().then(async () => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.busybar.desktop');
   }
@@ -118,7 +120,8 @@ app.whenReady().then(async () => {
 
   webhookServer.onInputEvent(key => {
     if (driver) {
-      driver.injectRemoteKey(key);
+      void driver.injectRemoteKey(key)
+        .catch(err => console.error('[Main] driver.injectRemoteKey failed:', err));
     }
   });
 
@@ -196,6 +199,9 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+}).catch(err => {
+  console.error('[Main] Fatal error during startup:', err);
+  app.quit();
 });
 
 app.on('window-all-closed', () => {

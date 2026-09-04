@@ -35,14 +35,16 @@ export class AutoUpdateManager {
 
     // Schedule 12-hour periodic background update checks
     this.checkIntervalTimer = setInterval(() => {
-      this.checkForUpdates();
+      void this.checkForUpdates()
+        .catch(err => console.error('[AutoUpdateManager] checkForUpdates failed:', err));
     }, 12 * 60 * 60 * 1000);
   }
 
   public setChannel(channel: UpdateChannel): void {
     this.channel = channel;
     console.log(`[AutoUpdateManager] Switch release channel to '${this.channel}'`);
-    this.checkForUpdates();
+    void this.checkForUpdates()
+      .catch(err => console.error('[AutoUpdateManager] checkForUpdates failed:', err));
   }
 
   public async checkForUpdates(): Promise<UpdateStatus> {

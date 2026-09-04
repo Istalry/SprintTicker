@@ -49,21 +49,23 @@ export class ProviderManager {
   public reinitializeProviders(): void {
     const opProvider = this._providers.get('openproject');
     if (opProvider) {
-      opProvider.initialize({
+      void opProvider.initialize({
         domain: this.readSetting(ProviderSettingKey.OP_DOMAIN),
         apiToken: this.readSetting(ProviderSettingKey.OP_API_KEY),
         opStatusInProgress: this.readSetting(ProviderSettingKey.OP_STATUS_IN_PROGRESS),
         opStatusToTest: this.readSetting(ProviderSettingKey.OP_STATUS_TO_TEST),
         opStatusToReview: this.readSetting(ProviderSettingKey.OP_STATUS_TO_REVIEW),
         opCompletionAction: this.readSetting(ProviderSettingKey.OP_COMPLETION_ACTION)
-      });
+      })
+        .catch(err => console.error('[ProviderManager] opProvider.initialize failed:', err));
     }
 
     const adHocProvider = this._providers.get('adhoc');
     if (adHocProvider) {
-      adHocProvider.initialize({
+      void adHocProvider.initialize({
         fallbackKey: this.readSetting(ProviderSettingKey.FALLBACK_TICKET_KEY)
-      });
+      })
+        .catch(err => console.error('[ProviderManager] adHocProvider.initialize failed:', err));
     }
   }
 

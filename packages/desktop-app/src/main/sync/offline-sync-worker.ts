@@ -53,13 +53,17 @@ export class OfflineSyncWorker {
 
     console.log(`[OfflineSyncWorker] Starting background sync worker (Interval: ${this.syncIntervalMs / 1000}s)`);
     this.timerId = setInterval(() => {
-      this.processPendingQueue();
-      this.syncTasksAndProjects();
+      void this.processPendingQueue()
+        .catch(err => console.error('[OfflineSyncWorker] processPendingQueue failed:', err));
+      void this.syncTasksAndProjects()
+        .catch(err => console.error('[OfflineSyncWorker] syncTasksAndProjects failed:', err));
     }, this.syncIntervalMs);
 
     // Initial run on boot
-    this.processPendingQueue();
-    this.syncTasksAndProjects();
+    void this.processPendingQueue()
+      .catch(err => console.error('[OfflineSyncWorker] processPendingQueue failed:', err));
+    void this.syncTasksAndProjects()
+      .catch(err => console.error('[OfflineSyncWorker] syncTasksAndProjects failed:', err));
   }
 
   /**

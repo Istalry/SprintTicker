@@ -14,7 +14,7 @@ import {
   Square
 } from 'lucide-react';
 import { HardwareDisplayStateDTO, BitmapIconId, DisplayElementDTO } from '../../shared/dtos';
-import { getBitmapById } from '../../main/hardware/pixel-bitmaps';
+import { getBitmapById } from '../../shared/pixel-bitmaps';
 
 /**
  * Interactive Animation & Visual Debug Panel.

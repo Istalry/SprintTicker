@@ -1,4 +1,4 @@
-import { BitmapIconId } from '../../shared/dtos';
+import { BitmapIconId } from './dtos';
 
 /**
  * PixelIt-Generated 16x16 RGB Pixel-Art Bitmap Matrices for BUSY Bar Display.

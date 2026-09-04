@@ -1,6 +1,6 @@
 import { BusyBarDriver } from './busybar-driver';
 import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentNullException } from '../../shared/dtos';
-import { getBitmapById } from './pixel-bitmaps';
+import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
@@ -387,12 +387,11 @@ export class DisplayRenderer {
     const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
 
     // Fire-and-forget hardware transmission (non-blocking for render callers)
-    const sendPromise = this._driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename);
-    if (sendPromise && typeof sendPromise.catch === 'function') {
-      sendPromise.catch(err => {
+    void this._driver
+      .sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename)
+      .catch(err => {
         console.error('[DisplayRenderer] sendPixelFrame failed:', err);
       });
-    }
 
     this.lastState = {
       frontElements: frontElementsForEmulator as unknown as DisplayElementDTO[],
@@ -435,7 +434,8 @@ export class DisplayRenderer {
     return this.requestRender('lunchModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
-      this.animationPlayer.play('lunch_72x16', { loop: true, onFrame: this.onAnimationFrame });
+      void this.animationPlayer.play('lunch_72x16', { loop: true, onFrame: this.onAnimationFrame })
+        .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
       const backElements = [
         { id: 'rear_lunch_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS', align: 'top_left' },
@@ -449,7 +449,8 @@ export class DisplayRenderer {
         ledColorHex: '#F59E0BFF'
       };
 
-      this.transmitFrame('#F59E0BFF', backElements, frontElements);
+      void this.transmitFrame('#F59E0BFF', backElements, frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -461,7 +462,8 @@ export class DisplayRenderer {
     return this.requestRender('awayModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
-      this.animationPlayer.play('back_soon_72x16', { loop: true, onFrame: this.onAnimationFrame });
+      void this.animationPlayer.play('back_soon_72x16', { loop: true, onFrame: this.onAnimationFrame })
+        .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
       const backElements = [
         { id: 'rear_away_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY', align: 'top_left' },
@@ -475,7 +477,8 @@ export class DisplayRenderer {
         ledColorHex: '#A855F7FF'
       };
 
-      this.transmitFrame('#A855F7FF', backElements, frontElements);
+      void this.transmitFrame('#A855F7FF', backElements, frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -494,7 +497,8 @@ export class DisplayRenderer {
 
       if (type === 'STANDUP') {
         this.canvas.clear();
-        this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame });
+        void this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame })
+          .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       } else {
         this.paintIconAndTwoRows(
           getBitmapById(iconId),
@@ -516,7 +520,8 @@ export class DisplayRenderer {
         backElements,
         ledColorHex: `${accentColor}FF`
       };
-      this.transmitFrame(`${accentColor}FF`, backElements, payload.frontElements);
+      void this.transmitFrame(`${accentColor}FF`, backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -545,7 +550,8 @@ export class DisplayRenderer {
         backElements,
         ledColorHex: '#10B981FF'
       };
-      this.transmitFrame('#10B981FF', backElements, payload.frontElements);
+      void this.transmitFrame('#10B981FF', backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -578,7 +584,8 @@ export class DisplayRenderer {
     }
 
     if (!session && this.showIdleClockFallback) {
-      this._driver.clearDisplay(APP_NAME);
+      void this._driver.clearDisplay(APP_NAME)
+        .catch(err => console.error('[DisplayRenderer] _driver.clearDisplay failed:', err));
       
       const payload: DisplayPayload = {
         frontElements: [],
@@ -601,12 +608,13 @@ export class DisplayRenderer {
       }
 
       // We explicitly clear display and turn off the LED, and do not transmit a frame
-      this._driver.sendDisplayPayload({
+      void this._driver.sendDisplayPayload({
         application_name: APP_NAME,
         priority: 95,
         elements: [],
         led_notification_color: '#00000000'
-      });
+      })
+        .catch(err => console.error('[DisplayRenderer] _driver.sendDisplayPayload failed:', err));
 
       return payload;
     }
@@ -628,7 +636,8 @@ export class DisplayRenderer {
 
     this.canvas.clear();
     if (isStandup && isTracking) {
-      this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame });
+      void this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame })
+        .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
     } else {
       this.animationPlayer.stop();
       this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
@@ -665,7 +674,8 @@ export class DisplayRenderer {
       ledColorHex: ledColor
     };
 
-    this.transmitFrame(ledColor, backElements, frontEls);
+    void this.transmitFrame(ledColor, backElements, frontEls)
+      .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
     return payload;
   }
 
@@ -697,7 +707,8 @@ export class DisplayRenderer {
         ledColorHex: '#3B82F6FF'
       };
 
-      this.transmitFrame('#3B82F6FF', backElements, frontEls);
+      void this.transmitFrame('#3B82F6FF', backElements, frontEls)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -742,7 +753,8 @@ export class DisplayRenderer {
         backElements,
         ledColorHex
       };
-      this.transmitFrame(ledColorHex, backElements, payload.frontElements);
+      void this.transmitFrame(ledColorHex, backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
 
       if (timeoutMs > 0 && this.priorityEngine) {
         setTimeout(() => {
@@ -807,7 +819,8 @@ export class DisplayRenderer {
       }
 
       const frontEls = this.canvasToEmulatorElements();
-      this.transmitFrame('#10B981FF', backElements, frontEls);
+      void this.transmitFrame('#10B981FF', backElements, frontEls)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       frames++;
     };
 
@@ -847,7 +860,8 @@ export class DisplayRenderer {
         ledColorHex: '#FF0000FF'
       };
       this.ledMode = 'PULSE_ALERT';
-      this.transmitFrame('#FF0000FF', backElements, payload.frontElements);
+      void this.transmitFrame('#FF0000FF', backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -876,7 +890,8 @@ export class DisplayRenderer {
         ledColorHex: colors.keyColor
       };
       this.ledMode = 'SOLID';
-      this.transmitFrame(colors.keyColor, backElements, payload.frontElements);
+      void this.transmitFrame(colors.keyColor, backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -920,7 +935,8 @@ export class DisplayRenderer {
         ledColorHex: progressColorHex
       };
       this.ledMode = 'FLASH_BURST';
-      this.transmitFrame(progressColorHex, backElements, canvasEls);
+      void this.transmitFrame(progressColorHex, backElements, canvasEls)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -950,7 +966,8 @@ export class DisplayRenderer {
         ledColorHex: '#FBBF24FF'
       };
       this.ledMode = 'FLASH_BURST';
-      this.transmitFrame('#FBBF24FF', backElements, payload.frontElements);
+      void this.transmitFrame('#FBBF24FF', backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
@@ -979,7 +996,8 @@ export class DisplayRenderer {
         ledColorHex: '#EF4444FF'
       };
       this.ledMode = 'PULSE_ALERT';
-      this.transmitFrame('#EF4444FF', backElements, payload.frontElements);
+      void this.transmitFrame('#EF4444FF', backElements, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
   }
