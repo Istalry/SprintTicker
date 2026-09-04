@@ -1,9 +1,11 @@
 import { BusyBarDriver } from './busybar-driver';
+import * as os from 'os';
 import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentNullException } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
+import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
 
@@ -46,7 +48,10 @@ export class DisplayRenderer {
   private showIdleClockFallback: boolean = false;
 
   /** The software 72×16 pixel canvas that is encoded and uploaded each frame. */
-  private canvas: PixelCanvas = new PixelCanvas(72, 16);
+  private canvas: PixelCanvas = new PixelCanvas(
+    DISPLAY_CONSTANTS.FRONT_GRID_WIDTH,
+    DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT
+  );
 
   constructor(driver: BusyBarDriver, priorityEngine?: IPriorityPreemptionEngine) {
     if (!driver) {
@@ -247,20 +252,20 @@ export class DisplayRenderer {
    * The exhaustiveness check makes adding a theme to ColorThemeId a compile
    * error here rather than a silent fallthrough.
    */
-  private getThemeColors(): { keyColor: string; primaryColor: string } {
+  private getThemeColors(): { keyColor: string } {
     switch (this.colorTheme) {
       case 'cyberpunk':
-        return { keyColor: '#EC4899FF', primaryColor: '#8B5CF6' };
+        return { keyColor: '#EC4899FF' };
       case 'retro_arcade':
-        return { keyColor: '#FBBF24FF', primaryColor: '#F59E0B' };
+        return { keyColor: '#FBBF24FF' };
       case 'nordic_cyan':
-        return { keyColor: '#88C0D0FF', primaryColor: '#5E81AC' };
+        return { keyColor: '#88C0D0FF' };
       case 'emerald':
-        return { keyColor: '#3B82F6FF', primaryColor: '#10B981' };
+        return { keyColor: '#3B82F6FF' };
       default: {
         const unhandled: never = this.colorTheme;
         console.warn(`[DisplayRenderer] Unhandled colour theme: ${String(unhandled)}`);
-        return { keyColor: '#3B82F6FF', primaryColor: '#10B981' };
+        return { keyColor: '#3B82F6FF' };
       }
     }
   }
@@ -284,6 +289,19 @@ export class DisplayRenderer {
     }
   }
 
+  /**
+   * Builds the 160x80 rear-panel content.
+   *
+   * PREVIEW ONLY. `transmitFrame` sends the front matrix PNG to the device and
+   * nothing else, so these elements never reach the hardware -- they are
+   * published in the display state and drawn by the on-screen emulator, and
+   * that is currently their only destination.
+   *
+   * Colours are still written as 8-digit #RRGGBBAA because the hardware
+   * contract requires exactly 8 and rejects the whole draw otherwise. Keeping
+   * them valid means wiring this to the device later cannot take the working
+   * front display down with it.
+   */
   private buildRearElements(session: ActiveSessionDTO | null): Array<Record<string, unknown>> {
     if (this.rearOledMode === 'STEALTH_CLOCK') {
       return [
@@ -293,11 +311,22 @@ export class DisplayRenderer {
     }
 
     if (this.rearOledMode === 'PERFORMANCE_MONITOR') {
+      // Previously this printed "CPU Load : 14%" and "RAM Usage : 42% (6.8 /
+      // 16 GB)" as string literals -- invented numbers that never changed.
+      // These are read from the OS. CPU load is omitted rather than faked:
+      // deriving it needs two os.cpus() samples over an interval, which is a
+      // feature rather than a display concern.
+      const totalBytes = os.totalmem();
+      const usedBytes = totalBytes - os.freemem();
+      const usedPct = Math.round((usedBytes / totalBytes) * 100);
+      const toGb = (bytes: number): string => (bytes / 1024 ** 3).toFixed(1);
+      const uptimeMins = Math.floor(os.uptime() / 60);
+
       return [
         { id: 'rear_perf_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'SYSTEM PERFORMANCE MONITOR', align: 'top_left' },
-        { id: 'rear_perf_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'CPU Load  : 14% [████░░░░░░]', align: 'top_left' },
-        { id: 'rear_perf_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCCCFF', text: 'RAM Usage : 42% (6.8 / 16 GB)', align: 'top_left' },
-        { id: 'rear_perf_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCCCFF', text: `Active    : ${session ? session.taskKey : 'IDLE'}`, align: 'top_left' }
+        { id: 'rear_perf_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: `RAM Usage : ${usedPct}% (${toGb(usedBytes)} / ${toGb(totalBytes)} GB)`, align: 'top_left' },
+        { id: 'rear_perf_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCFF', text: `Uptime    : ${Math.floor(uptimeMins / 60)}h ${uptimeMins % 60}m`, align: 'top_left' },
+        { id: 'rear_perf_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCFF', text: `Active    : ${session ? session.taskKey : 'IDLE'}`, align: 'top_left' }
       ];
     }
 
@@ -305,10 +334,10 @@ export class DisplayRenderer {
     const status = this._driver.getDeviceStatus();
     return [
       { id: 'rear_diag_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'BUSY BAR DIAGNOSTICS [USB/WiFi]', align: 'top_left' },
-      { id: 'rear_diag_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: `IP: ${status.ipAddress} | Ping: ${status.webSocketPingMs}ms`, align: 'top_left' },
-      { id: 'rear_diag_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCCCFF', text: `Frames: ${status.framesSent} OK, ${status.framesFailed} FAIL`, align: 'top_left' },
-      { id: 'rear_diag_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCCCFF', text: `Last Input: ${this.lastInputKey} @ ${this.lastInputTime}`, align: 'top_left' },
-      { id: 'rear_diag_4', type: 'text', font: 'tiny', x: 0, y: 64, color: '#CCCCCCCCFF', text: `Task: ${session ? session.taskKey : 'NONE'} (${session ? session.status : 'IDLE'})`, align: 'top_left' }
+      { id: 'rear_diag_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: `IP: ${status.ipAddress} | Ping: ${status.webSocketPingMs}ms`, align: 'top_left' },
+      { id: 'rear_diag_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCFF', text: `Frames: ${status.framesSent} OK, ${status.framesFailed} FAIL`, align: 'top_left' },
+      { id: 'rear_diag_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCFF', text: `Last Input: ${this.lastInputKey} @ ${this.lastInputTime}`, align: 'top_left' },
+      { id: 'rear_diag_4', type: 'text', font: 'tiny', x: 0, y: 64, color: '#CCCCCCFF', text: `Task: ${session ? session.taskKey : 'NONE'} (${session ? session.status : 'IDLE'})`, align: 'top_left' }
     ];
   }
 
@@ -329,11 +358,12 @@ export class DisplayRenderer {
   ): void {
     this.canvas.clear();
     // Draw 16×16 icon, centered vertically in the 16px display height
-    this.canvas.drawBitmap(iconBitmap, 0, 0, 16, 16);
+    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+    this.canvas.drawBitmap(iconBitmap, 0, 0, layout.ICON_SIZE, layout.ICON_SIZE);
     // Row 0: main label (task key + elapsed, or status)
-    this.canvas.drawTextClipped(row0Text, 17, 0, row0Color, 55);
+    this.canvas.drawTextClipped(row0Text, layout.TEXT_X, layout.ROW0_Y, row0Color, layout.TEXT_FIELD_WIDTH);
     // Row 1: secondary label (task title or status detail)
-    this.canvas.drawSmallText(row1Text, 17, 8, row1Color, 55);
+    this.canvas.drawSmallText(row1Text, layout.TEXT_X, layout.ROW1_Y, row1Color, layout.TEXT_FIELD_WIDTH);
   }
 
   /**
@@ -373,7 +403,11 @@ export class DisplayRenderer {
     backElements: Array<Record<string, unknown>>,
     frontElementsForEmulator: Array<Record<string, unknown>>
   ): Promise<void> {
-    const pngBuffer = encodeMatrixToPng(this.canvas.getPixels(), 72, 16);
+    const pngBuffer = encodeMatrixToPng(
+      this.canvas.getPixels(),
+      DISPLAY_CONSTANTS.FRONT_GRID_WIDTH,
+      DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT
+    );
     this.frameBufferToggle = !this.frameBufferToggle;
     const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
 
@@ -429,7 +463,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_lunch_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS', align: 'top_left' },
-        { id: 'rear_lunch_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Notifications Muted | Session Paused', align: 'top_left' }
+        { id: 'rear_lunch_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'Notifications Muted | Session Paused', align: 'top_left' }
       ];
 
       this.ledMode = 'BREATHING';
@@ -501,7 +535,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_ceremony_0', type: 'text', font: 'tiny', x: 0, y: 0, color: `${accentColor}FF`, text: `CEREMONY PROMPT: ${type}`, align: 'top_left' },
-        { id: 'rear_ceremony_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Press Scroll Wheel or START', align: 'top_left' }
+        { id: 'rear_ceremony_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'Press Scroll Wheel or START', align: 'top_left' }
       ];
 
       this.ledMode = 'PULSE_ALERT';
@@ -531,7 +565,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_eod_done_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'END-OF-DAY WRAP-UP COMPLETE', align: 'top_left' },
-        { id: 'rear_eod_done_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'All tasks logged & scenes saved.', align: 'top_left' }
+        { id: 'rear_eod_done_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'All tasks logged & scenes saved.', align: 'top_left' }
       ];
 
       this.ledMode = 'SOLID';
@@ -685,7 +719,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_menu_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#3B82F6FF', text: `SELECTION: ${stage}`, align: 'top_left' },
-        { id: 'rear_menu_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Scroll to pick, click to select', align: 'top_left' }
+        { id: 'rear_menu_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'Scroll to pick, click to select', align: 'top_left' }
       ];
 
       this.ledMode = 'SOLID';
@@ -732,7 +766,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_notif_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `NOTIFICATION (Priority ${priority})`, align: 'top_left' },
-        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: headerText, align: 'top_left' }
+        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: headerText, align: 'top_left' }
       ];
 
       const ledColorHex = `${accentColor}FF`;
@@ -976,7 +1010,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_err_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#EF4444FF', text: `EXCEPTION: ${projectName}`, align: 'top_left' },
-        { id: 'rear_err_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: message, align: 'top_left' }
+        { id: 'rear_err_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: message, align: 'top_left' }
       ];
 
       const payload: DisplayPayload = {

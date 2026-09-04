@@ -12,7 +12,16 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/main/**/*.ts', 'src/shared/**/*.ts'],
-      exclude: ['src/main/index.ts', 'src/preload/**/*.ts', 'src/main/providers/task-provider-interface.ts', 'src/main/widgets/widget-interface.ts', 'src/main/hardware/render-constants.ts'],
+      exclude: [
+        'src/main/index.ts',
+        'src/preload/**/*.ts',
+        'src/main/providers/task-provider-interface.ts',
+        // Pure data and constants: no branches to cover, and counting them
+        // dilutes the figure for code that does have logic.
+        'src/shared/render-constants.ts',
+        'src/shared/pixel-fonts.ts',
+        'src/shared/pixel-bitmaps.ts'
+      ],
       thresholds: {
         lines: 80,
         functions: 80,

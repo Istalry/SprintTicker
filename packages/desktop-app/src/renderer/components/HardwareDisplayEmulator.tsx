@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HardwareDisplayStateDTO, DisplayElementDTO } from '../../shared/dtos';
 import { FONT_4X6 } from '../../shared/pixel-fonts';
+import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 
 /**
  * Physical Hardware Display Emulator Component.
@@ -165,8 +166,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
     const dotSize = 6; // 6px per LED diode (432x96 resolution)
     const gap = 1;
     const cellSize = dotSize + gap;
-    canvas.width = 72 * cellSize + gap;
-    canvas.height = 16 * cellSize + gap;
+    canvas.width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH * cellSize + gap;
+    canvas.height = DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT * cellSize + gap;
 
     let lastTime = performance.now();
 
@@ -247,8 +248,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
     if (!ctx) return;
 
     const scale = 1.2;
-    canvas.width = 160 * scale;
-    canvas.height = 80 * scale;
+    canvas.width = DISPLAY_CONSTANTS.REAR_OLED_WIDTH * scale;
+    canvas.height = DISPLAY_CONSTANTS.REAR_OLED_HEIGHT * scale;
 
     ctx.fillStyle = '#040608';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
