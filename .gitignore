@@ -96,6 +96,18 @@ packages/desktop-app/tests/*.js.map
 Documentation/busybar-firmware/
 
 # ---------------------------------------------------------------------------
+# Third-party logos and stock icons used only as local input to
+# scripts/convert-icons-pixelit.js. The generated 16x16 arrays in
+# pixel-bitmaps.ts are committed; these sources are not redistributable.
+# See "icon reference/README.md".
+icon reference/Slack_icon_2019.png
+icon reference/Gmail_icon_(2020).png
+icon reference/discord-color-icon.png
+icon reference/unity-game-engine-icon.png
+icon reference/openproject_icon.png
+icon reference/orange-error-icon-0.png
+icon reference/pause-button-red-icon.png
+
 # Allow tracking app icons in the desktop-app build directory.
 # These negations MUST stay last and in this order: they re-include the one
 # directory excluded by the "build/" rule above.
