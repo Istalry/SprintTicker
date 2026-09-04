@@ -3,6 +3,7 @@ import { SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
+import { createId, IdPrefix } from '../db/id-generator';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { ActiveSessionDTO, TaskDTO, ProjectDTO } from '../../shared/dtos';
 
@@ -57,10 +58,7 @@ export class TimeTrackingEngine extends EventEmitter {
     this._projectRepo = projectRepo || new ProjectRepository();
     this._providerManager =
       providerManager ||
-      new ProviderManager(
-        new SettingsRepository(this._worklogRepo.getConnection()),
-        this._worklogRepo
-      );
+      new ProviderManager(new SettingsRepository(this._worklogRepo.getConnection()));
 
     this._syncWorker = new OfflineSyncWorker(
       this._providerManager,
@@ -224,7 +222,7 @@ export class TimeTrackingEngine extends EventEmitter {
     }
 
     const startTimeUtc = new Date().toISOString();
-    const sessionId = `sess_${Date.now()}`;
+    const sessionId = createId(IdPrefix.SESSION);
 
     const newSession: Omit<ActiveSessionDTO, 'elapsedSeconds'> = {
       sessionId,
@@ -317,7 +315,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     // 1. Save worklog to SQLite
     this._worklogRepo.saveWorklog({
-      id: `wl_${Date.now()}`,
+      id: createId(IdPrefix.WORKLOG),
       sessionId: active.sessionId,
       taskId: active.taskId,
       durationSeconds: loggedSeconds,
@@ -329,7 +327,7 @@ export class TimeTrackingEngine extends EventEmitter {
     // 2. Buffer to offline sync queue
     const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
     this._worklogRepo.enqueueSyncItem({
-      id: `sync_${Date.now()}`,
+      id: createId(IdPrefix.SYNC_ITEM),
       providerId: activeProvider ? activeProvider.providerId : 'openproject',
       taskId: active.taskId,
       durationSeconds: loggedSeconds,
@@ -337,12 +335,8 @@ export class TimeTrackingEngine extends EventEmitter {
       comment: worklogComment
     });
 
-    // 3. Attempt async flush with provider
-    if (this._providerManager) {
-      this._providerManager.flushPendingSyncQueue().catch(err => {
-        console.warn('[TimeTrackingEngine] Background sync queue flush failed:', err);
-      });
-    }
+    // The worklog is queued, and OfflineSyncWorker owns delivery. Kicking off a
+    // flush here raced the worker over the same rows.
 
     this._currentSession = null;
     this.notifyListeners();

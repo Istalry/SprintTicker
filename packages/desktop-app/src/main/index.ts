@@ -93,7 +93,7 @@ app.whenReady().then(async () => {
   const sessionRepo = new SessionRepository(dbConnection);
   const projectRepo = new ProjectRepository(dbConnection);
 
-  const providerManager = new ProviderManager(settingsRepo, worklogRepo);
+  const providerManager = new ProviderManager(settingsRepo);
 
   // 2. Initialize Time Tracking Engine.
   // Construction is side-effect free; initialize() starts the sync worker and

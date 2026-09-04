@@ -189,7 +189,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
     // Mock providerManager
     const providerManager = {
-      logTime: async () => ({ success: true }),
+      logTimeForProvider: async () => ({ success: true }),
       getProjects: async () => [],
       getTasks: async () => []
     } as unknown as ProviderManager;
@@ -245,7 +245,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     });
 
     const failingManager = {
-      logTime: async () => ({ success: false }),
+      logTimeForProvider: async () => ({ success: false }),
       getProjects: async () => [],
       getTasks: async () => []
     } as unknown as ProviderManager;
@@ -269,7 +269,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     });
 
     const throwingManager = {
-      logTime: async () => { throw new Error('Network timeout'); },
+      logTimeForProvider: async () => { throw new Error('Network timeout'); },
       getProjects: async () => [],
       getTasks: async () => []
     } as unknown as ProviderManager;

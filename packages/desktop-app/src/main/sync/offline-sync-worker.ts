@@ -1,5 +1,10 @@
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { isProviderRequestError } from '../providers/provider-errors';
+import {
+  MAX_SYNC_ATTEMPTS,
+  SYNC_CLAIM_TIMEOUT_MS,
+  computeBackoffMs
+} from './sync-constants';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
@@ -135,27 +140,48 @@ export class OfflineSyncWorker {
   /**
    * Processes all PENDING items in the worklog_sync_queue SQLite table.
    */
+  /**
+   * Drains the worklog sync queue.
+   *
+   * The worker is the queue's only dispatcher. Each row is claimed atomically
+   * before its network call, so a second pass -- or a second dispatcher -- can
+   * never send the same worklog twice. On failure the row is released behind an
+   * exponential backoff rather than being marked permanently FAILED, which is
+   * what previously stranded billable time after a single network blip.
+   */
   public async processPendingQueue(): Promise<{ processed: number; succeeded: number; failed: number }> {
     if (this.isProcessing || !this.isOnline) {
       return { processed: 0, succeeded: 0, failed: 0 };
     }
 
     this.isProcessing = true;
+    let processed = 0;
     let succeeded = 0;
     let failed = 0;
 
     try {
-      const pendingItems = this.worklogRepo.getPendingQueueItems();
-      if (pendingItems.length === 0) {
-        this.isProcessing = false;
+      // Recover rows whose claim outlived the process that took it.
+      const reclaimed = this.worklogRepo.reclaimStaleSyncItems(SYNC_CLAIM_TIMEOUT_MS);
+      if (reclaimed > 0) {
+        console.log(`[OfflineSyncWorker] Reclaimed ${reclaimed} stale in-flight worklog(s).`);
+      }
+
+      const dueItems = this.worklogRepo.getPendingQueueItems();
+      if (dueItems.length === 0) {
         return { processed: 0, succeeded: 0, failed: 0 };
       }
 
-      console.log(`[OfflineSyncWorker] Processing ${pendingItems.length} pending worklogs in SQLite sync queue...`);
+      console.log(`[OfflineSyncWorker] Processing ${dueItems.length} due worklog(s).`);
 
-      for (const item of pendingItems) {
+      for (const due of dueItems) {
+        // Another dispatcher may have taken this row between the SELECT and
+        // here; claimSyncItem returning null means it is not ours to send.
+        const item = this.worklogRepo.claimSyncItem(due.id);
+        if (!item) continue;
+
+        processed++;
         try {
-          const result = await this.providerManager.logTime({
+          const result = await this.providerManager.logTimeForProvider(item.providerId, {
             taskId: item.taskId,
             durationSeconds: item.durationSeconds,
             startedAtUtc: item.startedAtUtc,
@@ -164,23 +190,34 @@ export class OfflineSyncWorker {
           });
 
           if (result.success) {
-            this.worklogRepo.updateSyncItemStatus(item.id, 'SYNCED');
+            this.worklogRepo.markSyncItemSynced(item.id);
             succeeded++;
           } else {
-            this.worklogRepo.incrementRetryCount(item.id, 3);
+            this.releaseFailure(item.id, item.retryCount, 'Provider reported failure');
             failed++;
           }
         } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
           console.error(`[OfflineSyncWorker] Failed to sync worklog ${item.id}:`, err);
-          this.worklogRepo.incrementRetryCount(item.id, 3);
+          this.releaseFailure(item.id, item.retryCount, message);
           failed++;
         }
       }
 
       console.log(`[OfflineSyncWorker] Sync complete. Succeeded: ${succeeded}, Failed: ${failed}`);
-      return { processed: pendingItems.length, succeeded, failed };
+      return { processed, succeeded, failed };
     } finally {
       this.isProcessing = false;
     }
+  }
+
+  /** Releases a claimed row behind a jittered exponential backoff. */
+  private releaseFailure(id: string, retryCount: number, message: string): void {
+    this.worklogRepo.releaseSyncItemAfterFailure(
+      id,
+      message,
+      computeBackoffMs(retryCount),
+      MAX_SYNC_ATTEMPTS
+    );
   }
 }

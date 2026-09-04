@@ -10,6 +10,8 @@ export interface WorklogRecord {
   createdAtUtc: string;
 }
 
+export type SyncQueueStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
+
 export interface SyncQueueRecord {
   id: string;
   providerId: string;
@@ -19,7 +21,46 @@ export interface SyncQueueRecord {
   comment: string;
   createdAtUtc: string;
   retryCount: number;
-  status: 'PENDING' | 'SYNCED' | 'FAILED';
+  status: SyncQueueStatus;
+  /** Earliest time this row may be retried; null means immediately. */
+  nextAttemptAtUtc: string | null;
+  /** When the current SYNCING claim was taken, for stale-claim recovery. */
+  claimedAtUtc: string | null;
+  /** Message from the most recent failed attempt. */
+  lastError: string | null;
+}
+
+/** Raw column shape of a worklog_sync_queue row. */
+interface SyncQueueRow {
+  id: string;
+  provider_id: string;
+  task_id: string;
+  duration_seconds: number;
+  started_at_utc: string;
+  comment: string;
+  created_at_utc: string;
+  retry_count: number;
+  status: SyncQueueStatus;
+  next_attempt_at_utc: string | null;
+  claimed_at_utc: string | null;
+  last_error: string | null;
+}
+
+function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
+  return {
+    id: r.id,
+    providerId: r.provider_id,
+    taskId: r.task_id,
+    durationSeconds: r.duration_seconds,
+    startedAtUtc: r.started_at_utc,
+    comment: r.comment,
+    createdAtUtc: r.created_at_utc,
+    retryCount: r.retry_count,
+    status: r.status,
+    nextAttemptAtUtc: r.next_attempt_at_utc,
+    claimedAtUtc: r.claimed_at_utc,
+    lastError: r.last_error
+  };
 }
 
 /**
@@ -96,33 +137,127 @@ export class WorklogRepository {
   }
 
   /**
-   * Retrieves all pending worklog sync queue items.
+   * Pending rows that are due for an attempt now.
+   *
+   * Rows waiting out a backoff window are excluded, so a caller cannot retry
+   * them early just by asking for the queue.
    */
-  public getPendingQueueItems(): SyncQueueRecord[] {
-    const stmt = this.dbConn.getDb().prepare<[], {
-      id: string;
-      provider_id: string;
-      task_id: string;
-      duration_seconds: number;
-      started_at_utc: string;
-      comment: string;
-      created_at_utc: string;
-      retry_count: number;
-      status: 'PENDING' | 'SYNCED' | 'FAILED';
-    }>('SELECT * FROM worklog_sync_queue WHERE status = \'PENDING\'');
+  public getPendingQueueItems(nowUtc: string = new Date().toISOString()): SyncQueueRecord[] {
+    const stmt = this.dbConn.getDb().prepare<[string], SyncQueueRow>(
+      `SELECT * FROM worklog_sync_queue
+        WHERE status = 'PENDING'
+          AND (next_attempt_at_utc IS NULL OR next_attempt_at_utc <= ?)
+        ORDER BY created_at_utc ASC`
+    );
+    return stmt.all(nowUtc).map(mapSyncQueueRow);
+  }
 
-    const rows = stmt.all();
-    return rows.map(r => ({
-      id: r.id,
-      providerId: r.provider_id,
-      taskId: r.task_id,
-      durationSeconds: r.duration_seconds,
-      startedAtUtc: r.started_at_utc,
-      comment: r.comment,
-      createdAtUtc: r.created_at_utc,
-      retryCount: r.retry_count,
-      status: r.status
-    }));
+  /**
+   * Atomically takes ownership of a pending row.
+   *
+   * The status check and the write are a single statement, so two concurrent
+   * dispatchers cannot both win: only one transition out of PENDING can report
+   * `changes === 1`. Returns the claimed row, or null if another dispatcher got
+   * there first.
+   *
+   * This replaces a read-then-write pattern in which the sync worker and
+   * ProviderManager each selected the same PENDING set and each POSTed it,
+   * billing the same time to the provider twice.
+   */
+  public claimSyncItem(id: string, nowUtc: string = new Date().toISOString()): SyncQueueRecord | null {
+    const db = this.dbConn.getDb();
+    const result = db
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET status = 'SYNCING', claimed_at_utc = ?
+          WHERE id = ? AND status = 'PENDING'`
+      )
+      .run(nowUtc, id);
+
+    if (result.changes !== 1) return null;
+
+    const row = db
+      .prepare<[string], SyncQueueRow>('SELECT * FROM worklog_sync_queue WHERE id = ?')
+      .get(id);
+    return row ? mapSyncQueueRow(row) : null;
+  }
+
+  /** Marks a claimed row as delivered. */
+  public markSyncItemSynced(id: string): void {
+    this.dbConn
+      .getDb()
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET status = 'SYNCED', claimed_at_utc = NULL, last_error = NULL
+          WHERE id = ?`
+      )
+      .run(id);
+  }
+
+  /**
+   * Releases a claimed row after a failed attempt.
+   *
+   * Returns it to PENDING behind a backoff deadline until the attempt ceiling
+   * is reached, at which point it parks as FAILED. FAILED is not terminal: a
+   * migration requeues such rows on upgrade, and requeueFailedItems() does so
+   * on demand.
+   */
+  public releaseSyncItemAfterFailure(
+    id: string,
+    errorMessage: string,
+    backoffMs: number,
+    maxAttempts: number,
+    nowMs: number = Date.now()
+  ): void {
+    this.dbConn
+      .getDb()
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET retry_count = retry_count + 1,
+                status = CASE WHEN retry_count + 1 >= ? THEN 'FAILED' ELSE 'PENDING' END,
+                next_attempt_at_utc = ?,
+                claimed_at_utc = NULL,
+                last_error = ?
+          WHERE id = ?`
+      )
+      .run(maxAttempts, new Date(nowMs + backoffMs).toISOString(), errorMessage.slice(0, 500), id);
+  }
+
+  /**
+   * Returns rows stuck in SYNCING to PENDING.
+   *
+   * A claim is taken immediately before the network call and released after it,
+   * so a row can only be left SYNCING if the process died in between. Without
+   * this, that worklog would never be retried.
+   *
+   * Known limitation: if the provider accepted the worklog but the app died
+   * before the row was marked SYNCED, reclaiming re-POSTs it. The OpenProject
+   * v3 API offers no idempotency key, so the sync id is embedded in the comment
+   * to make any duplicate identifiable afterwards.
+   */
+  public reclaimStaleSyncItems(timeoutMs: number, nowMs: number = Date.now()): number {
+    const cutoff = new Date(nowMs - timeoutMs).toISOString();
+    return this.dbConn
+      .getDb()
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET status = 'PENDING', claimed_at_utc = NULL
+          WHERE status = 'SYNCING'
+            AND (claimed_at_utc IS NULL OR claimed_at_utc <= ?)`
+      )
+      .run(cutoff).changes;
+  }
+
+  /** Returns parked FAILED rows to PENDING with their retry budget restored. */
+  public requeueFailedItems(): number {
+    return this.dbConn
+      .getDb()
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET status = 'PENDING', retry_count = 0, next_attempt_at_utc = NULL
+          WHERE status = 'FAILED'`
+      )
+      .run().changes;
   }
 
   /**

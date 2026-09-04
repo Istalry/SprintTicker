@@ -46,7 +46,7 @@ describe('Full End-to-End System Simulation Test', () => {
     settingsRepo.setSetting('op_domain', 'https://op.test');
     settingsRepo.setSetting('op_api_key', 'test_key');
 
-    providerManager = new ProviderManager(settingsRepo, worklogRepo);
+    providerManager = new ProviderManager(settingsRepo);
     engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager, new ProjectRepository(dbConn));
     driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();

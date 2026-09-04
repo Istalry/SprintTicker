@@ -2,7 +2,6 @@ import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { AdHocProvider } from './adhoc-provider';
 import { OpenProjectProvider } from './openproject-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
@@ -14,14 +13,17 @@ export class ProviderManager {
   private _providers: Map<string, ITaskProvider> = new Map();
   private _activeProviderId: string = 'openproject';
   private _settingsRepo: SettingsRepository;
-  private _worklogRepo: WorklogRepository;
 
   /// <summary>
   /// Initializes the Task Provider Manager, registering default remote and fallback local providers.
   /// </summary>
-  constructor(settingsRepo?: SettingsRepository, worklogRepo?: WorklogRepository) {
+  /**
+   * No worklog repository parameter: ProviderManager no longer reads or writes
+   * the sync queue. OfflineSyncWorker is its sole owner, and having a second
+   * dispatcher here is what let the same row be POSTed twice.
+   */
+  constructor(settingsRepo?: SettingsRepository) {
     this._settingsRepo = settingsRepo || new SettingsRepository();
-    this._worklogRepo = worklogRepo || new WorklogRepository();
 
     const openProjectProvider = new OpenProjectProvider();
     const adHocProvider = new AdHocProvider();
@@ -122,12 +124,10 @@ export class ProviderManager {
   /// </summary>
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
     try {
-      const result = await this.getActiveProvider().logTime(payload);
-      if (result.success) {
-        // Automatically flush pending offline queue items if online request succeeded
-        this.flushPendingSyncQueue().catch(err => console.warn('[ProviderManager] Sync queue flush warning:', err));
-      }
-      return result;
+      // Deliberately does not drain the sync queue on success. OfflineSyncWorker
+      // is the queue's sole dispatcher; a second one here raced it and could
+      // POST the same row twice, billing the time to the provider twice.
+      return await this.getActiveProvider().logTime(payload);
     } catch (err) {
       console.warn(`[ProviderManager] Direct logTime to ${this._activeProviderId} failed. Worklog buffered locally.`, err);
       return { success: false };
@@ -137,37 +137,23 @@ export class ProviderManager {
   /// <summary>
   /// Processes all pending worklogs in SQLite worklog_sync_queue.
   /// </summary>
-  public async flushPendingSyncQueue(): Promise<{ syncedCount: number; failedCount: number }> {
-    const pendingItems = this._worklogRepo.getPendingQueueItems();
-    let syncedCount = 0;
-    let failedCount = 0;
-
-    for (const item of pendingItems) {
-      const provider = this._providers.get(item.providerId) || this.getActiveProvider();
-      try {
-        const res = await provider.logTime({
-          taskId: item.taskId,
-          durationSeconds: item.durationSeconds,
-          startedAtUtc: item.startedAtUtc,
-          comment: item.comment,
-          isAdHoc: item.taskId.startsWith('ADHOC')
-        });
-
-        if (res.success) {
-          this._worklogRepo.updateSyncItemStatus(item.id, 'SYNCED');
-          syncedCount++;
-        } else {
-          this._worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
-          failedCount++;
-        }
-      } catch (err) {
-        console.warn(`[ProviderManager] Failed to log queued worklog item ${item.id}:`, err);
-        this._worklogRepo.updateSyncItemStatus(item.id, 'FAILED');
-        failedCount++;
-      }
+  /**
+   * Sends a worklog through a *named* provider.
+   *
+   * The queue records which provider each row was created for. Dispatching via
+   * the active provider instead means that switching provider mid-day delivers
+   * everything still queued to whichever one happens to be selected -- posting
+   * OpenProject worklogs into AdHoc, where they vanish.
+   */
+  public async logTimeForProvider(
+    providerId: string,
+    payload: WorklogPayload
+  ): Promise<{ success: boolean; remoteWorklogId?: string }> {
+    const provider = this._providers.get(providerId);
+    if (!provider) {
+      throw new Error(`No registered provider with id "${providerId}"`);
     }
-
-    return { syncedCount, failedCount };
+    return provider.logTime(payload);
   }
 }
 

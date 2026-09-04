@@ -1,4 +1,5 @@
 import { DatabaseConnection } from '../database-connection';
+import { createId, IdPrefix } from '../id-generator';
 import { TaskDTO } from '../../../shared/dtos';
 
 /**
@@ -126,7 +127,7 @@ export class TaskRepository {
       throw new Error('Custom title is required for ad-hoc task creation');
     }
 
-    const taskId = `adhoc_${Date.now()}`;
+    const taskId = createId(IdPrefix.ADHOC_TASK);
     const adHocTask: TaskDTO = {
       id: taskId,
       projectId: 'ADHOC',
