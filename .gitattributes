@@ -1,3 +1,48 @@
+# Normalise line endings in the repository to LF regardless of each
+# contributor's core.autocrlf setting. The index is already 100% LF, so
+# this records existing reality rather than renormalising anything.
+# eol is deliberately left unset: the working copy stays platform-native.
+* text=auto
+
+# Windows scripts must keep CRLF in the working copy.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts must keep LF even when checked out on Windows.
+*.sh text eol=lf
+
+# Binary: never EOL-convert, never attempt a textual merge.
+*.png  -text
+*.jpg  -text
+*.jpeg -text
+*.gif  -text
+*.ico  -text
+*.icns -text
+*.webp -text
+*.anim -text
+*.db   -text
+*.zip  -text
+*.7z   -text
+*.exe  -text
+*.dll  -text
+*.node -text
+*.ttf  -text
+*.woff  -text
+*.woff2 -text
+*.affinity -text
+
+# Git LFS.
+#
+# Scoped to animation frames only. Every LED animation is a folder of up to
+# ~1,080 PNGs, which is what LFS exists for here. A blanket "*.png" rule used
+# to catch app icons, docs screenshots and even generated coverage sprites,
+# pushing them to LFS for no benefit -- and LFS bandwidth (1 GB/month on the
+# free tier) is the binding constraint, not storage.
+#
+# NOTE: narrowing this rule requires migrating already-stored PNGs back to
+# plain blobs in the same commit. A file left as an LFS pointer without a
+# matching filter attribute checks out as 130 bytes of pointer text, which
+# would silently ship a broken application icon.
+Animations/**/*.png filter=lfs diff=lfs merge=lfs -text
 *.affinity filter=lfs diff=lfs merge=lfs -text
-deff=exif filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
