@@ -222,7 +222,6 @@ Convenient Windows batch scripts are available in the repository root directory:
 - **`package-win.bat`**: Builds and packages the complete Windows installer and portable `.exe`.
 - **`package-unity.bat`**: Packages the Unity C# plugin package.
 - **`test-coverage.bat`**: Runs ESLint checks and the Vitest test suite with V8 code coverage report.
-- **`run_web.bat`**: Launches the web server.
 
 ---
 
