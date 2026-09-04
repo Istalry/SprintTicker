@@ -3,11 +3,34 @@ import * as os from 'os';
 import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentNullException } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
-import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
+import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
+
+/**
+ * Everything needed to draw a notification banner.
+ *
+ * An object rather than the previous six positional arguments, because the
+ * argument that mattered -- which priority class the notification belongs to --
+ * was not among them and had to be guessed from the priority number.
+ * The number itself is no longer passed at all: the engine owns it.
+ */
+export interface NotificationBannerOptions {
+  /** Text shown after the channel label; already assembled by the caller. */
+  senderName: string;
+  /** Short source label, e.g. the app name. */
+  channelName?: string;
+  /** Which priority class the source rule assigned this notification to. */
+  eventName?: NotificationEventName;
+  /** Fallback hand-drawn bitmap, used only when no real icon resolved. */
+  iconId?: BitmapIconId;
+  /** A real 16x16 app icon, which takes precedence over `iconId`. */
+  customIconData?: (string | null)[][];
+  /** How long the banner holds the display before releasing its lock. */
+  timeoutMs?: number;
+}
 
 export interface DisplayPayload {
   frontElements: Array<Record<string, unknown>>;
@@ -88,11 +111,23 @@ export class DisplayRenderer {
     if (this.priorityEngine) {
       const evalResult = this.priorityEngine.evaluateRequest(eventName, undefined, renderFn);
       if (!evalResult || !evalResult.shouldRender) {
+        // Suppressed or queued. `evaluateRequest` does not take the lock on
+        // either path, so there is nothing to release here.
         return {
           frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
           backElements: this.lastState.backElements as unknown as Array<Record<string, unknown>>,
           ledColorHex: this.lastState.ledColorHex
         };
+      }
+
+      // The lock is held by this event from here on. If the render throws, no
+      // other code path releases it, and the display stays frozen at this
+      // priority until the user presses BACK.
+      try {
+        return renderFn();
+      } catch (err) {
+        this.priorityEngine.releaseActiveLock(eventName);
+        throw err;
       }
     }
 
@@ -739,23 +774,31 @@ export class DisplayRenderer {
   /**
    * Renders Notification Banner with icon on left and vertically centered header on right (y=5).
    * Message body text is excluded per user specification.
+   *
+   * The caller supplies `eventName` because only the caller knows which priority
+   * class the matched source rule assigned. Deriving it here from a number was
+   * the defect: no notification rule reaches 90, so `HIGH_PRIORITY` alerts
+   * re-entered as `messagingPriority` -- suppressed during Lunch and Away, which
+   * is the exact opposite of what the setting promises.
    */
-  public renderNotificationBanner(
-    senderName: string,
-    channelName: string = 'SLACK',
-    priority: number = 40,
-    iconId: BitmapIconId = 'slack',
-    customIconData?: (string | null)[][],
-    timeoutMs: number = 10000
-  ): DisplayPayload {
-    console.log(`[DisplayRenderer] renderNotificationBanner for [${channelName}] ${senderName}. Using customIconData? ${!!customIconData}, iconId: ${iconId}`);
-    const eventName = priority >= 90 ? 'highNotificationPriority' : 'messagingPriority';
+  public renderNotificationBanner(options: NotificationBannerOptions): DisplayPayload {
+    const {
+      senderName,
+      channelName = 'SLACK',
+      eventName = 'messagingPriority',
+      iconId = 'slack',
+      customIconData,
+      timeoutMs = 10000
+    } = options;
+
+    const isHighPriority = eventName === 'highNotificationPriority';
+    const priority = this.priorityEngine?.getEventPriority(eventName) ?? 0;
+
     return this.requestRender(eventName, () => {
       const bitmapData = customIconData
         ? customIconData
         : AppIconBitmapProcessor.processAppIcon(iconId);
 
-      const isHighPriority = priority >= 90;
       const accentColor = isHighPriority ? '#EC4899' : '#8B5CF6';
       const headerText = `[${channelName}] ${senderName}`;
 

@@ -88,9 +88,86 @@ describe('DisplayRenderer Unit Tests', () => {
 
   describe('notification & confetti rendering', () => {
     it('RenderNotificationBanner_ValidMessage_DispatchesAlertPayload', () => {
-      const payload = renderer.renderNotificationBanner('Alice', 'SLACK', 40, 'slack');
+      const payload = renderer.renderNotificationBanner({
+        senderName: 'Alice',
+        channelName: 'SLACK',
+        iconId: 'slack'
+      });
       expect(payload.ledColorHex).toBe('#8B5CF6FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    it('RenderNotificationBanner_HighPriorityEvent_UsesTheHighPriorityStyling', () => {
+      // Styling used to key off `priority >= 90`. Nothing produces 90, so the
+      // pink accent and FLASH_BURST were unreachable for every real
+      // notification, high priority or not.
+      const payload = renderer.renderNotificationBanner({
+        senderName: 'Ops',
+        channelName: 'SLACK',
+        eventName: 'highNotificationPriority',
+        iconId: 'slack'
+      });
+
+      expect(payload.ledColorHex).toBe('#EC4899FF');
+    });
+
+    it('RenderNotificationBanner_HighPriorityEvent_RaisesItUnderItsOwnEventName', () => {
+      const evaluateRequest = vi
+        .fn()
+        .mockReturnValue({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 70 });
+      renderer.setPriorityEngine({
+        evaluateRequest,
+        releaseActiveLock: vi.fn(),
+        getEventPriority: vi.fn().mockReturnValue(70),
+        getRules: vi.fn().mockReturnValue([]),
+        saveRules: vi.fn(),
+        drainQueue: vi.fn(),
+        hasActiveNotification: vi.fn().mockReturnValue(false),
+        dismissNotification: vi.fn().mockReturnValue(false),
+        getActiveLockEventName: vi.fn().mockReturnValue(null),
+        getUserMode: vi.fn().mockReturnValue('WORK'),
+        setUserMode: vi.fn()
+      });
+
+      renderer.renderNotificationBanner({
+        senderName: 'Ops',
+        eventName: 'highNotificationPriority'
+      });
+
+      expect(evaluateRequest).toHaveBeenCalledWith(
+        'highNotificationPriority',
+        undefined,
+        expect.any(Function)
+      );
+    });
+
+    it('RequestRender_RenderThrows_ReleasesTheLockItJustTook', () => {
+      // Otherwise the display stays frozen at that priority until the user
+      // presses BACK, because the release timer lives inside the render that
+      // never completed.
+      const releaseActiveLock = vi.fn();
+      renderer.setPriorityEngine({
+        evaluateRequest: vi
+          .fn()
+          .mockReturnValue({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 70 }),
+        releaseActiveLock,
+        getEventPriority: vi.fn().mockReturnValue(70),
+        getRules: vi.fn().mockReturnValue([]),
+        saveRules: vi.fn(),
+        drainQueue: vi.fn(),
+        hasActiveNotification: vi.fn().mockReturnValue(false),
+        dismissNotification: vi.fn().mockReturnValue(false),
+        getActiveLockEventName: vi.fn().mockReturnValue(null),
+        getUserMode: vi.fn().mockReturnValue('WORK'),
+        setUserMode: vi.fn()
+      });
+
+      expect(() =>
+        renderer.requestRender('menuPriority', () => {
+          throw new Error('render blew up');
+        })
+      ).toThrow('render blew up');
+      expect(releaseActiveLock).toHaveBeenCalledWith('menuPriority');
     });
 
     it('RenderTaskCompletionConfetti_Triggered_DispatchesConfettiPayload', () => {

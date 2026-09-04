@@ -62,7 +62,11 @@ export class MessagingIntegrationService {
       for (const n of notifications) {
         if (!this.knownOpNotifications.has(n.id)) {
           this.knownOpNotifications.add(n.id);
-          this.renderer.renderNotificationBanner(n.actorName, 'OPENPROJECT', 40, 'openproject');
+          this.renderer.renderNotificationBanner({
+            senderName: n.actorName,
+            channelName: 'OPENPROJECT',
+            iconId: 'openproject'
+          });
         }
       }
       
@@ -116,7 +120,11 @@ export class MessagingIntegrationService {
 
     const testSender = 'Alice';
     if (this.renderer) {
-      this.renderer.renderNotificationBanner(testSender, channel, 40, iconId);
+      this.renderer.renderNotificationBanner({
+        senderName: testSender,
+        channelName: channel,
+        iconId
+      });
     }
 
     return {

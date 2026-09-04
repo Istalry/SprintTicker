@@ -3,8 +3,14 @@ import * as readline from 'readline';
 import * as path from 'path';
 import * as os from 'os';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { PriorityPreemptionEngine } from './priority-preemption-engine';
+import { NotificationEventName, PriorityPreemptionEngine } from './priority-preemption-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
+import { AppIconResolver } from './app-icon-resolver';
+import {
+  redactNotificationSummary,
+  redactNotificationText
+} from '../diagnostics/notification-redaction';
+import { createDefaultNotificationSettings } from '../../shared/notification-defaults';
 import {
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
@@ -34,6 +40,7 @@ export class WindowsNotificationListenerService {
   private readonly _settingsRepo: SettingsRepository;
   private readonly _priorityEngine: PriorityPreemptionEngine;
   private readonly _renderer?: DisplayRenderer;
+  private readonly _iconResolver: AppIconResolver;
 
   private _psProcess: ChildProcess | null = null;
   private _readlineInterface: readline.Interface | null = null;
@@ -52,7 +59,8 @@ export class WindowsNotificationListenerService {
   constructor(
     settingsRepo: SettingsRepository,
     priorityEngine: PriorityPreemptionEngine,
-    renderer?: DisplayRenderer
+    renderer?: DisplayRenderer,
+    iconResolver?: AppIconResolver
   ) {
     if (!settingsRepo) throw new ArgumentNullException('settingsRepo');
     if (!priorityEngine) throw new ArgumentNullException('priorityEngine');
@@ -60,6 +68,7 @@ export class WindowsNotificationListenerService {
     this._settingsRepo = settingsRepo;
     this._priorityEngine = priorityEngine;
     this._renderer = renderer;
+    this._iconResolver = iconResolver ?? new AppIconResolver();
   }
 
   /**
@@ -68,19 +77,7 @@ export class WindowsNotificationListenerService {
   public getSettings(): WindowsNotificationSettingsDTO {
     return this._settingsRepo.getSetting<WindowsNotificationSettingsDTO>(
       WindowsNotificationListenerService.DB_SETTINGS_KEY,
-      {
-        enableListener: true,
-        notificationTimeoutSeconds: 10,
-        pollingIntervalSeconds: WindowsNotificationListenerService.DEFAULT_POLLING_INTERVAL_SECONDS,
-        sourceRules: [
-          { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' },
-          { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY' },
-          { appId: 'antigravity', appName: 'Antigravity', iconId: 'antigravity', priorityMode: 'DEFAULT' },
-          { appId: 'gmail', appName: 'Gmail / Outlook', iconId: 'gmail', priorityMode: 'DEFAULT' },
-          { appId: 'battery', appName: 'System Battery', iconId: 'battery', priorityMode: 'HIGH_PRIORITY' },
-          { appId: 'windows', appName: 'Windows System', iconId: 'windows', priorityMode: 'DEFAULT' }
-        ]
-      }
+      createDefaultNotificationSettings()
     );
   }
 
@@ -223,10 +220,16 @@ export class WindowsNotificationListenerService {
 
             if (handled) {
               this._totalCaptured++;
-              this.emitLog('notification', `[${data.appName}][${data.id}] ${data.title || ''}${data.body ? ': ' + data.body : ''}`.trim());
+              this.emitLog(
+                'notification',
+                `[${data.appName}][${data.id}] ${redactNotificationSummary(data.title, data.body)}`.trim()
+              );
             } else {
               this._totalSuppressed++;
-              this.emitLog('info', `Suppressed: [${data.appName}][${data.id}] ${data.title || ''}`);
+              this.emitLog(
+                'info',
+                `Suppressed: [${data.appName}][${data.id}] ${redactNotificationText(data.title)}`
+              );
             }
           } catch {
             // Non-JSON output line safely ignored
@@ -294,14 +297,17 @@ export class WindowsNotificationListenerService {
       return false;
     }
 
-    const eventName = priorityMode === 'HIGH_PRIORITY' ? 'highNotificationPriority' : 'messagingPriority';
-    const evalResult = this._priorityEngine.evaluateRequest(eventName);
-    if (!evalResult.shouldRender) {
-      return false;
-    }
-    const priorityScore = evalResult.evaluatedPriority;
+    // Resolve the priority class only. Evaluation -- and with it the display
+    // lock -- happens once, inside `requestRender`. Calling `evaluateRequest`
+    // here as well took the lock a second time under a different event name, so
+    // the release timer scheduled by the banner never matched the lock actually
+    // held, and a suppressed banner left the display pinned until the user
+    // pressed BACK.
+    const eventName: NotificationEventName =
+      priorityMode === 'HIGH_PRIORITY' ? 'highNotificationPriority' : 'messagingPriority';
 
-    const iconId: BitmapIconId = event.iconId ?? matchedRule?.iconId ?? this.inferIconId(event.appId || event.appName);
+    const iconId: BitmapIconId =
+      event.iconId ?? matchedRule?.iconId ?? this.inferIconId(event.appId || event.appName);
     let channelLabel = event.appName || matchedRule?.appName || 'ALERT';
     const lowerLabel = channelLabel.toLowerCase();
     if (lowerLabel.includes('discord') || lowerLabel.includes('slack')) {
@@ -312,32 +318,65 @@ export class WindowsNotificationListenerService {
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
 
     let rawIconData = event.rawIconData;
-    console.log(`[NotificationListener] handleNotification START | AppId: ${event.appId} | Title: ${event.title} | Priority: ${priorityScore}`);
-    console.log(`[NotificationListener] -> Provided iconPath: ${event.iconPath || 'None'}, rawIconData: ${!!rawIconData}`);
-    
-    if (!rawIconData && (event.iconPath || event.iconBase64)) {
-      const customInput = event.iconPath || event.iconBase64;
+    if (!rawIconData) {
+      const iconOverride = matchedRule?.iconImagePath;
+      const customInput = iconOverride || event.iconPath || event.iconBase64 || this.resolveIconSource(event);
       if (customInput) {
-        console.log(`[NotificationListener] -> Initiating custom icon processing via AppIconBitmapProcessor...`);
-        rawIconData = AppIconBitmapProcessor.processAppIcon(customInput, event.appId);
-        console.log(`[NotificationListener] -> Custom icon processing completed. Success: ${!!rawIconData}`);
+        // `tryProcessAppImage`, not `processAppIcon`: the latter substitutes a
+        // generic bell when an image fails to parse and then caches it under the
+        // app id, which is both worse than the app's own hand-drawn bitmap and
+        // permanent for the rest of the session.
+        rawIconData = AppIconBitmapProcessor.tryProcessAppImage(customInput, event.appId) ?? undefined;
       }
-    } else if (!rawIconData) {
-       console.log(`[NotificationListener] -> No custom icon provided, falling back to iconId: ${iconId}`);
     }
 
-    if (this._renderer) {
-      this._renderer.renderNotificationBanner(
-        textBody || 'New Notification',
-        channelLabel,
-        priorityScore,
-        iconId,
-        rawIconData,
-        timeoutMs
-      );
-    }
+    // App id and event name identify which rule matched; the title and body are
+    // private message content and never reach the log unless the process was
+    // started with --debug-notifications.
+    console.log(
+      `[NotificationListener] ${eventName} | appId=${event.appId || '(none)'} | ` +
+        `icon=${rawIconData ? 'resolved' : 'fallback:' + iconId} | ` +
+        redactNotificationSummary(event.title, event.body)
+    );
 
-    return true;
+    if (!this._renderer) return false;
+
+    this._renderer.renderNotificationBanner({
+      senderName: textBody || 'New Notification',
+      channelName: channelLabel,
+      eventName,
+      iconId,
+      customIconData: rawIconData,
+      timeoutMs
+    });
+
+    // Whether the banner actually reached the display is the engine's decision,
+    // taken inside `requestRender`. It holds the lock only for a request it let
+    // through, so the lock is the honest answer -- and asking costs nothing,
+    // unlike the second `evaluateRequest` this replaced, which took a lock of
+    // its own to find out.
+    return this._priorityEngine.getActiveLockEventName() === eventName;
+  }
+
+  /**
+   * Best-effort real icon for an app whose notification carried no icon path.
+   *
+   * Only ever reads the cache. Resolution is asynchronous and runs off this
+   * path, because extracting an icon from an executable takes far longer than
+   * the two-second poll interval and a notification must never wait on it. The
+   * first notification from an app therefore shows the hand-drawn fallback and
+   * subsequent ones show the real icon.
+   */
+  private resolveIconSource(event: WindowsNotificationEventDTO): string | undefined {
+    const appId = event.appId || event.appName;
+    if (!appId) return undefined;
+    const cached = this._iconResolver.getCachedIconPath(appId);
+    if (!this._iconResolver.hasResolved(appId)) {
+      void this._iconResolver
+        .resolve(appId, event.appName)
+        .catch(err => console.warn('[NotificationListener] Icon resolution failed:', err));
+    }
+    return cached;
   }
 
   /**
@@ -363,7 +402,7 @@ export class WindowsNotificationListenerService {
     };
 
     this.handleNotification(event);
-    this.emitLog('notification', `[SIMULATED] [${appName}] ${title}: ${body}`);
+    this.emitLog('notification', `[SIMULATED] [${appName}] ${redactNotificationSummary(title, body)}`);
     this._totalCaptured++;
     return event;
   }
@@ -707,13 +746,21 @@ while ($true) {
     const searchId = (appId || '').toLowerCase();
     const searchName = (appName || '').toLowerCase();
 
-    return rules.find(
-      r =>
-        (r.appId && r.appId.toLowerCase() === searchId) ||
-        (r.appName && r.appName.toLowerCase() === searchName) ||
-        searchId.includes(r.appId.toLowerCase()) ||
-        searchName.includes(r.appName.toLowerCase())
-    );
+    // Substring matching is intentional -- a rule says `slack` while Windows
+    // reports `com.tinyspeck.slackdesktop_8yrtsj140pw4g!...` -- but it must not
+    // run against an empty needle. A user-added rule with a blank appId made
+    // `searchId.includes('')` true, so that single rule captured every
+    // notification on the machine; an undefined appId threw inside the predicate.
+    const contains = (haystack: string, needle?: string): boolean =>
+      Boolean(needle) && haystack.includes((needle as string).toLowerCase());
+
+    return rules.find(r => {
+      const ruleId = r.appId?.toLowerCase();
+      const ruleName = r.appName?.toLowerCase();
+      if (ruleId && searchId && ruleId === searchId) return true;
+      if (ruleName && searchName && ruleName === searchName) return true;
+      return contains(searchId, r.appId) || contains(searchName, r.appName);
+    });
   }
 
   private inferIconId(identifier: string): BitmapIconId {

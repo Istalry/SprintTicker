@@ -234,6 +234,14 @@ export interface NotificationSourceRule {
   appName: string;
   iconId: BitmapIconId;
   priorityMode: NotificationPriorityMode;
+  /**
+   * Optional path to a hand-made 16x16 image that pins this app's icon.
+   *
+   * Outranks both the resolved system icon and `iconId`, so an app whose real
+   * icon reduces badly at 15x15 -- or that resolves to the wrong executable --
+   * can be corrected without code. Produce one with `pnpm editor`.
+   */
+  iconImagePath?: string;
 }
 
 export interface WindowsNotificationSettingsDTO {

@@ -22,21 +22,16 @@ import {
   NotificationListenerStatusDTO,
   BitmapIconId
 } from '../../../shared/dtos';
+import { createDefaultNotificationSettings } from '../../../shared/notification-defaults';
 
 export const NotificationSettingsView: React.FC = () => {
-  const [settings, setSettings] = useState<WindowsNotificationSettingsDTO>({
-    enableListener: true,
-    notificationTimeoutSeconds: 10,
-    pollingIntervalSeconds: 2,
-    sourceRules: [
-      { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'HIGH_PRIORITY' },
-      { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT' },
-      { appId: 'antigravity', appName: 'Antigravity', iconId: 'antigravity', priorityMode: 'HIGH_PRIORITY' },
-      { appId: 'gmail', appName: 'Gmail / Outlook', iconId: 'gmail', priorityMode: 'DEFAULT' },
-      { appId: 'battery', appName: 'System Battery', iconId: 'battery', priorityMode: 'HIGH_PRIORITY' },
-      { appId: 'windows', appName: 'Windows System', iconId: 'windows', priorityMode: 'DEFAULT' }
-    ]
-  });
+  // Seeded from the shared defaults rather than a local copy. The copy that
+  // used to live here disagreed with the main process on which apps were
+  // HIGH_PRIORITY, so the effective default depended on which process wrote to
+  // the database first.
+  const [settings, setSettings] = useState<WindowsNotificationSettingsDTO>(
+    createDefaultNotificationSettings
+  );
 
   const [status, setStatus] = useState<NotificationListenerStatusDTO>({
     isListening: false,

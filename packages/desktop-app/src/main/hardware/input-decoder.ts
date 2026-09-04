@@ -22,6 +22,19 @@ export class InputDecoder {
   private _actionHandlers: Set<ActionHandler> = new Set();
   
   private _isSelectingTask: boolean = false;
+
+  /**
+   * Releases the display lock the hardware task menu holds.
+   *
+   * `renderTaskSelection` acquires `menuPriority` on every redraw but nothing
+   * released it, so the lock outlived the menu. Nothing in the dismissal path
+   * covers it either -- `dismissActiveNotification` only recognises notification
+   * and ceremony events -- so it stayed until some higher-priority event
+   * happened to overwrite it.
+   */
+  private releaseSelectionLock(): void {
+    this._priorityEngine?.releaseActiveLock('menuPriority');
+  }
   private _selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
   private _projectsList: { id: string, name: string }[] = [];
   private _tasksList: { id: string, title: string, description: string }[] = [];
@@ -222,6 +235,7 @@ export class InputDecoder {
     if (this._isSelectingTask && this._renderer) {
       if (normalizedKey === 'back') {
         this._isSelectingTask = false;
+        this.releaseSelectionLock();
         this._renderer.renderIdle();
         return 'CANCEL_SELECTION';
       }
@@ -261,6 +275,7 @@ export class InputDecoder {
              this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
           }
           this._isSelectingTask = false;
+          this.releaseSelectionLock();
           return 'START_TASK_FROM_SELECTION';
         }
       }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, Save, Check, ShieldAlert, ChevronUp, ChevronDown, User, Coffee, Moon } from 'lucide-react';
 import { PriorityRule, UserMode, PriorityAction } from '../../../shared/dtos';
+import { DEFAULT_PRIORITY_RULES } from '../../../shared/priority-defaults';
 
 interface PriorityItemDef {
   key: string;
@@ -10,17 +11,11 @@ interface PriorityItemDef {
 
 export const PriorityRulesView: React.FC = () => {
   const [userMode, setUserMode] = useState<UserMode>('WORK');
-  const [rules, setRules] = useState<PriorityRule[]>([
-    { id: 'unity_exception', eventName: 'unityBuildFailurePriority', priority: 100, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'DISPLAY' },
-    { id: 'high_notification', eventName: 'highNotificationPriority', priority: 95, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'DISPLAY' },
-    { id: 'unity_playmode', eventName: 'unityPlayModePriority', priority: 90, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'DISPLAY' },
-    { id: 'unity_compiling', eventName: 'unityCompilingPriority', priority: 80, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'SUPPRESS' },
-    { id: 'away_mode', eventName: 'awayModePriority', priority: 75, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'DISPLAY' },
-    { id: 'standup_prompt', eventName: 'standupPromptPriority', priority: 70, actionOnWork: 'DISPLAY', actionOnLunch: 'QUEUE', actionOnAway: 'QUEUE' },
-    { id: 'lunch_mode', eventName: 'lunchModePriority', priority: 65, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'SUPPRESS' },
-    { id: 'messaging_alert', eventName: 'messagingPriority', priority: 40, actionOnWork: 'DISPLAY', actionOnLunch: 'SUPPRESS', actionOnAway: 'SUPPRESS' },
-    { id: 'active_tracker', eventName: 'activeTrackerPriority', priority: 20, actionOnWork: 'DISPLAY', actionOnLunch: 'DISPLAY', actionOnAway: 'DISPLAY' }
-  ]);
+  // Shown only until the engine's real rules arrive. This used to be a local
+  // table that inverted main's hierarchy -- a Unity build failure outranking
+  // Away mode -- and omitted the EOD rule, so the first paint showed an ordering
+  // the device never actually used.
+  const [rules, setRules] = useState<PriorityRule[]>(() => [...DEFAULT_PRIORITY_RULES]);
 
   const [saved, setSaved] = useState<boolean>(false);
 
@@ -103,6 +98,7 @@ export const PriorityRulesView: React.FC = () => {
     { key: 'standupPromptPriority', label: 'Daily Stand-Up Ceremonies Prompt', desc: 'Interactive dialog for daily stand-up tracking' },
     { key: 'lunchModePriority', label: 'Lunch Mode Screen / Scheduled Break', desc: 'Lunch time screen displayed during configured lunch hours' },
     { key: 'messagingPriority', label: 'Default Chat / App Notifications', desc: 'Standard third-party notifications; auto-suppressed during Lunch or Away' },
+    { key: 'eodWrapUpPriority', label: 'End-of-Day Wrap-Up Prompt', desc: 'Interactive end-of-day prompt for logging remaining time' },
     { key: 'activeTrackerPriority', label: 'Active Session Time Tracker / Idle', desc: 'Base UI tracker state' }
   ];
 

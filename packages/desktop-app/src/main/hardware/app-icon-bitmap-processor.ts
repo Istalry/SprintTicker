@@ -46,13 +46,11 @@ export class AppIconBitmapProcessor {
       if (knownIcons.includes(lower)) {
         sourceMatrix = getBitmapById(lower as BitmapIconId);
       } else {
-        console.log('[AppIconProcessor] Processing custom image:', iconInput);
         const parsed = this.parseImageToMatrix(iconInput);
         if (!parsed) {
           console.warn(`[AppIconProcessor] -> parseImageToMatrix returned null for custom image. Falling back to default 'bell' icon.`);
           sourceMatrix = getBitmapById('bell');
         } else {
-          console.log(`[AppIconProcessor] -> Successfully parsed custom image into matrix.`);
           sourceMatrix = parsed;
         }
       }
@@ -69,6 +67,35 @@ export class AppIconBitmapProcessor {
       this.iconCache.set(cacheKey, result16);
     }
 
+    return result16;
+  }
+
+  /**
+   * Processes a real image into a centred 16x16 matrix, or returns null.
+   *
+   * The difference from {@link processAppIcon} is what happens on failure.
+   * `processAppIcon` substitutes a generic bell, which is correct when the input
+   * was a `BitmapIconId` but wrong for a resolved app icon: an unreadable file
+   * would replace the app's own hand-drawn bitmap with a bell, and -- because
+   * the substitution is cached under the app id -- keep it there for the rest of
+   * the session. Returning null lets the caller fall back properly.
+   */
+  public static tryProcessAppImage(
+    imageInput: string,
+    cacheKey?: string
+  ): (string | null)[][] | null {
+    if (!imageInput) return null;
+    if (cacheKey && this.iconCache.has(cacheKey)) {
+      return this.iconCache.get(cacheKey)!;
+    }
+
+    const parsed = this.parseImageToMatrix(imageInput);
+    if (!parsed) return null;
+
+    const result16 = this.center15x15In16x16(this.downscaleTo15x15(parsed));
+    if (cacheKey) {
+      this.iconCache.set(cacheKey, result16);
+    }
     return result16;
   }
 
@@ -101,8 +128,6 @@ export class AppIconBitmapProcessor {
         return null;
       }
       
-      console.log(`[AppIconProcessor] Successfully loaded image, resizing...`);
-
       const resized = img.resize({ width: 15, height: 15, quality: 'best' });
       const size = resized.getSize();
       if (!size || size.width === 0 || size.height === 0) {
@@ -118,7 +143,6 @@ export class AppIconBitmapProcessor {
 
       const matrix: (string | null)[][] = Array.from({ length: 15 }, () => Array(15).fill(null));
 
-      let processedPixels = 0;
       for (let y = 0; y < 15; y++) {
         for (let x = 0; x < 15; x++) {
           const offset = (y * 15 + x) * 4;
@@ -133,11 +157,9 @@ export class AppIconBitmapProcessor {
             const hexB = b.toString(16).padStart(2, '0').toUpperCase();
             const hexA = a.toString(16).padStart(2, '0').toUpperCase();
             matrix[y][x] = `#${hexR}${hexG}${hexB}${hexA}`;
-            processedPixels++;
           }
         }
       }
-      console.log(`[AppIconProcessor] -> Matrix conversion complete. ${processedPixels}/225 pixels are visible.`);
       return matrix;
     } catch (e) {
       console.error('[AppIconProcessor] Exception during parse:', e);

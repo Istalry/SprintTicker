@@ -1,4 +1,5 @@
 import { PriorityRule, PriorityMatrixConfig, UserMode, PriorityAction, ArgumentNullException, ArgumentException } from '../../shared/dtos';
+import { DEFAULT_PRIORITY_RULES } from '../../shared/priority-defaults';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import type { DisplayRenderer } from '../hardware/display-renderer';
 
@@ -23,6 +24,21 @@ export interface PreemptionEvaluationResult {
 }
 
 /**
+ * The two priority classes a notification can be raised under.
+ *
+ * `NotificationPriorityMode` on a source rule picks one of these; what each one
+ * then does during Lunch and Away is the user's choice in the priority panel
+ * (`actionOnWork` / `actionOnLunch` / `actionOnAway`). Nothing here decides
+ * whether a given app is "important" -- that is configuration, not code.
+ *
+ * Named rather than derived: `renderNotificationBanner` used to recompute this
+ * from a numeric threshold (`priority >= 90`), which no notification rule ever
+ * meets, so every high-priority alert silently re-entered as `messagingPriority`
+ * and was suppressed during Lunch and Away.
+ */
+export type NotificationEventName = 'highNotificationPriority' | 'messagingPriority';
+
+/**
  * Abstraction for the Priority Preemption Engine service.
  */
 export interface IPriorityPreemptionEngine {
@@ -36,6 +52,7 @@ export interface IPriorityPreemptionEngine {
   hasActiveNotification(): boolean;
   dismissNotification(forceCeremonyDismissal?: boolean): boolean;
   getActiveLockEventName(): string | null;
+  getEventPriority(eventName: string): number;
 }
 
 /**
@@ -45,6 +62,8 @@ export interface IPriorityPreemptionEngine {
 export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   private static readonly DEFAULT_QUEUE_EXPIRATION_MS = 60000; // 60 seconds TTL for queued alerts
   private static readonly DB_SETTINGS_KEY = 'priority_rules';
+  /** Priority assumed for an event with no configured rule. */
+  private static readonly DEFAULT_EVENT_PRIORITY = 50;
 
   private readonly _settingsRepo: SettingsRepository;
   private _userMode: UserMode = 'WORK';
@@ -52,88 +71,9 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   private _activeLockPriority = 0;
   private _notificationQueue: QueuedNotificationRequest[] = [];
 
-  private static readonly DEFAULT_RULES: PriorityRule[] = [
-    {
-      id: 'away_mode',
-      eventName: 'awayModePriority',
-      priority: 100,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'lunch_mode',
-      eventName: 'lunchModePriority',
-      priority: 95,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'DISPLAY',
-      actionOnAway: 'SUPPRESS'
-    },
-    {
-      id: 'eod_wrapup',
-      eventName: 'eodWrapUpPriority',
-      priority: 80,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'standup_prompt',
-      eventName: 'standupPromptPriority',
-      priority: 75,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'high_notification',
-      eventName: 'highNotificationPriority',
-      priority: 70,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'DISPLAY',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'messaging_alert',
-      eventName: 'messagingPriority',
-      priority: 65,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'SUPPRESS'
-    },
-    {
-      id: 'unity_exception',
-      eventName: 'unityBuildFailurePriority',
-      priority: 60,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'SUPPRESS'
-    },
-    {
-      id: 'unity_compiling',
-      eventName: 'unityCompilingPriority',
-      priority: 55,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'SUPPRESS'
-    },
-    {
-      id: 'unity_playmode',
-      eventName: 'unityPlayModePriority',
-      priority: 50,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'SUPPRESS',
-      actionOnAway: 'DISPLAY'
-    },
-    {
-      id: 'active_tracker',
-      eventName: 'activeTrackerPriority',
-      priority: 45,
-      actionOnWork: 'DISPLAY',
-      actionOnLunch: 'QUEUE',
-      actionOnAway: 'QUEUE'
-    }
-  ];
+  private static readonly DEFAULT_RULES: PriorityRule[] = DEFAULT_PRIORITY_RULES.map(rule => ({
+    ...rule
+  }));
 
   constructor(settingsRepo: SettingsRepository) {
     if (!settingsRepo) {
@@ -238,7 +178,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
 
     const rules = this.getRules();
     const matchedRule = rules.find(r => r.eventName === eventName || r.id === eventName);
-    const priority = requestedPriority ?? matchedRule?.priority ?? 50;
+    const priority =
+      requestedPriority ?? matchedRule?.priority ?? PriorityPreemptionEngine.DEFAULT_EVENT_PRIORITY;
     const action = this.resolveModeAction(matchedRule);
 
     if (action === 'SUPPRESS') {
@@ -290,6 +231,23 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   /// </summary>
   public getActiveLockEventName(): string | null {
     return this._activeLockEventName;
+  }
+
+  /// <summary>
+  /// Reads the configured priority of an event without acquiring the display lock.
+  /// </summary>
+  /// <remarks>
+  /// Callers that need the number for display purposes -- the rear-panel preview
+  /// text, for instance -- must use this rather than `evaluateRequest`, which has
+  /// the side effect of taking the lock. Two evaluations for one notification is
+  /// how the banner ended up holding a lock it never released.
+  /// </remarks>
+  public getEventPriority(eventName: string): number {
+    if (!eventName) {
+      throw new ArgumentNullException('eventName');
+    }
+    const matchedRule = this.getRules().find(r => r.eventName === eventName || r.id === eventName);
+    return matchedRule?.priority ?? PriorityPreemptionEngine.DEFAULT_EVENT_PRIORITY;
   }
 
   /// <summary>
