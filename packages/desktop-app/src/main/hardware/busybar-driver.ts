@@ -361,6 +361,7 @@ export class BusyBarDriver extends EventEmitter {
           }
         }
         this.startStateStreamListener();
+        void this.refreshBrightness();
       } else {
         this.isConnected = true;
       }
@@ -480,6 +481,27 @@ export class BusyBarDriver extends EventEmitter {
     }
   }
 
+  /**
+   * Last brightness read from the device, or null before the first successful
+   * read. Cached because `getDeviceStatus` is synchronous.
+   */
+  private frontBrightness: number | null = null;
+
+  /**
+   * Refreshes the cached brightness from the device.
+   *
+   * `getBrightness` existed and worked, and nothing ever called it: the status
+   * object returned a literal 80 instead, which the diagnostics panel displayed
+   * as a live reading.
+   */
+  private async refreshBrightness(): Promise<void> {
+    if (this.isMockMode) return;
+    const reading = await this.getBrightness();
+    if (reading && typeof reading.value === 'number') {
+      this.frontBrightness = reading.value;
+    }
+  }
+
   public getDeviceStatus(): DeviceStatusDTO {
     const isWifi = this.ipAddress !== DEFAULT_USB_IP;
     if (!this.isConnected && !this.isMockMode) {
@@ -487,8 +509,8 @@ export class BusyBarDriver extends EventEmitter {
         connected: false,
         ipAddress: this.ipAddress,
         connectionType: isWifi ? 'wifi' : 'usb',
-        frontBrightness: 0,
-        backBrightness: 0,
+        frontBrightness: null,
+        backBrightness: null,
         batteryPercent: 0,
         firmwareVersion: 'N/A',
         webSocketPingMs: 0,
@@ -501,8 +523,10 @@ export class BusyBarDriver extends EventEmitter {
       connected: this.isConnected,
       ipAddress: this.ipAddress,
       connectionType: isWifi ? 'wifi' : 'usb',
-      frontBrightness: 80,
-      backBrightness: 100,
+      frontBrightness: this.isMockMode ? 80 : this.frontBrightness,
+      // Nothing in this build draws to the rear panel, so we have no brightness
+      // to report for it. It was reported as 100 regardless.
+      backBrightness: null,
       batteryPercent: this.batteryPercent,
       firmwareVersion: this.isMockMode ? `${this.firmwareVersion}-mock` : this.firmwareVersion,
       webSocketPingMs: this.pingMs,

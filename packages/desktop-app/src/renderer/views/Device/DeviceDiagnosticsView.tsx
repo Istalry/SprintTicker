@@ -119,16 +119,24 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
         <div className="space-y-3 font-mono text-xs">
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Front OLED Display Brightness:</span>
+            <span className="text-text-secondary">Front LED Matrix Brightness:</span>
             <span className={`font-bold ${deviceStatus.connected ? 'text-accent-blue' : 'text-text-secondary'}`}>
-              {deviceStatus.connected ? `${deviceStatus.frontBrightness}%` : 'Off (Disconnected)'}
+              {!deviceStatus.connected
+                ? 'Off (Disconnected)'
+                : deviceStatus.frontBrightness === null
+                  ? 'Not reported'
+                  : `${deviceStatus.frontBrightness}%`}
             </span>
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Rear Diagnostic LED Matrix Brightness:</span>
+            <span className="text-text-secondary">Rear OLED Brightness:</span>
             <span className={`font-bold ${deviceStatus.connected ? 'text-accent-purple' : 'text-text-secondary'}`}>
-              {deviceStatus.connected ? `${deviceStatus.backBrightness}%` : 'Off (Disconnected)'}
+              {!deviceStatus.connected
+                ? 'Off (Disconnected)'
+                : deviceStatus.backBrightness === null
+                  ? 'Not driven by this app'
+                  : `${deviceStatus.backBrightness}%`}
             </span>
           </div>
 

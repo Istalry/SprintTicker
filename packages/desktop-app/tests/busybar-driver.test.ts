@@ -41,10 +41,16 @@ describe('BusyBarDriver Unit Tests', () => {
 
   it('BusyBarDriver_LiveMode_QueriesStatusEndpointAndParsesTelemetry', async () => {
     const originalFetch = globalThis.fetch;
-    let capturedUrl = '';
+    // All of them: connecting queries the status endpoint and then reads the
+    // display brightness, so asserting on "the last URL" would be asserting on
+    // whichever happened to finish last.
+    const capturedUrls: string[] = [];
 
     globalThis.fetch = (async (url: string) => {
-      capturedUrl = url;
+      capturedUrls.push(url);
+      if (url.includes('/api/display/brightness')) {
+        return { ok: true, json: async () => ({ value: 62, display: 'front' }) } as Response;
+      }
       if (url.includes('/api/status')) {
         return {
           ok: true,
@@ -67,10 +73,37 @@ describe('BusyBarDriver Unit Tests', () => {
       const status = liveDriver.getDeviceStatus();
 
       expect(connected).toBe(true);
-      expect(capturedUrl).toBe('http://10.0.4.20/api/status');
+      expect(capturedUrls).toContain('http://10.0.4.20/api/status');
       expect(status.connected).toBe(true);
       expect(status.batteryPercent).toBe(88);
       expect(status.firmwareVersion).toBe('2.4.0');
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('BusyBarDriver_LiveMode_ReportsTheBrightnessTheDeviceActuallySent', async () => {
+    // `getDeviceStatus` returned a literal 80 for the front panel and 100 for
+    // the rear, and the diagnostics panel displayed both as live readings.
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => {
+      if (url.includes('/api/display/brightness')) {
+        return { ok: true, json: async () => ({ value: 62, display: 'front' }) } as Response;
+      }
+      return { ok: true, json: async () => ({ power: { battery_charge: 50 } }) } as Response;
+    }) as typeof fetch;
+
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+    try {
+      await liveDriver.connect();
+      // The read is fired off during connect rather than awaited by it.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(liveDriver.getDeviceStatus().frontBrightness).toBe(62);
+      // Nothing in this build drives the rear panel, so there is no brightness
+      // of ours to report for it.
+      expect(liveDriver.getDeviceStatus().backBrightness).toBeNull();
     } finally {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;

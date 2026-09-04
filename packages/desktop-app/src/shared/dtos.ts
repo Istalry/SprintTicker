@@ -64,8 +64,21 @@ export interface DeviceStatusDTO {
   connected: boolean;
   ipAddress: string;
   connectionType: 'usb' | 'wifi';
-  frontBrightness: number;
-  backBrightness: number;
+  /**
+   * Front matrix brightness as reported by the device, or null if not known.
+   *
+   * Null rather than a number, because these were fixed literals -- 80 and 100
+   * -- presented in the diagnostics panel as live readings. A figure the device
+   * never sent is worse than no figure.
+   */
+  frontBrightness: number | null;
+  /**
+   * Rear panel brightness, or null.
+   *
+   * Always null in this build: nothing drives the rear OLED, so there is no
+   * brightness of ours to report.
+   */
+  backBrightness: number | null;
   batteryPercent: number;
   firmwareVersion: string;
   webSocketPingMs: number;
