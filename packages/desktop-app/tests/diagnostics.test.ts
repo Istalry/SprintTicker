@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { BrowserWindow } from 'electron';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DiagnosticExporter } from '../src/main/diagnostics/diagnostic-exporter';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
