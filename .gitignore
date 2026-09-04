@@ -1,15 +1,57 @@
+# ---------------------------------------------------------------------------
 # Dependencies
+# ---------------------------------------------------------------------------
 node_modules/
 .pnpm-store/
 
+# ---------------------------------------------------------------------------
 # Build outputs
+# ---------------------------------------------------------------------------
 dist/
 dist-electron/
 out/
 build/
-*.pfx
 
+# ---------------------------------------------------------------------------
+# Test / coverage artefacts
+# Coverage output was previously committed (63 files, recommitted 12+ times).
+# It also embeds absolute paths containing the local username.
+# ---------------------------------------------------------------------------
+coverage/
+*.lcov
+
+# ---------------------------------------------------------------------------
+# Local databases, SQLite side-files and logs
+#
+# The bare "-wal" / "-shm" entries are deliberate: the Windows notification
+# poller has produced files literally named "-wal" (no basename), which the
+# "*.db" rules below do NOT match.
+# ---------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.log
+-wal
+-shm
+*.db-wal
+*.db-shm
+*-journal
+
+# ---------------------------------------------------------------------------
+# Secrets and signing material
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.cer
+*.key
+
+# ---------------------------------------------------------------------------
 # IDE and OS files
+# ---------------------------------------------------------------------------
 .vscode/
 .idea/
 .DS_Store
@@ -17,7 +59,20 @@ Thumbs.db
 *.suo
 *.user
 
+# macOS archive residue (1,511 such files were previously tracked under
+# Animations/, 1,504 of them stored in Git LFS).
+__MACOSX/
+._*
+
+# ---------------------------------------------------------------------------
+# Python bytecode (the animation toolchain ships .py helpers)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+
+# ---------------------------------------------------------------------------
 # Unity metadata & generated files
+# ---------------------------------------------------------------------------
 /[Aa]ssets/
 /[Ll]ibrary/
 /[Tt]emp/
@@ -28,18 +83,22 @@ Thumbs.db
 /[Uu]ser[Ss]ettings/
 /[Mm]emoryCaptures/
 
-# Local databases and logs
-*.db
-*.sqlite
-*.sqlite3
-*.log
-
+# ---------------------------------------------------------------------------
 # Compiled test outputs
+# ---------------------------------------------------------------------------
 packages/desktop-app/tests/*.js
 packages/desktop-app/tests/*.js.map
 
-# Allow tracking app icons in desktop-app build directory
+# ---------------------------------------------------------------------------
+# Vendored upstream firmware reference -- NOT part of this repository.
+# Clone https://github.com/busy-app/busybar-firmware separately if needed.
+# ---------------------------------------------------------------------------
+Documentation/busybar-firmware/
+
+# ---------------------------------------------------------------------------
+# Allow tracking app icons in the desktop-app build directory.
+# These negations MUST stay last and in this order: they re-include the one
+# directory excluded by the "build/" rule above.
+# ---------------------------------------------------------------------------
 !packages/desktop-app/build/
 !packages/desktop-app/build/*
-
-busybar-firmware
