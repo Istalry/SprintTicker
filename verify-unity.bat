@@ -2,7 +2,7 @@
 echo ========================================================
 echo  Packaging Antigravity BUSY Bar Unity Plugin
 echo ========================================================
-call pnpm package:unity
+call pnpm verify:unity
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [ERROR] Unity plugin packaging failed with exit code %ERRORLEVEL%.

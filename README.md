@@ -164,7 +164,7 @@ Outputs are saved to `packages/desktop-app/dist-electron/`.
 To package the standalone Unity Editor C# plugin:
 
 ```bash
-pnpm package:unity
+pnpm verify:unity
 ```
 
 ---
@@ -220,7 +220,7 @@ Convenient Windows batch scripts are available in the repository root directory:
 - **`install.bat`**: Installs all monorepo workspace dependencies via PNPM.
 - **`run_editor.bat`**: Launches the standalone 16×16 Pixel Art Editor web server (`http://localhost:39124`).
 - **`package-win.bat`**: Builds and packages the complete Windows installer and portable `.exe`.
-- **`package-unity.bat`**: Packages the Unity C# plugin package.
+- **`verify-unity.bat`**: Validates the Unity C# plugin package structure (`packages/unity-plugin`). It checks the UPM manifest and Editor scripts; it does not emit an archive.
 - **`test-coverage.bat`**: Runs ESLint checks and the Vitest test suite with V8 code coverage report.
 
 ---
@@ -246,7 +246,7 @@ The monorepo includes a Unity Editor C# package that connects Unity assembly com
 
 ### 1. Build Unity Package Bundle
 ```bash
-pnpm package:unity
+pnpm verify:unity
 ```
 
 ### 2. Import into Unity Project

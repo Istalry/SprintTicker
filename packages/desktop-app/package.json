@@ -21,7 +21,8 @@
     "rebuild:electron": "electron-builder install-app-deps",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "dev:mock": "cross-env MOCK_HARDWARE=true pnpm dev"
   },
   "dependencies": {
     "@busy-app/busy-lib": "^0.17.0",

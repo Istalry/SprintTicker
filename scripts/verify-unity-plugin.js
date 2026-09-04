@@ -2,7 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Node.js build script to validate UPM package structure and generate a distribution manifest.
+ * Validates the UPM package structure for com.antigravity.busybar.
+ *
+ * This is a verification step, not a packaging step: it checks that the
+ * manifest and Editor scripts are present and prints what it found. Unity
+ * consumes the folder directly via UPM, so no archive is produced.
  */
 function buildUnityPackage() {
   console.log('[UnityPackageBuilder] Building Unity C# Package (com.antigravity.busybar)...');

@@ -7,14 +7,16 @@
     "dev": "pnpm --filter @busy-app/desktop-app dev",
     "build": "pnpm --filter @busy-app/desktop-app build",
     "package:win": "pnpm --filter @busy-app/desktop-app package:win",
-    "package:unity": "node scripts/package-unity-plugin.js",
     "verify:packed": "node scripts/verify-packed-app.js",
     "preflight": "node scripts/preflight-check.js",
     "test": "pnpm --filter @busy-app/desktop-app test",
     "test:coverage": "pnpm --filter @busy-app/desktop-app test:coverage",
     "editor": "node tools/pixel-editor/server.js",
-    "lint": "eslint packages/**/*.{ts,tsx}",
-    "format": "prettier --write \"packages/**/*.{ts,tsx,json,css,md}\""
+    "lint": "eslint packages --ext .ts,.tsx",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,json,css,md}\"",
+    "lint:fix": "eslint packages --ext .ts,.tsx --fix",
+    "dev:mock": "pnpm --filter @busy-app/desktop-app dev:mock",
+    "verify:unity": "node scripts/verify-unity-plugin.js"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",
@@ -26,7 +28,8 @@
     "typescript": "^5.4.0"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
-  }
+    "node": ">=20.19.0",
+    "pnpm": ">=11.0.0"
+  },
+  "packageManager": "pnpm@11.25.0"
 }
