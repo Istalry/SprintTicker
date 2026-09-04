@@ -380,4 +380,87 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Assert: paused selection validated → session stopped
     expect(action).toBe('VALIDATE_PAUSED_SELECTION');
   });
+
+  it('HandleHardwareInput_EodPromptActive_FirstStartPress_AdvancesToStep1Confirmation', () => {
+    // Arrange
+    const priorityEngine = {
+      getActiveLockEventName: () => 'eodWrapUpPriority',
+      releaseActiveLock: () => {},
+      dismissNotification: () => false
+    };
+    decoder.setPriorityEngine(priorityEngine as never);
+    decoder.setRenderer(renderer);
+
+    let focusCalled = false;
+    decoder.setWindowFocusCallback(() => { focusCalled = true; });
+
+    // Act: 1st press
+    const action = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(action).toBe('CONFIRM_EOD_WRAP_UP_STEP_1');
+    expect(decoder.getEodConfirmStep()).toBe(1);
+    expect(focusCalled).toBe(true);
+  });
+
+  it('HandleHardwareInput_EodPromptActive_SecondStartPress_ExecutesEodWrapUp', () => {
+    // Arrange
+    const priorityEngine = {
+      getActiveLockEventName: () => 'eodWrapUpPriority',
+      releaseActiveLock: () => {},
+      dismissNotification: () => false
+    };
+    decoder.setPriorityEngine(priorityEngine as never);
+    decoder.setRenderer(renderer);
+
+    // 1st press -> step 1
+    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+    expect(decoder.getEodConfirmStep()).toBe(1);
+
+    // Act: 2nd press -> execute
+    const action = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(action).toBe('EXECUTE_EOD_WRAP_UP');
+    expect(decoder.getEodConfirmStep()).toBe(0);
+  });
+
+  it('HandleHardwareInput_EodPromptActive_BackPress_DismissesEodPrompt', () => {
+    // Arrange
+    let lockReleased = false;
+    const priorityEngine = {
+      getActiveLockEventName: () => 'eodWrapUpPriority',
+      releaseActiveLock: (lock: string) => { if (lock === 'eodWrapUpPriority') lockReleased = true; },
+      dismissNotification: () => false
+    };
+    decoder.setPriorityEngine(priorityEngine as never);
+    decoder.setRenderer(renderer);
+
+    // Act: back press
+    const action = decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(action).toBe('DISMISS_EOD_WRAP_UP');
+    expect(lockReleased).toBe(true);
+    expect(decoder.getEodConfirmStep()).toBe(0);
+  });
+
+  it('HandleHardwareInput_StandupPromptActive_ConfirmPress_AcknowledgesStandupPrompt', () => {
+    // Arrange
+    let lockReleased = false;
+    const priorityEngine = {
+      getActiveLockEventName: () => 'standupPromptPriority',
+      releaseActiveLock: (lock: string) => { if (lock === 'standupPromptPriority') lockReleased = true; },
+      dismissNotification: () => false
+    };
+    decoder.setPriorityEngine(priorityEngine as never);
+    decoder.setRenderer(renderer);
+
+    // Act: click / start press
+    const action = decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+
+    // Assert
+    expect(action).toBe('CONFIRM_STANDUP_PROMPT');
+    expect(lockReleased).toBe(true);
+  });
 });

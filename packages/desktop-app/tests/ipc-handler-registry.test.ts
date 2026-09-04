@@ -25,6 +25,7 @@ import { ipcMain } from 'electron';
 describe('IPCHandlerRegistry Unit Tests', () => {
   let dbConn: DatabaseConnection;
   let registry: IPCHandlerRegistry;
+  let engine: TimeTrackingEngine;
 
   beforeEach(async () => {
     dbConn = new DatabaseConnection(':memory:');
@@ -33,7 +34,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const taskRepo = new TaskRepository(dbConn);
     const settingsRepo = new SettingsRepository(dbConn);
 
-    const engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo);
     const driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();
 
@@ -52,6 +53,9 @@ describe('IPCHandlerRegistry Unit Tests', () => {
   });
 
   afterEach(() => {
+    if (engine) {
+      engine.dispose();
+    }
     dbConn.close();
   });
 
@@ -115,6 +119,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       expect.anything()
     );
 
+    engine2.dispose();
     dbConn2.close();
   });
 
@@ -127,6 +132,58 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     if (injectCall) {
       const handler = injectCall[1];
       const res = await handler({}, 'up');
+      expect(res).toBe(true);
+    }
+  });
+
+  it('RegisterAllHandlers_TriggerEodPrompt_InvokesContextScheduleService', async () => {
+    registry.registerAllHandlers();
+    const handleCalls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const eodPromptCall = handleCalls.find(call => call[0] === 'schedule:trigger-eod-prompt');
+    expect(eodPromptCall).toBeDefined();
+
+    if (eodPromptCall) {
+      const handler = eodPromptCall[1];
+      const res = await handler({});
+      expect(res).toEqual({ success: true });
+    }
+  });
+
+  it('RegisterAllHandlers_TriggerEodWrapUp_FinalizesSessionAndReturnsSuccess', async () => {
+    registry.registerAllHandlers();
+    const handleCalls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const eodWrapUpCall = handleCalls.find(call => call[0] === 'schedule:trigger-eod-wrapup');
+    expect(eodWrapUpCall).toBeDefined();
+
+    if (eodWrapUpCall) {
+      const handler = eodWrapUpCall[1];
+      const res = await handler({}, { shouldShutdown: false });
+      expect(res.success).toBe(true);
+    }
+  });
+
+  it('RegisterAllHandlers_TriggerEodWrapUp_WithShutdownOption_ExecutesSuccessfully', async () => {
+    registry.registerAllHandlers();
+    const handleCalls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const eodWrapUpCall = handleCalls.find(call => call[0] === 'schedule:trigger-eod-wrapup');
+    expect(eodWrapUpCall).toBeDefined();
+
+    if (eodWrapUpCall) {
+      const handler = eodWrapUpCall[1];
+      const res = await handler({}, { shouldShutdown: true });
+      expect(res.success).toBe(true);
+    }
+  });
+
+  it('RegisterAllHandlers_CancelEodWrapUp_ReleasesLocksAndReturnsTrue', async () => {
+    registry.registerAllHandlers();
+    const handleCalls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const cancelCall = handleCalls.find(call => call[0] === 'schedule:cancel-eod-wrapup');
+    expect(cancelCall).toBeDefined();
+
+    if (cancelCall) {
+      const handler = cancelCall[1];
+      const res = await handler({});
       expect(res).toBe(true);
     }
   });

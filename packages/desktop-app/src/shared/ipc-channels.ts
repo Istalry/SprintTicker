@@ -54,12 +54,14 @@ export enum IPCChannel {
   // Ceremonies & Schedule
   GET_SCHEDULE_SETTINGS = 'schedule:get-settings',
   SAVE_SCHEDULE_SETTINGS = 'schedule:save-settings',
+  TRIGGER_EOD_PROMPT = 'schedule:trigger-eod-prompt',
   TRIGGER_EOD_WRAP_UP = 'schedule:trigger-eod-wrapup',
   CANCEL_EOD_WRAP_UP = 'schedule:cancel-eod-wrapup',
   TRIGGER_STANDUP_PROMPT = 'schedule:trigger-standup-prompt',
   CANCEL_STANDUP_PROMPT = 'schedule:cancel-standup-prompt',
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
+  UPDATE_CEREMONY_PROMPT = 'schedule:update-ceremony-prompt',
 
   // Unity Injector & Gitignore
   SETUP_GITIGNORE = 'unity-injector:setup-gitignore',

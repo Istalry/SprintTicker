@@ -33,7 +33,8 @@ export interface IPriorityPreemptionEngine {
   releaseActiveLock(eventName: string): void;
   drainQueue(): void;
   hasActiveNotification(): boolean;
-  dismissNotification(): boolean;
+  dismissNotification(forceCeremonyDismissal?: boolean): boolean;
+  getActiveLockEventName(): string | null;
 }
 
 /**
@@ -66,6 +67,14 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       actionOnWork: 'DISPLAY',
       actionOnLunch: 'DISPLAY',
       actionOnAway: 'SUPPRESS'
+    },
+    {
+      id: 'eod_wrapup',
+      eventName: 'eodWrapUpPriority',
+      priority: 80,
+      actionOnWork: 'DISPLAY',
+      actionOnLunch: 'SUPPRESS',
+      actionOnAway: 'DISPLAY'
     },
     {
       id: 'standup_prompt',
@@ -275,6 +284,13 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   }
 
   /// <summary>
+  /// Retrieves the event name of the currently active display priority lock, or null if none.
+  /// </summary>
+  public getActiveLockEventName(): string | null {
+    return this._activeLockEventName;
+  }
+
+  /// <summary>
   /// Checks whether a notification alert is currently holding an active display lock.
   /// </summary>
   public hasActiveNotification(): boolean {
@@ -290,9 +306,12 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   /// Dismisses any active notification alert, restoring background display context.
   /// Returns true if a notification was active and dismissed.
   /// </summary>
-  public dismissNotification(): boolean {
+  public dismissNotification(forceCeremonyDismissal: boolean = false): boolean {
     if (this.hasActiveNotification()) {
       const activeEvt = this._activeLockEventName!;
+      if (!forceCeremonyDismissal && (activeEvt === 'standupPromptPriority' || activeEvt === 'eodWrapUpPriority')) {
+        return false;
+      }
       this.releaseActiveLock(activeEvt);
       return true;
     }

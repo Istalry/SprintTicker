@@ -17,6 +17,7 @@ import { WindowsNotificationListenerService } from '../services/windows-notifica
 import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
+import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO } from '../../shared/dtos';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 
@@ -40,6 +41,7 @@ export class IPCHandlerRegistry {
   private priorityEngine: PriorityPreemptionEngine;
   private contextScheduleService: ContextScheduleService;
   private diagnosticExporter: DiagnosticExporter;
+  private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
 
   constructor(
@@ -56,7 +58,8 @@ export class IPCHandlerRegistry {
     messagingService?: MessagingIntegrationService,
     priorityEngine?: PriorityPreemptionEngine,
     contextScheduleService?: ContextScheduleService,
-    windowsNotificationService?: WindowsNotificationListenerService
+    windowsNotificationService?: WindowsNotificationListenerService,
+    systemAutomationService?: ISystemAutomationService
   ) {
     this.engine = engine;
     this.taskRepo = taskRepo;
@@ -73,8 +76,9 @@ export class IPCHandlerRegistry {
     this.priorityEngine = priorityEngine || new PriorityPreemptionEngine(settingsRepo);
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
-    this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer);
+    this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer, this.getWindow);
     this.diagnosticExporter = new DiagnosticExporter(driver);
+    this.systemAutomationService = systemAutomationService || new SystemAutomationService();
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -255,6 +259,16 @@ export class IPCHandlerRegistry {
       return { success: true };
     });
 
+    ipcMain.handle(IPCChannel.TRIGGER_EOD_PROMPT, async () => {
+      this.contextScheduleService.triggerEodPrompt();
+      return { success: true };
+    });
+
+    ipcMain.handle(IPCChannel.UPDATE_CEREMONY_PROMPT, async (_event, payload: { type: 'STANDUP' | 'LUNCH' | 'EOD', title: string }) => {
+      this.contextScheduleService.updateCeremonyPrompt(payload.type, payload.title);
+      return { success: true };
+    });
+
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
       const activeSession = this.engine.getCurrentSession();
       if (activeSession) {
@@ -282,31 +296,40 @@ export class IPCHandlerRegistry {
         console.log('[EOD] Unity scene save error:', err);
       }
 
-      // 2. Instruct VS Code to save open dirty files
+      // 2. Instruct open code editors (VS Code, Cursor) to save open dirty files
       let savedVSCode = false;
       try {
-        const { exec } = await import('child_process');
-        savedVSCode = await new Promise((resolve) => {
-          exec('code --command workbench.action.files.saveAll', (err) => {
-            resolve(!err);
-          });
-        });
-      } catch {
-        console.log('[EOD] VS Code CLI not in system PATH, skipping VS Code save command.');
+        const editorSaveResult = await this.systemAutomationService.saveOpenEditors();
+        savedVSCode = editorSaveResult.isSaved;
+      } catch (err) {
+        console.warn('[EOD] Editor save error:', err);
       }
 
-      // 3. Trigger Shutdown if requested and not in test environment
-      if (options?.shouldShutdown && process.env.NODE_ENV !== 'test') {
+      // 3. Render EOD completion screen on hardware display
+      this.renderer.renderEodCompleted('Day Complete!');
+
+      // 4. Release display lock after 5 seconds to return to background active/idle display
+      if (process.env.NODE_ENV !== 'test') {
+        setTimeout(() => {
+          try {
+            this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
+            const current = this.engine.getCurrentSession();
+            this.renderer.renderActiveSession(current);
+          } catch {
+            // Ignore if app closed
+          }
+        }, 5000);
+      } else {
+        this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
+      }
+
+      // 5. Trigger Shutdown if requested
+      if (options?.shouldShutdown) {
         try {
-          const { exec } = await import('child_process');
-          exec('shutdown /s /t 30', (err) => {
-            if (err) console.error('[EOD] Shutdown command error:', err);
-          });
+          await this.systemAutomationService.scheduleShutdown(30, 'BUSY Bar End-of-Day Wrap-Up');
         } catch (e) {
           console.error('[EOD] Failed to execute shutdown command:', e);
         }
-      } else if (options?.shouldShutdown && process.env.NODE_ENV === 'test') {
-        console.log('[EOD] Shutdown bypassed because NODE_ENV === "test"');
       }
 
       return { success: true, savedUnityScenes, savedVSCode };
@@ -314,7 +337,10 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.CANCEL_EOD_WRAP_UP, async () => {
       this.priorityEngine.releaseActiveLock('standupPromptPriority');
-      this.priorityEngine.releaseActiveLock('eodPromptPriority');
+      this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
+      if (this.systemAutomationService.isShutdownPending()) {
+        await this.systemAutomationService.abortShutdown();
+      }
       const activeSession = this.engine.getCurrentSession();
       this.renderer.renderActiveSession(activeSession);
       return true;

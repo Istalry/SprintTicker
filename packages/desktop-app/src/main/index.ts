@@ -22,6 +22,7 @@ import { WebhookServer } from './api/webhook-server';
 import { ProviderManager } from './providers/provider-manager';
 
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
+import { ContextScheduleService } from './services/context-schedule-service';
 import { TrayManager } from './tray/tray-manager';
 import { IPCChannel } from '../shared/ipc-channels';
 
@@ -36,6 +37,7 @@ let webhookServer: WebhookServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
 let windowsNotificationService: WindowsNotificationListenerService | null = null;
+let contextScheduleService: ContextScheduleService | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -134,6 +136,14 @@ app.whenReady().then(async () => {
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   windowsNotificationService.startListening();
 
+  contextScheduleService = new ContextScheduleService(
+    priorityEngine,
+    settingsRepo,
+    engine,
+    renderer,
+    () => mainWindow
+  );
+
   ipcRegistry = new IPCHandlerRegistry(
     engine,
     taskRepo,
@@ -147,7 +157,7 @@ app.whenReady().then(async () => {
     unityTelemetryService,
     messagingService,
     priorityEngine,
-    undefined,
+    contextScheduleService,
     windowsNotificationService
   );
   ipcRegistry.registerAllHandlers();
@@ -188,6 +198,9 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', async () => {
+  if (contextScheduleService) {
+    contextScheduleService.dispose();
+  }
   if (windowsNotificationService) {
     windowsNotificationService.stopListening();
   }

@@ -8,6 +8,7 @@ export const CeremoniesView: React.FC = () => {
   const [lunchEnd, setLunchEnd] = useState<string>('13:00');
   const [eodTime, setEodTime] = useState<string>('17:30');
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
+  const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [testStatusMessage, setTestStatusMessage] = useState<string | null>(null);
 
@@ -20,6 +21,11 @@ export const CeremoniesView: React.FC = () => {
           if (sched.lunchEnd) setLunchEnd(sched.lunchEnd);
           if (sched.eodTime) setEodTime(sched.eodTime);
           if (sched.autoDismissSeconds !== undefined) setTimeoutSeconds(sched.autoDismissSeconds);
+          if (sched.shutdownByDefault !== undefined) {
+            setShutdownByDefault(sched.shutdownByDefault);
+          } else if (sched.eodShutdownByDefault !== undefined) {
+            setShutdownByDefault(sched.eodShutdownByDefault);
+          }
         }
       }).catch(err => console.error('[CeremoniesView] Error loading schedule settings:', err));
     }
@@ -36,7 +42,9 @@ export const CeremoniesView: React.FC = () => {
         eodTime,
         eodWrapUpTime: eodTime,
         autoDismissSeconds: timeoutSeconds,
-        promptTimeoutSeconds: timeoutSeconds
+        promptTimeoutSeconds: timeoutSeconds,
+        shutdownByDefault,
+        eodShutdownByDefault: shutdownByDefault
       };
       await window.electronAPI.saveScheduleSettings(settings);
     }
@@ -45,7 +53,12 @@ export const CeremoniesView: React.FC = () => {
   };
 
   const handleTestTriggerEod = async () => {
-    if (window.electronAPI?.triggerEodWrapUp) {
+    if (window.electronAPI?.triggerEodPrompt) {
+      setTestStatusMessage('Triggering EOD Wrap-Up prompt wizard...');
+      const res = await window.electronAPI.triggerEodPrompt();
+      setTestStatusMessage(res.success ? 'EOD prompt triggered!' : 'EOD trigger failed.');
+      setTimeout(() => setTestStatusMessage(null), 3000);
+    } else if (window.electronAPI?.triggerEodWrapUp) {
       setTestStatusMessage('Triggering EOD Wrap-Up sequence...');
       const res = await window.electronAPI.triggerEodWrapUp();
       setTestStatusMessage(res.success ? 'EOD Wrap-Up completed successfully!' : 'EOD trigger failed.');
@@ -182,6 +195,16 @@ export const CeremoniesView: React.FC = () => {
                 className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
               />
             </div>
+
+            <label className="flex items-center space-x-2.5 pt-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={shutdownByDefault}
+                onChange={e => setShutdownByDefault(e.target.checked)}
+                className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple bg-dark-900 border-border-dark"
+              />
+              <span className="text-xs text-text-primary">Shutdown computer by default during EOD wrap-up</span>
+            </label>
 
             <div className="pt-1 flex items-center justify-between">
               <button

@@ -26,76 +26,34 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
   });
 
   useEffect(() => {
-    if (isOpen && window.electronAPI?.getDailyWorklogSummary) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
-    }
-    if (!isOpen) {
+    if (isOpen) {
+      if (window.electronAPI?.getDailyWorklogSummary) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
+      }
+      if (window.electronAPI?.getScheduleSettings) {
+        window.electronAPI.getScheduleSettings().then((sched) => {
+          if (sched) {
+            const isShutdownDefault = sched.shutdownByDefault ?? sched.eodShutdownByDefault ?? false;
+            setShouldShutdown(Boolean(isShutdownDefault));
+          }
+        }).catch((err) => {
+          console.warn('[EodWrapUpModal] Failed to load schedule settings for shutdown default:', err);
+        });
+      }
+    } else {
       setConfirmStep(0);
     }
   }, [isOpen]);
 
-  // Handle Hardware Buttons (START to confirm, BACK/CANCEL to dismiss)
-  useEffect(() => {
-    if (!isOpen || completed || executing) return;
-
-    if (window.electronAPI?.onHardwareInputEvent) {
-      const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
-        if (event.actionAssigned === 'cancel' || event.actionAssigned === 'back') {
-          onClose(); // This completely dismisses the EOD prompt for the day
-        } else if (event.actionAssigned === 'start') {
-          setConfirmStep((prev) => {
-            if (prev === 0) {
-              return 1;
-            } else if (prev === 1) {
-              handleExecuteEod();
-              return 2;
-            }
-            return prev;
-          });
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [isOpen, completed, executing, shouldShutdown]);
-
-  if (!isOpen) return null;
-
-  const handleExecuteEod = async () => {
+  const handleExecuteEod = React.useCallback(async () => {
+    if (executing || completed) return;
     setExecuting(true);
     try {
-      // 1. Issue RPC save scenes request to Unity Editors (ports 8081-8089 for multi-instance support)
-      try {
-        let anySaved = false;
-        const ports = [8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089];
-
-        await Promise.all(
-          ports.map(async (port) => {
-            try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 1500);
-
-              const response = await fetch(`http://localhost:${port}/antigravity/save-scenes/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: controller.signal
-              });
-              clearTimeout(timeoutId);
-
-              if (response.ok) anySaved = true;
-            } catch {
-              // Silently ignore inactive ports
-            }
-          })
-        );
-
-        setUnitySaved(anySaved);
-      } catch {
-        console.log('[EOD] Unity Editor not active or plugin uninstalled, skipping scene save.');
-        setUnitySaved(false);
+      if (window.electronAPI?.triggerEodWrapUp) {
+        const result = await window.electronAPI.triggerEodWrapUp({ shouldShutdown });
+        setUnitySaved(!!result?.savedUnityScenes);
       }
-
-      // 2. Stop active tracking session, finalize worklogs & trigger shutdown if enabled
       await onConfirmEod({ shouldShutdown });
       setExecuting(false);
       setCompleted(true);
@@ -103,7 +61,39 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
       console.error('[EOD] Error during EOD sequence:', err);
       setExecuting(false);
     }
-  };
+  }, [executing, completed, shouldShutdown, onConfirmEod]);
+
+  // Handle Hardware Buttons (START to confirm, BACK/CANCEL to dismiss)
+  useEffect(() => {
+    if (!isOpen || completed || executing) return;
+
+    if (window.electronAPI?.onHardwareInputEvent) {
+      const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
+        if (event.actionAssigned === 'DISMISS_EOD_WRAP_UP' || event.inputKey === 'cancel' || event.inputKey === 'back') {
+          onClose(); // This completely dismisses the EOD prompt for the day
+        } else if (event.actionAssigned === 'CONFIRM_EOD_WRAP_UP_STEP_1') {
+          setConfirmStep(1);
+        } else if (event.actionAssigned === 'EXECUTE_EOD_WRAP_UP') {
+          handleExecuteEod();
+        } else if (event.inputKey === 'start' || event.inputKey === 'ok' || event.inputKey === 'click') {
+          setConfirmStep((prev) => {
+            if (prev === 0) {
+              if (window.electronAPI?.updateCeremonyPrompt) {
+                window.electronAPI.updateCeremonyPrompt('EOD', 'Press START to Confirm');
+              }
+              return 1;
+            } else {
+              handleExecuteEod();
+              return 2;
+            }
+          });
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [isOpen, completed, executing, handleExecuteEod, onClose]);
+
+  if (!isOpen) return null;
 
   const formatDuration = (seconds: number): string => {
     const h = Math.floor(seconds / 3600);
@@ -237,7 +227,16 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={() => confirmStep === 0 ? setConfirmStep(1) : handleExecuteEod()}
+                onClick={() => {
+                  if (confirmStep === 0) {
+                    setConfirmStep(1);
+                    if (window.electronAPI?.updateCeremonyPrompt) {
+                      window.electronAPI.updateCeremonyPrompt('EOD', 'Press START to Confirm');
+                    }
+                  } else {
+                    handleExecuteEod();
+                  }
+                }}
                   disabled={executing}
                   className={`px-5 py-2 text-white text-xs font-semibold rounded-lg shadow-md transition-all ${
                     confirmStep === 1 

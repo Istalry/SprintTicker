@@ -54,14 +54,18 @@ export class TimeTrackingEngine extends EventEmitter {
   private startTickLoop(): void {
     if (this._tickTimer) return;
     this._tickTimer = setInterval(() => {
-      const active = this.getCurrentSession();
-      if (!active || active.status !== 'TRACKING') {
+      try {
+        const active = this.getCurrentSession();
+        if (!active || active.status !== 'TRACKING') {
+          this.stopTickLoop();
+          return;
+        }
+        this.emit('tick', active);
+        this.emit('sessionUpdated', active);
+        this.notifyListeners();
+      } catch {
         this.stopTickLoop();
-        return;
       }
-      this.emit('tick', active);
-      this.emit('sessionUpdated', active);
-      this.notifyListeners();
     }, 1000);
   }
 
@@ -69,6 +73,16 @@ export class TimeTrackingEngine extends EventEmitter {
     if (this._tickTimer) {
       clearInterval(this._tickTimer);
       this._tickTimer = null;
+    }
+  }
+
+  /// <summary>
+  /// Disposes background interval timers and sync worker.
+  /// </summary>
+  public dispose(): void {
+    this.stopTickLoop();
+    if (this._syncWorker) {
+      this._syncWorker.stop();
     }
   }
 

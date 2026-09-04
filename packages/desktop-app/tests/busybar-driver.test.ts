@@ -358,7 +358,7 @@ describe('BusyBarDriver Unit Tests', () => {
       expect(liveDriver.getDeviceStatus().connected).toBe(false);
 
       await liveDriver.sendPixelFrame(Buffer.from('test'), '#FFF', 'app', 'frame.png');
-      expect((liveDriver as any).pendingFrameArgs).not.toBeNull();
+      expect((liveDriver as unknown as { pendingFrameArgs: unknown }).pendingFrameArgs).not.toBeNull();
 
       fetchOk = true;
       let stateStreamRestarted = false;
@@ -368,7 +368,7 @@ describe('BusyBarDriver Unit Tests', () => {
 
       expect(liveDriver.getDeviceStatus().connected).toBe(true);
       expect(stateStreamRestarted).toBe(true);
-      expect((liveDriver as any).pendingFrameArgs).toBeNull();
+      expect((liveDriver as unknown as { pendingFrameArgs: unknown }).pendingFrameArgs).toBeNull();
     } finally {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;

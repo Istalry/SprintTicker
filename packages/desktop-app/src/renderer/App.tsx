@@ -66,14 +66,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (window.electronAPI) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent(event => {
-        if (event.actionAssigned === 'TRIGGER_TASK_SELECTOR_MODAL') {
+        if (event.actionAssigned === 'TRIGGER_TASK_SELECTOR_MODAL' && !isEodModalOpen && !isStandupModalOpen) {
           setIsTaskModalOpen(true);
         }
       });
       return () => unsubscribe();
     }
     return undefined;
-  }, []);
+  }, [isEodModalOpen, isStandupModalOpen]);
 
   const navItems = [
     { id: 'session', label: 'Active Session', icon: Clock },
@@ -302,11 +302,8 @@ export const App: React.FC = () => {
             await window.electronAPI.snoozeCeremony('EOD', minutes);
           }
         }}
-        onConfirmEod={async (options) => {
+        onConfirmEod={async () => {
           await complete('Finalized during End-of-Day Wrap-Up');
-          if (window.electronAPI?.triggerEodWrapUp) {
-            await window.electronAPI.triggerEodWrapUp(options);
-          }
         }}
       />
 

@@ -234,4 +234,64 @@ describe('ContextScheduleService Unit Tests', () => {
     svc.dispose();
     vi.useRealTimers();
   });
+
+  it('EvaluateSchedule_AppRunningBeforeEodTime_TriggersEodPromptAtDueTime', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 28, 17, 0, 0)); // Opened at 17:00 (before 18:00 EOD)
+
+    const mockSend = vi.fn();
+    const mockWindow = { isDestroyed: () => false, webContents: { send: mockSend } };
+    const getWindow = () => mockWindow as unknown as BrowserWindow;
+
+    const svc = new ContextScheduleService(
+      mockPriorityEngine as unknown as PriorityPreemptionEngine,
+      mockSettingsRepo as unknown as SettingsRepository,
+      mockEngine as unknown as TimeTrackingEngine,
+      mockRenderer as unknown as DisplayRenderer,
+      getWindow
+    );
+
+    svc.evaluateSchedule(); // Initial check at 17:00 -> no prompt
+    expect(mockRenderer.renderCeremonyPrompt).not.toHaveBeenCalled();
+
+    vi.setSystemTime(new Date(2026, 6, 28, 18, 0, 0)); // Clock ticks to 18:00 EOD
+    svc.evaluateSchedule(); // Scheduled evaluation at 18:00 -> prompt triggered!
+
+    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'EOD', title: 'End-of-Day Wrap-Up' });
+
+    svc.dispose();
+    vi.useRealTimers();
+  });
+
+  it('TriggerEodPrompt_ExplicitCall_BroadcastsToWindowAndRenderer', () => {
+    const mockSend = vi.fn();
+    const mockWindow = {
+      isDestroyed: () => false,
+      isMinimized: () => true,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+      webContents: { send: mockSend }
+    };
+    const getWindow = () => mockWindow as unknown as BrowserWindow;
+
+    const svc = new ContextScheduleService(
+      mockPriorityEngine as unknown as PriorityPreemptionEngine,
+      mockSettingsRepo as unknown as SettingsRepository,
+      mockEngine as unknown as TimeTrackingEngine,
+      mockRenderer as unknown as DisplayRenderer,
+      getWindow
+    );
+
+    svc.triggerEodPrompt();
+
+    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+    expect(mockWindow.restore).toHaveBeenCalledTimes(1);
+    expect(mockWindow.show).toHaveBeenCalledTimes(1);
+    expect(mockWindow.focus).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'EOD', title: 'End-of-Day Wrap-Up' });
+
+    svc.dispose();
+  });
 });

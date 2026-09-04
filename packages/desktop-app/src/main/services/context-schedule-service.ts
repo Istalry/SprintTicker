@@ -50,6 +50,13 @@ export class ContextScheduleService {
   }
 
   /// <summary>
+  /// Configures or updates the BrowserWindow getter callback for ceremony IPC messaging.
+  /// </summary>
+  public setWindowGetter(getWindow: () => BrowserWindow | null): void {
+    this._getWindow = getWindow;
+  }
+
+  /// <summary>
   /// Evaluates current local time against configured stand-up, lunch, and End-of-Day schedules.
   /// </summary>
   public evaluateSchedule(): void {
@@ -144,6 +151,13 @@ export class ContextScheduleService {
         });
       }
     }
+  }
+
+  /// <summary>
+  /// Updates the text of an actively displaying ceremony prompt.
+  /// </summary>
+  public updateCeremonyPrompt(type: 'STANDUP' | 'EOD' | 'LUNCH', title: string): void {
+    this._renderer.renderCeremonyPrompt(type, title);
   }
 
   /// <summary>

@@ -89,8 +89,12 @@ export interface IElectronAPI {
   // Schedule & Ceremonies
   getScheduleSettings: () => Promise<ScheduleSettingsDTO>;
   saveScheduleSettings: (settings: ScheduleSettingsDTO) => Promise<boolean>;
+  triggerStandupPrompt: () => Promise<{ success: boolean }>;
+  cancelStandupPrompt: () => Promise<boolean>;
+  triggerEodPrompt: () => Promise<{ success: boolean }>;
   triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
   cancelEodWrapUp: () => Promise<boolean>;
+  updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => Promise<boolean>;
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes?: number) => Promise<boolean>;
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
 
@@ -216,8 +220,10 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.SAVE_SCHEDULE_SETTINGS, settings),
   triggerStandupPrompt: () => ipcRenderer.invoke(IPCChannel.TRIGGER_STANDUP_PROMPT),
   cancelStandupPrompt: () => ipcRenderer.invoke(IPCChannel.CANCEL_STANDUP_PROMPT),
+  triggerEodPrompt: () => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_PROMPT),
   triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, options),
   cancelEodWrapUp: () => ipcRenderer.invoke(IPCChannel.CANCEL_EOD_WRAP_UP),
+  updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => ipcRenderer.invoke(IPCChannel.UPDATE_CEREMONY_PROMPT, { type, title }),
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes = 10) => ipcRenderer.invoke(IPCChannel.SNOOZE_CEREMONY, { type, minutes }),
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => {
     const handler = (_event: IpcRendererEvent, prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) =>

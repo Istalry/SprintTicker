@@ -419,6 +419,7 @@ export class DisplayRenderer {
   public renderLunchMode(): DisplayPayload {
     return this.requestRender('lunchModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
+      this.canvas.clear();
       this.animationPlayer.play('lunch_72x16', { loop: true, onFrame: this.onAnimationFrame });
 
       const backElements = [
@@ -444,6 +445,7 @@ export class DisplayRenderer {
   public renderAwayMode(): DisplayPayload {
     return this.requestRender('awayModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
+      this.canvas.clear();
       this.animationPlayer.play('back_soon_72x16', { loop: true, onFrame: this.onAnimationFrame });
 
       const backElements = [
@@ -467,7 +469,8 @@ export class DisplayRenderer {
    * Renders Agile Ceremony Prompt on Front Display with Attention-Grabbing Pulsing LED & Scrolling Text.
    */
   public renderCeremonyPrompt(type: 'STANDUP' | 'LUNCH' | 'EOD', title: string): DisplayPayload {
-    return this.requestRender('standupPromptPriority', () => {
+    const priorityEvent = type === 'EOD' ? 'eodWrapUpPriority' : 'standupPromptPriority';
+    return this.requestRender(priorityEvent, () => {
       const isEod = type === 'EOD';
       const isLunch = type === 'LUNCH';
       const iconId: BitmapIconId = isLunch ? 'burger' : 'clock';
@@ -475,6 +478,7 @@ export class DisplayRenderer {
       const label = isEod ? 'EOD WRAP-UP' : isLunch ? 'LUNCH TIME' : 'DAILY STANDUP';
 
       if (type === 'STANDUP') {
+        this.canvas.clear();
         this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame });
       } else {
         this.paintIconAndTwoRows(
@@ -488,7 +492,7 @@ export class DisplayRenderer {
 
       const backElements = [
         { id: 'rear_ceremony_0', type: 'text', font: 'tiny', x: 0, y: 0, color: `${accentColor}FF`, text: `CEREMONY PROMPT: ${type}`, align: 'top_left' },
-        { id: 'rear_ceremony_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Press Scroll Wheel to Open Wizard', align: 'top_left' }
+        { id: 'rear_ceremony_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'Press Scroll Wheel or START', align: 'top_left' }
       ];
 
       this.ledMode = 'PULSE_ALERT';
@@ -498,6 +502,35 @@ export class DisplayRenderer {
         ledColorHex: `${accentColor}FF`
       };
       this.transmitFrame(`${accentColor}FF`, backElements, payload.frontElements);
+      return payload;
+    });
+  }
+
+  /**
+   * Renders End-of-Day completion screen on Front Display with green checkmark and emerald LED.
+   */
+  public renderEodCompleted(message: string = 'Day Complete!'): DisplayPayload {
+    return this.requestRender('eodWrapUpPriority', () => {
+      this.paintIconAndTwoRows(
+        getBitmapById('checkmark'),
+        'EOD COMPLETE',
+        message,
+        '#10B981',
+        '#FFFFFF'
+      );
+
+      const backElements = [
+        { id: 'rear_eod_done_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'END-OF-DAY WRAP-UP COMPLETE', align: 'top_left' },
+        { id: 'rear_eod_done_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCCCFF', text: 'All tasks logged & scenes saved.', align: 'top_left' }
+      ];
+
+      this.ledMode = 'STATIC';
+      const payload: DisplayPayload = {
+        frontElements: this.canvasToEmulatorElements(),
+        backElements,
+        ledColorHex: '#10B981FF'
+      };
+      this.transmitFrame('#10B981FF', backElements, payload.frontElements);
       return payload;
     });
   }

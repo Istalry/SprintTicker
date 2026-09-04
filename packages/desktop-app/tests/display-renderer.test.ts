@@ -77,6 +77,13 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(payload.ledColorHex).toBe('#A855F7FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
+
+    it('RenderEodCompleted_ValidMessage_DispatchesCompletionPayload', () => {
+      const payload = renderer.renderEodCompleted('Day Complete!');
+      expect(payload.ledColorHex).toBe('#10B981FF');
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('END-OF-DAY WRAP-UP COMPLETE'))).toBe(true);
+    });
   });
 
   describe('notification & confetti rendering', () => {

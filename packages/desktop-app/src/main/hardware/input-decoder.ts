@@ -27,6 +27,7 @@ export class InputDecoder {
   private _tasksList: { id: string, title: string, description: string }[] = [];
   private _selectedProjectIndex: number = 0;
   private _selectedTaskIndex: number = 0;
+  private _eodConfirmStep: number = 0;
 
   private _defaultBindings: HardwareBindingConfig = {
     startButtonPress: 'TOGGLE_TRACK_PAUSE',
@@ -78,6 +79,20 @@ export class InputDecoder {
   }
 
   /// <summary>
+  /// Gets current EOD confirmation step.
+  /// </summary>
+  public getEodConfirmStep(): number {
+    return this._eodConfirmStep;
+  }
+
+  /// <summary>
+  /// Sets current EOD confirmation step.
+  /// </summary>
+  public setEodConfirmStep(step: number): void {
+    this._eodConfirmStep = step;
+  }
+
+  /// <summary>
   /// Retrieves current rebindable hardware key bindings from settings.
   /// </summary>
   public getBindings(): HardwareBindingConfig {
@@ -109,6 +124,89 @@ export class InputDecoder {
     
     if (this._renderer) {
       this._renderer.logLastInputKey(normalizedKey);
+    }
+
+    const activeLock = this._priorityEngine?.getActiveLockEventName();
+
+    // 1. Handle Active End-of-Day (EOD) Wrap-Up Ceremony Inputs
+    if (activeLock === 'eodWrapUpPriority') {
+      const isConfirmPress =
+        normalizedKey === 'start' ||
+        normalizedKey === 'ok' ||
+        normalizedKey === 'click' ||
+        normalizedKey === 'busy' ||
+        normalizedKey === 'custom';
+
+      if (isConfirmPress && (event.type === 'press' || !event.type)) {
+        if (this._windowFocusCallback) {
+          this._windowFocusCallback();
+        }
+
+        if (this._eodConfirmStep === 0) {
+          this._eodConfirmStep = 1;
+          if (this._renderer) {
+            this._renderer.renderCeremonyPrompt('EOD', 'Press START to Confirm');
+          }
+          this.notifyActionHandlers('CONFIRM_EOD_WRAP_UP_STEP_1', normalizedKey);
+          return 'CONFIRM_EOD_WRAP_UP_STEP_1';
+        } else {
+          this._eodConfirmStep = 0;
+          if (this._renderer) {
+            this._renderer.renderCeremonyPrompt('EOD', 'Wrapping Up...');
+          }
+          this.notifyActionHandlers('EXECUTE_EOD_WRAP_UP', normalizedKey);
+          return 'EXECUTE_EOD_WRAP_UP';
+        }
+      }
+
+      if (normalizedKey === 'back' || normalizedKey === 'cancel' || normalizedKey === 'back_hold') {
+        this._eodConfirmStep = 0;
+        if (this._priorityEngine) {
+          this._priorityEngine.releaseActiveLock('eodWrapUpPriority');
+        }
+        if (this._renderer) {
+          this._renderer.renderActiveSession(this._engine.getCurrentSession());
+        }
+        this.notifyActionHandlers('DISMISS_EOD_WRAP_UP', normalizedKey);
+        return 'DISMISS_EOD_WRAP_UP';
+      }
+    } else {
+      this._eodConfirmStep = 0;
+    }
+
+    // 2. Handle Active Stand-Up Ceremony Inputs
+    if (activeLock === 'standupPromptPriority') {
+      const isConfirmPress =
+        normalizedKey === 'start' ||
+        normalizedKey === 'ok' ||
+        normalizedKey === 'click' ||
+        normalizedKey === 'busy' ||
+        normalizedKey === 'custom';
+
+      if (isConfirmPress && (event.type === 'press' || !event.type)) {
+        if (this._windowFocusCallback) {
+          this._windowFocusCallback();
+        }
+        if (this._priorityEngine) {
+          this._priorityEngine.releaseActiveLock('standupPromptPriority');
+        }
+        if (this._renderer) {
+          this._renderer.renderActiveSession(this._engine.getCurrentSession());
+        }
+        this.notifyActionHandlers('CONFIRM_STANDUP_PROMPT', normalizedKey);
+        return 'CONFIRM_STANDUP_PROMPT';
+      }
+
+      if (normalizedKey === 'back' || normalizedKey === 'cancel' || normalizedKey === 'back_hold') {
+        if (this._priorityEngine) {
+          this._priorityEngine.releaseActiveLock('standupPromptPriority');
+        }
+        if (this._renderer) {
+          this._renderer.renderActiveSession(this._engine.getCurrentSession());
+        }
+        this.notifyActionHandlers('DISMISS_STANDUP_PROMPT', normalizedKey);
+        return 'DISMISS_STANDUP_PROMPT';
+      }
     }
 
     if (this._isSelectingTask && this._renderer) {
@@ -228,7 +326,7 @@ export class InputDecoder {
     switch (action) {
       case 'TOGGLE_TRACK_PAUSE': {
         // If an active notification is currently displayed, dismiss it first
-        if (this._priorityEngine && this._priorityEngine.dismissNotification()) {
+        if (this._priorityEngine && this._priorityEngine.dismissNotification(false)) {
           console.log('[InputDecoder] Dismissed notification alert on start/pause press.');
           break;
         }
@@ -248,7 +346,7 @@ export class InputDecoder {
       }
       case 'DISMISS_NOTIFICATION_ALERT': {
         if (this._priorityEngine) {
-          this._priorityEngine.dismissNotification();
+          this._priorityEngine.dismissNotification(true);
         }
         break;
       }
