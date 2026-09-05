@@ -13,7 +13,7 @@ A pnpm workspace with two packages:
 
 | Package | What it is |
 | :--- | :--- |
-| `packages/desktop-app` | Electron 30 + React 18 + Vite + Vitest + Tailwind + better-sqlite3. ~90% of the code. |
+| `packages/desktop-app` | Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. ~90% of the code. |
 | `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. |
 
 The desktop app tracks time against tasks, drives a physical BUSY Bar LED
@@ -40,7 +40,16 @@ runtime is about to load it, and the two are not interchangeable:
 
 Running `pnpm test` then `pnpm dev` rebuilds twice; that is correct, not a bug.
 If either fails with `NODE_MODULE_VERSION` mismatch, run the other one's rebuild
-step. On a fresh install with no prebuild for your Node version, it compiles
+step.
+
+**better-sqlite3 and Electron are a version pair, not two independent
+dependencies.** Upgrading Electron 30 to 44 made better-sqlite3 11 fail to
+*compile* -- not a mismatched ABI number but hard C++ errors, because V8 had
+changed underneath it (`v8::External::Value()` gained an isolate parameter,
+`PropertyCallbackInfo::This` was removed). The fix was better-sqlite3 13. So an
+Electron major implies a better-sqlite3 review, which is why Dependabot ignores
+better-sqlite3 majors: that bump is driven by this pairing rather than chosen on
+its own. On a fresh install with no prebuild for your Node version, it compiles
 from source and needs Python and MSVC Build Tools.
 
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`

@@ -215,6 +215,16 @@ measures.
 
 ---
 
+## Dependency debt still outstanding
+
+- **React 18 -> 19** and **ESLint 8 -> 9.** Neither carries a security advisory;
+  both are real migrations. ESLint 8 is end-of-life and its 9 upgrade means
+  moving `.eslintrc.cjs` to flat config, including the `parserOptions.project`
+  wiring that the type-aware rules depend on. Do them for their own sake, not
+  because a bot opened a PR.
+- **Renderer bundle audit.** Electron 44 ships a much newer Chromium, so several
+  `@vitejs/plugin-react` and browserslist assumptions are now conservative.
+
 ## Deferred findings
 
 Carried forward deliberately, with the reason. This is not a backlog of things

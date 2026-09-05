@@ -22,7 +22,7 @@ jobs:
       # lfs: true is mandatory here and nowhere else. electron-builder copies
       # Animations/ verbatim into extraResources, so without LFS this job
       # succeeds and ships ~1,800 130-byte pointer files. Nothing errors.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: true
 
@@ -31,7 +31,7 @@ jobs:
       # uncached job burns the quota in roughly 70 runs -- after which LFS
       # fails for every clone and the repository looks broken to everyone.
       - name: Cache LFS objects
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .git/lfs
           key: lfs-${{ hashFiles('.gitattributes') }}-${{ github.sha }}
@@ -39,9 +39,9 @@ jobs:
             lfs-${{ hashFiles('.gitattributes') }}-
             lfs-
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload artifacts
         if: github.event_name == 'push' || inputs.upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: busy-bar-windows
           path: |

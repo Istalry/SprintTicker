@@ -58,10 +58,12 @@ export class TrayManager {
   }
 
   public setAutoStart(enabled: boolean): void {
-    app.setLoginItemSettings({
-      openAtLogin: enabled,
-      openAsHidden: true
-    });
+    // `openAsHidden` used to be passed here and was removed in Electron 44.
+    // No behaviour is lost: it was macOS-only, and this application is
+    // Windows-only, so it never did anything. Starting minimised to the tray
+    // on Windows means passing `args: ['--hidden']` and handling that flag at
+    // startup -- a feature, not a flag to restore.
+    app.setLoginItemSettings({ openAtLogin: enabled });
   }
 
   private updateStatusTooltip(): void {
