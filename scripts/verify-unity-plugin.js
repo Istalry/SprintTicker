@@ -9,7 +9,7 @@ const path = require('path');
  * consumes the folder directly via UPM, so no archive is produced.
  */
 function buildUnityPackage() {
-  console.log('[UnityPackageBuilder] Building Unity C# Package (com.antigravity.busybar)...');
+  console.log('[VerifyUnityPlugin] Validating the UPM package structure (com.antigravity.busybar)...');
 
   const pluginDir = path.join(__dirname, '../packages/unity-plugin');
   const manifestPath = path.join(pluginDir, 'package.json');
@@ -19,8 +19,8 @@ function buildUnityPackage() {
   }
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  console.log(`[UnityPackageBuilder] Package Name: ${manifest.name}`);
-  console.log(`[UnityPackageBuilder] Version: ${manifest.version}`);
+  console.log(`[VerifyUnityPlugin] Package Name: ${manifest.name}`);
+  console.log(`[VerifyUnityPlugin] Version: ${manifest.version}`);
 
   const editorDir = path.join(pluginDir, 'Editor');
   if (!fs.existsSync(editorDir)) {
@@ -28,9 +28,9 @@ function buildUnityPackage() {
   }
 
   const files = fs.readdirSync(editorDir);
-  console.log(`[UnityPackageBuilder] Bundling ${files.length} Editor C# scripts:`, files);
+  console.log(`[VerifyUnityPlugin] Found ${files.length} Editor C# files:`, files);
 
-  console.log('[UnityPackageBuilder] Unity C# Package ready for import into Unity 2021+ projects!');
+  console.log('[VerifyUnityPlugin] Manifest and Editor scripts look valid. No archive is produced -- import the folder directly via Package Manager > Add package from disk.');
 }
 
 buildUnityPackage();

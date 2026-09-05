@@ -1,5 +1,5 @@
 /**
- * Data Transfer Objects (DTOs) for IPC bridge and Local Fastify Webhook endpoints.
+ * Data Transfer Objects (DTOs) for the IPC bridge and the local webhook endpoints.
  */
 
 export interface ActiveSessionDTO {

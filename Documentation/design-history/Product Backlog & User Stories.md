@@ -1,3 +1,16 @@
+> [!NOTE]
+> **Historical design document — not maintained.**
+>
+> This is a pre-implementation design document, kept for provenance. It
+> describes what the system was intended to be, not what was built. Where it
+> and the code disagree, **the code is right**.
+>
+> Known divergences across this set: the HTTP server is Node's built-in `http` module on
+> `127.0.0.1:39123`, not Fastify on `localhost:8080`; the `PriorityLevel` enum
+> described here was never implemented under any name; the VS Code integration
+> was never built; and the rear OLED is preview-only. For current behaviour see
+> [README.md](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
+
 # BUSY Bar PC Companion App: Agile Unity Developer
 
 ## Product Backlog & User Stories

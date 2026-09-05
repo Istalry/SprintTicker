@@ -6,7 +6,7 @@ const fs = require('fs');
 /**
  * Automated Verification Script for Packed Windows Binary
  * Launches the unpacked Electron application, checks for main process uncaught exceptions,
- * and asserts that the embedded Fastify Webhook Server starts cleanly on port 39123.
+ * and asserts that the embedded HTTP webhook server starts cleanly on port 39123.
  */
 async function verifyPackedApp() {
   const exePath = path.resolve(__dirname, '../packages/desktop-app/dist-electron/win-unpacked/Antigravity BUSY Bar Companion.exe');
@@ -58,7 +58,7 @@ async function verifyPackedApp() {
     }
   });
 
-  // Poll Fastify HTTP server at 127.0.0.1:39123
+  // Poll the local HTTP server at 127.0.0.1:39123
   const startTime = Date.now();
   const maxWaitMs = 12000;
   let verified = false;
@@ -96,21 +96,17 @@ async function verifyPackedApp() {
   }
 }
 
+// Probes 39123 and nothing else. This used to try 8080 first and fall back to
+// 39123, from a build that ran a second server there. That server is gone, so
+// any unrelated process holding 8080 -- a dev server, a proxy -- made this
+// report SUCCESS without ever contacting the packaged app.
+//
+// Any response counts as up, including the 405 the server returns for GET:
+// what is being proven is that the port is listening, not what it says.
 function checkHttpServer() {
   return new Promise((resolve) => {
-    const req = http.get('http://127.0.0.1:8080/', (res) => {
-      resolve(true);
-    });
-    req.on('error', () => {
-      const fallbackReq = http.get('http://127.0.0.1:39123/', (res2) => {
-        resolve(true);
-      });
-      fallbackReq.on('error', () => resolve(false));
-      fallbackReq.setTimeout(1000, () => {
-        fallbackReq.destroy();
-        resolve(false);
-      });
-    });
+    const req = http.get('http://127.0.0.1:39123/', () => resolve(true));
+    req.on('error', () => resolve(false));
     req.setTimeout(1000, () => {
       req.destroy();
       resolve(false);

@@ -1,3 +1,16 @@
+> [!NOTE]
+> **Historical design document — not maintained.**
+>
+> This is a pre-implementation design document, kept for provenance. It
+> describes what the system was intended to be, not what was built. Where it
+> and the code disagree, **the code is right**.
+>
+> Known divergences across this set: the HTTP server is Node's built-in `http` module on
+> `127.0.0.1:39123`, not Fastify on `localhost:8080`; the `PriorityLevel` enum
+> described here was never implemented under any name; the VS Code integration
+> was never built; and the rear OLED is preview-only. For current behaviour see
+> [README.md](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
+
 # BUSY Bar PC Companion App: IPC & Local Webhook API Contracts
 
 **Document Purpose:** This document defines the strongly typed API contracts for the "Antigravity" BUSY Bar Companion system. It covers the Electron Inter-Process Communication (IPC) context bridge between the Renderer (React) and Main (Node.js) processes, as well as the local HTTP Webhook API hosted by the PC Companion app for Unity Engine and VS Code integrations.
@@ -13,7 +26,7 @@ The companion desktop app uses Electron's isolated context bridge (`contextBridg
 |  - Zustand State Store   |   ipcRenderer.invoke| - Time Tracking Engine   |
 |  - React Dashboard       |                     | - SQLite Database        |
 |  - Keybinding Config     | <------------------ | - BUSY Bar Hardware SDK  |
-|                          |   ipcRenderer.on    | - Fastify Webhook Server |
+|                          |   ipcRenderer.on    | - HTTP Webhook Server |
 +--------------------------+                     +--------------------------+
 ```
 
@@ -180,11 +193,11 @@ export interface ScheduleSettingsDTO {
 
 ## 2\. Local HTTP Webhook API Specification (Main Process)
 
-The Electron Main process hosts an embedded **Fastify HTTP Server** listening on `http://localhost:8080`. External IDEs (Unity Editor script, VS Code extension) post telemetry events to this server.
+The Electron Main process hosts an embedded HTTP server (Node `http`) listening on `http://127.0.0.1:39123`. External IDEs (Unity Editor script, VS Code extension) post telemetry events to this server.
 
 ```
 +-------------------------------+                  +-------------------------------+
-| Unity Editor (C# Extension)   |                  | Fastify Webhook Server (Node) |
+| Unity Editor (C# Extension)   |                  | HTTP Webhook Server (Node) |
 | com.antigravity.busybar       | -- HTTP POST --> | Listening on localhost:8080   |
 +-------------------------------+                  +-------------------------------+
                                                                   |

@@ -13,7 +13,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
-rem Bundles Fastify into main process bundle and packages Windows binaries via electron-builder
+rem Bundles the main process and packages Windows binaries via electron-builder
 taskkill /F /IM "Antigravity BUSY Bar Companion.exe" >nul 2>&1
 call pnpm package:win
 if %ERRORLEVEL% NEQ 0 (

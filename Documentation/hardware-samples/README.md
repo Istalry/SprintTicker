@@ -5,7 +5,8 @@ dependency on the desktop app. They are the shortest path to confirming a
 hardware behaviour before wiring it into `packages/desktop-app`.
 
 The bar is reachable at the fixed USB address `10.0.4.20` and needs no token
-over USB — see [ai-lessons](../ai-lessons/).
+over USB. BUSY Bar's own documentation and example code live at
+[github.com/busy-app](https://github.com/busy-app).
 
 ## `input-websocket/`
 

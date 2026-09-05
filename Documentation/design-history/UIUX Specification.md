@@ -1,3 +1,16 @@
+> [!NOTE]
+> **Historical design document — not maintained.**
+>
+> This is a pre-implementation design document, kept for provenance. It
+> describes what the system was intended to be, not what was built. Where it
+> and the code disagree, **the code is right**.
+>
+> Known divergences across this set: the HTTP server is Node's built-in `http` module on
+> `127.0.0.1:39123`, not Fastify on `localhost:8080`; the `PriorityLevel` enum
+> described here was never implemented under any name; the VS Code integration
+> was never built; and the rear OLED is preview-only. For current behaviour see
+> [README.md](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
+
 # BUSY Bar PC Companion App: UI/UX Specification
 
 **Document Purpose:** This document defines the user interface (UI) design system, layout wireframes, user interaction flows, component hierarchy, modular settings tabs, and physical display pixel templates for the "Antigravity" BUSY Bar PC Companion Application.
@@ -442,7 +455,7 @@ The rear display faces away from the user and is strictly allocated for low-prio
 | WebSocket WS : CONNECTED (Ping: 4ms)                                              |
 | Battery      : 98% (Charging - 4843 mV)                                           |
 | Active Task  : PROJ-142 (Tracking)                                                |
-| Local Server : http://localhost:8080 (Fastify)                                    |
+| Local Server : http://127.0.0.1:39123 (Node http)                                    |
 +-----------------------------------------------------------------------------------+ (y=80)
 (x=0)                                                                           (x=159)
 ```

@@ -1,3 +1,14 @@
+> [!NOTE]
+> **Background reading — not a specification for this repository.**
+>
+> A survey of the Busybar hardware and of low-resolution display technique,
+> written before implementation. It describes the device in general rather than
+> this application, and nothing here is maintained against the code.
+>
+> For the display contract this project actually holds itself to, see
+> [CLAUDE.md](../../CLAUDE.md) and
+> [BUSY Bar API & Display Technical Developer Guide](../BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md).
+
 # Technical Implementation, Design Mechanics, and Reproducibility of Busybar Display Applications
 
 The Flipper FZCO Busybar represents an open desktop productivity multi-tool and status display designed to communicate real-time focus states, countdown timers, and contextual web metrics through an integrated light-emitting diode (LED) matrix. Driven by an Arm Cortex-M4 wireless microcontroller, the hardware pairs an open HTTP application programming interface (API) with open-source firmware. Creating effective user interfaces and dynamic visual transitions on a highly constrained display canvas requires a comprehensive understanding of low-resolution pixel ergonomics, host-device client protocols, and rendering pipelines.  

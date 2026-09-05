@@ -2,8 +2,9 @@
   "name": "@busy-app/desktop-app",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Antigravity BUSY Bar Electron Desktop Companion App",
-  "author": "Antigravity",
+  "author": "jbgeron",
   "main": "dist/main/index.js",
   "scripts": {
     "dev:renderer": "vite",

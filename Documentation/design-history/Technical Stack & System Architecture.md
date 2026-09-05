@@ -1,3 +1,16 @@
+> [!NOTE]
+> **Historical design document — not maintained.**
+>
+> This is a pre-implementation design document, kept for provenance. It
+> describes what the system was intended to be, not what was built. Where it
+> and the code disagree, **the code is right**.
+>
+> Known divergences across this set: the HTTP server is Node's built-in `http` module on
+> `127.0.0.1:39123`, not Fastify on `localhost:8080`; the `PriorityLevel` enum
+> described here was never implemented under any name; the VS Code integration
+> was never built; and the rear OLED is preview-only. For current behaviour see
+> [README.md](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
+
 # BUSY Bar PC Companion App: Technical Stack & System Architecture
 
 **Document Purpose:** This document defines the technical architecture, technology stack, project directory structure, core software contracts, and module designs for the "Antigravity" BUSY Bar PC Companion Application and associated Unity Engine extension.
@@ -160,7 +173,7 @@ Fast, zero-config embedded database for reboot-proof UTC timestamp logging, offl
 
  | 
 
-Fastify
+Node `http` (planned: Fastify)
 
  | 
 
@@ -216,7 +229,7 @@ antigravity-busy-bar/
 │   ├── desktop-app/               # Electron Companion Desktop Application
 │   │   ├── src/
 │   │   │   ├── main/              # Electron Main Process (Node.js)
-│   │   │   │   ├── api/           # Local Fastify Webhook Server for Unity/VS Code
+│   │   │   │   ├── api/           # Local HTTP Webhook Server for Unity/VS Code
 │   │   │   │   ├── hardware/      # BusyBar SDK wrapper, WebSocket listener, Renderer Driver
 │   │   │   │   ├── providers/     # ITaskProvider implementations (Jira, Google Sheets, Custom)
 │   │   │   │   ├── services/      # Time tracking engine, Priority dispatcher, OS lock monitor
@@ -241,7 +254,7 @@ antigravity-busy-bar/
 │       │   └── AntigravitySettings.cs         # Unity Editor Preferences Window
 │       ├── package.json
 │       └── package.json.meta
-├── GEMINI.md                      # AI & Code Engineering Guidelines
+├── CLAUDE.md                      # AI & Code Engineering Guidelines
 └── package.json                   # Monorepo Workspace configuration (pnpm / npm workspaces)
 ```
 
@@ -410,7 +423,7 @@ When the PC Companion App executes the optional End-of-Day wrap-up sequence, it 
         
 5.  **Phase 5: Unity Plugin & Local Webhook Integration**
     
-    -   Develop Fastify webhook server in Electron Main.
+    -   Develop HTTP webhook server in Electron Main.
         
     -   Create `Com.Antigravity.BusyBar` Unity Editor C# package.
         

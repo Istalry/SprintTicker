@@ -1,233 +1,269 @@
-# Antigravity BUSY Bar PC Companion System
+# BUSY Bar PC Companion
 
-A high-performance PC Companion Application and Unity Editor extension designed for the **BUSY Bar** physical dual-display hardware system. It features timestamp-based time tracking, OpenProject task provider integration, an embedded local Fastify webhook server, SQLite persistence, Windows Action Center notification listening with dynamic priority preemption, Unity Engine telemetry, and an interactive dark-themed desktop dashboard with a dual hardware display emulator.
+A Windows desktop companion for the **BUSY Bar** — a small USB device with a
+72×16 RGB LED matrix on the front. The app tracks what you are working on and
+puts it on the bar: the current task, a timer, Unity compile progress, and
+Windows notifications from the apps you choose, arbitrated so the most important
+thing holds the display rather than the most recent thing.
 
----
+It ships with a Unity Editor package that pushes compile, Play Mode and console
+events to the bar, and a canvas emulator so the whole thing can be developed
+with nothing plugged in.
 
-## 🛠️ Monorepo Architecture
+## What this is
 
-This repository is structured as a `pnpm` workspace monorepo:
+- A **personal, single-user desktop app.** Everything lives in a local SQLite
+  database and talks to one device over USB.
+- **Windows-only in practice.** The notification listener drives PowerShell
+  against the Windows Action Center database, and packaging targets `win-x64`.
+- **Unsigned.** There is no code-signing certificate, so Windows SmartScreen
+  warns on first launch. See [Packaging](#packaging).
 
-```
-BUSY_Bar/
-├── packages/
-│   ├── desktop-app/      # Electron + React 18 + Fastify + SQLite + Vite + Vitest + Tailwind CSS
-│   └── unity-plugin/     # Unity C# Package (com.antigravity.busybar)
-├── Project Plan/         # System architecture, IPC API contracts, user stories & UI/UX specs
-├── Documentation/        # Hardware SDK, OpenAPI HTTP REST/WebSocket spec, Developer Guides & AI Lessons
-├── GEMINI.md             # Code quality standards & AI guidelines
-├── scripts/              # Preflight check, packaging scripts & PixelIt icon downsampler
-├── tools/                # Standalone 16×16 Pixel Art Editor web application (pnpm editor)
-└── package.json          # Root monorepo workspace configuration
-```
+## What this is not
 
----
-
-## 🌟 Key Features & Capabilities
-
-### ⏱️ Timestamp-Based Time Tracking & Session Management
-- **Precision Time Logging:** Live active session tracker, auto-calculating exact work durations with start, pause, resume, and completion states.
-- **SQLite Persistence:** Worklogs and session history are saved locally using `better-sqlite3` with automated sync queues for offline resilience.
-- **Work History & Export:** Complete historical view of logged sessions categorized by project and task ticket with EOD export capabilities.
-
-### 🗂️ OpenProject Task Integration & Time Synchronization
-- **OpenProject (REST API v3):** Direct connection to OpenProject to fetch projects (`/api/v3/projects`) and work packages (`/api/v3/work_packages`).
-- **Automated Status Sync:** Automatically updates work package statuses (e.g. `In Progress`, `To Test`, `To Review`) when tracking starts or completes.
-- **Time Entry Synchronization:** Synchronizes tracked session durations directly with OpenProject work packages using ISO 8601 duration format (`POST /api/v3/time_entries`).
-- **AdHoc Local Tasks:** Quick offline task creation for ad-hoc work and immediate time tracking with custom fallback ticket keys.
-
-### 🖥️ Dual Display Hardware & Emulation Engine
-- **Front RGB LED Matrix (72×16):** Displays 16×16 app icons, scrolling active task titles, priority notification popups, compilation progress bars, particle animations (confetti, spark effects), and LED status alerts.
-- **Rear OLED Screen (160×80):** Renders secondary status, timer counts, and detailed session telemetry.
-- **Built-In Display Emulator:** Integrated canvas display emulator in both the desktop app dashboard and browser workspace for real-time visual testing without requiring physical hardware.
-- **Mock Hardware Mode:** Run the desktop application with `--mock-hardware` or set `MOCK_HARDWARE=true` to emulate TCP/UDP hardware socket communication.
-- **Idle Clock Fallback:** Toggleable setting to clear the display buffer and turn off LEDs when no active task is running, allowing the hardware device to fall back to its native clock applications.
-
-### 🎛️ Physical Input Decoder & Remote Control
-- **Rotary Encoder Wheel:** Decodes physical hardware inputs into application actions (rotary turns, short clicks, double clicks, long presses, button 1/2).
-- **Hardware Trigger Mapping:** Rotary wheel click triggers task selector modal, double click toggles play/pause, long press opens daily ceremonies, and remote key injection API allows full remote control.
-
-### 🔔 Windows Notification Listener & Priority Preemption Engine
-- **Windows Action Center Integration:** Service captures system and application notifications directly from Windows APIs.
-- **Dynamic Icon Processing:** Extracts desktop application icons and downsamples them into a crisp **15×15 pixel slot on the left (`x=0`)**.
-- **Left Icon + Right Header Layout:** App icon is displayed on the left slot (`x=0`), with notification title and message body scrolling smoothly on the right (`x=16`).
-- **Score-Based Priority Rules (0–100):** Application source priority management (`Don't Show`, `Default`, `High Priority`) and preemption engine handling Away Mode (75), Lunch Mode (65), Active Task override, and Notification Interrupts.
-
-### 🎮 Unity Engine Deep Integration
-- **Automated Plugin Management:** `UnityInjectorService` auto-discovers installed Unity projects and manages C# plugin (`com.antigravity.busybar`) injection.
-- **Compilation Progress Display:** Displays live assembly compilation progress bar on the LED matrix during Unity script compiles.
-- **"ON AIR" Indicator:** Automatically toggles red "ON AIR" display mode during Unity Play Mode (`entered`, `exited`).
-- **Console Exception Flash:** Flashes red LED matrix warnings and displays exception/warning details when Unity runtime errors occur.
-- **Heartbeat Connection Monitor:** Continuous connection pings between Unity Editor and the PC Companion app.
-
-### 📅 Agile Ceremonies & Context Schedules
-- **Daily Standup Assistant:** Automated standup prompts, interactive answer collection modal, and formatted summary generation.
-- **End-Of-Day (EOD) Wrap-Up:** Daily wrap-up summary prompt with automated worklog export and report generator. Can be confirmed via hardware **START** button (two presses to confirm) or dismissed using **BACK/CANCEL** button.
-- **Context Schedule Service:** Configurable working hours, lunch break alerts, away time detection, and scheduled ceremony notifications.
-
-### 💬 Messaging & Presence Sync
-- **Slack & Discord Integration:** Sync user presence status and push webhook alerts during active focus sessions, meetings, or away modes.
-
-### 🧩 Extensible Display Widget Engine
-- **Built-In Display Widgets:** Pomodoro focus timer, Build Monitor widget, and Text Ticker widget.
-- **Dynamic Registry:** Extensible widget architecture for registering custom matrix display views and cycling through widgets.
-
-### 🎨 PixelIt 16×16 Downsampling & Standalone Pixel Editor
-- **1:1 Crisp Pixel Art Font:** Uses `FONT_4X6` bitmask rasterization to eliminate subpixel canvas blur.
-- **Standalone Pixel Editor:** Run `pnpm editor` to launch the 16×16 Pixel Art Editor web server on `http://localhost:39124`.
-- **Animation & Visual Debugger:** Test marquee scrolling speeds, particle effects, LED colors, and icon rasterization in real time under **Settings > Device Diagnostics**.
+- Not a team or multi-user product. No server, no account, no telemetry leaving
+  the machine.
+- Not a general BUSY Bar SDK. It speaks enough of the device's HTTP API to do
+  its own job; the device's own documentation is the reference.
+- Not a released binary yet. There are no GitHub Releases and no in-app updater
+  — you build it from source. Both are tracked in [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## 📋 Prerequisites
+## Features
 
-Before setting up the project, ensure you have installed:
+### Time tracking
 
-- **Node.js**: `v18.0.0` or higher (Node `v20+` recommended)
-- **pnpm**: `v8.0.0` or higher (`npm install -g pnpm` or use `npx pnpm`)
-- **C++ Build Tools / Python**: Required for native C++ compilation of `better-sqlite3` (Windows Visual Studio Build Tools / `python`).
+Timestamp-based sessions with start / pause / resume / finish, a live tracker on
+the bar, and a local worklog history with an end-of-day export. Persisted
+through `better-sqlite3` with versioned schema migrations, so upgrading never
+discards existing worklogs.
+
+### OpenProject integration
+
+Fetches projects and work packages over the REST API v3, updates a work
+package's status when tracking starts or completes, and posts tracked durations
+to `/api/v3/time_entries` as ISO 8601 durations.
+
+Time entries go through an **offline sync queue**: if the server is unreachable
+when you stop a session, the row stays `PENDING` with exponential backoff and is
+dispatched when connectivity returns. Nothing billable is dropped because a POST
+failed.
+
+Local **ad-hoc tasks** cover work that has no ticket.
+
+### Front display rendering
+
+Everything on the front matrix is rasterised in the main process to a 72×16 PNG
+and uploaded to the device: 16×16 app icons, scrolling task titles, notification
+banners, compile progress bars, LED status colours and `.anim` animations.
+
+Frames are hashed and identical frames skipped, so a tracking session sends
+traffic on state change rather than on every tick.
+
+A **canvas emulator** in the dashboard mirrors the same render, and
+`pnpm dev:mock` runs the whole app with the hardware layer stubbed.
+
+### Physical input
+
+The rotary encoder and buttons decode into application actions — turn to scroll,
+click to open the task selector, double-click to toggle play/pause, long press
+for the daily ceremonies menu.
+
+### Windows notifications with priority preemption
+
+The app watches the Windows Action Center and mirrors notifications from apps
+you allow onto the bar, with each app's **real icon** resolved from its MSIX
+manifest or its Start Menu shortcut and downscaled to 15×15.
+
+Every claim on the display carries a score, and the highest score holds it:
+
+| Claim | Score |
+| :--- | ---: |
+| Away mode | 100 |
+| Lunch mode | 95 |
+| End-of-day wrap-up | 80 |
+| Standup prompt | 75 |
+| Notification — High Priority | 70 |
+| Notification — Default | 65 |
+| Unity build failure | 60 |
+| Unity compiling | 55 |
+| Unity Play Mode | 50 |
+| Active task tracker | 45 |
+
+Per application you choose `Don't Show`, `Default` or `High Priority`; the table
+decides what that means in context. With the ordering above, notifications do
+not interrupt Lunch or Away — that is the scores working as configured, and
+every row is editable in the **Priority Rules** panel.
+
+Notification text is **redacted from logs and from the diagnostics export** by
+default. Launch with `--debug-notifications` to see it while troubleshooting.
+
+### Unity Editor integration
+
+A UPM package (`com.antigravity.busybar`) posts compile state, Play Mode
+transitions and console exceptions to the app's local HTTP server, and the app
+discovers installed Unity projects and manages plugin injection.
+
+### Ceremonies and schedules
+
+Configurable working hours, lunch and away detection, a standup prompt with an
+answer-collection modal, and an end-of-day wrap-up that can be confirmed from
+the hardware **START** button or dismissed with **BACK**.
 
 ---
 
-## 🚀 Installation & Setup
+## Requirements
 
-Follow these steps to clone, install dependencies, compile native modules, and initialize the workspace:
+| | |
+| :--- | :--- |
+| **OS** | Windows 10/11 x64 |
+| **Node.js** | `>=20.19.0` (`.nvmrc` pins `24.18.0`) |
+| **pnpm** | `>=11.0.0` (pinned to `pnpm@11.25.0` via `packageManager`) |
+| **Git LFS** | **Mandatory** — see below |
+| **Build tools** | Visual Studio Build Tools + Python, to compile `better-sqlite3` |
+| **Hardware** | A BUSY Bar over USB — optional; `pnpm dev:mock` covers the rest |
 
-### 1. Install Workspace Dependencies
+### Git LFS is mandatory
 
-From the project root directory, run:
+`Animations/` is ~1,800 PNGs stored in Git LFS. Cloning without LFS installed
+leaves every one of them as a **130-byte pointer file**, and because
+`electron-builder` copies the folder verbatim into `extraResources`,
+`pnpm package:win` then succeeds and ships an installer whose animations are
+broken. Nothing errors; you find out on the hardware.
 
 ```bash
+git lfs install
+```
+
+Run that **before** cloning. If you have already cloned without it, `git lfs pull`
+repairs the working copy.
+
+---
+
+## Installation
+
+```bash
+git lfs install
+git clone <repository-url>
+cd BUSY_Bar
 pnpm install
 ```
 
-*(Or via npx if pnpm is not in PATH: `npx pnpm install`)*
+`pnpm install` compiles the native modules. `better-sqlite3` and `electron` are
+listed under `allowBuilds` in `pnpm-workspace.yaml`, so no separate build
+approval step is needed on pnpm 11.
 
-### 2. Approve Native Build Scripts
+### The native module ABI trap
 
-Because the app uses native Node.js binaries (`better-sqlite3`, `electron`), allow pnpm to run build scripts:
-
-```bash
-pnpm approve-builds --all
-```
+`better-sqlite3` is a native addon, and Electron and Node.js use **different ABI
+versions**. The scripts handle it — `pretest` rebuilds for Node, `predev`
+rebuilds for Electron — but alternating `pnpm test` and `pnpm dev` rebuilds each
+time. That is expected. A `NODE_MODULE_VERSION` mismatch means you skipped one;
+re-running the script you actually want fixes it.
 
 ---
 
-## 💻 Running the Application
+## First run
 
-### Launch Development Server
+1. Launch the app; the onboarding wizard appears on first start.
+2. The device answers at the fixed USB address `10.0.4.20`. There is no address
+   or token to configure.
+3. For OpenProject, open the **Task Providers** panel and enter your instance URL
+   and an API key. Until you do, the app runs entirely on local ad-hoc tasks.
+4. In the **Notifications** panel, choose which applications may reach the
+   bar. Nothing is mirrored until you allow it.
 
-To launch the Electron Desktop App in development mode with hot reloading:
+Application data lives in Electron's `userData` directory. On Windows an
+installed build uses `%APPDATA%\Antigravity BUSY Bar Companion\antigravity-busybar.db`.
+
+---
+
+## Updates
+
+There is no auto-updater in this version. Rebuild from source, or install over
+the previous version — the database lives in `userData` and an install does not
+touch it. Release automation and `electron-updater` are the next item in
+[ROADMAP.md](ROADMAP.md).
+
+---
+
+## Development
 
 ```bash
 pnpm dev
 ```
 
-This starts the Vite dev server for the React UI (`http://localhost:3000`), watches and compiles the Electron main process, and launches the interactive Electron window. The embedded Fastify Webhook Server listens on `http://127.0.0.1:39123`.
+Starts the Vite dev server for the React UI on `http://localhost:3000`, watches
+and rebuilds the Electron main and preload bundles, and launches the app. The
+local HTTP server listens on `http://127.0.0.1:39123`.
 
-To launch in **Mock Hardware Mode** (without a physical device connected):
+With no hardware attached:
+
 ```bash
-cross-env MOCK_HARDWARE=true pnpm dev
+pnpm dev:mock
 ```
+
+Equivalent to `MOCK_HARDWARE=true`, or `--mock-hardware` on a packaged build.
+The driver logs what it would have transmitted and the canvas emulator shows the
+frame.
+
+### Quality gates
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:coverage
+```
+
+`pnpm test` runs 346 tests across 32 files. Coverage thresholds are 80%
+statements / lines / functions and 70% branches; the suite sits above both.
+
+`pnpm preflight` runs the release pre-flight check.
+
+### Conventions
+
+Code standards, the process boundaries between main / preload / renderer, and
+the BUSY Bar hardware contract the render path must not violate are all in
+[CLAUDE.md](CLAUDE.md). Read the hardware contract before touching display code:
+an 8-digit `#RRGGBBAA` colour is not a style preference, and a gradient with the
+wrong number of stops reboots the device.
 
 ---
 
-## 📦 Building & Production Packaging (Windows x64)
+## Packaging
 
-The application uses `electron-builder` to generate production binaries for Windows x64:
-
-### 1. Package Complete Windows Release (NSIS Installer & Portable Executable)
-
-To build both the **NSIS Setup Installer** (`.exe`) and the standalone **Portable Executable** (`.exe`):
+Windows x64, via `electron-builder`:
 
 ```bash
 pnpm package:win
 ```
 
-### 2. Package Specific Target Binaries
-
-From within `packages/desktop-app`:
-
-- **NSIS Setup Installer (`.exe`)**:
-  ```bash
-  pnpm --filter @busy-app/desktop-app package:installer
-  ```
-- **Portable Executable (`.exe`)**:
-  ```bash
-  pnpm --filter @busy-app/desktop-app package:portable
-  ```
-
-Outputs are saved to `packages/desktop-app/dist-electron/`.
-
-### 3. Package Unity C# Plugin
-
-To package the standalone Unity Editor C# plugin:
+Builds both the NSIS installer and the portable executable into
+`packages/desktop-app/dist-electron/`. Individual targets:
 
 ```bash
-pnpm verify:unity
+pnpm --filter @busy-app/desktop-app package:installer
 ```
+
+```bash
+pnpm --filter @busy-app/desktop-app package:portable
+```
+
+> [!WARNING]
+> **Builds are unsigned.** There is no code-signing certificate for this
+> project, so Windows SmartScreen shows "Windows protected your PC" on first
+> launch — click **More info > Run anyway**. `electron-builder` reads `CSC_LINK`
+> and `CSC_KEY_PASSWORD` from the environment, so the day a certificate exists,
+> signing turns on with no change to the build configuration.
 
 ---
 
-## 🧪 Testing & Verification
+## Local HTTP API
 
-The project includes an AAA unit test suite built with Vitest and V8 code coverage:
-
-> [!NOTE]
-> Testing automatically runs `pnpm rebuild better-sqlite3` via pre-test hooks to ensure native C++ SQLite bindings match the host Node.js runtime environment.
-
-### Run Unit Tests (250+ Tests)
-```bash
-pnpm test
-```
-
-### Run Tests with Coverage Report (80%+ Target)
-```bash
-pnpm test:coverage
-```
-
-### Run Release Pre-Flight Verification Check
-```bash
-pnpm preflight
-```
-
-### Verify Compiled Electron Release Package
-```bash
-pnpm verify:packed
-```
-
----
-
-## 🎨 Pixel Art Editor & CLI Tools
-
-- **Standalone 16×16 Pixel Art Editor Web Server:**
-  ```bash
-  pnpm editor
-  ```
-  Launches the interactive editor at `http://localhost:39124` for live visual icon creation and tweaking.
-
-- **Icon Downsampling Command:**
-  ```bash
-  node scripts/convert-icons-pixelit.js
-  ```
-
----
-
-## ⚡ Windows Quick Launch Helpers (`.bat`)
-
-Convenient Windows batch scripts are available in the repository root directory:
-
-- **`install.bat`**: Installs all monorepo workspace dependencies via PNPM.
-- **`run_editor.bat`**: Launches the standalone 16×16 Pixel Art Editor web server (`http://localhost:39124`).
-- **`package-win.bat`**: Builds and packages the complete Windows installer and portable `.exe`.
-- **`verify-unity.bat`**: Validates the Unity C# plugin package structure (`packages/unity-plugin`). It checks the UPM manifest and Editor scripts; it does not emit an archive.
-- **`test-coverage.bat`**: Runs ESLint checks and the Vitest test suite with V8 code coverage report.
-
----
-
-## 🔌 Embedded Webhook Server API Endpoints
-
-The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for the Unity Editor plugin.
+The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for
+the Unity Editor plugin.
 
 | Route | Method | Description |
 | :--- | :--- | :--- |
@@ -240,8 +276,8 @@ The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for t
 ### Security
 
 Loopback is not a security boundary: any page in any browser on this machine can
-POST to `127.0.0.1`, and this API can drive the hardware and inject input events.
-Requests are screened before routing:
+POST to `127.0.0.1`, and this API can drive the hardware and inject input
+events. Requests are screened before routing:
 
 - **`Content-Type: application/json` is required.** A browser may send a
   cross-origin POST without permission only while the request stays "simple",
@@ -259,43 +295,101 @@ network.
 
 ---
 
-## 🎮 Unity Editor Plugin (`com.antigravity.busybar`)
+## Unity Editor plugin
 
-The monorepo includes a Unity Editor C# package that connects Unity assembly compilation, Play Mode transitions, and console exceptions directly to the BUSY Bar physical matrix display.
+The monorepo includes a Unity Editor C# package connecting assembly compilation,
+Play Mode transitions and console exceptions to the bar.
 
-### 1. Build Unity Package Bundle
+Validate the package structure — this checks the UPM manifest and Editor
+scripts, and does not emit an archive:
+
 ```bash
 pnpm verify:unity
 ```
 
-### 2. Import into Unity Project
-1. Open your Unity project (Unity 2021.3+ recommended).
-2. Open **Unity Package Manager** (`Window` > `Package Manager`).
-3. Click `+` (top-left) > **Add package from disk...**.
-4. Select `packages/unity-plugin/package.json` in this monorepo.
+To import it:
 
-The plugin automatically initializes `BusyBarWebhookPublisher` and `BusyBarSceneSaveListener` without modifying your scene files or project code.
+1. Open your Unity project (2021.3+).
+2. **Window > Package Manager**.
+3. `+` > **Add package from disk...**
+4. Select `packages/unity-plugin/package.json`.
 
----
-
-## 📚 Documentation & Technical Specifications
-
-For further details, consult the technical documentation in the repository:
-
-- [Technical Stack & System Architecture](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Project%20Plan/Technical%20Stack%20%26%20System%20Architecture.md)
-- [IPC & Local Webhook API Contracts](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Project%20Plan/IPC%20%26%20Local%20Webhook%20API%20Contracts.md)
-- [BUSY Bar API & Display Technical Developer Guide](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Documentation/BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md)
-- [BUSY Bar HTTP API Specs (OpenAPI YAML)](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Documentation/BUSY%20Bar%20HTTP%20API%20Docs.yaml)
-- [Product Backlog & User Stories](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Project%20Plan/Product%20Backlog%20%26%20User%20Stories.md)
-- [UI/UX Specifications](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Project%20Plan/UIUX%20Specification.md)
-- [AI Lessons & Widget Reference Guide](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/Documentation/AI%20Lessons/README.md)
+`BusyBarWebhookPublisher` and `BusyBarSceneSaveListener` initialise themselves
+without modifying your scenes or project code.
 
 ---
 
-## 📜 Code Style & Standards
+## Tools
 
-- **SOLID & Clean Code Principles:** Adheres to [GEMINI.md](file:///c:/Users/jbgeron/Documents/Perso/BUSY_Bar/GEMINI.md) AI project guidelines.
-- **ESLint & Prettier:** Shared configuration in `.eslintrc.cjs` and `.prettierrc`.
-- **Formatting Command:** `pnpm format`
-- **Linting Command:** `pnpm lint`
+- **16×16 pixel art editor** — `pnpm editor` serves it at
+  `http://localhost:39124`, for drawing and tweaking the icons the bar renders.
+- **Icon downsampler** — `node scripts/convert-icons-pixelit.js`.
+- **Animation debugger** — in-app under **Device Diagnostics**:
+  marquee speeds, particle effects, LED colours and icon rasterisation, live.
 
+Windows batch shortcuts for the common commands sit in the repository root:
+`install.bat`, `run_editor.bat`, `package-win.bat`, `verify-unity.bat`,
+`test-coverage.bat`.
+
+---
+
+## Repository layout
+
+```
+BUSY_Bar/
+├── packages/
+│   ├── desktop-app/       # Electron 30 + React 18 + Vite + Vitest + Tailwind + SQLite
+│   └── unity-plugin/      # Unity UPM package (com.antigravity.busybar)
+├── Animations/            # .anim frame sets for the LED matrix (Git LFS)
+├── Documentation/         # Hardware guide, captured samples, design history
+├── scripts/               # Preflight, packaging and icon tooling
+├── tools/pixel-editor/    # Standalone 16×16 editor (pnpm editor)
+├── CLAUDE.md              # Code standards, process boundaries, hardware contract
+└── ROADMAP.md             # What is planned, and what blocks it
+```
+
+---
+
+## Documentation
+
+- [BUSY Bar API & Display Technical Developer Guide](Documentation/BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md)
+  — the display contract, written for this project.
+- [Hardware samples](Documentation/hardware-samples/) — captured device payloads.
+- [Design history](Documentation/design-history/) — the pre-implementation design
+  documents. Kept for provenance and **not maintained**: where they and the code
+  disagree, the code is right.
+
+`Documentation/private/` holds third-party reference material this project did
+not write — BUSY Bar's own OpenAPI specification and example app. It is
+deliberately untracked; fetch it from [busy-app](https://github.com/busy-app) if
+you want a copy.
+
+---
+
+## Known limitations
+
+- **Windows only.** Nothing here has been run on macOS or Linux.
+- **One device, one user.** The USB address is fixed at `10.0.4.20`.
+- **The rear 160×80 OLED is preview-only.** The emulator draws it; nothing is
+  transmitted to the physical panel.
+- **OpenProject is the only remote task provider.** Jira is in the roadmap.
+- **No automated releases and no in-app updates.**
+
+---
+
+## Contributing
+
+This is a personal project, but issues and pull requests are welcome.
+
+Before opening a PR, `pnpm lint`, `pnpm typecheck` and `pnpm test` must all
+pass, and new behaviour needs a test. Follow the conventions in
+[CLAUDE.md](CLAUDE.md).
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+The BUSY Bar hardware, its firmware and its official documentation are not part
+of this repository and are not covered by that license.

@@ -4,9 +4,9 @@
   "displayName": "Antigravity BUSY Bar Unity Companion Plugin",
   "description": "Unity Editor companion integration for BUSY Bar, providing compilation progress telemetry, playmode DND state changes, and critical console exception hooks.",
   "unity": "2021.3",
+  "license": "MIT",
   "author": {
-    "name": "Antigravity Deepmind Team",
-    "email": "dev@antigravity.local"
+    "name": "jbgeron"
   },
   "keywords": [
     "antigravity",

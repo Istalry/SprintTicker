@@ -90,6 +90,19 @@ packages/desktop-app/tests/*.js
 packages/desktop-app/tests/*.js.map
 
 # ---------------------------------------------------------------------------
+# Third-party reference material kept locally but never redistributed.
+#
+# Documentation/private/ holds material this project did not write: BUSY Bar's
+# own OpenAPI specification, their example app, and the ai-lessons / ai-skills
+# teaching pack. All of it is useful to have beside the code and none of it is
+# ours to relicense, so it stays on disk and out of git. Fetch it from
+# https://github.com/busy-app if you need a copy.
+#
+# What remains under Documentation/ is written by this project.
+# ---------------------------------------------------------------------------
+Documentation/private/
+
+# ---------------------------------------------------------------------------
 # Vendored upstream firmware reference -- NOT part of this repository.
 # Clone https://github.com/busy-app/busybar-firmware separately if needed.
 # ---------------------------------------------------------------------------

@@ -15,7 +15,7 @@ export interface DiagnosticBundle {
 
 /**
  * Service exporting structured system diagnostic bundle containing DB integrity status,
- * Fastify Webhook telemetry, and physical BUSY Bar driver health metrics.
+ * webhook telemetry, and physical BUSY Bar driver health metrics.
  */
 export class DiagnosticExporter {
   private dbConn: DatabaseConnection;

@@ -134,10 +134,10 @@ async function startApplication(): Promise<void> {
   renderer.setShowIdleClockFallback(deviceConfig.showIdleClockFallback);
   inputDecoder = new InputDecoder(driver, engine, settingsRepo);
 
-  // 4. Initialize Local Fastify Webhook Server
+  // 4. Initialize the local webhook server
   webhookServer = new WebhookServer(39123);
   await webhookServer.start();
-  console.log('[Main] Fastify Webhook Server listening on http://127.0.0.1:39123');
+  console.log('[Main] Webhook server listening on http://127.0.0.1:39123');
 
   webhookServer.onInputEvent(key => {
     if (driver) {
