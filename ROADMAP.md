@@ -31,10 +31,11 @@ objects survive on GitHub's servers.
 - [ ] **Rewrite commit authorship.** Every commit is authored under a corporate
       address on what is a personal project. Rides along with the same
       `git-filter-repo` pass.
-- [ ] **Confirm `Animations/` provenance.** The `LICENSE` currently excludes the
-      animation frame sets because it is not established who authored them. If
-      they are original, fold them into the MIT scope; if they came with the
-      device, they should not be redistributed here at all.
+- [x] **`Animations/` provenance confirmed.** They are the BUSY Bar firmware's
+      own frame sets, (c) Flipper FZCO under CC-BY-SA-4.0, which permits
+      redistribution with attribution. `LICENSE` carries the notice. The
+      ShareAlike condition is worth remembering before anyone edits a frame:
+      the edit, not the app, becomes CC-BY-SA-4.0.
 - [ ] **Verify no credentials in history.** A scan of all commits found only
       test placeholders (`my_secret_token`, `<cloud-token>`) — re-run it against
       the rewritten history before pushing.

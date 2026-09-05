@@ -340,7 +340,7 @@ BUSY_Bar/
 ├── packages/
 │   ├── desktop-app/       # Electron 30 + React 18 + Vite + Vitest + Tailwind + SQLite
 │   └── unity-plugin/      # Unity UPM package (com.antigravity.busybar)
-├── Animations/            # .anim frame sets for the LED matrix (Git LFS)
+├── Animations/            # .anim frame sets, CC-BY-SA-4.0 upstream (Git LFS)
 ├── Documentation/         # Hardware guide, captured samples, design history
 ├── scripts/               # Preflight, packaging and icon tooling
 ├── tools/pixel-editor/    # Standalone 16×16 editor (pnpm editor)
@@ -393,3 +393,8 @@ MIT — see [LICENSE](LICENSE).
 
 The BUSY Bar hardware, its firmware and its official documentation are not part
 of this repository and are not covered by that license.
+
+`Animations/` is an exception worth knowing about: those frame sets come from
+the BUSY Bar firmware and are (c) Flipper FZCO under **CC-BY-SA-4.0**, not MIT.
+Adapting them means licensing the adaptation the same way. See
+[LICENSE](LICENSE).

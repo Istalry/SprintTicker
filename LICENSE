@@ -44,10 +44,26 @@ It does not cover, and this project makes no claim over:
     authors -- see https://github.com/busy-app. Local copies of that material,
     if present, live in `Documentation/private/`, which is untracked and never
     redistributed from here.
-  * `Animations/` -- the LED animation frame sets shipped with the app. Their
-    provenance is not established here; treat them as all rights reserved by
-    their author until it is.
+  * `Animations/` -- the LED animation frame sets. See the attribution below.
   * Third-party trademarks and brand marks. Application names and logos appear
     only to identify the applications whose notifications this software
     displays; ownership remains with their respective holders.
   * Dependencies, which carry their own licenses.
+
+
+Attribution
+-----------
+
+`Animations/` contains the LED animation frame sets from the BUSY Bar firmware
+(`assets/animations/`), redistributed here unmodified.
+
+  Copyright (c) 2024-2026 Flipper FZCO
+  Licensed under Creative Commons Attribution-ShareAlike 4.0 International
+  (CC-BY-SA-4.0) -- https://creativecommons.org/licenses/by-sa/4.0/
+  Source: https://github.com/busy-app/busybar-firmware
+
+That is a different licence from the MIT terms above, and it carries a
+ShareAlike condition: anyone who adapts these frames must license the adaptation
+under CC-BY-SA-4.0 as well. Bundling them alongside this application does not
+place the application under that licence, but modifying them does place the
+result under it. If you fork this repository, keep this notice.
