@@ -26,6 +26,7 @@ import { PriorityPreemptionEngine } from './services/priority-preemption-engine'
 import { ContextScheduleService } from './services/context-schedule-service';
 import { TrayManager } from './tray/tray-manager';
 import { IPCChannel } from '../shared/ipc-channels';
+import { DEVICE_APPLICATION_NAME } from '../shared/device-constants';
 
 let mainWindow: BrowserWindow | null = null;
 let dbConnection: DatabaseConnection | null = null;
@@ -106,7 +107,7 @@ async function startApplication(): Promise<void> {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.busybar.desktop');
   }
-  console.log('[Main] Starting Antigravity BUSY Bar PC Companion Application...');
+  console.log('[Main] Starting SprintTicker Application...');
 
   // 1. Initialize SQLite Database & Repositories
   dbConnection = DatabaseConnection.getInstance();
@@ -255,8 +256,8 @@ app.on('will-quit', event => {
         // keeps showing the last frame -- "Working on FEAT-42" hours after the
         // app closed -- and every frame_0/frame_1 PNG ever uploaded stays in
         // the device's own storage under our application name.
-        await driver.clearDisplay('busybar_desktop');
-        await driver.deleteAppAssets('busybar_desktop');
+        await driver.clearDisplay(DEVICE_APPLICATION_NAME);
+        await driver.deleteAppAssets(DEVICE_APPLICATION_NAME);
         driver.disconnect();
       }
       if (dbConnection) {

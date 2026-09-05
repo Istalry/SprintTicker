@@ -315,7 +315,7 @@ export class OpenProjectProvider implements ITaskProvider {
           hours: isoDuration,
           spentOn: spentOnDate,
           comment: {
-            raw: payload.comment || 'Logged via Antigravity BUSY Bar'
+            raw: payload.comment || 'Logged via SprintTicker'
           }
         })
       });

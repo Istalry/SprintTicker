@@ -185,7 +185,7 @@ export const App: React.FC = () => {
         <div className="flex items-center space-x-3">
           <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
           <h1 className="text-lg font-bold tracking-tight text-white font-mono">
-            ANTIGRAVITY <span className="text-accent-blue font-sans">BUSY Bar</span>
+            SPRINT<span className="text-accent-blue font-sans">TICKER</span>
           </h1>
         </div>
 

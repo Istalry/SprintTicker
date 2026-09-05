@@ -187,7 +187,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
           {step === 3 && (
             <div className="space-y-4">
               <h4 className="text-sm font-bold font-mono text-white">
-                3. Unity Editor Plugin Setup (<code>com.antigravity.busybar</code>)
+                3. Unity Editor Plugin Setup (<code>io.github.istalry.sprintticker</code>)
               </h4>
               <p className="text-xs text-text-secondary">
                 Import the Unity C# Package into your game project to send automatic compilation & playmode webhooks to the BUSY Bar:

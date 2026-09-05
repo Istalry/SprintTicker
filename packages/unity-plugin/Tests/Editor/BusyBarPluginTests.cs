@@ -1,13 +1,13 @@
 using System;
 using NUnit.Framework;
 using UnityEngine;
-using Com.Antigravity.BusyBar.Editor;
+using SprintTicker.Unity.Editor;
 
-namespace Com.Antigravity.BusyBar.Editor.Tests
+namespace SprintTicker.Unity.Editor.Tests
 {
     /// <summary>
     /// Unit test suite validating telemetry payload JSON serialization, port binding initialization,
-    /// and exception filtering for the Antigravity BUSY Bar Unity Editor plugin.
+    /// and exception filtering for the SprintTicker Unity Editor plugin.
     /// </summary>
     [TestFixture]
     public class BusyBarPluginTests

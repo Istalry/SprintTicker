@@ -9,6 +9,7 @@ import { PixelCanvas } from './pixel-canvas';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
+import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 
 /**
  * Everything needed to draw a notification banner.
@@ -50,7 +51,7 @@ export interface DisplayPayload {
   ledColorHex?: string;
 }
 
-const APP_NAME = 'busybar_desktop';
+const APP_NAME = DEVICE_APPLICATION_NAME;
 
 /**
  * Service rendering hardware display screen payloads according to physical pixel templates.

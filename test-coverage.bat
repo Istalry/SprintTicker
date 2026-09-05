@@ -1,6 +1,6 @@
 @echo off
 echo ========================================================
-echo  Running Antigravity BUSY Bar Test Coverage
+echo  Running SprintTicker Test Coverage
 echo ========================================================
 call pnpm lint
 if %ERRORLEVEL% NEQ 0 (

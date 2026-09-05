@@ -1,9 +1,10 @@
 {
-  "name": "@busy-app/desktop-app",
+  "name": "@sprintticker/desktop-app",
+  "productName": "SprintTicker",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
-  "description": "Antigravity BUSY Bar Electron Desktop Companion App",
+  "description": "SprintTicker desktop application",
   "author": "jbgeron",
   "main": "dist/main/index.js",
   "scripts": {

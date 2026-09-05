@@ -7,7 +7,7 @@ using UnityEditor.Build.Reporting;
 using UnityEditor.Compilation;
 using UnityEngine;
 
-namespace Com.Antigravity.BusyBar.Editor
+namespace SprintTicker.Unity.Editor
 {
     /// <summary>
     /// Lightweight Unity Editor script that hooks into compilation events, Play Mode state transitions,

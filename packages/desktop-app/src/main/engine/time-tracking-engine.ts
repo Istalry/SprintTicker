@@ -53,7 +53,7 @@ export class TimeTrackingEngine extends EventEmitter {
     // Must be injectable. A bare `new ProjectRepository()` resolves the
     // DatabaseConnection singleton regardless of the connection the other
     // repositories were given, so a test using an in-memory database still
-    // opened -- and wrote -- a real on-disk antigravity-busybar.db beside the
+    // opened -- and wrote -- a real on-disk sprintticker.db beside the
     // repo, and that second connection deadlocked schema migrations.
     this._projectRepo = projectRepo || new ProjectRepository();
     this._providerManager =
@@ -339,7 +339,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     const nowIso = new Date().toISOString();
 
-    const worklogComment = comment || 'Completed session via Antigravity BUSY Bar';
+    const worklogComment = comment || 'Completed session via SprintTicker';
 
     // 1. Save worklog to SQLite
     this._worklogRepo.saveWorklog({

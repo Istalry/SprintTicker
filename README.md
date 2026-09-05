@@ -1,4 +1,9 @@
-# BUSY Bar PC Companion
+# SprintTicker
+
+*A time tracker for the BUSY Bar.*
+
+> Not affiliated with, endorsed by, or supported by Flipper FZCO. "BUSY Bar" is
+> their product; this is a third-party companion app for it.
 
 A Windows desktop companion for the **BUSY Bar** — a small USB device with a
 72×16 RGB LED matrix on the front. The app tracks what you are working on and
@@ -101,7 +106,7 @@ default. Launch with `--debug-notifications` to see it while troubleshooting.
 
 ### Unity Editor integration
 
-A UPM package (`com.antigravity.busybar`) posts compile state, Play Mode
+A UPM package (`io.github.istalry.sprintticker`) posts compile state, Play Mode
 transitions and console exceptions to the app's local HTTP server, and the app
 discovers installed Unity projects and manages plugin injection.
 
@@ -146,7 +151,7 @@ repairs the working copy.
 ```bash
 git lfs install
 git clone <repository-url>
-cd BUSY_Bar
+cd SprintTicker
 pnpm install
 ```
 
@@ -175,7 +180,7 @@ re-running the script you actually want fixes it.
    bar. Nothing is mirrored until you allow it.
 
 Application data lives in Electron's `userData` directory. On Windows an
-installed build uses `%APPDATA%\Antigravity BUSY Bar Companion\antigravity-busybar.db`.
+installed build uses `%APPDATA%\SprintTicker\sprintticker.db`.
 
 ---
 
@@ -244,11 +249,11 @@ Builds both the NSIS installer and the portable executable into
 `packages/desktop-app/dist-electron/`. Individual targets:
 
 ```bash
-pnpm --filter @busy-app/desktop-app package:installer
+pnpm --filter @sprintticker/desktop-app package:installer
 ```
 
 ```bash
-pnpm --filter @busy-app/desktop-app package:portable
+pnpm --filter @sprintticker/desktop-app package:portable
 ```
 
 > [!WARNING]
@@ -336,10 +341,10 @@ Windows batch shortcuts for the common commands sit in the repository root:
 ## Repository layout
 
 ```
-BUSY_Bar/
+SprintTicker/
 ├── packages/
 │   ├── desktop-app/       # Electron 30 + React 18 + Vite + Vitest + Tailwind + SQLite
-│   └── unity-plugin/      # Unity UPM package (com.antigravity.busybar)
+│   └── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
 ├── Animations/            # .anim frame sets, CC-BY-SA-4.0 upstream (Git LFS)
 ├── Documentation/         # Hardware guide, captured samples, design history
 ├── scripts/               # Preflight, packaging and icon tooling

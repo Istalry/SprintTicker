@@ -1,6 +1,6 @@
 @echo off
 echo ========================================================
-echo  Packaging Antigravity BUSY Bar Unity Plugin
+echo  Packaging SprintTicker Unity Plugin
 echo ========================================================
 call pnpm verify:unity
 if %ERRORLEVEL% NEQ 0 (

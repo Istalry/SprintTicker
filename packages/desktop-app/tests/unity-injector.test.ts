@@ -13,7 +13,7 @@ describe('UnityInjectorService Unit Tests', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'unity-injector-test-'));
     mockPluginSourcePath = path.join(tempDir, 'mock-unity-plugin');
     fs.mkdirSync(mockPluginSourcePath, { recursive: true });
-    fs.writeFileSync(path.join(mockPluginSourcePath, 'package.json'), JSON.stringify({ name: 'com.antigravity.busybar' }));
+    fs.writeFileSync(path.join(mockPluginSourcePath, 'package.json'), JSON.stringify({ name: 'io.github.istalry.sprintticker' }));
 
     service = new UnityInjectorService(mockPluginSourcePath);
   });
@@ -38,15 +38,15 @@ describe('UnityInjectorService Unit Tests', () => {
     expect(fs.existsSync(result.path)).toBe(true);
 
     const content = fs.readFileSync(result.path, 'utf-8');
-    expect(content).toContain('Packages/com.antigravity.busybar');
-    expect(content).toContain('Packages/com.antigravity.busybar/');
+    expect(content).toContain('Packages/io.github.istalry.sprintticker');
+    expect(content).toContain('Packages/io.github.istalry.sprintticker/');
 
     // Run a second time to verify idempotency (no duplicate entries)
     await service.setupGlobalGitignore();
     const contentSecond = fs.readFileSync(result.path, 'utf-8');
     const matches = contentSecond.match(/Packages\/com\.antigravity\.busybar/g);
     expect(matches).not.toBeNull();
-    // One for Packages/com.antigravity.busybar and one for Packages/com.antigravity.busybar/
+    // One for Packages/io.github.istalry.sprintticker and one for Packages/io.github.istalry.sprintticker/
     expect(matches?.length).toBe(2);
   });
 
@@ -70,7 +70,7 @@ describe('UnityInjectorService Unit Tests', () => {
     expect(results[0].projectName).toBe('MyGameProject');
     expect(results[0].status).toBe('injected');
 
-    const injectedPath = path.join(proj1, 'Packages', 'com.antigravity.busybar');
+    const injectedPath = path.join(proj1, 'Packages', 'io.github.istalry.sprintticker');
     expect(fs.existsSync(injectedPath)).toBe(true);
 
     // Re-scanning should mark status as 'already_exists'
@@ -85,7 +85,7 @@ describe('UnityInjectorService Unit Tests', () => {
     fs.mkdirSync(path.join(proj1, 'Packages'), { recursive: true });
 
     await service.scanAndInjectProjects(tempDir);
-    const injectedPath = path.join(proj1, 'Packages', 'com.antigravity.busybar');
+    const injectedPath = path.join(proj1, 'Packages', 'io.github.istalry.sprintticker');
     expect(fs.existsSync(injectedPath)).toBe(true);
 
     const removed = await service.removeInjection(proj1);
@@ -103,7 +103,7 @@ describe('UnityInjectorService Unit Tests', () => {
     expect(results).toHaveLength(1);
     expect(results[0].status).toBe('injected');
     expect(results[0].projectName).toBe('ProjectWithPackages');
-    expect(fs.existsSync(path.join(proj, 'Packages', 'com.antigravity.busybar'))).toBe(true);
+    expect(fs.existsSync(path.join(proj, 'Packages', 'io.github.istalry.sprintticker'))).toBe(true);
   });
 
   it('RemoveInjection_EmptyPath_ThrowsArgumentException', async () => {

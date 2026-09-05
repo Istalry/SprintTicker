@@ -198,7 +198,7 @@ The Electron Main process hosts an embedded HTTP server (Node `http`) listening 
 ```
 +-------------------------------+                  +-------------------------------+
 | Unity Editor (C# Extension)   |                  | HTTP Webhook Server (Node) |
-| com.antigravity.busybar       | -- HTTP POST --> | Listening on localhost:8080   |
+| io.github.istalry.sprintticker       | -- HTTP POST --> | Listening on localhost:8080   |
 +-------------------------------+                  +-------------------------------+
                                                                   |
                                                                   v

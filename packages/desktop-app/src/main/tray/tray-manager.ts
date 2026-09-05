@@ -29,7 +29,7 @@ export class TrayManager {
     }
 
     this.tray = new Tray(image);
-    this.tray.setToolTip('Antigravity BUSY Bar PC Companion (Idle)');
+    this.tray.setToolTip('SprintTicker (Idle)');
 
     this.updateContextMenu();
 
@@ -73,7 +73,7 @@ export class TrayManager {
     } else if (session && session.status === 'PAUSED') {
       this.tray.setToolTip(`BUSY Bar: PAUSED [${session.taskKey}]`);
     } else {
-      this.tray.setToolTip('Antigravity BUSY Bar PC Companion (Idle)');
+      this.tray.setToolTip('SprintTicker (Idle)');
     }
   }
 

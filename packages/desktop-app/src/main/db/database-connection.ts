@@ -21,7 +21,7 @@ export class DatabaseConnection {
     } catch {
       // Not running in Electron environment
     }
-    const defaultPath = path.join(defaultDir, 'antigravity-busybar.db');
+    const defaultPath = path.join(defaultDir, 'sprintticker.db');
     this.db = new Database(dbPath || defaultPath);
     try {
       this.db.pragma('foreign_keys = ON');

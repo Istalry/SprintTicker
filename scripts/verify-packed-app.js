@@ -9,7 +9,7 @@ const fs = require('fs');
  * and asserts that the embedded HTTP webhook server starts cleanly on port 39123.
  */
 async function verifyPackedApp() {
-  const exePath = path.resolve(__dirname, '../packages/desktop-app/dist-electron/win-unpacked/Antigravity BUSY Bar Companion.exe');
+  const exePath = path.resolve(__dirname, '../packages/desktop-app/dist-electron/win-unpacked/SprintTicker.exe');
   
   if (!fs.existsSync(exePath)) {
     console.error(`[VERIFY ERROR] Executable not found at path: ${exePath}`);
@@ -22,7 +22,7 @@ async function verifyPackedApp() {
 
   // Kill any existing running instance first
   try {
-    execSync('taskkill /F /IM "Antigravity BUSY Bar Companion.exe" >nul 2>&1');
+    execSync('taskkill /F /IM "SprintTicker.exe" >nul 2>&1');
   } catch (_) {}
 
   let hasUncaughtError = false;
@@ -116,7 +116,7 @@ function checkHttpServer() {
 
 function killApp(proc) {
   try {
-    execSync('taskkill /F /IM "Antigravity BUSY Bar Companion.exe" >nul 2>&1');
+    execSync('taskkill /F /IM "SprintTicker.exe" >nul 2>&1');
   } catch (_) {}
   try {
     proc.kill();

@@ -2,6 +2,7 @@ import { app, powerSaveBlocker } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { BusyBarDriver } from './busybar-driver';
+import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 
 /**
  * Extracts the frame index from a file name.
@@ -245,10 +246,10 @@ export class AnimationPlayer {
 
     if (animData.animBuffer) {
       // Hardware accelerated playback
-      this.driver.uploadAsset('busybar_desktop', `${animName}.anim`, animData.animBuffer).then(() => {
+      this.driver.uploadAsset(DEVICE_APPLICATION_NAME, `${animName}.anim`, animData.animBuffer).then(() => {
         if (!this.isPlaying || this.currentAnimation !== animName) return; // aborted
         this.driver.sendDisplayPayload({
-          application_name: 'busybar_desktop',
+          application_name: DEVICE_APPLICATION_NAME,
           priority: 95,
           led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
           elements: [{
@@ -322,7 +323,7 @@ export class AnimationPlayer {
       this.driver.sendPixelFrame(
         frameBuffer,
         ledColor,
-        'busybar_desktop',
+        DEVICE_APPLICATION_NAME,
         'anim_frame.png',
         95
       ).catch(err => console.error(`[AnimationPlayer] Frame draw failed:`, err));

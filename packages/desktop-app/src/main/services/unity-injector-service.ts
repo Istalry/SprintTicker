@@ -37,8 +37,8 @@ export class UnityInjectorService {
         existingContent = fs.readFileSync(gitignorePath, 'utf-8');
       }
 
-      const entryMarker = 'Packages/com.antigravity.busybar';
-      const entrySlashMarker = 'Packages/com.antigravity.busybar/';
+      const entryMarker = 'Packages/io.github.istalry.sprintticker';
+      const entrySlashMarker = 'Packages/io.github.istalry.sprintticker/';
 
       const hasEntry = existingContent.includes(entryMarker);
       const hasSlashEntry = existingContent.includes(entrySlashMarker);
@@ -101,7 +101,7 @@ export class UnityInjectorService {
       }
 
       const content = fs.readFileSync(gitignorePath, 'utf-8');
-      const isConfigured = content.includes('Packages/com.antigravity.busybar');
+      const isConfigured = content.includes('Packages/io.github.istalry.sprintticker');
       return { configured: isConfigured, path: gitignorePath };
     } catch {
       return { configured: false };
@@ -110,7 +110,7 @@ export class UnityInjectorService {
 
   /// <summary>
   /// Recursively scans rootFolder for valid Unity projects and creates Directory Junctions
-  /// to the BUSY Bar Unity plugin under Packages/com.antigravity.busybar.
+  /// to the BUSY Bar Unity plugin under Packages/io.github.istalry.sprintticker.
   /// </summary>
   public async scanAndInjectProjects(rootFolder: string): Promise<UnityProjectInjectionResult[]> {
     if (!rootFolder || typeof rootFolder !== 'string' || rootFolder.trim() === '') {
@@ -132,7 +132,7 @@ export class UnityInjectorService {
 
     for (const projectPath of detectedProjects) {
       const projectName = path.basename(projectPath);
-      const targetPackagePath = path.join(projectPath, 'Packages', 'com.antigravity.busybar');
+      const targetPackagePath = path.join(projectPath, 'Packages', 'io.github.istalry.sprintticker');
 
       try {
         let exists = false;
@@ -181,14 +181,14 @@ export class UnityInjectorService {
   }
 
   /// <summary>
-  /// Safely detaches and removes the com.antigravity.busybar symlink or junction from a Unity project.
+  /// Safely detaches and removes the io.github.istalry.sprintticker symlink or junction from a Unity project.
   /// </summary>
   public async removeInjection(projectPath: string): Promise<boolean> {
     if (!projectPath || typeof projectPath !== 'string' || projectPath.trim() === '') {
       throw new Error('ArgumentException: projectPath must not be null or empty.');
     }
 
-    const targetPackagePath = path.join(path.resolve(projectPath), 'Packages', 'com.antigravity.busybar');
+    const targetPackagePath = path.join(path.resolve(projectPath), 'Packages', 'io.github.istalry.sprintticker');
 
     try {
       const lstat = fs.lstatSync(targetPackagePath);

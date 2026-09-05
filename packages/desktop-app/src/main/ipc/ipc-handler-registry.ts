@@ -322,7 +322,7 @@ export class IPCHandlerRegistry {
         const ports = [8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089];
         const fetchPromises = ports.map(async (port) => {
           try {
-            const response = await fetch(`http://localhost:${port}/antigravity/save-scenes/`, {
+            const response = await fetch(`http://localhost:${port}/sprintticker/save-scenes/`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               signal: AbortSignal.timeout(1500)

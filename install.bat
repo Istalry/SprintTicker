@@ -1,6 +1,6 @@
 @echo off
 echo ========================================================
-echo  Installing Antigravity BUSY Bar Workspace Dependencies
+echo  Installing SprintTicker Workspace Dependencies
 echo ========================================================
 call pnpm install
 if %ERRORLEVEL% NEQ 0 (

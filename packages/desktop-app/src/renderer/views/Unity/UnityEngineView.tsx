@@ -333,7 +333,7 @@ export const UnityEngineView: React.FC = () => {
             <Box className="w-5 h-5 text-accent-blue" />
             <div>
               <h3 className="text-sm font-bold text-white">Global Gitignore Manager</h3>
-              <p className="text-xs text-text-secondary">Globally ignore com.antigravity.busybar in Git to prevent companion files from polluting project repos.</p>
+              <p className="text-xs text-text-secondary">Globally ignore io.github.istalry.sprintticker in Git to prevent companion files from polluting project repos.</p>
             </div>
           </div>
 

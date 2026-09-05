@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO } from '../../shared/dtos';
-import { DEFAULT_USB_IP } from '../../shared/device-constants';
+import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 
 export interface HardwareEvent {
   key: string;
@@ -615,7 +615,7 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     const hardwarePayload: Record<string, unknown> = {
-      application_name: (payload.application_name as string) || 'busybar_desktop',
+      application_name: (payload.application_name as string) || DEVICE_APPLICATION_NAME,
       priority: typeof payload.priority === 'number' ? payload.priority : DEFAULT_DRAW_PRIORITY,
       elements: formattedElements
     };
@@ -702,7 +702,7 @@ export class BusyBarDriver extends EventEmitter {
   /**
    * Clears display elements for application: DELETE /api/display/draw?application_name={app}
    */
-  public async clearDisplay(applicationName: string = 'busybar_desktop'): Promise<boolean> {
+  public async clearDisplay(applicationName: string = DEVICE_APPLICATION_NAME): Promise<boolean> {
     if (!this.isConnected && !this.isMockMode) {
       return false;
     }
@@ -733,7 +733,7 @@ export class BusyBarDriver extends EventEmitter {
   public async sendPixelFrame(
     pngBuffer: Buffer,
     ledColorHex?: string,
-    applicationName: string = 'busybar_desktop',
+    applicationName: string = DEVICE_APPLICATION_NAME,
     filename: string = 'frame.png',
     priority: number = DEFAULT_DRAW_PRIORITY
   ): Promise<boolean> {

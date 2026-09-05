@@ -1,5 +1,8 @@
 # CLAUDE.md — working in this repository
 
+The product is **SprintTicker**. "BUSY Bar" is the Flipper FZCO device it
+drives, not this project; keep the two apart in anything user-facing.
+
 Guidance for Claude Code and any other AI agent working on BUSY Bar. Read this
 before changing code; most of it is knowledge that is expensive to rediscover
 and invisible in the source.
@@ -11,7 +14,7 @@ A pnpm workspace with two packages:
 | Package | What it is |
 | :--- | :--- |
 | `packages/desktop-app` | Electron 30 + React 18 + Vite + Vitest + Tailwind + better-sqlite3. ~90% of the code. |
-| `packages/unity-plugin` | A Unity Editor C# package (`com.antigravity.busybar`) that posts editor events to the desktop app. |
+| `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. |
 
 The desktop app tracks time against tasks, drives a physical BUSY Bar LED
 display over USB, and mirrors Windows notifications onto it.
@@ -158,7 +161,25 @@ cannot see is which constraint, bug or hardware quirk forced it. Comments that
 restate the code are noise — comments recording a trap are the most valuable
 thing in this repository.
 
-## 7. Commit identity
+## 7. Where the data lives
+
+`%APPDATA%\SprintTicker\sprintticker.db`, for both `pnpm dev` and an installed
+build.
+
+They used to differ. Electron derives `userData` from `productName`, falling
+back to `name` when it is absent, and only `electron-builder.json` set one --
+so development wrote to `%APPDATA%\@busy-app\desktop-app` while the installer
+wrote to `%APPDATA%\Antigravity BUSY Bar Companion`. Nobody chose that; it
+meant installing the packaged app looked like losing all your history.
+`productName` is now set in `packages/desktop-app/package.json` as well, which
+is what keeps the two agreeing.
+
+The consequence to be aware of: **development shares the real database.** A
+migration you are testing runs against your actual worklogs. Use
+`new DatabaseConnection(':memory:')` in tests -- never the singleton -- and copy
+the file before trying anything destructive.
+
+## 8. Commit identity
 
 This repository is configured with a **repo-local** author identity:
 
@@ -173,7 +194,7 @@ rewrite does not change `git config`, so the very next commit reintroduced the
 old address and had to be amended. If you clone this repository somewhere new,
 set the local config before committing.
 
-## 8. Reference material
+## 9. Reference material
 
 `Documentation/private/` holds BUSY Bar's own OpenAPI specification, example app
 and AI teaching pack. It is deliberately untracked: useful locally, not ours to

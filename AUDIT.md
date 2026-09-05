@@ -12,7 +12,7 @@ Everything below was executed against the working tree, not inferred.
 
 | Check | Command | Result |
 | :--- | :--- | :--- |
-| Unit tests | `pnpm --filter @busy-app/desktop-app test` | **274/274 pass** (27 files) |
+| Unit tests | `pnpm --filter @sprintticker/desktop-app test` | **274/274 pass** (27 files) |
 | Coverage | `vitest run --coverage` | **88.27% stmts / 73% branch / 91.66% funcs** — passes the configured 80/70 thresholds |
 | ESLint | `eslint packages/desktop-app/src/**` | **Clean** — 73 files, 0 errors, 0 warnings |
 | TypeScript (main+preload+shared) | `tsc --noEmit -p packages/desktop-app/tsconfig.json` | **31 errors** ❌ |
@@ -423,7 +423,7 @@ These are documentation defects as much as code defects — someone reading `REA
 | "**Slack & Discord Integration:** Sync user presence status and **push webhook alerts** during active focus sessions, meetings, or away modes" | No outbound code exists. `discordWebhookUrl`, `slackWebhookUrl` and `gmailQuery` are stored in settings and **read by nothing** (`grep` confirms: only the default-value literals). The service is inbound-only — it renders a banner when *something else* POSTs to `/api/v1/slack/events`. There is no presence sync and no Gmail integration at all, despite a 290-line `MessagingView.tsx` configuring them. |
 | "**Rear OLED Screen (160×80):** Renders secondary status, timer counts, and detailed session telemetry" | Never transmitted to hardware — emulator only (F-06). |
 | "Run Unit Tests (**250+ Tests**)" / "Coverage Report (**80%+ Target**)" | Accurate for the main process (274 tests, 88.27%) but the renderer is excluded from coverage entirely; the headline number covers 0% of the UI. |
-| "`cross-env MOCK_HARDWARE=true pnpm dev`" | `cross-env` is a `devDependency` of `desktop-app`, not the root, so this exact command fails from the repo root unless `cross-env` is globally installed. `pnpm --filter @busy-app/desktop-app exec cross-env ...` works. |
+| "`cross-env MOCK_HARDWARE=true pnpm dev`" | `cross-env` is a `devDependency` of `desktop-app`, not the root, so this exact command fails from the repo root unless `cross-env` is globally installed. `pnpm --filter @sprintticker/desktop-app exec cross-env ...` works. |
 | Documentation links use absolute `file:///c:/Users/jbgeron/...` URLs | Broken for every other user and in the GitHub web view. Use relative links. |
 
 ---

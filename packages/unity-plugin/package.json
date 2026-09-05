@@ -1,7 +1,7 @@
 {
-  "name": "com.antigravity.busybar",
+  "name": "io.github.istalry.sprintticker",
   "version": "1.0.0",
-  "displayName": "Antigravity BUSY Bar Unity Companion Plugin",
+  "displayName": "SprintTicker Unity Bridge",
   "description": "Unity Editor companion integration for BUSY Bar, providing compilation progress telemetry, playmode DND state changes, and critical console exception hooks.",
   "unity": "2021.3",
   "license": "MIT",

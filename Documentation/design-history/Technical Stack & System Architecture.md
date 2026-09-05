@@ -55,7 +55,7 @@ The system consists of three distinct execution layers operating in harmony:
                                             +-------------------------------+
 ```
 
-1.  **Unity Engine Plugin (`Com.Antigravity.BusyBar`):** A lightweight C# Editor extension attached to Unity's `CompilationPipeline`, `EditorApplication`, and `Debug` log delegates. It sends local IPC/HTTP telemetry events to the Electron main process.
+1.  **Unity Engine Plugin (`SprintTicker.Unity`):** A lightweight C# Editor extension attached to Unity's `CompilationPipeline`, `EditorApplication`, and `Debug` log delegates. It sends local IPC/HTTP telemetry events to the Electron main process.
     
 2.  **Electron PC Companion App:** The central coordinator built on Node.js/TypeScript. It manages active task timers using UTC timestamps, local SQLite storage, provider API integrations (Jira/Sheets/Notion), OS lock/unlock hooks, priority notification queueing, and local WebSockets.
     
@@ -247,7 +247,7 @@ antigravity-busy-bar/
 │   │   ├── package.json
 │   │   └── electron-builder.json
 │   │
-│   └── unity-plugin/              # Unity Editor C# Package (`com.antigravity.busybar`)
+│   └── unity-plugin/              # Unity Editor C# Package (`io.github.istalry.sprintticker`)
 │       ├── Editor/
 │       │   ├── AntigravityBusyBarPlugin.cs    # [InitializeOnLoad] Compiler & PlayMode Hooks
 │       │   ├── AntigravityWebhookClient.cs    # Non-blocking UnityWebRequest Client
@@ -371,7 +371,7 @@ CREATE TABLE IF NOT EXISTS worklog_sync_queue (
 );
 ```
 
-## 6\. Unity Editor Plugin Integration (`Com.Antigravity.BusyBar`)
+## 6\. Unity Editor Plugin Integration (`SprintTicker.Unity`)
 
 The Unity plugin is non-blocking. If the companion desktop app is not running or the plugin is removed from a Unity project, Unity operates normally without throw exceptions or slowing editor performance.
 
@@ -425,7 +425,7 @@ When the PC Companion App executes the optional End-of-Day wrap-up sequence, it 
     
     -   Develop HTTP webhook server in Electron Main.
         
-    -   Create `Com.Antigravity.BusyBar` Unity Editor C# package.
+    -   Create `SprintTicker.Unity` Unity Editor C# package.
         
 6.  **Phase 6: Priority Dispatcher, Ceremonies & System Integrations**
     

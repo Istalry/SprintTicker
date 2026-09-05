@@ -1,6 +1,6 @@
 @echo off
 echo ========================================================
-echo  Packaging Antigravity BUSY Bar Desktop App (Windows)
+echo  Packaging SprintTicker Desktop App (Windows)
 echo ========================================================
 rem Compile animations
 echo Compiling .anim files...
@@ -14,7 +14,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 
 rem Bundles the main process and packages Windows binaries via electron-builder
-taskkill /F /IM "Antigravity BUSY Bar Companion.exe" >nul 2>&1
+taskkill /F /IM "SprintTicker.exe" >nul 2>&1
 call pnpm package:win
 if %ERRORLEVEL% NEQ 0 (
     echo.

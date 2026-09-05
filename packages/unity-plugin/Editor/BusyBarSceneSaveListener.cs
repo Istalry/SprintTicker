@@ -8,10 +8,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
-namespace Com.Antigravity.BusyBar.Editor
+namespace SprintTicker.Unity.Editor
 {
     /// <summary>
-    /// Lightweight HTTP listener running inside Unity Editor listening on http://localhost:8081/antigravity/save-scenes/
+    /// Lightweight HTTP listener running inside Unity Editor listening on http://localhost:8081/sprintticker/save-scenes/
     /// (or fallback ports 8082-8089 for multi-instance support).
     /// Architectural Rationale: Responds to RPC scene save requests triggered during PC Companion App End-of-Day wrap-up
     /// so developer work is safely committed to disk before PC shutdown sequence completes.
@@ -65,7 +65,7 @@ namespace Com.Antigravity.BusyBar.Editor
 
         private static bool TryBindPort(int candidatePort)
         {
-            string prefix = $"http://localhost:{candidatePort}/antigravity/save-scenes/";
+            string prefix = $"http://localhost:{candidatePort}/sprintticker/save-scenes/";
             try
             {
                 var listener = new HttpListener();

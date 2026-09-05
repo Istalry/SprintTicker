@@ -2,14 +2,14 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Validates the UPM package structure for com.antigravity.busybar.
+ * Validates the UPM package structure for io.github.istalry.sprintticker.
  *
  * This is a verification step, not a packaging step: it checks that the
  * manifest and Editor scripts are present and prints what it found. Unity
  * consumes the folder directly via UPM, so no archive is produced.
  */
 function buildUnityPackage() {
-  console.log('[VerifyUnityPlugin] Validating the UPM package structure (com.antigravity.busybar)...');
+  console.log('[VerifyUnityPlugin] Validating the UPM package structure (io.github.istalry.sprintticker)...');
 
   const pluginDir = path.join(__dirname, '../packages/unity-plugin');
   const manifestPath = path.join(pluginDir, 'package.json');
