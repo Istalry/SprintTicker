@@ -1,0 +1,31 @@
+# Gitleaks configuration.
+#
+# The `secrets` job in quality.yml scans the full history on every push, so a
+# false positive here is not a one-off annoyance: it fails the gate forever and
+# trains everyone to ignore a red X. Every entry below records what the match
+# actually is and why it is not a credential.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Verified non-secrets"
+
+paths = [
+  # A scraped copy of the @busy-app/busy-lib page on npmjs.com, committed in
+  # 768e848 and removed from the tree since. It embeds contributor avatars as
+  # https://www.npmjs.com/npm-avatar/<base64>, where the base64 is a JWT-shaped
+  # blob whose payload is {"avatarURL":"https://s.gravatar.com/..."} -- a public
+  # profile image URL, not a token. gitleaks' `jwt` rule matches on shape alone.
+  '''Documentation/@busy-app_busy-lib - npm\.md''',
+]
+
+regexes = [
+  # The same avatar construction wherever it appears. Anchored on npm's own
+  # host, so this cannot accidentally excuse a real JWT found elsewhere.
+  '''https://www\.npmjs\.com/npm-avatar/ey[A-Za-z0-9_\-\.]+''',
+
+  # Test fixtures -- the literal strings the suite asserts on.
+  '''my_secret_token''',
+  '''<cloud-token>''',
+]
