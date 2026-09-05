@@ -20,7 +20,13 @@ describe('ContextScheduleService Unit Tests', () => {
       setUserMode: vi.fn()
     };
     mockSettingsRepo = {
+      // Every time these tests assert on is stated here. standupTime used to be
+      // omitted, so the suite silently inherited whatever the service's inline
+      // default happened to be -- and the clock values below were chosen
+      // against that value. Changing the product default then broke a test that
+      // is not about defaults at all.
       getSetting: vi.fn().mockReturnValue({
+        standupTime: '10:00',
         lunchStartTime: '12:30',
         lunchEndTime: '13:30',
         eodWrapUpTime: '18:00'

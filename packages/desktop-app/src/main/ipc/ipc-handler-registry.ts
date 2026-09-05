@@ -21,6 +21,7 @@ import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettings
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
+import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -280,17 +281,19 @@ export class IPCHandlerRegistry {
 
     // 5. Ceremonies & Schedule IPC Handlers
     ipcMain.handle(IPCChannel.GET_SCHEDULE_SETTINGS, async () => {
-      return this.settingsRepo.getSetting('schedule_settings', {
-        standupTime: '10:05',
-        lunchStart: '12:18',
-        lunchEnd: '13:00',
-        eodTime: '17:30',
-        autoDismissSeconds: 0
-      });
+      // Same normaliser as the scheduler. These two used to carry separate
+      // default objects that did not even agree on key names, so a fresh
+      // install's schedule depended on which of them read the row first.
+      return normalizeScheduleSettings(
+        this.settingsRepo.getSetting('schedule_settings', {})
+      );
     });
 
     ipcMain.handle(IPCChannel.SAVE_SCHEDULE_SETTINGS, async (_event, settings) => {
-      this.settingsRepo.setSetting('schedule_settings', settings);
+      // Normalised on the way in as well. The Ceremonies view populates both
+      // spellings by hand today; doing it here means a future caller that
+      // forgets one cannot leave the two readers disagreeing.
+      this.settingsRepo.setSetting('schedule_settings', normalizeScheduleSettings(settings));
       this.contextScheduleService.evaluateSchedule();
       return true;
     });

@@ -5,6 +5,7 @@ import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
 import { ScheduleSettingsDTO, ArgumentNullException } from '../../shared/dtos';
+import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 
 /**
  * Service that automatically monitors Windows session locks/sleep events and lunch schedules,
@@ -61,15 +62,11 @@ export class ContextScheduleService {
   /// </summary>
   public evaluateSchedule(): void {
     try {
-      const settings = this._settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {
-        standupTime: '10:05',
-        enableStandupPrompt: true,
-        lunchStartTime: '12:18',
-        lunchEndTime: '13:00',
-        enableLunchMute: true,
-        eodWrapUpTime: '17:30',
-        promptTimeoutSeconds: 0
-      });
+      // Read through the normaliser so a row written with only the short
+      // aliases resolves identically to one written with the canonical names.
+      const settings = normalizeScheduleSettings(
+        this._settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {})
+      );
 
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();

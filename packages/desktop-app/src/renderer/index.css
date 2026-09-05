@@ -1,3 +1,29 @@
+/*
+ * Fonts are self-hosted and bundled, not fetched from Google's CDN.
+ *
+ * An offline-first desktop time tracker has no business making an external
+ * request on every launch: it tells a third party when the app starts, and
+ * offline it silently falls back to system fonts, so the dashboard renders
+ * differently depending on connectivity. (The LED matrix is unaffected either
+ * way -- that is FONT_4X6, rasterised in the main process.)
+ *
+ * Latin subset only, and only the weights tailwind.config.js references.
+ * @fontsource ships every weight and italic across a dozen subsets: the
+ * unqualified `400.css` imports pulled 83 files and 1.8 MB into the bundle for
+ * a UI whose entire text is English. `latin-*` brings it to 7 files.
+ *
+ * If the UI is ever localised, swap these for the unqualified imports rather
+ * than adding subsets one at a time -- a missing subset renders as tofu, and
+ * it will not be obvious which import was responsible.
+ */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-600.css';
+@import '@fontsource/jetbrains-mono/latin-700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

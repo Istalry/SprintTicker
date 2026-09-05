@@ -63,11 +63,35 @@ const createWindow = (): void => {
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      // The preload imports only contextBridge and ipcRenderer, both of which
+      // are available to a sandboxed preload, so this costs nothing here. It
+      // stops costing nothing the moment someone reaches for `fs` in preload,
+      // which is the point.
+      sandbox: true
     }
   });
 
   mainWindow.setMenu(null);
+
+  // This application never opens a second window and never navigates away from
+  // its own bundle. Both are denied rather than filtered: there is no allowed
+  // destination to filter for, and a guard that lists exceptions invites one.
+  //
+  // If an outbound link is ever needed, route it through shell.openExternal
+  // deliberately -- letting the renderer navigate is how a compromised page
+  // gets to keep the preload bridge.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    console.warn(`[Main] Blocked window.open to ${url}`);
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const devServer = process.env.VITE_DEV_SERVER_URL;
+    if (devServer && url.startsWith(devServer)) return;
+    event.preventDefault();
+    console.warn(`[Main] Blocked navigation to ${url}`);
+  });
 
   if (process.env.VITE_DEV_SERVER_URL) {
     void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)

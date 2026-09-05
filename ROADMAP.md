@@ -61,14 +61,16 @@ objects survive on GitHub's servers.
 - [ ] Enable **Dependabot alerts** (Security and quality > Overview). Separate
       from `dependabot.yml`, which schedules version bumps; alerts fire on
       published CVEs. Code scanning needs an Organization and is out of reach.
-- [ ] **Stop calling out to the Google Fonts CDN** (F-30). An offline-first
-      desktop tracker makes an external request on every launch, which leaks
-      usage timing and silently falls back to system fonts offline. Self-host
-      Inter and JetBrains Mono. Worth doing alongside a `Content-Security-Policy`
-      and a `setWindowOpenHandler` guard (F-31), which the CDN link currently
-      makes awkward to write strictly.
-- [ ] **Replace the personal schedule defaults** (F-38). A standup at `10:05`
-      and lunch at `12:18` are one developer's calendar shipped as everyone's.
+- [x] **No outbound requests** (F-30). Inter and JetBrains Mono are bundled
+      from `@fontsource`, latin subset only. The pixel editor uses system font
+      stacks. `git grep fonts.googleapis` returns nothing.
+- [x] **Content-Security-Policy and navigation guards** (F-31).
+      `default-src 'none'` with explicit allowances, injected into the built
+      HTML by a Vite plugin so the dev server keeps working; `sandbox: true`;
+      `setWindowOpenHandler` and `will-navigate` both deny. Verified against a
+      packaged launch with `ELECTRON_ENABLE_LOGGING=1`: no violations.
+- [x] **Neutral schedule defaults** (F-38), and the alias duplication behind
+      them (F-37).
 
 ---
 

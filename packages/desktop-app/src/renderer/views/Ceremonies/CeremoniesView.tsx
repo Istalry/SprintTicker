@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Moon, Save, Check, Play, ShieldAlert } from 'lucide-react';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
+import { DEFAULT_SCHEDULE_SETTINGS } from '../../../shared/schedule-defaults';
 
 export const CeremoniesView: React.FC = () => {
-  const [standupTime, setStandupTime] = useState<string>('10:05');
-  const [lunchStart, setLunchStart] = useState<string>('12:18');
+  const [standupTime, setStandupTime] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.standupTime);
+  const [lunchStart, setLunchStart] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.lunchStartTime);
   const [lunchEnd, setLunchEnd] = useState<string>('13:00');
   const [eodTime, setEodTime] = useState<string>('17:30');
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);

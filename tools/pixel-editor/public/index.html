@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BUSY Bar 16×16 Pixel Art Editor</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #090D16;
@@ -19,12 +16,21 @@
       --text-muted: #94A3B8;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    /*
+     * System font stacks rather than a Google Fonts request. This tool is a
+     * single static page served from localhost, and a pixel editor has no
+     * typographic requirement worth an outbound connection for -- the app it
+     * feeds does not use these fonts either; the LED matrix is FONT_4X6.
+     * Bundling woff2 files here would put binaries in the repository for the
+     * same non-benefit.
+     */
+    * { box-sizing: border-box; margin: 0; padding: 0;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
     body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 
     header { width: 100%; max-width: 1100px; display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; }
     h1 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #38BDF8, #8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px; }
-    .status-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34D399; padding: 4px 10px; borderRadius: 20px; }
+    .status-badge { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 0.75rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34D399; padding: 4px 10px; borderRadius: 20px; }
 
     .app-layout { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
     
