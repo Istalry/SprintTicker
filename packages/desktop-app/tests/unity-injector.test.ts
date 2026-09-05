@@ -8,6 +8,7 @@ describe('UnityInjectorService Unit Tests', () => {
   let tempDir: string;
   let mockPluginSourcePath: string;
   let service: UnityInjectorService;
+  let globalGitignorePath: string;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'unity-injector-test-'));
@@ -15,7 +16,11 @@ describe('UnityInjectorService Unit Tests', () => {
     fs.mkdirSync(mockPluginSourcePath, { recursive: true });
     fs.writeFileSync(path.join(mockPluginSourcePath, 'package.json'), JSON.stringify({ name: 'io.github.istalry.sprintticker' }));
 
-    service = new UnityInjectorService(mockPluginSourcePath);
+    // The global gitignore path is injected at a temp file. Without it the
+    // service resolves `git config --global core.excludesfile` on the machine
+    // running the suite and writes to the developer's home directory.
+    globalGitignorePath = path.join(tempDir, '.gitignore_global');
+    service = new UnityInjectorService(mockPluginSourcePath, globalGitignorePath);
   });
 
   afterEach(() => {
@@ -44,10 +49,16 @@ describe('UnityInjectorService Unit Tests', () => {
     // Run a second time to verify idempotency (no duplicate entries)
     await service.setupGlobalGitignore();
     const contentSecond = fs.readFileSync(result.path, 'utf-8');
-    const matches = contentSecond.match(/Packages\/com\.antigravity\.busybar/g);
+    const matches = contentSecond.match(/Packages\/io\.github\.istalry\.sprintticker/g);
     expect(matches).not.toBeNull();
-    // One for Packages/io.github.istalry.sprintticker and one for Packages/io.github.istalry.sprintticker/
+    // One for the bare entry and one for the trailing-slash entry -- not four,
+    // which is what a second append would produce.
     expect(matches?.length).toBe(2);
+
+    // The file is inside tempDir, so it is removed by afterEach. This used to
+    // be the developer's own ~/.gitignore_global, and the assertion above
+    // matched entries left there by previous runs rather than by this one.
+    expect(contentSecond.startsWith(content)).toBe(true);
   });
 
   it('ScanAndInjectProjects_EmptyRootPath_ThrowsException', async () => {

@@ -8,3 +8,38 @@ allowBuilds:
   # never gets used. A recorded decision, not an unanswered prompt.
   electron-winstaller: false
   esbuild: true
+
+# Transitive security patches.
+#
+# Every entry here is a build-time or test-time dependency several levels down,
+# reachable only through electron-builder, tailwind/postcss or eslint. None of
+# them ship inside the application -- the eight runtime dependencies carry no
+# advisories. They are pinned rather than waited on because the parents release
+# on their own schedule and a lockfile that reports clean is worth more than one
+# carrying seven findings nobody reads any more.
+#
+# Each is pinned inside its existing major, so no parent gets a version it did
+# not ask for. Remove an entry once its parent has moved past it on its own.
+overrides:
+  # <3.3.18: a custom generator with size 0 spins forever.
+  # Via postcss, from both tailwindcss and vite.
+  nanoid@3: '^3.3.18'
+
+  # <1.1.17: unbounded expansion length, OOM crash. The 1.x line arrives via
+  # minimatch@3, which @electron/asar and eslint 8 both still depend on.
+  # 2.1.2 and 5.0.9 are also installed and are already past their advisories.
+  brace-expansion@1: '^1.1.17'
+
+  # <2.1.4: the same unbounded-expansion family, separately advised against the
+  # 2.x line. Reaches us through minimatch@9 under @typescript-eslint.
+  brace-expansion@2: '^2.1.4'
+
+  # <4.3.1: quadratic CPU in !!omap resolution, CVE-2026-59870. Via
+  # @eslint/eslintrc, so it leaves with the ESLint 9 migration.
+  js-yaml@4: '^4.3.1'
+
+  # 0.9.0 to 0.9.11: XML fragment injection through EntityReference.nodeName.
+  # Via plist, inside app-builder-lib's macOS signing path -- code this project
+  # never executes, since it only targets Windows. Pinned anyway: "we do not
+  # call that path" is an argument that stops being true quietly.
+  '@xmldom/xmldom@0.9': '^0.9.12'

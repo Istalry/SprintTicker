@@ -10,13 +10,23 @@ import { UnityProjectInjectionResult } from '../../shared/dtos';
  */
 export class UnityInjectorService {
   private readonly _pluginSourceRelativePath: string;
+  private readonly _globalGitignorePathOverride?: string;
 
   /**
    * Initializes a new instance of UnityInjectorService.
+   *
    * @param customPluginSourcePath Optional explicit override path for the Unity plugin source directory.
+   * @param globalGitignorePath Optional explicit path to the global git excludes
+   *   file. Without it, resolution shells out to `git config --global
+   *   core.excludesfile` and falls back to `~/.gitignore_global` -- both of
+   *   which reach into the machine running the code. A test that does not pass
+   *   this writes to the developer's own home directory, which is how a stale
+   *   entry from an earlier run kept an assertion passing after the thing it
+   *   asserted on had been renamed.
    */
-  constructor(customPluginSourcePath?: string) {
+  constructor(customPluginSourcePath?: string, globalGitignorePath?: string) {
     this._pluginSourceRelativePath = customPluginSourcePath || this.resolvePluginSourcePath();
+    this._globalGitignorePathOverride = globalGitignorePath;
   }
 
   /// <summary>
@@ -213,6 +223,10 @@ export class UnityInjectorService {
    * Resolves the global Gitignore file path using git config or default location.
    */
   private getGlobalGitignorePath(): string {
+    if (this._globalGitignorePathOverride) {
+      return this._globalGitignorePathOverride;
+    }
+
     try {
       const gitConfigPath = execSync('git config --global core.excludesfile', { encoding: 'utf-8' }).trim();
       if (gitConfigPath) {
