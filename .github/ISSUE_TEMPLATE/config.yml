@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Istalry/BUSY_Bar/security/advisories/new
+    about: Report privately. Do not open a public issue for a security problem.
+  - name: BUSY Bar hardware, firmware or its HTTP API
+    url: https://github.com/busy-app
+    about: This repository is a third-party companion app. Device questions belong upstream.

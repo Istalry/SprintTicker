@@ -1,0 +1,37 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per group, because a solo project cannot review ten dependency
+      # PRs a month and the alternative is that none of them get reviewed.
+      types:
+        patterns: ['@types/*']
+      eslint:
+        patterns: ['eslint', 'eslint-*', '@typescript-eslint/*']
+      react:
+        patterns: ['react', 'react-dom', '@vitejs/plugin-react']
+      vite:
+        patterns: ['vite', 'vitest', '@vitest/*']
+    ignore:
+      # Electron majors carry breaking Chromium and Node changes, and the
+      # better-sqlite3 ABI is pinned to whichever Node version Electron ships.
+      # Bumping this is a deliberate migration, not a dependency update.
+      - dependency-name: electron
+        update-types: [version-update:semver-major]
+      # Rebuilt from source against Electron's ABI on every install; a major
+      # here means a native rebuild on every developer machine.
+      - dependency-name: better-sqlite3
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

@@ -32,6 +32,15 @@
   ],
   "npmRebuild": true,
   "asar": true,
+  "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Istalry",
+      "repo": "BUSY_Bar",
+      "releaseType": "draft"
+    }
+  ],
   "win": {
     "icon": "build/icon.png",
     "target": [
@@ -49,6 +58,7 @@
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "differentialPackage": false
   }
 }

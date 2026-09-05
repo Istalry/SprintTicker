@@ -1,0 +1,84 @@
+name: Build (Windows)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload the installer and portable exe as workflow artifacts
+        type: boolean
+        default: true
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: NSIS installer + portable
+    runs-on: windows-latest
+    steps:
+      # lfs: true is mandatory here and nowhere else. electron-builder copies
+      # Animations/ verbatim into extraResources, so without LFS this job
+      # succeeds and ships ~1,800 130-byte pointer files. Nothing errors.
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # LFS bandwidth, not storage, is the binding constraint: the free tier
+      # allows 1 GB of downloads per month and this checkout is ~15 MB, so an
+      # uncached job burns the quota in roughly 70 runs -- after which LFS
+      # fails for every clone and the repository looks broken to everyone.
+      - name: Cache LFS objects
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.gitattributes') }}-${{ github.sha }}
+          restore-keys: |
+            lfs-${{ hashFiles('.gitattributes') }}-
+            lfs-
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Fails the build rather than shipping pointer files, which is the one
+      # failure mode this whole workflow exists to avoid.
+      - name: Verify LFS objects resolved
+        shell: bash
+        run: |
+          pointers=$(grep -rl "^version https://git-lfs" Animations/ 2>/dev/null | head -5 || true)
+          if [ -n "$pointers" ]; then
+            echo "::error::Animations/ contains unresolved Git LFS pointers:"
+            echo "$pointers"
+            exit 1
+          fi
+          echo "Animations/ resolved: $(find Animations -name '*.png' | wc -l) frames"
+
+      # Unsigned. electron-builder reads CSC_LINK / CSC_KEY_PASSWORD from the
+      # environment and builds unsigned when they are absent, so adding two
+      # repository secrets is the entire change on the day a certificate
+      # exists -- no edit to electron-builder.json.
+      - name: Package
+        run: pnpm package:win -- --publish never
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Upload artifacts
+        if: github.event_name == 'push' || inputs.upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: busy-bar-windows
+          path: |
+            packages/desktop-app/dist-electron/*.exe
+            packages/desktop-app/dist-electron/latest.yml
+          retention-days: 14
+          if-no-files-found: error

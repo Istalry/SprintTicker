@@ -70,8 +70,8 @@ and it is also why nobody but the author has ever run a packaged build.
   - Signing stays out of the build configuration. `electron-builder` reads
     `CSC_LINK` / `CSC_KEY_PASSWORD` from the environment, so adding two repository
     secrets is the entire change on the day a certificate exists.
-- **`electron-updater`.** `electron-builder.json` should stage `publish`
-  (`github`, `draft`) first — it emits `latest.yml`, which is harmless without an
+- **`electron-updater`.** `electron-builder.json` already stages `publish`
+  (`github`, `draft`) — it emits `latest.yml`, which is harmless without an
   updater and required with one, and CI always passes `--publish never`.
   - The previous `AutoUpdateManager` was a stub that logged "checking for
     updates" and never checked (audit F-18). It was deleted rather than left to
@@ -79,6 +79,13 @@ and it is also why nobody but the author has ever run a packaged build.
   - Unsigned auto-updates on Windows are a poor experience: every update
     re-triggers SmartScreen. Consider gating the in-app updater on a
     certificate and shipping "a new version is available" with a link until then.
+  - `nsis.differentialPackage` is **off** deliberately. Differential updates
+    need a signed, published baseline to diff against; against unsigned draft
+    releases the blockmap is dead weight in every artifact. Turn it on with the
+    certificate, not before.
+  - The rationale above cannot live in `electron-builder.json`: electron-builder
+    validates that file against its JSON schema and rejects unknown keys, so a
+    `_comment` field fails the build rather than documenting it.
 - **`verify:packed` needs a real assertion before it becomes a required check.**
   Its false-pass probe is fixed — it tried port 8080 first, from a build that no
   longer opens one, so any unrelated process there reported success. It now
