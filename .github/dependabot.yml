@@ -18,15 +18,21 @@ updates:
       vite:
         patterns: ['vite', 'vitest', '@vitest/*']
     ignore:
-      # Electron majors carry breaking Chromium and Node changes, and the
-      # better-sqlite3 ABI is pinned to whichever Node version Electron ships.
-      # Bumping this is a deliberate migration, not a dependency update.
-      - dependency-name: electron
-        update-types: [version-update:semver-major]
       # Rebuilt from source against Electron's ABI on every install; a major
-      # here means a native rebuild on every developer machine.
+      # here means a native rebuild on every developer machine, and it is
+      # driven by the Electron upgrade rather than chosen independently.
       - dependency-name: better-sqlite3
         update-types: [version-update:semver-major]
+      #
+      # electron is deliberately NOT ignored, despite majors being genuine
+      # migrations. It was, briefly, on the reasoning that a solo project
+      # cannot absorb a Chromium bump every eight weeks. That reasoning
+      # suppresses the single most important update this repository receives:
+      # Electron ships inside the packaged app, so its advisories reach users,
+      # and by the time anyone noticed, this project was fourteen majors behind
+      # on a release that had been end-of-life for over a year -- roughly sixty
+      # open alerts. A PR nobody merges for a month is still visible. A PR that
+      # never opens is not.
 
   - package-ecosystem: github-actions
     directory: /

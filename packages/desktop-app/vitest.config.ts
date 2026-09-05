@@ -22,11 +22,24 @@ export default defineConfig({
         'src/shared/pixel-fonts.ts',
         'src/shared/pixel-bitmaps.ts'
       ],
+      // A ratchet, not a target. Raise these as coverage improves; never
+      // lower them to make a run pass.
+      //
+      // They dropped from 80/70 when @vitest/coverage-v8 went from 1 to 5, on
+      // an unchanged suite of 346 passing tests: 88.15% statements became
+      // 76.19%. Nothing regressed. AST-aware remapping is the default from v2
+      // onward, and the old provider counted a whole line as covered when any
+      // part of it executed -- which is why statements and lines used to report
+      // the identical 88.15% and now differ. The earlier figure was generous;
+      // this one is real, and the README's "80%+" claim was resting on the
+      // generous one.
+      //
+      // Getting back to 80/70 on the honest metric is tracked in ROADMAP.md.
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 70,
-        statements: 80
+        lines: 78,
+        functions: 79,
+        branches: 66,
+        statements: 76
       }
     }
   },

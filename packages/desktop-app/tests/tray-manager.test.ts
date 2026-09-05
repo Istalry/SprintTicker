@@ -22,7 +22,12 @@ vi.mock('electron', () => {
     Menu: {
       buildFromTemplate: vi.fn().mockReturnValue({})
     },
-    Tray: vi.fn().mockImplementation(() => {
+    // A function expression, not an arrow. TrayManager calls `new Tray(...)`,
+    // and vitest 5 invokes the mock implementation as the constructor -- an
+    // arrow function has no [[Construct]] slot, so it throws "is not a
+    // constructor". Returning an object from a constructor call overrides
+    // `this`, which is what makes this work.
+    Tray: vi.fn(function () {
       lastMockTray = {
         setToolTip: vi.fn(),
         setContextMenu: vi.fn(),

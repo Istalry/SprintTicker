@@ -32,7 +32,6 @@
   ],
   "npmRebuild": true,
   "asar": true,
-  "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
   "publish": [
     {
       "provider": "github",
@@ -54,7 +53,11 @@
       }
     ]
   },
+  "portable": {
+    "artifactName": "${productName}-${version}-${os}-${arch}-portable.${ext}"
+  },
   "nsis": {
+    "artifactName": "${productName}-${version}-${os}-${arch}-setup.${ext}",
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,

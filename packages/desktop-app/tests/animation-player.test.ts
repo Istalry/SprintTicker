@@ -12,7 +12,24 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('fs');
+// Declared explicitly rather than left to automocking. Under vitest 1 the
+// automock of 'fs' produced a `promises` namespace; under vitest 5 it does not,
+// and `vi.spyOn(fs.promises, ...)` failed with "could not find an object to spy
+// upon". Naming the surface the module under test actually uses makes the mock
+// independent of how thorough automocking happens to be.
+vi.mock('fs', () => {
+  const mock = {
+    existsSync: vi.fn(),
+    statSync: vi.fn(),
+    readdirSync: vi.fn(),
+    readFileSync: vi.fn(),
+    promises: {
+      readdir: vi.fn(),
+      readFile: vi.fn()
+    }
+  };
+  return { ...mock, default: mock };
+});
 vi.mock('path', async () => {
   const actual = await vi.importActual('path') as Record<string, unknown>;
   return {

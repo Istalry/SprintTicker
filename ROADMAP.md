@@ -188,6 +188,33 @@ looping idle animations.
 
 ---
 
+## Test coverage back to 80/70 on the honest metric
+
+**Blocked on:** nothing. This is just work.
+
+The floor is 76% statements / 78% lines / 79% functions / 66% branches. It read
+80/70 until `@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the
+default; the same 346 tests then measured 76.19% instead of 88.15%. The suite
+did not get worse -- the ruler got accurate, and the old one counted a whole
+line as covered when any part of it ran.
+
+Where the honest numbers are thinnest, worst first:
+
+| Area | Statements | Note |
+| :--- | ---: | :--- |
+| `main/providers` | 57% | The OpenProject client. Also where F-01, F-02 and F-12 live, so tests here pay twice. |
+| `main/diagnostics` | 66% | |
+| `main/tray` | 69% | `tray-manager.ts` lines 86-117 are the context menu. |
+| `main/hardware` | 74% | `input-decoder.ts` at 66% is the weakest file; it is also the one where an uncaught throw used to kill the main process. |
+| `main/services` | 75% | |
+
+The renderer is not measured at all -- `coverage.include` is `src/main/**` and
+`src/shared/**`. Roughly 4,700 lines of TSX have no tests. Extending the gate
+to cover it is a separate decision from raising the floor on what it already
+measures.
+
+---
+
 ## Deferred findings
 
 Carried forward deliberately, with the reason. This is not a backlog of things

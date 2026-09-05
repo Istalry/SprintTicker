@@ -123,7 +123,7 @@ the hardware **START** button or dismissed with **BACK**.
 | | |
 | :--- | :--- |
 | **OS** | Windows 10/11 x64 |
-| **Node.js** | `>=20.19.0` (`.nvmrc` pins `24.18.0`) |
+| **Node.js** | `>=22.12.0` (`.nvmrc` pins `24.18.0`). Vitest 5 sets this floor. |
 | **pnpm** | `>=11.0.0` (pinned to `pnpm@11.25.0` via `packageManager`) |
 | **Git LFS** | **Mandatory** — see below |
 | **Build tools** | Visual Studio Build Tools + Python, to compile `better-sqlite3` |
@@ -222,8 +222,14 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 346 tests across 32 files. Coverage thresholds are 80%
-statements / lines / functions and 70% branches; the suite sits above both.
+`pnpm test` runs 346 tests across 32 files, covering the main and shared
+process code; the renderer is not covered. `pnpm test:coverage` enforces a
+threshold floor of 76% statements / 78% lines / 79% functions / 66% branches.
+
+Those numbers used to read 80/70, and nothing regressed to change them:
+`@vitest/coverage-v8` made AST-aware remapping the default after v1, and the
+older provider counted a whole line as covered when any part of it ran. The
+floor is a ratchet -- raise it, never lower it to make a run pass.
 
 `pnpm preflight` runs the release pre-flight check.
 
