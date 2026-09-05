@@ -21,27 +21,46 @@ The repository is intended to be public. Everything on this list is
 irreversible once it is — a force-push does not retract a fork, and unreachable
 objects survive on GitHub's servers.
 
-- [ ] **Purge personal data from history.** A 3.9 MB `-wal` file captured from
-      `wpndatabase.db` sits in the history and contains ~1,175 real toast
-      records — Slack channel names, work item titles, shell fragments. Also in
+- [x] **Personal data purged from history** (2026-09-05). A 3.9 MB `-wal` file
+      captured from `wpndatabase.db` had been sitting in the history with ~1,175
+      real toast records — Slack channel names, work item titles, shell fragments. Also in
       history: `coverage/**` (recommitted a dozen times), `__pycache__`,
       `__MACOSX`, deleted `Unity_AutoLinker*.ps1` scripts carrying an employer
       path, and the third-party BUSY Bar documentation that was removed from
       the working tree in Phase 1. One `git-filter-repo` pass covers all of it.
-- [ ] **Rewrite commit authorship.** Every commit is authored under a corporate
-      address on what is a personal project. Rides along with the same
-      `git-filter-repo` pass.
+- [x] **Commit authorship rewritten** (2026-09-05). Every commit had been
+      authored under a corporate address on what is a personal project; all 75
+      are now `Istalry <7848814+Istalry@users.noreply.github.com>`, author and
+      committer. Same `git-filter-repo` pass, one force-push.
 - [x] **`Animations/` provenance confirmed.** They are the BUSY Bar firmware's
       own frame sets, (c) Flipper FZCO under CC-BY-SA-4.0, which permits
       redistribution with attribution. `LICENSE` carries the notice. The
       ShareAlike condition is worth remembering before anyone edits a frame:
       the edit, not the app, becomes CC-BY-SA-4.0.
-- [ ] **Verify no credentials in history.** A scan of all commits found only
-      test placeholders (`my_secret_token`, `<cloud-token>`) — re-run it against
-      the rewritten history before pushing.
-- [ ] **CI must be green on a fresh clone.** `lint`, `typecheck` and `test` from
-      a clean checkout with Git LFS, on a machine that has never built this repo.
-- [ ] `SECURITY.md`, issue and PR templates, `CODEOWNERS`, `dependabot.yml`.
+- [x] **No credentials in history.** A scan of all commits found only test
+      placeholders (`my_secret_token`, `<cloud-token>`), before and after the
+      rewrite. The `secrets` job in `quality.yml` runs gitleaks over the full
+      history on every push, so this stays checked rather than being a one-off.
+- [ ] **CI green on a fresh clone.** Verified locally on 2026-09-05: clone,
+      `pnpm install --frozen-lockfile`, then 346/346 tests, 0 lint errors, 0 type
+      errors, 1,800 LFS files resolved. Still needs one real Actions run — the
+      workflows have never executed on a runner.
+
+      Note for anyone reproducing it: clone somewhere outside `%TEMP%`. MSBuild
+      refuses to build `better-sqlite3` with its output under the temp directory
+      (MSB8029, then a C1083 on the generated `sqlite3.c`), which looks exactly
+      like a repository defect and is not one.
+- [x] `SECURITY.md`, issue and PR templates, `CODEOWNERS`, `dependabot.yml`.
+- [ ] **Enable private vulnerability reporting the moment the repo is public.**
+      Settings > Advanced Security > Private vulnerability reporting. It cannot
+      be switched on before then -- the feature does not exist for private
+      repositories -- and `SECURITY.md` sends reporters to
+      `/security/advisories/new`, which 404s until it is on. Until that toggle
+      is flipped there is no private channel, so a reporter's only option is a
+      public issue.
+- [ ] Enable **Dependabot alerts** (Security and quality > Overview). Separate
+      from `dependabot.yml`, which schedules version bumps; alerts fire on
+      published CVEs. Code scanning needs an Organization and is out of reach.
 - [ ] **Stop calling out to the Google Fonts CDN** (F-30). An offline-first
       desktop tracker makes an external request on every launch, which leaks
       usage timing and silently falls back to system fonts offline. Self-host
