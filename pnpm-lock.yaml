@@ -33,8 +33,8 @@ importers:
   packages/desktop-app:
     dependencies:
       '@busy-app/busy-lib':
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.0
+        version: 0.18.0
       better-sqlite3:
         specifier: ^11.0.0
         version: 11.10.0
@@ -144,8 +144,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@busy-app/busy-lib@0.17.0':
-    resolution: {integrity: sha512-N8x54N0sgrxKa0YSnA7BTBB4Hg0EXBH+TBtRgoHXJJTP+88QUw+nLwVaJL2PYRWIVxZZneKKmif+21twjskAOQ==}
+  '@busy-app/busy-lib@0.18.0':
+    resolution: {integrity: sha512-3bYaISlM7QrssZcbia0u3tpAeYo5Xe6n16I42o5BxKj4O/xMaXadLgqHcgdrm2MpNXHwOQcVisYjPDedtc2efQ==}
     engines: {node: '>=18'}
 
   '@electron/asar@3.4.1':
@@ -2627,8 +2627,8 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
-  undici@6.28.1:
-    resolution: {integrity: sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA==}
+  undici@6.28.0:
+    resolution: {integrity: sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==}
     engines: {node: '>=18.17'}
 
   universalify@0.1.2:
@@ -2869,7 +2869,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@busy-app/busy-lib@0.17.0':
+  '@busy-app/busy-lib@0.18.0':
     dependencies:
       openapi-fetch: 0.14.1
       protobufjs: 8.7.1
@@ -3172,7 +3172,7 @@ snapshots:
 
   '@types/fs-extra@9.0.13':
     dependencies:
-      '@types/node': 20.19.43
+      '@types/node': 24.13.3
 
   '@types/http-cache-semantics@4.2.0': {}
 
@@ -4912,7 +4912,7 @@ snapshots:
       semver: 7.8.5
       tar: 7.5.22
       tinyglobby: 0.2.17
-      undici: 6.28.1
+      undici: 6.28.0
       which: 6.0.1
 
   node-int64@0.4.0: {}
@@ -5739,7 +5739,7 @@ snapshots:
 
   undici-types@7.18.2: {}
 
-  undici@6.28.1: {}
+  undici@6.28.0: {}
 
   universalify@0.1.2: {}
 
