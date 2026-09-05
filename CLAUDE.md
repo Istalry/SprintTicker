@@ -158,7 +158,22 @@ cannot see is which constraint, bug or hardware quirk forced it. Comments that
 restate the code are noise — comments recording a trap are the most valuable
 thing in this repository.
 
-## 7. Reference material
+## 7. Commit identity
+
+This repository is configured with a **repo-local** author identity:
+
+```
+user.name  = Istalry
+user.email = 7848814+Istalry@users.noreply.github.com
+```
+
+The global `~/.gitconfig` points at a corporate address that has no business on
+a personal project, and history was rewritten once already to remove it. That
+rewrite does not change `git config`, so the very next commit reintroduced the
+old address and had to be amended. If you clone this repository somewhere new,
+set the local config before committing.
+
+## 8. Reference material
 
 `Documentation/private/` holds BUSY Bar's own OpenAPI specification, example app
 and AI teaching pack. It is deliberately untracked: useful locally, not ours to
