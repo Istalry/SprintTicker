@@ -246,6 +246,38 @@ describe('BusyBarDriver Unit Tests', () => {
     expect(clean).toBe('"Smart Quotes" & \'Single\' -- Dash... Emoji ');
   });
 
+  /**
+   * The display font is ASCII-only, so text has to be reduced -- but reducing
+   * is not the same as deleting. Accented letters used to fall through to the
+   * final strip, which removes rather than substitutes, and French
+   * notifications reached the bar with holes inside their words.
+   */
+  it('SanitizeAsciiText_AccentedLatin_TransliteratesRatherThanDeletingTheLetter', () => {
+    expect(sanitizeAsciiText('Réunion terminée')).toBe('Reunion terminee');
+    expect(sanitizeAsciiText('ça va, à demain')).toBe('ca va, a demain');
+    expect(sanitizeAsciiText('Noël où être')).toBe('Noel ou etre');
+  });
+
+  it('SanitizeAsciiText_FrenchPunctuation_KeepsWordsSeparated', () => {
+    // Windows puts a non-breaking space before ':' and '?' in French. Deleting
+    // it ran the surrounding words together.
+    expect(sanitizeAsciiText('Fini\u00A0? Oui')).toBe('Fini ? Oui');
+    expect(sanitizeAsciiText('«\u00A0Sprint\u00A0»')).toBe('" Sprint "');
+  });
+
+  it('SanitizeAsciiText_LigaturesWithNoBaseLetter_ExpandInsteadOfVanishing', () => {
+    // These decompose to nothing, so the diacritic pass cannot save them.
+    expect(sanitizeAsciiText('cœur')).toBe('coeur');
+    expect(sanitizeAsciiText('Œuvre')).toBe('OEuvre');
+    expect(sanitizeAsciiText('Straße')).toBe('Strasse');
+  });
+
+  it('SanitizeAsciiText_CharactersWithNoAsciiMeaning_AreStillDropped', () => {
+    // Deliberate: an emoji has no readable equivalent, so it goes rather than
+    // becoming noise. Only characters that *do* have one are transliterated.
+    expect(sanitizeAsciiText('done 😁 日本')).toBe('done  ');
+  });
+
   it('LiveMode_HttpEndpoints_ExecutesFetchRequests', async () => {
     const originalFetch = globalThis.fetch;
     const callLog: string[] = [];
