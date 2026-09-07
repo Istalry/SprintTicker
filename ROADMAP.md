@@ -233,6 +233,21 @@ looping idle animations.
   concern.
 - Richer transitions, more `.anim` sets, and a per-app icon override so a
   hand-tuned 16×16 from `pnpm editor` can pin any application.
+- [x] **Dropped three animation sets that nothing played** (2026-09-07):
+  `coding_72x16`, `dnd_72x16` and `on_call_72x16`, about 3.8 MB of the 12.5 MB
+  in `Animations/`. No source file referenced them, and there is no state for
+  `dnd` to attach to — `UserMode` is `WORK | LUNCH | AWAY`.
+  - There is no compositing path to wire them into: `AnimationPlayer` sends one
+    animation element at priority 95 and `transmitFrame` sends one full-panel
+    image at priority 95, so they overwrite each other. An animation is
+    therefore all-or-nothing across the whole panel, which suits only a state
+    with nothing to say — Lunch, Away and the stand-up prompt, all already
+    wired. `coding` would have to replace the task key and timer, and `on_call`
+    needs a presence signal the app does not have.
+  - This stops future clones and CI checkouts fetching them, which is what the
+    LFS bandwidth cap actually charges for. The objects stay in history; they
+    are Flipper FZCO's own frame sets under CC-BY-SA-4.0 and can be restored
+    from there or from [github.com/busy-app](https://github.com/busy-app).
 
 ---
 

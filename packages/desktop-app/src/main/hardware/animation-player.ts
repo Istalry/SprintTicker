@@ -34,8 +34,9 @@ export class AnimationPlayer {
   /**
    * How many decoded animations may stay resident.
    *
-   * The six shipped animations total 15 MB of PNG frames -- lunch alone is 1,080
-   * of them -- and every one ever played was kept for the life of the process.
+   * The three shipped animations total 8.6 MB of PNG frames -- lunch alone is
+   * 540 of them -- and every one ever played was kept for the life of the
+   * process.
    * Only one plays at a time; a second slot means switching back and forth
    * between two screens does not re-read either from disk.
    */
