@@ -149,6 +149,25 @@ export const NotificationSettingsView: React.FC = () => {
     }));
   };
 
+  /**
+   * Sets a per-rule icon override.
+   *
+   * The listener has always honoured `iconImagePath` ahead of the resolved
+   * icon, but nothing could set it, so the feature existed only for someone
+   * willing to edit the database by hand. It matters because AppIconResolver
+   * matches a Win32 app by Start-Menu shortcut name and can pick the wrong
+   * executable -- its own docstring names this override as the remedy.
+   */
+  const updateRuleIcon = (appId: string, iconImagePath: string) => {
+    const trimmed = iconImagePath.trim();
+    setSettings(prev => ({
+      ...prev,
+      sourceRules: prev.sourceRules.map(r =>
+        r.appId === appId ? { ...r, iconImagePath: trimmed || undefined } : r
+      )
+    }));
+  };
+
   const removeRule = (appId: string) => {
     setSettings(prev => ({
       ...prev,
@@ -371,8 +390,9 @@ export const NotificationSettingsView: React.FC = () => {
           {settings.sourceRules.map(rule => (
             <div
               key={rule.appId}
-              className="flex items-center justify-between p-3 bg-dark-900 border border-border-dark rounded-lg"
+              className="p-3 bg-dark-900 border border-border-dark rounded-lg space-y-2"
             >
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <span className="text-lg">
                   {rule.iconId === 'discord'
@@ -443,6 +463,20 @@ export const NotificationSettingsView: React.FC = () => {
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+              </div>
+            </div>
+
+              <div className="flex items-center space-x-2">
+                <label className="text-[10px] font-mono text-text-secondary whitespace-nowrap">
+                  Icon override
+                </label>
+                <input
+                  type="text"
+                  value={rule.iconImagePath ?? ''}
+                  onChange={e => updateRuleIcon(rule.appId, e.target.value)}
+                  placeholder="Optional: path to an image, or a 16x16 PNG from pnpm editor"
+                  className="flex-1 px-2 py-1 bg-dark-800 border border-border-dark rounded text-[10px] font-mono text-white placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-purple"
+                />
               </div>
             </div>
           ))}
