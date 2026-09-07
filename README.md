@@ -167,6 +167,25 @@ broken-animation build described above.
 
 ## Installation
 
+### From a release
+
+Download the installer from the
+[latest release](https://github.com/Istalry/SprintTicker/releases/latest) and
+run it. Nothing else is needed — the installer carries its own Node runtime,
+native modules and animation frames.
+
+**Windows will warn you on first run.** The build is unsigned, so SmartScreen
+shows "Windows protected your PC" over an unrecognised publisher. Choose **More
+info → Run anyway**. There is no way around this short of a code-signing
+certificate; see [ROADMAP.md](ROADMAP.md) §2 for why one is not in place.
+
+The portable executable is the same application without an installer. It still
+keeps its database in the `userData` directory described under **First run**,
+so it is portable in the "no install step" sense rather than the "leaves
+nothing behind" sense.
+
+### From source
+
 ```bash
 git lfs install
 git clone <repository-url>
@@ -422,7 +441,8 @@ you want a copy.
 - **The rear 160×80 OLED is preview-only.** The emulator draws it; nothing is
   transmitted to the physical panel.
 - **OpenProject is the only remote task provider.** Jira is in the roadmap.
-- **No automated releases and no in-app updates.**
+- **Builds are unsigned**, so SmartScreen warns on first run and in-app updates
+  stay notification-only. Both are gated on a code-signing certificate.
 
 ---
 
