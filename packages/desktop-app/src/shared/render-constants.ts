@@ -23,8 +23,6 @@ export const DISPLAY_CONSTANTS = {
   REAR_OLED_WIDTH: 160,
   REAR_OLED_HEIGHT: 80,
 
-  DEFAULT_SCROLL_RATE: 60,
-
   /**
    * Standard "16px icon, two text rows" front layout.
    *

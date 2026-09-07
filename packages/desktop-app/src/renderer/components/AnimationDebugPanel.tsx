@@ -57,7 +57,7 @@ export const AnimationDebugPanel: React.FC = () => {
       window.electronAPI.simulateNotification({
         appId: 'slack',
         appName: 'Slack',
-        title: '[SLACK] Alice',
+        title: 'Alice',
         body: 'PR #142 is ready for review!',
         iconId: 'slack'
       });
@@ -83,8 +83,8 @@ export const AnimationDebugPanel: React.FC = () => {
       window.electronAPI.simulateNotification({
         appId: 'discord',
         appName: 'Discord',
-        title: '[DISCORD] Build notification',
-        body: 'Bob: Build deployment completed successfully',
+        title: 'Bob',
+        body: 'Build deployment completed successfully',
         iconId: 'discord'
       });
       showStatus('Real IPC: Simulated Discord Notification');
@@ -96,7 +96,7 @@ export const AnimationDebugPanel: React.FC = () => {
       window.electronAPI.simulateNotification({
         appId: 'gmail',
         appName: 'Gmail',
-        title: '[GMAIL] Urgent Email',
+        title: 'Urgent Email',
         body: 'Production Release v2.4 Status Update',
         iconId: 'gmail'
       });
