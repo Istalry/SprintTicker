@@ -799,6 +799,34 @@ Three details are deliberate:
   finding: the UI could not previously tell "nothing there" from "nothing
   fetched yet".
 
+### F-56 — A successful "Fetch Statuses" implies a connection the app is not using
+`SettingsView.tsx` (`handleFetchStatuses`)
+
+`handleFetchStatuses` passes the **form fields** straight to
+`fetchOpenProjectStatuses(opDomain, opApiKey)`. Nothing is persisted first, and
+`OpenProjectProvider.fetchStatuses` is a static taking both as arguments, so the
+probe deliberately bypasses the saved settings.
+
+That is reasonable for a credential test. What is not reasonable is that it
+succeeds loudly -- the dropdowns fill with real statuses from the typed server
+-- while the provider in the main process is still initialised from the saved
+values. Projects and tasks continue to sync from the old credentials, or not at
+all if there were none. Nothing on screen distinguishes "tested" from "in use".
+
+Observed exactly this way: statuses fetched correctly from a server on
+127.0.0.1, while `op_domain` in the database was still a LAN address and
+`op_api_key` was still empty, so the sync worker was skipping every pass as
+`not_configured`. Both the maintainer and this audit initially read the empty
+project list as a provider bug.
+
+**Fixed**, minimally: the form remembers the credentials it loaded, and shows a
+warning beside the fetch control whenever the fields differ from them, naming
+**Save Settings** as the thing that has not happened yet.
+
+Not covered by a test -- the renderer has no test coverage at all
+(`coverage.include` is `src/main/**` and `src/shared/**`). Verified by reading
+and by the observation above rather than by the suite.
+
 ## 11. Remediation status
 
 The Phase 1 branch addressed the findings below. Verify against the code, not
@@ -806,7 +834,7 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-12, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54, F-55 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-12, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54, F-55, F-56 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
 | **Open, deferred with a reason** | F-11, and the table in [ROADMAP.md](ROADMAP.md) |

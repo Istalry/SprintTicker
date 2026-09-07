@@ -22,6 +22,14 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
 
   const [availableStatuses, setAvailableStatuses] = useState<OpStatusDTO[]>([]);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState<boolean>(false);
+  const [savedCredentials, setSavedCredentials] = useState<{ domain: string; apiKey: string }>({
+    domain: '',
+    apiKey: ''
+  });
+
+  // The provider in the main process uses the saved values, not these fields.
+  const credentialsUnsaved =
+    opDomain.trim() !== savedCredentials.domain.trim() || opApiKey.trim() !== savedCredentials.apiKey.trim();
 
   // Notification Settings
   const [enableOpenProjectNotifications, setEnableOpenProjectNotifications] = useState<boolean>(true);
@@ -36,6 +44,11 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           if (res.fallbackTicketKey) setFallbackTicketKey(res.fallbackTicketKey);
           if (res.opDomain) setOpDomain(res.opDomain);
           if (res.opApiKey) setOpApiKey(res.opApiKey);
+          // Remembered so the form can tell "typed" from "in use". Fetching
+          // statuses probes whatever is in the fields, which made a successful
+          // fetch look like a configured connection while the rest of the app
+          // carried on with the previously saved credentials.
+          setSavedCredentials({ domain: res.opDomain || '', apiKey: res.opApiKey || '' });
           if (res.opStatusInProgress) setOpStatusInProgress(res.opStatusInProgress);
           if (res.opStatusToTest) setOpStatusToTest(res.opStatusToTest);
           if (res.opStatusToReview) setOpStatusToReview(res.opStatusToReview);
@@ -77,6 +90,7 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       });
     }
 
+    setSavedCredentials({ domain: opDomain, apiKey: opApiKey });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
@@ -186,6 +200,17 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
             {fetchError && (
               <div className="text-xs text-red-400 mt-2 font-mono bg-red-900/20 p-2 rounded border border-red-900/50">
                 Failed to fetch: {fetchError}
+              </div>
+            )}
+            {credentialsUnsaved && (
+              // Fetching statuses uses the fields above directly, so it can
+              // succeed against a server the rest of the app is not pointed at.
+              // Without saying so, a successful fetch reads as "connected" while
+              // projects and tasks keep syncing from the previous credentials.
+              <div className="text-xs text-amber-300 mt-2 font-mono bg-amber-900/20 p-2 rounded border border-amber-900/50">
+                These credentials have not been saved. Fetching statuses tests them directly, but
+                projects and tasks keep using the saved ones until you press{' '}
+                <span className="font-bold">Save Settings</span>.
               </div>
             )}
             
