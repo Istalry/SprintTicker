@@ -819,13 +819,25 @@ Observed exactly this way: statuses fetched correctly from a server on
 `not_configured`. Both the maintainer and this audit initially read the empty
 project list as a provider bug.
 
-**Fixed**, minimally: the form remembers the credentials it loaded, and shows a
-warning beside the fetch control whenever the fields differ from them, naming
-**Save Settings** as the thing that has not happened yet.
+**Fixed by removing the state it described.** The settings panels no longer
+have Save buttons: every panel persists as it is edited, so there is no longer
+a window in which the fields and the stored credentials disagree. The status
+probe now necessarily tests what the provider is about to use.
 
-Not covered by a test -- the renderer has no test coverage at all
-(`coverage.include` is `src/main/**` and `src/shared/**`). Verified by reading
-and by the observation above rather than by the suite.
+The risk moves rather than disappearing, and moves somewhere sharper. A panel
+mounts holding defaults and loads stored values asynchronously, so a naive
+"save whenever the values change" effect fires once with the defaults and
+writes them over the user's configuration. Every panel therefore gates
+auto-save on its own "stored settings have arrived" flag, and the scheduler
+treats the first values it sees as a baseline to compare against rather than
+something to persist. That logic lives in
+`renderer/hooks/auto-save-scheduler.ts`, deliberately free of React so it can
+be tested, and `tests/auto-save-scheduler.test.ts` pins it -- including the
+exact defaults-then-loaded sequence.
+
+Failures are surfaced by `AutoSaveIndicator` rather than logged and dropped:
+with no button to press again, a silent failure would lose an edit with no
+trace.
 
 ## 11. Remediation status
 

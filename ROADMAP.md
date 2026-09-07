@@ -234,7 +234,7 @@ looping idle animations.
 **Blocked on:** nothing. This is just work.
 
 The floor is 78% statements / 80% lines / 80% functions / 68% branches, and the
-suite currently measures 79.39 / 81.53 / 81.21 / 69.58. It read 80/70 until
+suite currently measures 79.28 / 81.42 / 81.06 / 69.46. It read 80/70 until
 `@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the default;
 the same 346 tests then measured 76.19% instead of 88.15%. The suite did not
 get worse -- the ruler got accurate, and the old one counted a whole line as

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CheckSquare, Save, Check } from 'lucide-react';
+import { CheckSquare } from 'lucide-react';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { OpStatusDTO } from '../../../shared/dtos';
 
 export interface SettingsViewProps {
@@ -7,7 +9,7 @@ export interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = () => {
-  const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Settings State
@@ -22,14 +24,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
 
   const [availableStatuses, setAvailableStatuses] = useState<OpStatusDTO[]>([]);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState<boolean>(false);
-  const [savedCredentials, setSavedCredentials] = useState<{ domain: string; apiKey: string }>({
-    domain: '',
-    apiKey: ''
-  });
-
-  // The provider in the main process uses the saved values, not these fields.
-  const credentialsUnsaved =
-    opDomain.trim() !== savedCredentials.domain.trim() || opApiKey.trim() !== savedCredentials.apiKey.trim();
 
   // Notification Settings
   const [enableOpenProjectNotifications, setEnableOpenProjectNotifications] = useState<boolean>(true);
@@ -37,34 +31,35 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
   const [isTestLoading, setIsTestLoading] = useState<boolean>(false);
 
   useEffect(() => {
+    // Auto-save stays disabled until both reads settle. Enabling it earlier
+    // would let the panel persist its defaults over stored settings.
+    const loads: Array<Promise<unknown>> = [];
+
     if (window.electronAPI?.getProviders) {
-      window.electronAPI.getProviders().then(res => {
+      loads.push(window.electronAPI.getProviders().then(res => {
         if (res) {
           if (res.activeProviderId) setProviderId(res.activeProviderId);
           if (res.fallbackTicketKey) setFallbackTicketKey(res.fallbackTicketKey);
           if (res.opDomain) setOpDomain(res.opDomain);
           if (res.opApiKey) setOpApiKey(res.opApiKey);
-          // Remembered so the form can tell "typed" from "in use". Fetching
-          // statuses probes whatever is in the fields, which made a successful
-          // fetch look like a configured connection while the rest of the app
-          // carried on with the previously saved credentials.
-          setSavedCredentials({ domain: res.opDomain || '', apiKey: res.opApiKey || '' });
           if (res.opStatusInProgress) setOpStatusInProgress(res.opStatusInProgress);
           if (res.opStatusToTest) setOpStatusToTest(res.opStatusToTest);
           if (res.opStatusToReview) setOpStatusToReview(res.opStatusToReview);
           if (res.opCompletionAction) setOpCompletionAction(res.opCompletionAction);
         }
-      }).catch(err => console.error('[SettingsView] Error loading providers:', err));
+      }).catch(err => console.error('[SettingsView] Error loading providers:', err)));
     }
     
     if (window.electronAPI?.getMessagingSettings) {
-      window.electronAPI.getMessagingSettings().then(s => {
+      loads.push(window.electronAPI.getMessagingSettings().then(s => {
         if (s) {
           setEnableOpenProjectNotifications(s.enableOpenProjectNotifications ?? true);
           setOpenProjectPollingIntervalSeconds(s.openProjectPollingIntervalSeconds ?? 60);
         }
-      }).catch(err => console.error('[SettingsView] Error loading messaging settings:', err));
+      }).catch(err => console.error('[SettingsView] Error loading messaging settings:', err)));
     }
+
+    void Promise.allSettled(loads).then(() => setLoaded(true));
   }, []);
 
   const handleSave = async () => {
@@ -90,10 +85,24 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       });
     }
 
-    setSavedCredentials({ domain: opDomain, apiKey: opApiKey });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
   };
+
+  const saveStatus = useAutoSave(
+    handleSave,
+    [
+      providerId,
+      fallbackTicketKey,
+      opDomain,
+      opApiKey,
+      opStatusInProgress,
+      opStatusToTest,
+      opStatusToReview,
+      opCompletionAction,
+      enableOpenProjectNotifications,
+      openProjectPollingIntervalSeconds
+    ],
+    loaded
+  );
 
   const handleFetchStatuses = async () => {
     if (!opDomain || !opApiKey || !window.electronAPI?.fetchOpenProjectStatuses) return;
@@ -140,13 +149,7 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           <p className="text-xs text-text-secondary">Configure OpenProject REST API integration & time tracking synchronization.</p>
         </div>
 
-        <button
-          onClick={handleSave}
-          className="flex items-center space-x-2 px-5 py-2.5 bg-accent-green hover:bg-emerald-600 text-dark-900 font-semibold text-sm rounded-lg shadow-md transition-all"
-        >
-          {savedSuccess ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          <span>{savedSuccess ? 'Settings Saved!' : 'Save Settings'}</span>
-        </button>
+        <AutoSaveIndicator status={saveStatus} />
       </div>
 
       {/* Settings Form Container */}
@@ -202,18 +205,12 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
                 Failed to fetch: {fetchError}
               </div>
             )}
-            {credentialsUnsaved && (
-              // Fetching statuses uses the fields above directly, so it can
-              // succeed against a server the rest of the app is not pointed at.
-              // Without saying so, a successful fetch reads as "connected" while
-              // projects and tasks keep syncing from the previous credentials.
-              <div className="text-xs text-amber-300 mt-2 font-mono bg-amber-900/20 p-2 rounded border border-amber-900/50">
-                These credentials have not been saved. Fetching statuses tests them directly, but
-                projects and tasks keep using the saved ones until you press{' '}
-                <span className="font-bold">Save Settings</span>.
-              </div>
-            )}
-            
+            {/*
+              There is no "typed but not saved" state to warn about any more:
+              the fields persist as they are edited, so the credentials this
+              fetch probes are the ones the provider is about to use (F-56).
+            */}
+
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-xs font-mono text-text-secondary mb-1">In Progress Status</label>

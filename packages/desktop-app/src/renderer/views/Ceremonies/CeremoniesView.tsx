@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Moon, Save, Check, Play, ShieldAlert } from 'lucide-react';
+import { Calendar, Clock, Moon, Play, ShieldAlert } from 'lucide-react';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
 import { DEFAULT_SCHEDULE_SETTINGS } from '../../../shared/schedule-defaults';
 
@@ -10,7 +12,7 @@ export const CeremoniesView: React.FC = () => {
   const [eodTime, setEodTime] = useState<string>('17:30');
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
   const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
-  const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
   const [testStatusMessage, setTestStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,12 @@ export const CeremoniesView: React.FC = () => {
             setShutdownByDefault(sched.eodShutdownByDefault);
           }
         }
-      }).catch(err => console.error('[CeremoniesView] Error loading schedule settings:', err));
+      }).catch(err => console.error('[CeremoniesView] Error loading schedule settings:', err))
+        // Auto-save must stay off until the stored schedule has arrived, or
+        // the panel would write its defaults over it.
+        .finally(() => setLoaded(true));
+    } else {
+      setLoaded(true);
     }
   }, []);
 
@@ -49,9 +56,13 @@ export const CeremoniesView: React.FC = () => {
       };
       await window.electronAPI.saveScheduleSettings(settings);
     }
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
   };
+
+  const saveStatus = useAutoSave(
+    handleSave,
+    [standupTime, lunchStart, lunchEnd, eodTime, timeoutSeconds, shutdownByDefault],
+    loaded
+  );
 
   const handleTestTriggerEod = async () => {
     if (window.electronAPI?.triggerEodPrompt) {
@@ -79,13 +90,7 @@ export const CeremoniesView: React.FC = () => {
           <p className="text-xs text-text-secondary">Schedule Daily Stand-Up prompts, Lunch quiet hours, dialog timeout limits, and EOD Wrap-Up.</p>
         </div>
 
-        <button
-          onClick={handleSave}
-          className="flex items-center space-x-2 px-5 py-2.5 bg-accent-green hover:bg-emerald-600 text-dark-900 font-semibold text-sm rounded-lg shadow-md transition-all"
-        >
-          {savedSuccess ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          <span>{savedSuccess ? 'Schedule Saved!' : 'Save Ceremonies'}</span>
-        </button>
+        <AutoSaveIndicator status={saveStatus} />
       </div>
 
       {/* Grid: Ceremonies Configuration Cards */}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Gamepad2, Box, Folder, Loader2, CheckCircle, AlertTriangle, Trash2, RefreshCw, Volume2, Bell, Save, Check } from 'lucide-react';
+import { Gamepad2, Box, Folder, Loader2, CheckCircle, AlertTriangle, Trash2, RefreshCw, Volume2, Bell } from 'lucide-react';
 import { UnityProjectInjectionResult, UnityTelemetryDTO } from '../../../shared/dtos';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { playAudioChimePreview } from '../../utils/audio-chime-synth';
 
 export const UnityEngineView: React.FC = () => {
@@ -10,7 +12,7 @@ export const UnityEngineView: React.FC = () => {
   const [enablePlayModeDnd, setEnablePlayModeDnd] = useState<boolean>(true);
   const [showUnityErrors, setShowUnityErrors] = useState<boolean>(false);
   const [errorDurationSeconds, setErrorDurationSeconds] = useState<number>(5);
-  const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
 
   // Live Telemetry State
   const [telemetry, setTelemetry] = useState<UnityTelemetryDTO>({
@@ -56,7 +58,12 @@ export const UnityEngineView: React.FC = () => {
             }
           }
         }
-      }).catch(err => console.error('[UnityEngineView] Error fetching settings:', err));
+      }).catch(err => console.error('[UnityEngineView] Error fetching settings:', err))
+        // Gated so the panel cannot write its defaults -- which include
+        // enableFailureSound and enablePlayModeDnd as true -- over stored ones.
+        .finally(() => setLoaded(true));
+    } else {
+      setLoaded(true);
     }
 
     if (window.electronAPI?.getUnityTelemetry) {
@@ -85,9 +92,13 @@ export const UnityEngineView: React.FC = () => {
         scanFolder
       });
     }
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
   };
+
+  const saveStatus = useAutoSave(
+    handleSaveUnitySettings,
+    [buildChime, enableFailureSound, enablePlayModeDnd, showUnityErrors, errorDurationSeconds, scanFolder],
+    loaded
+  );
 
   const handleConfigureGitignore = async () => {
     if (!window.electronAPI?.unityInjector) return;
@@ -242,13 +253,7 @@ export const UnityEngineView: React.FC = () => {
             <span>Compilation Sounds & Play Mode Alerts</span>
           </h3>
 
-          <button
-            onClick={handleSaveUnitySettings}
-            className="flex items-center space-x-1.5 px-4 py-1.5 bg-accent-green hover:bg-emerald-600 text-dark-900 font-semibold text-xs rounded-lg transition-all"
-          >
-            {isSaved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-            <span>{isSaved ? 'Settings Saved!' : 'Save Unity Settings'}</span>
-          </button>
+          <AutoSaveIndicator status={saveStatus} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

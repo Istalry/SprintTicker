@@ -253,7 +253,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 427 tests across 41 files, covering the main and shared
+`pnpm test` runs 439 tests across 42 files, covering the main and shared
 process code; the renderer is not covered. `pnpm test:coverage` enforces a
 threshold floor of 78% statements / 80% lines / 80% functions / 68% branches.
 

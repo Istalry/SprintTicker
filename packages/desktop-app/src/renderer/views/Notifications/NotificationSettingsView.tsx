@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import {
   Bell,
-  Save,
   Plus,
   Trash2,
   Send,
-  Check,
   Shield,
   Terminal,
   Activity,
@@ -46,7 +46,7 @@ export const NotificationSettingsView: React.FC = () => {
   const [logFilter, setLogFilter] = useState<string>('ALL');
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
-  const [saved, setSaved] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
   const [newAppId, setNewAppId] = useState<string>('');
   const [newAppName, setNewAppName] = useState<string>('');
   const [newIconId, setNewIconId] = useState<BitmapIconId>('bell');
@@ -80,7 +80,13 @@ export const NotificationSettingsView: React.FC = () => {
             setSettings(res);
           }
         })
-        .catch(err => console.error('[NotificationSettingsView] Error fetching settings:', err));
+        .catch(err => console.error('[NotificationSettingsView] Error fetching settings:', err))
+        // Auto-save is gated on this: the defaults include a full sourceRules
+        // table, and writing that over the stored one would discard every
+        // per-app priority the user had set.
+        .finally(() => setLoaded(true));
+    } else {
+      setLoaded(true);
     }
 
     if (window.electronAPI?.getPriorityRules) {
@@ -128,11 +134,13 @@ export const NotificationSettingsView: React.FC = () => {
   const handleSave = async () => {
     if (window.electronAPI?.saveNotificationSettings) {
       await window.electronAPI.saveNotificationSettings(settings);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
       fetchStatusAndLogs();
     }
   };
+
+  // defaultScore and highScore are read from the priority rules for display
+  // only, so they are not part of what this panel owns.
+  const saveStatus = useAutoSave(handleSave, [settings], loaded);
 
   const updateRuleMode = (appId: string, mode: NotificationPriorityMode) => {
     setSettings(prev => ({
@@ -195,13 +203,7 @@ export const NotificationSettingsView: React.FC = () => {
             Capture Windows system &amp; application alerts, centered left-icon matrix formatting, and 3-level per-source priority management.
           </p>
         </div>
-        <button
-          onClick={handleSave}
-          className="flex items-center space-x-2 px-4 py-2 bg-accent-purple hover:bg-purple-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-accent-purple/20"
-        >
-          {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          <span>{saved ? 'SETTINGS SAVED!' : 'SAVE CONFIGURATION'}</span>
-        </button>
+        <AutoSaveIndicator status={saveStatus} />
       </div>
 
       {/* Main Listener & Settings Card */}

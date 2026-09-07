@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Save, Check, ShieldAlert, ChevronUp, ChevronDown, User, Coffee, Moon } from 'lucide-react';
+import { Zap, ShieldAlert, ChevronUp, ChevronDown, User, Coffee, Moon } from 'lucide-react';
+import { useAutoSave } from '../../hooks/useAutoSave';
+import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { PriorityRule, UserMode, PriorityAction } from '../../../shared/dtos';
 import { DEFAULT_PRIORITY_RULES } from '../../../shared/priority-defaults';
 
@@ -17,7 +19,7 @@ export const PriorityRulesView: React.FC = () => {
   // the device never actually used.
   const [rules, setRules] = useState<PriorityRule[]>(() => [...DEFAULT_PRIORITY_RULES]);
 
-  const [saved, setSaved] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     if (window.electronAPI?.getPriorityRules) {
@@ -47,7 +49,13 @@ export const PriorityRulesView: React.FC = () => {
             return merged;
           });
         }
-      }).catch(err => console.error('[PriorityRulesView] Error fetching rules:', err));
+      }).catch(err => console.error('[PriorityRulesView] Error fetching rules:', err))
+        // finally, not then: one branch above returns early. Auto-save stays
+        // off until this settles so the panel cannot write DEFAULT_PRIORITY_RULES
+        // over the stored matrix -- which would silently reorder the display.
+        .finally(() => setLoaded(true));
+    } else {
+      setLoaded(true);
     }
 
     const api = window.electronAPI as unknown as {
@@ -69,17 +77,16 @@ export const PriorityRulesView: React.FC = () => {
     return undefined;
   }, []);
 
+  // Only the rules table. The active mode is applied the instant it changes,
+  // in handleModeChange, so including it here would re-save the whole matrix
+  // every time the user switched context.
   const handleSave = async () => {
     if (window.electronAPI?.savePriorityRules) {
       await window.electronAPI.savePriorityRules(rules);
     }
-    const api = window.electronAPI as unknown as Record<string, (m: UserMode) => Promise<boolean>>;
-    if (api?.setUserMode) {
-      await api.setUserMode(userMode);
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
+
+  const saveStatus = useAutoSave(handleSave, [rules], loaded);
 
   const handleModeChange = async (newMode: UserMode) => {
     setUserMode(newMode);
@@ -130,13 +137,7 @@ export const PriorityRulesView: React.FC = () => {
           <p className="text-xs text-text-secondary">Dictate which notifications take visual precedence and configure mode suppression (Work/Lunch/Away).</p>
         </div>
 
-        <button
-          onClick={handleSave}
-          className="flex items-center space-x-2 px-5 py-2.5 bg-accent-green hover:bg-emerald-600 text-dark-900 font-semibold text-sm rounded-lg shadow-md transition-all"
-        >
-          {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          <span>{saved ? 'Rules Saved!' : 'Save Priority Rules'}</span>
-        </button>
+        <AutoSaveIndicator status={saveStatus} />
       </div>
 
       {/* Mode Selector Card */}
