@@ -466,3 +466,23 @@ export class ArgumentException extends Error {
     this.name = 'ArgumentException';
   }
 }
+
+/**
+ * The result of one update check.
+ *
+ * `failed` carries the reason and is produced by whoever catches
+ * `UpdateCheckError`, not by the checker: a check that did not happen must not
+ * be reported as "up to date". The service it replaced claimed to check and
+ * never did (audit F-18), so the failure case is deliberately a first-class
+ * state here rather than something the UI infers from silence.
+ */
+export type UpdateStatusDTO =
+  | { status: 'disabled'; currentVersion: string }
+  | { status: 'up-to-date'; currentVersion: string }
+  | { status: 'failed'; currentVersion: string; reason: string }
+  | {
+      status: 'update-available';
+      currentVersion: string;
+      latestVersion: string;
+      releaseUrl: string;
+    };

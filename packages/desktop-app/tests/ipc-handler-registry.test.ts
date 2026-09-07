@@ -84,9 +84,12 @@ describe('IPCHandlerRegistry Unit Tests', () => {
 
   it('RegisterAllHandlers_WithMockWindow_BroadcastsSessionUpdates', async () => {
     // Arrange: create a registry wired to a non-null window
+    // A real webContents always answers isDestroyed(). Omitting it made this
+    // mock disagree with Electron, and a guard added against a crash seen in
+    // production failed here rather than in the code it protects.
     const mockWindow = {
       isDestroyed: vi.fn().mockReturnValue(false),
-      webContents: { send: vi.fn() }
+      webContents: { send: vi.fn(), isDestroyed: vi.fn().mockReturnValue(false) }
     } as unknown as BrowserWindow;
 
     const dbConn2 = new DatabaseConnection(':memory:');
@@ -123,6 +126,47 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     engine2.dispose();
     dbConn2.close();
   });
+
+  /**
+   * The window and its webContents are separate objects with separate
+   * lifetimes, so a destroyed webContents under a live window is a real state
+   * and the guard has to check both.
+   */
+  it('RegisterAllHandlers_WebContentsDestroyedButWindowAlive_DoesNotSend', async () => {
+    const mockWindow = {
+      isDestroyed: vi.fn().mockReturnValue(false),
+      webContents: { send: vi.fn(), isDestroyed: vi.fn().mockReturnValue(true) }
+    } as unknown as BrowserWindow;
+
+    const dbConn3 = new DatabaseConnection(':memory:');
+    const sessionRepo3 = new SessionRepository(dbConn3);
+    const worklogRepo3 = new WorklogRepository(dbConn3);
+    const taskRepo3 = new TaskRepository(dbConn3);
+    const settingsRepo3 = new SettingsRepository(dbConn3);
+    const engine3 = new TimeTrackingEngine(sessionRepo3, worklogRepo3, taskRepo3, undefined, new ProjectRepository(dbConn3));
+    const driver3 = new BusyBarDriver('10.0.4.20', true);
+    await driver3.connect();
+    const renderer3 = new DisplayRenderer(driver3);
+    const decoder3 = new InputDecoder(driver3, engine3, settingsRepo3);
+
+    const reg3 = new IPCHandlerRegistry({
+      engine: engine3,
+      taskRepo: taskRepo3,
+      settingsRepo: settingsRepo3,
+      driver: driver3,
+      inputDecoder: decoder3,
+      renderer: renderer3,
+      getWindow: () => mockWindow
+    });
+    reg3.registerAllHandlers();
+
+    expect(() => engine3.startTask('PROJ-TEST', false, 'Teardown race')).not.toThrow();
+    expect(mockWindow.webContents.send).not.toHaveBeenCalled();
+
+    engine3.dispose();
+    dbConn3.close();
+  });
+
 
   it('RegisterAllHandlers_InjectRemoteKeyChannel_InvokesDriver', async () => {
     registry.registerAllHandlers();

@@ -108,12 +108,26 @@ and it is also why nobody but the author has ever run a packaged build.
 - **`electron-updater`.** `electron-builder.json` already stages `publish`
   (`github`, `draft`) — it emits `latest.yml`, which is harmless without an
   updater and required with one, and CI always passes `--publish never`.
-  - The previous `AutoUpdateManager` was a stub that logged "checking for
-    updates" and never checked (audit F-18). It was deleted rather than left to
-    lie. Whatever replaces it must surface a real failure to the user.
-  - Unsigned auto-updates on Windows are a poor experience: every update
-    re-triggers SmartScreen. Consider gating the in-app updater on a
-    certificate and shipping "a new version is available" with a link until then.
+  - [x] **Notification-only checking shipped** (2026-09-07). The app asks the
+    releases API whether a newer version exists and says so; it downloads and
+    installs nothing. `/releases/latest` returns only published, non-draft
+    releases, so the drafts CI produces stay invisible until reviewed.
+    - A failed check is reported as a failure. The previous `AutoUpdateManager`
+      logged "checking for updates" and never checked (audit F-18), so the
+      checker throws when it could not find out and the caller shows the reason
+      — it can never resolve to "up to date" by accident.
+    - It is the app's only outbound request, so it is a documented setting that
+      stops the request rather than hiding the result, and README and
+      SECURITY.md now say what it sends. The Google Fonts removal (F-30) was
+      about an *undisclosed* connection; this one is disclosed and refusable.
+    - The URL passed to `shell.openExternal` is checked against this
+      repository's prefix. An `openExternal` that opens whatever it is handed
+      launches arbitrary protocol handlers.
+  - **Still to do: the actual download.** Unsigned auto-updates re-trigger
+    SmartScreen every time and some are blocked outright, so installing in-app
+    would be worse than the manual route. This becomes `electron-updater` on
+    the day a certificate exists, and `latest.yml` is already attached to
+    every release so that day needs no release-side change.
   - `nsis.differentialPackage` is **off** deliberately. Differential updates
     need a signed, published baseline to diff against; against unsigned draft
     releases the blockmap is dead weight in every artifact. Turn it on with the

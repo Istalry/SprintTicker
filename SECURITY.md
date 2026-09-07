@@ -17,6 +17,19 @@ within a week or so; there is no SLA, and no bounty.
 Worth knowing before you assess it, because two of these look alarming and are
 intentional.
 
+### An outbound update check
+
+The app asks `api.github.com` for this project's latest release, thirty seconds
+after launch and once a day thereafter. The request carries no identifier and no
+usage data, and the response is only compared against the running version — it
+is never downloaded or executed. It can be turned off in **Device Diagnostics →
+Updates**, which stops the request rather than hiding its result.
+
+The release URL the renderer may ask the main process to open is checked against
+this repository's own prefix before `shell.openExternal` sees it. An
+`openExternal` that opens whatever it is handed is a way to launch arbitrary
+protocol handlers.
+
 ### A local HTTP server on `127.0.0.1:39123`
 
 The app runs an HTTP server so the Unity Editor plugin can push compile and

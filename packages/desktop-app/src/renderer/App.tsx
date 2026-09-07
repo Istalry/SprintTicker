@@ -32,6 +32,7 @@ import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { HardwareDisplayEmulator } from './components/HardwareDisplayEmulator';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { FolderGit2, History } from 'lucide-react';
+import { UpdateBanner } from './components/UpdateNotice';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
@@ -254,6 +255,7 @@ export const App: React.FC = () => {
 
         {/* Workspace Container */}
         <main className="flex-1 overflow-y-auto p-6 bg-dark-900">
+          <UpdateBanner />
           {renderActiveView()}
         </main>
       </div>

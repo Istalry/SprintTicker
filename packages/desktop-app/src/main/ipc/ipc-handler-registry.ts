@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron';
+import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
@@ -17,7 +17,8 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO } from '../../shared/dtos';
+import { UpdateChecker } from '../updater/update-checker';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
@@ -54,9 +55,11 @@ export interface IPCHandlerRegistryDeps {
   windowsNotificationService?: WindowsNotificationListenerService;
   systemAutomationService?: ISystemAutomationService;
   providerManager?: ProviderManager;
+  updateChecker?: UpdateChecker;
 }
 
 export class IPCHandlerRegistry {
+  private updateChecker?: UpdateChecker;
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
   private projectRepo: ProjectRepository;
@@ -93,12 +96,14 @@ export class IPCHandlerRegistry {
       contextScheduleService,
       windowsNotificationService,
       systemAutomationService,
-      providerManager
+      providerManager,
+      updateChecker
     } = deps;
 
     this.engine = engine;
     this.taskRepo = taskRepo;
     this.providerManager = providerManager;
+    this.updateChecker = updateChecker;
     // Bound to the settings repository's connection rather than the
     // DatabaseConnection singleton, which would open a second, on-disk database
     // even when the caller supplied an in-memory one.
@@ -656,6 +661,49 @@ export class IPCHandlerRegistry {
       }
     });
 
+    // 11. Update Handlers. A notification only: nothing is downloaded or
+    // installed, because unsigned builds re-trigger SmartScreen on every
+    // update and some are blocked outright. See ROADMAP.md §2.
+    ipcMain.handle(IPCChannel.CHECK_FOR_UPDATE, async (): Promise<UpdateStatusDTO> => {
+      const currentVersion = app.getVersion();
+      if (!this.updateChecker) {
+        return { status: 'disabled', currentVersion };
+      }
+
+      try {
+        return await this.updateChecker.checkForUpdate();
+      } catch (err) {
+        // Translated here rather than swallowed. The checker throws when it
+        // could not find out, and reporting that as "up to date" is precisely
+        // the lie that got the previous updater deleted (audit F-18).
+        const reason = err instanceof Error ? err.message : String(err);
+        console.warn(`[Main] Update check failed: ${reason}`);
+        return { status: 'failed', currentVersion, reason };
+      }
+    });
+
+    ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {
+      return this.updateChecker ? this.updateChecker.isEnabled() : false;
+    });
+
+    ipcMain.handle(IPCChannel.SET_UPDATE_CHECK_ENABLED, async (_event, enabled: boolean) => {
+      this.updateChecker?.setEnabled(enabled);
+      return this.updateChecker ? this.updateChecker.isEnabled() : false;
+    });
+
+    // Only ever opens a release page on this project's own repository. The URL
+    // arrives from the renderer, so it is checked rather than trusted: a
+    // shell.openExternal that accepts whatever it is handed is a way to launch
+    // arbitrary protocol handlers.
+    ipcMain.handle(IPCChannel.OPEN_RELEASE_PAGE, async (_event, url: string) => {
+      if (typeof url !== 'string' || !url.startsWith('https://github.com/Istalry/SprintTicker/')) {
+        console.warn(`[Main] Refused to open a non-release URL: ${String(url)}`);
+        return false;
+      }
+      await shell.openExternal(url);
+      return true;
+    });
+
     // 13. Wire Bi-directional State Broadcasts
     this.engine.subscribe((session: ActiveSessionDTO | null) => {
       this.broadcast(IPCChannel.ON_SESSION_UPDATED, session);
@@ -687,10 +735,36 @@ export class IPCHandlerRegistry {
   /**
    * Helper method to broadcast IPC messages to active Renderer window.
    */
+  /**
+   * Sends an update result to the renderer.
+   *
+   * Exposed narrowly rather than making `broadcast` public: the update check
+   * runs on a timer owned by main, so it needs a way in, but nothing outside
+   * this class should be choosing arbitrary channels.
+   */
+  public broadcastUpdateStatus(status: UpdateStatusDTO): void {
+    this.broadcast(IPCChannel.ON_UPDATE_STATUS, status);
+  }
+
+  /**
+   * The webContents check is not redundant with the window check: they are
+   * separate objects with separate lifetimes.
+   *
+   * Neither covers a *disposed render frame*, though. After the renderer
+   * process dies, both still report false and the send is attempted anyway --
+   * at which point Electron logs "Render frame was disposed before WebFrameMain
+   * could be accessed" itself. It does not throw, so there is nothing here to
+   * catch; a try/catch around the send was tried and never fired. Silencing it
+   * would mean tracking renderer liveness through `render-process-gone`, and
+   * it only appears once the renderer is already gone, so it is noise at
+   * teardown rather than a fault.
+   */
   private broadcast(channel: string, payload: unknown): void {
     const win = this.getWindow();
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(channel, payload);
+    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
+      return;
     }
+
+    win.webContents.send(channel, payload);
   }
 }

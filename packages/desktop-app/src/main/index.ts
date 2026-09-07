@@ -27,6 +27,8 @@ import { ContextScheduleService } from './services/context-schedule-service';
 import { TrayManager } from './tray/tray-manager';
 import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME } from '../shared/device-constants';
+import { UpdateChecker } from './updater/update-checker';
+import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
 let mainWindow: BrowserWindow | null = null;
 let dbConnection: DatabaseConnection | null = null;
@@ -40,6 +42,8 @@ let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
 let windowsNotificationService: WindowsNotificationListenerService | null = null;
 let contextScheduleService: ContextScheduleService | null = null;
+let updateChecker: UpdateChecker | null = null;
+let updateCheckTimer: NodeJS.Timeout | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -198,6 +202,10 @@ async function startApplication(): Promise<void> {
     () => mainWindow
   );
 
+  // Reads its own version rather than being told one, so a packaged build and
+  // a dev run cannot disagree about what is installed.
+  updateChecker = new UpdateChecker(app.getVersion(), settingsRepo);
+
   ipcRegistry = new IPCHandlerRegistry({
     engine,
     taskRepo,
@@ -213,9 +221,11 @@ async function startApplication(): Promise<void> {
     priorityEngine,
     contextScheduleService,
     windowsNotificationService,
-    providerManager
+    providerManager,
+    updateChecker
   });
   ipcRegistry.registerAllHandlers();
+  scheduleUpdateChecks();
 
   // 6. Create Window & Render Initial State
   createWindow();
@@ -248,6 +258,43 @@ app.on('window-all-closed', () => {
 /**
  * Guards against re-entering shutdown: app.exit() below re-emits will-quit.
  */
+
+/**
+ * Runs the update check on a timer, and tells the renderer what happened.
+ *
+ * Deliberately quiet: the first check waits until the rest of startup is done,
+ * and a failure is broadcast like any other result rather than retried. The
+ * renderer shows failures too -- a check that could not run is not the same as
+ * being up to date, and the updater this replaces was deleted for blurring
+ * exactly that line (audit F-18).
+ */
+function scheduleUpdateChecks(): void {
+  const runCheck = async (): Promise<void> => {
+    if (!updateChecker) return;
+    const currentVersion = app.getVersion();
+    try {
+      const status = await updateChecker.checkForUpdate();
+      if (status.status === 'update-available') {
+        console.log(`[Main] Update available: ${status.latestVersion} (running ${status.currentVersion}).`);
+      }
+      ipcRegistry?.broadcastUpdateStatus(status);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.warn(`[Main] Update check failed: ${reason}`);
+      ipcRegistry?.broadcastUpdateStatus({ status: 'failed', currentVersion, reason });
+    }
+  };
+
+  const startupTimer = setTimeout(() => {
+    void runCheck();
+    updateCheckTimer = setInterval(() => void runCheck(), UPDATE_CHECK_INTERVAL_MS);
+    updateCheckTimer.unref?.();
+  }, UPDATE_CHECK_STARTUP_DELAY_MS);
+
+  // unref so a pending check cannot hold the process open at quit.
+  startupTimer.unref?.();
+}
+
 let isShuttingDown = false;
 
 app.on('will-quit', event => {
@@ -263,6 +310,10 @@ app.on('will-quit', event => {
 
   void (async () => {
     try {
+      if (updateCheckTimer) {
+        clearInterval(updateCheckTimer);
+        updateCheckTimer = null;
+      }
       if (contextScheduleService) {
         contextScheduleService.dispose();
       }

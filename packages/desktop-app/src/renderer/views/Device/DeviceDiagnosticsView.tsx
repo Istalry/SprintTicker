@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
+import { UpdateSettingsCard } from '../../components/UpdateNotice';
 
 export const DeviceDiagnosticsView: React.FC = () => {
   const deviceStatus = useDeviceStatus();
@@ -338,6 +339,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
           )}
         </div>
       </div>
+
+      <UpdateSettingsCard />
 
       {/* ⚠️ Danger Zone: Factory Data Wipe */}
       <div className="bg-dark-800 border border-accent-red/30 rounded-xl p-6 space-y-4">

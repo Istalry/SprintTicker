@@ -35,7 +35,8 @@ import type {
   BitmapIconId,
   HardwareDisplayStateDTO,
   OpStatusDTO,
-  DeviceConfigDTO
+  DeviceConfigDTO,
+  UpdateStatusDTO
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -149,6 +150,13 @@ export interface IElectronAPI {
 
   // Diagnostics
   exportDiagnosticLogs: () => Promise<boolean>;
+
+  // Updates
+  checkForUpdate: () => Promise<UpdateStatusDTO>;
+  getUpdateCheckEnabled: () => Promise<boolean>;
+  setUpdateCheckEnabled: (enabled: boolean) => Promise<boolean>;
+  openReleasePage: (url: string) => Promise<boolean>;
+  onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => () => void;
 
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;

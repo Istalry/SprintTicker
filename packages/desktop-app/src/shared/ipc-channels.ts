@@ -99,5 +99,12 @@ export enum IPCChannel {
   TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst',
 
   // Diagnostics
-  EXPORT_DIAGNOSTIC_LOGS = 'diagnostics:export-logs'
+  EXPORT_DIAGNOSTIC_LOGS = 'diagnostics:export-logs',
+
+  // Updates. A notification only -- nothing is downloaded or installed.
+  CHECK_FOR_UPDATE = 'updates:check',
+  GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
+  SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
+  OPEN_RELEASE_PAGE = 'updates:open-release-page',
+  ON_UPDATE_STATUS = 'updates:on-status'
 }

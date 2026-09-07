@@ -19,7 +19,8 @@ import type {
   WindowsNotificationSettingsDTO,
   NotificationLogEntryDTO,
   HardwareDisplayStateDTO,
-  DeviceConfigDTO
+  DeviceConfigDTO,
+  UpdateStatusDTO
 } from '../shared/dtos';
 
 const electronAPI: IElectronAPI = {
@@ -165,6 +166,18 @@ const electronAPI: IElectronAPI = {
 
   // Diagnostics
   exportDiagnosticLogs: () => ipcRenderer.invoke(IPCChannel.EXPORT_DIAGNOSTIC_LOGS),
+
+  // Updates. Notification only -- nothing here downloads or installs.
+  checkForUpdate: () => ipcRenderer.invoke(IPCChannel.CHECK_FOR_UPDATE),
+  getUpdateCheckEnabled: () => ipcRenderer.invoke(IPCChannel.GET_UPDATE_CHECK_ENABLED),
+  setUpdateCheckEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),
+  openReleasePage: (url: string) => ipcRenderer.invoke(IPCChannel.OPEN_RELEASE_PAGE, url),
+  onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => {
+    const handler = (_event: IpcRendererEvent, status: UpdateStatusDTO) => callback(status);
+    ipcRenderer.on(IPCChannel.ON_UPDATE_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_UPDATE_STATUS, handler);
+  },
 
   // Unity Plugin Injector & Gitignore
   unityInjector: {

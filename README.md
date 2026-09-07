@@ -26,12 +26,14 @@ with nothing plugged in.
 
 ## What this is not
 
-- Not a team or multi-user product. No server, no account, no telemetry leaving
-  the machine.
+- Not a team or multi-user product. No server, no account, no telemetry. The one
+  request it makes is an update check against GitHub, which sends nothing about
+  you and can be turned off — see [Updates](#updates).
 - Not a general BUSY Bar SDK. It speaks enough of the device's HTTP API to do
   its own job; the device's own documentation is the reference.
-- Not a released binary yet. There are no GitHub Releases and no in-app updater
-  — you build it from source. Both are tracked in [ROADMAP.md](ROADMAP.md).
+- Not signed. Releases are built by CI and attached to a GitHub Release as a
+  draft, but without a certificate SmartScreen warns on first run, so in-app
+  updating stops at telling you a new version exists.
 
 ---
 
@@ -186,10 +188,22 @@ installed build uses `%APPDATA%\SprintTicker\sprintticker.db`.
 
 ## Updates
 
-There is no auto-updater in this version. Rebuild from source, or install over
-the previous version — the database lives in `userData` and an install does not
-touch it. Release automation and `electron-updater` are the next item in
-[ROADMAP.md](ROADMAP.md).
+The app checks GitHub for a newer release and tells you when one exists. It does
+not download or install anything: builds are unsigned, so every automatic update
+would re-trigger SmartScreen and some would be blocked outright, which is a worse
+route than the manual one it would replace. Installing over the previous version
+is safe — the database lives in `userData` and an installer does not touch it.
+
+**This is the app's only outbound connection.** One request to
+`api.github.com` thirty seconds after launch and once a day after that, sending
+nothing but the request itself — no identifier, no usage data, no telemetry.
+Turn it off under **Device Diagnostics → Updates**, which stops the request being
+made rather than hiding its result.
+
+A check that fails says so. It never reports "up to date" when it could not find
+out; the previous updater claimed to check and never did, and was deleted for it
+(audit F-18). A real in-app updater is gated on a code-signing certificate — see
+[ROADMAP.md](ROADMAP.md) §2.
 
 ---
 
