@@ -88,10 +88,23 @@ jobs:
       # repository secrets is the entire change on the day a certificate
       # exists -- no edit to electron-builder.json.
       #
-      # --publish never even on a tag: the release below is created explicitly,
-      # so electron-builder never needs a token of its own.
+      # --publish never matters here and only here: the release below is created
+      # explicitly with gh, so electron-builder must never try to publish and
+      # never needs a token of its own.
+      #
+      # No `--` before it. pnpm forwards a literal `--` to the script rather
+      # than consuming it, so `pnpm package:win -- --publish never` ran
+      # `electron-builder --win "--" "--publish" "never"`, where none of it
+      # parsed as a flag. electron-builder then saw CI=true, fell back to its
+      # implicit publishing, and failed asking for a GH_TOKEN.
+      #
+      # A local build cannot reveal this: implicit publishing only triggers when
+      # CI is set, so the same broken command succeeds on a developer machine
+      # and fails on a runner. Verified by running it: pnpm forwards the args
+      # through both the root script and the workspace filter to the last
+      # command of the && chain, which is electron-builder.
       - name: Package
-        run: pnpm package:win -- --publish never
+        run: pnpm package:win --publish never
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
