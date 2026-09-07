@@ -4,6 +4,7 @@ import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
+import { localDayBoundsUtc, addLocalDays } from '../src/shared/local-date';
 
 describe('SQLite Repositories Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -106,4 +107,35 @@ describe('SQLite Repositories Unit Tests', () => {
     expect(pending).toHaveLength(1);
     expect(pending[0].comment).toBe('Offline testing');
   });
+
+  /**
+   * Worklogs are stored as UTC instants but belong to the user's calendar day.
+   *
+   * The query used to bucket with strftime over created_at_utc and no
+   * 'localtime' modifier, so it grouped by the UTC day: an entry made shortly
+   * after local midnight east of UTC landed under the previous day, and an
+   * evening entry west of UTC under the next one.
+   *
+   * This asserts the boundary itself rather than a particular timezone, so it
+   * stays meaningful wherever it runs -- including a UTC CI runner, where a
+   * test written around a fixed offset would pass vacuously.
+   */
+  it('WorklogRepository_GetWorklogsByDate_BucketsOnTheLocalMidnightBoundary', () => {
+    const day = '2026-09-08';
+    const { startUtc } = localDayBoundsUtc(day);
+    const oneMsEarlier = new Date(Date.parse(startUtc) - 1).toISOString();
+    const base = { sessionId: 'sess-1', taskId: 'TASK-1', durationSeconds: 60, comment: '' };
+
+    worklogRepo.saveWorklog({ ...base, id: 'wl_at_midnight', startedAtUtc: startUtc, createdAtUtc: startUtc });
+    worklogRepo.saveWorklog({ ...base, id: 'wl_just_before', startedAtUtc: oneMsEarlier, createdAtUtc: oneMsEarlier });
+
+    expect(worklogRepo.getWorklogsByDate(day).map(w => w.id)).toEqual(['wl_at_midnight']);
+    expect(worklogRepo.getWorklogsByDate(addLocalDays(day, -1)).map(w => w.id)).toEqual(['wl_just_before']);
+  });
+
+  it('WorklogRepository_GetWorklogsByDate_MalformedDate_ReturnsEmpty', () => {
+    // The date arrives from IPC, so a bad one must not take the query down.
+    expect(worklogRepo.getWorklogsByDate('08/09/2026')).toEqual([]);
+  });
+
 });

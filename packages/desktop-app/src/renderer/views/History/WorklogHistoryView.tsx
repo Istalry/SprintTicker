@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
+import { localDateKey, addLocalDays } from '../../../shared/local-date';
 
 export const WorklogHistoryView: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(localDateKey());
   const [worklogs, setWorklogs] = useState<WorklogDTO[]>([]);
   const [summary, setSummary] = useState<{
     totalSeconds: number;
@@ -34,9 +33,11 @@ export const WorklogHistoryView: React.FC = () => {
 
   // Date Navigation Helpers
   const changeDateByDays = (days: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    // This used to build a Date from the key -- which parses a date-only string
+    // as UTC midnight -- and then step it with local getters. West of UTC that
+    // instant is still the previous day locally, so "next day" resolved back to
+    // the day it started on and the control did nothing.
+    setSelectedDate(addLocalDays(selectedDate, days));
   };
 
   // Format seconds into HH:MM:SS

@@ -1,4 +1,5 @@
 import { DatabaseConnection } from '../database-connection';
+import { localDayBoundsUtc } from '../../../shared/local-date';
 
 export interface WorklogRecord {
   id: string;
@@ -315,6 +316,13 @@ export class WorklogRepository {
 
   /**
    * Retrieves worklogs logged on a specific YYYY-MM-DD date.
+   *
+   * The date is the user's local day. It used to be matched with strftime over
+   * created_at_utc and no 'localtime' modifier, which grouped by the UTC day
+   * instead -- so east of UTC anything logged before the offset appeared under
+   * the previous day, and west of UTC an evening's work appeared under the next
+   * one. See local-date.ts for why the bounds are computed in JavaScript rather
+   * than in SQL.
    */
   public getWorklogsByDate(dateString: string): WorklogRecord[] {
     if (!dateString) return this.getTodaysWorklogs();
@@ -323,7 +331,7 @@ export class WorklogRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return [];
 
-      const stmt = db.prepare<[string], {
+      const stmt = db.prepare<[string, string], {
         id: string;
         session_id: string;
         task_id: string;
@@ -331,9 +339,16 @@ export class WorklogRepository {
         started_at_utc: string;
         comment: string;
         created_at_utc: string;
-      }>('SELECT * FROM worklogs WHERE strftime(\'%Y-%m-%d\', created_at_utc) = ? ORDER BY created_at_utc DESC');
+      }>(
+        `SELECT * FROM worklogs
+          WHERE created_at_utc >= ? AND created_at_utc < ?
+          ORDER BY created_at_utc DESC`
+      );
 
-      const rows = stmt.all(dateString);
+      // Half-open, so an entry exactly at local midnight belongs to the day
+      // beginning then rather than the one ending.
+      const { startUtc, endUtc } = localDayBoundsUtc(dateString);
+      const rows = stmt.all(startUtc, endUtc);
       return rows.map(r => ({
         id: r.id,
         sessionId: r.session_id,

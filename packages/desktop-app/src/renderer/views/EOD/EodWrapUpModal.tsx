@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Moon, CheckCircle2, Power, BellOff, Clock } from 'lucide-react';
+import { localDateKey } from '../../../shared/local-date';
 
 interface EodWrapUpModalProps {
   isOpen: boolean;
@@ -28,7 +29,7 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (window.electronAPI?.getDailyWorklogSummary) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = localDateKey();
         window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
       }
       if (window.electronAPI?.getScheduleSettings) {

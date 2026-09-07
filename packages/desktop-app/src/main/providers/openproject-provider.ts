@@ -2,6 +2,7 @@ import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO } from '../../shared/dtos';
 import { ProviderRequestError } from './provider-errors';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
+import { localDateKey } from '../../shared/local-date';
 
 /**
  * Concrete task provider adapter for OpenProject API v3.
@@ -242,7 +243,9 @@ export class OpenProjectProvider implements ITaskProvider {
     if (!this._domain || !this._apiKey) return { remoteLoggedTimeToday: 0 };
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // The user's day, not UTC's: this filter is compared against spentOn
+      // values written below, and the two must agree on which day it is.
+      const today = localDateKey();
       const filter = `[{"spentOn":{"operator":"=","values":["${today}"]}},{"user":{"operator":"=","values":["me"]}}]`;
       const url = `${this.getBaseUrl()}/api/v3/time_entries?filters=${encodeURIComponent(filter)}`;
       
@@ -297,7 +300,13 @@ export class OpenProjectProvider implements ITaskProvider {
     try {
       const url = `${this.getBaseUrl()}/api/v3/time_entries`;
       const isoDuration = this.formatIsoDuration(payload.durationSeconds);
-      const spentOnDate = payload.startedAtUtc ? payload.startedAtUtc.split('T')[0] : new Date().toISOString().split('T')[0];
+      // spentOn is a calendar day of work, so it is the local day the session
+      // started -- taking the UTC prefix billed an evening session west of UTC
+      // to tomorrow, and one started after local midnight east of UTC to
+      // yesterday.
+      const spentOnDate = payload.startedAtUtc
+        ? localDateKey(new Date(payload.startedAtUtc))
+        : localDateKey();
 
       const cleanTaskId = payload.taskId.replace(/^OP-/, '');
 

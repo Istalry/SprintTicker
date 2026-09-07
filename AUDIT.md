@@ -669,13 +669,14 @@ payload itself was captured through `--mock-hardware`, which logs each draw
 rather than sending it, so no frame was pushed to the device to find this.
 
 ### F-54 — The UTC day is used where the local working day is meant
-The same defect as F-17, in six further places, and it needs both halves fixed
+The same defect as F-17, in six further places, and it needed both halves fixed
 together.
 
-`getWorklogsByDate` buckets with `strftime('%Y-%m-%d', created_at_utc)` -- no
-`'localtime'` modifier, so the bucket is the UTC day -- while the callers that
+`getWorklogsByDate` bucketed with `strftime('%Y-%m-%d', created_at_utc)` -- no
+`'localtime'` modifier, so the bucket was the UTC day -- while the callers that
 default the date would, once corrected, pass the local day. Changing either side
-alone makes "today's worklogs" worse rather than better.
+alone would have made "today's worklogs" worse rather than better, which is why
+this was held back from the F-17 commit rather than swept in with it.
 
 Sites: `ipc-handler-registry.ts:218,224` (the defaults for
 `GET_WORKLOGS_BY_DATE` and `GET_DAILY_WORKLOG_SUMMARY`),
@@ -689,13 +690,25 @@ tomorrow, and a session started after local midnight east of UTC is billed to
 yesterday. The filter and the write must also agree with each other, or
 `remoteLoggedTimeToday` counts a different day than the one just written.
 
-Separate from this and not changed: worklogs are bucketed by `created_at_utc`,
-so a session is attributed to the day it *finished*. Whether that or
-`started_at_utc` is right is a product question, not a bug.
+**Fixed.** The bounds are computed in JavaScript and the query became a plain
+range over `created_at_utc`, rather than adding SQLite's `'localtime'`
+modifier. Both are correct in production, but `'localtime'` applies a function
+to the column so `idx_worklogs_created_at` cannot serve the query, and
+better-sqlite3 does not observe a `process.env.TZ` change -- so no test could
+force a timezone and demonstrate the behaviour. Keeping the timezone logic in
+JavaScript makes it both indexable and testable, and `Date` handles DST: the
+bounds for a spring-forward day correctly span 23 hours.
 
-Held back from the F-17 commit deliberately: this one alters how existing
-history groups and what is sent to a provider, which is a visible change and
-deserves its own.
+Two further faults surfaced while sweeping the call sites. `changeDateByDays`
+in the history view built a `Date` from the key -- which parses a date-only
+string as *UTC* midnight -- then stepped it with local getters, so west of UTC
+"next day" resolved back to the day it started on and the control did nothing.
+And `remoteLoggedTimeToday`'s `spentOn` filter had to move with the `spentOn`
+written on each POST, or the two would count different days.
+
+Not changed, and still worth a decision: worklogs are bucketed by
+`created_at_utc`, so a session is attributed to the day it *finished*. Whether
+that or `started_at_utc` is right is a product question, not a bug.
 
 ### Non-finding — empty `catch` blocks
 The original audit flagged these. On inspection there was nothing to do: of 19
@@ -712,9 +725,9 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
-| **Open, deferred with a reason** | F-11, F-12, F-54, and the table in [ROADMAP.md](ROADMAP.md) |
+| **Open, deferred with a reason** | F-11, F-12, and the table in [ROADMAP.md](ROADMAP.md) |
 | **Open, not yet triaged** | F-33 (`preflight` is not a gate), F-34 (the ABI split -- documented in `CLAUDE.md` rather than removed), F-35 (`NODE_ENV === 'test'` branches in production code), F-36 (deprecated `.substr`) |
 | **Publication prerequisite** | F-41 — history rewrite, [ROADMAP.md](ROADMAP.md) §1 |

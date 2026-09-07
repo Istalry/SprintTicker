@@ -22,6 +22,7 @@ import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
+import { localDateKey } from '../../shared/local-date';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -215,13 +216,13 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, payload: string | Record<string, string> | unknown) => {
       const p = payload as Record<string, string> | string;
-      const dateStr = typeof p === 'string' ? p : (p?.dateString || p?.date || new Date().toISOString().split('T')[0]);
+      const dateStr = typeof p === 'string' ? p : (p?.dateString || p?.date || localDateKey());
       return this.worklogRepo.getWorklogsByDate(dateStr);
     });
 
     ipcMain.handle(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, async (_event, payload: string | Record<string, string> | unknown) => {
       const p = payload as Record<string, string> | string;
-      const dateStr = typeof p === 'string' ? p : (p?.dateString || p?.date || new Date().toISOString().split('T')[0]);
+      const dateStr = typeof p === 'string' ? p : (p?.dateString || p?.date || localDateKey());
       return this.worklogRepo.getDailySummary(dateStr);
     });
 
