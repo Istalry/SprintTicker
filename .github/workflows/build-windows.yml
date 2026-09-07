@@ -14,6 +14,11 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+# Needed by `gh release create`. Scoped to this workflow rather than granted at
+# repository level, because nothing else here writes to the repository.
+permissions:
+  contents: write
+
 jobs:
   package:
     name: NSIS installer + portable
@@ -46,6 +51,22 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      # Before the build, not after: electron-builder names every artifact from
+      # package.json, so a tag that disagrees produces a v1.1.0 release full of
+      # 1.0.0 files. Failing here costs seconds; failing after the package step
+      # costs the whole build.
+      - name: Check the tag matches the packaged version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./packages/desktop-app/package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${pkg}. Bump the version or retag."
+            exit 1
+          fi
+          echo "Tag ${GITHUB_REF_NAME} matches package.json ${pkg}."
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -66,17 +87,49 @@ jobs:
       # environment and builds unsigned when they are absent, so adding two
       # repository secrets is the entire change on the day a certificate
       # exists -- no edit to electron-builder.json.
+      #
+      # --publish never even on a tag: the release below is created explicitly,
+      # so electron-builder never needs a token of its own.
       - name: Package
         run: pnpm package:win -- --publish never
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
+      # Draft, not published. The assets are unsigned, so SmartScreen will warn
+      # on first run -- that is worth a look and a release note before anyone
+      # downloads it, rather than appearing automatically.
+      #
+      # latest.yml ships with them: it is what electron-updater will read once
+      # there is a certificate to make in-app updates worth having (see
+      # ROADMAP.md §2), and it costs 349 bytes to include now.
+      - name: Draft the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        working-directory: packages/desktop-app/dist-electron
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(SprintTicker-*-setup.exe SprintTicker-*-portable.exe latest.yml)
+          # Idempotent: re-running a tag build after a transient failure should
+          # replace the assets, not fail because the draft already exists.
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} exists; replacing its assets."
+            gh release upload "${GITHUB_REF_NAME}" --clobber "${assets[@]}"
+          else
+            gh release create "${GITHUB_REF_NAME}" --draft --generate-notes --title "SprintTicker ${GITHUB_REF_NAME}" "${assets[@]}"
+          fi
+          echo "Draft release ${GITHUB_REF_NAME} ready. Review and publish it manually."
+      # Workflow artifacts on a manual run only. Each build is ~236 MB across the
+      # two executables, and a free account has 500 MB of Actions storage in
+      # total -- so keeping them for tags as well as attaching them to the
+      # release would fill the quota with a second copy of files the release
+      # already holds.
       - name: Upload artifacts
-        if: github.event_name == 'push' || inputs.upload
+        if: github.event_name == 'workflow_dispatch' && inputs.upload
         uses: actions/upload-artifact@v7
         with:
-          name: busy-bar-windows
+          name: sprintticker-windows
           path: |
             packages/desktop-app/dist-electron/*.exe
             packages/desktop-app/dist-electron/latest.yml

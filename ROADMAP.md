@@ -41,10 +41,10 @@ objects survive on GitHub's servers.
       placeholders (`my_secret_token`, `<cloud-token>`), before and after the
       rewrite. The `secrets` job in `quality.yml` runs gitleaks over the full
       history on every push, so this stays checked rather than being a one-off.
-- [ ] **CI green on a fresh clone.** Verified locally on 2026-09-05: clone,
-      `pnpm install --frozen-lockfile`, then 346/346 tests, 0 lint errors, 0 type
-      errors, 1,800 LFS files resolved. Still needs one real Actions run — the
-      workflows have never executed on a runner.
+- [x] **CI green on a fresh clone.** Run #25 on `7d026bc` (2026-09-07): all
+      three jobs green in 1m58s — lint and typecheck, 377/377 tests across 35
+      files, and gitleaks reporting no leaks. The ten annotations are the known
+      renderer floating-promise warnings, not errors.
 
       Note for anyone reproducing it: clone somewhere outside `%TEMP%`. MSBuild
       refuses to build `better-sqlite3` with its output under the temp directory
@@ -58,7 +58,7 @@ objects survive on GitHub's servers.
       `/security/advisories/new`, which 404s until it is on. Until that toggle
       is flipped there is no private channel, so a reporter's only option is a
       public issue.
-- [ ] Enable **Dependabot alerts** (Security and quality > Overview). Separate
+- [x] Enable **Dependabot alerts** (2026-09-07). 0 open, 95 closed. Separate
       from `dependabot.yml`, which schedules version bumps; alerts fire on
       published CVEs. Code scanning needs an Organization and is out of reach.
 - [x] **No outbound requests** (F-30). Inter and JetBrains Mono are bundled
@@ -82,8 +82,22 @@ carries personal data publishes that history.
 Today there is no release: you clone and build. That is a real adoption barrier
 and it is also why nobody but the author has ever run a packaged build.
 
-- **`build-windows.yml`** producing the NSIS installer and portable executable
-  as workflow artifacts, then as GitHub Release assets on a tag.
+- [x] **`build-windows.yml`** producing the NSIS installer and portable
+  executable, attached to a **draft** GitHub Release on a `v*` tag (2026-09-07).
+  - Draft rather than published: the assets are unsigned, so SmartScreen warns
+    on first run and that deserves a release note before anyone downloads it.
+  - The tag is checked against `package.json` *before* the build, because
+    electron-builder names every artifact from that file — a mismatched tag
+    would otherwise produce a v1.1.0 release full of 1.0.0 files, after paying
+    for the whole build first.
+  - Re-running a tag build replaces the assets rather than failing on the
+    existing draft.
+  - Workflow artifacts are kept for manual runs only. Each build is ~236 MB
+    across the two executables and a free account has 500 MB of Actions storage,
+    so retaining a second copy of what the release already holds would fill the
+    quota in two tags.
+  - `latest.yml` is attached now, at 349 bytes, so it is already in place when
+    there is a certificate and an updater to read it.
   - `lfs: true` is **mandatory** on this job — see the LFS note in the README.
     Cache `.git/lfs` with `actions/cache`; the free tier's **1 GB/month
     download** cap is the binding constraint, not storage, and an uncached
