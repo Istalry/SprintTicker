@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import * as readline from 'readline';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { SettingsRepository } from '../db/repositories/settings-repository';
@@ -39,16 +40,26 @@ export class WindowsNotificationListenerService {
   private static readonly MAX_RESTART_ATTEMPTS = 5;
   private static readonly RESTART_BASE_DELAY_MS = 2000;
 
+  /**
+   * Deterministic name for the generated listener script.
+   *
+   * Fixed rather than unique so repeated starts overwrite one file instead of
+   * leaving one behind per launch.
+   */
+  private static readonly SCRIPT_FILENAME = 'sprintticker-notification-listener.ps1';
+
   private readonly _settingsRepo: SettingsRepository;
   private readonly _priorityEngine: PriorityPreemptionEngine;
   private readonly _renderer?: DisplayRenderer;
   private readonly _iconResolver: AppIconResolver;
+  private readonly _scriptDirectory: string;
 
   private _psProcess: ChildProcess | null = null;
   private _restartTimer: NodeJS.Timeout | null = null;
   private _restartAttempts = 0;
   private _stopRequested = false;
   private _readlineInterface: readline.Interface | null = null;
+  private _scriptPath: string | null = null;
   private _isListening: boolean = false;
 
   private _logEntries: NotificationLogEntryDTO[] = [];
@@ -65,7 +76,8 @@ export class WindowsNotificationListenerService {
     settingsRepo: SettingsRepository,
     priorityEngine: PriorityPreemptionEngine,
     renderer?: DisplayRenderer,
-    iconResolver?: AppIconResolver
+    iconResolver?: AppIconResolver,
+    scriptDirectory?: string
   ) {
     if (!settingsRepo) throw new ArgumentNullException('settingsRepo');
     if (!priorityEngine) throw new ArgumentNullException('priorityEngine');
@@ -74,6 +86,9 @@ export class WindowsNotificationListenerService {
     this._priorityEngine = priorityEngine;
     this._renderer = renderer;
     this._iconResolver = iconResolver ?? new AppIconResolver();
+    // Injectable so a test can point the generated script at its own directory
+    // rather than writing into the developer's %TEMP%.
+    this._scriptDirectory = scriptDirectory ?? os.tmpdir();
   }
 
   /**
@@ -162,13 +177,35 @@ export class WindowsNotificationListenerService {
     try {
       const rawScript = this.buildPowerShellScript(pollingIntervalMs);
 
-      // Convert script to Base64 (UTF-16LE) to prevent parsing/quoting issues across OS shells
-      const encodedScript = Buffer.from(rawScript, 'utf16le').toString('base64');
+      // The script goes to PowerShell as a file, not as an argument.
+      //
+      // It used to be passed via -EncodedCommand, which is base64 of UTF-16LE
+      // and therefore costs about 2.67 characters of command line for every
+      // character of script. Windows caps a command line at 32,767 characters,
+      // so that put a ceiling of roughly 12,000 characters on the script, with
+      // no check anywhere that it was being approached.
+      //
+      // Commit a97c6f6 -- which stopped the poller copying wpndatabase.db every
+      // two seconds -- took the encoded argument from 30,232 to 34,208 and over
+      // that cap. Every launch then failed with `spawn ENAMETOOLONG`. This
+      // listener is the single source of every Windows notification, so one
+      // failed spawn silently took Slack, Discord, Teams and the rest with it,
+      // and the app went on to report successful initialisation.
+      //
+      // A file has no such ceiling, so the failure cannot return as the script
+      // grows. UTF-8 with a BOM because PowerShell 5.1 reads a BOM-less .ps1 as
+      // the system ANSI codepage.
+      this._scriptPath = path.join(
+        this._scriptDirectory,
+        WindowsNotificationListenerService.SCRIPT_FILENAME
+      );
+      fs.writeFileSync(this._scriptPath, '\ufeff' + rawScript, { encoding: 'utf8' });
 
       this._psProcess = spawn('powershell.exe', [
         '-NoProfile',
+        '-NonInteractive',
         '-ExecutionPolicy', 'Bypass',
-        '-EncodedCommand', encodedScript
+        '-File', this._scriptPath
       ], {
         windowsHide: true
       });
@@ -327,6 +364,16 @@ export class WindowsNotificationListenerService {
     if (this._psProcess) {
       this._psProcess.kill();
       this._psProcess = null;
+    }
+    if (this._scriptPath) {
+      try {
+        fs.unlinkSync(this._scriptPath);
+      } catch {
+        // Best effort. PowerShell can hold the handle briefly after kill(), and
+        // the filename is fixed, so the next start overwrites it rather than
+        // leaving a second copy behind.
+      }
+      this._scriptPath = null;
     }
     this._isListening = false;
     this._strategy = 'NONE';

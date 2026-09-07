@@ -602,6 +602,33 @@ documentation moved to an untracked `Documentation/private/`, third-party marks
 untracked, and a `LICENSE` added that states its own scope. `Animations/`
 provenance is still unconfirmed and is excluded from that scope until it is.
 
+### F-52 — The notification listener could not start at all
+`spawn ENAMETOOLONG`, on every launch since 2026-09-04.
+
+The PowerShell listener script travelled to `powershell.exe` as a
+`-EncodedCommand` argument. That encoding is base64 of UTF-16LE, so it costs
+about 2.67 characters of command line per character of script, against a Windows
+command-line cap of 32,767. The script therefore had an undocumented ceiling
+near 12,000 characters, and nothing measured it.
+
+`a97c6f6` — the commit that stopped the poller copying `wpndatabase.db` every
+two seconds — took the encoded argument from 30,232 to 34,208 characters and
+over that cap. The regression was introduced by Phase 1 itself.
+
+The consequence is larger than it looks, because this listener is the *only*
+source of Windows notifications: Slack, Discord, Teams and everything else stop
+together, and there is no per-application path left to notice the loss. The
+failure was also quiet — one log line, after which the app reported successful
+initialisation and every other subsystem behaved normally.
+
+Fixed by writing the script to a file and launching it with `-File`, which has
+no length ceiling, so the failure cannot return as the script grows. The
+regression test asserts the invariant that broke — the command line stays within
+the Windows limit — rather than the mechanism that happens to satisfy it today.
+
+Found by running the packaged application and reading its console. No test
+covered `startListening`, so the suite was green throughout.
+
 ### Non-finding — empty `catch` blocks
 The original audit flagged these. On inspection there was nothing to do: of 19
 matches, 7 are PowerShell inside a generated script string and the 12 TypeScript
@@ -617,7 +644,7 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
 | **Open, deferred with a reason** | F-11, F-12, F-17, and the table in [ROADMAP.md](ROADMAP.md) |
