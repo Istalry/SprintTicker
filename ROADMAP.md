@@ -157,7 +157,7 @@ ABI and LFS failures in this repository have historically only appeared there.
 The provider interface already exists (`task-provider-interface.ts`), and
 OpenProject and ad-hoc both implement it, so a Jira provider is mostly HTTP.
 
-Four pieces of groundwork exist specifically so that adding a provider does
+Five pieces of groundwork exist specifically so that adding a provider does
 not multiply existing bugs:
 
 - Providers now report failure by **throwing** a typed `ProviderRequestError`
@@ -174,8 +174,18 @@ not multiply existing bugs:
   on reaching its page cap rather than returning a partial list, because a
   short list is exactly what makes the sync worker prune. A Jira provider
   cannot reuse the walker itself -- Jira paginates on `startAt`/`maxResults`
-  rather than HAL links -- but the request/error-classification half is worth
-  extracting from it at that point, once there is a second caller to shape it.
+  rather than HAL links -- but the request half has now been extracted from it,
+  below.
+- **The shared HTTP client is done.** `providers/provider-http.ts` is the one
+  place a provider talks to the network: per-attempt timeout, status
+  classification into `ProviderRequestError`, `Retry-After`-aware backoff, and
+  bounded retries. Every provider request now has a timeout, which none of them
+  had. Its load-bearing rule is that **only GET/HEAD/OPTIONS are retried**:
+  `POST /api/v3/time_entries` has no idempotency key, so repeating it after a
+  response that was sent but never received bills the session twice, and an
+  over-reported day is harder to spot than a missing entry the sync queue will
+  resend anyway. `OpenProjectProvider` takes its `ProviderFetchOptions` through
+  the constructor, so a test no longer has to stub a global to exercise it.
 
 A fake OpenProject (`pnpm mock:openproject`, `scripts/fake-openproject.js`)
 now serves a paginated, filter-aware v3 API. It backs
@@ -186,9 +196,23 @@ should grow its own routes in the same harness rather than a second one.
 Also worth doing while this area is open:
 
 - `safeStorage` for provider credentials (F-11); the API key is currently
-  stored in plaintext, and the default OpenProject URL scheme is `http`.
-- A shared HTTP client with timeout, exponential backoff and 429 handling,
-  used by both the providers and the device driver.
+  stored in plaintext. The URL half of that finding is fixed: `sanitizeDomain`
+  now assumes `https://` for a bare host, since the key travels in a Basic
+  header on every request. An instance on plain HTTP still works, but has to
+  spell the scheme out.
+- Settle the provider error contract. `getProjects` / `getTasks` throw;
+  `fetchUnreadNotifications`, `reconcileRemoteState`, `logTime` and
+  `updateTaskStatus` still swallow and return a falsy result. That is
+  defensible for the queued writes -- the queue retries them -- but it is a
+  split nobody chose, and a second provider will have to copy whichever half it
+  guesses at. Decide it before Jira, not during.
+- Make the "assigned to me" task filter a **setting** rather than a constant.
+  Both providers hardcode the current user; per-provider it should offer
+  assigned to me / everything / a custom query.
+- Point the device driver's `deviceFetch` at the same client, or at least stop
+  the two drifting. It is not urgent: `deviceFetch` already has the one thing
+  the providers were missing, and the device's 409/413/503 semantics are not
+  the providers'.
 - Surface the sync queue in the UI — pending / failed / synced counts, with a
   manual retry. Half the plumbing exists now: `SYNC_PROVIDER_NOW` runs a sync
   on demand and `ON_PROJECTS_UPDATED` reports the outcome, but nothing in the
@@ -319,9 +343,9 @@ nobody got to.
 
 | Finding | Status | Why it is deferred |
 | :--- | :--- | :--- |
-| F-11 residue — key stored in plaintext, `http` scheme default | Open | The hardcoded LAN default and the status-name defaults are fixed. `safeStorage` and the scheme default remain; belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
-| F-12 residue — no `fetch` timeouts in the provider layer | Open | Pagination is fixed, and the overlap guard landed with F-55 once a second caller existed. What remains is that a hung OpenProject stalls a sync pass indefinitely; it is also why saving credentials does not await the sync. Belongs with the shared HTTP client in §3. |
-| F-12 residue — `getTasks` hardcodes `assignee = "me"` | Product decision | Unassigned and team tickets are invisible. Not a defect until there is a decision on what should be configurable instead. |
+| F-11 residue — key stored in plaintext | Open | The hardcoded LAN default, the status-name defaults and the `http` scheme default are all fixed — `sanitizeDomain` now assumes TLS for a bare host, which is what stops a Basic-header API key going out in clear text. `safeStorage` remains; belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
+| F-12 residue — no `fetch` timeouts in the provider layer | Closed | `provider-http.ts` gives every provider request a timeout, so a hung OpenProject can no longer stall a sync pass indefinitely. Saving credentials still does not await its sync, which is now a choice about UI responsiveness rather than a hedge against an unbounded request. |
+| F-12 residue — `getTasks` hardcodes `assignee = "me"` | Decided, not built | Becomes a per-provider setting: assigned to me / everything / a custom query. Listed in §3 so it lands on the generalised provider base rather than twice. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
 | Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
 | Foreign keys on `worklogs` → `tasks` | Deferred | **Would fail on existing data**: F-01 already deleted tasks that surviving worklogs reference. Needs an orphan-cleanup decision. |

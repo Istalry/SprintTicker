@@ -39,10 +39,10 @@ export default defineConfig({
       // the build, with ~1% of headroom so an unrelated refactor does not.
       // The target is still 80/70; see ROADMAP.md.
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 68,
-        statements: 78
+        lines: 80.5,
+        functions: 80.5,
+        branches: 69,
+        statements: 78.5
       }
     }
   },

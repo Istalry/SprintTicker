@@ -32,6 +32,15 @@ describe('OpenProject collection pagination', () => {
     } as unknown as Response;
   }
 
+  /**
+   * Backoff, neutered.
+   *
+   * providerFetch retries a failed GET, so the error-path tests below would
+   * otherwise sit through real exponential waits. What is retried and how long
+   * it waits is covered in `provider-http.test.ts`; here it is only noise.
+   */
+  const noBackoff = { sleepFn: async (): Promise<void> => undefined };
+
   /** Numbered filler elements, so a test can tell pages apart. */
   function elements(from: number, count: number): Array<Record<string, unknown>> {
     return Array.from({ length: count }, (_, i) => ({ id: from + i }));
@@ -204,7 +213,9 @@ describe('OpenProject collection pagination', () => {
         BASE,
         AUTH,
         '/api/v3/projects',
-        'Fetching projects'
+        'Fetching projects',
+        {},
+        noBackoff
       ).catch(e => e as unknown)) as ProviderRequestError;
 
       expect(err.status).toBe(502);
@@ -219,7 +230,9 @@ describe('OpenProject collection pagination', () => {
         BASE,
         AUTH,
         '/api/v3/projects',
-        'Fetching projects'
+        'Fetching projects',
+        {},
+        noBackoff
       ).catch(e => e as unknown)) as ProviderRequestError;
 
       expect(err.kind).toBe('transport');
@@ -231,7 +244,7 @@ describe('OpenProject collection pagination', () => {
     let provider: OpenProjectProvider;
 
     beforeEach(async () => {
-      provider = new OpenProjectProvider();
+      provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: BASE, apiKey: 'test-key' });
     });
 

@@ -25,6 +25,12 @@ describe('Provider contract and cache-prune safety', () => {
   let worklogRepo: WorklogRepository;
   const originalFetch = global.fetch;
 
+  /**
+   * Backoff, neutered. providerFetch retries a failed GET; what it retries and
+   * how long it waits belongs to `provider-http.test.ts`, not here.
+   */
+  const noBackoff = { sleepFn: async (): Promise<void> => undefined };
+
   /** Seeds the local cache with one project and one task. */
   function seedCache(): void {
     projectRepo.saveProject({ id: 'P1', key: 'PROJ', name: 'Local Project' });
@@ -60,7 +66,7 @@ describe('Provider contract and cache-prune safety', () => {
 
   describe('OpenProjectProvider signals failure by throwing', () => {
     it('GetProjects_NoCredentials_ThrowsNotConfiguredInsteadOfReturningEmpty', async () => {
-      const provider = new OpenProjectProvider();
+      const provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: '', apiToken: '' });
 
       await expect(provider.getProjects()).rejects.toThrow(ProviderRequestError);
@@ -71,14 +77,14 @@ describe('Provider contract and cache-prune safety', () => {
     });
 
     it('GetTasks_NoCredentials_ThrowsNotConfigured', async () => {
-      const provider = new OpenProjectProvider();
+      const provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: '', apiToken: '' });
 
       await expect(provider.getTasks('P1')).rejects.toMatchObject({ kind: 'not_configured' });
     });
 
     it('GetProjects_NetworkUnreachable_ThrowsTransportError', async () => {
-      const provider = new OpenProjectProvider();
+      const provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: 'https://op.test', apiToken: 'token' });
       global.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
 
@@ -86,7 +92,7 @@ describe('Provider contract and cache-prune safety', () => {
     });
 
     it('GetProjects_Unauthorized_ThrowsPermanentAuthError', async () => {
-      const provider = new OpenProjectProvider();
+      const provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: 'https://op.test', apiToken: 'bad' });
       global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 } as unknown as Response);
 
@@ -97,7 +103,7 @@ describe('Provider contract and cache-prune safety', () => {
     });
 
     it('GetProjects_MalformedBody_ThrowsProtocolErrorRatherThanReportingNoProjects', async () => {
-      const provider = new OpenProjectProvider();
+      const provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: 'https://op.test', apiToken: 'token' });
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -107,10 +113,24 @@ describe('Provider contract and cache-prune safety', () => {
       await expect(provider.getProjects()).rejects.toMatchObject({ kind: 'protocol' });
     });
 
+    it('SanitizeDomain_BareHost_AssumesTlsRatherThanClearText', async () => {
+      // The API key travels in a Basic header on every request, so a default of
+      // `http://` leaked a permanent credential to anyone on the path whenever
+      // the user typed a host without a scheme -- which the settings field
+      // invites, since it is labelled as a domain.
+      expect(OpenProjectProvider.sanitizeDomain('op.example.com')).toBe('https://op.example.com');
+    });
+
+    it('SanitizeDomain_ExplicitHttp_IsLeftAlone', async () => {
+      // A self-hosted instance on plain HTTP is still supported; it just has to
+      // say so, rather than being assumed.
+      expect(OpenProjectProvider.sanitizeDomain('http://op.local:8080')).toBe('http://op.local:8080');
+    });
+
     it('GetProjects_GenuinelyEmptyRemote_ReturnsEmptyArrayWithoutThrowing', async () => {
       // The one case that must still be an empty array: a well-formed response
       // whose collection happens to be empty.
-      const provider = new OpenProjectProvider();
+      const provider = new OpenProjectProvider(noBackoff);
       await provider.initialize({ domain: 'https://op.test', apiToken: 'token' });
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,

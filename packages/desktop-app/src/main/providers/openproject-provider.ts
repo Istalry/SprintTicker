@@ -2,6 +2,7 @@ import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO } from '../../shared/dtos';
 import { ProviderRequestError } from './provider-errors';
 import { fetchOpenProjectCollection } from './openproject-collection';
+import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
 import { localDateKey } from '../../shared/local-date';
 
@@ -21,6 +22,20 @@ export class OpenProjectProvider implements ITaskProvider {
   private _statusIdToReview: string = '';
   private _defaultCompletionAction: string = 'to_test';
 
+  /**
+   * How this provider reaches the network.
+   *
+   * Injected rather than reached for, because the ambient `fetch` is a
+   * singleton in all but name and a test that has to stub a global cannot run
+   * beside one that does not. The default is the real client, so production
+   * callers construct it with no arguments.
+   */
+  private readonly _http: ProviderFetchOptions;
+
+  constructor(http: ProviderFetchOptions = {}) {
+    this._http = http;
+  }
+
   /// <summary>
   /// Configures OpenProject domain, API credentials, and status ID mappings.
   /// </summary>
@@ -37,7 +52,11 @@ export class OpenProjectProvider implements ITaskProvider {
   public static sanitizeDomain(domain: string): string {
     let clean = domain.trim().replace(/\/api\/v3\/?$/, '').replace(/\/$/, '');
     if (clean && !clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = 'http://' + clean;
+      // Assume TLS for a bare host. The old default was `http://`, which sent
+      // an API key -- a permanent credential, in a Basic header -- in clear
+      // text to any instance whose scheme the user had not spelled out. A
+      // self-hosted instance on plain HTTP still works; it just has to say so.
+      clean = 'https://' + clean;
     }
     return clean;
   }
@@ -67,7 +86,8 @@ export class OpenProjectProvider implements ITaskProvider {
       this.getAuthHeader(),
       path,
       context,
-      params
+      params,
+      this._http
     );
   }
 
@@ -254,36 +274,45 @@ export class OpenProjectProvider implements ITaskProvider {
 
       const cleanTaskId = payload.taskId.replace(/^OP-/, '');
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': this.getAuthHeader(),
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          _links: {
-            workPackage: { href: `/api/v3/work_packages/${cleanTaskId}` }
+      // Deliberately not retried. `/api/v3/time_entries` has no idempotency
+      // key, so a retry after a response that was sent but never received
+      // bills the same session twice -- and an over-reported day is harder to
+      // notice, and worse, than a missing entry the queue will resend.
+      const res = await providerFetch(
+        this.providerId,
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': this.getAuthHeader(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           },
-          hours: isoDuration,
-          spentOn: spentOnDate,
-          comment: {
-            raw: payload.comment || 'Logged via SprintTicker'
-          }
-        })
-      });
+          body: JSON.stringify({
+            _links: {
+              workPackage: { href: `/api/v3/work_packages/${cleanTaskId}` }
+            },
+            hours: isoDuration,
+            spentOn: spentOnDate,
+            comment: {
+              raw: payload.comment || 'Logged via SprintTicker'
+            }
+          })
+        },
+        `Logging time on WP #${cleanTaskId}`,
+        this._http
+      );
 
-      if (res.ok) {
-        const json = await res.json() as { id?: number };
-        const remoteWorklogId = json.id ? json.id.toString() : `op_wl_${Date.now()}`;
-        console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId})`);
-        return { success: true, remoteWorklogId };
-      } else {
-        const errText = await res.text();
-        console.error(`[OpenProjectProvider] Failed to log time (HTTP ${res.status}): ${errText}`);
-      }
+      const json = await res.json() as { id?: number };
+      const remoteWorklogId = json.id ? json.id.toString() : `op_wl_${Date.now()}`;
+      console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId})`);
+      return { success: true, remoteWorklogId };
     } catch (err) {
-      console.error('[OpenProjectProvider] Exception logging time:', err);
+      // Reported as a failed result rather than a throw: the caller is the
+      // sync queue, which keeps the worklog and retries it later. Turning
+      // this into an exception is part of settling the provider error
+      // contract and has to change the queue at the same time.
+      console.error('[OpenProjectProvider] Failed to log time:', err);
     }
     return { success: false };
   }
@@ -323,27 +352,43 @@ export class OpenProjectProvider implements ITaskProvider {
     try {
       const cleanTaskId = taskId.replace(/^OP-/, '');
       const getUrl = `${this.getBaseUrl()}/api/v3/work_packages/${cleanTaskId}`;
-      const getRes = await fetch(getUrl, { headers: { 'Authorization': this.getAuthHeader(), 'Accept': 'application/json' } });
-      if (!getRes.ok) throw new Error(`Failed to fetch WP #${cleanTaskId} for status update`);
+      const getRes = await providerFetch(
+        this.providerId,
+        getUrl,
+        { headers: { 'Authorization': this.getAuthHeader(), 'Accept': 'application/json' } },
+        `Reading WP #${cleanTaskId} for status update`,
+        this._http
+      );
       const wp = await getRes.json() as { lockVersion?: number };
 
       const patchUrl = `${this.getBaseUrl()}/api/v3/work_packages/${cleanTaskId}`;
-      const patchRes = await fetch(patchUrl, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': this.getAuthHeader(),
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+      // Not retried either, though for the opposite reason to the worklog
+      // POST: `lockVersion` is consumed by the write, so a second attempt
+      // carries a stale one and OpenProject answers 409. Re-reading it here
+      // would defeat the optimistic lock, which exists to stop this app
+      // overwriting an edit somebody made in the browser meanwhile.
+      await providerFetch(
+        this.providerId,
+        patchUrl,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': this.getAuthHeader(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            lockVersion: wp.lockVersion,
+            _links: {
+              status: { href: `/api/v3/statuses/${targetStatusId}` }
+            }
+          })
         },
-        body: JSON.stringify({
-          lockVersion: wp.lockVersion,
-          _links: {
-            status: { href: `/api/v3/statuses/${targetStatusId}` }
-          }
-        })
-      });
+        `Setting status of WP #${cleanTaskId}`,
+        this._http
+      );
 
-      return patchRes.ok;
+      return true;
     } catch (err) {
       console.error('[OpenProjectProvider] Failed to update task status:', err);
       return false;
@@ -353,7 +398,11 @@ export class OpenProjectProvider implements ITaskProvider {
   /// <summary>
   /// Fetches available statuses statically from the given OpenProject domain using the provided API key.
   /// </summary>
-  public static async fetchStatuses(domain: string, apiKey: string): Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }> {
+  public static async fetchStatuses(
+    domain: string,
+    apiKey: string,
+    http: ProviderFetchOptions = {}
+  ): Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }> {
     if (!domain || !apiKey) return { success: false, error: 'Domain or API key is missing.' };
 
     try {
@@ -364,7 +413,9 @@ export class OpenProjectProvider implements ITaskProvider {
         baseUrl,
         authHeader,
         '/api/v3/statuses',
-        'Fetching statuses'
+        'Fetching statuses',
+        {},
+        http
       );
 
       return {

@@ -1,4 +1,5 @@
 import { ProviderRequestError } from './provider-errors';
+import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { COLLECTION_PAGE_SIZE, MAX_COLLECTION_PAGES } from './provider-constants';
 
 /** The envelope every OpenProject v3 collection endpoint returns. */
@@ -27,7 +28,8 @@ export async function fetchOpenProjectCollection(
   authHeader: string,
   path: string,
   context: string,
-  params: Record<string, string> = {}
+  params: Record<string, string> = {},
+  options: ProviderFetchOptions = {}
 ): Promise<Array<Record<string, unknown>>> {
   const firstUrl = new URL(`${baseUrl}${path}`);
   for (const [key, value] of Object.entries(params)) {
@@ -49,27 +51,16 @@ export async function fetchOpenProjectCollection(
       );
     }
 
-    let res: Response;
-    try {
-      res = await fetch(nextUrl, {
-        headers: { Authorization: authHeader, Accept: 'application/json' }
-      });
-    } catch (err) {
-      throw ProviderRequestError.fromTransport(providerId, context, err);
-    }
-
-    if (!res.ok) {
-      // OpenProject puts the actionable half of a 4xx in the body; without it
-      // a rejected API key reads only as "HTTP 401".
-      let detail: string | undefined;
-      try {
-        const body = (await res.json()) as { message?: string };
-        if (typeof body?.message === 'string' && body.message.length > 0) detail = body.message;
-      } catch {
-        // Not a JSON body. The status alone is still a usable error.
-      }
-      throw ProviderRequestError.fromStatus(providerId, res.status, context, detail);
-    }
+    // Timeouts, status classification and rate-limit backoff all live in
+    // providerFetch, which throws for anything that is not a 2xx. A page walk
+    // only has to worry about the shape of a page.
+    const res = await providerFetch(
+      providerId,
+      nextUrl,
+      { headers: { Authorization: authHeader, Accept: 'application/json' } },
+      context,
+      options
+    );
 
     let json: OpenProjectCollection;
     try {
