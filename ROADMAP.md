@@ -231,8 +231,29 @@ looping idle animations.
   uptime and omits CPU rather than inventing it; deriving load needs two
   `os.cpus()` samples over an interval, which is a service, not a display
   concern.
-- Richer transitions, more `.anim` sets, and a per-app icon override so a
-  hand-tuned 16×16 from `pnpm editor` can pin any application.
+- Richer transitions and more `.anim` sets.
+- [x] **The notification banner shows the message** (2026-09-07). It drew one
+  centred row of eleven characters, and spent ten of them on a bracketed channel
+  label the app icon already conveyed — so a Slack message reached the bar as
+  "[Message]" and an ellipsis. It now uses the same icon-and-two-rows template
+  as every other screen, still at one frame upload. Composition lives in
+  `shared/notification-text.ts`, which is pure and tested, because the previous
+  split across the listener and the renderer is what hid the problem.
+- [x] **Per-app icon override reachable from the UI** (2026-09-07).
+  `NotificationSourceRule.iconImagePath` was honoured by the listener but nothing
+  could set it. It matters because Win32 icon resolution matches a Start-Menu
+  shortcut by name and can pick the wrong executable.
+- [x] **`pnpm editor` repaired** (2026-09-07). It had been resolving its bitmap
+  module to the pre-move path and opening to an empty palette, which reads as
+  "no icons yet" rather than as a broken tool. Now fails loudly at startup if
+  the file moves again.
+- [x] **The debug panel draws real screens** (2026-09-07). It used to inject
+  hand-built payloads straight into the emulator, in a vocabulary main had
+  stopped emitting — text at x=16 in a 56px field with a scroll rate, against
+  x=17 in 55px and no scrolling. The panel a developer opens to check a layout
+  was showing one the device cannot produce. Previews now run the real renderer
+  over `PREVIEW_DISPLAY_SCREEN`, and the emulator's duplicate text
+  rasteriser, marquee and second confetti simulation are gone with it.
 - [x] **Dropped three animation sets that nothing played** (2026-09-07):
   `coding_72x16`, `dnd_72x16` and `on_call_72x16`, about 3.8 MB of the 12.5 MB
   in `Animations/`. No source file referenced them, and there is no state for
