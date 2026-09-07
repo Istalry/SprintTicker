@@ -51,13 +51,12 @@ objects survive on GitHub's servers.
       (MSB8029, then a C1083 on the generated `sqlite3.c`), which looks exactly
       like a repository defect and is not one.
 - [x] `SECURITY.md`, issue and PR templates, `CODEOWNERS`, `dependabot.yml`.
-- [ ] **Enable private vulnerability reporting the moment the repo is public.**
-      Settings > Advanced Security > Private vulnerability reporting. It cannot
-      be switched on before then -- the feature does not exist for private
-      repositories -- and `SECURITY.md` sends reporters to
-      `/security/advisories/new`, which 404s until it is on. Until that toggle
-      is flipped there is no private channel, so a reporter's only option is a
-      public issue.
+- [x] **Private vulnerability reporting enabled** (2026-09-07), at the same time
+      as the repository went public. It cannot be switched on before then -- the
+      feature does not exist for private repositories -- and `SECURITY.md`
+      sends reporters to `/security/advisories/new`, which 404s until it is on.
+      Flipping both together meant there was never a window with a public
+      repository and no private channel.
 - [x] Enable **Dependabot alerts** (2026-09-07). 0 open, 95 closed. Separate
       from `dependabot.yml`, which schedules version bumps; alerts fire on
       published CVEs. Code scanning needs an Organization and is out of reach.

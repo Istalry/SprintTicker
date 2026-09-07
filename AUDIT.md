@@ -188,7 +188,7 @@ A user typing `openproject.mycompany.com` gets `http://`, and `getAuthHeader()` 
 
 Related:
 
-* The default domain is hardcoded to **`http://192.168.0.139:8090/`** (`provider-manager.ts:43`) — a developer's private LAN address baked into shipping defaults. A fresh install immediately starts probing that address on the user's network.
+* The default domain is hardcoded to **`http://192.168.x.x:8090/`** (`provider-manager.ts:43`) — a developer's private LAN address baked into shipping defaults. A fresh install immediately starts probing that address on the user's network.
 * `op_api_key` is persisted as plaintext JSON in the `settings` SQLite table. Electron's `safeStorage` (DPAPI-backed on Windows) exists precisely for this.
 * Default status IDs are the *names* `'In progress'`, `'In testing'`, `'Developed'`, but they're interpolated as IDs into `/api/v3/statuses/${targetStatusId}` — the defaults can never produce a valid URL.
 
@@ -421,7 +421,7 @@ Secondary schema issues: `tasks.project_id`, `worklogs.task_id`, and `worklog_sy
 | F-35 | **Test-environment branches in production code**: `process.env.NODE_ENV === 'test'` guards in `system-automation-service.ts:65,180,215` and `ipc-handler-registry.ts:310,321`. Inject a clock/exec seam instead. |
 | F-36 | **`.substr()`** (deprecated) at `priority-preemption-engine.ts:363`. |
 | F-37 | **Dual naming for schedule settings** — `lunchStartTime`/`lunchStart`, `eodWrapUpTime`/`eodTime` are both read with `\|\|` fallbacks (`context-schedule-service.ts:95,112`). Pick one and migrate. |
-| F-38 | **Oddly specific personal defaults** shipped as product defaults: standup `10:05`, lunch `12:18`, EOD `17:30`, OpenProject `http://192.168.0.139:8090/`. |
+| F-38 | **Oddly specific personal defaults** shipped as product defaults: standup `10:05`, lunch `12:18`, EOD `17:30`, OpenProject `http://192.168.x.x:8090/`. |
 | F-39 | **Placeholder integration URLs presented as real defaults**: `https://discord.com/api/webhooks/demo`, `https://hooks.slack.com/services/demo` (`messaging-service.ts:81-83`). |
 
 ---
@@ -588,7 +588,7 @@ indefinitely. It also had no restart path: if the PowerShell child exited,
 notifications stopped silently until the app was restarted.
 
 ### F-48 — The personal LAN default was in six places, not one
-`http://192.168.0.139:8090/` appeared in `provider-manager.ts` and five times in
+`http://192.168.x.x:8090/` appeared in `provider-manager.ts` and five times in
 `ipc-handler-registry.ts` (two of them consecutive duplicate lines). Fixing only
 the first would have shipped the address in the binary.
 

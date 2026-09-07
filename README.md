@@ -1,5 +1,7 @@
 # SprintTicker
 
+[![Quality](https://github.com/Istalry/SprintTicker/actions/workflows/quality.yml/badge.svg)](https://github.com/Istalry/SprintTicker/actions/workflows/quality.yml)
+
 *A time tracker for the BUSY Bar.*
 
 > Not affiliated with, endorsed by, or supported by Flipper FZCO. "BUSY Bar" is
@@ -145,6 +147,21 @@ git lfs install
 
 Run that **before** cloning. If you have already cloned without it, `git lfs pull`
 repairs the working copy.
+
+**If you only want to read the code, skip the download.** A full clone pulls
+roughly 15 MB of LFS objects, and LFS bandwidth is billed to this repository's
+owner against a 1 GB monthly allowance — about 65 clones. When it runs out, LFS
+fetches fail for *everyone* and the repository looks broken to people who have
+done nothing wrong.
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/Istalry/SprintTicker.git
+```
+
+That leaves `Animations/` as pointer files, which is fine for reading, editing
+and running the test suite — nothing under `tests/` touches them. Run
+`git lfs pull` before `pnpm dev` or `pnpm package:win`, or you get the silent
+broken-animation build described above.
 
 ---
 
