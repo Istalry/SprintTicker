@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 39124;
-const BITMAPS_PATH = path.resolve(__dirname, '../../packages/desktop-app/src/main/hardware/pixel-bitmaps.ts');
+const BITMAPS_PATH = path.resolve(__dirname, '../../packages/desktop-app/src/shared/pixel-bitmaps.ts');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 /**
@@ -164,6 +164,17 @@ const server = http.createServer((req, res) => {
     }
   });
 });
+
+// Checked at startup rather than on the first request. The path was left
+// pointing at src/main/hardware/ after the bitmaps moved to src/shared/, so
+// every request 500d on ENOENT and the editor opened to an empty palette --
+// which reads as "no icons yet" rather than as a broken tool. Failing here
+// names the file it could not find.
+if (!fs.existsSync(BITMAPS_PATH)) {
+  console.error(`[PixelEditorServer] Bitmap module not found at ${BITMAPS_PATH}`);
+  console.error(`[PixelEditorServer] It has probably moved. Update BITMAPS_PATH in ${__filename}.`);
+  process.exit(1);
+}
 
 server.listen(PORT, () => {
   console.log(`========================================================`);
