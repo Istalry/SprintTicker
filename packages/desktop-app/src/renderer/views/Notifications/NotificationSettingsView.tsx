@@ -168,6 +168,22 @@ export const NotificationSettingsView: React.FC = () => {
     }));
   };
 
+  /**
+   * Toggles whether this source's message body reaches the display.
+   *
+   * The bar is readable by anyone walking past the desk, so for a chat app the
+   * body is the one part worth withholding. The sender or channel still shows,
+   * which is what makes the banner worth glancing at at all.
+   */
+  const updateRulePrivacy = (appId: string, hideMessageBody: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      sourceRules: prev.sourceRules.map(r =>
+        r.appId === appId ? { ...r, hideMessageBody } : r
+      )
+    }));
+  };
+
   const removeRule = (appId: string) => {
     setSettings(prev => ({
       ...prev,
@@ -465,6 +481,18 @@ export const NotificationSettingsView: React.FC = () => {
                 </button>
               </div>
             </div>
+
+              <label className="flex items-center space-x-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rule.hideMessageBody === true}
+                  onChange={e => updateRulePrivacy(rule.appId, e.target.checked)}
+                  className="accent-accent-purple"
+                />
+                <span className="text-[10px] font-mono text-text-secondary">
+                  Hide message text on the bar (show sender and &quot;New message&quot; only)
+                </span>
+              </label>
 
               <div className="flex items-center space-x-2">
                 <label className="text-[10px] font-mono text-text-secondary whitespace-nowrap">

@@ -16,8 +16,12 @@ import { WindowsNotificationSettingsDTO, NotificationSourceRule } from './dtos';
  * below are a starting point, not a policy.
  */
 export const DEFAULT_NOTIFICATION_SOURCE_RULES: readonly NotificationSourceRule[] = [
-  { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' },
-  { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY' },
+  // hideMessageBody defaults on for the two chat apps: their bodies are direct
+  // messages, and the bar is readable by anyone walking past the desk. It is a
+  // starting point like the modes above, not a policy -- the panel can turn it
+  // on for any source, or off for these.
+  { appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT', hideMessageBody: true },
+  { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'HIGH_PRIORITY', hideMessageBody: true },
   { appId: 'antigravity', appName: 'Antigravity', iconId: 'antigravity', priorityMode: 'DEFAULT' },
   { appId: 'gmail', appName: 'Gmail / Outlook', iconId: 'gmail', priorityMode: 'DEFAULT' },
   { appId: 'battery', appName: 'System Battery', iconId: 'battery', priorityMode: 'HIGH_PRIORITY' },

@@ -255,6 +255,53 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     expect(logged).toContain('Slack');
   });
 
+
+  describe('private message bodies', () => {
+    it('HandleNotification_RuleHidesTheBody_PassesHideBodyToTheRenderer', () => {
+      service.saveSettings({
+        sourceRules: [
+          { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT', hideMessageBody: true }
+        ]
+      });
+
+      service.handleNotification({
+        appId: 'slack',
+        appName: 'Slack',
+        title: 'Alice',
+        body: 'salary review at 4pm'
+      } as never);
+
+      expect(bannerCalls[0].hideBody).toBe(true);
+    });
+
+    it('GetSettings_RuleStoredBeforeTheFieldExisted_TakesTheSeededDefault', () => {
+      // Settings are one JSON blob and the seeded defaults are only consulted
+      // when no blob exists, so without a backfill this default would reach new
+      // installs and no existing one.
+      service.saveSettings({
+        sourceRules: [
+          { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT' }
+        ]
+      });
+
+      const rule = service.getSettings().sourceRules.find(r => r.appId === 'slack');
+      expect(rule?.hideMessageBody).toBe(true);
+    });
+
+    it('GetSettings_UserTurnedTheSettingOff_KeepsItOff', () => {
+      // An explicit false is a decision, not an absent field, and must survive
+      // the backfill.
+      service.saveSettings({
+        sourceRules: [
+          { appId: 'slack', appName: 'Slack', iconId: 'slack', priorityMode: 'DEFAULT', hideMessageBody: false }
+        ]
+      });
+
+      const rule = service.getSettings().sourceRules.find(r => r.appId === 'slack');
+      expect(rule?.hideMessageBody).toBe(false);
+    });
+  });
+
   describe('generated PowerShell poller', () => {
     /**
      * The poller is a generated script, so it is unreachable by ordinary unit

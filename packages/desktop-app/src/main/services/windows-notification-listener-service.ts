@@ -11,7 +11,7 @@ import {
   redactNotificationSummary,
   redactNotificationText
 } from '../diagnostics/notification-redaction';
-import { createDefaultNotificationSettings } from '../../shared/notification-defaults';
+import { createDefaultNotificationSettings, DEFAULT_NOTIFICATION_SOURCE_RULES } from '../../shared/notification-defaults';
 import {
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
@@ -95,10 +95,33 @@ export class WindowsNotificationListenerService {
    * Retrieves configured Windows notification settings and per-source priority rules.
    */
   public getSettings(): WindowsNotificationSettingsDTO {
-    return this._settingsRepo.getSetting<WindowsNotificationSettingsDTO>(
+    const stored = this._settingsRepo.getSetting<WindowsNotificationSettingsDTO>(
       WindowsNotificationListenerService.DB_SETTINGS_KEY,
       createDefaultNotificationSettings()
     );
+    return {
+      ...stored,
+      sourceRules: (stored.sourceRules ?? []).map(rule => this.backfillRuleDefaults(rule))
+    };
+  }
+
+  /**
+   * Applies defaults for fields a stored rule predates.
+   *
+   * Settings are persisted as one JSON blob, so a rule written before a field
+   * existed simply lacks it -- and the seeded defaults are only consulted when
+   * there is no stored blob at all. Without this, adding `hideMessageBody` would
+   * have shipped a default that reached new installs and no existing one.
+   *
+   * Only `undefined` is filled. A user who turns the setting off stores an
+   * explicit `false`, which is not the same as never having been asked, and
+   * must survive.
+   */
+  private backfillRuleDefaults(rule: NotificationSourceRule): NotificationSourceRule {
+    if (rule.hideMessageBody !== undefined) return rule;
+    const seeded = DEFAULT_NOTIFICATION_SOURCE_RULES.find(d => d.appId === rule.appId);
+    if (seeded?.hideMessageBody === undefined) return rule;
+    return { ...rule, hideMessageBody: seeded.hideMessageBody };
   }
 
   /**
@@ -446,6 +469,9 @@ export class WindowsNotificationListenerService {
       appName: appLabel,
       title: event.title,
       body: event.body,
+      // Absent rule means absent opt-in: a source nobody has configured shows
+      // its body, the same as it did before this existed.
+      hideBody: matchedRule?.hideMessageBody === true,
       eventName,
       iconId,
       customIconData: rawIconData,

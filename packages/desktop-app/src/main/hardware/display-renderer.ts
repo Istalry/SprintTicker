@@ -54,6 +54,14 @@ export interface NotificationBannerOptions {
   customIconData?: (string | null)[][];
   /** How long the banner holds the display before releasing its lock. */
   timeoutMs?: number;
+  /**
+   * Show that a message arrived without showing what it said.
+   *
+   * Set from the source rule's `hideMessageBody`. The sender or channel stays
+   * on the top row; the body is replaced by a placeholder, on the rear preview
+   * as well as the front matrix.
+   */
+  hideBody?: boolean;
 }
 
 export interface DisplayPayload {
@@ -912,7 +920,8 @@ export class DisplayRenderer {
       eventName = 'messagingPriority',
       iconId = 'slack',
       customIconData,
-      timeoutMs = 10000
+      timeoutMs = 10000,
+      hideBody = false
     } = options;
 
     const isHighPriority = eventName === 'highNotificationPriority';
@@ -927,7 +936,8 @@ export class DisplayRenderer {
       // A resolved app icon, or a brand bitmap, already says which application
       // this came from. The generic bell says nothing, so in that case the
       // text has to spend a row on the identity instead.
-      iconIdentifiesApp: Boolean(customIconData) || iconId !== 'bell'
+      iconIdentifiesApp: Boolean(customIconData) || iconId !== 'bell',
+      hideBody
     });
 
     return this.requestRender(eventName, () => {

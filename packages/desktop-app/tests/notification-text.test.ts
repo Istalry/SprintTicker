@@ -199,6 +199,81 @@ describe('capacityFor', () => {
   });
 });
 
+describe('hidden message bodies', () => {
+  // The bar sits on a desk in view of whoever walks past, so for a chat app
+  // the body is the one part that should not be readable across a room.
+  // The sender stays: a banner nobody can attribute is not worth a glance.
+  const SECRET = 'salary review at 4pm';
+
+  it('ComposeNotificationBanner_HideBody_KeepsTheSenderOnRow0', () => {
+    const text = composeNotificationBanner({
+      appName: 'Slack',
+      title: 'Alice',
+      body: SECRET,
+      iconIdentifiesApp: true,
+      hideBody: true
+    });
+
+    expect(text.row0).toBe('Alice');
+  });
+
+  it('ComposeNotificationBanner_HideBody_ReplacesRow1WithAPlaceholder', () => {
+    const text = composeNotificationBanner({
+      title: 'Alice',
+      body: SECRET,
+      iconIdentifiesApp: true,
+      hideBody: true
+    });
+
+    expect(text.row1).not.toContain(SECRET);
+    expect(text.row1.length).toBeGreaterThan(0);
+    expect(text.row1.length).toBeLessThanOrEqual(ROW1_CAPACITY);
+    // A placeholder that was itself truncated would read as a cut-off message.
+    expect(text.row1).not.toContain('…');
+  });
+
+  it('ComposeNotificationBanner_HideBody_KeepsTheBodyOutOfTheRearPanelText', () => {
+    // fullText feeds the rear elements, which the on-screen emulator draws.
+    // Hiding the body on the front while leaking it there would defeat this.
+    const text = composeNotificationBanner({
+      appName: 'Slack',
+      title: 'Alice',
+      body: SECRET,
+      iconIdentifiesApp: true,
+      hideBody: true
+    });
+
+    expect(text.fullText).not.toContain(SECRET);
+  });
+
+  it('ComposeNotificationBanner_HideBodyWithGenericIcon_DoesNotFallBackToTheSenderName', () => {
+    // With a generic bell the app name has to lead. The title may itself be
+    // a person, so it must not be promoted into the freed body row.
+    const text = composeNotificationBanner({
+      appName: 'Signal',
+      title: 'Alice',
+      body: SECRET,
+      iconIdentifiesApp: false,
+      hideBody: true
+    });
+
+    expect(text.row0).toBe('Signal');
+    expect(text.row1).not.toContain(SECRET);
+    expect(text.row1).not.toContain('Alice');
+  });
+
+  it('ComposeNotificationBanner_HideBodyNotSet_StillShowsTheBody', () => {
+    // Absent opt-in must behave exactly as it did before this existed.
+    const text = composeNotificationBanner({
+      title: 'Alice',
+      body: 'ship it',
+      iconIdentifiesApp: true
+    });
+
+    expect(text.row1).toBe('ship it');
+  });
+  });
+
 describe('fitToCapacity', () => {
   it('FitToCapacity_TextShorterThanCapacity_ReturnsItUnchanged', () => {
     expect(fitToCapacity('short', 11)).toBe('short');

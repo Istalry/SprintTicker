@@ -228,6 +228,20 @@ export interface NotificationSourceRule {
    * can be corrected without code. Produce one with `pnpm editor`.
    */
   iconImagePath?: string;
+  /**
+   * Show that a message arrived, without showing what it said.
+   *
+   * The bar sits on a desk in view of whoever walks past, so the body of a
+   * direct message is the one part of a notification that should not be
+   * readable from across a room. With this set the banner keeps the sender or
+   * channel on the top row -- which is what makes it worth glancing at -- and
+   * replaces the body with a fixed placeholder.
+   *
+   * Per-app rather than a global switch or a hardcoded list of chat apps:
+   * which sources are sensitive is the user's judgement, the same way the
+   * priority panel owns which sources may interrupt.
+   */
+  hideMessageBody?: boolean;
 }
 
 export interface WindowsNotificationSettingsDTO {
