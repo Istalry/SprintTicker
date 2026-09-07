@@ -203,6 +203,32 @@ None of these `fetch` calls has a timeout either (contrast with the driver, whic
 
 Separately: `getTasks` hardcodes `assignee = "me"` into the filter. That's an undocumented, unconfigurable product decision — unassigned tickets and team tickets are invisible.
 
+**Pagination fixed.** Collections are now walked to the end through
+`_links.nextByOffset` by one shared helper
+(`providers/openproject-collection.ts`), used by projects, work packages,
+notifications, time entries and statuses alike. Two details are load-bearing:
+
+- The walk **throws** when it reaches its page cap rather than returning what
+  it has. A partial collection is F-01 in a different costume: the sync worker
+  prunes whatever is absent from a fetch, so quietly handing back page one of
+  four is a licence to delete the other three.
+- An empty page ends the walk even when the server still advertises a next
+  link, so an instance that miscounts cannot spin the loop up to the cap.
+
+Query parameters are now passed as a record and encoded by the helper. The call
+sites used to hand-roll `encodeURIComponent` into a template string, which is
+part of why adding a second parameter never happened.
+
+`ProviderRequestError.fromStatus` also gained the server's own explanation, so
+a rejected API key in Settings now reads `HTTP 401 - You did not provide the
+correct credentials.` instead of `HTTP 401`.
+
+**Two sub-findings in this entry remain open**, and moved to the deferred table
+in [ROADMAP.md](ROADMAP.md): the missing `fetch` timeouts together with the
+unguarded `syncTasksAndProjects()` overlap, and the hardcoded
+`assignee = "me"` filter -- which is an unconfigurable product decision rather
+than a defect, and needs a call on what the alternative should be.
+
 ### F-13 — Notification listener copies the whole Windows notification database every 2 seconds
 `src/main/services/windows-notification-listener-service.ts:576-582`
 
@@ -725,9 +751,9 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-12, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
-| **Open, deferred with a reason** | F-11, F-12, and the table in [ROADMAP.md](ROADMAP.md) |
+| **Open, deferred with a reason** | F-11, and the table in [ROADMAP.md](ROADMAP.md) |
 | **Open, not yet triaged** | F-33 (`preflight` is not a gate), F-34 (the ABI split -- documented in `CLAUDE.md` rather than removed), F-35 (`NODE_ENV === 'test'` branches in production code), F-36 (deprecated `.substr`) |
 | **Publication prerequisite** | F-41 — history rewrite, [ROADMAP.md](ROADMAP.md) §1 |

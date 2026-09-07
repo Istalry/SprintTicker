@@ -58,10 +58,22 @@ export class ProviderRequestError extends Error {
     );
   }
 
-  /** Classifies an HTTP response status into the matching error kind. */
-  public static fromStatus(providerId: string, status: number, context: string): ProviderRequestError {
+  /**
+   * Classifies an HTTP response status into the matching error kind.
+   *
+   * `detail` carries the server's own explanation when there is one. It is
+   * what makes a failed credential probe say "HTTP 401 - You did not provide
+   * the correct credentials" instead of leaving the user to guess.
+   */
+  public static fromStatus(
+    providerId: string,
+    status: number,
+    context: string,
+    detail?: string
+  ): ProviderRequestError {
     const kind: ProviderErrorKind = status === 401 || status === 403 ? 'auth' : 'protocol';
-    return new ProviderRequestError(providerId, kind, `${context} failed: HTTP ${status}`, { status });
+    const suffix = detail ? ` - ${detail}` : '';
+    return new ProviderRequestError(providerId, kind, `${context} failed: HTTP ${status}${suffix}`, { status });
   }
 
   /** Wraps a thrown fetch/network error, preserving the original as `cause`. */

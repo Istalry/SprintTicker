@@ -145,13 +145,13 @@ and it is also why nobody but the author has ever run a packaged build.
 
 ## 3. More task providers, Jira first
 
-**Blocked on:** nothing external — but see the note below before starting.
+**Blocked on:** nothing. The prerequisites below are all in place.
 
 The provider interface already exists (`task-provider-interface.ts`), and
 OpenProject and ad-hoc both implement it, so a Jira provider is mostly HTTP.
 
-Three pieces of Phase 1 work exist specifically so that adding a provider does
-not multiply existing bugs, and a fourth is still outstanding:
+Four pieces of groundwork exist specifically so that adding a provider does
+not multiply existing bugs:
 
 - Providers now report failure by **throwing** a typed `ProviderRequestError`
   rather than returning `[]`. Returning an empty array was indistinguishable
@@ -161,11 +161,14 @@ not multiply existing bugs, and a fourth is still outstanding:
 - `logTimeForProvider(providerId, …)` exists so a queued OpenProject worklog
   cannot be dispatched to whichever provider happens to be active when the
   worker wakes up.
-- **Pagination is still missing (F-12).** Every OpenProject call fetches a bare
-  collection URL with no `pageSize`/`offset` and never follows
-  `_links.nextByOffset`, so anyone with more than ~20 projects silently sees
-  only the first page. Fix this in the shared layer *before* writing a second
-  provider, or it gets reimplemented wrongly twice.
+- **Pagination is done (F-12).** One helper,
+  `providers/openproject-collection.ts`, walks `_links.nextByOffset` to the end
+  of any v3 collection and is used by all five collection call sites. It throws
+  on reaching its page cap rather than returning a partial list, because a
+  short list is exactly what makes the sync worker prune. A Jira provider
+  cannot reuse the walker itself -- Jira paginates on `startAt`/`maxResults`
+  rather than HAL links -- but the request/error-classification half is worth
+  extracting from it at that point, once there is a second caller to shape it.
 
 Also worth doing while this area is open:
 
@@ -221,17 +224,20 @@ looping idle animations.
 
 **Blocked on:** nothing. This is just work.
 
-The floor is 76% statements / 78% lines / 79% functions / 66% branches. It read
-80/70 until `@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the
-default; the same 346 tests then measured 76.19% instead of 88.15%. The suite
-did not get worse -- the ruler got accurate, and the old one counted a whole
-line as covered when any part of it ran.
+The floor is 78% statements / 80% lines / 80% functions / 68% branches, and the
+suite currently measures 78.93 / 81.17 / 81.19 / 69.11. It read 80/70 until
+`@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the default;
+the same 346 tests then measured 76.19% instead of 88.15%. The suite did not
+get worse -- the ruler got accurate, and the old one counted a whole line as
+covered when any part of it ran.
+
+The floor is ratcheted up whenever the measurement rises, so the remaining gap
+to 80/70 is two points of statements and two of branches.
 
 Where the honest numbers are thinnest, worst first:
 
 | Area | Statements | Note |
 | :--- | ---: | :--- |
-| `main/providers` | 57% | The OpenProject client. Also where F-01, F-02 and F-12 live, so tests here pay twice. |
 | `main/diagnostics` | 66% | |
 | `main/tray` | 69% | `tray-manager.ts` lines 86-117 are the context menu. |
 | `main/hardware` | 74% | `input-decoder.ts` at 66% is the weakest file; it is also the one where an uncaught throw used to kill the main process. |
@@ -262,7 +268,8 @@ nobody got to.
 | Finding | Status | Why it is deferred |
 | :--- | :--- | :--- |
 | F-11 — credentials stored in plaintext, `http` default | Open | Belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
-| F-12 — no pagination on OpenProject collections | Open | Must land **before** a second provider, not after. See §3. |
+| F-12 residue — no `fetch` timeouts, unguarded `syncTasksAndProjects()` | Open | Pagination itself is fixed. A hung OpenProject still stalls the sync, and overlapping runs can pile up. Belongs with the shared HTTP client in §3. |
+| F-12 residue — `getTasks` hardcodes `assignee = "me"` | Product decision | Unassigned and team tickets are invisible. Not a defect until there is a decision on what should be configurable instead. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
 | Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
 | Foreign keys on `worklogs` → `tasks` | Deferred | **Would fail on existing data**: F-01 already deleted tasks that surviving worklogs reference. Needs an orphan-cleanup decision. |

@@ -1,6 +1,7 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO } from '../../shared/dtos';
 import { ProviderRequestError } from './provider-errors';
+import { fetchOpenProjectCollection } from './openproject-collection';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
 import { localDateKey } from '../../shared/local-date';
 
@@ -49,6 +50,27 @@ export class OpenProjectProvider implements ITaskProvider {
     return OpenProjectProvider.sanitizeDomain(this._domain);
   }
 
+  /**
+   * Walks a collection on the configured instance.
+   *
+   * See {@link fetchOpenProjectCollection} for why this throws rather than
+   * returning a partial list.
+   */
+  private fetchCollection(
+    path: string,
+    context: string,
+    params: Record<string, string> = {}
+  ): Promise<Array<Record<string, unknown>>> {
+    return fetchOpenProjectCollection(
+      this.providerId,
+      this.getBaseUrl(),
+      this.getAuthHeader(),
+      path,
+      context,
+      params
+    );
+  }
+
   /// <summary>
   /// Converts duration in seconds to ISO 8601 duration format (e.g. PT1H30M, PT15M, PT45S).
   /// </summary>
@@ -72,45 +94,7 @@ export class OpenProjectProvider implements ITaskProvider {
       throw ProviderRequestError.notConfigured(this.providerId);
     }
 
-    let res: Response;
-    try {
-      res = await fetch(`${this.getBaseUrl()}/api/v3/projects`, {
-        headers: {
-          'Authorization': this.getAuthHeader(),
-          'Accept': 'application/json'
-        }
-      });
-    } catch (err) {
-      throw ProviderRequestError.fromTransport(this.providerId, 'Fetching projects', err);
-    }
-
-    if (!res.ok) {
-      throw ProviderRequestError.fromStatus(this.providerId, res.status, 'Fetching projects');
-    }
-
-    let json: { _embedded?: { elements?: Array<Record<string, unknown>> } };
-    try {
-      json = (await res.json()) as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-    } catch (err) {
-      throw new ProviderRequestError(
-        this.providerId,
-        'protocol',
-        'Fetching projects failed: response body was not valid JSON',
-        { cause: err }
-      );
-    }
-
-    const elements = json?._embedded?.elements;
-    if (!Array.isArray(elements)) {
-      // An empty result is legitimate; a missing collection is not, and must not
-      // be reported as "the user has no projects" -- the sync worker would prune
-      // the entire local cache on the strength of it.
-      throw new ProviderRequestError(
-        this.providerId,
-        'protocol',
-        'Fetching projects failed: response had no _embedded.elements collection'
-      );
-    }
+    const elements = await this.fetchCollection('/api/v3/projects', 'Fetching projects');
 
     return elements
       .filter(p => p.templated !== true && !((p.name as string) || '').toLowerCase().includes('template'))
@@ -131,44 +115,11 @@ export class OpenProjectProvider implements ITaskProvider {
 
     // Filter: Project ID, Assignee = me, Status = open ("o")
     const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]`;
-    const url = `${this.getBaseUrl()}/api/v3/work_packages?filters=${encodeURIComponent(filter)}`;
-
-    let res: Response;
-    try {
-      res = await fetch(url, {
-        headers: {
-          'Authorization': this.getAuthHeader(),
-          'Accept': 'application/json'
-        }
-      });
-    } catch (err) {
-      throw ProviderRequestError.fromTransport(this.providerId, `Fetching tasks for project ${projectId}`, err);
-    }
-
-    if (!res.ok) {
-      throw ProviderRequestError.fromStatus(this.providerId, res.status, `Fetching tasks for project ${projectId}`);
-    }
-
-    let json: { _embedded?: { elements?: Array<Record<string, unknown>> } };
-    try {
-      json = (await res.json()) as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-    } catch (err) {
-      throw new ProviderRequestError(
-        this.providerId,
-        'protocol',
-        `Fetching tasks for project ${projectId} failed: response body was not valid JSON`,
-        { cause: err }
-      );
-    }
-
-    const elements = json?._embedded?.elements;
-    if (!Array.isArray(elements)) {
-      throw new ProviderRequestError(
-        this.providerId,
-        'protocol',
-        `Fetching tasks for project ${projectId} failed: response had no _embedded.elements collection`
-      );
-    }
+    const elements = await this.fetchCollection(
+      '/api/v3/work_packages',
+      `Fetching tasks for project ${projectId}`,
+      { filters: filter }
+    );
 
     return elements
       .map(t => {
@@ -205,35 +156,31 @@ export class OpenProjectProvider implements ITaskProvider {
 
     try {
       const filter = `[{"readIAN":{"operator":"=","values":["f"]}}]`;
-      const url = `${this.getBaseUrl()}/api/v3/notifications?filters=${encodeURIComponent(filter)}`;
-      const res = await fetch(url, {
-        headers: {
-          'Authorization': this.getAuthHeader(),
-          'Accept': 'application/json'
-        }
+      const elements = await this.fetchCollection(
+        '/api/v3/notifications',
+        'Fetching unread notifications',
+        { filters: filter }
+      );
+
+      return elements.map(n => {
+        const links = (n._links || {}) as Record<string, { title?: string }>;
+        return {
+          id: (n.id as number | string).toString(),
+          subject: (n.subject as string) || 'Notification',
+          action: (n.action as string) || '',
+          actorName: links.actor?.title || 'OpenProject',
+          readIAN: !!n.readIAN,
+          reason: (n.reason as string) || '',
+          createdAt: (n.createdAt as string) || new Date().toISOString()
+        };
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-      
-      const elements = json?._embedded?.elements;
-      if (Array.isArray(elements)) {
-        return elements.map(n => {
-          const links = (n._links || {}) as Record<string, { title?: string }>;
-          return {
-            id: (n.id as number | string).toString(),
-            subject: (n.subject as string) || 'Notification',
-            action: (n.action as string) || '',
-            actorName: links.actor?.title || 'OpenProject',
-            readIAN: !!n.readIAN,
-            reason: (n.reason as string) || '',
-            createdAt: (n.createdAt as string) || new Date().toISOString()
-          };
-        });
-      }
     } catch (err) {
+      // Unlike getProjects/getTasks this is not a prune input -- nothing is
+      // deleted on the strength of it -- so an unreachable server degrades to
+      // "no notifications" rather than failing the caller.
       console.error('[OpenProjectProvider] Failed to fetch unread notifications:', err);
+      return [];
     }
-    return [];
   }
 
   /// <summary>
@@ -241,47 +188,44 @@ export class OpenProjectProvider implements ITaskProvider {
   /// </summary>
   public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }> {
     if (!this._domain || !this._apiKey) return { remoteLoggedTimeToday: 0 };
-    
+
     try {
       // The user's day, not UTC's: this filter is compared against spentOn
       // values written below, and the two must agree on which day it is.
       const today = localDateKey();
       const filter = `[{"spentOn":{"operator":"=","values":["${today}"]}},{"user":{"operator":"=","values":["me"]}}]`;
-      const url = `${this.getBaseUrl()}/api/v3/time_entries?filters=${encodeURIComponent(filter)}`;
-      
-      const res = await fetch(url, {
-        headers: {
-          'Authorization': this.getAuthHeader(),
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (res.ok) {
-        const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-        const elements = json?._embedded?.elements;
-        if (Array.isArray(elements)) {
-          let totalSeconds = 0;
-          for (const entry of elements) {
-            const isoDuration = entry.hours as string;
-            // Parse PTnHnMnS
-            if (isoDuration && isoDuration.startsWith('PT')) {
-              let h = 0, m = 0, s = 0;
-              const hMatch = isoDuration.match(/(\d+)H/);
-              if (hMatch) h = parseInt(hMatch[1], 10);
-              const mMatch = isoDuration.match(/(\d+)M/);
-              if (mMatch) m = parseInt(mMatch[1], 10);
-              const sMatch = isoDuration.match(/(\d+)S/);
-              if (sMatch) s = parseInt(sMatch[1], 10);
-              totalSeconds += h * 3600 + m * 60 + s;
-            }
-          }
-          return { remoteLoggedTimeToday: totalSeconds };
-        }
+      const elements = await this.fetchCollection(
+        '/api/v3/time_entries',
+        'Reconciling remote time entries',
+        { filters: filter }
+      );
+
+      let totalSeconds = 0;
+      for (const entry of elements) {
+        totalSeconds += OpenProjectProvider.parseIsoDurationSeconds(entry.hours as string);
       }
+      return { remoteLoggedTimeToday: totalSeconds };
     } catch (err) {
+      // A failure here understates the day's total rather than corrupting it;
+      // the local worklog table remains the source of truth.
       console.error('[OpenProjectProvider] Failed to reconcile remote state:', err);
+      return { remoteLoggedTimeToday: 0 };
     }
-    return { remoteLoggedTimeToday: 0 };
+  }
+
+  /// <summary>
+  /// Parses an ISO 8601 duration of the shape OpenProject returns (PTnHnMnS).
+  /// </summary>
+  private static parseIsoDurationSeconds(isoDuration: string): number {
+    if (!isoDuration || !isoDuration.startsWith('PT')) return 0;
+    const hours = /(\d+)H/.exec(isoDuration);
+    const minutes = /(\d+)M/.exec(isoDuration);
+    const seconds = /(\d+)S/.exec(isoDuration);
+    return (
+      (hours ? parseInt(hours[1], 10) : 0) * 3600 +
+      (minutes ? parseInt(minutes[1], 10) : 0) * 60 +
+      (seconds ? parseInt(seconds[1], 10) : 0)
+    );
   }
 
   /// <summary>
@@ -401,45 +345,32 @@ export class OpenProjectProvider implements ITaskProvider {
   /// </summary>
   public static async fetchStatuses(domain: string, apiKey: string): Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }> {
     if (!domain || !apiKey) return { success: false, error: 'Domain or API key is missing.' };
-    
+
     try {
       const baseUrl = OpenProjectProvider.sanitizeDomain(domain);
       const authHeader = `Basic ${Buffer.from(`apikey:${apiKey.trim()}`).toString('base64')}`;
-      const url = `${baseUrl}/api/v3/statuses`;
-      
-      const res = await fetch(url, {
-        headers: {
-          'Authorization': authHeader,
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (!res.ok) {
-        let errorText = `HTTP ${res.status}`;
-        try {
-          const errJson = await res.json() as { message?: string };
-          if (errJson.message) errorText += ` - ${errJson.message}`;
-        } catch { /* Ignore json parse error */ }
-        return { success: false, error: errorText };
-      }
-      
-      const json = await res.json() as { _embedded?: { elements?: Array<Record<string, unknown>> } };
-      const elements = json?._embedded?.elements;
-      
-      if (Array.isArray(elements)) {
-        const statuses = elements.map(s => ({
+      const elements = await fetchOpenProjectCollection(
+        'openproject',
+        baseUrl,
+        authHeader,
+        '/api/v3/statuses',
+        'Fetching statuses'
+      );
+
+      return {
+        success: true,
+        data: elements.map(s => ({
           id: (s.id as number | string).toString(),
           name: (s.name as string) || 'Unknown',
           isClosed: !!s.isClosed
-        }));
-        return { success: true, data: statuses };
-      } else {
-        return { success: false, error: 'Unexpected response format from OpenProject.' };
-      }
+        }))
+      };
     } catch (err) {
+      // Reports the failure to the settings UI rather than rethrowing: this is
+      // the credential probe, so "why did that not work" is exactly what the
+      // user is waiting to be told.
       console.error('[OpenProjectProvider] Failed to fetch statuses statically:', err);
       return { success: false, error: err instanceof Error ? err.message : 'Unknown network error' };
     }
   }
 }
-

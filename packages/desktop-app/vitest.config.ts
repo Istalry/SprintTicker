@@ -35,11 +35,14 @@ export default defineConfig({
       // generous one.
       //
       // Getting back to 80/70 on the honest metric is tracked in ROADMAP.md.
+      // Ratcheted to just under the measured figures so a regression fails
+      // the build, with ~1% of headroom so an unrelated refactor does not.
+      // The target is still 80/70; see ROADMAP.md.
       thresholds: {
-        lines: 78,
-        functions: 79,
-        branches: 66,
-        statements: 76
+        lines: 80,
+        functions: 80,
+        branches: 68,
+        statements: 78
       }
     }
   },

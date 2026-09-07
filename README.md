@@ -253,9 +253,9 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 346 tests across 32 files, covering the main and shared
+`pnpm test` runs 405 tests across 37 files, covering the main and shared
 process code; the renderer is not covered. `pnpm test:coverage` enforces a
-threshold floor of 76% statements / 78% lines / 79% functions / 66% branches.
+threshold floor of 78% statements / 80% lines / 80% functions / 68% branches.
 
 Those numbers used to read 80/70, and nothing regressed to change them:
 `@vitest/coverage-v8` made AST-aware remapping the default after v1, and the
