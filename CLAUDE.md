@@ -188,6 +188,23 @@ migration you are testing runs against your actual worklogs. Use
 `new DatabaseConnection(':memory:')` in tests -- never the singleton -- and copy
 the file before trying anything destructive.
 
+**A shell inside a packaged app does not see that path directly.** The Claude
+desktop app ships as an MSIX package, and processes launched from its integrated
+terminal inherit the container's filesystem redirection: a file written to
+`%APPDATA%\SprintTicker\` from there also appears under
+`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\SprintTicker\`.
+
+The practical rule is narrow but worth stating, because a whole afternoon went
+into rediscovering it: **do not trust a database inspection performed from an
+agent's shell.** During one session that shell reported zero projects while the
+running app's own log and UI showed twenty-five, and the contradiction was never
+resolved -- entirely plausibly because the two were not looking at the same
+physical file. Verify state from an ordinary terminal, or from the app's own
+logging, and treat anything an agent reports about this file as a hypothesis.
+
+The same caution applies to *writing*: a backup or restore performed from such a
+shell may not land where the installed app will look for it.
+
 ## 8. Commit identity
 
 This repository is configured with a **repo-local** author identity:

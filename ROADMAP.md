@@ -277,7 +277,7 @@ nobody got to.
 | Finding | Status | Why it is deferred |
 | :--- | :--- | :--- |
 | F-11 residue — key stored in plaintext, `http` scheme default | Open | The hardcoded LAN default and the status-name defaults are fixed. `safeStorage` and the scheme default remain; belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
-| F-12 residue — no `fetch` timeouts, unguarded `syncTasksAndProjects()` | Open | Pagination itself is fixed. A hung OpenProject still stalls the sync, and overlapping runs can pile up. Belongs with the shared HTTP client in §3. |
+| F-12 residue — no `fetch` timeouts in the provider layer | Open | Pagination is fixed, and the overlap guard landed with F-55 once a second caller existed. What remains is that a hung OpenProject stalls a sync pass indefinitely; it is also why saving credentials does not await the sync. Belongs with the shared HTTP client in §3. |
 | F-12 residue — `getTasks` hardcodes `assignee = "me"` | Product decision | Unassigned and team tickets are invisible. Not a defect until there is a decision on what should be configurable instead. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
 | Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
