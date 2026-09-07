@@ -68,6 +68,17 @@ export class AutoSaveScheduler {
   }
 
   /**
+   * True once disposed, after which this instance ignores everything.
+   *
+   * Exposed so a caller can tell a dead scheduler from a live one and build a
+   * replacement. React's StrictMode disposes one during its development-only
+   * double-invoke of effects, and the holder has no other way to notice.
+   */
+  public get isDisposed(): boolean {
+    return this._disposed;
+  }
+
+  /**
    * Reports the panel's current values.
    *
    * `loaded` is the panel's own "I have finished reading stored settings"

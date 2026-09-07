@@ -181,4 +181,48 @@ describe('AutoSaveScheduler', () => {
 
     expect(statuses).toEqual(['pending', 'saving', 'saved']);
   });
+
+  describe('surviving StrictMode', () => {
+    // React StrictMode runs every effect setup, cleanup, setup on mount in
+    // development. useAutoSave disposes the scheduler in its cleanup, and the
+    // ref holding it survives that simulated unmount -- so the second setup
+    // inherited a disposed scheduler and auto-save was silently dead in dev
+    // for every settings panel. Nothing threw; the indicator just never left
+    // idle. These pin the contract the hook now relies on.
+
+    it('Sync_AfterDispose_IsIgnoredSoAHolderMustReplaceTheInstance', () => {
+      const scheduler = build();
+      scheduler.sync(['stored'], true);
+      scheduler.dispose();
+
+      scheduler.sync(['edited'], true);
+      vi.advanceTimersByTime(5000);
+
+      expect(saves).toEqual([]);
+      expect(scheduler.isDisposed).toBe(true);
+    });
+
+    it('IsDisposed_LiveScheduler_IsFalseSoAHolderKeepsUsingIt', () => {
+      expect(build().isDisposed).toBe(false);
+    });
+
+    it('Sync_ReplacementAfterDispose_SavesEditsAgain', () => {
+      // The whole point: a holder that replaces a disposed scheduler gets a
+      // working one, and the replacement takes its own baseline rather than
+      // writing the values it was handed first.
+      const first = build();
+      first.sync(['stored'], true);
+      first.dispose();
+
+      const replacement = build();
+      replacement.sync(['stored'], true);
+      vi.advanceTimersByTime(5000);
+      expect(saves).toEqual([]);
+
+      replacement.sync(['edited'], true);
+      vi.advanceTimersByTime(500);
+
+      expect(saves).toEqual([['edited']]);
+    });
+  });
 });

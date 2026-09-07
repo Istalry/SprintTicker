@@ -29,27 +29,49 @@ export function useAutoSave(
   saveRef.current = save;
 
   const schedulerRef = useRef<AutoSaveScheduler | null>(null);
-  if (schedulerRef.current === null) {
-    schedulerRef.current = new AutoSaveScheduler({
-      save: () => saveRef.current(),
-      onStatusChange: setStatus
-    });
-  }
+
+  /**
+   * Returns a live scheduler, replacing a disposed one.
+   *
+   * The replacement is not defensive: React StrictMode runs every effect
+   * setup, cleanup, setup on mount in development, so the unmount cleanup below
+   * disposes the scheduler and the second setup then holds a dead one. A ref
+   * survives that simulated unmount, so without this the panel's auto-save is
+   * permanently off in development -- silently, because nothing throws and the
+   * indicator simply never leaves idle.
+   *
+   * A fresh scheduler takes its baseline from the next values it sees, which is
+   * exactly what a real remount should do, so replacing one cannot write stale
+   * state.
+   */
+  const scheduler = (): AutoSaveScheduler => {
+    if (schedulerRef.current === null || schedulerRef.current.isDisposed) {
+      schedulerRef.current = new AutoSaveScheduler({
+        save: () => saveRef.current(),
+        onStatusChange: setStatus
+      });
+    }
+    return schedulerRef.current;
+  };
 
   // Deliberately every render: the scheduler compares against its baseline, so
   // an unchanged render costs a shallow array comparison and writes nothing.
   useEffect(() => {
-    schedulerRef.current?.sync(values, loaded);
+    scheduler().sync(values, loaded);
   });
 
   useEffect(() => {
-    const scheduler = schedulerRef.current;
     return () => {
+      // Read the ref here rather than capturing it when the effect was set up.
+      // StrictMode can have replaced the instance since, and disposing the one
+      // that existed at mount would leave the live scheduler untouched -- so the
+      // flush below would silently do nothing.
+      const current = schedulerRef.current;
       // Flush before disposing. Switching panels within the debounce window is
       // ordinary behaviour, and dropping the edit there would be exactly the
       // data loss that removing the Save button was supposed to prevent.
-      scheduler?.flush();
-      scheduler?.dispose();
+      current?.flush();
+      current?.dispose();
     };
   }, []);
 
