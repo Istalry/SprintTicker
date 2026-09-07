@@ -21,7 +21,8 @@ import type {
   HardwareDisplayStateDTO,
   DeviceConfigDTO,
   UpdateStatusDTO,
-  ProjectsUpdatedPayload
+  ProjectsUpdatedPayload,
+  PreviewScreenId
 } from '../shared/dtos';
 
 const electronAPI: IElectronAPI = {
@@ -164,6 +165,7 @@ const electronAPI: IElectronAPI = {
   setRearOledMode: (mode: string) => ipcRenderer.invoke(IPCChannel.SET_REAR_OLED_MODE, mode),
   setColorTheme: (theme: string) => ipcRenderer.invoke(IPCChannel.SET_COLOR_THEME, theme),
   triggerConfettiBurst: () => ipcRenderer.invoke(IPCChannel.TRIGGER_CONFETTI_BURST),
+  previewDisplayScreen: (screen: PreviewScreenId) => ipcRenderer.invoke(IPCChannel.PREVIEW_DISPLAY_SCREEN, screen),
 
   // Diagnostics
   exportDiagnosticLogs: () => ipcRenderer.invoke(IPCChannel.EXPORT_DIAGNOSTIC_LOGS),

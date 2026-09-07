@@ -17,7 +17,7 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { OpenProjectProvider } from '../providers/openproject-provider';
@@ -661,6 +661,46 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.TRIGGER_CONFETTI_BURST, async () => {
       this.renderer.renderTaskCompletionConfetti();
       return true;
+    });
+
+    // Previews go through the real renderer, so the debug panel cannot show a
+    // layout the device would not produce. Two consequences worth knowing: a
+    // preview costs one asset upload plus one draw when a device is attached,
+    // and the priority engine may legitimately suppress it -- during Lunch, for
+    // instance -- which the hand-built previews used to hide.
+    ipcMain.handle(IPCChannel.PREVIEW_DISPLAY_SCREEN, async (_event, screen: PreviewScreenId) => {
+      const project = 'MyFantasyGame';
+      switch (screen) {
+        case 'CEREMONY_STANDUP':
+          this.renderer.renderCeremonyPrompt('STANDUP', 'Daily Stand-Up');
+          return true;
+        case 'CEREMONY_EOD':
+          this.renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
+          return true;
+        case 'EOD_COMPLETE':
+          this.renderer.renderEodCompleted();
+          return true;
+        case 'UNITY_PLAY_MODE':
+          this.renderer.renderPlayMode(project);
+          return true;
+        case 'UNITY_COMPILING':
+          this.renderer.renderCompilation(project);
+          return true;
+        case 'UNITY_BUILDING':
+          this.renderer.renderBuilding(project, 80);
+          return true;
+        case 'UNITY_BAKING':
+          this.renderer.renderBaking(project, 45);
+          return true;
+        case 'UNITY_EXCEPTION':
+          this.renderer.renderException(project, 'NullReferenceException');
+          return true;
+        case 'TASK_SELECTION':
+          this.renderer.renderTaskSelection('TASK', 'PROJ-142', 'Implement dash');
+          return true;
+        default:
+          throw new ArgumentException(`Unknown preview screen: ${String(screen)}`);
+      }
     });
 
     // 10. Diagnostics Handlers

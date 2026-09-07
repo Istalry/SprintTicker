@@ -27,6 +27,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
   let dbConn: DatabaseConnection;
   let registry: IPCHandlerRegistry;
   let engine: TimeTrackingEngine;
+  let renderer: DisplayRenderer;
 
   beforeEach(async () => {
     dbConn = new DatabaseConnection(':memory:');
@@ -39,7 +40,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();
 
-    const renderer = new DisplayRenderer(driver);
+    renderer = new DisplayRenderer(driver);
     const decoder = new InputDecoder(driver, engine, settingsRepo);
 
     registry = new IPCHandlerRegistry({
@@ -231,5 +232,41 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       const res = await handler({});
       expect(res).toBe(true);
     }
+  });
+
+  describe('display screen previews', () => {
+    // The debug panel used to hand-build display payloads and inject them into
+    // the emulator, so its previews were a second implementation of every
+    // layout -- and a stale one. These go through the real renderer, which is
+    // the property worth pinning.
+    function previewHandler(): (...args: unknown[]) => unknown {
+      registry.registerAllHandlers();
+      const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const found = calls.find(call => call[0] === 'display:preview-screen');
+      expect(found).toBeDefined();
+      return found![1] as (...args: unknown[]) => unknown;
+    }
+
+    it('PreviewDisplayScreen_KnownScreenId_InvokesTheMatchingRendererMethod', async () => {
+      const spy = vi.spyOn(renderer, 'renderCompilation');
+
+      await previewHandler()({}, 'UNITY_COMPILING');
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('PreviewDisplayScreen_CeremonyScreen_RendersThroughTheRealCeremonyPath', async () => {
+      const spy = vi.spyOn(renderer, 'renderCeremonyPrompt');
+
+      await previewHandler()({}, 'CEREMONY_EOD');
+
+      expect(spy).toHaveBeenCalledWith('EOD', expect.any(String));
+    });
+
+    it('PreviewDisplayScreen_UnknownScreenId_ThrowsRatherThanRenderingNothing', async () => {
+      // Silence would look identical to a preview the priority engine
+      // suppressed, which is a real outcome the panel has to report.
+      await expect(previewHandler()({}, 'NOT_A_SCREEN')).rejects.toThrow(/Unknown preview screen/);
+    });
   });
 });

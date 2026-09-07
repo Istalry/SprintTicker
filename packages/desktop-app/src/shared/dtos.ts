@@ -453,6 +453,24 @@ export interface HardwareDrawPayloadDTO {
 /**
  * Validation helpers for incoming API payloads
  */
+/**
+ * Screens the debug panel can ask the renderer to draw.
+ *
+ * Only screens with no live source of their own are listed. Notifications,
+ * Lunch, Away, confetti and pause/resume already have real IPC that drives them
+ * through their normal path, and should keep using it.
+ */
+export type PreviewScreenId =
+  | 'CEREMONY_STANDUP'
+  | 'CEREMONY_EOD'
+  | 'EOD_COMPLETE'
+  | 'UNITY_PLAY_MODE'
+  | 'UNITY_COMPILING'
+  | 'UNITY_BUILDING'
+  | 'UNITY_BAKING'
+  | 'UNITY_EXCEPTION'
+  | 'TASK_SELECTION';
+
 export class ArgumentNullException extends Error {
   constructor(paramName: string) {
     super(`Argument cannot be null or undefined: ${paramName}`);

@@ -38,7 +38,8 @@ import type {
   DeviceConfigDTO,
   UpdateStatusDTO,
   ProviderSyncResult,
-  ProjectsUpdatedPayload
+  ProjectsUpdatedPayload,
+  PreviewScreenId
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -146,6 +147,8 @@ export interface IElectronAPI {
   setRearOledMode: (mode: string) => Promise<boolean>;
   setColorTheme: (theme: string) => Promise<boolean>;
   triggerConfettiBurst: () => Promise<boolean>;
+  /** Draws one real screen through the actual renderer, for the debug panel. */
+  previewDisplayScreen: (screen: PreviewScreenId) => Promise<boolean>;
 
   // Database Management
   wipeAllData: () => Promise<boolean>;

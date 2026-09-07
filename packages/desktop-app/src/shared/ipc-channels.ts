@@ -97,6 +97,17 @@ export enum IPCChannel {
   SET_REAR_OLED_MODE = 'display:set-rear-oled-mode',
   SET_COLOR_THEME = 'display:set-color-theme',
   TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst',
+  /**
+   * Draws one real screen, for the debug panel.
+   *
+   * The panel used to hand-build DisplayElementDTO[] and push them straight
+   * into the emulator, which meant its previews were a second implementation of
+   * every layout -- and a stale one: it still drew text at x=16 in a 56px field
+   * with a scroll rate, against the renderer's x=17, 55px and no scrolling at
+   * all. This runs the actual renderer instead, so a preview cannot disagree
+   * with the device.
+   */
+  PREVIEW_DISPLAY_SCREEN = 'display:preview-screen',
 
   // Diagnostics
   EXPORT_DIAGNOSTIC_LOGS = 'diagnostics:export-logs',

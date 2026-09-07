@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HardwareDisplayStateDTO, DisplayElementDTO } from '../../shared/dtos';
-import { FONT_4X6 } from '../../shared/pixel-fonts';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 
 /**
@@ -12,7 +11,6 @@ export const HardwareDisplayEmulator: React.FC = () => {
   const [displayState, setDisplayState] = useState<HardwareDisplayStateDTO | null>(null);
   const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const scrollOffsetRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
@@ -28,17 +26,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
         if (state) setDisplayState(state);
       });
 
-      const handleDebugUpdate = (e: Event) => {
-        const customEvt = e as CustomEvent<HardwareDisplayStateDTO>;
-        if (customEvt.detail) {
-          setDisplayState(customEvt.detail);
-        }
-      };
-      window.addEventListener('debug-display-update', handleDebugUpdate);
-
       return () => {
         unsubscribe();
-        window.removeEventListener('debug-display-update', handleDebugUpdate);
       };
     }
     // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
@@ -60,10 +49,17 @@ export const HardwareDisplayEmulator: React.FC = () => {
   }, [displayState]);
 
   /**
-   * Generates 1:1 72x16 matrix pixel color buffer with 16x16 icon support,
-   * crisp 1:1 pixel typography, and dynamic animated confetti particles.
+   * Builds the 72x16 colour buffer from what main actually sent.
+   *
+   * Only two element kinds reach here: 'rectangle', which is how
+   * `canvasToEmulatorElements` ships a rasterised frame as one strip per colour
+   * run, and 'bitmap'. There is deliberately no text branch -- main rasterises
+   * text into pixels through PixelCanvas, and a second implementation here
+   * disagreed with it on font metrics and drew layouts the device never
+   * produced. Confetti likewise arrives as real pixels; the emulator used to
+   * simulate its own particles on top of them.
    */
-  const createPixelBuffer = (state: HardwareDisplayStateDTO | null, scrollX: number): (string | null)[][] => {
+  const createPixelBuffer = (state: HardwareDisplayStateDTO | null): (string | null)[][] => {
     const buffer: (string | null)[][] = Array.from({ length: 16 }, () => Array(72).fill(null));
     if (!state) return buffer;
 
@@ -92,66 +88,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
             }
           }
         }
-      } else if (el.type === 'text' && el.text) {
-        const textColor = el.color || '#FFFFFFFF';
-        const textStr = el.text;
-        const maskMinX = el.x >= 16 ? 16 : 0;
-        const maskMaxX = el.width ? Math.min(72, el.x + el.width) : 72;
-        const visibleWidth = maskMaxX - maskMinX;
-        const textWidth = textStr.length * 6;
-
-        const renderTextCopy = (baseX: number) => {
-          for (let chIdx = 0; chIdx < textStr.length; chIdx++) {
-            const char = textStr[chIdx];
-            const bitmask = FONT_4X6[char.toUpperCase()] || FONT_4X6[' '];
-            const charX = baseX + chIdx * 6;
-
-            if (charX + 5 < maskMinX || charX >= maskMaxX) continue;
-
-            for (let r = 0; r < 7; r++) {
-              const rowBits = bitmask[r];
-              for (let c = 0; c < 5; c++) {
-                if (rowBits & (1 << (4 - c))) {
-                  const px = charX + c;
-                  const py = el.y + r;
-                  if (px >= maskMinX && px < maskMaxX && py >= 0 && py < 16) {
-                    buffer[py][px] = textColor;
-                  }
-                }
-              }
-            }
-          }
-        };
-
-        if (el.scroll_rate && textWidth > visibleWidth) {
-          const spacing = 24; // 4 spaces (24px) end-of-description gap for clean marquee loop
-          const loopWidth = textWidth + spacing;
-          const offset = Math.floor(scrollX % loopWidth);
-          const baseX0 = el.x - offset;
-          const baseX1 = baseX0 + loopWidth;
-
-          renderTextCopy(baseX0);
-          renderTextCopy(baseX1);
-        } else {
-          renderTextCopy(el.x);
-        }
       }
     });
-
-    // Dynamic Animated Confetti Explosion Particles
-    if (state.ledMode === 'CONFETTI_EXPLOSION') {
-      const confettiColors = ['#10B981FF', '#FBBF24FF', '#38BDF8FF', '#EC4899FF', '#AAFF00FF', '#F59E0BFF'];
-      const frame = Math.floor(scrollX * 0.25);
-      for (let i = 0; i < 18; i++) {
-        const initialX = (i * 3 + 16) % 54 + 16;
-        const speed = 1 + (i % 3);
-        const fallY = (Math.floor(i * 2 + frame * speed)) % 16;
-        const swayX = Math.floor(initialX + Math.sin(frame * 0.2 + i) * 2);
-        if (swayX >= 16 && swayX < 72 && fallY >= 0 && fallY < 16) {
-          buffer[fallY][swayX] = confettiColors[(i + frame) % confettiColors.length];
-        }
-      }
-    }
 
     return buffer;
   };
@@ -169,14 +107,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
     canvas.width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH * cellSize + gap;
     canvas.height = DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT * cellSize + gap;
 
-    let lastTime = performance.now();
-
-    const renderLoop = (time: number) => {
-      const delta = (time - lastTime) / 1000;
-      lastTime = time;
-      scrollOffsetRef.current += delta * 15;
-
-      const pixelBuffer = createPixelBuffer(displayState, scrollOffsetRef.current);
+    const renderLoop = () => {
+      const pixelBuffer = createPixelBuffer(displayState);
 
       // Dark Matte Bezel Matrix Background
       ctx.fillStyle = '#06080A';
