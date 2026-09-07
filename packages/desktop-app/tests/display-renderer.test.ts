@@ -214,6 +214,56 @@ describe('DisplayRenderer Unit Tests', () => {
     });
   });
 
+  /**
+   * The device schema declares `elements` as required with minItems: 1, so an
+   * empty array is not "draw nothing" -- it is a validation failure, and the
+   * hardware contract is that a rejected draw takes the whole frame with it.
+   *
+   * The idle path used to post one, believing it turned the status LED off.
+   * led_notification_color only ever *starts* a blink, so there was nothing to
+   * turn off; the DELETE beside it was already doing the work. Every idle
+   * transition logged a 400 and nothing noticed, because the payload it failed
+   * to deliver was empty anyway.
+   */
+  describe('draw payload validity', () => {
+    it('RenderActiveSession_IdleWithClockFallback_ClearsViaDeleteWithoutAnEmptyDraw', () => {
+      renderer.setShowIdleClockFallback(true);
+
+      renderer.renderActiveSession(null);
+
+      expect(mockDriver.clearDisplay).toHaveBeenCalled();
+      const draws = vi.mocked(mockDriver.sendDisplayPayload).mock.calls;
+      for (const [payload] of draws) {
+        expect((payload as { elements?: unknown[] }).elements ?? []).not.toHaveLength(0);
+      }
+    });
+
+    it('SendDisplayPayload_AnyRenderPath_NeverCarriesAnEmptyElementsArray', () => {
+      const session = {
+        taskId: 'PROJ-1',
+        taskKey: 'PROJ-1',
+        taskTitle: 'Something',
+        status: 'TRACKING' as const,
+        elapsedSeconds: 60,
+        isAdHoc: false
+      };
+
+      renderer.setShowIdleClockFallback(true);
+      renderer.renderActiveSession(session as never);
+      renderer.renderActiveSession(null);
+      renderer.renderIdle();
+      renderer.renderTaskCompletionConfetti();
+
+      const draws = vi.mocked(mockDriver.sendDisplayPayload).mock.calls;
+      const empties = draws.filter(
+        ([p]) => Array.isArray((p as { elements?: unknown[] }).elements) &&
+                 (p as { elements: unknown[] }).elements.length === 0
+      );
+
+      expect(empties).toHaveLength(0);
+    });
+  });
+
   describe('state broadcasting', () => {
     it('OnStateChanged_CallbackRegistered_NotifiesOnStateUpdate', () => {
       const listener = vi.fn();

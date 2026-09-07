@@ -751,15 +751,20 @@ export class DisplayRenderer {
         callback(this.lastState);
       }
 
-      // We explicitly clear display and turn off the LED, and do not transmit a frame
-      void this._driver.sendDisplayPayload({
-        application_name: APP_NAME,
-        priority: 95,
-        elements: [],
-        led_notification_color: '#00000000'
-      })
-        .catch(err => console.error('[DisplayRenderer] _driver.sendDisplayPayload failed:', err));
-
+      // The clearDisplay() above is the whole of it. A draw used to follow it,
+      // carrying no elements and led_notification_color '#00000000', on the
+      // theory that this turned the LED off.
+      //
+      // It could not. The device schema declares `elements` required with
+      // minItems: 1, so an empty array fails validation and the request was
+      // rejected 400 on every idle transition -- the "display payload: device
+      // returned 400" in the log.
+      //
+      // There was also nothing for it to do had it been accepted:
+      // led_notification_color is documented as the colour to *blink* the
+      // status LED, and "if not specified, the LED will not blink". There is no
+      // off colour -- not asking for a blink is how the LED stays dark, and the
+      // DELETE has already withdrawn this application's draw.
       return payload;
     }
 

@@ -629,6 +629,32 @@ the Windows limit — rather than the mechanism that happens to satisfy it today
 Found by running the packaged application and reading its console. No test
 covered `startListening`, so the suite was green throughout.
 
+### F-53 — Every idle transition posted a draw the device rejects
+The log line was `display payload: device returned 400`, on each return to idle.
+
+The idle path called `clearDisplay()` -- `DELETE /api/display/draw`, which is
+correct and did its job -- and then posted a second request carrying
+`elements: []` and `led_notification_color: '#00000000'`, commented as turning
+the LED off.
+
+It was wrong twice over. The device schema declares `elements` as required with
+`minItems: 1`, so an empty array is a validation failure rather than "draw
+nothing", and the request was rejected. And `led_notification_color` is
+documented as the colour to *blink* the status LED -- "if not specified, the LED
+will not blink" -- so there is no off colour to send. Not asking for a blink is
+how the LED stays dark.
+
+Nothing visible was lost, because the payload that failed to arrive was empty,
+which is exactly why this survived: the symptom was one log line for a request
+whose success would have changed nothing. Resolved by deleting the second call.
+
+The regression test asserts the schema rule across every render path rather than
+this one call site, and was confirmed to fail against the previous code.
+
+Found by reading the packaged application's console against real hardware; the
+payload itself was captured through `--mock-hardware`, which logs each draw
+rather than sending it, so no frame was pushed to the device to find this.
+
 ### Non-finding — empty `catch` blocks
 The original audit flagged these. On inspection there was nothing to do: of 19
 matches, 7 are PowerShell inside a generated script string and the 12 TypeScript
@@ -644,7 +670,7 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
 | **Open, deferred with a reason** | F-11, F-12, F-17, and the table in [ROADMAP.md](ROADMAP.md) |
