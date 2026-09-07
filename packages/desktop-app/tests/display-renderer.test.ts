@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
+import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 
 describe('DisplayRenderer Unit Tests', () => {
   let mockDriver: BusyBarDriver;
@@ -89,8 +91,8 @@ describe('DisplayRenderer Unit Tests', () => {
   describe('notification & confetti rendering', () => {
     it('RenderNotificationBanner_ValidMessage_DispatchesAlertPayload', () => {
       const payload = renderer.renderNotificationBanner({
-        senderName: 'Alice',
-        channelName: 'SLACK',
+        appName: 'Slack',
+        title: 'Alice',
         iconId: 'slack'
       });
       expect(payload.ledColorHex).toBe('#8B5CF6FF');
@@ -102,8 +104,8 @@ describe('DisplayRenderer Unit Tests', () => {
       // pink accent and FLASH_BURST were unreachable for every real
       // notification, high priority or not.
       const payload = renderer.renderNotificationBanner({
-        senderName: 'Ops',
-        channelName: 'SLACK',
+        appName: 'Slack',
+        title: 'Ops',
         eventName: 'highNotificationPriority',
         iconId: 'slack'
       });
@@ -130,7 +132,7 @@ describe('DisplayRenderer Unit Tests', () => {
       });
 
       renderer.renderNotificationBanner({
-        senderName: 'Ops',
+        title: 'Ops',
         eventName: 'highNotificationPriority'
       });
 
@@ -139,6 +141,86 @@ describe('DisplayRenderer Unit Tests', () => {
         undefined,
         expect.any(Function)
       );
+    });
+
+    it('RenderNotificationBanner_TitleAndBody_PaintsBothTextRows', () => {
+      // The banner drew a single centred row and left the lower one empty, so
+      // the message body never reached the display at all.
+      //
+      // Asserting "some pixel below y=8" does NOT catch that: the 4x6 font
+      // drawn at y=5 spans y=5..10 and satisfies it. Two rows are distinguished
+      // by occupying both extremes -- row 0 at y=0..5 and row 1 at y=8..12 --
+      // which a single centred row cannot do.
+      const payload = renderer.renderNotificationBanner({
+        appName: 'Slack',
+        title: 'Alice',
+        body: 'ship it',
+        iconId: 'slack'
+      });
+
+      const text = (payload.frontElements as Array<Record<string, number>>).filter(s => s.x >= 17);
+      expect(text.some(s => s.y <= 3)).toBe(true);
+      expect(text.some(s => s.y >= 10)).toBe(true);
+    });
+
+    it('RenderNotificationBanner_AnyMessage_TransmitsExactlyOneFrame', () => {
+      // Every frame is an asset upload plus a draw. A banner is a static
+      // screen, so it must cost exactly one of those -- this is what keeps the
+      // notification path off the hardware's request budget.
+      renderer.renderNotificationBanner({
+        appName: 'Slack',
+        title: 'Alice',
+        body: 'a message long enough that it has to be truncated',
+        iconId: 'slack'
+      });
+
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalledTimes(1);
+    });
+
+    it('RenderNotificationBanner_SecondBannerWithinTheTimeout_DoesNotReleaseTheSecondEarly', () => {
+      // The release used to be an untracked setTimeout. Two notifications of
+      // the same class inside one timeout window meant the first banner's timer
+      // fired during the second's and released a lock it no longer owned,
+      // cutting the second banner short.
+      vi.useFakeTimers();
+      try {
+        const settingsRepo = { getSetting: vi.fn().mockReturnValue(null), setSetting: vi.fn() };
+        const engine = new PriorityPreemptionEngine(settingsRepo as unknown as SettingsRepository);
+        renderer.setPriorityEngine(engine);
+
+        renderer.renderNotificationBanner({ title: 'first', eventName: 'messagingPriority', timeoutMs: 10000 });
+        vi.advanceTimersByTime(6000);
+        renderer.renderNotificationBanner({ title: 'second', eventName: 'messagingPriority', timeoutMs: 10000 });
+
+        // The first banner's original deadline passes here. The second must
+        // still own the display.
+        vi.advanceTimersByTime(4100);
+        expect(engine.getActiveLockEventName()).toBe('messagingPriority');
+
+        // And it must still release on its own deadline rather than never.
+        vi.advanceTimersByTime(6000);
+        expect(engine.getActiveLockEventName()).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('Dispose_WithABannerPending_ClearsItsTimer', () => {
+      vi.useFakeTimers();
+      try {
+        const settingsRepo = { getSetting: vi.fn().mockReturnValue(null), setSetting: vi.fn() };
+        const engine = new PriorityPreemptionEngine(settingsRepo as unknown as SettingsRepository);
+        const releaseSpy = vi.spyOn(engine, 'releaseActiveLock');
+        renderer.setPriorityEngine(engine);
+
+        renderer.renderNotificationBanner({ title: 'pending', timeoutMs: 10000 });
+        renderer.dispose();
+        vi.advanceTimersByTime(20000);
+
+        expect(releaseSpy).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('RequestRender_RenderThrows_ReleasesTheLockItJustTook', () => {

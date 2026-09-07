@@ -1,4 +1,8 @@
 import { FONT_4X6, FONT_3X5 } from '../../shared/pixel-fonts';
+import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
+import { capacityFor } from '../../shared/text-capacity';
+
+const { ROW0: ROW0_FONT, ROW1: ROW1_FONT } = DISPLAY_CONSTANTS.FONT_METRICS;
 /**
  * PixelCanvas — a 72×16 software pixel canvas for the BUSY Bar front display.
  *
@@ -103,19 +107,19 @@ export class PixelCanvas {
           }
         }
       }
-      cx += 5; // 4px glyph + 1px gap
+      cx += ROW0_FONT.STRIDE_X;
     }
     return cx;
   }
 
   /** Measures the pixel width a string would occupy with drawText. */
   public measureText(text: string): number {
-    return text.length * 5;
+    return text.length * ROW0_FONT.STRIDE_X;
   }
 
   /** Draws text clipped to maxWidth with ellipsis fallback. */
   public drawTextClipped(text: string, x: number, y: number, color: string, maxWidth: number): void {
-    const maxChars = Math.floor(maxWidth / 5);
+    const maxChars = capacityFor(maxWidth, ROW0_FONT.STRIDE_X);
     if (maxChars <= 0) return;
     const clipped = text.length > maxChars ? text.substring(0, Math.max(1, maxChars - 1)) + '…' : text;
     this.drawText(clipped, x, y, color);
@@ -132,7 +136,7 @@ export class PixelCanvas {
    */
   public drawSmallText(text: string, x: number, y: number, color: string, maxWidth: number): void {
     let cx = x;
-    const maxChars = Math.floor(maxWidth / 4);
+    const maxChars = capacityFor(maxWidth, ROW1_FONT.STRIDE_X);
     if (maxChars <= 0) return;
     const clipped = text.length > maxChars ? text.substring(0, maxChars) : text;
 
@@ -147,7 +151,7 @@ export class PixelCanvas {
           }
         }
       }
-      cx += 4; // 3px glyph + 1px gap
+      cx += ROW1_FONT.STRIDE_X;
     }
   }
 }

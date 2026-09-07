@@ -63,28 +63,28 @@ describe('MessagingIntegrationService', () => {
       expect(res.success).toBe(true);
       expect(res.channel).toBe('Slack Webhook');
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
-        expect.objectContaining({ senderName: 'Alice', channelName: 'Slack Webhook', iconId: 'slack' })
+        expect.objectContaining({ title: 'Alice', appName: 'Slack Webhook', iconId: 'slack' })
       );
     });
 
     it('TestIntegration_DiscordChannel_DispatchesDiscordBanner', () => {
       service.testIntegration('Discord Alerts');
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
-        expect.objectContaining({ senderName: 'Alice', channelName: 'Discord Alerts', iconId: 'discord' })
+        expect.objectContaining({ title: 'Alice', appName: 'Discord Alerts', iconId: 'discord' })
       );
     });
 
     it('TestIntegration_GmailChannel_DispatchesGmailBanner', () => {
       service.testIntegration('Gmail Work');
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
-        expect.objectContaining({ senderName: 'Alice', channelName: 'Gmail Work', iconId: 'gmail' })
+        expect.objectContaining({ title: 'Alice', appName: 'Gmail Work', iconId: 'gmail' })
       );
     });
 
     it('TestIntegration_OpenProjectChannel_DispatchesOpenProjectBanner', () => {
       service.testIntegration('OpenProject Alerts');
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
-        expect.objectContaining({ senderName: 'Alice', channelName: 'OpenProject Alerts', iconId: 'openproject' })
+        expect.objectContaining({ title: 'Alice', appName: 'OpenProject Alerts', iconId: 'openproject' })
       );
     });
 
@@ -113,10 +113,10 @@ describe('MessagingIntegrationService', () => {
       
       expect(mockOpProvider.fetchUnreadNotifications).toHaveBeenCalled();
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
-        expect.objectContaining({ senderName: 'Charlie', channelName: 'OPENPROJECT', iconId: 'openproject' })
+        expect.objectContaining({ title: 'Charlie', appName: 'OpenProject', iconId: 'openproject' })
       );
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
-        expect.objectContaining({ senderName: 'Dave', channelName: 'OPENPROJECT', iconId: 'openproject' })
+        expect.objectContaining({ title: 'Dave', appName: 'OpenProject', iconId: 'openproject' })
       );
       vi.useRealTimers();
     });

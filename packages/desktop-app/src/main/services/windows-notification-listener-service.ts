@@ -410,12 +410,11 @@ export class WindowsNotificationListenerService {
 
     const iconId: BitmapIconId =
       event.iconId ?? matchedRule?.iconId ?? this.inferIconId(event.appId || event.appName);
-    let channelLabel = event.appName || matchedRule?.appName || 'ALERT';
-    const lowerLabel = channelLabel.toLowerCase();
-    if (lowerLabel.includes('discord') || lowerLabel.includes('slack')) {
-      channelLabel = 'Message';
-    }
-    const textBody = `${event.title ? event.title + ': ' : ''}${event.body || ''}`.trim();
+    // The app name only, not a bracketed label. This used to be rewritten to
+    // the literal "Message" for Slack and Discord and then prefixed in
+    // brackets, which spent ten of the row's eleven characters restating what
+    // the app icon beside it already said.
+    const appLabel = event.appName || matchedRule?.appName || '';
 
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
 
@@ -444,8 +443,9 @@ export class WindowsNotificationListenerService {
     if (!this._renderer) return false;
 
     this._renderer.renderNotificationBanner({
-      senderName: textBody || 'New Notification',
-      channelName: channelLabel,
+      appName: appLabel,
+      title: event.title,
+      body: event.body,
       eventName,
       iconId,
       customIconData: rawIconData,

@@ -122,8 +122,9 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
 
     expect(result).toBe(true);
     expect(bannerCalls[0]).toMatchObject({
-      senderName: 'Bob: PR review',
-      channelName: 'Message',
+      appName: 'Slack',
+      title: 'Bob',
+      body: 'PR review',
       eventName: 'messagingPriority',
       iconId: 'slack',
       timeoutMs: 10000

@@ -321,6 +321,13 @@ app.on('will-quit', event => {
       if (windowsNotificationService) {
         windowsNotificationService.stopListening();
       }
+      if (renderer) {
+        // A pending banner release, a running confetti interval and the
+        // animation player all hold timers. They are unref'd, so they cannot
+        // keep the process alive, but stopping them here means the display is
+        // handed back below rather than being redrawn on the way out.
+        renderer.dispose();
+      }
       if (engine) {
         engine.dispose();
       }

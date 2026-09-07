@@ -7,18 +7,11 @@ import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
+import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 
-/**
- * Everything needed to draw a notification banner.
- *
- * An object rather than the previous six positional arguments, because the
- * argument that mattered -- which priority class the notification belongs to --
- * was not among them and had to be guessed from the priority number.
- * The number itself is no longer passed at all: the engine owns it.
- */
 /** Behaviour switches for {@link DisplayRenderer.requestRender}. */
 export interface RequestRenderOptions {
   /**
@@ -30,11 +23,29 @@ export interface RequestRenderOptions {
   queueOnPreempt?: boolean;
 }
 
+/**
+ * Everything needed to draw a notification banner.
+ *
+ * An object rather than the previous six positional arguments, because the
+ * argument that mattered -- which priority class the notification belongs to --
+ * was not among them and had to be guessed from the priority number.
+ * The number itself is no longer passed at all: the engine owns it.
+ */
 export interface NotificationBannerOptions {
-  /** Text shown after the channel label; already assembled by the caller. */
-  senderName: string;
-  /** Short source label, e.g. the app name. */
-  channelName?: string;
+  /**
+   * The three fields are passed separately, not pre-joined by the caller.
+   *
+   * They used to arrive as a `senderName` string the listener had already
+   * built, plus a `channelName` it prefixed in brackets. Nothing on that path
+   * knew the row holds eleven characters, so the label consumed ten of them and
+   * the message never appeared. Composition now happens in one tested place --
+   * `composeNotificationBanner` -- which needs the parts, not the sentence.
+   */
+  appName?: string;
+  /** The toast's title, which for a chat app is the sender. */
+  title?: string;
+  /** The toast's message body. */
+  body?: string;
   /** Which priority class the source rule assigned this notification to. */
   eventName?: NotificationEventName;
   /** Fallback hand-drawn bitmap, used only when no real icon resolved. */
@@ -88,6 +99,8 @@ export class DisplayRenderer {
   private celebrationTimeout: NodeJS.Timeout | null = null;
   private lastSessionCache: ActiveSessionDTO | null = null;
   private animationPlayer: AnimationPlayer;
+  /** Tracked so a second banner cannot be cut short by the first one's timer. */
+  private _bannerReleaseTimer: NodeJS.Timeout | null = null;
   private frameBufferToggle: boolean = false;
   private showIdleClockFallback: boolean = false;
 
@@ -893,8 +906,9 @@ export class DisplayRenderer {
    */
   public renderNotificationBanner(options: NotificationBannerOptions): DisplayPayload {
     const {
-      senderName,
-      channelName = 'SLACK',
+      appName,
+      title,
+      body,
       eventName = 'messagingPriority',
       iconId = 'slack',
       customIconData,
@@ -904,22 +918,35 @@ export class DisplayRenderer {
     const isHighPriority = eventName === 'highNotificationPriority';
     const priority = this.priorityEngine?.getEventPriority(eventName) ?? 0;
 
+    // Composed outside the render callback because it is pure and cheap, and
+    // because the callback only runs if the priority engine grants the lock.
+    const text = composeNotificationBanner({
+      appName,
+      title,
+      body,
+      // A resolved app icon, or a brand bitmap, already says which application
+      // this came from. The generic bell says nothing, so in that case the
+      // text has to spend a row on the identity instead.
+      iconIdentifiesApp: Boolean(customIconData) || iconId !== 'bell'
+    });
+
     return this.requestRender(eventName, () => {
       const bitmapData = customIconData
         ? customIconData
         : AppIconBitmapProcessor.processAppIcon(iconId);
 
       const accentColor = isHighPriority ? '#EC4899' : '#8B5CF6';
-      const headerText = `[${channelName}] ${senderName}`;
 
-      this.canvas.clear();
-      // Draw 16x16 icon data (which contains the 15x15 icon perfectly centered)
-      this.canvas.drawBitmap(bitmapData, 0, 0, 16, 16);
-      this.canvas.drawTextClipped(headerText, 17, 5, accentColor, 55);
+      // The same two-row template every other screen uses. This was the only
+      // screen drawing a single centred row, which left the lower row -- and
+      // with it the message body -- permanently blank.
+      this.paintIconAndTwoRows(bitmapData, text.row0, text.row1, accentColor, '#FFFFFF');
 
       const backElements = [
         { id: 'rear_notif_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `NOTIFICATION (Priority ${priority})`, align: 'top_left' },
-        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: headerText, align: 'top_left' }
+        // Untruncated: the rear panel is 160x80 and has room for what the
+        // front had to cut.
+        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: text.fullText, align: 'top_left' }
       ];
 
       const ledColorHex = `${accentColor}FF`;
@@ -932,14 +959,56 @@ export class DisplayRenderer {
       void this.transmitFrame(ledColorHex, backElements, payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
 
+      // Cleared here, inside the callback, and never at method entry: a request
+      // the engine suppresses or queues never reaches this point, and cancelling
+      // the *running* banner's release timer on its behalf would leave that
+      // lock held until the user pressed BACK.
+      this.clearBannerTimers();
+
       if (timeoutMs > 0 && this.priorityEngine) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          // Null the field before releasing, so a release that renders
+          // something else does not then clear its successor's timer.
+          this._bannerReleaseTimer = null;
           this.priorityEngine?.releaseActiveLock(eventName);
         }, timeoutMs);
+        // A pending banner must not hold the process open at will-quit.
+        timer.unref?.();
+        this._bannerReleaseTimer = timer;
       }
 
       return payload;
     });
+  }
+
+  /**
+   * Cancels a pending banner release.
+   *
+   * The timer used to be an untracked `setTimeout`. Two notifications of the
+   * same class inside the timeout window meant the first banner's timer fired
+   * partway through the second's, releasing a lock it no longer owned and
+   * cutting the second banner short.
+   */
+  private clearBannerTimers(): void {
+    if (this._bannerReleaseTimer) {
+      clearTimeout(this._bannerReleaseTimer);
+      this._bannerReleaseTimer = null;
+    }
+  }
+
+  /**
+   * Stops everything holding a timer, for shutdown.
+   *
+   * Electron does not await an async `will-quit`, so teardown has to be
+   * synchronous; all three of these are.
+   */
+  public dispose(): void {
+    this.clearBannerTimers();
+    if (this.celebrationTimeout) {
+      clearInterval(this.celebrationTimeout);
+      this.celebrationTimeout = null;
+    }
+    this.animationPlayer.stop();
   }
 
   public renderTaskCompletionConfetti(durationSeconds: number = 4): DisplayPayload {

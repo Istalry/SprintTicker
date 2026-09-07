@@ -63,8 +63,9 @@ export class MessagingIntegrationService {
         if (!this.knownOpNotifications.has(n.id)) {
           this.knownOpNotifications.add(n.id);
           this.renderer.renderNotificationBanner({
-            senderName: n.actorName,
-            channelName: 'OPENPROJECT',
+            appName: 'OpenProject',
+            title: n.actorName,
+            body: n.subject,
             iconId: 'openproject'
           });
         }
@@ -118,11 +119,11 @@ export class MessagingIntegrationService {
       ? 'openproject'
       : 'slack';
 
-    const testSender = 'Alice';
     if (this.renderer) {
       this.renderer.renderNotificationBanner({
-        senderName: testSender,
-        channelName: channel,
+        appName: channel,
+        title: 'Alice',
+        body: 'Test notification',
         iconId
       });
     }

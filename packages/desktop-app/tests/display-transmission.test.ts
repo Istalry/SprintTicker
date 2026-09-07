@@ -109,7 +109,7 @@ describe('Display transmission volume', () => {
   it('RenderActiveSession_WhileANotificationHoldsTheDisplay_DoesNotOverwriteIt', () => {
     // The tracker was the one screen outside the priority engine, so the next
     // tick wiped any banner within a second of it appearing.
-    renderer.renderNotificationBanner({ senderName: 'Ops', eventName: 'highNotificationPriority' });
+    renderer.renderNotificationBanner({ title: 'Ops', eventName: 'highNotificationPriority' });
     const callsAfterBanner = (driver.sendPixelFrame as ReturnType<typeof vi.fn>).mock.calls.length;
 
     renderer.renderActiveSession(session(120));
@@ -121,7 +121,7 @@ describe('Display transmission volume', () => {
   it('RenderActiveSession_PreemptedRepeatedly_DoesNotAccumulateStaleFrames', () => {
     // A tracker frame held for the length of an alert is stale by the time it
     // would replay, so it must be dropped rather than queued.
-    renderer.renderNotificationBanner({ senderName: 'Ops', eventName: 'highNotificationPriority' });
+    renderer.renderNotificationBanner({ title: 'Ops', eventName: 'highNotificationPriority' });
     for (let second = 0; second < 30; second++) {
       renderer.renderActiveSession(session(second));
     }

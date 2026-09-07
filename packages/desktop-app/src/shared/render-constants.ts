@@ -40,11 +40,24 @@ export const DISPLAY_CONSTANTS = {
     TEXT_FIELD_WIDTH: 55,
   },
 
-  COLORS: {
-    PRIMARY_GREEN: '#10B981FF',
-    PAUSE_AMBER: '#FFFF00FF',
-    BUILD_BLUE: '#3B82F6FF',
-    ERROR_RED: '#FF0000FF',
-    WHITE: '#FFFFFFFF',
+  /**
+   * Glyph metrics for the two built-in fonts.
+   *
+   * Shared because two places need the same arithmetic: the notification text
+   * composer decides how many characters fit a field *before* truncating, and
+   * PixelCanvas lays those characters out. A private copy of 5 and 4 in each is
+   * how a row gets truncated twice -- once to the composer's idea of the
+   * capacity and again to the canvas's -- and the second cut lands mid-word
+   * with no marker.
+   *
+   * A glyph's stride includes its trailing gap, but the last glyph on a row
+   * does not need that gap: it may hang off the end of the field. Capacity is
+   * therefore floor((fieldWidth + 1) / stride), not floor(fieldWidth / stride).
+   */
+  FONT_METRICS: {
+    /** 4x6 font, used for row 0: 4px glyph + 1px gap. */
+    ROW0: { GLYPH_WIDTH: 4, STRIDE_X: 5, ROWS: 6 },
+    /** 3x5 font, used for row 1: 3px glyph + 1px gap. */
+    ROW1: { GLYPH_WIDTH: 3, STRIDE_X: 4, ROWS: 5 }
   }
 } as const;
