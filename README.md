@@ -253,7 +253,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 410 tests across 38 files, covering the main and shared
+`pnpm test` runs 416 tests across 39 files, covering the main and shared
 process code; the renderer is not covered. `pnpm test:coverage` enforces a
 threshold floor of 78% statements / 80% lines / 80% functions / 68% branches.
 
@@ -366,6 +366,13 @@ without modifying your scenes or project code.
 - **16×16 pixel art editor** — `pnpm editor` serves it at
   `http://localhost:39124`, for drawing and tweaking the icons the bar renders.
 - **Icon downsampler** — `node scripts/convert-icons-pixelit.js`.
+- **Fake OpenProject server** — `pnpm mock:openproject` serves an
+  OpenProject-shaped API on `http://127.0.0.1:8099` that accepts any API key and
+  paginates everything, so the provider layer can be exercised without an
+  instance. Point **Settings → OpenProject** at it and you should see 25
+  projects, the last named `Fake Project 25 (LAST)`. The same module backs
+  `tests/provider-integration.test.ts`, so the automated check and the manual
+  one cannot drift.
 - **Animation debugger** — in-app under **Device Diagnostics**:
   marquee speeds, particle effects, LED colours and icon rasterisation, live.
 

@@ -18,6 +18,7 @@
     "format": "prettier --write \"packages/**/*.{ts,tsx,json,css,md}\"",
     "lint:fix": "eslint packages --ext .ts,.tsx --fix",
     "dev:mock": "pnpm --filter @sprintticker/desktop-app dev:mock",
+    "mock:openproject": "node scripts/fake-openproject.js",
     "verify:unity": "node scripts/verify-unity-plugin.js"
   },
   "devDependencies": {

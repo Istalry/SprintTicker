@@ -170,6 +170,12 @@ not multiply existing bugs:
   rather than HAL links -- but the request/error-classification half is worth
   extracting from it at that point, once there is a second caller to shape it.
 
+A fake OpenProject (`pnpm mock:openproject`, `scripts/fake-openproject.js`)
+now serves a paginated, filter-aware v3 API. It backs
+`tests/provider-integration.test.ts` and can be pointed at by the running app,
+so a provider change can be exercised without an instance. A Jira provider
+should grow its own routes in the same harness rather than a second one.
+
 Also worth doing while this area is open:
 
 - `safeStorage` for provider credentials (F-11); the API key is currently
@@ -225,7 +231,7 @@ looping idle animations.
 **Blocked on:** nothing. This is just work.
 
 The floor is 78% statements / 80% lines / 80% functions / 68% branches, and the
-suite currently measures 79.09 / 81.33 / 81.19 / 69.34. It read 80/70 until
+suite currently measures 79.11 / 81.36 / 81.34 / 69.34. It read 80/70 until
 `@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the default;
 the same 346 tests then measured 76.19% instead of 88.15%. The suite did not
 get worse -- the ruler got accurate, and the old one counted a whole line as
