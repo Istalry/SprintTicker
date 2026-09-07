@@ -64,8 +64,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # Enforces the configured thresholds (80% statements/lines/functions,
-      # 70% branches). `pnpm test` alone would report green below them.
+      # Enforces the configured floor (78% statements, 80% lines and
+      # functions, 68% branches), which is ratcheted up as the measurement
+      # rises. `pnpm test` alone would report green below it.
       - name: Test with coverage
         run: pnpm test:coverage
 
