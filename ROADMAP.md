@@ -176,6 +176,15 @@ not multiply existing bugs:
   cannot reuse the walker itself -- Jira paginates on `startAt`/`maxResults`
   rather than HAL links -- but the request half has now been extracted from it,
   below.
+- **Provider credentials are encrypted at rest (F-11).** `db/secret-store.ts`
+  wraps Electron's `safeStorage`; a value already on disk in plain text is
+  upgraded the first time it is read. Every failure mode degrades rather than
+  loses the key: no keystore means plaintext and one warning, and ciphertext
+  written by another OS account reads back as "not configured" so the user is
+  prompted to re-enter rather than shown a crash. The remaining exposure is
+  that `GET_PROVIDERS` still hands the decrypted key to the renderer, because
+  the settings form shows it -- making that field write-only is a product
+  decision, not a bug fix.
 - **The shared HTTP client is done.** `providers/provider-http.ts` is the one
   place a provider talks to the network: per-attempt timeout, status
   classification into `ProviderRequestError`, `Retry-After`-aware backoff, and
@@ -195,11 +204,6 @@ should grow its own routes in the same harness rather than a second one.
 
 Also worth doing while this area is open:
 
-- `safeStorage` for provider credentials (F-11); the API key is currently
-  stored in plaintext. The URL half of that finding is fixed: `sanitizeDomain`
-  now assumes `https://` for a bare host, since the key travels in a Basic
-  header on every request. An instance on plain HTTP still works, but has to
-  spell the scheme out.
 - Settle the provider error contract. `getProjects` / `getTasks` throw;
   `fetchUnreadNotifications`, `reconcileRemoteState`, `logTime` and
   `updateTaskStatus` still swallow and return a falsy result. That is
@@ -343,7 +347,7 @@ nobody got to.
 
 | Finding | Status | Why it is deferred |
 | :--- | :--- | :--- |
-| F-11 residue — key stored in plaintext | Open | The hardcoded LAN default, the status-name defaults and the `http` scheme default are all fixed — `sanitizeDomain` now assumes TLS for a bare host, which is what stops a Basic-header API key going out in clear text. `safeStorage` remains; belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
+| F-11 — credentials in plaintext, `http` scheme default | Closed | `sanitizeDomain` assumes TLS for a bare host, so a Basic-header API key no longer goes out in clear text; `SecretStore` encrypts it at rest through `safeStorage`, upgrading existing plaintext on first read. What is left is not this finding: the settings form still receives the decrypted key over IPC because it displays it. |
 | F-12 residue — no `fetch` timeouts in the provider layer | Closed | `provider-http.ts` gives every provider request a timeout, so a hung OpenProject can no longer stall a sync pass indefinitely. Saving credentials still does not await its sync, which is now a choice about UI responsiveness rather than a hedge against an unbounded request. |
 | F-12 residue — `getTasks` hardcodes `assignee = "me"` | Decided, not built | Becomes a per-provider setting: assigned to me / everything / a custom query. Listed in §3 so it lands on the generalised provider base rather than twice. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |

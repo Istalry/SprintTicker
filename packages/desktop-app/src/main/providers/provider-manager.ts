@@ -2,6 +2,7 @@ import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { AdHocProvider } from './adhoc-provider';
 import { OpenProjectProvider } from './openproject-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
+import { SecretStore } from '../db/secret-store';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
@@ -13,6 +14,7 @@ export class ProviderManager {
   private _providers: Map<string, ITaskProvider> = new Map();
   private _activeProviderId: string = 'openproject';
   private _settingsRepo: SettingsRepository;
+  private _secrets: SecretStore;
 
   /// <summary>
   /// Initializes the Task Provider Manager, registering default remote and fallback local providers.
@@ -24,6 +26,7 @@ export class ProviderManager {
    */
   constructor(settingsRepo?: SettingsRepository) {
     this._settingsRepo = settingsRepo || new SettingsRepository();
+    this._secrets = new SecretStore(this._settingsRepo);
 
     const openProjectProvider = new OpenProjectProvider();
     const adHocProvider = new AdHocProvider();
@@ -51,7 +54,10 @@ export class ProviderManager {
     if (opProvider) {
       void opProvider.initialize({
         domain: this.readSetting(ProviderSettingKey.OP_DOMAIN),
-        apiToken: this.readSetting(ProviderSettingKey.OP_API_KEY),
+        // Through the SecretStore, not readSetting: what is on disk is
+        // ciphertext, and handing that to the provider produces a 401 that
+        // looks like a bad key rather than a failed decryption.
+        apiToken: this._secrets.getSecret(ProviderSettingKey.OP_API_KEY),
         opStatusInProgress: this.readSetting(ProviderSettingKey.OP_STATUS_IN_PROGRESS),
         opStatusToTest: this.readSetting(ProviderSettingKey.OP_STATUS_TO_TEST),
         opStatusToReview: this.readSetting(ProviderSettingKey.OP_STATUS_TO_REVIEW),

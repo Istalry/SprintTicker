@@ -5,6 +5,7 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { SettingsRepository } from '../db/repositories/settings-repository';
+import { SecretStore } from '../db/secret-store';
 import { BusyBarDriver } from '../hardware/busybar-driver';
 import { InputDecoder } from '../hardware/input-decoder';
 import { DisplayRenderer } from '../hardware/display-renderer';
@@ -68,6 +69,7 @@ export class IPCHandlerRegistry {
   private providerManager?: ProviderManager;
   private syncWorker?: OfflineSyncWorker;
   private settingsRepo: SettingsRepository;
+  private secrets: SecretStore;
   private worklogRepo: WorklogRepository;
   private driver: BusyBarDriver;
   private inputDecoder: InputDecoder;
@@ -114,6 +116,7 @@ export class IPCHandlerRegistry {
     // even when the caller supplied an in-memory one.
     this.projectRepo = new ProjectRepository(settingsRepo.getConnection());
     this.settingsRepo = settingsRepo;
+    this.secrets = new SecretStore(settingsRepo);
     this.driver = driver;
     this.inputDecoder = inputDecoder;
     this.renderer = renderer;
@@ -466,7 +469,11 @@ export class IPCHandlerRegistry {
       const activeId = read(ProviderSettingKey.ACTIVE_PROVIDER_ID);
       const fallbackKey = read(ProviderSettingKey.FALLBACK_TICKET_KEY);
       const opDomain = read(ProviderSettingKey.OP_DOMAIN);
-      const opApiKey = read(ProviderSettingKey.OP_API_KEY);
+      // Decrypted, because the settings form shows the saved key so the user
+      // can check it. That the renderer sees the plaintext is a smaller
+      // exposure than the plaintext sitting on disk for a backup tool to pick
+      // up, but it is the reason this is not a complete fix for F-11.
+      const opApiKey = this.secrets.getSecret(ProviderSettingKey.OP_API_KEY);
       const opStatusInProgress = read(ProviderSettingKey.OP_STATUS_IN_PROGRESS);
       const opStatusToTest = read(ProviderSettingKey.OP_STATUS_TO_TEST);
       const opStatusToReview = read(ProviderSettingKey.OP_STATUS_TO_REVIEW);
@@ -501,7 +508,7 @@ export class IPCHandlerRegistry {
       if (payload.providerId) this.settingsRepo.setSetting('active_provider_id', payload.providerId);
       if (payload.fallbackTicketKey) this.settingsRepo.setSetting('fallback_ticket_key', payload.fallbackTicketKey);
       if (payload.opDomain !== undefined) this.settingsRepo.setSetting('op_domain', payload.opDomain);
-      if (payload.opApiKey !== undefined) this.settingsRepo.setSetting('op_api_key', payload.opApiKey);
+      if (payload.opApiKey !== undefined) this.secrets.setSecret(ProviderSettingKey.OP_API_KEY, payload.opApiKey);
       if (payload.opStatusInProgress !== undefined) this.settingsRepo.setSetting('op_status_in_progress', payload.opStatusInProgress);
       if (payload.opStatusToTest !== undefined) this.settingsRepo.setSetting('op_status_to_test', payload.opStatusToTest);
       if (payload.opStatusToReview !== undefined) this.settingsRepo.setSetting('op_status_to_review', payload.opStatusToReview);
