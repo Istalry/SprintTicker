@@ -75,16 +75,23 @@ objects survive on GitHub's servers.
 
 ## 2. Release automation and in-app updates
 
-**Blocked on:** §1. Publishing releases from a repository whose history still
-carries personal data publishes that history.
+**Shipped.**
+[v1.0.0](https://github.com/Istalry/SprintTicker/releases/tag/v1.0.0) was
+published on 2026-09-07: an NSIS installer and a portable executable, built by
+CI from `27e7601`.
 
-Today there is no release: you clone and build. That is a real adoption barrier
-and it is also why nobody but the author has ever run a packaged build.
+Until then you had to clone and build, which was a real adoption barrier and the
+reason nobody but the author had ever run a packaged build. The release was
+verified by downloading and installing the published artifact rather than a
+local one — the packaged app had never been exercised that way, and packaging,
+ABI and LFS failures in this repository have historically only appeared there.
 
 - [x] **`build-windows.yml`** producing the NSIS installer and portable
-  executable, attached to a **draft** GitHub Release on a `v*` tag (2026-09-07).
-  - Draft rather than published: the assets are unsigned, so SmartScreen warns
-    on first run and that deserves a release note before anyone downloads it.
+  executable, attached to a GitHub Release on a `v*` tag (2026-09-07).
+  - **CI drafts; publishing stays manual.** The assets are unsigned, so
+    SmartScreen warns on first run, and that deserves a release note and a
+    look at the build before anyone downloads it. v1.0.0 was reviewed and
+    published by hand the same day.
   - The tag is checked against `package.json` *before* the build, because
     electron-builder names every artifact from that file — a mismatched tag
     would otherwise produce a v1.1.0 release full of 1.0.0 files, after paying

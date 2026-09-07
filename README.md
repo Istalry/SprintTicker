@@ -33,9 +33,9 @@ with nothing plugged in.
   you and can be turned off — see [Updates](#updates).
 - Not a general BUSY Bar SDK. It speaks enough of the device's HTTP API to do
   its own job; the device's own documentation is the reference.
-- Not signed. Releases are built by CI and attached to a GitHub Release as a
-  draft, but without a certificate SmartScreen warns on first run, so in-app
-  updating stops at telling you a new version exists.
+- Not signed. Releases are built by CI and attached to a GitHub Release, but
+  without a certificate SmartScreen warns on first run, so in-app updating
+  stops at telling you a new version exists.
 
 ---
 
