@@ -300,4 +300,53 @@ describe('ContextScheduleService Unit Tests', () => {
 
     svc.dispose();
   });
+  /**
+   * The "already prompted today" key must be the same day the trigger compares
+   * against.
+   *
+   * The trigger uses local time (`getHours()`), while the key was derived from
+   * `toISOString()` -- the UTC date. Those disagree for part of every day, and
+   * west of UTC they disagree during the evening: at 20:00 in New York it is
+   * already tomorrow in UTC. The key therefore changed in the middle of a local
+   * working day, and any ceremony already due re-fired at that instant.
+   *
+   * Chosen deliberately for a timezone west of UTC. East of UTC the two dates
+   * disagree between local midnight and the offset, when nothing is due, so the
+   * fault is invisible from Europe -- which is where it was looked for.
+   */
+  it('EvaluateSchedule_WestOfUtcAcrossUtcMidnight_DoesNotRepeatTheSameDaysPrompt', () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'America/New_York';
+
+    try {
+      vi.useFakeTimers();
+      // 10:00 EDT, the configured standup time. 14:00 UTC, still the 7th.
+      vi.setSystemTime(new Date(2026, 8, 7, 10, 0, 0));
+
+      const mockWindow = { isDestroyed: () => false, webContents: { send: vi.fn() } };
+      const svc = new ContextScheduleService(
+        mockPriorityEngine as unknown as PriorityPreemptionEngine,
+        mockSettingsRepo as unknown as SettingsRepository,
+        mockEngine as unknown as TimeTrackingEngine,
+        mockRenderer as unknown as DisplayRenderer,
+        () => mockWindow as unknown as BrowserWindow
+      );
+
+      svc.evaluateSchedule();
+      const standups = () =>
+        mockRenderer.renderCeremonyPrompt.mock.calls.filter(c => c[0] === 'STANDUP').length;
+      expect(standups()).toBe(1);
+
+      // 20:30 EDT the same local day -- but 00:30 UTC on the 8th.
+      vi.setSystemTime(new Date(2026, 8, 7, 20, 30, 0));
+      svc.evaluateSchedule();
+
+      expect(standups()).toBe(1);
+
+      svc.dispose();
+      vi.useRealTimers();
+    } finally {
+      process.env.TZ = originalTz;
+    }
+  });
 });

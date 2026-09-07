@@ -291,6 +291,19 @@ const todayDateString = now.toISOString().split('T')[0];         // UTC
 
 The "already prompted today" key rolls over at UTC midnight while the schedule comparison uses local wall-clock time. In `Europe/Paris` (UTC+2 in summer) the local hours 00:00–02:00 still carry the *previous* UTC date, so the standup/EOD "fired today" flag persists across local midnight and, symmetrically, resets two hours early. Use a local-date key (`toLocaleDateString('sv-SE')` or manual `getFullYear/getMonth/getDate`).
 
+**Fixed**, and the observable failure was not where this entry looked. The
+damaging case is *west* of UTC, not east: there the two dates disagree during
+the working evening, so the key changes mid-afternoon and any ceremony already
+due fires a second time. At 20:30 in New York a 10:00 standup prompts again.
+East of UTC they only disagree between local midnight and the offset, when
+nothing is scheduled -- which is why it read as a small-hours curiosity from
+Paris and was deferred as low value.
+
+The key now comes from `localDateKey()` in `src/shared/local-date.ts`. The
+regression test drives `America/New_York` deliberately; run from Europe it
+would have passed against the broken code. See F-54 for the same defect
+elsewhere.
+
 Related, smaller: overnight ranges are unsupported (`isLunchTime` is `>= start && < end`, so `22:00–02:00` never matches); `dispose()`'s doc comment claims it "unregisters powerMonitor listeners" but it only clears the interval — the four `powerMonitor.on(...)` handlers are never removed.
 
 ### F-18 — `AutoUpdateManager` is a stub that pretends to check for updates
@@ -655,6 +668,35 @@ Found by reading the packaged application's console against real hardware; the
 payload itself was captured through `--mock-hardware`, which logs each draw
 rather than sending it, so no frame was pushed to the device to find this.
 
+### F-54 — The UTC day is used where the local working day is meant
+The same defect as F-17, in six further places, and it needs both halves fixed
+together.
+
+`getWorklogsByDate` buckets with `strftime('%Y-%m-%d', created_at_utc)` -- no
+`'localtime'` modifier, so the bucket is the UTC day -- while the callers that
+default the date would, once corrected, pass the local day. Changing either side
+alone makes "today's worklogs" worse rather than better.
+
+Sites: `ipc-handler-registry.ts:218,224` (the defaults for
+`GET_WORKLOGS_BY_DATE` and `GET_DAILY_WORKLOG_SUMMARY`),
+`openproject-provider.ts:245` (the `spentOn` filter behind
+`remoteLoggedTimeToday`), `openproject-provider.ts:300` (the `spentOn` written
+on every worklog POST), and `EodWrapUpModal.tsx:31` /
+`WorklogHistoryView.tsx:7,39` in the renderer.
+
+The provider pair matters most: an evening session west of UTC is billed to
+tomorrow, and a session started after local midnight east of UTC is billed to
+yesterday. The filter and the write must also agree with each other, or
+`remoteLoggedTimeToday` counts a different day than the one just written.
+
+Separate from this and not changed: worklogs are bucketed by `created_at_utc`,
+so a session is attributed to the day it *finished*. Whether that or
+`started_at_utc` is right is a product question, not a bug.
+
+Held back from the F-17 commit deliberately: this one alters how existing
+history groups and what is sent to a provider, which is a visible change and
+deserves its own.
+
 ### Non-finding — empty `catch` blocks
 The original audit flagged these. On inspection there was nothing to do: of 19
 matches, 7 are PowerShell inside a generated script string and the 12 TypeScript
@@ -670,9 +712,9 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
-| **Open, deferred with a reason** | F-11, F-12, F-17, and the table in [ROADMAP.md](ROADMAP.md) |
+| **Open, deferred with a reason** | F-11, F-12, F-54, and the table in [ROADMAP.md](ROADMAP.md) |
 | **Open, not yet triaged** | F-33 (`preflight` is not a gate), F-34 (the ABI split -- documented in `CLAUDE.md` rather than removed), F-35 (`NODE_ENV === 'test'` branches in production code), F-36 (deprecated `.substr`) |
 | **Publication prerequisite** | F-41 — history rewrite, [ROADMAP.md](ROADMAP.md) §1 |

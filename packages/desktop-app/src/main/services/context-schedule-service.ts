@@ -6,6 +6,7 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
 import { ScheduleSettingsDTO, ArgumentNullException } from '../../shared/dtos';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
+import { localDateKey } from '../../shared/local-date';
 
 /**
  * Service that automatically monitors Windows session locks/sleep events and lunch schedules,
@@ -70,7 +71,11 @@ export class ContextScheduleService {
 
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const todayDateString = now.toISOString().split('T')[0];
+      // Everything below compares local time -- getHours() -- so this key must
+      // be the local day too. It used to come from toISOString(), the UTC day,
+      // which changed mid-afternoon west of UTC and re-fired any ceremony
+      // already due. See local-date.ts.
+      const todayDateString = localDateKey(now);
 
       // 1. Evaluate Daily Stand-Up Schedule
       if (settings.enableStandupPrompt !== false) {

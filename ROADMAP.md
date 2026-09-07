@@ -236,7 +236,7 @@ nobody got to.
 | :--- | :--- | :--- |
 | F-11 — credentials stored in plaintext, `http` default | Open | Belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
 | F-12 — no pagination on OpenProject collections | Open | Must land **before** a second provider, not after. See §3. |
-| F-17 — ceremony scheduler compares against the UTC date | Open | `context-schedule-service.ts` derives its date key from `toISOString()`. East of UTC, the key rolls over before local midnight, so a standup prompt can re-fire in the small hours. Contained, needs a test alongside it. |
+| F-54 — the UTC day used where the local working day is meant | Open | Six sites across the worklog and provider path, listed in [AUDIT.md](AUDIT.md). Caller and SQL must change together: `getWorklogsByDate` buckets by the UTC day, so correcting only the callers breaks "today". Changes how existing history groups and what `spentOn` a provider receives, so it wants its own change. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
 | Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
 | Foreign keys on `worklogs` → `tasks` | Deferred | **Would fail on existing data**: F-01 already deleted tasks that surviving worklogs reference. Needs an orphan-cleanup decision. |
