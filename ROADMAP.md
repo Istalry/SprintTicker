@@ -225,7 +225,7 @@ looping idle animations.
 **Blocked on:** nothing. This is just work.
 
 The floor is 78% statements / 80% lines / 80% functions / 68% branches, and the
-suite currently measures 78.93 / 81.17 / 81.19 / 69.11. It read 80/70 until
+suite currently measures 79.09 / 81.33 / 81.19 / 69.34. It read 80/70 until
 `@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the default;
 the same 346 tests then measured 76.19% instead of 88.15%. The suite did not
 get worse -- the ruler got accurate, and the old one counted a whole line as
@@ -267,7 +267,7 @@ nobody got to.
 
 | Finding | Status | Why it is deferred |
 | :--- | :--- | :--- |
-| F-11 — credentials stored in plaintext, `http` default | Open | Belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
+| F-11 residue — key stored in plaintext, `http` scheme default | Open | The hardcoded LAN default and the status-name defaults are fixed. `safeStorage` and the scheme default remain; belongs with §3 while the provider layer is already open. Single-user local app, so the exposure is a local-disk read. |
 | F-12 residue — no `fetch` timeouts, unguarded `syncTasksAndProjects()` | Open | Pagination itself is fixed. A hung OpenProject still stalls the sync, and overlapping runs can pile up. Belongs with the shared HTTP client in §3. |
 | F-12 residue — `getTasks` hardcodes `assignee = "me"` | Product decision | Unassigned and team tickets are invisible. Not a defect until there is a decision on what should be configurable instead. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |

@@ -192,6 +192,23 @@ Related:
 * `op_api_key` is persisted as plaintext JSON in the `settings` SQLite table. Electron's `safeStorage` (DPAPI-backed on Windows) exists precisely for this.
 * Default status IDs are the *names* `'In progress'`, `'In testing'`, `'Developed'`, but they're interpolated as IDs into `/api/v3/statuses/${targetStatusId}` — the defaults can never produce a valid URL.
 
+**Two of the four are now fixed.** The hardcoded LAN default was removed in
+Stage 0 -- `OP_DOMAIN` and `OP_API_KEY` both default to empty, and an empty
+domain is reported as "not configured" rather than as a failed request.
+
+The status-name defaults are gone too, and the fix needed both halves. Setting
+the defaults to empty only helps installs that never wrote the setting; every
+database created before the change still holds `In progress`. So
+`updateTaskStatus` now checks that the id is numeric before building the URL
+and says what is wrong -- "OpenProject needs their numeric IDs, not their
+names" -- instead of PATCHing `/api/v3/statuses/In%20progress` and reporting a
+404. Confirmed against a real database: the settings rows there still held the
+three names.
+
+**Still open:** `safeStorage` for the key at rest, and the `http://` scheme
+default. Both are tracked in [ROADMAP.md](ROADMAP.md) §3, to be done while the
+provider layer is open for a second provider.
+
 ### F-12 — No pagination: only the first page of projects and work packages is ever seen
 `openproject-provider.ts:70,104,153,190`
 

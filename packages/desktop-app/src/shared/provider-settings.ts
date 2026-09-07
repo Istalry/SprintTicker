@@ -29,6 +29,12 @@ export type ProviderSettingKeyValue = (typeof ProviderSettingKey)[keyof typeof P
 /**
  * Defaults applied when a setting has never been written.
  *
+ * The three status settings are empty for the same reason they are not
+ * seeded with names: OpenProject identifies statuses by numeric id, so a
+ * plausible-looking default like `In progress` produces a 404 on a URL the
+ * user cannot see, whereas an empty one is reported honestly as not
+ * configured.
+ *
  * `OP_DOMAIN` and `OP_API_KEY` are intentionally empty: an unconfigured
  * install has no OpenProject instance to talk to, and inventing one produces
  * connection errors that look like the user's fault. Callers must treat an
@@ -39,9 +45,9 @@ export const PROVIDER_SETTING_DEFAULTS = {
   [ProviderSettingKey.FALLBACK_TICKET_KEY]: 'MISC-1',
   [ProviderSettingKey.OP_DOMAIN]: '',
   [ProviderSettingKey.OP_API_KEY]: '',
-  [ProviderSettingKey.OP_STATUS_IN_PROGRESS]: 'In progress',
-  [ProviderSettingKey.OP_STATUS_TO_TEST]: 'In testing',
-  [ProviderSettingKey.OP_STATUS_TO_REVIEW]: 'Developed',
+  [ProviderSettingKey.OP_STATUS_IN_PROGRESS]: '',
+  [ProviderSettingKey.OP_STATUS_TO_TEST]: '',
+  [ProviderSettingKey.OP_STATUS_TO_REVIEW]: '',
   [ProviderSettingKey.OP_COMPLETION_ACTION]: 'to_review'
 } as const satisfies Record<string, string>;
 

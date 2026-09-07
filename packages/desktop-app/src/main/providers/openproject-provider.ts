@@ -305,8 +305,18 @@ export class OpenProjectProvider implements ITaskProvider {
       targetStatusId = this._defaultCompletionAction === 'to_review' ? this._statusIdToReview : this._statusIdToTest;
     }
 
-    if (!targetStatusId) {
-      console.warn(`[OpenProjectProvider] No status ID configured for '${status}'`);
+    // OpenProject identifies statuses numerically. This setting used to be
+    // seeded with status *names* ('In progress'), and those rows still exist
+    // in every database created before that default was removed. A name
+    // reaches /api/v3/statuses/In%20progress and 404s, so the shape is checked
+    // here in order to report what is actually wrong rather than a failed
+    // request. An empty value fails the same test, which is the intended
+    // "never configured" case.
+    if (!/^\d+$/.test(targetStatusId)) {
+      console.warn(
+        `[OpenProjectProvider] No usable status ID for '${status}' (found ${JSON.stringify(targetStatusId)}). ` +
+          'Choose the statuses in Settings -- OpenProject needs their numeric IDs, not their names.'
+      );
       return false;
     }
 
