@@ -20,7 +20,8 @@ import type {
   NotificationLogEntryDTO,
   HardwareDisplayStateDTO,
   DeviceConfigDTO,
-  UpdateStatusDTO
+  UpdateStatusDTO,
+  ProjectsUpdatedPayload
 } from '../shared/dtos';
 
 const electronAPI: IElectronAPI = {
@@ -179,6 +180,14 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_UPDATE_STATUS, handler);
   },
 
+  // Provider sync. The Projects view reads a cache only the sync worker fills,
+  // so it needs to be told when that cache changes.
+  syncProviderNow: () => ipcRenderer.invoke(IPCChannel.SYNC_PROVIDER_NOW),
+  onProjectsUpdated: (callback: (payload: ProjectsUpdatedPayload) => void) => {
+    const handler = (_event: IpcRendererEvent, payload: ProjectsUpdatedPayload) => callback(payload);
+    ipcRenderer.on(IPCChannel.ON_PROJECTS_UPDATED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_PROJECTS_UPDATED, handler);
+  },
   // Unity Plugin Injector & Gitignore
   unityInjector: {
     setupGitignore: () => ipcRenderer.invoke(IPCChannel.SETUP_GITIGNORE),

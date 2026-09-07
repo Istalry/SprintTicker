@@ -106,5 +106,16 @@ export enum IPCChannel {
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',
-  ON_UPDATE_STATUS = 'updates:on-status'
+  ON_UPDATE_STATUS = 'updates:on-status',
+
+  /** Fetches projects and tasks from the active provider immediately. */
+  SYNC_PROVIDER_NOW = 'provider:sync-now',
+
+  /**
+   * The cached project list changed.
+   *
+   * The Projects view reads the cache, which only the background worker fills,
+   * so without this it showed an empty list until the next five-minute tick.
+   */
+  ON_PROJECTS_UPDATED = 'projects:on-updated'
 }

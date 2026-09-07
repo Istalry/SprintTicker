@@ -486,3 +486,24 @@ export type UpdateStatusDTO =
       latestVersion: string;
       releaseUrl: string;
     };
+
+/**
+ * Outcome of a provider projects/tasks sync pass.
+ *
+ * Reported rather than inferred: the Projects view reads the local cache, so
+ * "no projects" and "not synced yet" look identical there. Saving credentials
+ * used to leave the user staring at the second while assuming the first.
+ */
+export interface ProviderSyncResult {
+  status: 'synced' | 'skipped' | 'not_configured' | 'failed';
+  /** Present for every status except `synced`. */
+  reason?: string;
+  projects: number;
+  tasks: number;
+}
+
+/** Broadcast alongside {@link ProviderSyncResult} when the project cache changes. */
+export interface ProjectsUpdatedPayload {
+  result: ProviderSyncResult;
+  projects: ProjectDTO[];
+}

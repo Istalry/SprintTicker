@@ -183,7 +183,10 @@ Also worth doing while this area is open:
 - A shared HTTP client with timeout, exponential backoff and 429 handling,
   used by both the providers and the device driver.
 - Surface the sync queue in the UI — pending / failed / synced counts, with a
-  manual retry.
+  manual retry. Half the plumbing exists now: `SYNC_PROVIDER_NOW` runs a sync
+  on demand and `ON_PROJECTS_UPDATED` reports the outcome, but nothing in the
+  UI calls the first or displays the `failed` / `not_configured` reason from
+  the second. A visible “Sync now” control and a last-sync line belong here.
 
 ---
 
@@ -231,7 +234,7 @@ looping idle animations.
 **Blocked on:** nothing. This is just work.
 
 The floor is 78% statements / 80% lines / 80% functions / 68% branches, and the
-suite currently measures 79.11 / 81.36 / 81.34 / 69.34. It read 80/70 until
+suite currently measures 79.39 / 81.53 / 81.21 / 69.58. It read 80/70 until
 `@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the default;
 the same 346 tests then measured 76.19% instead of 88.15%. The suite did not
 get worse -- the ruler got accurate, and the old one counted a whole line as

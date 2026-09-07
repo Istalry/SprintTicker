@@ -6,7 +6,7 @@ import {
   computeBackoffMs,
   withSyncMarker
 } from './sync-constants';
-import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { ProjectDTO, TaskDTO, ProviderSyncResult } from '../../shared/dtos';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProviderManager } from '../providers/provider-manager';
@@ -23,6 +23,7 @@ export class OfflineSyncWorker {
   private syncIntervalMs: number;
   private timerId: NodeJS.Timeout | null = null;
   private isProcessing: boolean = false;
+  private isSyncingProjects: boolean = false;
   private isOnline: boolean = true;
 
   constructor(
@@ -95,9 +96,30 @@ export class OfflineSyncWorker {
    * that the prune read as "the remote has nothing", wiping local data on first
    * launch.
    */
-  public async syncTasksAndProjects(): Promise<void> {
-    if (!this.isOnline) return;
+  public async syncTasksAndProjects(): Promise<ProviderSyncResult> {
+    if (!this.isOnline) {
+      return { status: 'skipped', reason: 'Offline.', projects: 0, tasks: 0 };
+    }
 
+    // One pass at a time. The periodic tick is no longer the only caller --
+    // saving provider credentials starts one too -- and a full pass can outlive
+    // the gap between them on a slow instance. Two overlapping passes would
+    // each prune against their own snapshot, so the older one could delete
+    // what the newer one had just written.
+    if (this.isSyncingProjects) {
+      return { status: 'skipped', reason: 'A sync is already running.', projects: 0, tasks: 0 };
+    }
+    this.isSyncingProjects = true;
+
+    try {
+      return await this.runProjectSync();
+    } finally {
+      this.isSyncingProjects = false;
+    }
+  }
+
+  /** The body of {@link syncTasksAndProjects}, wrapped so the guard always clears. */
+  private async runProjectSync(): Promise<ProviderSyncResult> {
     let projects: ProjectDTO[];
     const tasksByProject = new Map<string, TaskDTO[]>();
 
@@ -111,13 +133,18 @@ export class OfflineSyncWorker {
     } catch (e) {
       if (isProviderRequestError(e) && e.kind === 'not_configured') {
         console.log(`[OfflineSyncWorker] Skipping sync: ${e.message}`);
-      } else {
-        console.error(
-          `[OfflineSyncWorker] Fetch failed; local cache left untouched:`,
-          e
-        );
+        return { status: 'not_configured', reason: e.message, projects: 0, tasks: 0 };
       }
-      return;
+      console.error(
+        `[OfflineSyncWorker] Fetch failed; local cache left untouched:`,
+        e
+      );
+      return {
+        status: 'failed',
+        reason: e instanceof Error ? e.message : String(e),
+        projects: 0,
+        tasks: 0
+      };
     }
 
     // Phase 2: commit the complete, verified snapshot.
@@ -133,12 +160,17 @@ export class OfflineSyncWorker {
       }
       this.projectRepo.deleteProjectsNotIn(projects.map(p => p.id));
 
-      console.log(
-        `[OfflineSyncWorker] Synced ${projects.length} project(s) and ` +
-          `${[...tasksByProject.values()].reduce((n, t) => n + t.length, 0)} task(s).`
-      );
+      const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
+      console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);
+      return { status: 'synced', projects: projects.length, tasks: taskCount };
     } catch (e) {
       console.error(`[OfflineSyncWorker] Failed to commit synced projects and tasks:`, e);
+      return {
+        status: 'failed',
+        reason: e instanceof Error ? e.message : String(e),
+        projects: 0,
+        tasks: 0
+      };
     }
   }
 

@@ -36,7 +36,9 @@ import type {
   HardwareDisplayStateDTO,
   OpStatusDTO,
   DeviceConfigDTO,
-  UpdateStatusDTO
+  UpdateStatusDTO,
+  ProviderSyncResult,
+  ProjectsUpdatedPayload
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -158,6 +160,9 @@ export interface IElectronAPI {
   openReleasePage: (url: string) => Promise<boolean>;
   onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => () => void;
 
+  // Provider sync
+  syncProviderNow: () => Promise<ProviderSyncResult>;
+  onProjectsUpdated: (callback: (payload: ProjectsUpdatedPayload) => void) => () => void;
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;
 }

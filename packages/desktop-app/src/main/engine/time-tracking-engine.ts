@@ -69,6 +69,17 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /**
+   * The sync worker this engine owns.
+   *
+   * Exposed so the IPC layer can start a sync when the user saves provider
+   * credentials. Constructing a second worker there instead would give the
+   * queue two dispatchers, which is the defect F-02 and F-03 were about.
+   */
+  public getSyncWorker(): OfflineSyncWorker {
+    return this._syncWorker;
+  }
+
+  /**
    * Starts background work and restores any session interrupted by a crash.
    *
    * Separate from the constructor so ownership of the sync timer is explicit:

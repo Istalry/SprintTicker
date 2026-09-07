@@ -222,6 +222,7 @@ async function startApplication(): Promise<void> {
     contextScheduleService,
     windowsNotificationService,
     providerManager,
+    syncWorker: engine.getSyncWorker(),
     updateChecker
   });
   ipcRegistry.registerAllHandlers();

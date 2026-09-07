@@ -761,6 +761,44 @@ Recorded here so it is not re-raised.
 
 ---
 
+### F-55 — Saving provider credentials started no sync, so the Projects tab stayed empty
+`ipc-handler-registry.ts` (`SET_ACTIVE_PROVIDER` handler) · `offline-sync-worker.ts`
+
+The handler persisted the domain, API key and status mappings and called
+`reinitializeProviders()`, so the live provider did pick up the new
+credentials. Nothing then fetched with them.
+
+`GET_PROJECTS` returns `projectRepo.getAllProjects()` -- the Projects view is a
+view of the local cache, and only `OfflineSyncWorker` fills that cache, on a
+300-second timer. So configuring a provider produced an empty project list for
+up to five minutes, and an empty project list is precisely what a correctly
+working provider with no projects looks like. There was no way to tell the two
+apart, and nothing said a sync was pending.
+
+Found by running the app against `scripts/fake-openproject.js`: the mock server
+logged the status fetch and the notification poll and was **never asked for
+`/api/v3/projects` at all**. The natural reading from inside the app -- "I must
+have no projects assigned to me" -- was wrong, and no amount of staring at the
+provider code would have shown it, because the provider code is correct.
+
+**Fixed.** Saving provider settings now starts a sync and the renderer is told
+when the cache changes, via a new `ON_PROJECTS_UPDATED` broadcast the Projects
+view subscribes to. `SYNC_PROVIDER_NOW` exposes the same thing explicitly, for
+a manual control.
+
+Three details are deliberate:
+
+- The handler **does not await** the sync. The provider layer still has no
+  fetch timeouts (see the F-12 residue), so awaiting would let an unreachable
+  instance hold the Save button open indefinitely.
+- `syncTasksAndProjects` now **refuses to overlap**. It had one caller before
+  and has two now; two passes would each prune against their own snapshot, so
+  the slower one could delete what the faster one had just written.
+- It **returns what happened** rather than `void`, distinguishing `synced`,
+  `not_configured`, `skipped` and `failed`. That distinction is the whole
+  finding: the UI could not previously tell "nothing there" from "nothing
+  fetched yet".
+
 ## 11. Remediation status
 
 The Phase 1 branch addressed the findings below. Verify against the code, not
@@ -768,7 +806,7 @@ this table — it is a summary, and summaries drift.
 
 | Area | Findings |
 | :--- | :--- |
-| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-12, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54 |
+| **Fixed** | F-01, F-02, F-03, F-04, F-05, F-07, F-08, F-09, F-10, F-12, F-13, F-14, F-15, F-17, F-19, F-20, F-21, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-30, F-31, F-37, F-38, F-39, F-40, F-42, F-43, F-44, F-45, F-46, F-47, F-48, F-49, F-50, F-51, F-52, F-53, F-54, F-55 |
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
 | **Open, deferred with a reason** | F-11, and the table in [ROADMAP.md](ROADMAP.md) |

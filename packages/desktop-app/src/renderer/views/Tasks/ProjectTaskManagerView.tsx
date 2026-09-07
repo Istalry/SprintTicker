@@ -53,15 +53,34 @@ export const ProjectTaskManagerView: React.FC = () => {
 
   useEffect(() => {
     fetchProjects();
-    
+
     if (window.electronAPI?.getCurrentSession) {
       window.electronAPI.getCurrentSession().then(setActiveSession);
     }
+
+    const unsubscribes: Array<() => void> = [];
     if (window.electronAPI?.onSessionUpdated) {
-      return window.electronAPI.onSessionUpdated(setActiveSession);
+      unsubscribes.push(window.electronAPI.onSessionUpdated(setActiveSession));
     }
+    // This list is a view of the local cache, which only the sync worker fills.
+    // Without this subscription, entering provider credentials left the user
+    // looking at an empty project list until the next five-minute tick, with
+    // nothing to distinguish "not synced yet" from "the remote has nothing".
+    if (window.electronAPI?.onProjectsUpdated) {
+      unsubscribes.push(
+        window.electronAPI.onProjectsUpdated(({ projects: synced }) => {
+          setProjects(synced);
+          setSelectedProjectId(current => {
+            if (current && synced.some(p => p.id === current)) return current;
+            return synced.length > 0 ? synced[0].id : '';
+          });
+        })
+      );
+    }
+
     // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
-    return undefined;
+    if (unsubscribes.length === 0) return undefined;
+    return () => unsubscribes.forEach(fn => fn());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

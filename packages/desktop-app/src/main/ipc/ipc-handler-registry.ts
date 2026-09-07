@@ -17,7 +17,8 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult } from '../../shared/dtos';
+import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
@@ -55,6 +56,7 @@ export interface IPCHandlerRegistryDeps {
   windowsNotificationService?: WindowsNotificationListenerService;
   systemAutomationService?: ISystemAutomationService;
   providerManager?: ProviderManager;
+  syncWorker?: OfflineSyncWorker;
   updateChecker?: UpdateChecker;
 }
 
@@ -64,6 +66,7 @@ export class IPCHandlerRegistry {
   private taskRepo: TaskRepository;
   private projectRepo: ProjectRepository;
   private providerManager?: ProviderManager;
+  private syncWorker?: OfflineSyncWorker;
   private settingsRepo: SettingsRepository;
   private worklogRepo: WorklogRepository;
   private driver: BusyBarDriver;
@@ -97,12 +100,14 @@ export class IPCHandlerRegistry {
       windowsNotificationService,
       systemAutomationService,
       providerManager,
+      syncWorker,
       updateChecker
     } = deps;
 
     this.engine = engine;
     this.taskRepo = taskRepo;
     this.providerManager = providerManager;
+    this.syncWorker = syncWorker;
     this.updateChecker = updateChecker;
     // Bound to the settings repository's connection rather than the
     // DatabaseConnection singleton, which would open a second, on-disk database
@@ -164,6 +169,18 @@ export class IPCHandlerRegistry {
     });
 
     // 2. Project & Task Management IPC Handlers
+    ipcMain.handle(IPCChannel.SYNC_PROVIDER_NOW, async (): Promise<ProviderSyncResult> => {
+      if (!this.syncWorker) {
+        return { status: 'failed', reason: 'Sync worker unavailable.', projects: 0, tasks: 0 };
+      }
+      const result = await this.syncWorker.syncTasksAndProjects();
+      this.broadcast(IPCChannel.ON_PROJECTS_UPDATED, {
+        result,
+        projects: this.projectRepo.getAllProjects()
+      });
+      return result;
+    });
+
     ipcMain.handle(IPCChannel.GET_PROJECTS, async () => {
       return this.projectRepo.getAllProjects();
     });
@@ -495,6 +512,17 @@ export class IPCHandlerRegistry {
         if (payload.providerId) {
           this.providerManager.setActiveProviderId(payload.providerId);
         }
+        // Credentials that were just entered are useless until something
+        // fetches with them, and the Projects view reads the cache the worker
+        // fills. Without this the user configured a provider, saw an empty
+        // list, and had no way to tell that from "the remote has nothing" for
+        // up to a full sync interval.
+        //
+        // Deliberately not awaited: there are no fetch timeouts in the
+        // provider layer yet, so a hung instance would hold the Save button
+        // open indefinitely. The renderer learns the outcome from
+        // ON_PROJECTS_UPDATED instead.
+        this.startProviderSync();
       } else {
         // Previously `providerManager` was neither a field nor a parameter, so
         // this branch was always taken and silently did nothing: credentials
@@ -735,6 +763,35 @@ export class IPCHandlerRegistry {
   /**
    * Helper method to broadcast IPC messages to active Renderer window.
    */
+  /**
+   * Runs a provider sync in the background and tells the renderer what happened.
+   *
+   * Safe to call repeatedly: the worker refuses overlapping passes, because two
+   * of them would each prune against their own snapshot.
+   */
+  private startProviderSync(): void {
+    if (!this.syncWorker) {
+      // Not a failure worth surfacing: every production path wires the worker,
+      // and tests that omit it are not exercising sync.
+      console.warn('[IPCHandlerRegistry] No OfflineSyncWorker wired; skipping the post-save sync.');
+      return;
+    }
+
+    void this.syncWorker
+      .syncTasksAndProjects()
+      .then(result => {
+        this.broadcast(IPCChannel.ON_PROJECTS_UPDATED, {
+          result,
+          projects: this.projectRepo.getAllProjects()
+        });
+      })
+      .catch(err => {
+        // syncTasksAndProjects reports failure in its result rather than by
+        // throwing, so reaching here means a defect rather than an outage.
+        console.error('[IPCHandlerRegistry] Provider sync threw unexpectedly:', err);
+      });
+  }
+
   /**
    * Sends an update result to the renderer.
    *
