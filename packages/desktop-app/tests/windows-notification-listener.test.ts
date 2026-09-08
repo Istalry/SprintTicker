@@ -379,4 +379,55 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
 
     expect(service.getListenerStatus().isListening).toBe(false);
   });
+
+  describe('the app name on the banner is one a person would recognise', () => {
+    // Reported from real use: a Discord notification showed as
+    // `squirrel.Discord.Discord`. The poller strips `com.` off the AUMID but
+    // not `squirrel.`, and this code read that derived name ahead of the
+    // curated one on the matching rule. It was invisible until the banner
+    // stopped rewriting every chat app's label to the literal "Message".
+
+    it('HandleNotification_SquirrelDerivedAppName_UsesTheRulesNameInstead', () => {
+      service.handleNotification({
+        appId: 'com.squirrel.Discord.Discord',
+        appName: 'squirrel.Discord.Discord',
+        title: 'Alice',
+        body: 'ping'
+      });
+
+      expect(bannerCalls[0].appName).toBe('Discord');
+    });
+
+    it('HandleNotification_NoRuleMatches_StillCleansTheIdentifier', () => {
+      // With no curated name to fall back on, the identifier has to be reduced
+      // rather than shown raw.
+      withRules([]);
+
+      service.handleNotification({
+        appId: 'com.squirrel.Obsidian.Obsidian',
+        appName: 'squirrel.Obsidian.Obsidian',
+        title: 'Note',
+        body: 'synced'
+      });
+
+      expect(bannerCalls[0].appName).toBe('Obsidian');
+    });
+
+    it('HandleNotification_UserRenamedTheRule_ThatNameWins', () => {
+      // The panel lets a source be renamed, and that choice has to outrank
+      // anything derived from the identifier.
+      withRules([
+        { appId: 'discord', appName: 'Team Chat', iconId: 'discord', priorityMode: 'DEFAULT' }
+      ]);
+
+      service.handleNotification({
+        appId: 'com.squirrel.Discord.Discord',
+        appName: 'squirrel.Discord.Discord',
+        title: 'Alice',
+        body: 'ping'
+      });
+
+      expect(bannerCalls[0].appName).toBe('Team Chat');
+    });
+  });
 });

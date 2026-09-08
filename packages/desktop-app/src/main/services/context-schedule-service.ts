@@ -87,9 +87,12 @@ export class ContextScheduleService {
           // Suppress retroactive prompt if app launched after due time
           this._lastStandupPromptDateString = todayDateString;
         } else if (currentMinutes >= standupMins && this._lastStandupPromptDateString !== todayDateString && !isSnoozed) {
+          // Stamped only once the prompt has actually gone out. Marking the day
+          // first and then throwing -- `requestRender` rethrows when a render
+          // fails -- cancelled the ceremony for the rest of the day.
+          this.triggerStandupPrompt();
           this._lastStandupPromptDateString = todayDateString;
           this._standupSnoozeUntilTimestamp = null;
-          this.triggerStandupPrompt();
         }
       }
 
@@ -105,10 +108,18 @@ export class ContextScheduleService {
       const isLunchTime = currentMinutes >= lunchStartMins && currentMinutes < lunchEndMins;
       const currentMode = this._priorityEngine.getUserMode();
 
-      if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY') {
-        this.enterLunchMode();
-      } else if (!isLunchTime && currentMode === 'LUNCH') {
-        this.exitLunchMode();
+      // Isolated from the End-of-Day evaluation below. These are the only calls
+      // here that reach the renderer before it, and `requestRender` rethrows a
+      // failed render -- so a lunch screen that could not be drawn used to take
+      // the End-of-Day prompt down with it, on this tick and every tick after.
+      try {
+        if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY') {
+          this.enterLunchMode();
+        } else if (!isLunchTime && currentMode === 'LUNCH') {
+          this.exitLunchMode();
+        }
+      } catch (err) {
+        console.error('[ContextScheduleService] Lunch mode transition failed:', err);
       }
 
       // 3. Evaluate End-of-Day Wrap-Up Schedule
@@ -121,14 +132,20 @@ export class ContextScheduleService {
         // Suppress retroactive prompt if app launched after due time
         this._lastEodPromptDateString = todayDateString;
       } else if (currentMinutes >= eodStartMins && this._lastEodPromptDateString !== todayDateString && !isEodSnoozed) {
+        this.triggerEodPrompt();
         this._lastEodPromptDateString = todayDateString;
         this._eodSnoozeUntilTimestamp = null;
-        this.triggerEodPrompt();
       }
-
-      this._isInitialCheck = false;
     } catch (err) {
       console.warn('[ContextScheduleService] Skipping schedule evaluation due to closed database or system error:', err);
+    } finally {
+      // In a `finally`, because it used to be the last statement of the `try`.
+      // Anything that threw above it -- and the lunch transitions call into the
+      // renderer, which rethrows a failed render -- left this `true` forever.
+      // Every later tick then took the "suppress retroactive prompt" branch and
+      // stamped the day as already prompted, so the End-of-Day prompt silently
+      // never fired again until the app was restarted.
+      this._isInitialCheck = false;
     }
   }
 

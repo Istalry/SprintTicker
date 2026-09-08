@@ -349,4 +349,101 @@ describe('ContextScheduleService Unit Tests', () => {
       process.env.TZ = originalTz;
     }
   });
+
+  describe('one failing ceremony must not cancel another', () => {
+    // Reported from real use: the End-of-Day popup stopped appearing on time
+    // and had to be triggered by hand. The trigger itself was fine -- the
+    // manual button calls the very same method -- so the fault was in the
+    // decision to call it.
+
+    beforeEach(() => {
+      // Stand-up off, so every renderCeremonyPrompt call in this block is the
+      // End-of-Day one and a `mockImplementationOnce` cannot be spent on the
+      // wrong ceremony.
+      mockSettingsRepo.getSetting.mockReturnValue({
+        standupTime: '10:00',
+        enableStandupPrompt: false,
+        lunchStartTime: '12:30',
+        lunchEndTime: '13:30',
+        eodWrapUpTime: '18:00'
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('EvaluateSchedule_LunchTransitionThrows_StillEvaluatesTheEndOfDayPrompt', () => {
+      // The lunch branch runs first and reaches the renderer, and
+      // `requestRender` deliberately rethrows a failed render. That used to
+      // abandon the whole evaluation before End-of-Day was even considered.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 28, 18, 30, 0));
+      mockPriorityEngine.getUserMode.mockReturnValue('LUNCH');
+      mockRenderer.setContextMode.mockImplementation(() => {
+        throw new Error('display lock held');
+      });
+
+      // First tick only marks the day as started; the prompt is due on the next.
+      service.evaluateSchedule();
+      vi.setSystemTime(new Date(2026, 6, 29, 18, 30, 0));
+      service.evaluateSchedule();
+
+      expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+    });
+
+    it('EvaluateSchedule_AnEarlierThrow_DoesNotLeaveTheInitialCheckFlagStuck', () => {
+      // The flag used to be cleared by the last statement of the `try`. Left
+      // true, every later tick took the "suppress retroactive prompt" branch
+      // and stamped the day as already prompted -- so the prompt silently never
+      // fired again until the app was restarted.
+      vi.useFakeTimers();
+      // Start before the prompt is due, so the first tick cannot legitimately
+      // suppress it, and make that first tick throw.
+      vi.setSystemTime(new Date(2026, 6, 28, 9, 0, 0));
+      mockPriorityEngine.getUserMode.mockImplementation(() => {
+        throw new Error('engine unavailable');
+      });
+      service.evaluateSchedule();
+
+      mockPriorityEngine.getUserMode.mockReturnValue('WORK');
+      vi.setSystemTime(new Date(2026, 6, 28, 18, 30, 0));
+      service.evaluateSchedule();
+
+      expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+    });
+
+    it('EvaluateSchedule_TriggerThrows_RetriesOnTheNextTickRatherThanSkippingTheDay', () => {
+      // The day used to be stamped before the prompt went out, so a single
+      // failed render cancelled the ceremony until midnight.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 28, 9, 0, 0));
+      service.evaluateSchedule();
+
+      mockRenderer.renderCeremonyPrompt.mockImplementationOnce(() => {
+        throw new Error('display lock held');
+      });
+      vi.setSystemTime(new Date(2026, 6, 28, 18, 30, 0));
+      service.evaluateSchedule();
+      service.evaluateSchedule();
+
+      const eodCalls = mockRenderer.renderCeremonyPrompt.mock.calls.filter(c => c[0] === 'EOD');
+      expect(eodCalls).toHaveLength(2);
+    });
+
+    it('EvaluateSchedule_PromptAlreadyShown_DoesNotFireAgainTheSameDay', () => {
+      // The guard the three tests above must not have broken.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 28, 9, 0, 0));
+      service.evaluateSchedule();
+
+      vi.setSystemTime(new Date(2026, 6, 28, 18, 30, 0));
+      service.evaluateSchedule();
+      service.evaluateSchedule();
+      service.evaluateSchedule();
+
+      const eodCalls = mockRenderer.renderCeremonyPrompt.mock.calls.filter(c => c[0] === 'EOD');
+      expect(eodCalls).toHaveLength(1);
+    });
+  });
 });

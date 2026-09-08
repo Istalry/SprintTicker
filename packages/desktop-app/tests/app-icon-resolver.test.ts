@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { AppIconResolver, buildNameTokens, splitAumid } from '../src/main/services/app-icon-resolver';
+import { AppIconResolver, buildNameTokens, splitAumid, deriveAppDisplayName } from '../src/main/services/app-icon-resolver';
 
 /**
  * Icon resolution has to cover two different worlds. Packaged apps -- Slack
@@ -179,5 +179,49 @@ describe('AppIconResolver', () => {
     // instead of closing it and starting a new statement.
     const script = runner.mock.calls[0][0] as string;
     expect(script).toContain("'weird''; Remove-Item");
+  });
+});
+
+describe('deriveAppDisplayName', () => {
+  // Reported from real use: a Discord notification showed as
+  // `squirrel.Discord.Discord`. The PowerShell poller derives its app name by
+  // stripping known prefixes off the AUMID and strips `com.` but not
+  // `squirrel.`, so the raw identifier had been in the data all along -- it
+  // only became visible once the banner stopped rewriting every chat app's
+  // label to the literal "Message".
+
+  it('DeriveAppDisplayName_SquirrelPackagedApp_ReturnsJustTheAppName', () => {
+    expect(deriveAppDisplayName('com.squirrel.Discord.Discord', 'squirrel.Discord.Discord')).toBe(
+      'Discord'
+    );
+  });
+
+  it('DeriveAppDisplayName_MsixAumid_DoesNotReturnThePackageHash', () => {
+    // The tail of a real AUMID is publisher noise, so taking the last token
+    // would put `8wekyb3d8bbwe` on the display.
+    expect(
+      deriveAppDisplayName('Microsoft.ScreenSketch_8wekyb3d8bbwe!App', 'ScreenSketch')
+    ).toBe('ScreenSketch');
+  });
+
+  it('DeriveAppDisplayName_AlreadyAPlainName_IsLeftAlone', () => {
+    // Nothing to fix, and rewriting it would risk mangling a name the poller
+    // already got right.
+    expect(deriveAppDisplayName('Slack', 'Slack')).toBe('Slack');
+  });
+
+  it('DeriveAppDisplayName_NameWithASpace_IsLeftAlone', () => {
+    expect(deriveAppDisplayName('some.id', 'Visual Studio Code')).toBe('Visual Studio Code');
+  });
+
+  it('DeriveAppDisplayName_NoNameAtAll_FallsBackToTheIdentifiersBestToken', () => {
+    expect(deriveAppDisplayName('com.squirrel.Discord.Discord', undefined)).toBe('Discord');
+  });
+
+  it('DeriveAppDisplayName_NothingUsable_ReturnsEmptyRatherThanThrowing', () => {
+    // The banner falls back to its own label for an empty name; a throw here
+    // would take the whole notification down.
+    expect(deriveAppDisplayName(undefined, undefined)).toBe('');
+    expect(deriveAppDisplayName('', '')).toBe('');
   });
 });

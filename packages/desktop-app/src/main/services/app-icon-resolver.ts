@@ -272,6 +272,34 @@ foreach ($candidate in ($candidates | Sort-Object { $_[0] })) {
 }
 
 /**
+ * Turns a Windows app identifier into something worth putting on a 72px display.
+ *
+ * The PowerShell poller derives its `appName` by stripping a few known
+ * prefixes off the AUMID, which handles Slack and the Microsoft toasts and
+ * leaves Squirrel-packaged apps looking like `squirrel.Discord.Discord` --
+ * `com.` is removed, `squirrel.` is not. That was invisible for as long as the
+ * banner rewrote every chat app's label to the literal "Message"; removing
+ * that rewrite put the raw identifier on screen.
+ *
+ * A name the user would recognise beats a faithful one here, so an identifier
+ * is reduced to its most specific token. A name with no separators in it is
+ * already a name and is left alone.
+ */
+export function deriveAppDisplayName(appId?: string, appName?: string): string {
+  const raw = (appName ?? '').trim();
+  if (raw && !/[._!/]/.test(raw)) return raw;
+
+  // Tokens come from the id, never from `raw`: passing a dotted name in would
+  // see it kept whole as the first candidate, which is the thing being fixed.
+  //
+  // The first token, not the last. `buildNameTokens` orders them most-specific
+  // first, and the tail of a real AUMID is publisher noise --
+  // `Microsoft.ScreenSketch_8wekyb3d8bbwe!App` ends in the package hash.
+  const tokens = buildNameTokens(appId || raw);
+  return tokens.length > 0 ? tokens[0] : raw;
+}
+
+/**
  * Derives plausible shortcut names from an app identifier.
  *
  * `com.squirrel.Discord.Discord` yields `Discord`; `Slack` yields `Slack`.

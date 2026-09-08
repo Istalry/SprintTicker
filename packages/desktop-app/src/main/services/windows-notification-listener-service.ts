@@ -6,7 +6,7 @@ import * as os from 'os';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { NotificationEventName, PriorityPreemptionEngine } from './priority-preemption-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { AppIconResolver } from './app-icon-resolver';
+import { AppIconResolver, deriveAppDisplayName } from './app-icon-resolver';
 import {
   redactNotificationSummary,
   redactNotificationText
@@ -277,10 +277,15 @@ export class WindowsNotificationListenerService {
 
             // Notification event from PowerShell
             this._lastPollTimestamp = new Date().toISOString();
+            // Cleaned here, at the boundary, so the banner and the panel's live
+            // log cannot disagree about what the app is called. The poller's
+            // own derivation strips `com.` but not `squirrel.`, which is how
+            // Discord arrived as `squirrel.Discord.Discord`.
+            const appDisplayName = deriveAppDisplayName(data.appId, data.appName);
             const handled = this.handleNotification({
               id: data.id || `win_${Date.now()}`,
               appId: data.appId,
-              appName: data.appName,
+              appName: appDisplayName,
               title: data.title,
               body: data.body,
               iconPath: data.iconPath,
@@ -292,13 +297,13 @@ export class WindowsNotificationListenerService {
               this._restartAttempts = 0;
               this.emitLog(
                 'notification',
-                `[${data.appName}][${data.id}] ${redactNotificationSummary(data.title, data.body)}`.trim()
+                `[${appDisplayName}][${data.id}] ${redactNotificationSummary(data.title, data.body)}`.trim()
               );
             } else {
               this._totalSuppressed++;
               this.emitLog(
                 'info',
-                `Suppressed: [${data.appName}][${data.id}] ${redactNotificationText(data.title)}`
+                `Suppressed: [${appDisplayName}][${data.id}] ${redactNotificationText(data.title)}`
               );
             }
           } catch {
@@ -437,7 +442,12 @@ export class WindowsNotificationListenerService {
     // the literal "Message" for Slack and Discord and then prefixed in
     // brackets, which spent ten of the row's eleven characters restating what
     // the app icon beside it already said.
-    const appLabel = event.appName || matchedRule?.appName || '';
+    //
+    // The rule's name comes first. It is the one a person chose -- seeded as
+    // "Discord", or typed into the panel -- whereas anything derived from an
+    // AUMID is a guess with the wrong capitalisation at best. Reading
+    // `event.appName` first is what put `squirrel.Discord.Discord` on the bar.
+    const appLabel = matchedRule?.appName || deriveAppDisplayName(event.appId, event.appName) || '';
 
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
 
