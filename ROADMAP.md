@@ -186,8 +186,39 @@ Test / To Review status ids; the category stays the fallback, so an install
 with nothing mapped still needs no setup.
 
 Still unverified on the Jira side: **worklog submission from the app**. The
-`POST .../worklog` shape was confirmed by hand, but no session has been tracked
-and synced end to end through the queue.
+`POST .../worklog` shape was confirmed by hand, and worklogs from real sessions
+do reach Jira -- but not all of them did in the first day's use, and which ones
+went missing is still open. The session log held six completed sessions against
+two issues; the two longest arrived and the four shortest did not, across both
+issues and both issue types. So it is not the issue type, which was the first
+theory: the same issue had one worklog arrive and another not. Resolving it
+needs the queue's own state, which is the item below.
+
+Four defects came out of that first day, all fixed and all invisible to the
+suite before they were reported:
+
+- The bar showed `?` for accented characters. `sanitizeAsciiText` was written
+  for exactly this and transliterates rather than substitutes, but only the
+  notification composer and the device's element path called it -- the front
+  matrix is rasterised through `PixelCanvas`, which called nobody. It now
+  sanitises inside `drawTextClipped` and `drawSmallText`, before the
+  measurement, since transliteration changes length.
+- Finishing a task with the bar's own buttons logged the time and left the task
+  in progress. `stopSession(comment, markDone)` takes the flag second and both
+  hardware paths passed only the comment -- one of them an action named
+  `COMPLETE_AND_LOG_ACTIVE_TASK`, the other the FINISH branch that plays the
+  completion confetti on its way past. FINISH is also the wheel's default
+  selection, so this was the press a user makes without scrolling.
+- The bar displayed `10001: Active Task` -- Jira's internal issue id, which
+  appears nowhere in Jira's UI, next to a placeholder title. `taskKey` and
+  `customTitle` were optional arguments defaulting to the id and the literal
+  string, and the app's IPC handler passed neither. The engine now reads both
+  from the task row it already fetches, which fixes every call site at once
+  rather than threading two more arguments through the bridge.
+- The task list did not react to a status change. `onProjectsUpdated` refreshed
+  the projects and not the tasks under them, and `fetchTasks` ran only when the
+  selected project changed -- so leaving the tab and coming back was the only
+  way to see a badge move, which reads as the action not having worked.
 
 **Blocked on:** nothing else. The prerequisites below are all in place.
 
@@ -291,6 +322,12 @@ Also worth doing while this area is open:
   on demand and `ON_PROJECTS_UPDATED` reports the outcome, but nothing in the
   UI calls the first or displays the `failed` / `not_configured` reason from
   the second. A visible “Sync now” control and a last-sync line belong here.
+  **This is now the next thing to build**, not a nicety: the missing Jira
+  worklogs above cannot be diagnosed without it. Each row already carries its
+  own `last_error` and `retry_count`, and nothing shows them -- so a worklog
+  that never arrived is indistinguishable from one that was never queued. Note
+  that the database cannot be inspected from an agent's shell to settle it
+  either, for the reasons in CLAUDE.md §7.
 
 ---
 

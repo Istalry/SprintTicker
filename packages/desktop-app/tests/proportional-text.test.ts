@@ -205,6 +205,75 @@ describe('the BUSY Bar font', () => {
     });
   });
 
+  describe('non-ASCII text is transliterated, not stubbed out', () => {
+    /**
+     * Reported from a photograph of the bar: a Jira task called "Tache 2"
+     * (with a circumflex) arrived as "T?che?2".
+     *
+     * The fonts hold printable ASCII, so `glyphFor` substitutes `?` for
+     * anything else. `sanitizeAsciiText` exists precisely to transliterate
+     * instead -- it was written for this, complete with a comment about French
+     * notifications arriving with holes in their words -- but only the
+     * notification composer and the device's element path called it. The front
+     * matrix is rasterised here, and this path called nobody.
+     *
+     * Both `?` in that string had a cause: the circumflex, and the
+     * non-breaking space Windows and French keyboards put before punctuation.
+     * The sanitiser handles each.
+     */
+    const FIELD = DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_FIELD_WIDTH;
+
+    function pixelsOf(text: string, draw: (c: PixelCanvas) => void): string {
+      const canvas = new PixelCanvas(72, 16);
+      draw(canvas);
+      return canvas
+        .getPixels()
+        .map(row => row.map(p => (p === null ? '.' : '#')).join(''))
+        .join('/');
+    }
+
+    it('DrawTextClipped_AccentedTitle_DrawsTheSamePixelsAsItsPlainAsciiForm', () => {
+      // The strongest form of the assertion: not "no question marks" but
+      // "identical to what the plain spelling draws".
+      const accented = pixelsOf('Tâche 2', c => c.drawTextClipped('Tâche 2', 17, 0, '#FFFFFF', FIELD));
+      const plain = pixelsOf('Tache 2', c => c.drawTextClipped('Tache 2', 17, 0, '#FFFFFF', FIELD));
+
+      expect(accented).toBe(plain);
+    });
+
+    it('DrawTextClipped_NonBreakingSpace_DrawsAsAnOrdinarySpace', () => {
+      const nbsp = pixelsOf('a b', c => c.drawTextClipped('a b', 17, 0, '#FFFFFF', FIELD));
+      const plain = pixelsOf('a b', c => c.drawTextClipped('a b', 17, 0, '#FFFFFF', FIELD));
+
+      expect(nbsp).toBe(plain);
+    });
+
+    it('DrawSmallText_AccentedText_TransliteratesOnRow1Too', () => {
+      // Row 1 is a different font with its own clipping arithmetic, so it
+      // needed the same treatment rather than inheriting it.
+      const accented = pixelsOf('Réunion', c => c.drawSmallText('Réunion', 17, 8, '#FFFFFF', FIELD));
+      const plain = pixelsOf('Reunion', c => c.drawSmallText('Reunion', 17, 8, '#FFFFFF', FIELD));
+
+      expect(accented).toBe(plain);
+    });
+
+    it('DrawTextClipped_TransliterationThatGrows_StillFitsTheField', () => {
+      // Why the sanitiser has to run before the measurement rather than after:
+      // one eszett becomes two letters, so a string that fitted when measured
+      // raw overflows once transliterated. Measured on the output, which is
+      // what the device receives.
+      const canvas = new PixelCanvas(72, 16);
+      canvas.drawTextClipped('ßßßßßßßßßß', 17, 0, '#FFFFFF', FIELD);
+      const pixels = canvas.getPixels();
+
+      for (const row of pixels) {
+        for (let x = 17 + FIELD; x < 72; x++) {
+          expect(row[x]).toBeNull();
+        }
+      }
+    });
+  });
+
   describe('the canvas and the composer agree', () => {
     // These two truncate independently. If they ever disagree, every row is cut
     // twice -- the second time with no marker, mid-word. Under the old

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FolderPlus, Plus, Trash2, Edit3, Upload, FileText, CheckCircle, AlertCircle, X, CheckCircle2, Clock } from 'lucide-react';
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
 import { triggerDesktopConfetti } from '../../utils/confetti-fx';
@@ -10,6 +10,15 @@ export const ProjectTaskManagerView: React.FC = () => {
   const [tasks, setTasks] = useState<TaskDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeSession, setActiveSession] = useState<ActiveSessionDTO | null>(null);
+
+  /**
+   * Which project the task list is showing, readable from a subscription.
+   *
+   * The push handlers below are registered once on mount, so they close over
+   * the first render's `selectedProjectId` -- an empty string -- and would
+   * refetch nothing. A ref is the state they can actually read.
+   */
+  const selectedProjectRef = useRef<string>('');
 
   // Modals
   const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
@@ -43,7 +52,7 @@ export const ProjectTaskManagerView: React.FC = () => {
   };
 
   // Fetch Tasks for active project
-  const fetchTasks = async (projId: string) => {
+  const fetchTasks = async (projId: string): Promise<void> => {
     if (!projId) return;
     if (window.electronAPI?.getTasks) {
       const taskList = await window.electronAPI.getTasks(projId);
@@ -60,7 +69,17 @@ export const ProjectTaskManagerView: React.FC = () => {
 
     const unsubscribes: Array<() => void> = [];
     if (window.electronAPI?.onSessionUpdated) {
-      unsubscribes.push(window.electronAPI.onSessionUpdated(setActiveSession));
+      unsubscribes.push(
+        window.electronAPI.onSessionUpdated(session => {
+          setActiveSession(session);
+          // Starting a task moves it to in_progress and finishing one can mark
+          // it done, both in the main process. Without this the badge kept the
+          // status it had when the tab mounted, and leaving the tab and coming
+          // back was the only way to see the change -- which reads as the
+          // action not having worked.
+          void fetchTasks(selectedProjectRef.current);
+        })
+      );
     }
     // This list is a view of the local cache, which only the sync worker fills.
     // Without this subscription, entering provider credentials left the user
@@ -74,6 +93,10 @@ export const ProjectTaskManagerView: React.FC = () => {
             if (current && synced.some(p => p.id === current)) return current;
             return synced.length > 0 ? synced[0].id : '';
           });
+          // A sync that refreshed the projects refreshed the tasks under them
+          // too, and a status changed on the board is the most likely thing to
+          // have moved. Refetching only the projects left the statuses stale.
+          void fetchTasks(selectedProjectRef.current);
         })
       );
     }
@@ -85,8 +108,9 @@ export const ProjectTaskManagerView: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    selectedProjectRef.current = selectedProjectId;
     if (selectedProjectId) {
-      fetchTasks(selectedProjectId);
+      void fetchTasks(selectedProjectId);
     }
   }, [selectedProjectId]);
 

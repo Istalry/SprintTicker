@@ -222,6 +222,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     let finalTitle = customTitle || 'Active Task';
     let finalKey = taskKey || taskId;
+    let finalProjectId = projectId;
     // The session must reference a task row that actually exists. The renderer
     // used to invent its own `adhoc_<timestamp>` id while the main process
     // created a different row, so every ad-hoc session pointed at a task that
@@ -249,6 +250,19 @@ export class TimeTrackingEngine extends EventEmitter {
       // Transition task from 'todo' to 'in_progress' when session starts
       const existingTask = this._taskRepo.getTaskById(taskId);
       if (existingTask) {
+        // The stored row is the authority on how to name this task, and the
+        // caller supplying it was always optional. Only two of the five call
+        // sites passed a key and only three a title, so the defaults decided
+        // what the bar showed: `finalKey` fell back to the id and `finalTitle`
+        // to the literal 'Active Task'. Starting a Jira task from the app put
+        // "10001: Active Task" on the display -- a number that appears nowhere
+        // in Jira's own UI -- where the row next to it held "SCRUM-2" and
+        // "Tache 2" all along. Reading it here fixes every caller at once,
+        // rather than threading two more arguments through the IPC bridge.
+        if (!taskKey) finalKey = existingTask.key;
+        if (!customTitle) finalTitle = existingTask.title;
+        if (existingTask.projectId) finalProjectId = existingTask.projectId;
+
         if (existingTask.status !== 'in_progress') {
           this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
         }
@@ -265,7 +279,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     const newSession: Omit<ActiveSessionDTO, 'elapsedSeconds'> = {
       sessionId,
-      projectId,
+      projectId: finalProjectId,
       taskId: effectiveTaskId,
       taskKey: finalKey,
       taskTitle: finalTitle,

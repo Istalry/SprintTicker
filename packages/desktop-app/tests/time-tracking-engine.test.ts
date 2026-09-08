@@ -42,6 +42,58 @@ describe('TimeTrackingEngine Unit Tests', () => {
     expect(session.elapsedSeconds).toBeGreaterThanOrEqual(0);
   });
 
+  describe('the session is named from the stored task row', () => {
+    // Reported from a photograph of the bar: it read "10001: Active Task"
+    // while the app's own list, one pane away, held "SCRUM-2" and "Tache 2".
+    // 10001 is Jira's internal issue id and appears nowhere in Jira's UI.
+    //
+    // The cause was defaults, not a lookup failure. `taskKey` and `customTitle`
+    // were optional arguments falling back to the id and the literal
+    // 'Active Task', and only some of the five call sites passed them -- the
+    // app's IPC handler passes neither.
+
+    beforeEach(() => {
+      projectRepo.saveProject({ id: '10000', key: 'SCRUM', name: 'My Software Team' });
+      taskRepo.saveTask({
+        id: '10001',
+        projectId: '10000',
+        key: 'SCRUM-2',
+        title: 'Tache 2',
+        status: 'todo'
+      });
+    });
+
+    it('StartTask_NoKeyOrTitleSupplied_TakesThemFromTheTaskRow', () => {
+      // Exactly how the app's own Switch button reaches the engine.
+      const session = engine.startTask('10001');
+
+      expect(session.taskKey).toBe('SCRUM-2');
+      expect(session.taskTitle).toBe('Tache 2');
+    });
+
+    it('StartTask_NoProjectSupplied_TakesItFromTheTaskRowRatherThanThePlaceholder', () => {
+      // The default was the literal string 'PROJ'.
+      const session = engine.startTask('10001');
+
+      expect(session.projectId).toBe('10000');
+    });
+
+    it('StartTask_CallerSuppliesAKeyAndTitle_TheyStillWin', () => {
+      // The lookup is a fallback, not an override: the lunch-split resume
+      // passes both deliberately.
+      const session = engine.startTask('10001', false, 'Explicit Title', '10000', 'EXPLICIT-9');
+
+      expect(session.taskKey).toBe('EXPLICIT-9');
+      expect(session.taskTitle).toBe('Explicit Title');
+    });
+
+    it('StartTask_UnknownTaskId_StillFallsBackToTheIdRatherThanThrowing', () => {
+      const session = engine.startTask('not-in-the-cache');
+
+      expect(session.taskKey).toBe('not-in-the-cache');
+    });
+  });
+
   it('StartTask_MissingTaskId_ThrowsException', () => {
     // Act & Assert
     expect(() => engine.startTask('', false)).toThrow('Task ID is required');

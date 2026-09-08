@@ -16,12 +16,13 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   let engine: TimeTrackingEngine;
   let decoder: InputDecoder;
   let renderer: DisplayRenderer;
+  let taskRepo: TaskRepository;
 
   beforeEach(async () => {
     dbConn = new DatabaseConnection(':memory:');
     const sessionRepo = new SessionRepository(dbConn);
     const worklogRepo = new WorklogRepository(dbConn);
-    const taskRepo = new TaskRepository(dbConn);
+    taskRepo = new TaskRepository(dbConn);
     const settingsRepo = new SettingsRepository(dbConn);
 
     engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn));
@@ -30,12 +31,74 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
     renderer = new DisplayRenderer(driver);
     decoder = new InputDecoder(driver, engine, settingsRepo);
+    decoder.setRenderer(renderer);
   });
 
   afterEach(() => {
     engine.dispose();
     driver.disconnect();
     dbConn.close();
+  });
+
+  describe('finishing a task from the bar', () => {
+    /**
+     * Reported from daily use: completing a task with the BUSY Bar's own
+     * buttons logged the time and left the task in progress, so the same work
+     * had to be closed a second time from the app.
+     *
+     * `stopSession(comment, markDone)` takes the flag as its second argument,
+     * and the hardware paths passed only the comment -- one of which was a
+     * string reading 'Completed via BUSY Bar Paused Menu' and another an action
+     * named COMPLETE_AND_LOG_ACTIVE_TASK. Both said completed and neither
+     * completed anything, while the FINISH branch played the completion
+     * confetti on its way past.
+     *
+     * These go through the decoder rather than calling the engine directly:
+     * the engine's flag always worked, and the defect was entirely in what the
+     * button asked for.
+     */
+    beforeEach(() => {
+      taskRepo.saveTask({
+        id: 'T-1',
+        projectId: 'P-1',
+        key: 'SCRUM-1',
+        title: 'Tache 1',
+        status: 'todo'
+      });
+      engine.startTask('T-1');
+      engine.pauseSession();
+    });
+
+    it('HandleHardwareInput_FinishFromThePausedMenu_MarksTheTaskDone', () => {
+      // FINISH is where the wheel already sits, so this is the press a user
+      // makes without scrolling at all -- the common path, not a corner.
+      expect(renderer.getPausedSelection()).toBe('FINISH');
+
+      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
+
+      expect(taskRepo.getTaskById('T-1')?.status).toBe('done');
+    });
+
+    it('HandleHardwareInput_StopFromThePausedMenu_LeavesTheTaskOpen', () => {
+      // The other half of the contract, and the reason the flag exists: STOP
+      // logs the time and the task stays on the board.
+      decoder.handleHardwareInput({ type: 'press', key: 'down' } as never);
+      expect(renderer.getPausedSelection()).toBe('STOP');
+
+      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
+
+      expect(taskRepo.getTaskById('T-1')?.status).toBe('in_progress');
+    });
+
+    it('HandleHardwareInput_EitherChoice_StillLogsTheTime', () => {
+      // Whatever else changed, the time must survive: that half was never
+      // broken and is the one that cannot be recovered by hand.
+      expect(engine.getCurrentSession()).not.toBeNull();
+
+      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
+
+      expect(engine.getCurrentSession()).toBeNull();
+    });
   });
 
   it('Connect_MockMode_ReturnsConnectedDeviceStatus', () => {

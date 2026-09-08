@@ -315,12 +315,18 @@ export class InputDecoder {
       if (isWheelClick) {
         const choice = this._renderer.getPausedSelection();
         if (choice === 'STOP') {
+          // Stop means stop: the time is logged and the task stays open.
           this._engine.stopSession('Stopped via BUSY Bar Paused Menu');
         } else {
           if (this._renderer.renderTaskCompletionConfetti) {
             this._renderer.renderTaskCompletionConfetti();
           }
-          this._engine.stopSession('Completed via BUSY Bar Paused Menu');
+          // `markDone` is the whole difference between the two branches, and
+          // omitting it made FINISH identical to STOP -- it logged the time,
+          // played the confetti and left the task in progress. Reported from
+          // daily use: finishing from the bar left the board untouched, so the
+          // same work had to be closed again from the app.
+          this._engine.stopSession('Completed via BUSY Bar Paused Menu', true);
         }
         this.notifyActionHandlers('VALIDATE_PAUSED_SELECTION', normalizedKey);
         return 'VALIDATE_PAUSED_SELECTION';
@@ -379,7 +385,9 @@ export class InputDecoder {
         break;
       }
       case 'COMPLETE_AND_LOG_ACTIVE_TASK': {
-        this._engine.stopSession('Completed via BUSY Bar Long Press');
+        // Named for what it does, which is why the missing `markDone` was easy
+        // to miss: it logged and did not complete. See the paused menu above.
+        this._engine.stopSession('Completed via BUSY Bar Long Press', true);
         break;
       }
       case 'TRIGGER_TASK_SELECTOR_MODAL': {

@@ -1,6 +1,7 @@
 import { FONT_3X5 } from '../../shared/pixel-fonts';
 import { BUSY_FONT_ASCENT } from '../../shared/busy-font';
 import { glyphFor, measureText, fitToWidth } from '../../shared/proportional-text';
+import { sanitizeAsciiText } from '../../shared/text-sanitizer';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 import { capacityFor } from '../../shared/text-capacity';
 
@@ -132,10 +133,24 @@ export class PixelCanvas {
     return measureText(text);
   }
 
-  /** Draws text truncated to maxWidth, ending in an ellipsis when it did not fit. */
+  /**
+   * Draws text truncated to maxWidth, ending in an ellipsis when it did not fit.
+   *
+   * Sanitises first, and the order is the point. The fonts hold printable ASCII
+   * only, so `glyphFor` substitutes `?` for anything else -- which is how a
+   * French task title reached the bar as "T?che?2" instead of "Tache 2".
+   * `sanitizeAsciiText` transliterates rather than substitutes, turning the
+   * circumflex into a plain `a` and the non-breaking space back into a space.
+   *
+   * It has to happen *before* `fitToWidth` measures, because transliteration
+   * changes length -- one em dash becomes two hyphens, one eszett two letters
+   * -- so sanitising after measuring silently overflows the row that was just
+   * fitted. Callers that sanitise and measure themselves, such as the
+   * notification composer, are unaffected: this pass is idempotent.
+   */
   public drawTextClipped(text: string, x: number, y: number, color: string, maxWidth: number): void {
     if (maxWidth <= 0) return;
-    this.drawText(fitToWidth(text, maxWidth), x, y, color);
+    this.drawText(fitToWidth(sanitizeAsciiText(text), maxWidth), x, y, color);
   }
 
   /** Draws a 7px-tall text row. */
@@ -151,7 +166,10 @@ export class PixelCanvas {
     let cx = x;
     const maxChars = capacityFor(maxWidth, ROW1_FONT.STRIDE_X);
     if (maxChars <= 0) return;
-    const clipped = text.length > maxChars ? text.substring(0, maxChars) : text;
+    // Sanitised before the capacity cut, for the reason given on
+    // drawTextClipped: transliteration changes the character count.
+    const safe = sanitizeAsciiText(text);
+    const clipped = safe.length > maxChars ? safe.substring(0, maxChars) : safe;
 
     for (const char of clipped) {
       // Fallback: exact match -> uppercase match -> question mark
