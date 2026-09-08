@@ -387,17 +387,23 @@ Also worth doing while this area is open:
   that throws when used is the F-18 updater stub again. The Jira implementation
   returns zero deliberately rather than build an N+1 worklog walk behind an
   unreachable path.
-- Surface the sync queue in the UI — pending / failed / synced counts, with a
-  manual retry. Half the plumbing exists now: `SYNC_PROVIDER_NOW` runs a sync
-  on demand and `ON_PROJECTS_UPDATED` reports the outcome, but nothing in the
-  UI calls the first or displays the `failed` / `not_configured` reason from
-  the second. A visible “Sync now” control and a last-sync line belong here.
-  **This is now the next thing to build**, not a nicety: the missing Jira
-  worklogs above cannot be diagnosed without it. Each row already carries its
-  own `last_error` and `retry_count`, and nothing shows them -- so a worklog
-  that never arrived is indistinguishable from one that was never queued. Note
-  that the database cannot be inspected from an agent's shell to settle it
-  either, for the reasons in CLAUDE.md §7.
+- [x] **The sync queue is visible** (2026-09-08). Every row that has not been
+  delivered, with the provider's own message, the attempt count against the
+  ceiling and when the next attempt is due, plus Sync Now and Retry Failed.
+  It was built after diagnosing two failed worklogs took a terminal and three
+  hundred lines of console for reasons already recorded on the rows.
+  `getSyncQueueSnapshot` is a new read rather than a reuse of
+  `getPendingQueueItems`: that one answers "what may I send now", so it hides
+  both a parked row and one waiting out its backoff -- the two kinds anyone
+  opening the panel is looking for. Rows are named from the local task cache,
+  since the queue stores the provider's own id and `10004` appears nowhere in
+  Jira's UI.
+- `minimumLoggableSeconds` for Jira is **60 by inference, not by measurement**
+  -- Jira's documented minute granularity plus one observed `400`. If the real
+  floor is lower, the engine is discarding time a user worked, which is the
+  failure worth checking. `pnpm probe:jira-worklog <ISSUE-KEY>` measures it
+  against a live site, reading credentials from the environment and deleting
+  every worklog it creates. Run it once and either confirm the 60 or lower it.
 
 ---
 

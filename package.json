@@ -19,6 +19,7 @@
     "lint:fix": "eslint packages --ext .ts,.tsx --fix",
     "dev:mock": "pnpm --filter @sprintticker/desktop-app dev:mock",
     "mock:openproject": "node scripts/fake-openproject.js",
+    "probe:jira-worklog": "node scripts/jira-worklog-probe.js",
     "verify:unity": "node scripts/verify-unity-plugin.js"
   },
   "devDependencies": {
