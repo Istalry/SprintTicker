@@ -152,15 +152,15 @@ ABI and LFS failures in this repository have historically only appeared there.
 
 ## 3. More task providers, Jira first
 
-**The Jira Cloud adapter is written and registered, and has never spoken to a
-real Jira site.** Everything below it -- the shared client, the error contract,
-the task scope, credential encryption -- is exercised against the running app.
-`providers/jira-provider.ts` is exercised only against its unit tests and the
-documented v3 API. Treat it as unverified until someone points it at a live
-site; that is a statement about evidence, not a guess about quality.
+**The Jira Cloud adapter has been run against a real Jira Cloud site**
+(2026-09-08): projects and issues listed, statuses read back, and a task marked
+done moved the issue on the board. The three format traps below all held on the
+first try -- the numeric `started` offset, Atlassian Document Format comments,
+and the `nextPageToken` pagination -- so they are recorded here as facts about
+the API rather than as suspicions.
 
-The three things most likely to be wrong, all of which fail as a bare `400`
-with nothing in the body naming the field:
+The three things that were most likely to be wrong, each of which would have
+failed as a bare `400` with nothing in the body naming the field:
 
 - `started` on a worklog must be `yyyy-MM-dd'T'HH:mm:ss.SSSZ` with a **numeric**
   offset. `toISOString()` is rejected, and so is the `+02:00` form the device's
@@ -170,6 +170,24 @@ with nothing in the body naming the field:
 - `/rest/api/3/search/jql` pages on an opaque `nextPageToken`, not `startAt`.
   The `startAt` endpoint is the deprecated one, and `/project/search` still uses
   it -- so the adapter contains two different pagination loops on purpose.
+
+What the live run *did* find was in the status round trip, and no unit test
+could have caught it because the defect only appears across two operations.
+Marking a task done does not close the issue -- it fires the configured
+completion transition, since you send your own work for review rather than
+closing it -- which in a default workflow lands the issue in "To Review",
+category `indeterminate`. Reading that back on category alone gave
+`in_progress`, and `saveTask` upserts with `status = excluded.status`, so the
+next sync overwrote the DONE the user had just set. The badge changed its own
+mind a minute later, which reads as the app forgetting. The readback now treats
+a status named by one of the configured completion transitions as done, which
+is the same answer `OpenProjectProvider` already gave for its configured To
+Test / To Review status ids; the category stays the fallback, so an install
+with nothing mapped still needs no setup.
+
+Still unverified on the Jira side: **worklog submission from the app**. The
+`POST .../worklog` shape was confirmed by hand, but no session has been tracked
+and synced end to end through the queue.
 
 **Blocked on:** nothing else. The prerequisites below are all in place.
 
@@ -256,9 +274,12 @@ Also worth doing while this area is open:
   the two drifting. It is not urgent: `deviceFetch` already has the one thing
   the providers were missing, and the device's 409/413/503 semantics are not
   the providers'.
-- Point the Jira adapter at a real site and fix what the API actually does. Then
-  grow Jira routes in `scripts/fake-openproject.js` so there is an integration
-  test, as the OpenProject side has.
+- Grow Jira routes in `scripts/fake-openproject.js` so there is an integration
+  test, as the OpenProject side has. The live run replaced the *unknowns*, not
+  the regression cover: nothing automated exercises the Jira dialect end to end.
+- Offer Jira in the first-run wizard. `OnboardingWizardModal` still lists only
+  OpenProject and ad-hoc, so a new user has to pick something else and then find
+  the provider in Settings.
 - `reconcileRemoteState` is dead: the `provider:reconcile` channel is declared on
   the preload bridge and has **no handler in main**, so calling it from the
   renderer rejects. Either wire it up or delete the exposure -- an API surface

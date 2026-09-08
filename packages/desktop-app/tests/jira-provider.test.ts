@@ -212,10 +212,15 @@ describe('JiraProvider', () => {
     });
   });
 
-  describe('status comes from the category, not a configured id', () => {
+  describe('status comes from the category, with the configured transitions on top', () => {
     // Every Jira workflow files its statuses under one of three fixed
     // categories, so this needs no setup -- unlike OpenProject, where the same
     // mapping is three numeric ids the user has to look up by hand.
+    //
+    // The category alone is not enough for the round trip, though, which is
+    // what the last three tests here pin down. Found against a real Jira site:
+    // the board showed the issue in To Review and the app showed DONE, and the
+    // next sync would have quietly changed its own mind.
 
     it('MapStatusCategory_KnownCategories_MapToTheThreeTrackedStates', () => {
       expect(JiraProvider.mapStatusCategory('new')).toBe('todo');
@@ -247,6 +252,91 @@ describe('JiraProvider', () => {
       const tasks = await (await configured()).getTasks('1');
 
       expect(tasks[0].status).toBe('in_progress');
+    });
+
+    it('GetTasks_StatusNamedByACompletionTransition_IsReportedAsDone', async () => {
+      // The round trip that was broken. Marking a task done fires the
+      // configured completion transition rather than closing the issue, which
+      // in a default workflow lands it in To Review -- category
+      // `indeterminate`. Read back on category alone that is `in_progress`,
+      // and because saveTask does `status = excluded.status` the next sync
+      // overwrote the DONE the user had just set.
+      record(
+        ok({
+          issues: [
+            {
+              id: 10,
+              key: 'A-1',
+              fields: {
+                summary: 'Sent for review',
+                status: { name: 'To Review', statusCategory: { key: 'indeterminate' } }
+              }
+            }
+          ],
+          isLast: true
+        })
+      );
+
+      const provider = await configured({
+        jiraTransitionToReview: 'To Review',
+        jiraCompletionAction: 'to_review'
+      });
+      const tasks = await provider.getTasks('1');
+
+      expect(tasks[0].status).toBe('done');
+    });
+
+    it('GetTasks_StatusUnrelatedToAnyTransition_StillUsesTheCategory', async () => {
+      // Only the statuses the user nominated as completions are promoted. A
+      // different in-flight status is still in progress.
+      record(
+        ok({
+          issues: [
+            {
+              id: 11,
+              key: 'A-2',
+              fields: {
+                summary: 'Being written',
+                status: { name: 'In Progress', statusCategory: { key: 'indeterminate' } }
+              }
+            }
+          ],
+          isLast: true
+        })
+      );
+
+      const provider = await configured({
+        jiraTransitionToReview: 'To Review',
+        jiraCompletionAction: 'to_review'
+      });
+      const tasks = await provider.getTasks('1');
+
+      expect(tasks[0].status).toBe('in_progress');
+    });
+
+    it('GetTasks_NoTransitionsConfigured_NeedsNoSetupAndFallsBackToTheCategory', async () => {
+      // The property worth keeping: a fresh install with nothing mapped still
+      // reads statuses correctly, which is the whole advantage over
+      // OpenProject's three pasted ids.
+      record(
+        ok({
+          issues: [
+            {
+              id: 12,
+              key: 'A-3',
+              fields: {
+                summary: 'Closed upstream',
+                status: { name: 'Terminé', statusCategory: { key: 'done' } }
+              }
+            }
+          ],
+          isLast: true
+        })
+      );
+
+      const tasks = await (await configured()).getTasks('1');
+
+      expect(tasks[0].status).toBe('done');
     });
   });
 

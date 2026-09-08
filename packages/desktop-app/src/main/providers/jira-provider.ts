@@ -21,7 +21,7 @@ interface JiraIssuePage {
     fields?: {
       summary?: string;
       project?: { id?: string | number };
-      status?: { statusCategory?: { key?: string } };
+      status?: { name?: string; statusCategory?: { key?: string } };
     };
   }>;
   nextPageToken?: string;
@@ -221,7 +221,10 @@ export class JiraProvider implements ITaskProvider {
           projectId,
           key: issue.key || String(issue.id),
           title: issue.fields?.summary || 'Untitled issue',
-          status: JiraProvider.mapStatusCategory(issue.fields?.status?.statusCategory?.key)
+          status: this.mapIssueStatus(
+            issue.fields?.status?.name,
+            issue.fields?.status?.statusCategory?.key
+          )
         });
       }
 
@@ -234,6 +237,40 @@ export class JiraProvider implements ITaskProvider {
       'protocol',
       `Fetching Jira issues for project ${projectId} failed: did not finish within ${MAX_COLLECTION_PAGES} pages`
     );
+  }
+
+  /**
+   * Maps an issue's status onto the three states this app tracks, honouring the
+   * transitions the user configured.
+   *
+   * The category alone is not enough, and the round trip is where it shows.
+   * Marking a task done here does not close the issue -- it fires the
+   * configured completion transition, because you send your own work for review
+   * rather than closing it. In a default Jira workflow that lands the issue in
+   * "To Review", whose category is `indeterminate`. Mapping on category alone
+   * therefore read that back as `in_progress` and the next sync overwrote the
+   * local row -- `saveTask` does `status = excluded.status` -- so the badge
+   * flipped from DONE to IN PROGRESS on its own, which reads as the app
+   * forgetting what you just did.
+   *
+   * So a status named by one of the completion transitions counts as done
+   * locally, which is the same answer `OpenProjectProvider` gives for its
+   * configured To Test / To Review status ids. The category remains the
+   * fallback, so an unconfigured install still needs no setup at all.
+   *
+   * The comparison is against the transition name, which is usually also the
+   * name of the status it leads to but is not guaranteed to be. When they
+   * differ the fallback applies, and the remedy is to enter the status name.
+   */
+  private mapIssueStatus(statusName?: string, categoryKey?: string): TaskDTO['status'] {
+    const name = (statusName ?? '').trim().toLowerCase();
+    if (name) {
+      const completions = [this._transitionToTest, this._transitionToReview]
+        .map(t => t.trim().toLowerCase())
+        .filter(Boolean);
+      if (completions.includes(name)) return 'done';
+    }
+    return JiraProvider.mapStatusCategory(categoryKey);
   }
 
   /**
