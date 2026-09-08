@@ -38,6 +38,7 @@ import type {
   DeviceConfigDTO,
   UpdateStatusDTO,
   ProviderSyncResult,
+  SyncQueueSnapshotDTO,
   ProjectsUpdatedPayload,
   PreviewScreenId
 } from '../shared/dtos';
@@ -165,6 +166,8 @@ export interface IElectronAPI {
 
   // Provider sync
   syncProviderNow: () => Promise<ProviderSyncResult>;
+  getSyncQueue: () => Promise<SyncQueueSnapshotDTO>;
+  retryFailedWorklogs: () => Promise<{ requeued: number }>;
   onProjectsUpdated: (callback: (payload: ProjectsUpdatedPayload) => void) => () => void;
   // Unity Plugin Injector & Gitignore
   unityInjector: UnityInjectorAPI;

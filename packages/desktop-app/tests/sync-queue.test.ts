@@ -49,6 +49,74 @@ describe('Worklog sync queue ownership', () => {
     dbConn.close();
   });
 
+  describe('the queue can be read for the sync panel', () => {
+    /**
+     * A worklog that never reached the provider used to be indistinguishable
+     * from one that was never queued. Every row already carried its own
+     * `lastError` and `retryCount`; the only reader was `getPendingQueueItems`,
+     * which filters to PENDING rows that are *due* -- so a parked row and a
+     * row waiting out its backoff were both invisible, and diagnosing a
+     * missing worklog meant reading the console.
+     */
+    it('GetSyncQueueSnapshot_MixedStates_CountsEveryStatus', () => {
+      enqueue('sync_pending');
+      enqueue('sync_failed');
+      enqueue('sync_done');
+      worklogRepo.parkSyncItemAsFailed('sync_failed', 'HTTP 404 - Le ticket est introuvable');
+      worklogRepo.markSyncItemSynced('sync_done');
+
+      const snapshot = worklogRepo.getSyncQueueSnapshot();
+
+      expect(snapshot.counts.pending).toBe(1);
+      expect(snapshot.counts.failed).toBe(1);
+      expect(snapshot.counts.synced).toBe(1);
+    });
+
+    it('GetSyncQueueSnapshot_ParkedRow_CarriesTheProvidersOwnWords', () => {
+      // The whole point. "Provider reported failure" is what this used to
+      // amount to, which said nothing about whether the user or the network
+      // was what had to change.
+      enqueue('sync_parked');
+      worklogRepo.parkSyncItemAsFailed('sync_parked', 'HTTP 400 - Le journal de travail...');
+
+      const row = worklogRepo.getSyncQueueSnapshot().items.find(i => i.id === 'sync_parked');
+
+      expect(row?.status).toBe('FAILED');
+      expect(row?.lastError).toContain('HTTP 400');
+    });
+
+    it('GetSyncQueueSnapshot_RowWaitingOutItsBackoff_IsStillListed', () => {
+      // getPendingQueueItems hides these, correctly -- it answers "what may I
+      // send now". The panel has to answer "what has not arrived", which is a
+      // different question and the reason this method exists.
+      enqueue('sync_backing_off');
+      worklogRepo.releaseSyncItemAfterFailure('sync_backing_off', 'fetch failed', 60_000, MAX_SYNC_ATTEMPTS);
+
+      expect(worklogRepo.getPendingQueueItems()).toHaveLength(0);
+      const listed = worklogRepo.getSyncQueueSnapshot().items.map(i => i.id);
+      expect(listed).toContain('sync_backing_off');
+    });
+
+    it('GetSyncQueueSnapshot_DeliveredRows_AreCountedButNotListed', () => {
+      // Delivered time is history, and listing it would bury the two rows the
+      // user is actually looking for.
+      enqueue('sync_done');
+      worklogRepo.markSyncItemSynced('sync_done');
+
+      const snapshot = worklogRepo.getSyncQueueSnapshot();
+
+      expect(snapshot.counts.synced).toBe(1);
+      expect(snapshot.items).toHaveLength(0);
+    });
+
+    it('GetSyncQueueSnapshot_EmptyQueue_ReportsZerosRatherThanThrowing', () => {
+      const snapshot = worklogRepo.getSyncQueueSnapshot();
+
+      expect(snapshot.counts).toEqual({ pending: 0, syncing: 0, synced: 0, failed: 0 });
+      expect(snapshot.items).toEqual([]);
+    });
+  });
+
   describe('claimSyncItem is atomic', () => {
     it('ClaimSyncItem_TwoDispatchersRaceSameRow_OnlyOneWins', () => {
       // The double-billing bug: both the sync worker and ProviderManager read

@@ -565,3 +565,38 @@ export interface ProjectsUpdatedPayload {
   result: ProviderSyncResult;
   projects: ProjectDTO[];
 }
+
+/** Delivery state of one queued worklog. Mirrors the sync queue table. */
+export type SyncQueueItemStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
+
+/** One queued worklog, as the sync panel shows it. */
+export interface SyncQueueItemDTO {
+  id: string;
+  providerId: string;
+  taskId: string;
+  /** The task's own key when it is still in the local cache, else its id. */
+  taskKey: string;
+  durationSeconds: number;
+  startedAtUtc: string;
+  comment: string;
+  status: SyncQueueItemStatus;
+  retryCount: number;
+  /** Earliest time this row may be retried; null means immediately. */
+  nextAttemptAtUtc: string | null;
+  /** What the provider or the network actually said, verbatim. */
+  lastError: string | null;
+}
+
+/**
+ * The sync queue at a glance.
+ *
+ * Exists because a worklog that never reached the provider used to be
+ * indistinguishable from one that was never queued: the rows carried their own
+ * `lastError` and `retryCount` and nothing displayed them.
+ */
+export interface SyncQueueSnapshotDTO {
+  counts: { pending: number; syncing: number; synced: number; failed: number };
+  items: SyncQueueItemDTO[];
+  /** Attempts before a row parks, so the panel can say "3 of 8". */
+  maxAttempts: number;
+}

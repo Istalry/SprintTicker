@@ -121,6 +121,8 @@ export enum IPCChannel {
 
   /** Fetches projects and tasks from the active provider immediately. */
   SYNC_PROVIDER_NOW = 'provider:sync-now',
+  GET_SYNC_QUEUE = 'provider:get-sync-queue',
+  RETRY_FAILED_WORKLOGS = 'provider:retry-failed-worklogs',
 
   /**
    * The cached project list changed.

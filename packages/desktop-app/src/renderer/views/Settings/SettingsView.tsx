@@ -4,6 +4,7 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { OpStatusDTO } from '../../../shared/dtos';
 import { TaskScope, TaskScopeValue, TASK_SCOPE_LABELS } from '../../../shared/task-scope';
+import { SyncQueuePanel } from '../../components/SyncQueuePanel';
 
 export interface SettingsViewProps {
   initialTab?: string;
@@ -517,6 +518,11 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           <p className="text-xs text-text-secondary mt-1">Non-sprint ad-hoc tasks will log hours against this issue key.</p>
         </div>
       </div>
+
+      {/* Below the credentials deliberately: the queue is the consequence of
+          what is configured above, and saving credentials is what un-parks a
+          row that failed because they were wrong. */}
+      <SyncQueuePanel />
     </div>
   );
 };

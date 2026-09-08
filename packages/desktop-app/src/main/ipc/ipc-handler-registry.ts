@@ -1,6 +1,7 @@
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { IPCChannel } from '../../shared/ipc-channels';
+import { MAX_SYNC_ATTEMPTS } from '../sync/sync-constants';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
@@ -18,7 +19,7 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { OpenProjectProvider } from '../providers/openproject-provider';
@@ -183,6 +184,51 @@ export class IPCHandlerRegistry {
         projects: this.projectRepo.getAllProjects()
       });
       return result;
+    });
+
+    /**
+     * The sync queue, for the panel that shows why a worklog has not arrived.
+     *
+     * Each row is joined to the local task cache so the panel can name the
+     * task the way the user does. The queue stores the provider's own task id
+     * -- Jira's `10001` rather than `SCRUM-2` -- because that is what the API
+     * needs, and a number nobody recognises is no use in a diagnostic.
+     */
+    ipcMain.handle(IPCChannel.GET_SYNC_QUEUE, async (): Promise<SyncQueueSnapshotDTO> => {
+      const snapshot = this.worklogRepo.getSyncQueueSnapshot();
+      return {
+        counts: snapshot.counts,
+        maxAttempts: MAX_SYNC_ATTEMPTS,
+        items: snapshot.items.map(item => ({
+          id: item.id,
+          providerId: item.providerId,
+          taskId: item.taskId,
+          taskKey: this.taskRepo.getTaskById(item.taskId)?.key || item.taskId,
+          durationSeconds: item.durationSeconds,
+          startedAtUtc: item.startedAtUtc,
+          comment: item.comment,
+          status: item.status,
+          retryCount: item.retryCount,
+          nextAttemptAtUtc: item.nextAttemptAtUtc,
+          lastError: item.lastError
+        }))
+      };
+    });
+
+    /**
+     * Un-parks every FAILED row and drains the queue.
+     *
+     * The same call saving credentials makes, exposed on its own because the
+     * reason a row parked is not always a credential: a deleted issue answers
+     * 404 for good, and a payload Jira refuses answers 400 no matter how long
+     * you wait. Both park permanently now, and re-creating the issue or fixing
+     * the workflow is a repair no settings form can detect.
+     */
+    ipcMain.handle(IPCChannel.RETRY_FAILED_WORKLOGS, async (): Promise<{ requeued: number }> => {
+      if (!this.syncWorker) return { requeued: 0 };
+      const requeued = this.syncWorker.requeueFailedWorklogs();
+      if (requeued > 0) await this.syncWorker.processPendingQueue();
+      return { requeued };
     });
 
     ipcMain.handle(IPCChannel.GET_PROJECTS, async () => {

@@ -44,6 +44,8 @@ describe('Saving provider settings triggers a sync', () => {
   let engine: TimeTrackingEngine;
   let sent: Array<{ channel: string; payload: unknown }>;
   let syncWorker: OfflineSyncWorker;
+  let queueRepo: WorklogRepository;
+  let cacheRepo: TaskRepository;
   let requeueCalls = 0;
   let drainCalls = 0;
   let syncCalls: number;
@@ -79,6 +81,8 @@ describe('Saving provider settings triggers a sync', () => {
     const sessionRepo = new SessionRepository(dbConn);
     const worklogRepo = new WorklogRepository(dbConn);
     const taskRepo = new TaskRepository(dbConn);
+    queueRepo = worklogRepo;
+    cacheRepo = taskRepo;
     const settingsRepo = new SettingsRepository(dbConn);
     const projectRepo = new ProjectRepository(dbConn);
 
@@ -215,5 +219,76 @@ describe('Saving provider settings triggers a sync', () => {
 
     expect(result).toEqual({ status: 'synced', projects: 1, tasks: 0 });
     expect(sent.some(m => m.channel === IPCChannel.ON_PROJECTS_UPDATED)).toBe(true);
+  });
+
+  describe('the sync queue is readable from the renderer', () => {
+    /**
+     * The panel exists because two worklogs failed against a live Jira and
+     * finding out why took a terminal and three hundred lines of console. The
+     * reasons were on the rows the whole time.
+     */
+    function park(id: string, taskId: string, message: string): void {
+      queueRepo.enqueueSyncItem({
+        id,
+        providerId: 'jira',
+        taskId,
+        durationSeconds: 30,
+        startedAtUtc: '2026-09-08T09:00:00.000Z',
+        comment: 'Completed session via SprintTicker'
+      });
+      queueRepo.parkSyncItemAsFailed(id, message);
+    }
+
+    it('GetSyncQueue_ParkedWorklog_ReportsTheProvidersOwnMessage', async () => {
+      park('sync_400', '10004', 'HTTP 400 - Le journal de travail est invalide');
+
+      const snapshot = (await handlerFor(IPCChannel.GET_SYNC_QUEUE)({})) as {
+        counts: { failed: number };
+        items: Array<{ lastError: string | null; status: string }>;
+        maxAttempts: number;
+      };
+
+      expect(snapshot.counts.failed).toBe(1);
+      expect(snapshot.items[0].status).toBe('FAILED');
+      expect(snapshot.items[0].lastError).toContain('HTTP 400');
+      // So the panel can say "attempt 3 of 8" rather than just "3".
+      expect(snapshot.maxAttempts).toBeGreaterThan(0);
+    });
+
+    it('GetSyncQueue_TaskStillCached_NamesItTheWayTheUserDoes', async () => {
+      // The queue stores the provider's own id, because that is what the API
+      // needs -- Jira's 10004 rather than SCRUM-6. A number that appears
+      // nowhere in Jira's UI is no use in a diagnostic panel.
+      cacheRepo.saveTask({ id: '10004', projectId: '10000', key: 'SCRUM-6', title: 'Test 2', status: 'todo' });
+      park('sync_named', '10004', 'HTTP 400');
+
+      const snapshot = (await handlerFor(IPCChannel.GET_SYNC_QUEUE)({})) as {
+        items: Array<{ taskKey: string }>;
+      };
+
+      expect(snapshot.items[0].taskKey).toBe('SCRUM-6');
+    });
+
+    it('GetSyncQueue_TaskNoLongerCached_FallsBackToTheIdRatherThanBlank', async () => {
+      // A 404 means the issue is gone, so it will not be in the local cache
+      // either -- and that row is exactly the one being diagnosed.
+      park('sync_404', '10001', 'HTTP 404 - introuvable');
+
+      const snapshot = (await handlerFor(IPCChannel.GET_SYNC_QUEUE)({})) as {
+        items: Array<{ taskKey: string }>;
+      };
+
+      expect(snapshot.items[0].taskKey).toBe('10001');
+    });
+
+    it('RetryFailedWorklogs_Invoked_UnparksAndDrains', async () => {
+      const result = await handlerFor(IPCChannel.RETRY_FAILED_WORKLOGS)({});
+
+      expect(requeueCalls).toBeGreaterThan(0);
+      expect(result).toEqual({ requeued: 0 });
+      // The stub revived nothing, so no drain should have been attempted: a
+      // pass over an empty queue is work for nothing on every button press.
+      expect(drainCalls).toBe(0);
+    });
   });
 });

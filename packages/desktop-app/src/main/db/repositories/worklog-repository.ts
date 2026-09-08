@@ -154,6 +154,49 @@ export class WorklogRepository {
   }
 
   /**
+   * Everything the sync panel needs in one read: counts by status, plus the
+   * rows that have not been delivered.
+   *
+   * `SYNCED` rows are counted and not listed -- they are history, and the
+   * point of the panel is what has *not* arrived. Ordered newest first because
+   * a failure being diagnosed is almost always the most recent one.
+   *
+   * This exists because a worklog that never reached the provider was
+   * indistinguishable from one that was never queued. Each row already carried
+   * `last_error` and `retry_count`; nothing read them, so diagnosing a missing
+   * worklog meant running the app from a terminal and reading the console.
+   */
+  public getSyncQueueSnapshot(limit: number = 50): {
+    counts: { pending: number; syncing: number; synced: number; failed: number };
+    items: SyncQueueRecord[];
+  } {
+    const db = this.dbConn.getDb();
+    const counts = { pending: 0, syncing: 0, synced: 0, failed: 0 };
+
+    const tallied = db
+      .prepare<[], { status: SyncQueueStatus; total: number }>(
+        'SELECT status, COUNT(*) AS total FROM worklog_sync_queue GROUP BY status'
+      )
+      .all();
+    for (const row of tallied) {
+      const key = row.status.toLowerCase() as keyof typeof counts;
+      if (key in counts) counts[key] = row.total;
+    }
+
+    const items = db
+      .prepare<[number], SyncQueueRow>(
+        `SELECT * FROM worklog_sync_queue
+          WHERE status <> 'SYNCED'
+          ORDER BY created_at_utc DESC
+          LIMIT ?`
+      )
+      .all(limit)
+      .map(mapSyncQueueRow);
+
+    return { counts, items };
+  }
+
+  /**
    * Atomically takes ownership of a pending row.
    *
    * The status check and the write are a single statement, so two concurrent

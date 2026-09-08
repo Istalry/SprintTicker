@@ -185,6 +185,10 @@ const electronAPI: IElectronAPI = {
   // Provider sync. The Projects view reads a cache only the sync worker fills,
   // so it needs to be told when that cache changes.
   syncProviderNow: () => ipcRenderer.invoke(IPCChannel.SYNC_PROVIDER_NOW),
+  // The sync panel's two reads. Kept next to syncProviderNow because they are
+  // the same feature: what the queue holds, and a way to push it again.
+  getSyncQueue: () => ipcRenderer.invoke(IPCChannel.GET_SYNC_QUEUE),
+  retryFailedWorklogs: () => ipcRenderer.invoke(IPCChannel.RETRY_FAILED_WORKLOGS),
   onProjectsUpdated: (callback: (payload: ProjectsUpdatedPayload) => void) => {
     const handler = (_event: IpcRendererEvent, payload: ProjectsUpdatedPayload) => callback(payload);
     ipcRenderer.on(IPCChannel.ON_PROJECTS_UPDATED, handler);
