@@ -44,9 +44,30 @@ export class ProviderRequestError extends Error {
     this.status = options?.status;
   }
 
-  /** True when retrying the same request cannot succeed without user action. */
+  /**
+   * True when retrying the same request cannot succeed without user action.
+   *
+   * A 4xx belongs here as much as a 401 does, and leaving it out cost real
+   * retries against a live Jira site: a worklog for an issue that had since
+   * been deleted answered `404 - Le ticket n'existe pas`, and one Jira refused
+   * outright answered `400`. Both were retried on the ordinary backoff, and
+   * both retries sent byte-identical requests to a byte-identical URL. This is
+   * the rule the device driver already follows -- `413` there is documented as
+   * permanent because retrying sends the same bytes -- applied to providers.
+   *
+   * The two 4xx exceptions are the ones that describe a moment rather than a
+   * request: `408` is the server saying it waited too long, and `429` that it
+   * wants a pause. `providerFetch` already retries both internally, and a row
+   * that still fails afterwards deserves the queue's slower backoff, not a
+   * park.
+   *
+   * A 5xx stays retryable: the request was fine and the server was not.
+   */
   public get isPermanent(): boolean {
-    return this.kind === 'auth' || this.kind === 'not_configured';
+    if (this.kind === 'auth' || this.kind === 'not_configured') return true;
+    if (this.status === undefined) return false;
+    if (this.status === 408 || this.status === 429) return false;
+    return this.status >= 400 && this.status < 500;
   }
 
   /** Convenience for the common "credentials are missing" case. */

@@ -227,6 +227,62 @@ describe('providerFetch', () => {
       expect(err.message).toContain('You did not provide the correct credentials.');
     });
 
+    describe('a 4xx is permanent, because the retry sends identical bytes', () => {
+      /**
+       * Found in a real run against Jira, not by reading the code. A worklog
+       * for an issue that had since been deleted answered `404 - Le ticket
+       * n'existe pas`, and one Jira refused outright answered `400`. Both were
+       * retried on the ordinary backoff, and every retry was a byte-identical
+       * request to a byte-identical URL.
+       *
+       * The device driver already had this rule -- its `413` is documented as
+       * permanent for exactly this reason -- and the provider side had only
+       * ever applied it to 401/403.
+       */
+      async function statusFrom(status: number): Promise<ProviderRequestError> {
+        const fetchFn = vi.fn().mockResolvedValue(response(status, {}));
+        return (await providerFetch(PROVIDER, URL_UNDER_TEST, {}, 'Logging time', {
+          fetchFn,
+          sleepFn: noSleep
+        }).catch(e => e as unknown)) as ProviderRequestError;
+      }
+
+      it('IsPermanent_IssueDeletedSoTheWorklogIs404_DoesNotKeepRetrying', async () => {
+        const err = await statusFrom(404);
+
+        expect(err.kind).toBe('protocol');
+        expect(err.isPermanent).toBe(true);
+      });
+
+      it('IsPermanent_PayloadRefusedWith400_DoesNotKeepRetrying', async () => {
+        expect((await statusFrom(400)).isPermanent).toBe(true);
+      });
+
+      it('IsPermanent_ServerFault_StaysRetryable', async () => {
+        // The request was fine and the server was not, so waiting can help.
+        expect((await statusFrom(500)).isPermanent).toBe(false);
+      });
+
+      it('IsPermanent_TimeoutOrRateLimit_StayRetryableDespiteBeing4xx', async () => {
+        // The two 4xx that describe a moment rather than a request.
+        expect((await statusFrom(408)).isPermanent).toBe(false);
+        expect((await statusFrom(429)).isPermanent).toBe(false);
+      });
+
+      it('IsPermanent_TransportFailure_StaysRetryable', async () => {
+        // No status at all: the wifi dropped, or DNS blinked. Retrying is the
+        // whole point of the queue.
+        const fetchFn = vi.fn().mockRejectedValue(new Error('fetch failed'));
+        const err = (await providerFetch(PROVIDER, URL_UNDER_TEST, {}, 'Logging time', {
+          fetchFn,
+          sleepFn: noSleep
+        }).catch(e => e as unknown)) as ProviderRequestError;
+
+        expect(err.kind).toBe('transport');
+        expect(err.isPermanent).toBe(false);
+      });
+    });
+
     it('ProviderFetch_JiraStyleErrorMessages_AreReadToo', async () => {
       // Jira Cloud returns an `errorMessages` array where OpenProject returns
       // `message`. Both are the only actionable half of the response.
