@@ -1,3 +1,5 @@
+import { TaskScope } from './task-scope';
+
 /**
  * Single source of truth for task-provider setting keys and their defaults.
  *
@@ -7,8 +9,8 @@
  * packaged binary, and how the notification defaults drifted apart between the
  * two processes.
  *
- * This module is pure data with no imports, so it is safe on both sides of the
- * context bridge.
+ * Pure data apart from the TaskScope vocabulary it defaults to, so it is safe
+ * on both sides of the context bridge.
  */
 
 /** Setting keys as stored in the `settings` table. */
@@ -20,7 +22,9 @@ export const ProviderSettingKey = {
   OP_STATUS_IN_PROGRESS: 'op_status_in_progress',
   OP_STATUS_TO_TEST: 'op_status_to_test',
   OP_STATUS_TO_REVIEW: 'op_status_to_review',
-  OP_COMPLETION_ACTION: 'op_completion_action'
+  OP_COMPLETION_ACTION: 'op_completion_action',
+  OP_TASK_SCOPE: 'op_task_scope',
+  OP_TASK_QUERY: 'op_task_query'
 } as const;
 
 /** Union of the setting-key string literals above. */
@@ -48,7 +52,11 @@ export const PROVIDER_SETTING_DEFAULTS = {
   [ProviderSettingKey.OP_STATUS_IN_PROGRESS]: '',
   [ProviderSettingKey.OP_STATUS_TO_TEST]: '',
   [ProviderSettingKey.OP_STATUS_TO_REVIEW]: '',
-  [ProviderSettingKey.OP_COMPLETION_ACTION]: 'to_review'
+  [ProviderSettingKey.OP_COMPLETION_ACTION]: 'to_review',
+  // The historical hardcoded behaviour, kept as the default so an existing
+  // install sees exactly the task list it saw before this became a choice.
+  [ProviderSettingKey.OP_TASK_SCOPE]: TaskScope.ASSIGNED_TO_ME,
+  [ProviderSettingKey.OP_TASK_QUERY]: ''
 } as const satisfies Record<string, string>;
 
 /** True when the OpenProject provider has enough configuration to issue a request. */

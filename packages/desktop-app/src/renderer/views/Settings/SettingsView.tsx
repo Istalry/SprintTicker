@@ -3,6 +3,7 @@ import { CheckSquare } from 'lucide-react';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { OpStatusDTO } from '../../../shared/dtos';
+import { TaskScope, TaskScopeValue, TASK_SCOPE_LABELS } from '../../../shared/task-scope';
 
 export interface SettingsViewProps {
   initialTab?: string;
@@ -21,6 +22,8 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
   const [opStatusToTest, setOpStatusToTest] = useState<string>('');
   const [opStatusToReview, setOpStatusToReview] = useState<string>('');
   const [opCompletionAction, setOpCompletionAction] = useState<string>('to_test');
+  const [opTaskScope, setOpTaskScope] = useState<TaskScopeValue>(TaskScope.ASSIGNED_TO_ME);
+  const [opTaskQuery, setOpTaskQuery] = useState<string>('');
 
   const [availableStatuses, setAvailableStatuses] = useState<OpStatusDTO[]>([]);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState<boolean>(false);
@@ -46,6 +49,11 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           if (res.opStatusToTest) setOpStatusToTest(res.opStatusToTest);
           if (res.opStatusToReview) setOpStatusToReview(res.opStatusToReview);
           if (res.opCompletionAction) setOpCompletionAction(res.opCompletionAction);
+          if (res.opTaskScope) setOpTaskScope(res.opTaskScope as TaskScopeValue);
+          // No truthiness guard: an empty query is a real value the user can
+          // set by clearing the field, and skipping it would resurrect the old
+          // one on the next save.
+          if (res.opTaskQuery !== undefined) setOpTaskQuery(res.opTaskQuery);
         }
       }).catch(err => console.error('[SettingsView] Error loading providers:', err)));
     }
@@ -72,7 +80,9 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
         opStatusInProgress,
         opStatusToTest,
         opStatusToReview,
-        opCompletionAction
+        opCompletionAction,
+        opTaskScope,
+        opTaskQuery
       });
     }
 
@@ -98,6 +108,8 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       opStatusToTest,
       opStatusToReview,
       opCompletionAction,
+      opTaskScope,
+      opTaskQuery,
       enableOpenProjectNotifications,
       openProjectPollingIntervalSeconds
     ],
@@ -252,6 +264,41 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
                   <option value="to_review">Move to To Review</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-xs font-mono text-text-secondary mb-1">Which Tasks To Show</label>
+                <select
+                  value={opTaskScope}
+                  onChange={e => setOpTaskScope(e.target.value as TaskScopeValue)}
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                >
+                  {Object.values(TaskScope).map(scope => (
+                    <option key={scope} value={scope}>{TASK_SCOPE_LABELS[scope]}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-text-secondary">
+                  Only open tasks in the selected project are ever listed.
+                </p>
+              </div>
+              {opTaskScope === TaskScope.CUSTOM && (
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-mono text-text-secondary mb-1">
+                    Custom Filter (OpenProject v3 JSON)
+                  </label>
+                  <textarea
+                    value={opTaskQuery}
+                    onChange={e => setOpTaskQuery(e.target.value)}
+                    rows={3}
+                    spellCheck={false}
+                    placeholder={'[{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]'}
+                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                  />
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Replaces the filter entirely, including the project clause &mdash; so add one
+                    yourself unless you mean every project. An invalid filter fails the sync
+                    loudly rather than quietly showing no tasks.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Notification Configuration */}

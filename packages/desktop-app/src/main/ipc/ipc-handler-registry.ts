@@ -24,6 +24,7 @@ import { UpdateChecker } from '../updater/update-checker';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
+import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
 
@@ -478,6 +479,8 @@ export class IPCHandlerRegistry {
       const opStatusToTest = read(ProviderSettingKey.OP_STATUS_TO_TEST);
       const opStatusToReview = read(ProviderSettingKey.OP_STATUS_TO_REVIEW);
       const opCompletionAction = read(ProviderSettingKey.OP_COMPLETION_ACTION);
+      const opTaskScope = read(ProviderSettingKey.OP_TASK_SCOPE);
+      const opTaskQuery = read(ProviderSettingKey.OP_TASK_QUERY);
 
       return {
         activeProviderId: activeId,
@@ -488,6 +491,8 @@ export class IPCHandlerRegistry {
         opStatusToTest,
         opStatusToReview,
         opCompletionAction,
+        opTaskScope,
+        opTaskQuery,
         providers: [
           { id: 'openproject', name: 'OpenProject' },
           { id: 'adhoc', name: 'Ad-Hoc / Custom Local Fallback' }
@@ -504,6 +509,8 @@ export class IPCHandlerRegistry {
       opStatusToTest?: string;
       opStatusToReview?: string;
       opCompletionAction?: string;
+      opTaskScope?: string;
+      opTaskQuery?: string;
     }) => {
       if (payload.providerId) this.settingsRepo.setSetting('active_provider_id', payload.providerId);
       if (payload.fallbackTicketKey) this.settingsRepo.setSetting('fallback_ticket_key', payload.fallbackTicketKey);
@@ -513,6 +520,13 @@ export class IPCHandlerRegistry {
       if (payload.opStatusToTest !== undefined) this.settingsRepo.setSetting('op_status_to_test', payload.opStatusToTest);
       if (payload.opStatusToReview !== undefined) this.settingsRepo.setSetting('op_status_to_review', payload.opStatusToReview);
       if (payload.opCompletionAction !== undefined) this.settingsRepo.setSetting('op_completion_action', payload.opCompletionAction);
+      // Stored through parseTaskScope so a value from an older renderer, or a
+      // hand-edited row, cannot leave the provider with a scope it does not
+      // recognise.
+      if (payload.opTaskScope !== undefined) {
+        this.settingsRepo.setSetting(ProviderSettingKey.OP_TASK_SCOPE, parseTaskScope(payload.opTaskScope));
+      }
+      if (payload.opTaskQuery !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.OP_TASK_QUERY, payload.opTaskQuery);
 
       if (this.providerManager) {
         this.providerManager.reinitializeProviders();

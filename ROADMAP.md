@@ -185,6 +185,15 @@ not multiply existing bugs:
   that `GET_PROVIDERS` still hands the decrypted key to the renderer, because
   the settings form shows it -- making that field write-only is a product
   decision, not a bug fix.
+- **Which tasks to fetch is a setting, not a constant (F-12).** `shared/task-scope.ts`
+  holds the vocabulary -- assigned to me / everything open / a custom query --
+  and each adapter renders it in its own dialect, since OpenProject takes a
+  JSON filter array and Jira takes JQL. The default is the old hardcoded
+  behaviour, so an existing install sees the list it always saw. A custom query
+  is validated before it is sent and **throws** if it is not a filter array:
+  an invalid filter that quietly matched nothing would let the sync worker's
+  prune delete every cached task for the project, which is F-01 reachable from
+  a text field.
 - **The error contract is settled: every provider method reports failure by
   throwing.** `logTime` and `updateTaskStatus` used to log and return a falsy
   result, which reached the sync queue as the string "Provider reported
@@ -216,9 +225,6 @@ should grow its own routes in the same harness rather than a second one.
 
 Also worth doing while this area is open:
 
-- Make the "assigned to me" task filter a **setting** rather than a constant.
-  Both providers hardcode the current user; per-provider it should offer
-  assigned to me / everything / a custom query.
 - Point the device driver's `deviceFetch` at the same client, or at least stop
   the two drifting. It is not urgent: `deviceFetch` already has the one thing
   the providers were missing, and the device's 409/413/503 semantics are not
@@ -355,7 +361,7 @@ nobody got to.
 | :--- | :--- | :--- |
 | F-11 — credentials in plaintext, `http` scheme default | Closed | `sanitizeDomain` assumes TLS for a bare host, so a Basic-header API key no longer goes out in clear text; `SecretStore` encrypts it at rest through `safeStorage`, upgrading existing plaintext on first read. What is left is not this finding: the settings form still receives the decrypted key over IPC because it displays it. |
 | F-12 residue — no `fetch` timeouts in the provider layer | Closed | `provider-http.ts` gives every provider request a timeout, so a hung OpenProject can no longer stall a sync pass indefinitely. Saving credentials still does not await its sync, which is now a choice about UI responsiveness rather than a hedge against an unbounded request. |
-| F-12 residue — `getTasks` hardcodes `assignee = "me"` | Decided, not built | Becomes a per-provider setting: assigned to me / everything / a custom query. Listed in §3 so it lands on the generalised provider base rather than twice. |
+| F-12 residue — `getTasks` hardcodes `assignee = "me"` | Closed | Now the `op_task_scope` setting: assigned to me (the default, unchanged behaviour), everything open, or a custom v3 filter array. The scope vocabulary is shared so Jira reuses it rather than inventing a second one. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
 | Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
 | Foreign keys on `worklogs` → `tasks` | Deferred | **Would fail on existing data**: F-01 already deleted tasks that surviving worklogs reference. Needs an orphan-cleanup decision. |

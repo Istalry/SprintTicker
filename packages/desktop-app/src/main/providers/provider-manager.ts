@@ -61,7 +61,9 @@ export class ProviderManager {
         opStatusInProgress: this.readSetting(ProviderSettingKey.OP_STATUS_IN_PROGRESS),
         opStatusToTest: this.readSetting(ProviderSettingKey.OP_STATUS_TO_TEST),
         opStatusToReview: this.readSetting(ProviderSettingKey.OP_STATUS_TO_REVIEW),
-        opCompletionAction: this.readSetting(ProviderSettingKey.OP_COMPLETION_ACTION)
+        opCompletionAction: this.readSetting(ProviderSettingKey.OP_COMPLETION_ACTION),
+        opTaskScope: this.readSetting(ProviderSettingKey.OP_TASK_SCOPE),
+        opTaskQuery: this.readSetting(ProviderSettingKey.OP_TASK_QUERY)
       })
         .catch(err => console.error('[ProviderManager] opProvider.initialize failed:', err));
     }

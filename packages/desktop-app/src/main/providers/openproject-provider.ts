@@ -4,6 +4,7 @@ import { ProviderRequestError } from './provider-errors';
 import { fetchOpenProjectCollection } from './openproject-collection';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
+import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
 import { localDateKey } from '../../shared/local-date';
 
 /**
@@ -21,6 +22,8 @@ export class OpenProjectProvider implements ITaskProvider {
   private _statusIdToTest: string = '';
   private _statusIdToReview: string = '';
   private _defaultCompletionAction: string = 'to_test';
+  private _taskScope: TaskScopeValue = TaskScope.ASSIGNED_TO_ME;
+  private _taskQuery: string = '';
 
   /**
    * How this provider reaches the network.
@@ -46,6 +49,8 @@ export class OpenProjectProvider implements ITaskProvider {
     this._statusIdToTest = credentials.opStatusToTest || '';
     this._statusIdToReview = credentials.opStatusToReview || '';
     this._defaultCompletionAction = credentials.opCompletionAction || 'to_test';
+    this._taskScope = parseTaskScope(credentials.opTaskScope);
+    this._taskQuery = credentials.opTaskQuery || '';
     return true;
   }
 
@@ -133,12 +138,10 @@ export class OpenProjectProvider implements ITaskProvider {
       throw ProviderRequestError.notConfigured(this.providerId);
     }
 
-    // Filter: Project ID, Assignee = me, Status = open ("o")
-    const filter = `[{"project":{"operator":"=","values":["${projectId}"]}},{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]`;
     const elements = await this.fetchCollection(
       '/api/v3/work_packages',
       `Fetching tasks for project ${projectId}`,
-      { filters: filter }
+      { filters: this.buildTaskFilter(projectId) }
     );
 
     return elements
@@ -166,6 +169,79 @@ export class OpenProjectProvider implements ITaskProvider {
           };
       })
       .filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone');
+  }
+
+  /**
+   * Turns the configured task scope into an OpenProject v3 `filters` array.
+   *
+   * Built as data and serialised, rather than interpolated into a JSON string
+   * literal as it used to be: a project identifier containing a quote produced
+   * a filter that was not JSON, and OpenProject answers that with a 400 whose
+   * body does not mention which filter was wrong.
+   *
+   * The project and open-status clauses are not negotiable -- a scope decides
+   * *whose* work to show, not which project or whether to include closed
+   * tickets, and dropping either would hand the sync worker a task list from
+   * the wrong project.
+   */
+  private buildTaskFilter(projectId: string): string {
+    if (this._taskScope === TaskScope.CUSTOM) {
+      return this.parseCustomTaskQuery();
+    }
+
+    const filters: Array<Record<string, { operator: string; values: string[] }>> = [
+      { project: { operator: '=', values: [projectId] } },
+      { status: { operator: 'o', values: [] } }
+    ];
+    if (this._taskScope === TaskScope.ASSIGNED_TO_ME) {
+      filters.push({ assignee: { operator: '=', values: ['me'] } });
+    }
+    return JSON.stringify(filters);
+  }
+
+  /**
+   * Validates the user's raw filter before it is sent.
+   *
+   * Throwing here is the whole point. A malformed filter makes OpenProject
+   * return a 400, and an adapter that swallowed that and returned `[]` would
+   * hand the sync worker an empty task list it treats as authoritative --
+   * deleting every cached task for the project. That is audit F-01, and a
+   * free-text field is the easiest way back into it.
+   */
+  private parseCustomTaskQuery(): string {
+    const raw = this._taskQuery.trim();
+    if (!raw) {
+      throw new ProviderRequestError(
+        this.providerId,
+        'not_configured',
+        'The OpenProject task scope is set to a custom query, but no query has been entered. ' +
+          'Add one in Settings, or choose a different scope.'
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        'The custom OpenProject task query is not valid JSON. It must be a filter array, ' +
+          'for example [{"assignee":{"operator":"=","values":["me"]}}].',
+        { cause: err }
+      );
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        'The custom OpenProject task query must be a JSON array of filters, ' +
+          `not ${typeof parsed}.`
+      );
+    }
+
+    return JSON.stringify(parsed);
   }
 
   /// <summary>

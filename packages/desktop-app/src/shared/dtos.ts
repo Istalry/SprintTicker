@@ -154,6 +154,10 @@ export interface ProviderSettingsDTO {
   opStatusToTest: string;
   opStatusToReview: string;
   opCompletionAction: string;
+  /** A {@link TaskScopeValue}; typed as string because DTOs stay dependency-free. */
+  opTaskScope: string;
+  /** The raw provider-native query, meaningful only when the scope is `custom`. */
+  opTaskQuery: string;
   providers: Array<{ id: string; name: string }>;
 }
 
@@ -167,6 +171,8 @@ export interface ProviderSettingsUpdateDTO {
   opStatusToTest?: string;
   opStatusToReview?: string;
   opCompletionAction?: string;
+  opTaskScope?: string;
+  opTaskQuery?: string;
 }
 
 export interface WorklogDTO {
