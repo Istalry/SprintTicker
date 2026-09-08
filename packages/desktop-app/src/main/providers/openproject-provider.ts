@@ -1,5 +1,5 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
-import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO } from '../../shared/dtos';
+import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO, ArgumentException } from '../../shared/dtos';
 import { ProviderRequestError } from './provider-errors';
 import { fetchOpenProjectCollection } from './openproject-collection';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
@@ -251,17 +251,30 @@ export class OpenProjectProvider implements ITaskProvider {
   /// <summary>
   /// Synchronizes time tracking with OpenProject by creating a time entry on the target work package (POST /api/v3/time_entries).
   /// </summary>
+  /**
+   * Reports failure by throwing, like every other method here.
+   *
+   * It used to log and return `{ success: false }`, which reached the sync
+   * queue as the string "Provider reported failure" -- the same row whether the
+   * API key had been revoked or the wifi had dropped. The queue then retried a
+   * revoked key on an exponential backoff until it exhausted the attempt budget
+   * and parked the worklog, and nothing anywhere said why.
+   *
+   * The queue still decides what to do about a failure; it can now tell which
+   * failure it is, because `ProviderRequestError` carries `isPermanent`.
+   */
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
-    if (!this._domain || !this._apiKey) {
-      console.warn('[OpenProjectProvider] Cannot log time: OpenProject domain or API key missing.');
-      return { success: false };
+    if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
+      throw ProviderRequestError.notConfigured(this.providerId);
     }
-    if (!payload.taskId || payload.durationSeconds <= 0) {
-      console.warn('[OpenProjectProvider] Cannot log time: Invalid task ID or duration <= 0.');
-      return { success: false };
+    if (!payload.taskId) throw new ArgumentException('payload.taskId is required to log time.');
+    if (payload.durationSeconds <= 0) {
+      throw new ArgumentException(
+        `payload.durationSeconds must be greater than zero (received ${payload.durationSeconds}).`
+      );
     }
 
-    try {
+    {
       const url = `${this.getBaseUrl()}/api/v3/time_entries`;
       const isoDuration = this.formatIsoDuration(payload.durationSeconds);
       // spentOn is a calendar day of work, so it is the local day the session
@@ -307,14 +320,7 @@ export class OpenProjectProvider implements ITaskProvider {
       const remoteWorklogId = json.id ? json.id.toString() : `op_wl_${Date.now()}`;
       console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId})`);
       return { success: true, remoteWorklogId };
-    } catch (err) {
-      // Reported as a failed result rather than a throw: the caller is the
-      // sync queue, which keeps the worklog and retries it later. Turning
-      // this into an exception is part of settling the provider error
-      // contract and has to change the queue at the same time.
-      console.error('[OpenProjectProvider] Failed to log time:', err);
     }
-    return { success: false };
   }
 
   /// <summary>
@@ -349,7 +355,7 @@ export class OpenProjectProvider implements ITaskProvider {
       return false;
     }
 
-    try {
+    {
       const cleanTaskId = taskId.replace(/^OP-/, '');
       const getUrl = `${this.getBaseUrl()}/api/v3/work_packages/${cleanTaskId}`;
       const getRes = await providerFetch(
@@ -389,9 +395,6 @@ export class OpenProjectProvider implements ITaskProvider {
       );
 
       return true;
-    } catch (err) {
-      console.error('[OpenProjectProvider] Failed to update task status:', err);
-      return false;
     }
   }
 

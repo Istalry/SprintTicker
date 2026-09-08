@@ -185,6 +185,18 @@ not multiply existing bugs:
   that `GET_PROVIDERS` still hands the decrypted key to the renderer, because
   the settings form shows it -- making that field write-only is a product
   decision, not a bug fix.
+- **The error contract is settled: every provider method reports failure by
+  throwing.** `logTime` and `updateTaskStatus` used to log and return a falsy
+  result, which reached the sync queue as the string "Provider reported
+  failure" -- the same row whether the API key had been revoked or the wifi had
+  dropped. The queue now reads `ProviderRequestError.isPermanent` and parks a
+  hopeless row at once instead of retrying a revoked key to its attempt
+  ceiling, recording what the server actually said. That is only safe because
+  saving credentials calls `requeueFailedItems()`, which had no production
+  caller at all, making FAILED terminal in practice despite its docstring --
+  so a corrected API key now un-parks the time the wrong one stranded.
+  `fetchUnreadNotifications` still degrades to an empty list on purpose:
+  nothing is pruned on the strength of it.
 - **The shared HTTP client is done.** `providers/provider-http.ts` is the one
   place a provider talks to the network: per-attempt timeout, status
   classification into `ProviderRequestError`, `Retry-After`-aware backoff, and
@@ -204,12 +216,6 @@ should grow its own routes in the same harness rather than a second one.
 
 Also worth doing while this area is open:
 
-- Settle the provider error contract. `getProjects` / `getTasks` throw;
-  `fetchUnreadNotifications`, `reconcileRemoteState`, `logTime` and
-  `updateTaskStatus` still swallow and return a falsy result. That is
-  defensible for the queued writes -- the queue retries them -- but it is a
-  split nobody chose, and a second provider will have to copy whichever half it
-  guesses at. Decide it before Jira, not during.
 - Make the "assigned to me" task filter a **setting** rather than a constant.
   Both providers hardcode the current user; per-provider it should offer
   assigned to me / everything / a custom query.

@@ -10,6 +10,7 @@ import {
 } from '../src/main/sync/sync-constants';
 import { createId, IdPrefix } from '../src/main/db/id-generator';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
+import { ProviderRequestError } from '../src/main/providers/provider-errors';
 
 /**
  * Regression coverage for audit F-02 (worklogs stranded permanently after one
@@ -198,6 +199,115 @@ describe('Worklog sync queue ownership', () => {
       expect(row?.status).toBe('PENDING');
       expect(row?.retry_count).toBe(1);
       expect(row?.last_error).toContain('ECONNRESET');
+    });
+  });
+
+  describe('a failure that waiting cannot fix', () => {
+    /** The row as it actually sits on disk. */
+    function rowFor(id: string): { status: string; retry_count: number; last_error: string } | undefined {
+      return dbConn
+        .getDb()
+        .prepare<[string], { status: string; retry_count: number; last_error: string }>(
+          'SELECT status, retry_count, last_error FROM worklog_sync_queue WHERE id = ?'
+        )
+        .get(id);
+    }
+
+    /** A provider whose credentials the remote has rejected. */
+    function revokedKeyManager(): ProviderManager {
+      return managerStub({
+        logTimeForProvider: async () => {
+          throw ProviderRequestError.fromStatus(
+            'openproject',
+            401,
+            'Logging time on WP #1',
+            'You did not provide the correct credentials.'
+          );
+        }
+      });
+    }
+
+    it('ProcessPendingQueue_RevokedApiKey_ParksTheRowWithoutSpendingTheRetryBudget', async () => {
+      // A 401 answers the same way in forty seconds and in forty minutes.
+      // Retrying it to the ceiling leaves the row reading "attempt 5 of 5" and
+      // says nothing about the user, rather than the network, being what has
+      // to change.
+      enqueue('sync_revoked');
+
+      await new OfflineSyncWorker(revokedKeyManager(), worklogRepo).processPendingQueue();
+
+      const row = rowFor('sync_revoked');
+      expect(row?.status).toBe('FAILED');
+      expect(row?.retry_count).toBe(0);
+    });
+
+    it('ProcessPendingQueue_RevokedApiKey_RecordsWhatTheServerActuallySaid', async () => {
+      // The whole point of letting the provider throw. This used to read
+      // "Provider reported failure" whether the key was revoked or the wifi
+      // had dropped.
+      enqueue('sync_revoked');
+
+      await new OfflineSyncWorker(revokedKeyManager(), worklogRepo).processPendingQueue();
+
+      expect(rowFor('sync_revoked')?.last_error).toContain('You did not provide the correct credentials.');
+    });
+
+    it('RequeueFailedWorklogs_AfterAPermanentFailure_ReturnsTheTimeToTheQueue', async () => {
+      // What makes parking early safe rather than a way to strand billable
+      // time. Entering a corrected key is the user action that triggers this.
+      enqueue('sync_revoked');
+      const worker = new OfflineSyncWorker(revokedKeyManager(), worklogRepo);
+      await worker.processPendingQueue();
+
+      const revived = worker.requeueFailedWorklogs();
+
+      expect(revived).toBe(1);
+      expect(worklogRepo.getPendingQueueItems()).toHaveLength(1);
+    });
+
+    it('ProcessPendingQueue_RequeuedAfterTheKeyIsFixed_DeliversTheWorklog', async () => {
+      // End to end: parked on a bad key, revived, and sent on the next pass.
+      enqueue('sync_revoked');
+      await new OfflineSyncWorker(revokedKeyManager(), worklogRepo).processPendingQueue();
+
+      const fixed = new OfflineSyncWorker(managerStub({}), worklogRepo);
+      fixed.requeueFailedWorklogs();
+      const result = await fixed.processPendingQueue();
+
+      expect(result.succeeded).toBe(1);
+      expect(rowFor('sync_revoked')?.status).toBe('SYNCED');
+    });
+
+    it('ProcessPendingQueue_TransientOutage_StillBacksOffRatherThanParking', async () => {
+      // The distinction has to cut both ways: a transport failure keeps its
+      // retries, which is the F-02 behaviour this must not regress.
+      enqueue('sync_blip');
+      const manager = managerStub({
+        logTimeForProvider: async () => {
+          throw ProviderRequestError.fromTransport('openproject', 'Logging time', new Error('ECONNRESET'));
+        }
+      });
+
+      await new OfflineSyncWorker(manager, worklogRepo).processPendingQueue();
+
+      const row = rowFor('sync_blip');
+      expect(row?.status).toBe('PENDING');
+      expect(row?.retry_count).toBe(1);
+    });
+
+    it('ProcessPendingQueue_ProviderNeverConfigured_ParksRatherThanRetrying', async () => {
+      // `not_configured` is permanent in the same sense: nothing the queue does
+      // will produce credentials.
+      enqueue('sync_unconfigured');
+      const manager = managerStub({
+        logTimeForProvider: async () => {
+          throw ProviderRequestError.notConfigured('openproject');
+        }
+      });
+
+      await new OfflineSyncWorker(manager, worklogRepo).processPendingQueue();
+
+      expect(rowFor('sync_unconfigured')?.status).toBe('FAILED');
     });
   });
 

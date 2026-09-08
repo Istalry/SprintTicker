@@ -231,13 +231,31 @@ export class OfflineSyncWorker {
             this.worklogRepo.markSyncItemSynced(item.id);
             succeeded++;
           } else {
+            // A provider that reports failure without throwing tells us
+            // nothing about whether waiting would help, so it gets the
+            // ordinary backoff.
             this.releaseFailure(item.id, item.retryCount, 'Provider reported failure');
             failed++;
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           console.error(`[OfflineSyncWorker] Failed to sync worklog ${item.id}:`, err);
-          this.releaseFailure(item.id, item.retryCount, message);
+
+          if (isProviderRequestError(err) && err.isPermanent) {
+            // A revoked key or an unconfigured provider will answer the same
+            // way in forty seconds and in forty minutes. Spending the retry
+            // budget on it means the row parks with 'attempt 5 of 5' against
+            // it and no indication that the user, not the network, is what has
+            // to change. Park it now, with the server's own words attached.
+            //
+            // Safe to park early only because entering credentials requeues
+            // every FAILED row: see requeueFailedItems, called from the
+            // provider settings handler. Without that this would strand
+            // billable time, which is the bug this queue was rebuilt to stop.
+            this.worklogRepo.parkSyncItemAsFailed(item.id, message);
+          } else {
+            this.releaseFailure(item.id, item.retryCount, message);
+          }
           failed++;
         }
       }
@@ -247,6 +265,22 @@ export class OfflineSyncWorker {
     } finally {
       this.isProcessing = false;
     }
+  }
+
+  /**
+   * Returns every parked worklog to the queue.
+   *
+   * Called when provider credentials change, because that is the action that
+   * fixes the failure which parked them. The count is returned so the caller
+   * can say so rather than leaving the user to guess whether their stranded
+   * time came back.
+   */
+  public requeueFailedWorklogs(): number {
+    const revived = this.worklogRepo.requeueFailedItems();
+    if (revived > 0) {
+      console.log(`[OfflineSyncWorker] Requeued ${revived} previously failed worklog(s).`);
+    }
+    return revived;
   }
 
   /** Releases a claimed row behind a jittered exponential backoff. */

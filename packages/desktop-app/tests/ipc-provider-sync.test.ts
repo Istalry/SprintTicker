@@ -44,6 +44,8 @@ describe('Saving provider settings triggers a sync', () => {
   let engine: TimeTrackingEngine;
   let sent: Array<{ channel: string; payload: unknown }>;
   let syncWorker: OfflineSyncWorker;
+  let requeueCalls = 0;
+  let drainCalls = 0;
   let syncCalls: number;
 
   /** Captures what the registry broadcasts to the renderer. */
@@ -70,6 +72,8 @@ describe('Saving provider settings triggers a sync', () => {
     vi.clearAllMocks();
     sent = [];
     syncCalls = 0;
+    requeueCalls = 0;
+    drainCalls = 0;
 
     dbConn = new DatabaseConnection(':memory:');
     const sessionRepo = new SessionRepository(dbConn);
@@ -89,6 +93,17 @@ describe('Saving provider settings triggers a sync', () => {
         syncCalls += 1;
         projectRepo.saveProject({ id: 'P1', key: 'ALPHA', name: 'Alpha' });
         return { status: 'synced' as const, projects: 1, tasks: 0 };
+      },
+      // Saving credentials un-parks worklogs that failed against the old ones,
+      // and drains the queue when it revived any. Counted so the test below can
+      // assert it happens; nothing here has parked a row, so it returns zero.
+      requeueFailedWorklogs: () => {
+        requeueCalls += 1;
+        return 0;
+      },
+      processPendingQueue: async () => {
+        drainCalls += 1;
+        return { processed: 0, succeeded: 0, failed: 0 };
       }
     } as unknown as OfflineSyncWorker;
 
@@ -124,6 +139,36 @@ describe('Saving provider settings triggers a sync', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     expect(syncCalls).toBe(1);
+  });
+
+  it('SetActiveProvider_CredentialsEntered_UnparksWorklogsThatFailedAgainstTheOldOnes', async () => {
+    // The sync worker parks a worklog immediately when the provider reports a
+    // permanent failure -- a revoked key -- rather than spending its whole
+    // retry budget on an answer that will not change. That is only safe
+    // because entering credentials returns those rows to the queue, and this
+    // handler is the only place that happens. Without it, correcting a typo'd
+    // API key would leave the already-parked time stranded for good.
+    await handlerFor(IPCChannel.SET_ACTIVE_PROVIDER)({}, {
+      providerId: 'openproject',
+      opDomain: 'http://127.0.0.1:8099',
+      opApiKey: 'a-corrected-key'
+    });
+
+    expect(requeueCalls).toBe(1);
+  });
+
+  it('SetActiveProvider_NothingWasParked_DoesNotDrainTheQueueForNoReason', async () => {
+    // The stub revives zero rows, so the extra pass has nothing to send. A
+    // drain on every settings save would issue provider requests for a queue
+    // that is already empty.
+    await handlerFor(IPCChannel.SET_ACTIVE_PROVIDER)({}, {
+      providerId: 'openproject',
+      opDomain: 'http://127.0.0.1:8099',
+      opApiKey: 'any-key'
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(drainCalls).toBe(0);
   });
 
   it('SetActiveProvider_SyncCompletes_BroadcastsTheRefreshedProjectList', async () => {

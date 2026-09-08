@@ -113,6 +113,90 @@ describe('Provider contract and cache-prune safety', () => {
       await expect(provider.getProjects()).rejects.toMatchObject({ kind: 'protocol' });
     });
 
+    it('LogTime_Unauthorized_ThrowsInsteadOfReportingAPlainFailure', async () => {
+      // It used to log and return `{ success: false }`. That reached the sync
+      // queue as the string "Provider reported failure" -- identical whether
+      // the key had been revoked or the wifi had dropped -- so the queue
+      // retried a revoked key to its attempt ceiling and then parked the
+      // worklog with nothing to explain it.
+      const provider = new OpenProjectProvider(noBackoff);
+      await provider.initialize({ domain: 'https://op.test', apiToken: 'revoked' });
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ message: 'You did not provide the correct credentials.' })
+      } as unknown as Response);
+
+      const err = await provider
+        .logTime({
+          taskId: 'OP-1',
+          durationSeconds: 3600,
+          startedAtUtc: '2026-01-01T09:00:00.000Z',
+          comment: 'work',
+          isAdHoc: false
+        })
+        .catch((e: unknown) => e);
+
+      expect(isProviderRequestError(err)).toBe(true);
+      expect((err as ProviderRequestError).kind).toBe('auth');
+      expect((err as ProviderRequestError).isPermanent).toBe(true);
+    });
+
+    it('LogTime_NoCredentials_ThrowsNotConfiguredRatherThanSilentlyDoingNothing', async () => {
+      const provider = new OpenProjectProvider(noBackoff);
+      await provider.initialize({ domain: '', apiToken: '' });
+
+      await expect(
+        provider.logTime({
+          taskId: 'OP-1',
+          durationSeconds: 3600,
+          startedAtUtc: '2026-01-01T09:00:00.000Z',
+          comment: 'work',
+          isAdHoc: false
+        })
+      ).rejects.toMatchObject({ kind: 'not_configured' });
+    });
+
+    it('LogTime_ZeroDuration_ThrowsArgumentExceptionWithoutIssuingARequest', async () => {
+      // Fail fast on the caller's mistake, and do not let it look like a
+      // provider outage the queue should retry.
+      const provider = new OpenProjectProvider(noBackoff);
+      await provider.initialize({ domain: 'https://op.test', apiToken: 'token' });
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy;
+
+      await expect(
+        provider.logTime({
+          taskId: 'OP-1',
+          durationSeconds: 0,
+          startedAtUtc: '2026-01-01T09:00:00.000Z',
+          comment: 'work',
+          isAdHoc: false
+        })
+      ).rejects.toThrow(/durationSeconds/);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('UpdateTaskStatus_RequestFails_ThrowsRatherThanReturningFalse', async () => {
+      // `false` was indistinguishable from "this provider does not support
+      // status changes", which is what AdHoc legitimately returns.
+      const provider = new OpenProjectProvider(noBackoff);
+      await provider.initialize({
+        domain: 'https://op.test',
+        apiToken: 'token',
+        opStatusInProgress: '7'
+      });
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ message: 'nope' })
+      } as unknown as Response);
+
+      await expect(provider.updateTaskStatus('OP-1', 'in_progress')).rejects.toMatchObject({
+        kind: 'auth'
+      });
+    });
+
     it('SanitizeDomain_BareHost_AssumesTlsRatherThanClearText', async () => {
       // The API key travels in a Basic header on every request, so a default of
       // `http://` leaked a permanent credential to anyone on the path whenever

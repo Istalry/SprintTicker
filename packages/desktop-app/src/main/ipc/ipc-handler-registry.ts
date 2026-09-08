@@ -525,10 +525,9 @@ export class IPCHandlerRegistry {
         // list, and had no way to tell that from "the remote has nothing" for
         // up to a full sync interval.
         //
-        // Deliberately not awaited: there are no fetch timeouts in the
-        // provider layer yet, so a hung instance would hold the Save button
-        // open indefinitely. The renderer learns the outcome from
-        // ON_PROJECTS_UPDATED instead.
+        // Deliberately not awaited: a full pass on a slow instance would hold
+        // the Save button open for as long as it took. The renderer learns the
+        // outcome from ON_PROJECTS_UPDATED instead.
         this.startProviderSync();
       } else {
         // Previously `providerManager` was neither a field nor a parameter, so
@@ -822,6 +821,16 @@ export class IPCHandlerRegistry {
       // and tests that omit it are not exercising sync.
       console.warn('[IPCHandlerRegistry] No OfflineSyncWorker wired; skipping the post-save sync.');
       return;
+    }
+
+    // A worklog parked because the key was wrong should go out on the pass the
+    // corrected key triggers, not sit for another sync interval. Entering
+    // credentials is the only user action that can fix a permanent failure, so
+    // it is the only sensible moment to un-park.
+    if (this.syncWorker.requeueFailedWorklogs() > 0) {
+      void this.syncWorker
+        .processPendingQueue()
+        .catch(err => console.error('[IPCHandlerRegistry] Draining the requeued worklogs failed:', err));
     }
 
     void this.syncWorker

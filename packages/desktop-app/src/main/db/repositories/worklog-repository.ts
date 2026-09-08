@@ -196,6 +196,28 @@ export class WorklogRepository {
   }
 
   /**
+   * Parks a claimed row without spending the rest of its retry budget.
+   *
+   * For a failure that repeating cannot fix -- a revoked API key, a provider
+   * with no credentials. The claim is released and the reason recorded, but
+   * `retry_count` is left alone so that if the row is requeued the attempt
+   * ceiling still means what it says.
+   *
+   * FAILED is not terminal: requeueFailedItems() returns these rows to PENDING,
+   * and entering credentials is what triggers it.
+   */
+  public parkSyncItemAsFailed(id: string, errorMessage: string): void {
+    this.dbConn
+      .getDb()
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET status = 'FAILED', claimed_at_utc = NULL, last_error = ?
+          WHERE id = ?`
+      )
+      .run(errorMessage.slice(0, 500), id);
+  }
+
+  /**
    * Releases a claimed row after a failed attempt.
    *
    * Returns it to PENDING behind a backoff deadline until the attempt ceiling
