@@ -185,14 +185,40 @@ is the same answer `OpenProjectProvider` already gave for its configured To
 Test / To Review status ids; the category stays the fallback, so an install
 with nothing mapped still needs no setup.
 
-Still unverified on the Jira side: **worklog submission from the app**. The
-`POST .../worklog` shape was confirmed by hand, and worklogs from real sessions
-do reach Jira -- but not all of them did in the first day's use, and which ones
-went missing is still open. The session log held six completed sessions against
-two issues; the two longest arrived and the four shortest did not, across both
-issues and both issue types. So it is not the issue type, which was the first
-theory: the same issue had one worklog arrive and another not. Resolving it
-needs the queue's own state, which is the item below.
+**Worklog submission is verified too**, on both a Story and a Task, so the
+adapter is exercised end to end: projects, issues, status readback, transitions
+and worklogs. The apparent "time tracking works for Task and not Story" was the
+delay below, not the issue type -- the same Task-type issue had one worklog
+arrive and another not, which is what ruled the type out before the retest
+confirmed it.
+
+The delay was real, though, and worth recording because the fix reverses an
+earlier deliberate decision. A finished session's worklog was queued and left
+for the worker's own timer, `SYNC_INTERVAL_MS`, which is five minutes -- so
+finishing a task and then looking at Jira showed nothing, which reads as a
+broken sync rather than a pending one. `stopSession` now asks the worker to
+drain immediately. The comment saying not to do that was correct when it was
+written: a flush racing the timer over the same rows meant both POSTed them and
+the session was billed twice. F-02 and F-03 removed that -- `processPendingQueue`
+will not start a second concurrent pass and `claimSyncItem` is atomic -- so the
+hazard is gone and only the delay was left.
+
+Waking the worker was not enough on its own. A stop landing *during* a pass hit
+the single-dispatcher guard and got no dispatch, so it waited out the full
+interval anyway -- and for this app's core loop, finish one task then start and
+finish the next, that is the common case rather than a corner, because a pass
+holds a network round trip open. The guard now coalesces: a request arriving
+mid-pass sets a flag and the row is drained before the pass ends.
+
+Two existing tests had to change with it, which is worth being explicit about.
+Both asserted a row was sitting in the queue as PENDING, and that state is now
+too short-lived to observe -- with no provider configured the row is parked at
+once where it used to be parked five minutes later. They assert the recorded
+worklog instead, which is the fact that has to survive either way. The
+end-to-end offline simulation also turned out to have been muting only the
+worker it constructed while the engine's own stayed online, so "the machine is
+offline" was never really simulated; it just never showed while nothing
+dispatched at stop time.
 
 Four defects came out of that first day, all fixed and all invisible to the
 suite before they were reported:

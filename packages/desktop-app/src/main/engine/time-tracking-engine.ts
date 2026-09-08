@@ -388,8 +388,22 @@ export class TimeTrackingEngine extends EventEmitter {
       comment: worklogComment
     });
 
-    // The worklog is queued, and OfflineSyncWorker owns delivery. Kicking off a
-    // flush here raced the worker over the same rows.
+    // Ask for delivery now rather than waiting for the timer.
+    //
+    // The worker still owns delivery -- this only wakes it. It used to be
+    // unsafe: a flush here raced the timer over the same rows and each one
+    // POSTed them, which double-billed the session. Two things fixed that and
+    // both are now in place, so the reason for the wait has gone:
+    // `processPendingQueue` returns immediately if a pass is already running,
+    // and `claimSyncItem` is atomic, so a row another dispatcher took comes
+    // back null instead of being sent twice.
+    //
+    // Without this the queue drained on SYNC_INTERVAL_MS alone -- five
+    // minutes -- so finishing a task and then looking at Jira showed nothing,
+    // which reads as the sync being broken rather than pending.
+    void this._syncWorker
+      .processPendingQueue()
+      .catch(err => console.warn('[TimeTrackingEngine] Draining the queue after a stop failed:', err));
 
     this._currentSession = null;
     this.notifyListeners();

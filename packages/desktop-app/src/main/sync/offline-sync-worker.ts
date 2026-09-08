@@ -23,6 +23,8 @@ export class OfflineSyncWorker {
   private syncIntervalMs: number;
   private timerId: NodeJS.Timeout | null = null;
   private isProcessing: boolean = false;
+  /** Set when a dispatch was asked for during a pass; drained before it ends. */
+  private rerunRequested: boolean = false;
   private isSyncingProjects: boolean = false;
   private isOnline: boolean = true;
 
@@ -187,84 +189,112 @@ export class OfflineSyncWorker {
    * what previously stranded billable time after a single network blip.
    */
   public async processPendingQueue(): Promise<{ processed: number; succeeded: number; failed: number }> {
-    if (this.isProcessing || !this.isOnline) {
+    if (this.isProcessing) {
+      // Coalesce rather than drop. A stop that lands while a pass is in flight
+      // used to get no dispatch of its own and waited out the whole interval,
+      // which for the app's core loop -- finish one task, start and finish the
+      // next -- is the common case rather than a corner: a pass involves a
+      // network round trip, so the second stop lands inside it.
+      this.rerunRequested = true;
+      return { processed: 0, succeeded: 0, failed: 0 };
+    }
+    if (!this.isOnline) {
       return { processed: 0, succeeded: 0, failed: 0 };
     }
 
     this.isProcessing = true;
-    let processed = 0;
-    let succeeded = 0;
-    let failed = 0;
-
+    const total = { processed: 0, succeeded: 0, failed: 0 };
     try {
-      // Recover rows whose claim outlived the process that took it.
-      const reclaimed = this.worklogRepo.reclaimStaleSyncItems(SYNC_CLAIM_TIMEOUT_MS);
-      if (reclaimed > 0) {
-        console.log(`[OfflineSyncWorker] Reclaimed ${reclaimed} stale in-flight worklog(s).`);
-      }
-
-      const dueItems = this.worklogRepo.getPendingQueueItems();
-      if (dueItems.length === 0) {
-        return { processed: 0, succeeded: 0, failed: 0 };
-      }
-
-      console.log(`[OfflineSyncWorker] Processing ${dueItems.length} due worklog(s).`);
-
-      for (const due of dueItems) {
-        // Another dispatcher may have taken this row between the SELECT and
-        // here; claimSyncItem returning null means it is not ours to send.
-        const item = this.worklogRepo.claimSyncItem(due.id);
-        if (!item) continue;
-
-        processed++;
-        try {
-          const result = await this.providerManager.logTimeForProvider(item.providerId, {
-            taskId: item.taskId,
-            durationSeconds: item.durationSeconds,
-            startedAtUtc: item.startedAtUtc,
-            // Tagged so a re-POST after a crashed claim is identifiable.
-            comment: withSyncMarker(item.comment, item.id),
-            isAdHoc: item.providerId === 'adhoc'
-          });
-
-          if (result.success) {
-            this.worklogRepo.markSyncItemSynced(item.id);
-            succeeded++;
-          } else {
-            // A provider that reports failure without throwing tells us
-            // nothing about whether waiting would help, so it gets the
-            // ordinary backoff.
-            this.releaseFailure(item.id, item.retryCount, 'Provider reported failure');
-            failed++;
-          }
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          console.error(`[OfflineSyncWorker] Failed to sync worklog ${item.id}:`, err);
-
-          if (isProviderRequestError(err) && err.isPermanent) {
-            // A revoked key or an unconfigured provider will answer the same
-            // way in forty seconds and in forty minutes. Spending the retry
-            // budget on it means the row parks with 'attempt 5 of 5' against
-            // it and no indication that the user, not the network, is what has
-            // to change. Park it now, with the server's own words attached.
-            //
-            // Safe to park early only because entering credentials requeues
-            // every FAILED row: see requeueFailedItems, called from the
-            // provider settings handler. Without that this would strand
-            // billable time, which is the bug this queue was rebuilt to stop.
-            this.worklogRepo.parkSyncItemAsFailed(item.id, message);
-          } else {
-            this.releaseFailure(item.id, item.retryCount, message);
-          }
-          failed++;
-        }
-      }
-
-      console.log(`[OfflineSyncWorker] Sync complete. Succeeded: ${succeeded}, Failed: ${failed}`);
-      return { processed, succeeded, failed };
+      // Re-drains only while something asked during the previous pass. Rows
+      // released behind a backoff are not due yet, so a failing provider
+      // cannot spin this loop.
+      do {
+        this.rerunRequested = false;
+        const pass = await this.runQueuePass();
+        total.processed += pass.processed;
+        total.succeeded += pass.succeeded;
+        total.failed += pass.failed;
+      } while (this.rerunRequested);
     } finally {
       this.isProcessing = false;
     }
+
+    return total;
+  }
+
+  /**
+   * One drain of every due row. Callers go through `processPendingQueue`, which
+   * owns the single-dispatcher guard this deliberately does not repeat.
+   */
+  private async runQueuePass(): Promise<{ processed: number; succeeded: number; failed: number }> {
+    let processed = 0;
+    let succeeded = 0;
+    let failed = 0;
+    // Recover rows whose claim outlived the process that took it.
+    const reclaimed = this.worklogRepo.reclaimStaleSyncItems(SYNC_CLAIM_TIMEOUT_MS);
+    if (reclaimed > 0) {
+      console.log(`[OfflineSyncWorker] Reclaimed ${reclaimed} stale in-flight worklog(s).`);
+    }
+
+    const dueItems = this.worklogRepo.getPendingQueueItems();
+    if (dueItems.length === 0) {
+      return { processed: 0, succeeded: 0, failed: 0 };
+    }
+
+    console.log(`[OfflineSyncWorker] Processing ${dueItems.length} due worklog(s).`);
+
+    for (const due of dueItems) {
+      // Another dispatcher may have taken this row between the SELECT and
+      // here; claimSyncItem returning null means it is not ours to send.
+      const item = this.worklogRepo.claimSyncItem(due.id);
+      if (!item) continue;
+
+      processed++;
+      try {
+        const result = await this.providerManager.logTimeForProvider(item.providerId, {
+          taskId: item.taskId,
+          durationSeconds: item.durationSeconds,
+          startedAtUtc: item.startedAtUtc,
+          // Tagged so a re-POST after a crashed claim is identifiable.
+          comment: withSyncMarker(item.comment, item.id),
+          isAdHoc: item.providerId === 'adhoc'
+        });
+
+        if (result.success) {
+          this.worklogRepo.markSyncItemSynced(item.id);
+          succeeded++;
+        } else {
+          // A provider that reports failure without throwing tells us
+          // nothing about whether waiting would help, so it gets the
+          // ordinary backoff.
+          this.releaseFailure(item.id, item.retryCount, 'Provider reported failure');
+          failed++;
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[OfflineSyncWorker] Failed to sync worklog ${item.id}:`, err);
+
+        if (isProviderRequestError(err) && err.isPermanent) {
+          // A revoked key or an unconfigured provider will answer the same
+          // way in forty seconds and in forty minutes. Spending the retry
+          // budget on it means the row parks with 'attempt 5 of 5' against
+          // it and no indication that the user, not the network, is what has
+          // to change. Park it now, with the server's own words attached.
+          //
+          // Safe to park early only because entering credentials requeues
+          // every FAILED row: see requeueFailedItems, called from the
+          // provider settings handler. Without that this would strand
+          // billable time, which is the bug this queue was rebuilt to stop.
+          this.worklogRepo.parkSyncItemAsFailed(item.id, message);
+        } else {
+          this.releaseFailure(item.id, item.retryCount, message);
+        }
+        failed++;
+      }
+    }
+
+    console.log(`[OfflineSyncWorker] Sync complete. Succeeded: ${succeeded}, Failed: ${failed}`);
+    return { processed, succeeded, failed };
   }
 
   /**

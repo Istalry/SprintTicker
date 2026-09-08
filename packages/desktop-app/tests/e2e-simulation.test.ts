@@ -95,6 +95,13 @@ describe('Full End-to-End System Simulation Test', () => {
 
     // Step 5: Resume session & Simulate Offline Disconnect & Stop Session (Worklog queued in SQLite)
     syncWorker.setOnlineStatus(false);
+    // The engine owns a worker of its own, and stopping a session now asks it
+    // to dispatch straight away rather than waiting out the interval. Muting
+    // only the worker this test constructed left that one online, so "the
+    // machine is offline" was never actually simulated -- it just did not show
+    // while nothing dispatched at stop time. Both have to be offline for the
+    // buffering this step is about to mean anything.
+    engine.getSyncWorker().setOnlineStatus(false);
 
     // Ensure active session in SQLite has positive duration and cleared pause timestamps
     const active = sessionRepo.getActiveSession();
@@ -115,6 +122,7 @@ describe('Full End-to-End System Simulation Test', () => {
     expect(pendingQueue).toHaveLength(1);
 
     // Step 6: Restore Internet Network Connection & Run Sync Worker Draining Queue
+    engine.getSyncWorker().setOnlineStatus(true);
     syncWorker.setOnlineStatus(true);
     const syncSummary = await syncWorker.processPendingQueue();
     expect(syncSummary.succeeded).toBe(1);
