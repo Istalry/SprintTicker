@@ -5,6 +5,9 @@ import { AdHocProvider } from '../src/main/providers/adhoc-provider';
 import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
 import { ProviderManager } from '../src/main/providers/provider-manager';
+import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
+import { JiraProvider } from '../src/main/providers/jira-provider';
+import { ProviderSettingKey } from '../src/shared/provider-settings';
 import { vi } from 'vitest';
 
 describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
@@ -280,6 +283,77 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     expect(result.processed).toBe(1);
     expect(result.succeeded).toBe(0);
     expect(result.failed).toBe(1);
+  });
+
+  describe('Jira is registered alongside the others', () => {
+    // The queue records which provider each worklog was created for, so a
+    // provider that exists but is not registered means a queued Jira worklog
+    // is dispatched to whichever adapter happens to be active -- which is the
+    // bug logTimeForProvider was introduced to prevent.
+
+    function managerOn(conn: DatabaseConnection): ProviderManager {
+      return new ProviderManager(new SettingsRepository(conn));
+    }
+
+    it('Constructor_AnyInstall_RegistersTheJiraProvider', () => {
+      const provider = managerOn(dbConn).getProvider('jira');
+
+      expect(provider).toBeInstanceOf(JiraProvider);
+      expect(provider?.providerId).toBe('jira');
+    });
+
+    it('ReinitializeProviders_StoredJiraCredentials_ReachTheProvider', async () => {
+      // The three values have to arrive together: a Jira API token is the
+      // password for an account, so a site and token without the email
+      // authenticate nothing.
+      const settingsRepo = new SettingsRepository(dbConn);
+      settingsRepo.setSetting(ProviderSettingKey.JIRA_SITE, 'https://acme.atlassian.net');
+      settingsRepo.setSetting(ProviderSettingKey.JIRA_EMAIL, 'dev@acme.test');
+      settingsRepo.setSetting(ProviderSettingKey.JIRA_API_TOKEN, 'token-123');
+
+      const manager = new ProviderManager(settingsRepo);
+      manager.reinitializeProviders();
+      await Promise.resolve();
+
+      const captured: string[] = [];
+      global.fetch = vi.fn().mockImplementation((url: string, init: RequestInit) => {
+        captured.push((init.headers as Record<string, string>).Authorization);
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ values: [], isLast: true })
+        } as unknown as Response);
+      });
+
+      await manager.getProvider('jira')!.getProjects();
+
+      expect(captured[0]).toBe(`Basic ${Buffer.from('dev@acme.test:token-123').toString('base64')}`);
+    });
+
+    it('SetActiveProviderId_Jira_BecomesTheActiveProvider', () => {
+      const manager = managerOn(dbConn);
+
+      manager.setActiveProviderId('jira');
+
+      expect(manager.getActiveProvider().providerId).toBe('jira');
+    });
+
+    it('LogTimeForProvider_UnknownProvider_StillThrows', async () => {
+      // The guard that makes the registration above load-bearing rather than
+      // decorative.
+      const manager = managerOn(dbConn);
+
+      await expect(
+        manager.logTimeForProvider('notaprovider', {
+          taskId: 'X-1',
+          durationSeconds: 60,
+          startedAtUtc: '2026-01-01T09:00:00.000Z',
+          comment: 'work',
+          isAdHoc: false
+        })
+      ).rejects.toThrow(/notaprovider/);
+    });
   });
 });
 

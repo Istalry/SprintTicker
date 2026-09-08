@@ -481,6 +481,15 @@ export class IPCHandlerRegistry {
       const opCompletionAction = read(ProviderSettingKey.OP_COMPLETION_ACTION);
       const opTaskScope = read(ProviderSettingKey.OP_TASK_SCOPE);
       const opTaskQuery = read(ProviderSettingKey.OP_TASK_QUERY);
+      const jiraSite = read(ProviderSettingKey.JIRA_SITE);
+      const jiraEmail = read(ProviderSettingKey.JIRA_EMAIL);
+      const jiraApiToken = this.secrets.getSecret(ProviderSettingKey.JIRA_API_TOKEN);
+      const jiraTaskScope = read(ProviderSettingKey.JIRA_TASK_SCOPE);
+      const jiraTaskQuery = read(ProviderSettingKey.JIRA_TASK_QUERY);
+      const jiraTransitionInProgress = read(ProviderSettingKey.JIRA_TRANSITION_IN_PROGRESS);
+      const jiraTransitionToTest = read(ProviderSettingKey.JIRA_TRANSITION_TO_TEST);
+      const jiraTransitionToReview = read(ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW);
+      const jiraCompletionAction = read(ProviderSettingKey.JIRA_COMPLETION_ACTION);
 
       return {
         activeProviderId: activeId,
@@ -493,8 +502,18 @@ export class IPCHandlerRegistry {
         opCompletionAction,
         opTaskScope,
         opTaskQuery,
+        jiraSite,
+        jiraEmail,
+        jiraApiToken,
+        jiraTaskScope,
+        jiraTaskQuery,
+        jiraTransitionInProgress,
+        jiraTransitionToTest,
+        jiraTransitionToReview,
+        jiraCompletionAction,
         providers: [
           { id: 'openproject', name: 'OpenProject' },
+          { id: 'jira', name: 'Jira Cloud' },
           { id: 'adhoc', name: 'Ad-Hoc / Custom Local Fallback' }
         ]
       };
@@ -511,6 +530,15 @@ export class IPCHandlerRegistry {
       opCompletionAction?: string;
       opTaskScope?: string;
       opTaskQuery?: string;
+      jiraSite?: string;
+      jiraEmail?: string;
+      jiraApiToken?: string;
+      jiraTaskScope?: string;
+      jiraTaskQuery?: string;
+      jiraTransitionInProgress?: string;
+      jiraTransitionToTest?: string;
+      jiraTransitionToReview?: string;
+      jiraCompletionAction?: string;
     }) => {
       if (payload.providerId) this.settingsRepo.setSetting('active_provider_id', payload.providerId);
       if (payload.fallbackTicketKey) this.settingsRepo.setSetting('fallback_ticket_key', payload.fallbackTicketKey);
@@ -527,6 +555,19 @@ export class IPCHandlerRegistry {
         this.settingsRepo.setSetting(ProviderSettingKey.OP_TASK_SCOPE, parseTaskScope(payload.opTaskScope));
       }
       if (payload.opTaskQuery !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.OP_TASK_QUERY, payload.opTaskQuery);
+
+      if (payload.jiraSite !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_SITE, payload.jiraSite);
+      if (payload.jiraEmail !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_EMAIL, payload.jiraEmail);
+      // Encrypted at rest, like the OpenProject key.
+      if (payload.jiraApiToken !== undefined) this.secrets.setSecret(ProviderSettingKey.JIRA_API_TOKEN, payload.jiraApiToken);
+      if (payload.jiraTaskScope !== undefined) {
+        this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TASK_SCOPE, parseTaskScope(payload.jiraTaskScope));
+      }
+      if (payload.jiraTaskQuery !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TASK_QUERY, payload.jiraTaskQuery);
+      if (payload.jiraTransitionInProgress !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TRANSITION_IN_PROGRESS, payload.jiraTransitionInProgress);
+      if (payload.jiraTransitionToTest !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TRANSITION_TO_TEST, payload.jiraTransitionToTest);
+      if (payload.jiraTransitionToReview !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW, payload.jiraTransitionToReview);
+      if (payload.jiraCompletionAction !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_COMPLETION_ACTION, payload.jiraCompletionAction);
 
       if (this.providerManager) {
         this.providerManager.reinitializeProviders();

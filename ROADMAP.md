@@ -152,7 +152,26 @@ ABI and LFS failures in this repository have historically only appeared there.
 
 ## 3. More task providers, Jira first
 
-**Blocked on:** nothing. The prerequisites below are all in place.
+**The Jira Cloud adapter is written and registered, and has never spoken to a
+real Jira site.** Everything below it -- the shared client, the error contract,
+the task scope, credential encryption -- is exercised against the running app.
+`providers/jira-provider.ts` is exercised only against its unit tests and the
+documented v3 API. Treat it as unverified until someone points it at a live
+site; that is a statement about evidence, not a guess about quality.
+
+The three things most likely to be wrong, all of which fail as a bare `400`
+with nothing in the body naming the field:
+
+- `started` on a worklog must be `yyyy-MM-dd'T'HH:mm:ss.SSSZ` with a **numeric**
+  offset. `toISOString()` is rejected, and so is the `+02:00` form the device's
+  own `toIsoWithLocalOffset` produces -- Jira wants `+0200`.
+- v3 comments are **Atlassian Document Format**, not strings. A plain string is
+  what the v2 API took.
+- `/rest/api/3/search/jql` pages on an opaque `nextPageToken`, not `startAt`.
+  The `startAt` endpoint is the deprecated one, and `/project/search` still uses
+  it -- so the adapter contains two different pagination loops on purpose.
+
+**Blocked on:** nothing else. The prerequisites below are all in place.
 
 The provider interface already exists (`task-provider-interface.ts`), and
 OpenProject and ad-hoc both implement it, so a Jira provider is mostly HTTP.
@@ -185,6 +204,14 @@ not multiply existing bugs:
   that `GET_PROVIDERS` still hands the decrypted key to the renderer, because
   the settings form shows it -- making that field write-only is a product
   decision, not a bug fix.
+- **Jira Cloud is a sibling adapter, not a subclass.** What the two providers
+  share is already shared -- `providerFetch`, `ProviderRequestError`,
+  `TaskScope`, `SecretStore` -- and what is left is all dialect. Two things the
+  Jira side does *better*, worth stealing if the OpenProject one is ever
+  revisited: status comes from `statusCategory`, which every workflow has, so it
+  needs no configuration at all, where OpenProject needs three numeric status
+  ids pasted in by hand. And transitions are configured by **name**, because a
+  Jira transition id only means anything inside one workflow.
 - **Which tasks to fetch is a setting, not a constant (F-12).** `shared/task-scope.ts`
   holds the vocabulary -- assigned to me / everything open / a custom query --
   and each adapter renders it in its own dialect, since OpenProject takes a
@@ -229,6 +256,15 @@ Also worth doing while this area is open:
   the two drifting. It is not urgent: `deviceFetch` already has the one thing
   the providers were missing, and the device's 409/413/503 semantics are not
   the providers'.
+- Point the Jira adapter at a real site and fix what the API actually does. Then
+  grow Jira routes in `scripts/fake-openproject.js` so there is an integration
+  test, as the OpenProject side has.
+- `reconcileRemoteState` is dead: the `provider:reconcile` channel is declared on
+  the preload bridge and has **no handler in main**, so calling it from the
+  renderer rejects. Either wire it up or delete the exposure -- an API surface
+  that throws when used is the F-18 updater stub again. The Jira implementation
+  returns zero deliberately rather than build an N+1 worklog walk behind an
+  unreachable path.
 - Surface the sync queue in the UI — pending / failed / synced counts, with a
   manual retry. Half the plumbing exists now: `SYNC_PROVIDER_NOW` runs a sync
   on demand and `ON_PROJECTS_UPDATED` reports the outcome, but nothing in the
@@ -312,21 +348,24 @@ looping idle animations.
 
 ---
 
-## Test coverage back to 80/70 on the honest metric
+## Test coverage: 80/70 reached on the honest metric
 
-**Blocked on:** nothing. This is just work.
+**Done**, as of the Jira provider. The suite measures 80.52 statements / 71.43
+branches / 82.32 functions / 82.75 lines across 599 tests, and the floor is
+ratcheted to 79.5 / 70.5 / 81.5 / 82.
 
-The floor is 78% statements / 80% lines / 80% functions / 68% branches, and the
-suite currently measures 79.28 / 81.42 / 81.06 / 69.46. It read 80/70 until
-`@vitest/coverage-v8` 1 became 5 and AST-aware remapping became the default;
-the same 346 tests then measured 76.19% instead of 88.15%. The suite did not
-get worse -- the ruler got accurate, and the old one counted a whole line as
-covered when any part of it ran.
+It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
+remapping became the default; the same 346 tests then measured 76.19% instead of
+88.15%. The suite did not get worse -- the ruler got accurate, and the old one
+counted a whole line as covered when any part of it ran. Getting back here on
+the accurate ruler took the provider work in §3, which is well-covered by
+construction because none of it touches hardware or Electron.
 
-The floor is ratcheted up whenever the measurement rises, so the remaining gap
-to 80/70 is two points of statements and two of branches.
+The floor is still ratcheted up whenever the measurement rises. What is left is
+not a number but the thin areas below.
 
-Where the honest numbers are thinnest, worst first:
+Where the numbers are thinnest, worst first. None of these is a percentage
+problem now; each is a specific untested path:
 
 | Area | Statements | Note |
 | :--- | ---: | :--- |

@@ -25,7 +25,7 @@ display over USB, and mirrors Windows notifications onto it.
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
 pnpm test             # vitest run
-pnpm test:coverage    # floor: 78.5% stmts / 80.5% lines / 80.5% funcs / 69% branches
+pnpm test:coverage    # floor: 79.5% stmts / 82% lines / 81.5% funcs / 70.5% branches
 pnpm typecheck        # main and renderer tsconfigs, separately
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
 pnpm package:win      # electron-builder, unsigned

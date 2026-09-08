@@ -34,15 +34,15 @@ export default defineConfig({
       // this one is real, and the README's "80%+" claim was resting on the
       // generous one.
       //
-      // Getting back to 80/70 on the honest metric is tracked in ROADMAP.md.
-      // Ratcheted to just under the measured figures so a regression fails
-      // the build, with ~1% of headroom so an unrelated refactor does not.
-      // The target is still 80/70; see ROADMAP.md.
+      // The 80/70 target is met as of the Jira provider: statements crossed 80
+      // and branches 71 on the honest metric. Still ratcheted to just under
+      // the measured figures, so a regression fails the build with ~1% of
+      // headroom for an unrelated refactor.
       thresholds: {
-        lines: 80.5,
-        functions: 80.5,
-        branches: 69,
-        statements: 78.5
+        lines: 82,
+        functions: 81.5,
+        branches: 70.5,
+        statements: 79.5
       }
     }
   },

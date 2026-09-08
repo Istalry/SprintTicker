@@ -158,6 +158,17 @@ export interface ProviderSettingsDTO {
   opTaskScope: string;
   /** The raw provider-native query, meaningful only when the scope is `custom`. */
   opTaskQuery: string;
+  jiraSite: string;
+  jiraEmail: string;
+  jiraApiToken: string;
+  jiraTaskScope: string;
+  /** Raw JQL, meaningful only when the scope is `custom`. */
+  jiraTaskQuery: string;
+  /** Transition name or id; empty means SprintTicker does not move the issue. */
+  jiraTransitionInProgress: string;
+  jiraTransitionToTest: string;
+  jiraTransitionToReview: string;
+  jiraCompletionAction: string;
   providers: Array<{ id: string; name: string }>;
 }
 
@@ -173,6 +184,15 @@ export interface ProviderSettingsUpdateDTO {
   opCompletionAction?: string;
   opTaskScope?: string;
   opTaskQuery?: string;
+  jiraSite?: string;
+  jiraEmail?: string;
+  jiraApiToken?: string;
+  jiraTaskScope?: string;
+  jiraTaskQuery?: string;
+  jiraTransitionInProgress?: string;
+  jiraTransitionToTest?: string;
+  jiraTransitionToReview?: string;
+  jiraCompletionAction?: string;
 }
 
 export interface WorklogDTO {

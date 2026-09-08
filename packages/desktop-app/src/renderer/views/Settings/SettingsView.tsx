@@ -24,6 +24,15 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
   const [opCompletionAction, setOpCompletionAction] = useState<string>('to_test');
   const [opTaskScope, setOpTaskScope] = useState<TaskScopeValue>(TaskScope.ASSIGNED_TO_ME);
   const [opTaskQuery, setOpTaskQuery] = useState<string>('');
+  const [jiraSite, setJiraSite] = useState<string>('');
+  const [jiraEmail, setJiraEmail] = useState<string>('');
+  const [jiraApiToken, setJiraApiToken] = useState<string>('');
+  const [jiraTaskScope, setJiraTaskScope] = useState<TaskScopeValue>(TaskScope.ASSIGNED_TO_ME);
+  const [jiraTaskQuery, setJiraTaskQuery] = useState<string>('');
+  const [jiraTransitionInProgress, setJiraTransitionInProgress] = useState<string>('');
+  const [jiraTransitionToTest, setJiraTransitionToTest] = useState<string>('');
+  const [jiraTransitionToReview, setJiraTransitionToReview] = useState<string>('');
+  const [jiraCompletionAction, setJiraCompletionAction] = useState<string>('to_review');
 
   const [availableStatuses, setAvailableStatuses] = useState<OpStatusDTO[]>([]);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState<boolean>(false);
@@ -54,6 +63,18 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           // set by clearing the field, and skipping it would resurrect the old
           // one on the next save.
           if (res.opTaskQuery !== undefined) setOpTaskQuery(res.opTaskQuery);
+          if (res.jiraSite) setJiraSite(res.jiraSite);
+          if (res.jiraEmail) setJiraEmail(res.jiraEmail);
+          if (res.jiraApiToken) setJiraApiToken(res.jiraApiToken);
+          if (res.jiraTaskScope) setJiraTaskScope(res.jiraTaskScope as TaskScopeValue);
+          // Assigned unconditionally, like opTaskQuery: clearing a field is a
+          // real value, and a truthiness guard would restore the old one on the
+          // next save.
+          if (res.jiraTaskQuery !== undefined) setJiraTaskQuery(res.jiraTaskQuery);
+          if (res.jiraTransitionInProgress !== undefined) setJiraTransitionInProgress(res.jiraTransitionInProgress);
+          if (res.jiraTransitionToTest !== undefined) setJiraTransitionToTest(res.jiraTransitionToTest);
+          if (res.jiraTransitionToReview !== undefined) setJiraTransitionToReview(res.jiraTransitionToReview);
+          if (res.jiraCompletionAction) setJiraCompletionAction(res.jiraCompletionAction);
         }
       }).catch(err => console.error('[SettingsView] Error loading providers:', err)));
     }
@@ -82,7 +103,16 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
         opStatusToReview,
         opCompletionAction,
         opTaskScope,
-        opTaskQuery
+        opTaskQuery,
+        jiraSite,
+        jiraEmail,
+        jiraApiToken,
+        jiraTaskScope,
+        jiraTaskQuery,
+        jiraTransitionInProgress,
+        jiraTransitionToTest,
+        jiraTransitionToReview,
+        jiraCompletionAction
       });
     }
 
@@ -110,6 +140,15 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       opCompletionAction,
       opTaskScope,
       opTaskQuery,
+      jiraSite,
+      jiraEmail,
+      jiraApiToken,
+      jiraTaskScope,
+      jiraTaskQuery,
+      jiraTransitionInProgress,
+      jiraTransitionToTest,
+      jiraTransitionToReview,
+      jiraCompletionAction,
       enableOpenProjectNotifications,
       openProjectPollingIntervalSeconds
     ],
@@ -176,6 +215,7 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
             className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
           >
             <option value="openproject">OpenProject (REST API v3)</option>
+            <option value="jira">Jira Cloud (REST API v3)</option>
             <option value="adhoc">Ad-Hoc / Custom Local Fallback</option>
           </select>
         </div>
@@ -337,6 +377,130 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
                   </label>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {providerId === 'jira' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">Jira Site URL</label>
+              <input
+                type="text"
+                value={jiraSite}
+                onChange={e => setJiraSite(e.target.value)}
+                placeholder="https://your-team.atlassian.net"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">Account Email</label>
+              <input
+                type="text"
+                value={jiraEmail}
+                onChange={e => setJiraEmail(e.target.value)}
+                placeholder="you@your-team.com"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+              <p className="mt-1 text-xs text-text-secondary">
+                A Jira API token is the password for an account, so the email is required
+                alongside it.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">API Token</label>
+              <input
+                type="password"
+                value={jiraApiToken}
+                onChange={e => setJiraApiToken(e.target.value)}
+                placeholder="Create one at id.atlassian.com"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">Which Tasks To Show</label>
+              <select
+                value={jiraTaskScope}
+                onChange={e => setJiraTaskScope(e.target.value as TaskScopeValue)}
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              >
+                {Object.values(TaskScope).map(scope => (
+                  <option key={scope} value={scope}>{TASK_SCOPE_LABELS[scope]}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-text-secondary">
+                Issues whose status category is Done are never listed.
+              </p>
+            </div>
+            {jiraTaskScope === TaskScope.CUSTOM && (
+              <div>
+                <label className="block text-xs font-mono text-text-secondary mb-1">Custom JQL</label>
+                <textarea
+                  value={jiraTaskQuery}
+                  onChange={e => setJiraTaskQuery(e.target.value)}
+                  rows={3}
+                  spellCheck={false}
+                  placeholder="assignee = currentUser() AND labels = urgent"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                />
+                <p className="mt-1 text-xs text-text-secondary">
+                  Replaces the query entirely, including the project clause. Only Jira can
+                  validate JQL, so a mistake here fails the sync rather than quietly showing
+                  no issues.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold font-mono text-white mb-1">Transitions</label>
+              <p className="mt-1 text-xs text-text-secondary">
+                Jira has no writable status field &mdash; an issue moves by running a
+                transition. Enter the transition or target status <em>name</em>: an id only
+                means anything within one workflow. Leave a field empty and SprintTicker will
+                not move the issue.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">On Task Start</label>
+              <input
+                type="text"
+                value={jiraTransitionInProgress}
+                onChange={e => setJiraTransitionInProgress(e.target.value)}
+                placeholder="In Progress"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">To Test</label>
+              <input
+                type="text"
+                value={jiraTransitionToTest}
+                onChange={e => setJiraTransitionToTest(e.target.value)}
+                placeholder="Ready for QA"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">To Review</label>
+              <input
+                type="text"
+                value={jiraTransitionToReview}
+                onChange={e => setJiraTransitionToReview(e.target.value)}
+                placeholder="In Review"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-text-secondary mb-1">Task Completion Action</label>
+              <select
+                value={jiraCompletionAction}
+                onChange={e => setJiraCompletionAction(e.target.value)}
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+              >
+                <option value="to_test">Run the To Test transition</option>
+                <option value="to_review">Run the To Review transition</option>
+              </select>
             </div>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { AdHocProvider } from './adhoc-provider';
 import { OpenProjectProvider } from './openproject-provider';
+import { JiraProvider } from './jira-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { SecretStore } from '../db/secret-store';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
@@ -29,9 +30,11 @@ export class ProviderManager {
     this._secrets = new SecretStore(this._settingsRepo);
 
     const openProjectProvider = new OpenProjectProvider();
+    const jiraProvider = new JiraProvider();
     const adHocProvider = new AdHocProvider();
 
     this.registerProvider(openProjectProvider);
+    this.registerProvider(jiraProvider);
     this.registerProvider(adHocProvider);
 
     this.reinitializeProviders();
@@ -66,6 +69,24 @@ export class ProviderManager {
         opTaskQuery: this.readSetting(ProviderSettingKey.OP_TASK_QUERY)
       })
         .catch(err => console.error('[ProviderManager] opProvider.initialize failed:', err));
+    }
+
+    const jiraProvider = this._providers.get('jira');
+    if (jiraProvider) {
+      void jiraProvider.initialize({
+        domain: this.readSetting(ProviderSettingKey.JIRA_SITE),
+        jiraEmail: this.readSetting(ProviderSettingKey.JIRA_EMAIL),
+        // Through the SecretStore for the same reason as the OpenProject key:
+        // what is on disk is ciphertext.
+        apiToken: this._secrets.getSecret(ProviderSettingKey.JIRA_API_TOKEN),
+        jiraTaskScope: this.readSetting(ProviderSettingKey.JIRA_TASK_SCOPE),
+        jiraTaskQuery: this.readSetting(ProviderSettingKey.JIRA_TASK_QUERY),
+        jiraTransitionInProgress: this.readSetting(ProviderSettingKey.JIRA_TRANSITION_IN_PROGRESS),
+        jiraTransitionToTest: this.readSetting(ProviderSettingKey.JIRA_TRANSITION_TO_TEST),
+        jiraTransitionToReview: this.readSetting(ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW),
+        jiraCompletionAction: this.readSetting(ProviderSettingKey.JIRA_COMPLETION_ACTION)
+      })
+        .catch(err => console.error('[ProviderManager] jiraProvider.initialize failed:', err));
     }
 
     const adHocProvider = this._providers.get('adhoc');

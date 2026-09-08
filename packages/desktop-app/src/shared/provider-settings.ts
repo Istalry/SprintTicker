@@ -24,7 +24,16 @@ export const ProviderSettingKey = {
   OP_STATUS_TO_REVIEW: 'op_status_to_review',
   OP_COMPLETION_ACTION: 'op_completion_action',
   OP_TASK_SCOPE: 'op_task_scope',
-  OP_TASK_QUERY: 'op_task_query'
+  OP_TASK_QUERY: 'op_task_query',
+  JIRA_SITE: 'jira_site',
+  JIRA_EMAIL: 'jira_email',
+  JIRA_API_TOKEN: 'jira_api_token',
+  JIRA_TASK_SCOPE: 'jira_task_scope',
+  JIRA_TASK_QUERY: 'jira_task_query',
+  JIRA_TRANSITION_IN_PROGRESS: 'jira_transition_in_progress',
+  JIRA_TRANSITION_TO_TEST: 'jira_transition_to_test',
+  JIRA_TRANSITION_TO_REVIEW: 'jira_transition_to_review',
+  JIRA_COMPLETION_ACTION: 'jira_completion_action'
 } as const;
 
 /** Union of the setting-key string literals above. */
@@ -56,10 +65,36 @@ export const PROVIDER_SETTING_DEFAULTS = {
   // The historical hardcoded behaviour, kept as the default so an existing
   // install sees exactly the task list it saw before this became a choice.
   [ProviderSettingKey.OP_TASK_SCOPE]: TaskScope.ASSIGNED_TO_ME,
-  [ProviderSettingKey.OP_TASK_QUERY]: ''
+  [ProviderSettingKey.OP_TASK_QUERY]: '',
+  // Empty for the same reason as their OpenProject counterparts: an
+  // unconfigured install has no site to talk to, and inventing one produces
+  // connection errors that look like the user's fault.
+  [ProviderSettingKey.JIRA_SITE]: '',
+  [ProviderSettingKey.JIRA_EMAIL]: '',
+  [ProviderSettingKey.JIRA_API_TOKEN]: '',
+  [ProviderSettingKey.JIRA_TASK_SCOPE]: TaskScope.ASSIGNED_TO_ME,
+  [ProviderSettingKey.JIRA_TASK_QUERY]: '',
+  // Transition names rather than ids, because an id is per-workflow: the id
+  // that means "Start work" in one project is meaningless in another. Empty
+  // means SprintTicker does not move the issue, which is a supported choice
+  // rather than a broken state.
+  [ProviderSettingKey.JIRA_TRANSITION_IN_PROGRESS]: '',
+  [ProviderSettingKey.JIRA_TRANSITION_TO_TEST]: '',
+  [ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW]: '',
+  [ProviderSettingKey.JIRA_COMPLETION_ACTION]: 'to_review'
 } as const satisfies Record<string, string>;
 
 /** True when the OpenProject provider has enough configuration to issue a request. */
 export function isOpenProjectConfigured(domain: string, apiKey: string): boolean {
   return domain.trim().length > 0 && apiKey.trim().length > 0;
+}
+
+/**
+ * True when the Jira provider has enough configuration to issue a request.
+ *
+ * Three values, not two: a Jira API token is the password *for an account*, so
+ * without the email it authenticates nothing.
+ */
+export function isJiraConfigured(site: string, email: string, apiToken: string): boolean {
+  return site.trim().length > 0 && email.trim().length > 0 && apiToken.trim().length > 0;
 }
