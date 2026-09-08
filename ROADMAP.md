@@ -210,6 +210,34 @@ finish the next, that is the common case rather than a corner, because a pass
 holds a network round trip open. The guard now coalesces: a request arriving
 mid-pass sets a flag and the row is drained before the pass ends.
 
+Reading the app's own terminal during a live run settled the rest of it, and
+the answer was not what the durations suggested:
+
+- **`404 - Le ticket n'existe pas`.** One of the missing worklogs was for an
+  issue that had since been deleted. Not a duration problem at all.
+- **`400 - Le journal de travail ne doit pas avoir pour valeur Null`.** Jira's
+  time tracking is minute-granular, so `timeSpentSeconds` below 60 rounds to
+  zero minutes and is refused.
+- **Neither stopped retrying.** `isPermanent` covered only 401/403, so both
+  spent the full retry budget sending byte-identical requests to byte-identical
+  URLs. Any 4xx is now permanent except `408` and `429`, the two that describe
+  a moment rather than a request. The device driver already had this rule --
+  its `413` is documented as permanent for the same reason -- and it had simply
+  never crossed to the provider side.
+
+The minute floor is declared by each adapter, `ITaskProvider.minimumLoggableSeconds`,
+rather than fixed in the engine: it is a fact about each remote API, and
+OpenProject records arbitrary durations, so it must not lose a user's time to
+Jira's limitation. The engine reads it before queueing, and `JiraProvider.logTime`
+enforces it as a *permanent* failure so a row queued by an older build parks
+with an explanation instead of retrying.
+
+That run also showed why the terminal was hard to read at all: an OpenProject
+notification poll ran every sixty seconds regardless of which provider was
+active, and printed a full stack trace each time for a server that was neither
+running nor in use. It is gated on the active provider now, and a path that
+degrades to an empty list by design logs one line rather than thirty.
+
 One cause of the missing worklogs turned up while writing the tests for that,
 and it is the likeliest explanation for the shortest of them. A session started
 and stopped inside the same second logs **zero**: `elapsedSeconds` is floored to

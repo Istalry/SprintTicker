@@ -377,22 +377,33 @@ export class TimeTrackingEngine extends EventEmitter {
       createdAtUtc: nowIso
     });
 
-    // 2. Buffer to offline sync queue, unless there is nothing to report.
+    // 2. Buffer to offline sync queue, unless the provider cannot record it.
     //
-    // A session started and stopped inside the same second logs zero:
-    // elapsedSeconds is floored to whole seconds and clamped at 0. Every
-    // provider's logTime rejects a non-positive duration by throwing
-    // ArgumentException, which is deliberate -- but ArgumentException is not a
-    // ProviderRequestError, so the queue cannot tell that the row is hopeless.
-    // It takes the ordinary backoff and spends all MAX_SYNC_ATTEMPTS retries
-    // across several hours before parking something that could never have been
-    // sent. Queueing a payload we already know violates the contract is the
+    // Two ways a session ends up too short to send. It can log zero --
+    // elapsedSeconds is floored to whole seconds and clamped at 0, so starting
+    // and stopping inside the same second logs nothing. Or it can be shorter
+    // than the provider's own granularity: Jira's time tracking is
+    // minute-granular, so five seconds rounds to zero minutes and the API
+    // answers `400 - Le journal de travail ne doit pas avoir pour valeur
+    // Null`.
+    //
+    // Both were queued anyway, and neither could be delivered. Worse, neither
+    // failure told the queue so: an ArgumentException is not a
+    // ProviderRequestError at all, and the 400 was classified as retryable, so
+    // the row spent every MAX_SYNC_ATTEMPTS retry across several hours before
+    // parking. Queueing a payload already known to violate the contract is the
     // bug; the retries were only the symptom.
     //
-    // The local worklog above is still written: the session did happen, and
-    // the history is the one place that should say so.
-    if (loggedSeconds > 0) {
-      const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
+    // The floor is the provider's rather than a constant here, because it is a
+    // fact about each remote API and not a policy: OpenProject records
+    // arbitrary durations and must not lose a user's time to Jira's limit.
+    //
+    // The local worklog above is still written either way. The session did
+    // happen, and the history is the one place that should say so.
+    const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
+    const minimumSeconds = activeProvider ? activeProvider.minimumLoggableSeconds : 1;
+
+    if (loggedSeconds >= minimumSeconds) {
       this._worklogRepo.enqueueSyncItem({
         id: createId(IdPrefix.SYNC_ITEM),
         providerId: activeProvider ? activeProvider.providerId : 'openproject',
@@ -403,7 +414,9 @@ export class TimeTrackingEngine extends EventEmitter {
       });
     } else {
       console.log(
-        `[TimeTrackingEngine] Session ${active.sessionId} logged no whole seconds; recorded locally and not queued.`
+        `[TimeTrackingEngine] Session ${active.sessionId} logged ${loggedSeconds}s, below the ` +
+          `${minimumSeconds}s ${activeProvider ? activeProvider.providerId : 'provider'} can record. ` +
+          'Kept in local history and not queued.'
       );
     }
 

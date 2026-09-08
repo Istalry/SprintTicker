@@ -516,6 +516,35 @@ describe('JiraProvider', () => {
     });
   });
 
+  describe('a duration Jira cannot store', () => {
+    it('LogTime_BelowOneMinute_ReportsAPermanentRefusalRatherThanRetrying', async () => {
+      // Live finding: `timeSpentSeconds: 5` rounds to zero minutes and Jira
+      // answers `400 - Le journal de travail ne doit pas avoir pour valeur
+      // Null`. The engine now checks minimumLoggableSeconds before queueing,
+      // so this guard is for rows an older build already queued -- and it has
+      // to be classifiable, or the queue spends its whole retry budget on it.
+      const provider = await configured();
+
+      const err = await provider
+        .logTime({
+          taskId: 'A-1',
+          durationSeconds: 30,
+          startedAtUtc: '2026-09-08T12:00:00.000Z',
+          comment: 'Too short',
+          isAdHoc: false
+        })
+        .catch(e => e as unknown);
+
+      expect(isProviderRequestError(err)).toBe(true);
+      expect((err as ProviderRequestError).isPermanent).toBe(true);
+      expect((err as ProviderRequestError).message).toContain('to the minute');
+    });
+
+    it('MinimumLoggableSeconds_Jira_IsAMinute', () => {
+      expect(new JiraProvider().minimumLoggableSeconds).toBe(60);
+    });
+  });
+
   describe('the started timestamp format', () => {
     // Jira wants yyyy-MM-dd'T'HH:mm:ss.SSSZ where Z is a numeric offset. All
     // three of these are 400s when wrong, with nothing in the body naming the

@@ -13,6 +13,8 @@ import { localDateKey } from '../../shared/local-date';
 export class OpenProjectProvider implements ITaskProvider {
   public readonly providerId: string = 'openproject';
   public readonly providerName: string = 'OpenProject';
+  /** OpenProject takes an ISO 8601 duration and records whatever it is given. */
+  public readonly minimumLoggableSeconds: number = 1;
 
   private _domain: string = '';
   private _apiKey: string = '';

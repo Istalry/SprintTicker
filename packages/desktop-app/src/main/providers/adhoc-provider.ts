@@ -7,6 +7,8 @@ import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 export class AdHocProvider implements ITaskProvider {
   public readonly providerId: string = 'adhoc';
   public readonly providerName: string = 'Ad-Hoc / Custom Fallback';
+  /** Nothing leaves the machine, so the only floor is a whole second. */
+  public readonly minimumLoggableSeconds: number = 1;
   private fallbackKey: string = 'MISC-1';
 
   public async initialize(credentials: Record<string, string>): Promise<boolean> {

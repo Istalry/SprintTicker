@@ -42,6 +42,8 @@ interface JiraIssuePage {
 export class JiraProvider implements ITaskProvider {
   public readonly providerId: string = 'jira';
   public readonly providerName: string = 'Jira Cloud';
+  /** Jira's time tracking is minute-granular; anything shorter rounds to zero and is refused. */
+  public readonly minimumLoggableSeconds: number = 60;
 
   private _site: string = '';
   private _email: string = '';
@@ -363,6 +365,20 @@ export class JiraProvider implements ITaskProvider {
     if (payload.durationSeconds <= 0) {
       throw new ArgumentException(
         `payload.durationSeconds must be greater than zero (received ${payload.durationSeconds}).`
+      );
+    }
+    if (payload.durationSeconds < this.minimumLoggableSeconds) {
+      // Reported as permanent rather than as an ArgumentException, because a
+      // row queued by an older build is a real thing sitting in a real queue
+      // and the queue has to be able to park it. An ArgumentException carries
+      // no classification, so it took the full retry budget instead -- which
+      // is how this arrived as eight identical 400s rather than one message.
+      throw new ProviderRequestError(
+        this.providerId,
+        'protocol',
+        `Jira records time to the minute, so it cannot store ${payload.durationSeconds}s ` +
+          `on ${payload.taskId}. The session is kept in local history.`,
+        { status: 400 }
       );
     }
 

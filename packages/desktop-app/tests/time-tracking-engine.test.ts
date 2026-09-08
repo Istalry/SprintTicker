@@ -113,13 +113,16 @@ describe('TimeTrackingEngine Unit Tests', () => {
      */
     let delivered: Array<{ taskId: string; durationSeconds: number }>;
     let stopEngine: TimeTrackingEngine;
+    /** What the active provider says it can record. Jira's real value is 60. */
+    let providerMinimum: number;
 
     beforeEach(() => {
       delivered = [];
+      providerMinimum = 1;
       const manager = {
         getProjects: async () => [],
         getTasks: async () => [],
-        getActiveProvider: () => ({ providerId: 'jira' }),
+        getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: providerMinimum }),
         updateTaskStatus: async () => true,
         logTimeForProvider: async (
           _providerId: string,
@@ -189,6 +192,36 @@ describe('TimeTrackingEngine Unit Tests', () => {
       expect(result.loggedSeconds).toBe(0);
       await stopEngine.getSyncWorker().processPendingQueue();
       expect(delivered).toHaveLength(0);
+    });
+
+    it('StopSession_ShorterThanTheProviderCanRecord_IsKeptLocallyAndNotQueued', async () => {
+      // Jira's time tracking is minute-granular, so five seconds rounds to
+      // zero minutes and the API answers 400. Sending it anyway is what
+      // produced eight identical refusals across several hours against a live
+      // site.
+      providerMinimum = 60;
+      startBackdatedSession(0.5); // 30 seconds
+
+      const result = stopEngine.stopSession('Too short for Jira');
+
+      expect(result.loggedSeconds).toBeGreaterThan(0);
+      await stopEngine.getSyncWorker().processPendingQueue();
+      expect(delivered).toHaveLength(0);
+      // The session still happened, and the history has to say so.
+      expect(worklogRepo.getTodaysWorklogs()).toHaveLength(1);
+    });
+
+    it('StopSession_ProviderThatRecordsAnyDuration_StillGetsTheShortSession', async () => {
+      // The reason the floor belongs to the provider and not to this method:
+      // OpenProject takes an ISO 8601 duration and records whatever it is
+      // given, so it must not lose a user's time to Jira's limitation.
+      providerMinimum = 1;
+      startBackdatedSession(0.5);
+
+      stopEngine.stopSession('Short but recordable');
+
+      await vi.waitFor(() => expect(delivered).toHaveLength(1));
+      expect(delivered[0].durationSeconds).toBeGreaterThan(0);
     });
 
     it('StopSession_TwoSessionsInARow_DeliversEachWorklogExactlyOnce', async () => {
