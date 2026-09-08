@@ -345,6 +345,28 @@ looping idle animations.
     LFS bandwidth cap actually charges for. The objects stay in history; they
     are Flipper FZCO's own frame sets under CC-BY-SA-4.0 and can be restored
     from there or from [github.com/busy-app](https://github.com/busy-app).
+- [x] **Row 0 is set in the BUSY Bar's own font** (2026-09-08). Reported from a
+  photograph of the bar: every character stood two blank columns from the next,
+  and `#` was an unreadable blob. Both came from one cause -- the hand-rolled
+  "4x6" font was really 3px of ink in a 4px cell, drawn at a 5px stride, and 82
+  of its 96 glyphs never used the fourth column. A `#` has nowhere to put two
+  strokes and the gaps between them in three columns.
+  - The firmware's own `lv_font_busy_regular_5` is now converted to
+    `shared/busy-font.ts` by `tools/lvgl-font-to-ts.js`, which reads the
+    generated LVGL C directly rather than a font binary. It asserts the 1-bpp
+    packing assumption per glyph and fails loudly instead of emitting plausible
+    rubbish, because a wrong bit order still yields glyphs of the right size.
+  - The font is proportional, so there is no character capacity for row 0 any
+    more: `i` advances 2px and `#` advances 6. `shared/proportional-text.ts`
+    measures and truncates by width, and `PixelCanvas` uses the same helper --
+    a one-character disagreement between composer and canvas is what truncates
+    a row twice, the second time mid-word with no marker. The 55px field now
+    holds about 14 characters of mixed case where it held 11 of anything.
+  - `FONT_4X6` is deleted rather than kept as a fallback. Row 1's 3x5 font is
+    untouched: it is genuinely fixed-width and legible at that size.
+  - This adds a licence entry. The glyph table is **OFL-1.1** (Ark Pixel Font,
+    (c) TakWolf; (c) Flipper FZCO), which permits bundling with an MIT
+    application but keeps that one file under its own terms. See `LICENSE`.
 
 ---
 

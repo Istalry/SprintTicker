@@ -45,6 +45,8 @@ It does not cover, and this project makes no claim over:
     if present, live in `Documentation/private/`, which is untracked and never
     redistributed from here.
   * `Animations/` -- the LED animation frame sets. See the attribution below.
+  * `packages/desktop-app/src/shared/busy-font.ts` -- the generated glyph
+    table. See the attribution below.
   * Third-party trademarks and brand marks. Application names and logos appear
     only to identify the applications whose notifications this software
     displays; ownership remains with their respective holders.
@@ -67,3 +69,31 @@ ShareAlike condition: anyone who adapts these frames must license the adaptation
 under CC-BY-SA-4.0 as well. Bundling them alongside this application does not
 place the application under that licence, but modifying them does place the
 result under it. If you fork this repository, keep this notice.
+
+`packages/desktop-app/src/shared/busy-font.ts` is a generated glyph table: the
+printable ASCII of the BUSY Bar firmware's own `lv_font_busy_regular_5`,
+converted from its LVGL C source by `tools/lvgl-font-to-ts.js`. Only the pixel
+data is reproduced -- no outlines and no font binary.
+
+  Copyright (c) 2021 TakWolf -- https://ark-pixel-font.takwolf.com/
+  Copyright (c) 2024-2026 Flipper FZCO
+  Licensed under the SIL Open Font License 1.1 (OFL-1.1)
+  -- https://openfontlicense.org/
+  Source: https://github.com/busy-app/busybar-firmware --
+          `assets/frontend/assets/fonts/busy_regular_5px.ttf`, itself derived
+          from the Ark Pixel Font, by way of the LVGL font generated from it at
+          `lib/lvgl_addons/fonts/lv_font_busy_regular_5.c`
+
+The firmware's own REUSE metadata annotates that `lib/lvgl_addons/**` directory
+GPL-2.0-or-later, and the `busy_*` font assets OFL-1.1. The generated C carries
+no SPDX header of its own, so it is worth being precise about which of the two
+applies here: every glyph extracted is bit-identical to a direct rasterisation
+of the OFL-licensed TTF at the same size, and none of Flipper's C -- no tables,
+no structs, no source -- is reproduced. What is copied is the font's pixels, so
+the licence that travels with them is the font's.
+
+The OFL permits bundling a font with software under any licence, so this does
+not place the application under the OFL -- but that one file stays OFL-licensed,
+and the notice above must travel with it. The OFL also forbids selling the font
+on its own, and requires that a modified version not be distributed under a
+Reserved Font Name. If you fork this repository, keep this notice.

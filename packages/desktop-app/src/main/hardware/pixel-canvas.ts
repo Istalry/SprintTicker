@@ -1,13 +1,16 @@
-import { FONT_4X6, FONT_3X5 } from '../../shared/pixel-fonts';
+import { FONT_3X5 } from '../../shared/pixel-fonts';
+import { BUSY_FONT_ASCENT } from '../../shared/busy-font';
+import { glyphFor, measureText, fitToWidth } from '../../shared/proportional-text';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 import { capacityFor } from '../../shared/text-capacity';
 
-const { ROW0: ROW0_FONT, ROW1: ROW1_FONT } = DISPLAY_CONSTANTS.FONT_METRICS;
+const { ROW1: ROW1_FONT } = DISPLAY_CONSTANTS.FONT_METRICS;
 /**
  * PixelCanvas — a 72×16 software pixel canvas for the BUSY Bar front display.
  *
- * Provides methods to draw icons, text (via compact 4×6 and 3×5 bitmap fonts),
- * rectangles, and other primitives into a (string|null)[][] buffer.
+ * Provides methods to draw icons, text (the BUSY Bar's own proportional font on
+ * row 0, a compact fixed-width 3×5 font on row 1), rectangles, and other
+ * primitives into a (string|null)[][] buffer.
  *
  * Coordinate system: x = 0..71 (left→right), y = 0..15 (top→bottom).
  */
@@ -91,38 +94,48 @@ export class PixelCanvas {
   }
 
   /**
-   * Renders ASCII text into the pixel buffer using the built-in 4×6 bitmap font.
-   * Characters are 4px wide + 1px gap (stride = 5px).
+   * Renders text in the BUSY Bar's own font, proportionally spaced.
+   *
+   * `y` is the top of the line, not the baseline, so callers keep using the
+   * same row offsets they always did. The baseline sits `BUSY_FONT_ASCENT` rows
+   * below it, and a glyph's `ofsY` is measured up from there -- negative for a
+   * descender, which is what puts the tail of a `j` below the other letters.
+   *
+   * This replaced a hand-rolled "4×6" font whose glyphs were, with two
+   * exceptions, only 3px wide inside a 4px cell. Drawn at a 5px stride that
+   * left two blank columns between every character, and dense glyphs had no
+   * room to read: `#` came out as an unrecognisable blob. See ROADMAP.md.
    */
   public drawText(text: string, x: number, y: number, color: string): number {
-    let cx = x;
+    let pen = x;
     for (const char of text) {
-      // Fallback order: Exact character -> Uppercase variant -> Question mark
-      const glyph = FONT_4X6[char] ?? FONT_4X6[char.toUpperCase()] ?? FONT_4X6['?'];
-      for (let row = 0; row < glyph.length; row++) {
-        const bits = glyph[row];
-        for (let col = 0; col < 4; col++) {
-          if (bits & (0b1000 >> col)) {
-            this.setPixel(cx + col, y + row, color);
+      const glyph = glyphFor(char);
+      for (let row = 0; row < glyph.boxH; row++) {
+        const bits = glyph.rows[row];
+        for (let col = 0; col < glyph.boxW; col++) {
+          if (bits & (1 << (glyph.boxW - 1 - col))) {
+            this.setPixel(
+              pen + glyph.ofsX + col,
+              y + BUSY_FONT_ASCENT - glyph.ofsY - glyph.boxH + row,
+              color
+            );
           }
         }
       }
-      cx += ROW0_FONT.STRIDE_X;
+      pen += glyph.advance;
     }
-    return cx;
+    return pen;
   }
 
   /** Measures the pixel width a string would occupy with drawText. */
   public measureText(text: string): number {
-    return text.length * ROW0_FONT.STRIDE_X;
+    return measureText(text);
   }
 
-  /** Draws text clipped to maxWidth with ellipsis fallback. */
+  /** Draws text truncated to maxWidth, ending in an ellipsis when it did not fit. */
   public drawTextClipped(text: string, x: number, y: number, color: string, maxWidth: number): void {
-    const maxChars = capacityFor(maxWidth, ROW0_FONT.STRIDE_X);
-    if (maxChars <= 0) return;
-    const clipped = text.length > maxChars ? text.substring(0, Math.max(1, maxChars - 1)) + '…' : text;
-    this.drawText(clipped, x, y, color);
+    if (maxWidth <= 0) return;
+    this.drawText(fitToWidth(text, maxWidth), x, y, color);
   }
 
   /** Draws a 7px-tall text row. */
@@ -156,11 +169,6 @@ export class PixelCanvas {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// 4×6 Bitmap Font (ASCII 32–126)
-// Each character is 6 rows × 4 bits (MSB = leftmost pixel)
-// ──────────────────────────────────────────────────────────────────────────────
-
-// Re-exported for existing main-process importers; the definitions now live in
-// src/shared/pixel-fonts.ts so the renderer can use them without importing main.
-export { FONT_4X6, FONT_3X5 };
+// Re-exported for existing main-process importers; the definition now lives in
+// src/shared/pixel-fonts.ts so the renderer can use it without importing main.
+export { FONT_3X5 };

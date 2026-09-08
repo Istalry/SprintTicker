@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   composeNotificationBanner,
   fitToCapacity,
-  ROW0_CAPACITY,
+  ROW0_WIDTH_PX,
   ROW1_CAPACITY
 } from '../src/shared/notification-text';
+import { measureText } from '../src/shared/proportional-text';
 import { capacityFor } from '../src/shared/text-capacity';
 import { PixelCanvas } from '../src/main/hardware/pixel-canvas';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
@@ -83,9 +84,9 @@ describe('composeNotificationBanner', () => {
       iconIdentifiesApp: true
     });
 
-    // Capacity is a ceiling, not a target: a cut that lands on a space gives
-    // the space back rather than stranding one before the marker.
-    expect(text.row0.length).toBeLessThanOrEqual(ROW0_CAPACITY);
+    // Measured, not counted: row 0 is proportional, so the same character
+    // count can be 9px or 30px wide depending on the letters.
+    expect(measureText(text.row0)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
     expect(text.row0.endsWith(MARKER)).toBe(true);
     expect(text.row0).not.toContain(' ' + MARKER);
   });
@@ -99,7 +100,7 @@ describe('composeNotificationBanner', () => {
       iconIdentifiesApp: true
     });
 
-    expect(text.row0.length).toBeLessThanOrEqual(ROW0_CAPACITY);
+    expect(measureText(text.row0)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
     expect(text.row1).toBe('a midi');
     const withoutMarker = (text.row0 + text.row1).split(MARKER).join('');
     expect(/^[\x20-\x7E]*$/.test(withoutMarker)).toBe(true);
@@ -122,7 +123,7 @@ describe('composeNotificationBanner', () => {
     const text = composeNotificationBanner({ iconIdentifiesApp: true });
 
     expect(text.row0.length).toBeGreaterThan(0);
-    expect(text.row0.length).toBeLessThanOrEqual(ROW0_CAPACITY);
+    expect(measureText(text.row0)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
     expect(text.row0).not.toContain(MARKER);
   });
 
@@ -188,10 +189,6 @@ describe('capacityFor', () => {
     // The last glyph occupies x=69..71 and only its trailing gap falls off the
     // field, which is free. floor(55/4) claims thirteen and wastes a character.
     expect(capacityFor(55, 4)).toBe(14);
-  });
-
-  it('CapacityFor_FieldOfFiftyFivePixelsAtStrideFive_FitsElevenGlyphs', () => {
-    expect(capacityFor(55, 5)).toBe(11);
   });
 
   it('CapacityFor_NonPositiveStride_ReturnsZeroRatherThanDividingByIt', () => {

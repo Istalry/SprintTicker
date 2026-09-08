@@ -111,6 +111,21 @@ and the timer deliberately shows `HH:MM` rather than seconds for this reason.
 The rear 160×80 OLED is **preview only** in this build. `buildRearElements` feeds
 the on-screen emulator; `transmitFrame` sends the front matrix and nothing else.
 
+**Row 0 text is proportional, so there is no character capacity.** It is set in
+the firmware's own font, generated into `shared/busy-font.ts` by
+`tools/lvgl-font-to-ts.js` — do not hand-edit either. `i` advances 2px and `#`
+advances 6, so anything asking "does this fit" must call `measureText` /
+`fitToWidth` in `shared/proportional-text.ts`. Both the text composer and
+`PixelCanvas` use those, deliberately: a one-character disagreement between them
+truncates every row twice, and the second cut lands mid-word with no marker.
+
+Row 1 is still the fixed-width 3×5 font, which is fine because it genuinely is
+fixed-width. The old row-0 "4×6" font was not — 82 of its 96 glyphs were 3px of
+ink in a 4px cell — and it is deleted, not kept as a fallback.
+
+`busy-font.ts` is **OFL-1.1**, not MIT. It is the one file in the package under a
+different licence; the notice in `LICENSE` has to travel with it.
+
 ## 5. Priority and notifications
 
 The priority engine decides what the display shows. Two rules matter for anyone

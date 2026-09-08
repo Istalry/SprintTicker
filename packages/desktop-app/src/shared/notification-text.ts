@@ -1,6 +1,7 @@
 import { DISPLAY_CONSTANTS } from './render-constants';
 import { sanitizeAsciiText } from './text-sanitizer';
 import { capacityFor } from './text-capacity';
+import { fitToWidth } from './proportional-text';
 
 /**
  * Turns a Windows toast into the two rows a 72x16 banner can actually show.
@@ -12,9 +13,15 @@ import { capacityFor } from './text-capacity';
  * "[Message] " plus an ellipsis, and the message itself was never on screen.
  *
  * Keeping it pure and here, rather than in the renderer, is what makes the
- * character budget testable. It is the whole point of the module: the budget is
- * small enough that an off-by-one is the difference between a readable word and
- * a truncated one.
+ * budget testable. It is the whole point of the module: the budget is small
+ * enough that an off-by-one is the difference between a readable word and a
+ * truncated one.
+ *
+ * The two rows are budgeted differently, because they are set in different
+ * fonts. Row 0 uses the BUSY Bar's own proportional font, so its limit is a
+ * *width* and how many characters fit depends on which ones they are -- about
+ * 14 of mixed case, as few as 9 of capitals. Row 1 is still the fixed-width
+ * 3x5 font, where a character count is exact.
  */
 
 const { LAYOUT_OFFSETS, FONT_METRICS } = DISPLAY_CONSTANTS;
@@ -40,8 +47,16 @@ const FALLBACK_TEXT = 'Alert';
  */
 const HIDDEN_BODY_TEXT = 'New message';
 
-/** Characters that fit row 0 (4x6 font) and row 1 (3x5 font). */
-export const ROW0_CAPACITY = capacityFor(LAYOUT_OFFSETS.TEXT_FIELD_WIDTH, FONT_METRICS.ROW0.STRIDE_X);
+/**
+ * The pixel width row 0 has to play with.
+ *
+ * A width, not a character count: row 0 is proportional, so no single number of
+ * characters fits it. Anything that needs to know whether text fits has to
+ * measure it.
+ */
+export const ROW0_WIDTH_PX = LAYOUT_OFFSETS.TEXT_FIELD_WIDTH;
+
+/** Characters that fit row 1, which is still the fixed-width 3x5 font. */
 export const ROW1_CAPACITY = capacityFor(LAYOUT_OFFSETS.TEXT_FIELD_WIDTH, FONT_METRICS.ROW1.STRIDE_X);
 
 /**
@@ -142,7 +157,7 @@ export function composeNotificationBanner(input: NotificationTextInput): Notific
   }
 
   return {
-    row0: fitToCapacity(row0Source, ROW0_CAPACITY),
+    row0: fitToWidth(row0Source, ROW0_WIDTH_PX),
     row1: fitToCapacity(row1Source, ROW1_CAPACITY),
     fullText: [row0Source, row1Source].filter(Boolean).join(' - ')
   };

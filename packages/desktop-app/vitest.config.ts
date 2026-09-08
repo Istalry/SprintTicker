@@ -20,7 +20,9 @@ export default defineConfig({
         // dilutes the figure for code that does have logic.
         'src/shared/render-constants.ts',
         'src/shared/pixel-fonts.ts',
-        'src/shared/pixel-bitmaps.ts'
+        'src/shared/pixel-bitmaps.ts',
+        // Generated from the firmware's LVGL font by tools/lvgl-font-to-ts.js.
+        'src/shared/busy-font.ts'
       ],
       // A ratchet, not a target. Raise these as coverage improves; never
       // lower them to make a run pass.

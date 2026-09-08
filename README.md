@@ -463,7 +463,12 @@ MIT — see [LICENSE](LICENSE).
 The BUSY Bar hardware, its firmware and its official documentation are not part
 of this repository and are not covered by that license.
 
-`Animations/` is an exception worth knowing about: those frame sets come from
-the BUSY Bar firmware and are (c) Flipper FZCO under **CC-BY-SA-4.0**, not MIT.
-Adapting them means licensing the adaptation the same way. See
-[LICENSE](LICENSE).
+Two exceptions are worth knowing about, both detailed in [LICENSE](LICENSE):
+
+- `Animations/` -- frame sets from the BUSY Bar firmware, (c) Flipper FZCO under
+  **CC-BY-SA-4.0**, not MIT. Adapting them means licensing the adaptation the
+  same way.
+- `packages/desktop-app/src/shared/busy-font.ts` -- the generated glyph table
+  for the front display's text, converted from the firmware's own font and
+  therefore **OFL-1.1** (c) TakWolf and Flipper FZCO. The OFL does not affect
+  the rest of the application, but that file keeps its own licence and notice.
