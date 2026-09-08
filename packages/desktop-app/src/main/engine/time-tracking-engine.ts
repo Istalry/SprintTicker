@@ -377,16 +377,35 @@ export class TimeTrackingEngine extends EventEmitter {
       createdAtUtc: nowIso
     });
 
-    // 2. Buffer to offline sync queue
-    const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
-    this._worklogRepo.enqueueSyncItem({
-      id: createId(IdPrefix.SYNC_ITEM),
-      providerId: activeProvider ? activeProvider.providerId : 'openproject',
-      taskId: active.taskId,
-      durationSeconds: loggedSeconds,
-      startedAtUtc: active.startTimeUtc,
-      comment: worklogComment
-    });
+    // 2. Buffer to offline sync queue, unless there is nothing to report.
+    //
+    // A session started and stopped inside the same second logs zero:
+    // elapsedSeconds is floored to whole seconds and clamped at 0. Every
+    // provider's logTime rejects a non-positive duration by throwing
+    // ArgumentException, which is deliberate -- but ArgumentException is not a
+    // ProviderRequestError, so the queue cannot tell that the row is hopeless.
+    // It takes the ordinary backoff and spends all MAX_SYNC_ATTEMPTS retries
+    // across several hours before parking something that could never have been
+    // sent. Queueing a payload we already know violates the contract is the
+    // bug; the retries were only the symptom.
+    //
+    // The local worklog above is still written: the session did happen, and
+    // the history is the one place that should say so.
+    if (loggedSeconds > 0) {
+      const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
+      this._worklogRepo.enqueueSyncItem({
+        id: createId(IdPrefix.SYNC_ITEM),
+        providerId: activeProvider ? activeProvider.providerId : 'openproject',
+        taskId: active.taskId,
+        durationSeconds: loggedSeconds,
+        startedAtUtc: active.startTimeUtc,
+        comment: worklogComment
+      });
+    } else {
+      console.log(
+        `[TimeTrackingEngine] Session ${active.sessionId} logged no whole seconds; recorded locally and not queued.`
+      );
+    }
 
     // Ask for delivery now rather than waiting for the timer.
     //

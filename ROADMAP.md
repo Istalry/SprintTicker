@@ -210,6 +210,22 @@ finish the next, that is the common case rather than a corner, because a pass
 holds a network round trip open. The guard now coalesces: a request arriving
 mid-pass sets a flag and the row is drained before the pass ends.
 
+One cause of the missing worklogs turned up while writing the tests for that,
+and it is the likeliest explanation for the shortest of them. A session started
+and stopped inside the same second logs **zero**: `elapsedSeconds` is floored to
+whole seconds and clamped at 0. Every provider's `logTime` rejects a
+non-positive duration by throwing `ArgumentException` -- deliberately -- but
+`ArgumentException` is not a `ProviderRequestError`, so the queue cannot tell
+the row is hopeless. It took the ordinary backoff and spent all
+`MAX_SYNC_ATTEMPTS` retries across several hours before parking something that
+could never have been sent. `stopSession` no longer queues a zero-second
+session; the local worklog is still written, because the session did happen.
+
+Worth noting how it hid: the two tests written for the immediate-dispatch fix
+above both started and stopped in the same tick, so they were passing *because*
+a zero-duration row was being queued. They now backdate the session's start
+time, the same way the end-to-end simulation does.
+
 Two existing tests had to change with it, which is worth being explicit about.
 Both asserted a row was sitting in the queue as PENDING, and that state is now
 too short-lived to observe -- with no provider configured the row is parked at

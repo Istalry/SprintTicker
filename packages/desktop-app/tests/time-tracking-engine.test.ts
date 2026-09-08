@@ -144,8 +144,27 @@ describe('TimeTrackingEngine Unit Tests', () => {
       stopEngine.dispose();
     });
 
-    it('StopSession_WorklogQueued_ReachesTheProviderWithoutTheIntervalElapsing', async () => {
+    /**
+     * Starts a session that has already been running, so it logs whole seconds.
+     *
+     * Starting and stopping in the same test tick logs zero, and a zero-second
+     * session is deliberately not queued -- see the test below. Backdating the
+     * stored start time is how the end-to-end simulation does this too.
+     */
+    function startBackdatedSession(minutesAgo: number): void {
       stopEngine.startTask('10001');
+      const active = sessionRepo.getActiveSession();
+      if (!active) throw new Error('Expected an active session to backdate.');
+      sessionRepo.saveSession({
+        ...active,
+        startTimeUtc: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+        totalPausedSeconds: 0,
+        lastPauseStartUtc: undefined
+      });
+    }
+
+    it('StopSession_WorklogQueued_ReachesTheProviderWithoutTheIntervalElapsing', async () => {
+      startBackdatedSession(5);
 
       stopEngine.stopSession('Finished');
 
@@ -153,14 +172,33 @@ describe('TimeTrackingEngine Unit Tests', () => {
       expect(delivered[0].taskId).toBe('10001');
     });
 
+    it('StopSession_SessionShorterThanOneSecond_IsNotQueuedForAProviderThatWillRefuseIt', async () => {
+      // A mis-click: start and stop inside the same second. elapsedSeconds is
+      // floored and clamped, so it is 0 -- and every provider's logTime throws
+      // ArgumentException on a non-positive duration, by design.
+      //
+      // ArgumentException is not a ProviderRequestError, so the queue cannot
+      // see that it is hopeless: it takes the ordinary backoff and spends all
+      // MAX_SYNC_ATTEMPTS retries over several hours before parking a row that
+      // could never have been delivered. Queueing something we already know
+      // violates the contract is the bug; the retries are the symptom.
+      stopEngine.startTask('10001');
+
+      const result = stopEngine.stopSession('Mis-click');
+
+      expect(result.loggedSeconds).toBe(0);
+      await stopEngine.getSyncWorker().processPendingQueue();
+      expect(delivered).toHaveLength(0);
+    });
+
     it('StopSession_TwoSessionsInARow_DeliversEachWorklogExactlyOnce', async () => {
       // The failure the five-minute wait was protecting against. A second stop
       // arrives while the first flush may still be in flight, and the row must
       // not be sent twice -- an over-reported day is harder to notice than a
       // missing entry the queue would resend anyway.
-      stopEngine.startTask('10001');
+      startBackdatedSession(5);
       stopEngine.stopSession('First');
-      stopEngine.startTask('10001');
+      startBackdatedSession(3);
       stopEngine.stopSession('Second');
 
       await vi.waitFor(() => expect(delivered).toHaveLength(2));
