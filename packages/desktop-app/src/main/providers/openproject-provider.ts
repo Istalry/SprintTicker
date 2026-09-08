@@ -274,7 +274,14 @@ export class OpenProjectProvider implements ITaskProvider {
       // Unlike getProjects/getTasks this is not a prune input -- nothing is
       // deleted on the strength of it -- so an unreachable server degrades to
       // "no notifications" rather than failing the caller.
-      console.error('[OpenProjectProvider] Failed to fetch unread notifications:', err);
+      //
+      // The message, not the error object. This runs on a poll timer, so a
+      // server that is simply not there wrote a full stack trace every
+      // interval -- which is what buried the two worklog failures that
+      // actually needed reading during a live debugging session. A path that
+      // degrades on purpose should say so in one line.
+      const detail = err instanceof Error ? err.message : String(err);
+      console.warn(`[OpenProjectProvider] Unread notifications unavailable: ${detail}`);
       return [];
     }
   }

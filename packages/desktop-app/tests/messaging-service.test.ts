@@ -103,7 +103,8 @@ describe('MessagingIntegrationService', () => {
       } as unknown as OpenProjectProvider;
       
       const mockProviderManager = {
-        getProvider: vi.fn().mockReturnValue(mockOpProvider)
+        getProvider: vi.fn().mockReturnValue(mockOpProvider),
+        getActiveProvider: vi.fn().mockReturnValue({ providerId: 'openproject' })
       } as unknown as ProviderManager;
 
       vi.useFakeTimers();
@@ -118,6 +119,31 @@ describe('MessagingIntegrationService', () => {
       expect(mockRenderer.renderNotificationBanner).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Dave', appName: 'OpenProject', iconId: 'openproject' })
       );
+      vi.useRealTimers();
+    });
+
+    it('PollOpenProjectNotifications_ADifferentProviderIsActive_DoesNotDialOpenProjectAtAll', async () => {
+      // This is OpenProject's own notification feed, not a general one, and it
+      // polled regardless of which provider the user had chosen. Switching to
+      // Jira therefore left a stale OpenProject address being dialled once a
+      // minute forever, failing every time -- and the failure wrote a full
+      // stack trace, which during a live debugging session buried the two
+      // worklog errors that actually needed reading.
+      const mockOpProvider = {
+        fetchUnreadNotifications: vi.fn().mockResolvedValue([])
+      } as unknown as OpenProjectProvider;
+
+      const mockProviderManager = {
+        getProvider: vi.fn().mockReturnValue(mockOpProvider),
+        getActiveProvider: vi.fn().mockReturnValue({ providerId: 'jira' })
+      } as unknown as ProviderManager;
+
+      vi.useFakeTimers();
+      new MessagingIntegrationService(settingsRepo, mockRenderer, mockProviderManager);
+
+      await vi.advanceTimersByTimeAsync(2500);
+
+      expect(mockOpProvider.fetchUnreadNotifications).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
   });

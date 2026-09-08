@@ -54,6 +54,14 @@ export class MessagingIntegrationService {
 
   private async pollOpenProjectNotifications(): Promise<void> {
     if (!this.providerManager || !this.renderer) return;
+
+    // Only poll the provider the user is actually working against. This is
+    // OpenProject's own notification feed, not a general one, and it ran every
+    // interval regardless -- so switching to Jira left a stale OpenProject
+    // address being dialled once a minute forever, failing every time.
+    const active = this.providerManager.getActiveProvider();
+    if (!active || active.providerId !== 'openproject') return;
+
     const opProvider = this.providerManager.getProvider('openproject') as OpenProjectProvider;
     if (!opProvider) return;
 
