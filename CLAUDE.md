@@ -93,6 +93,10 @@ device.
 - **The field is `application_name`, not `app_id`.** The latter is a legacy name
   the firmware ignores.
 - **Asset filenames must match `^[a-zA-Z0-9._-]+$`** — no paths, no spaces.
+  Firmware 1.2.3 does accept a subdirectory in the name and creates it, but the
+  strict rule stays: it is valid on every firmware, and nothing here needs a
+  subdirectory. Relaxing it would buy nothing and cost compatibility with a bar
+  the user has not updated.
 - **Draw priority must be ≥ 95** for the app to hold the display.
 - **Status codes carry meaning.** `409` is a priority conflict (something else
   owns the display — not a failure), `413` is a payload too large (permanent;
@@ -103,6 +107,15 @@ device.
 
 The bar answers on the fixed address `10.0.4.20` over USB and needs no token
 there. That is not a hardcoded shortcut; it is how the device works.
+
+**Check the contract against a real bar after a firmware release**, with
+`pnpm probe:busybar`. It reports the firmware version, verifies the calls this
+app depends on, and says which newer fields the device accepts. It draws only
+under its own `application_name`, sends no `rectangle` elements — a wrong colour
+count there reboots the device, and no probe is worth that — and removes what it
+drew. Close the app first, or its priority-95 claim turns into 409s that mean
+only that the app owns the display. Last run: **firmware 1.2.3, all checks
+passing** (2026-09-09).
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,
@@ -317,4 +330,19 @@ Two documents are **deliberately not maintained**, and neither should be
 
 `Documentation/private/` holds BUSY Bar's own OpenAPI specification, example app
 and AI teaching pack. It is deliberately untracked: useful locally, not ours to
-redistribute. Fetch it from [github.com/busy-app](https://github.com/busy-app).
+redistribute.
+
+The specification is **no longer one file**. It lives in the firmware repository,
+split per tag and merged by their own `scripts/openapi_merge.py`, so refreshing
+it means pulling the directory at the release you care about:
+
+```bash
+# every path under applications/services/web_server/openapi/ at that tag
+curl -sSf "https://raw.githubusercontent.com/busy-app/busybar-firmware/1.2.3/applications/services/web_server/openapi/assets.yaml"
+```
+
+`assets.yaml` is the one that matters here: it carries `/api/display/draw`,
+`/api/assets/upload` and the element schemas. Worth knowing before you go
+looking, because the older single `BUSY Bar HTTP API Docs.yaml` in this folder
+is a merged snapshot and its `info.version` (`25.0.0`) is not a firmware
+version — it will not tell you which release it describes.

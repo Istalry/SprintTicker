@@ -22,6 +22,15 @@ do. No user-facing behaviour changes.
 - **`pnpm preflight` now runs in CI**, catching a version drift across the three
   `package.json` files when it is introduced rather than when someone tries to
   cut a release.
+- **`pnpm probe:busybar`** — checks the device contract against a real bar and
+  reports which newer firmware fields it accepts. Run against **firmware 1.2.3**:
+  everything this app relies on still holds, and both `z_index` and
+  `element_ids` are accepted, which lifts the compositing blocker recorded in
+  ROADMAP §4. It draws only under its own application name and sends no
+  `rectangle` elements, since a wrong colour count there reboots the device.
+- **Generated documentation site.** `pnpm docs:build` renders the three
+  Markdown documents into `docs/index.html` for GitHub Pages, and `pnpm
+  docs:check` fails CI when the page and its sources have drifted.
 
 ### Changed
 

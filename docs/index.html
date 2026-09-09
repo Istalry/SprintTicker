@@ -1626,7 +1626,7 @@
       </tr>
       <tr>
       <td align="left">Asset filenames match <code>^[a-zA-Z0-9._-]+$</code></td>
-      <td align="left">No paths, no spaces</td>
+      <td align="left">No paths, no spaces. Firmware 1.2.3 does accept a subdirectory and creates it, but the strict rule holds on every firmware and nothing here needs one</td>
       </tr>
       <tr>
       <td align="left">Draw priority ≥ 95</td>
@@ -1665,6 +1665,36 @@
       identical one, so before adding anything that redraws on a timer, check what
       actually changes. This is why the session timer shows <code>HH:MM</code> and not seconds.</p>
       <p>The rear 160×80 OLED is <strong>preview only</strong> in this build.</p>
+      <h4>Checking the contract after a firmware release</h4>
+      <p><code>pnpm probe:busybar</code> runs the calls above against a real bar and reports the
+      firmware version alongside the result. The test suite mocks the driver, so it
+      proves what this app <em>sends</em> and nothing about what the device does with it —
+      every hardware defect in this project&#39;s history was found by running the app and
+      reading a console.</p>
+      <p>Verified on <strong>firmware 1.2.3</strong> (2026-09-09): everything above still holds, and
+      two additions are available that were not before.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Field</th>
+      <th align="left">Where</th>
+      <th align="left">What it enables</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>z_index</code></td>
+      <td align="left">On any display element</td>
+      <td align="left">Integer, higher drawn on top. Elements at the same priority can be layered instead of overwriting one another</td>
+      </tr>
+      <tr>
+      <td align="left"><code>element_ids</code></td>
+      <td align="left"><code>DELETE /api/display/draw</code></td>
+      <td align="left">An array of element ids to remove, with <code>application_name</code> as a sanity check that you own them. Omit it to remove everything</td>
+      </tr>
+      </tbody></table></div>
+      <p>Neither is used yet. They matter because they lift the compositing blocker
+      recorded in ROADMAP §4 — an animation used to be all-or-nothing across the whole
+      panel.</p>
     </section>
 
   </main>

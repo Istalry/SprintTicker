@@ -535,13 +535,28 @@ looping idle animations.
   `coding_72x16`, `dnd_72x16` and `on_call_72x16`, about 3.8 MB of the 12.5 MB
   in `Animations/`. No source file referenced them, and there is no state for
   `dnd` to attach to — `UserMode` is `WORK | LUNCH | AWAY`.
-  - There is no compositing path to wire them into: `AnimationPlayer` sends one
+  - There was no compositing path to wire them into: `AnimationPlayer` sends one
     animation element at priority 95 and `transmitFrame` sends one full-panel
-    image at priority 95, so they overwrite each other. An animation is
+    image at priority 95, so they overwrite each other. An animation was
     therefore all-or-nothing across the whole panel, which suits only a state
     with nothing to say — Lunch, Away and the stand-up prompt, all already
     wired. `coding` would have to replace the task key and timer, and `on_call`
     needs a presence signal the app does not have.
+  - **Firmware 1.2.3 lifts that blocker, and it is measured rather than
+    assumed** (2026-09-09). `pnpm probe:busybar` against a real bar on 1.2.3
+    reports `z_index` accepted on a draw and `element_ids` accepted on a delete.
+    So elements can now be layered and removed individually instead of a frame
+    being all-or-nothing.
+    - Two elements at the same priority no longer have to fight: `z_index` is
+      an integer, higher drawn on top, on the shared element schema.
+    - `DELETE /api/display/draw` takes an `element_ids` array, with
+      `application_name` as a sanity check that you own them.
+    - This does **not** make the animation work small. The blocker was one of
+      three reasons; `coding` still has to coexist with the task key and timer
+      inside 72×16, and `on_call` still needs a presence signal the app does not
+      have. What changed is that the *device* is no longer the thing preventing
+      it. Anyone picking §4 up should re-read this bullet rather than the one
+      above it.
   - This stops future clones and CI checkouts fetching them, which is what the
     LFS bandwidth cap actually charges for. The objects stay in history; they
     are Flipper FZCO's own frame sets under CC-BY-SA-4.0 and can be restored

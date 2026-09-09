@@ -247,7 +247,7 @@ the device.
 | Text is printable ASCII (`0x20`–`0x7E`) | Smart quotes and emoji corrupt the display. Use `sanitizeAsciiText`, which transliterates rather than substitutes |
 | A solid fill takes exactly one colour; a gradient exactly two | **Reboots the device.** `formatHardwarePayload` normalises this — do not bypass it |
 | The field is `application_name`, not `app_id` | `app_id` is a legacy name the firmware ignores |
-| Asset filenames match `^[a-zA-Z0-9._-]+$` | No paths, no spaces |
+| Asset filenames match `^[a-zA-Z0-9._-]+$` | No paths, no spaces. Firmware 1.2.3 does accept a subdirectory and creates it, but the strict rule holds on every firmware and nothing here needs one |
 | Draw priority ≥ 95 | The app does not hold the display |
 | RTC timestamps need a numeric UTC offset, not `Z` | The device applies no conversion, so `toISOString()` leaves the bar showing UTC |
 
@@ -269,3 +269,23 @@ identical one, so before adding anything that redraws on a timer, check what
 actually changes. This is why the session timer shows `HH:MM` and not seconds.
 
 The rear 160×80 OLED is **preview only** in this build.
+
+### Checking the contract after a firmware release
+
+`pnpm probe:busybar` runs the calls above against a real bar and reports the
+firmware version alongside the result. The test suite mocks the driver, so it
+proves what this app *sends* and nothing about what the device does with it —
+every hardware defect in this project's history was found by running the app and
+reading a console.
+
+Verified on **firmware 1.2.3** (2026-09-09): everything above still holds, and
+two additions are available that were not before.
+
+| Field | Where | What it enables |
+| :--- | :--- | :--- |
+| `z_index` | On any display element | Integer, higher drawn on top. Elements at the same priority can be layered instead of overwriting one another |
+| `element_ids` | `DELETE /api/display/draw` | An array of element ids to remove, with `application_name` as a sanity check that you own them. Omit it to remove everything |
+
+Neither is used yet. They matter because they lift the compositing blocker
+recorded in ROADMAP §4 — an animation used to be all-or-nothing across the whole
+panel.

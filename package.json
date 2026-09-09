@@ -21,6 +21,7 @@
     "mock:openproject": "node scripts/fake-openproject.js",
     "mock:jira": "node scripts/fake-jira.js",
     "probe:jira-worklog": "node scripts/jira-worklog-probe.js",
+    "probe:busybar": "node scripts/busybar-probe.js",
     "verify:unity": "node scripts/verify-unity-plugin.js",
     "docs:build": "node scripts/build-docs.js",
     "docs:check": "node scripts/build-docs.js --check"

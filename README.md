@@ -434,6 +434,12 @@ without modifying your scenes or project code.
   function instead. Use `curl` for manual pokes.
 - **Animation debugger** — in-app under **Device Diagnostics**:
   marquee speeds, particle effects, LED colours and icon rasterisation, live.
+- **Hardware contract probe** — `pnpm probe:busybar` checks a real bar: it
+  reports the firmware version, verifies the calls this app depends on, and says
+  which newer fields the device accepts. Run it after a firmware release; the
+  test suite mocks the driver and so proves what we *send*, never what the
+  device does with it. Close the app first, or its priority-95 claim shows up as
+  409s.
 
 Windows batch shortcuts for the common commands sit in the repository root:
 `install.bat`, `run_editor.bat`, `package-win.bat`, `verify-unity.bat`,
