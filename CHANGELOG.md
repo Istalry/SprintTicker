@@ -53,6 +53,18 @@ do. No user-facing behaviour changes.
 
 ### Changed
 
+- **ESLint 8 → 10, on flat config.** ESLint 8 is end of life. The target became
+  10 rather than the planned 9 once the registry showed 9 as the `maintenance`
+  tag. `.eslintrc.cjs` and `.eslintignore` are replaced by `eslint.config.mjs`,
+  with every rule and comment carried across — the process-boundary rules and
+  the curated type-aware ones are load-bearing, and a silently dropped rule is
+  the real risk in a config migration. Verified by capturing the old findings as
+  a sorted list and reproducing it exactly (150 files, 36 warnings, 0 errors),
+  then deliberately breaking each rule to confirm it still fires. No behaviour
+  change; developer tooling only.
+- Three small findings from ESLint 10's stricter defaults: a disable comment
+  naming `no-var-requires`, which was renamed and had stopped suppressing
+  anything; an unused `catch` binding; a redundant initialiser.
 - **`verify:packed` asserts what the packaged app does.** It used to prove only
   that the binary booted and something was listening on 39123 — true of a build
   with broken routing. It now accepts a Unity heartbeat and refuses both

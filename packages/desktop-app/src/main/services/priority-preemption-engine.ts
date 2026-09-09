@@ -131,7 +131,7 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   /// </summary>
   public getRules(): PriorityRule[] {
     const raw = this._settingsRepo.getSetting<Record<string, unknown> | null>(PriorityPreemptionEngine.DB_SETTINGS_KEY, null);
-    let loadedRules: PriorityRule[] = [];
+    let loadedRules: PriorityRule[];
 
     if (!raw) {
       loadedRules = PriorityPreemptionEngine.DEFAULT_RULES;

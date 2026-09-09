@@ -738,11 +738,48 @@ measures.
 
 ## Dependency debt still outstanding
 
-- **React 18 -> 19** and **ESLint 8 -> 9.** Neither carries a security advisory;
-  both are real migrations. ESLint 8 is end-of-life and its 9 upgrade means
-  moving `.eslintrc.cjs` to flat config, including the `parserOptions.project`
-  wiring that the type-aware rules depend on. Do them for their own sake, not
-  because a bot opened a PR.
+- [x] **ESLint 8 -> 10, flat config** (2026-09-09). Done on
+  `chore/dependency-debt`. It was planned as 8 -> 9; the registry settled that
+  during the work — **9 is now the `maintenance` dist-tag and 10 is `latest`**,
+  so stopping at 9 would have migrated onto a line already scheduled to expire.
+  - `.eslintrc.cjs` and `.eslintignore` are both gone, replaced by
+    `eslint.config.mjs`. Every rule and every explanatory comment moved across
+    verbatim; the comments are the valuable part of that file.
+  - **The measurement that made this safe:** the old config's findings were
+    captured as a sorted `file:line rule` list *before* starting, and the new
+    config reproduces it **exactly** -- 150 files linted, 36 warnings, 0 errors,
+    byte-identical. A matching count alone would not have proved it; a rule that
+    silently stops running is the failure mode here, and it looks like success.
+  - A clean run still proves nothing about rules that no longer fire, so each
+    load-bearing rule was deliberately broken and confirmed to error:
+    `no-misused-promises` (the `async will-quit` bug class), `await-thenable`,
+    `no-floating-promises`, both directions of the `no-restricted-imports`
+    process boundary, and `react-hooks/rules-of-hooks`.
+  - **`eslint-plugin-react` has no ESLint 10 release** (7.37.5 caps its peer
+    range at `^9.7`), and on 10 it really does crash:
+    `contextOrFilename.getFilename is not a function`. It is *only* the version
+    **detection** path -- `settings.react.version: 'detect'` -- so pinning the
+    version explicitly avoids it entirely and the rules run normally. That is
+    why `settings.react.version` is a literal and must stay one until the plugin
+    ships 10 support; `'detect'` is the tempting-looking change that breaks the
+    whole lint run.
+  - Three traps, recorded in `CLAUDE.md` §2 because each one presents as "the
+    migration broke everything": `.eslintignore` is no longer read, `--ext` no
+    longer exists (so `.js` files enter scope for the first time), and
+    `@typescript-eslint/no-var-requires` was **renamed** to `no-require-imports`
+    -- a disable comment naming the old rule had quietly stopped applying.
+  - **`eslint-plugin-react-hooks` 4 -> 7** (v4 has no flat config at all). v7's
+    recommended set is the React Compiler one and reports **16 new findings**
+    across the renderer -- `set-state-in-effect` x14, `purity`, `refs`. They are
+    not adopted here: this commit is a config migration, and those are renderer
+    refactors in code that has no tests. Only the two classic rules are enabled.
+    **Adopting the expanded set is the natural follow-up once the smoke harness
+    below exists**, and it is the most valuable thing in this section now.
+- **React 18 -> 19.** No security advisory; doing it for its own sake. Blocked
+  on a renderer smoke-test harness, because the renderer has no tests and
+  nothing automated could see a regression. Note that `lucide-react` 0.359 caps
+  its React peer at 18, so this drags a coupled bump with it -- the same shape
+  as the better-sqlite3 / Electron pairing in `CLAUDE.md` §2.
 - **Renderer bundle audit.** Electron 44 ships a much newer Chromium, so several
   `@vitejs/plugin-react` and browserslist assumptions are now conservative.
 

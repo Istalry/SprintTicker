@@ -13,10 +13,10 @@
     "test": "pnpm --filter @sprintticker/desktop-app test",
     "test:coverage": "pnpm --filter @sprintticker/desktop-app test:coverage",
     "editor": "node tools/pixel-editor/server.js",
-    "lint": "eslint packages --ext .ts,.tsx",
+    "lint": "eslint packages",
     "typecheck": "pnpm --filter @sprintticker/desktop-app typecheck",
     "format": "prettier --write \"packages/**/*.{ts,tsx,json,css,md}\"",
-    "lint:fix": "eslint packages --ext .ts,.tsx --fix",
+    "lint:fix": "eslint packages --fix",
     "dev:mock": "pnpm --filter @sprintticker/desktop-app dev:mock",
     "mock:openproject": "node scripts/fake-openproject.js",
     "mock:jira": "node scripts/fake-jira.js",
@@ -27,14 +27,15 @@
     "docs:check": "node scripts/build-docs.js --check"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^8.57.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
     "eslint-plugin-react": "^7.34.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
     "marked": "^18.0.12",
     "prettier": "^3.2.5",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.70.0"
   },
   "engines": {
     "node": ">=22.12.0",

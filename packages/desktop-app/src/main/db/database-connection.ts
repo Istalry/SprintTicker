@@ -13,7 +13,7 @@ export class DatabaseConnection {
   constructor(dbPath?: string) {
     let defaultDir = process.cwd();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const electron = require('electron');
       if (electron?.app?.getPath) {
         defaultDir = electron.app.getPath('userData');

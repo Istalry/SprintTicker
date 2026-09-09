@@ -116,7 +116,7 @@ export class AnimationPlayer {
           if (meta.fps) {
             fps = Number(meta.fps);
           }
-        } catch (e) {
+        } catch {
           console.warn(`[AnimationPlayer] Failed to parse meta.json for ${animName}, defaulting to 10 fps`);
         }
       }

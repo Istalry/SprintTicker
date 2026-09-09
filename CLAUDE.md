@@ -53,6 +53,32 @@ better-sqlite3 majors: that bump is driven by this pairing rather than chosen on
 its own. On a fresh install with no prebuild for your Node version, it compiles
 from source and needs Python and MSVC Build Tools.
 
+**Lint config is flat config, in `eslint.config.mjs` at the repo root.** ESLint 8
+reached end of life; the repository is on ESLint 10 (9 is the `maintenance`
+dist-tag). Four things about it are worth knowing before you touch it, because
+each presents as "the migration broke everything":
+
+- **`.eslintignore` is not read any more**, and the file is deleted rather than
+  left lying around doing nothing. The ignore list lives in the first config
+  object. If `scripts/` or `tools/` ever start reporting errors, this is why —
+  they are deliberately unlinted, untyped, dependency-free CommonJS.
+- **`--ext` no longer exists.** The old invocation was `eslint packages --ext
+  .ts,.tsx`, so `.js` was never linted; the config reproduces that by ignoring
+  `**/*.js`. Removing that ignore means `postcss.config.js` and
+  `tailwind.config.js` enter scope and fail on `module is not defined`.
+- **`settings.react.version` must stay a literal, never `'detect'`.**
+  `eslint-plugin-react` has no ESLint 10 release, and its version *detection*
+  path crashes the entire run with `contextOrFilename.getFilename is not a
+  function`. Pinned, the plugin works normally. Revisit when the plugin ships
+  ESLint 10 support.
+- **`@typescript-eslint/no-var-requires` was renamed `no-require-imports`.** A
+  disable comment naming the old rule silently stops suppressing anything.
+
+`eslint-plugin-react-hooks` is on 7, but only `rules-of-hooks` and
+`exhaustive-deps` are enabled. Its full recommended set is the React Compiler
+one and reports 16 findings in the renderer; adopting it is a real task with
+real refactoring behind it, not a config flip. See ROADMAP.
+
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and
 `package:win` will happily build an installer with a broken icon and no
