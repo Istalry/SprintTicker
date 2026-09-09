@@ -18,7 +18,10 @@ do. No user-facing behaviour changes.
 - **Tests for the hardware task picker and the tray context menu.** Both were
   behaviour a user reaches with a physical control and neither was covered.
   `input-decoder.ts` went from 66% to 94%, `tray-manager.ts` from 69% to 92%,
-  and the coverage floor is ratcheted to 82 / 73.5 / 83.5 / 84.5.
+  and the coverage floor is ratcheted to 83 / 74 / 84.5 / 85.
+- **Tests for the diagnostics export**, which had one test asserting three
+  values the exporter had invented. `main/diagnostics` went from 66% to 98.5%;
+  `logger-interceptor.ts` had no test file at all.
 - **`pnpm preflight` now runs in CI**, catching a version drift across the three
   `package.json` files when it is introduced rather than when someone tries to
   cut a release.
@@ -28,6 +31,22 @@ do. No user-facing behaviour changes.
   `element_ids` are accepted, which lifts the compositing blocker recorded in
   ROADMAP §4. It draws only under its own application name and sends no
   `rectangle` elements, since a wrong colour count there reboots the device.
+- **The probe reads the panel back and measures it.** `pnpm probe:busybar` now
+  captures frames with `GET /api/screen?display=0` and writes them out as PNGs,
+  so a check can assert a *layout* rather than a status code. What that
+  settled, all on firmware 1.2.3:
+  - `CountdownElement` renders **17×5px**, not tall as its guidance warns, and
+    sits beside a 16px app icon with 39px of the field to spare. It ticks with
+    no uploads at all, against the two HTTP requests per frame the app pays
+    today. ROADMAP §4's timer work is a layout exercise, not a rewrite.
+  - **The countdown counts against the device's RTC, not the app's clock.** The
+    measured bar runs 19 seconds behind its host, so a countdown built from
+    `Date.now()` drew `00:47` for a 65-second interval — silently wrong, with
+    nothing reporting it. Recorded before anything is built on it.
+  - `z_index` genuinely reorders overlapping elements. The previous run showed
+    only that the field is accepted on a draw, which is a weaker claim.
+  - `GET /api/screen` serves base64 raw **BGR** pixels, top-down and with no
+    BMP header, despite answering `Content-Type: image/bmp`.
 - **Generated documentation site.** `pnpm docs:build` renders the three
   Markdown documents into `docs/index.html` for GitHub Pages, and `pnpm
   docs:check` fails CI when the page and its sources have drifted.
@@ -65,10 +84,24 @@ do. No user-facing behaviour changes.
   alongside OpenProject and ad-hoc, and each collects the credentials it needs
   to work — a Jira user no longer has to pick something else and then find the
   provider in Settings.
+- **The diagnostics export reports facts instead of asserting them.** The bundle
+  users attach to a bug report claimed `appVersion: "1.0.0"` on every release
+  after 1.0.0, fell back to Electron `"30.0.0"` on a build running Electron 44,
+  and hardcoded `webhookServerStatus.listening: true` — asserting the Unity
+  listener was up in precisely the bundle someone sends when it is not. The
+  version now comes from Electron, the listener state from the socket itself,
+  and anything genuinely unknowable is reported as unknown.
+- **`LoggerInterceptor.intercept()` is idempotent and reversible.** Called
+  twice it captured its own wrapper as the "original", double-recording every
+  line; there was also no way to put `console` back, which is a problem for
+  anything that intercepts outside the main process.
 - A deprecated `.substr` in the priority engine (audit F-36).
 - An intermittent `Closing rpc while onUserConsoleLog was pending` teardown
   error that failed the coverage run while every test passed. The suite's console
-  output was outrunning vitest's rpc channel at worker teardown.
+  output was outrunning vitest's rpc channel at worker teardown. First addressed
+  by stubbing `console` in the noisy fixtures; it recurred, so
+  `disableConsoleIntercept: true` now sends console output straight to stdout
+  and removes the forwarding that was the actual mechanism.
 
 ## 1.1.0 — 2026-09-08
 

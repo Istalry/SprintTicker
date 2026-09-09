@@ -109,8 +109,9 @@ ABI and LFS failures in this repository have historically only appeared there.
     download** cap is the binding constraint, not storage, and an uncached
     `lfs: true` checkout burns through it in roughly 77 runs.
   - Signing stays out of the build configuration. `electron-builder` reads
-    `CSC_LINK` / `CSC_KEY_PASSWORD` from the environment, so adding two repository
-    secrets is the entire change on the day a certificate exists.
+    `CSC_LINK` / `CSC_KEY_PASSWORD` from the environment, so nothing here has to
+    change to *allow* signing. That is no longer the same as it being easy: see
+    the HSM note under `electron-updater` below.
 - **`electron-updater`.** `electron-builder.json` already stages `publish`
   (`github`, `draft`) — it emits `latest.yml`, which is harmless without an
   updater and required with one, and CI always passes `--publish never`.
@@ -129,11 +130,29 @@ ABI and LFS failures in this repository have historically only appeared there.
     - The URL passed to `shell.openExternal` is checked against this
       repository's prefix. An `openExternal` that opens whatever it is handed
       launches arbitrary protocol handlers.
-  - **Still to do: the actual download.** Unsigned auto-updates re-trigger
-    SmartScreen every time and some are blocked outright, so installing in-app
-    would be worse than the manual route. This becomes `electron-updater` on
-    the day a certificate exists, and `latest.yml` is already attached to
-    every release so that day needs no release-side change.
+  - [x] **The download is not planned** (2026-09-09) — decided, not pending.
+    Notification plus a manual install is the finished state of this feature,
+    not a stopgap waiting on a certificate.
+    - Unsigned auto-updates re-trigger SmartScreen on every update and some are
+      blocked outright, so an in-app install would be *worse* than the manual
+      route it replaced. A certificate is the only thing that changes that, and
+      the ones that satisfy SmartScreen are an annual cost plus an identity
+      verification process — not proportionate for a single-author personal
+      project with a working manual path.
+    - What the user loses is one download and one double-click per release,
+      perhaps twice a year. What they keep is the app's only outbound request
+      staying a single unauthenticated GET that can be switched off.
+    - Nothing is being left half-built. `latest.yml` is attached to every
+      release and `electron-builder.json` already stages `publish`, so if the
+      decision is ever revisited the release side needs no change — but it is a
+      decision now, and this item is closed rather than blocked.
+    - **The "just add `CSC_LINK`" note elsewhere in this file was already
+      stale.** Since June 2023 the CA/Browser Forum requires the private key of
+      every new code-signing certificate to live on a FIPS-140-2 token or in a
+      cloud HSM, so there is no longer a `.pfx` to base64 into a repository
+      secret. Signing in CI now means an HSM signing service and a custom
+      `signtool` step, which is a further reason this is not a two-secret
+      change.
   - `nsis.differentialPackage` is **off** deliberately. Differential updates
     need a signed, published baseline to diff against; against unsigned draft
     releases the blockmap is dead weight in every artifact. Turn it on with the
@@ -465,12 +484,19 @@ Also worth doing while this area is open:
   opening the panel is looking for. Rows are named from the local task cache,
   since the queue stores the provider's own id and `10004` appears nowhere in
   Jira's UI.
-- **Still open:** `minimumLoggableSeconds` for Jira is **60 by inference, not by measurement**
-  -- Jira's documented minute granularity plus one observed `400`. If the real
-  floor is lower, the engine is discarding time a user worked, which is the
-  failure worth checking. `pnpm probe:jira-worklog <ISSUE-KEY>` measures it
-  against a live site, reading credentials from the environment and deleting
-  every worklog it creates. Run it once and either confirm the 60 or lower it.
+- [x] **`minimumLoggableSeconds = 60` is measured** (2026-09-09). It had been an
+  inference — Jira's documented minute granularity plus one observed `400` — and
+  if the real floor had been lower the engine would have been discarding time a
+  user worked. `pnpm probe:jira-worklog` against a live Cloud site refused 1s,
+  5s, 30s and 59s and accepted 60s, 61s and 120s. The boundary is exactly 60, so
+  the constant was right and is now a fact rather than a guess.
+  - The refusal is a `400` reading "the worklog must not be Null", with
+    `errors.timeLogged` saying to indicate the time spent. It names neither the
+    duration nor a minimum, which is why this took a live run to settle rather
+    than being readable off a failed request. Recorded at the constant so the
+    next person is not misled by it.
+  - Worth keeping the probe: this is a fact about a remote API, not about this
+    code, so Atlassian can change it without anything here failing.
 
 ---
 
@@ -482,17 +508,40 @@ was gated, and both are fixed — frames are hashed and deduplicated, the
 animation cache is bounded to two entries, and the blocker is released for
 looping idle animations.
 
-- **Probe `CountdownElement` before designing around it.** The device has a
-  native countdown element, which would let the bar tick a timer without the
-  app uploading a frame per second. Two things are unknown and cheap to
-  establish: the element has no `font` field, and BUSY Bar's own guidance warns
-  countdowns render tall, which may not coexist with a 16 px app icon beside
-  them. Draw one and read it back with `GET /api/screen?display=0` — 30 minutes
-  settles whether this is a layout or a rewrite. `direction: "time_since"`
-  counts up, which is what a session tracker wants.
-  Until then the timer deliberately shows `HH:MM`, not seconds: at 72×16 the
-  paused layout clips to six characters, and seconds would mean a frame upload
-  every second for a digit nobody reads.
+- [x] **`CountdownElement` is probed, and it is a layout exercise, not a
+  rewrite** (2026-09-09). `pnpm probe:busybar` now draws one, reads the panel
+  back with `GET /api/screen?display=0` and measures the pixels. Every number
+  below is measured on firmware 1.2.3, not read from the spec.
+  - **It does not render tall.** The warning that prompted this probe does not
+    apply here: it draws **17×5px** for `01:06` — the same 5px height as row 1's
+    own font. It has no `font` field and there is nothing to configure, but at
+    that size there is nothing to fix either.
+  - **It coexists with a 16px app icon comfortably.** Drawn at `x=17` beside a
+    16×16 icon it occupies 17px of the 56px field, leaving 39px. The layout
+    this was feared to break is not close to breaking.
+  - **It ticks on its own.** Two readbacks 2s apart differ with no redraw from
+    the app, which is the entire point: a live seconds display for **zero**
+    uploads, against the two HTTP requests per frame the app pays today.
+  - **`direction: "time_since"` counts up**, as documented, and
+    `show_hours: "when_non_zero"` gives `MM:SS` until there is an hour to show.
+  - **The trap, and it is a real one: the countdown counts against the
+    *device's* RTC, not the app's clock.** The probe asked for 65 seconds
+    elapsed and the bar drew `00:47`, because this bar's clock is **19 seconds
+    behind** the host. Nothing is wrong with the element; the two clocks simply
+    disagree, and the element believes the device. Handing the bar a timestamp
+    computed with `Date.now()` displays a timer that is silently wrong by
+    whatever the skew happens to be, and *nothing reports it* — the bar looks
+    confidently incorrect. Re-running with the skew added produced `01:06`, so
+    the fix is arithmetic, but it has to be deliberate: read `GET /api/time`,
+    compute the offset, apply it to every countdown timestamp, and re-read it
+    periodically since RTC drift is what caused this. Setting the device's clock
+    instead is the other option and is a bigger decision — it is the user's
+    device and the bar shows that time when this app is not running.
+  - Until this is built the timer still shows `HH:MM`, not seconds: at 72×16 the
+    paused layout clips to six characters, and seconds *rendered by the app*
+    would mean a frame upload every second for a digit nobody reads. The
+    countdown element is what makes seconds affordable, and it is now measured
+    rather than hypothetical.
 - **Countdown display for lunch and breaks** — deferred by choice, not by
   blocker. Revisit after the probe.
 - **Wire up the rear 160×80 OLED.** `buildRearElements` already produces valid
@@ -551,6 +600,13 @@ looping idle animations.
       an integer, higher drawn on top, on the shared element schema.
     - `DELETE /api/display/draw` takes an `element_ids` array, with
       `application_name` as a sanity check that you own them.
+    - **`z_index` genuinely reorders; it is not merely accepted** (2026-09-09).
+      The first run proved only that the field survives a draw, which is a
+      weaker claim than it reads as. The probe now draws two overlapping images,
+      swaps their `z_index` and reads the panel back both ways: the frames
+      differ, and the higher value is the one drawn on top. That is the fact §4
+      would be designed around, so it is measured rather than inferred from a
+      `200`.
     - This does **not** make the animation work small. The blocker was one of
       three reasons; `coding` still has to coexist with the task key and timer
       inside 72×16, and `on_call` still needs a presence signal the app does not
@@ -589,8 +645,8 @@ looping idle animations.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**82.77 statements / 74.06 branches / 84.15 functions / 84.98 lines across 688
-tests in 49 files**, and the floor is ratcheted to 82 / 73.5 / 83.5 / 84.5.
+**83.13 statements / 74.18 branches / 84.67 functions / 85.34 lines across 707
+tests in 50 files**, and the floor is ratcheted to 83 / 74 / 84.5 / 85.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -607,12 +663,36 @@ problem; each is a specific untested path:
 
 | Area | Statements | Note |
 | :--- | ---: | :--- |
-| `main/diagnostics` | 66% | `logger-interceptor.ts` has **no test file at all**, and the corrupted-database branch of `diagnostic-exporter.ts` is untested. |
+| `main/diagnostics` | 98.5% | Was 66%. Closed below. |
 | `main/services` | 78% | Depth, not absence — every service has a test file. `priority-preemption-engine.ts` is the best value per unit of effort: 341 lines of pure logic behind an interface, constructor-injected. |
 | `main/hardware` | 79% | Was 74%. `input-decoder.ts` is now 94%. |
 | `main/tray` | 92% | Was 69%. Closed below. |
 
-Two of the four were closed on 2026-09-09, and both were behaviour a user
+- **`main/diagnostics` 66% → 98.5%**, and this one found defects rather than
+  just covering lines. `logger-interceptor.ts` had **no test file at all**;
+  writing one meant giving it a `restore()`, because `intercept()` was an
+  irreversible change to a process-wide singleton and leaving it in place is the
+  console-over-rpc hazard below. It also turned out `intercept()` was not
+  idempotent: a second call captured the first call's wrapper as the "original",
+  so every line would have been recorded twice and `restore()` would have
+  unwrapped only one layer.
+  - **Three fields in the diagnostics bundle were invented, not measured** —
+    and this is the bundle a user attaches to a bug report. `appVersion` was the
+    literal `'1.0.0'`, so every report since the 1.1.0 release named the wrong
+    version. `electronVersion` fell back to `'30.0.0'` for a build running
+    Electron 44. Worst of the three, `webhookServerStatus.listening` was
+    hardcoded `true`: it asserted the Unity listener was up in exactly the
+    bundle a user sends because it is not. `WebhookServer.getStatus()` now reads
+    `server.listening` — the socket, not a flag that stays true after it dies —
+    and anything genuinely unknowable is reported as unknown.
+  - The single existing test **asserted all three invented values**, so it
+    passed while the bundle lied. That is CLAUDE.md's "test the behaviour, not
+    the implementation you just wrote", found in the wild.
+  - The interceptor's most valuable test is the one tying it to
+    `notification-redaction.ts`: what this class captures is what leaves the
+    machine, which is how 1,175 real toast records once did.
+
+Two more were closed on 2026-09-09, and both were behaviour a user
 reaches with a physical control rather than percentage-chasing:
 
 - **`input-decoder.ts` 66% → 94%.** The hardware task picker was entirely
@@ -636,9 +716,18 @@ gate while every test passed: the added tests multiplied this suite's console
 output, and vitest forwards each line to the main thread over rpc. The worker
 began tearing down with logs still in flight — `Closing rpc while
 onUserConsoleLog was pending` — an unhandled error that exits non-zero on a run
-where all 688 tests are green, intermittently and more often under coverage.
-The fix is to stub `console` at the top of the fixture, before anything logs.
-Volume was the whole problem; nobody was reading the output.
+where every test is green, intermittently and more often under coverage.
+The first fix was to stub `console` at the top of each noisy fixture, before
+anything logs. Volume was the whole problem; nobody was reading the output.
+
+**That treated the symptom, and it came back** (2026-09-09). The diagnostics
+tests reproduced it once in three runs while stubbing console correctly, because
+per-fixture stubbing is whack-a-mole — the next suite that logs brings it back,
+and the *forwarding* is the mechanism. `disableConsoleIntercept: true` in
+`vitest.config.ts` writes console output straight to stdout instead of over rpc,
+which removes the mechanism rather than the symptom: six consecutive clean
+coverage runs since. The fixture stubs stay, because keeping the suite's output
+readable is a separate and still-good reason for them.
 
 The renderer is not measured at all -- `coverage.include` is `src/main/**` and
 `src/shared/**`. Roughly 4,700 lines of TSX have no tests. Extending the gate
@@ -672,7 +761,7 @@ nobody got to.
 | Foreign keys on `worklogs` → `tasks` | Deferred | **Would fail on existing data**: F-01 already deleted tasks that surviving worklogs reference. Needs an orphan-cleanup decision. |
 | Sync idempotency | Documented limitation | `reclaimStaleSyncItems` can re-POST if the app died after OpenProject accepted but before the row was marked `SYNCED`. The v3 API has no idempotency key; the sync id is embedded in the comment so duplicates are greppable. |
 | Task description field | Feature, not a fix | `input-decoder` renders the task **key** where a non-existent `TaskDTO.description` was read. A real description field is a schema change plus provider mapping. |
-| Code signing | Blocked on cost | No certificate. Builds are unsigned and SmartScreen warns; the build configuration is already arranged so that adding one is two secrets. |
+| Code signing | Not planned | Deliberate, as of 2026-09-09, not a gap. A SmartScreen-satisfying certificate costs money annually and requires identity verification, which is out of proportion to a personal project whose manual install works. Builds stay unsigned and the first-run warning is documented where a user meets it. Note that the old "adding one is two repository secrets" claim no longer holds: new code-signing keys must sit on a hardware token or in a cloud HSM, so CI signing needs a signing service, not a `.pfx` in a secret. |
 | macOS / Linux | Out of scope | The notification listener is PowerShell against the Windows Action Center. Porting means a second listener, not a build target. |
 
 ---

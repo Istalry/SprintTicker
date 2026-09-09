@@ -42,7 +42,22 @@ interface JiraIssuePage {
 export class JiraProvider implements ITaskProvider {
   public readonly providerId: string = 'jira';
   public readonly providerName: string = 'Jira Cloud';
-  /** Jira's time tracking is minute-granular; anything shorter rounds to zero and is refused. */
+  /**
+   * Jira's time tracking is minute-granular; anything shorter rounds to zero
+   * and is refused.
+   *
+   * **Measured, not inferred** (2026-09-09, `pnpm probe:jira-worklog` against a
+   * live Cloud site): 1s, 5s, 30s and 59s were all refused and 60s, 61s and
+   * 120s all accepted. The boundary is exactly 60, so no time a user worked is
+   * being discarded by this floor. It was previously a guess from Jira's
+   * documented granularity plus one observed failure, which is why the probe
+   * exists.
+   *
+   * Do not read the server's own message as a clue if this ever changes:
+   * a sub-minute worklog comes back as "the worklog must not be Null /
+   * timeLogged: you must indicate the time spent", which names neither the
+   * duration nor a minimum and cost real time to diagnose the first time.
+   */
   public readonly minimumLoggableSeconds: number = 60;
 
   private _site: string = '';

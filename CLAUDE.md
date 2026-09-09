@@ -25,7 +25,7 @@ display over USB, and mirrors Windows notifications onto it.
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
 pnpm test             # vitest run
-pnpm test:coverage    # floor: 82% stmts / 84.5% lines / 83.5% funcs / 73.5% branches
+pnpm test:coverage    # floor: 83% stmts / 85% lines / 84.5% funcs / 74% branches
                       # a ratchet -- raise it, never lower it to make a run pass
 pnpm typecheck        # main and renderer tsconfigs, separately
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
@@ -104,6 +104,23 @@ device.
   `classifyDeviceResponse`.
 - **RTC timestamps need a UTC offset, not `Z`.** The device applies no
   conversion, so `toISOString()` leaves the bar showing UTC.
+- **The device's clock is not this machine's clock.** A real bar measured
+  **19 seconds behind** its host. That is invisible today because the app
+  renders every time value itself and uploads pixels — but anything that hands
+  the device a timestamp and lets *it* do the arithmetic (`CountdownElement` is
+  the one that matters) shows a time wrong by the skew, with nothing anywhere
+  reporting it. Read `GET /api/time`, take the offset, and apply it; re-read it
+  periodically, because drift is what produced the 19 seconds.
+- **`GET /api/screen?display=0` does not return what it says it does.** It
+  answers `Content-Type: image/bmp`, and `streaming.yaml` types the body as
+  base64 — but on 1.2.3 what arrives is base64-encoded **raw** pixels with no
+  BMP header: 4608 characters decoding to 3456 bytes, which is 72 × 16 × 3. The
+  channel order is **BGR** (a pure red block reads back `0000ff`) and rows are
+  **top-down**, the opposite of BMP's default. Both were measured by drawing a
+  known block, because either mistake still yields a plausible-looking image —
+  just with the colours swapped or the picture upside down. `decodeFrame` in
+  `scripts/busybar-probe.js` handles it and keeps a real BMP path in front for
+  the day the endpoint matches its own content type.
 
 The bar answers on the fixed address `10.0.4.20` over USB and needs no token
 there. That is not a hardcoded shortcut; it is how the device works.
@@ -116,6 +133,13 @@ count there reboots the device, and no probe is worth that — and removes what 
 drew. Close the app first, or its priority-95 claim turns into 409s that mean
 only that the app owns the display. Last run: **firmware 1.2.3, all checks
 passing** (2026-09-09).
+
+It also reads the panel back and writes every frame out as a PNG (`--out <dir>`,
+default a temp directory), because the questions worth asking of a *display* are
+about layout and a status code cannot answer those. That is how the countdown
+element was measured at 17×5px and how `z_index` was shown to genuinely reorder
+overlapping elements rather than merely being accepted on a draw. When you add a
+check here, prefer one that looks at pixels over one that reads a status code.
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,

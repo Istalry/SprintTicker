@@ -8,6 +8,20 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.ts'],
+    // Console output goes straight to stdout instead of being forwarded to the
+    // main thread over rpc.
+    //
+    // That forwarding is the whole mechanism behind an intermittent
+    // `EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was
+    // pending` -- a worker tearing down with log lines still in flight, which
+    // exits the run non-zero while every test passes, and shows up more often
+    // under coverage because it is slower. It was previously chased by stubbing
+    // `console` at the top of each noisy fixture, which works but is
+    // whack-a-mole: the next suite that logs brings it back. Turning off the
+    // interception removes the mechanism rather than the symptom. Those fixture
+    // stubs stay -- they keep the suite's output readable, which is a separate
+    // and still-good reason for them.
+    disableConsoleIntercept: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -45,11 +59,17 @@ export default defineConfig({
       // 66% to 94% and `tray-manager.ts` from 69% to 92%, which is most of the
       // move -- both were untested behaviour a user reaches with a physical
       // button or a tray click, not percentage-chasing.
+      // Raised again with the diagnostics export: measured
+      // 83.13 / 74.18 / 84.67 / 85.34. `main/diagnostics` went from 66% to
+      // 98.5% -- `logger-interceptor.ts` had no test file at all, and the
+      // exporter's corrupted-database branches were unreachable from the one
+      // test that existed. That test also asserted three values the exporter
+      // had invented rather than measured, so it passed while the bundle lied.
       thresholds: {
-        lines: 84.5,
-        functions: 83.5,
-        branches: 73.5,
-        statements: 82
+        lines: 85,
+        functions: 84.5,
+        branches: 74,
+        statements: 83
       }
     }
   },

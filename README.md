@@ -262,7 +262,11 @@ made rather than hiding its result.
 
 A check that fails says so. It never reports "up to date" when it could not find
 out; the previous updater claimed to check and never did, and was deleted for it
-(audit F-18). A real in-app updater is gated on a code-signing certificate — see
+(audit F-18).
+
+**Notify-and-install-by-hand is the finished design, not a placeholder.** An
+in-app installer needs a code-signing certificate to be an improvement rather
+than a regression, and buying one is a deliberate no — see
 [ROADMAP.md](ROADMAP.md) §2.
 
 ---
@@ -296,9 +300,9 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 688 tests across 49 files, covering the main and shared
+`pnpm test` runs 707 tests across 50 files, covering the main and shared
 process code; the renderer is not covered. `pnpm test:coverage` enforces a
-threshold floor of 82% statements / 84.5% lines / 83.5% functions / 73.5%
+threshold floor of 83% statements / 85% lines / 84.5% functions / 74%
 branches.
 
 The floor is a **ratchet**: raise it when the measurement rises, never lower it
@@ -508,7 +512,8 @@ you want a copy.
 - **Two remote task providers**: OpenProject and Jira Cloud. Anything else means
   writing an adapter against `ITaskProvider`.
 - **Builds are unsigned**, so SmartScreen warns on first run and in-app updates
-  stay notification-only. Both are gated on a code-signing certificate.
+  stay notification-only. Both follow from a deliberate decision not to buy a
+  code-signing certificate; see [ROADMAP.md](ROADMAP.md) §2.
 
 ---
 

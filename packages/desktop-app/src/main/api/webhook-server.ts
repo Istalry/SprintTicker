@@ -369,6 +369,23 @@ export class WebhookServer {
     });
   }
 
+  /**
+   * Whether the socket is actually open, and on which port.
+   *
+   * Reads `server.listening` rather than a flag this class maintains: a flag
+   * set in `start()` stays true after the socket dies, which is exactly the
+   * case a diagnostic bundle exists to report. The diagnostics export used to
+   * hardcode `listening: true` and the port, so it asserted the server was up
+   * in precisely the bundle a user attaches when it is not.
+   */
+  public getStatus(): { listening: boolean; port: number } {
+    const addr = this.server.address();
+    return {
+      listening: this.server.listening,
+      port: addr && typeof addr === 'object' ? addr.port : this.port
+    };
+  }
+
   /// <summary>
   /// Gracefully stops the HTTP server.
   /// </summary>

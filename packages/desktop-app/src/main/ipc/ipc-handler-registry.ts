@@ -61,6 +61,8 @@ export interface IPCHandlerRegistryDeps {
   providerManager?: ProviderManager;
   syncWorker?: OfflineSyncWorker;
   updateChecker?: UpdateChecker;
+  /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
+  webhookServer?: { getStatus(): { listening: boolean; port: number } };
 }
 
 export class IPCHandlerRegistry {
@@ -105,7 +107,8 @@ export class IPCHandlerRegistry {
       systemAutomationService,
       providerManager,
       syncWorker,
-      updateChecker
+      updateChecker,
+      webhookServer
     } = deps;
 
     this.engine = engine;
@@ -131,7 +134,9 @@ export class IPCHandlerRegistry {
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer, this.getWindow);
-    this.diagnosticExporter = new DiagnosticExporter(driver, settingsRepo.getConnection());
+    this.diagnosticExporter = new DiagnosticExporter(driver, settingsRepo.getConnection(), {
+      webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
+    });
     this.systemAutomationService = systemAutomationService || new SystemAutomationService();
   }
 

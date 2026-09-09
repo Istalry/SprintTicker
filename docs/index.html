@@ -1205,9 +1205,9 @@
       modifies neither your scenes nor your project code.</p>
       <hr>
       <h3 id="architecture-testing">7. Testing</h3>
-      <p>Vitest, 688 tests across 49 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 707 tests across 50 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
-      of TSX. The floor is a ratchet (82 / 73.5 / 83.5 / 84.5) and is raised, never
+      of TSX. The floor is a ratchet (83 / 74 / 84.5 / 85) and is raised, never
       lowered.</p>
       <p>Two harnesses let the provider layer be exercised over a real socket without a
       real instance: <code>scripts/fake-openproject.js</code> (<code>pnpm mock:openproject</code>) and
@@ -1533,6 +1533,11 @@
       arbitrary durations and declare 1. The engine reads it before queueing, so a
       session too short to record is never handed to a provider that will refuse it —
       and one provider&#39;s limitation never costs a user time on another.</p>
+      <p>Declare a number you have <strong>measured</strong>, not one you read in the vendor&#39;s
+      documentation. Jira&#39;s 60 was verified against a live site with
+      <code>pnpm probe:jira-worklog</code>: 59s is refused and 60s accepted. Guessing high is not
+      the safe direction — it silently discards time the remote would have stored, and
+      nothing anywhere reports that it happened.</p>
       <p><strong><code>reconcileRemoteState</code> may answer <code>null</code>.</strong> <code>remoteLoggedTimeToday: null</code>
       means &quot;this provider cannot find out&quot;. Jira has no single endpoint for &quot;time I
       logged today&quot;, and AdHoc has no remote at all; both return <code>null</code> rather than a
@@ -1636,6 +1641,10 @@
       <td align="left">RTC timestamps need a numeric UTC offset, not <code>Z</code></td>
       <td align="left">The device applies no conversion, so <code>toISOString()</code> leaves the bar showing UTC</td>
       </tr>
+      <tr>
+      <td align="left">The device&#39;s clock is not the host&#39;s</td>
+      <td align="left">A measured bar ran 19s behind. Anything that lets the <em>device</em> do the time arithmetic is wrong by the skew, and nothing reports it — see below</td>
+      </tr>
       </tbody></table></div>
       <h4>Status codes carry meaning</h4>
       <p>See <code>classifyDeviceResponse</code>.</p>
@@ -1664,6 +1673,33 @@
       plus a draw — two HTTP requests. <code>transmitFrame</code> hashes the frame and skips an
       identical one, so before adding anything that redraws on a timer, check what
       actually changes. This is why the session timer shows <code>HH:MM</code> and not seconds.</p>
+      <h4>Reading the panel back</h4>
+      <p><code>GET /api/screen?display=0</code> returns the front panel. It is the only way to check
+      a <em>layout</em>, and <code>pnpm probe:busybar</code> uses it to measure element sizes.</p>
+      <div class="note trap"><span class="label">The response is not what its content type claims.</span>
+      <p>It answers
+      <code>Content-Type: image/bmp</code>, and the firmware&#39;s own <code>streaming.yaml</code> types the
+      body as base64 — but on 1.2.3 what arrives is base64-encoded <strong>raw</strong> pixels
+      with no BMP header: 4608 characters decoding to 3456 bytes, which is
+      72 × 16 × 3. The channel order is <strong>BGR</strong>, and rows are <strong>top-down</strong>. Both
+      were established by drawing a known block and reading the bytes, because
+      either mistake still produces a plausible image — one with the colours
+      swapped, the other upside down.</p>
+      </div>
+      <h4>Letting the device keep time</h4>
+      <p><code>CountdownElement</code> draws a timer the device advances by itself, at no upload
+      cost — against the two HTTP requests per frame the app pays to animate one.
+      Measured on 1.2.3: <strong>17×5px</strong> for <code>01:06</code>, which fits beside a 16px icon with
+      39px of the field to spare, and it has no <code>font</code> field to configure.</p>
+      <div class="note trap"><span class="label">It counts against the device&#39;s RTC, not yours.</span>
+      <p>A countdown built from
+      <code>Date.now()</code> on a bar running 19 seconds behind displayed <code>00:47</code> for a
+      65-second interval. The element is correct; the clocks disagree, and the
+      element believes the device. Read <code>GET /api/time</code>, compute the offset, apply
+      it to the timestamp, and re-read it periodically — RTC drift is what produced
+      the skew in the first place. Nothing surfaces this error on its own: the bar
+      simply shows a confidently wrong time.</p>
+      </div>
       <p>The rear 160×80 OLED is <strong>preview only</strong> in this build.</p>
       <h4>Checking the contract after a firmware release</h4>
       <p><code>pnpm probe:busybar</code> runs the calls above against a real bar and reports the

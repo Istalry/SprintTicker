@@ -223,7 +223,8 @@ async function startApplication(): Promise<void> {
     windowsNotificationService,
     providerManager,
     syncWorker: engine.getSyncWorker(),
-    updateChecker
+    updateChecker,
+    webhookServer
   });
   ipcRegistry.registerAllHandlers();
   scheduleUpdateChecks();

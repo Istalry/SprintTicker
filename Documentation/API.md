@@ -174,6 +174,12 @@ arbitrary durations and declare 1. The engine reads it before queueing, so a
 session too short to record is never handed to a provider that will refuse it —
 and one provider's limitation never costs a user time on another.
 
+Declare a number you have **measured**, not one you read in the vendor's
+documentation. Jira's 60 was verified against a live site with
+`pnpm probe:jira-worklog`: 59s is refused and 60s accepted. Guessing high is not
+the safe direction — it silently discards time the remote would have stored, and
+nothing anywhere reports that it happened.
+
 **`reconcileRemoteState` may answer `null`.** `remoteLoggedTimeToday: null`
 means "this provider cannot find out". Jira has no single endpoint for "time I
 logged today", and AdHoc has no remote at all; both return `null` rather than a
@@ -250,6 +256,7 @@ the device.
 | Asset filenames match `^[a-zA-Z0-9._-]+$` | No paths, no spaces. Firmware 1.2.3 does accept a subdirectory and creates it, but the strict rule holds on every firmware and nothing here needs one |
 | Draw priority ≥ 95 | The app does not hold the display |
 | RTC timestamps need a numeric UTC offset, not `Z` | The device applies no conversion, so `toISOString()` leaves the bar showing UTC |
+| The device's clock is not the host's | A measured bar ran 19s behind. Anything that lets the *device* do the time arithmetic is wrong by the skew, and nothing reports it — see below |
 
 ### Status codes carry meaning
 
@@ -267,6 +274,37 @@ The front display is a rasterised **72×16 PNG**. Every frame is an asset upload
 plus a draw — two HTTP requests. `transmitFrame` hashes the frame and skips an
 identical one, so before adding anything that redraws on a timer, check what
 actually changes. This is why the session timer shows `HH:MM` and not seconds.
+
+### Reading the panel back
+
+`GET /api/screen?display=0` returns the front panel. It is the only way to check
+a *layout*, and `pnpm probe:busybar` uses it to measure element sizes.
+
+> [!WARNING]
+> **The response is not what its content type claims.** It answers
+> `Content-Type: image/bmp`, and the firmware's own `streaming.yaml` types the
+> body as base64 — but on 1.2.3 what arrives is base64-encoded **raw** pixels
+> with no BMP header: 4608 characters decoding to 3456 bytes, which is
+> 72 × 16 × 3. The channel order is **BGR**, and rows are **top-down**. Both
+> were established by drawing a known block and reading the bytes, because
+> either mistake still produces a plausible image — one with the colours
+> swapped, the other upside down.
+
+### Letting the device keep time
+
+`CountdownElement` draws a timer the device advances by itself, at no upload
+cost — against the two HTTP requests per frame the app pays to animate one.
+Measured on 1.2.3: **17×5px** for `01:06`, which fits beside a 16px icon with
+39px of the field to spare, and it has no `font` field to configure.
+
+> [!CAUTION]
+> **It counts against the device's RTC, not yours.** A countdown built from
+> `Date.now()` on a bar running 19 seconds behind displayed `00:47` for a
+> 65-second interval. The element is correct; the clocks disagree, and the
+> element believes the device. Read `GET /api/time`, compute the offset, apply
+> it to the timestamp, and re-read it periodically — RTC drift is what produced
+> the skew in the first place. Nothing surfaces this error on its own: the bar
+> simply shows a confidently wrong time.
 
 The rear 160×80 OLED is **preview only** in this build.
 
