@@ -141,12 +141,26 @@ ABI and LFS failures in this repository have historically only appeared there.
   - The rationale above cannot live in `electron-builder.json`: electron-builder
     validates that file against its JSON schema and rejects unknown keys, so a
     `_comment` field fails the build rather than documenting it.
-- **`verify:packed` needs a real assertion before it becomes a required check.**
-  Its false-pass probe is fixed — it tried port 8080 first, from a build that no
-  longer opens one, so any unrelated process there reported success. It now
-  probes 39123 only. What it still proves is narrow: that the packaged app boots
-  without an uncaught exception and opens its port. That is worth running; it is
-  not worth blocking a merge on until it checks something the app actually does.
+- [x] **`verify:packed` asserts what the app does** (2026-09-09). The false-pass
+  probe had already been fixed — it tried port 8080 first, from a build that no
+  longer opens one, so any unrelated process there reported success — but what
+  remained was still only "the binary booted and something is listening", which
+  its own comment admitted. It now makes three requests to the running packaged
+  app:
+  - a well-formed Unity heartbeat is **accepted**, which exercises routing, body
+    parsing, payload validation and the JSON response in one call, and is the
+    request the Unity plugin actually makes;
+  - the same request without `Content-Type: application/json` is **refused**
+    (415);
+  - a request carrying an `Origin` header is **refused** (403).
+
+  The last two are the loopback hardening, and they earn their place in a
+  *packaged* check specifically: loopback is not a security boundary, and those
+  two rules are the whole of what stands between a web page the user happens to
+  be visiting and hardware this API can drive. A regression in either is
+  invisible from the UI and cannot fail a unit test that stubs the server.
+  Whether to make it a required check is now a question about CI cost — it needs
+  a full packaging run — rather than about whether it proves anything.
 
 ---
 
@@ -371,22 +385,75 @@ should grow its own routes in the same harness rather than a second one.
 
 Also worth doing while this area is open:
 
-- Point the device driver's `deviceFetch` at the same client, or at least stop
-  the two drifting. It is not urgent: `deviceFetch` already has the one thing
-  the providers were missing, and the device's 409/413/503 semantics are not
-  the providers'.
-- Grow Jira routes in `scripts/fake-openproject.js` so there is an integration
-  test, as the OpenProject side has. The live run replaced the *unknowns*, not
-  the regression cover: nothing automated exercises the Jira dialect end to end.
-- Offer Jira in the first-run wizard. `OnboardingWizardModal` still lists only
-  OpenProject and ad-hoc, so a new user has to pick something else and then find
-  the provider in Settings.
-- `reconcileRemoteState` is dead: the `provider:reconcile` channel is declared on
-  the preload bridge and has **no handler in main**, so calling it from the
-  renderer rejects. Either wire it up or delete the exposure -- an API surface
-  that throws when used is the F-18 updater stub again. The Jira implementation
-  returns zero deliberately rather than build an N+1 worklog walk behind an
-  unreachable path.
+- [x] **`deviceFetch` and `provider-http.ts` stay separate** — decided, not
+  pending. What looked like duplication is one shared idea (timeout, bounded
+  retries, backoff) wrapped around the part that genuinely differs: status
+  classification. The device's codes carry meanings the providers have no
+  equivalent for — `409` is a priority conflict and *not a failure*, `413` is
+  permanent because retrying sends identical bytes — while the providers care
+  about 401 vs 429 vs 5xx. A shared client would need a per-caller classifier
+  injected, which is the whole of what is not already shared. `deviceFetch` also
+  already had the timeout the providers were missing, so there is no defect to
+  carry across. If the two ever converge, it should be on the backoff schedule
+  alone: the one piece with no caller-specific meaning.
+- [x] **A fake Jira and an integration test** (2026-09-09).
+  `scripts/fake-jira.js` is a sibling of the OpenProject harness — same factory
+  shape, same request-spy array, `pnpm mock:jira` to run it by hand — and
+  `tests/jira-integration.test.ts` drives the real adapter over a real socket.
+  It covers what a mocked `fetch` structurally cannot: that both pagination
+  walks agree with a server (`startAt` for projects, the opaque
+  `nextPageToken` for issues), that the worklog body carries a numeric offset
+  and an ADF comment, that a transition configured by name resolves to the id
+  the workflow uses, and that a 401 is classified as permanent.
+  - The fake **clamps `maxResults`** the way the OpenProject one clamps
+    `pageSize`. Without that, the adapter's request for 100 would be honoured,
+    everything would arrive in one page, and both walks would silently never
+    run — the harness would pass while proving nothing.
+  - The test constructs `JiraProvider` directly and injects a `fetchFn` that
+    rewrites the origin, because `sanitizeSite` forces `https://` and a
+    plain-HTTP loopback fake is therefore unreachable through `ProviderManager`.
+    Weakening the scheme rule to suit a harness would trade the F-11 fix for
+    test convenience. The cost is that this exercises the adapter and not
+    `ProviderManager`'s credential wiring, which the OpenProject integration
+    test already covers.
+- [x] **Jira is offered in the first-run wizard** (2026-09-09) — and step 2 now
+  does something. The task was written as "add Jira to the dropdown", but the
+  dropdown turned out to be decorative: `providerId` and `fallbackKey` were
+  local `useState` that nothing read, `onClose` took no arguments, and the
+  component contained no save call at all. A user who chose a provider here
+  found the app still on its default. Adding a third option to that would have
+  stranded a Jira user *worse* than leaving it out — the F-18 shape once more.
+  - Completing the wizard now calls `setActiveProvider`, which already
+    persists, reinitialises the providers and kicks a sync pass, so the
+    Projects view fills instead of showing an empty list.
+  - It collects only the minimum each provider needs to work: domain and API
+    key for OpenProject, site, email and token for Jira. Not the transitions or
+    the task scope — Jira reads status from `statusCategory` and needs no
+    mapping to start, and duplicating the whole Settings form into the wizard
+    is the constant-duplication trap in a different costume.
+  - Only the chosen provider's fields are sent. `setActiveProvider` takes a
+    partial update, so the other provider's stored credentials are left alone
+    rather than blanked by empty strings from a form that never showed them.
+  - A failed save is displayed. Closing quietly would leave the user believing
+    setup had happened, which is the state the step was already in.
+- [x] **`reconcileRemoteState` is no longer exposed** (2026-09-09). The
+  `provider:reconcile` channel was declared on the preload bridge with **no
+  handler in main**, so calling it rejected — the F-18 updater stub again, an
+  API surface that throws when used. Nothing called it, on either side.
+  - The channel, the bridge method and its type declaration are deleted
+    together; `pnpm typecheck` is what proves all three went, because the
+    `: IElectronAPI` annotation on the bridge turns any survivor into a compile
+    error.
+  - The provider methods stay. `OpenProjectProvider`'s is correct, tested code,
+    and the day a UI wants a server-side day total the work is a handler plus a
+    component rather than a rewrite.
+  - The contract changed while it was open: `remoteLoggedTimeToday` is now
+    `number | null`. Jira and AdHoc returned a confident `0` they had not
+    measured, which a caller cannot tell apart from "you logged nothing today"
+    — and that is the reading a UI would render. `null` means "this provider
+    cannot answer". OpenProject returns `null` on a failed fetch too, for the
+    same reason: understating the day as zero is the same lie in a different
+    costume.
 - [x] **The sync queue is visible** (2026-09-08). Every row that has not been
   delivered, with the provider's own message, the attempt count against the
   ceiling and when the next attempt is due, plus Sync Now and Retry Failed.
@@ -398,7 +465,7 @@ Also worth doing while this area is open:
   opening the panel is looking for. Rows are named from the local task cache,
   since the queue stores the provider's own id and `10004` appears nowhere in
   Jira's UI.
-- `minimumLoggableSeconds` for Jira is **60 by inference, not by measurement**
+- **Still open:** `minimumLoggableSeconds` for Jira is **60 by inference, not by measurement**
   -- Jira's documented minute granularity plus one observed `400`. If the real
   floor is lower, the engine is discarding time a user worked, which is the
   failure worth checking. `pnpm probe:jira-worklog <ISSUE-KEY>` measures it
@@ -506,9 +573,9 @@ looping idle animations.
 
 ## Test coverage: 80/70 reached on the honest metric
 
-**Done**, as of the Jira provider. The suite measures 80.52 statements / 71.43
-branches / 82.32 functions / 82.75 lines across 599 tests, and the floor is
-ratcheted to 79.5 / 70.5 / 81.5 / 82.
+**Done**, as of the Jira provider, and raised again since. The suite measures
+**82.77 statements / 74.06 branches / 84.15 functions / 84.98 lines across 688
+tests in 49 files**, and the floor is ratcheted to 82 / 73.5 / 83.5 / 84.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -521,14 +588,42 @@ The floor is still ratcheted up whenever the measurement rises. What is left is
 not a number but the thin areas below.
 
 Where the numbers are thinnest, worst first. None of these is a percentage
-problem now; each is a specific untested path:
+problem; each is a specific untested path:
 
 | Area | Statements | Note |
 | :--- | ---: | :--- |
-| `main/diagnostics` | 66% | |
-| `main/tray` | 69% | `tray-manager.ts` lines 86-117 are the context menu. |
-| `main/hardware` | 74% | `input-decoder.ts` at 66% is the weakest file; it is also the one where an uncaught throw used to kill the main process. |
-| `main/services` | 75% | |
+| `main/diagnostics` | 66% | `logger-interceptor.ts` has **no test file at all**, and the corrupted-database branch of `diagnostic-exporter.ts` is untested. |
+| `main/services` | 78% | Depth, not absence — every service has a test file. `priority-preemption-engine.ts` is the best value per unit of effort: 341 lines of pure logic behind an interface, constructor-injected. |
+| `main/hardware` | 79% | Was 74%. `input-decoder.ts` is now 94%. |
+| `main/tray` | 92% | Was 69%. Closed below. |
+
+Two of the four were closed on 2026-09-09, and both were behaviour a user
+reaches with a physical control rather than percentage-chasing:
+
+- **`input-decoder.ts` 66% → 94%.** The hardware task picker was entirely
+  untested — the one screen driven wholly from the bar. The lock assertions are
+  the point: `renderTaskSelection` acquires `menuPriority` on every redraw, and
+  every exit has to release it. When nothing did, the lock outlived the menu
+  and the bar stayed on the picker until an unrelated higher-priority event
+  overwrote it (F-15); nothing proved that stayed fixed. The listener guard is
+  now driven through `driver.simulateInputEvent` rather than by calling
+  `handleHardwareInput` directly, so the try/catch is actually in the call
+  stack — the earlier tests all bypassed the very guard that keeps a throw on a
+  button press from terminating the main process.
+- **`tray-manager.ts` 69% → 92%.** `updateContextMenu` is private and runs only
+  from `initialize`, so its click handlers are reachable only through the
+  template `Menu.buildFromTemplate` receives. The quit item used that technique;
+  nothing else did, which left every item a user actually reaches untested —
+  and the tray is how you pause without opening the window.
+
+One thing that surfaced while doing it, worth recording because it failed the
+gate while every test passed: the added tests multiplied this suite's console
+output, and vitest forwards each line to the main thread over rpc. The worker
+began tearing down with logs still in flight — `Closing rpc while
+onUserConsoleLog was pending` — an unhandled error that exits non-zero on a run
+where all 688 tests are green, intermittently and more often under coverage.
+The fix is to stub `console` at the top of the fixture, before anything logs.
+Volume was the whole problem; nobody was reading the output.
 
 The renderer is not measured at all -- `coverage.include` is `src/main/**` and
 `src/shared/**`. Roughly 4,700 lines of TSX have no tests. Extending the gate

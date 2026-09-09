@@ -13,8 +13,16 @@ function runPreflightChecks() {
   console.log(`[PreflightCheck] Desktop App Version: ${desktopPkg.version}`);
   console.log(`[PreflightCheck] Unity Package Version: ${unityPkg.version}`);
 
-  if (desktopPkg.version !== unityPkg.version) {
-    throw new Error(`Version mismatch! Desktop App (${desktopPkg.version}) vs Unity Package (${unityPkg.version})`);
+  // All three, not two. The root version was printed and never compared, so a
+  // root that had drifted passed this check silently -- and the root is the one
+  // `build-windows.yml` matches the git tag against before it will build, so
+  // the drift would have surfaced as a refused release instead of here.
+  const versions = new Set([rootPkg.version, desktopPkg.version, unityPkg.version]);
+  if (versions.size !== 1) {
+    throw new Error(
+      `Version mismatch! Root (${rootPkg.version}) vs Desktop App (${desktopPkg.version}) ` +
+        `vs Unity Package (${unityPkg.version}). All three must agree before a release.`
+    );
   }
 
   // 2. Verify better-sqlite3 native bindings exist

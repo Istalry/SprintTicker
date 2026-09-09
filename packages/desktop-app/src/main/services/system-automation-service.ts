@@ -31,6 +31,26 @@ export class SystemAutomationService implements ISystemAutomationService {
     this._execFn = execFn ?? SystemAutomationService.defaultExec;
   }
 
+  /**
+   * Whether this instance would run real commands against the developer's own
+   * machine.
+   *
+   * Three methods below short-circuit on this, and audit F-36's sibling F-35
+   * flagged the `NODE_ENV` reads as test logic leaking into production code.
+   * They are kept deliberately, and the second half of the condition is why:
+   * the guard fires only when **nobody injected an executor**. A test that
+   * passes its own `execFn` is exercising the real path, so the guard is not a
+   * hole in the coverage -- it is the backstop for a test that forgot, and what
+   * it prevents is this service shutting down or driving UI automation on the
+   * machine running the suite. CLAUDE.md states that as a rule ("tests must not
+   * spawn PowerShell against the developer's own machine"); this enforces it
+   * where the spawning actually happens rather than trusting every future test
+   * to remember.
+   */
+  private get wouldTouchThisMachine(): boolean {
+    return process.env.NODE_ENV === 'test' && this._execFn === SystemAutomationService.defaultExec;
+  }
+
   /// <summary>
   /// Default child_process execution wrapped in a Promise.
   /// Why: Decouples native process execution for robust error handling and mockability in tests.
@@ -62,7 +82,7 @@ export class SystemAutomationService implements ISystemAutomationService {
   /// avoiding the bug where 'code --command' erroneously spawned brand new blank editor windows.
   /// </summary>
   public async saveOpenEditors(): Promise<EditorSaveResult> {
-    if (process.env.NODE_ENV === 'test' && this._execFn === SystemAutomationService.defaultExec) {
+    if (this.wouldTouchThisMachine) {
       return { isSaved: true, isEditorDetected: true };
     }
 
@@ -177,7 +197,7 @@ export class SystemAutomationService implements ISystemAutomationService {
       throw new ArgumentNullException('reason');
     }
 
-    if (process.env.NODE_ENV === 'test' && this._execFn === SystemAutomationService.defaultExec) {
+    if (this.wouldTouchThisMachine) {
       console.log(`[SystemAutomationService] [TEST ENV] Simulated shutdown scheduled (${timeoutSeconds}s): ${reason}`);
       this._isShutdownScheduled = true;
       return true;
@@ -212,7 +232,7 @@ export class SystemAutomationService implements ISystemAutomationService {
   /// Why: Restores system state if the user cancels or dismisses the EOD prompt during the grace window.
   /// </summary>
   public async abortShutdown(): Promise<boolean> {
-    if (process.env.NODE_ENV === 'test' && this._execFn === SystemAutomationService.defaultExec) {
+    if (this.wouldTouchThisMachine) {
       console.log('[SystemAutomationService] [TEST ENV] Simulated shutdown cancelled');
       this._isShutdownScheduled = false;
       return true;

@@ -77,7 +77,6 @@ export interface IElectronAPI {
   deleteTask: (taskId: string) => Promise<boolean>;
   updateTask: (task: TaskDTO) => Promise<boolean>;
   importTasks: (projectId: string, tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }>) => Promise<TaskDTO[]>;
-  reconcileRemoteState: () => Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }>;
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;

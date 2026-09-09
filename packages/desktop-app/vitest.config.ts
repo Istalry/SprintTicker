@@ -40,11 +40,16 @@ export default defineConfig({
       // and branches 71 on the honest metric. Still ratcheted to just under
       // the measured figures, so a regression fails the build with ~1% of
       // headroom for an unrelated refactor.
+      // Raised again with the hardware task picker and the tray context menu:
+      // measured 82.77 / 74.06 / 84.15 / 84.98. `input-decoder.ts` went from
+      // 66% to 94% and `tray-manager.ts` from 69% to 92%, which is most of the
+      // move -- both were untested behaviour a user reaches with a physical
+      // button or a tray click, not percentage-chasing.
       thresholds: {
-        lines: 82,
-        functions: 81.5,
-        branches: 70.5,
-        statements: 79.5
+        lines: 84.5,
+        functions: 83.5,
+        branches: 73.5,
+        statements: 82
       }
     }
   },

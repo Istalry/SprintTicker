@@ -26,8 +26,9 @@ export class AdHocProvider implements ITaskProvider {
     ];
   }
 
-  public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }> {
-    return { remoteLoggedTimeToday: 0 };
+  /** There is no remote to reconcile against, so there is no figure to give. */
+  public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }> {
+    return { remoteLoggedTimeToday: null };
   }
 
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {

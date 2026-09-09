@@ -4,9 +4,16 @@ const path = require('path');
 const fs = require('fs');
 
 /**
- * Automated Verification Script for Packed Windows Binary
- * Launches the unpacked Electron application, checks for main process uncaught exceptions,
- * and asserts that the embedded HTTP webhook server starts cleanly on port 39123.
+ * Automated verification of the packed Windows binary.
+ *
+ * Launches the unpacked Electron application, watches for main-process uncaught
+ * exceptions, waits for the embedded HTTP server on port 39123, and then
+ * asserts three things the app actually does -- see `runBehaviourChecks`.
+ *
+ * The behaviour checks are the point. Booting and opening a port is necessary
+ * but proves very little: packaging, ABI and LFS failures in this repository
+ * have historically only shown up in a packaged build, and a build can boot
+ * cleanly with its routing or its request screening broken.
  */
 async function verifyPackedApp() {
   const exePath = path.resolve(__dirname, '../packages/desktop-app/dist-electron/win-unpacked/SprintTicker.exe');
@@ -81,19 +88,40 @@ async function verifyPackedApp() {
     await new Promise(r => setTimeout(r, 500));
   }
 
-  killApp(appProcess);
-
-  if (verified) {
-    console.log(`\n========================================================`);
-    console.log(` [SUCCESS] Packed application verified cleanly!`);
-    console.log(` Native Webhook Server is listening on http://127.0.0.1:39123`);
-    console.log(` Zero uncaught exceptions or missing module errors detected.`);
-    console.log(`========================================================\n`);
-    process.exit(0);
-  } else {
+  if (!verified) {
+    killApp(appProcess);
     console.error(`\n[VERIFY FAILED] Server did not respond on port 39123 within ${maxWaitMs}ms.`);
     process.exit(1);
   }
+
+  // The app is still running here on purpose: the checks below talk to it.
+  console.log(`\n[VERIFY] Server is up. Asserting what it actually does:`);
+  let failures;
+  try {
+    failures = await runBehaviourChecks();
+  } catch (err) {
+    killApp(appProcess);
+    console.error(`\n[VERIFY FAILED] Behaviour checks could not complete: ${err.message}`);
+    process.exit(1);
+  }
+
+  killApp(appProcess);
+
+  if (failures.length > 0) {
+    console.error(`\n========================================================`);
+    console.error(` [VERIFY FAILED] ${failures.length} behaviour check(s) failed:`);
+    for (const name of failures) console.error(`   - ${name}`);
+    console.error(`========================================================\n`);
+    process.exit(1);
+  }
+
+  console.log(`\n========================================================`);
+  console.log(` [SUCCESS] Packed application verified cleanly!`);
+  console.log(` Webhook server on http://127.0.0.1:39123 accepts a Unity`);
+  console.log(` heartbeat and refuses both browser-shaped request forms.`);
+  console.log(` Zero uncaught exceptions or missing module errors detected.`);
+  console.log(`========================================================\n`);
+  process.exit(0);
 }
 
 // Probes 39123 and nothing else. This used to try 8080 first and fall back to
@@ -101,8 +129,9 @@ async function verifyPackedApp() {
 // any unrelated process holding 8080 -- a dev server, a proxy -- made this
 // report SUCCESS without ever contacting the packaged app.
 //
-// Any response counts as up, including the 405 the server returns for GET:
-// what is being proven is that the port is listening, not what it says.
+// Any response counts as *up*, including the 405 the server returns for GET.
+// That is only the readiness signal; what the app actually does is asserted
+// separately, by `runBehaviourChecks` below.
 function checkHttpServer() {
   return new Promise((resolve) => {
     const req = http.get('http://127.0.0.1:39123/', () => resolve(true));
@@ -112,6 +141,110 @@ function checkHttpServer() {
       resolve(false);
     });
   });
+}
+
+/** One request to the packaged app's local API. */
+function request({ method = 'POST', path: urlPath = '/', headers = {}, body }) {
+  return new Promise((resolve, reject) => {
+    const payload = body === undefined ? undefined : JSON.stringify(body);
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port: 39123,
+        method,
+        path: urlPath,
+        headers: {
+          ...(payload ? { 'Content-Length': Buffer.byteLength(payload) } : {}),
+          ...headers
+        }
+      },
+      res => {
+        let raw = '';
+        res.on('data', chunk => {
+          raw += chunk;
+        });
+        res.on('end', () => resolve({ status: res.statusCode, body: raw }));
+      }
+    );
+    req.on('error', reject);
+    req.setTimeout(2000, () => {
+      req.destroy();
+      reject(new Error(`Timed out calling ${method} ${urlPath}`));
+    });
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+/**
+ * Asserts what the packaged app *does*, not merely that a port is open.
+ *
+ * Until this existed, a passing run proved only that the binary booted and
+ * something answered on 39123 -- true of a build whose routing was broken and
+ * true of an unrelated process. These three checks are the smallest set that
+ * cannot pass by accident:
+ *
+ * 1. A well-formed Unity heartbeat is accepted. That exercises the whole path
+ *    -- routing, body parsing, payload validation, the JSON response -- and it
+ *    is the request the Unity plugin actually makes.
+ * 2. The same request without `Content-Type: application/json` is refused.
+ * 3. A request carrying an `Origin` header is refused.
+ *
+ * Checks 2 and 3 are the loopback hardening, and they are worth pinning in the
+ * *packaged* build specifically: loopback is not a security boundary, and these
+ * two rules are the whole of what stands between a web page the user happens to
+ * be visiting and hardware this API can drive. A regression in either is
+ * invisible from the UI and would never fail a unit test that stubs the server.
+ */
+async function runBehaviourChecks() {
+  const failures = [];
+
+  const check = (name, condition, detail) => {
+    if (condition) {
+      console.log(`  [OK]   ${name}`);
+    } else {
+      console.error(`  [FAIL] ${name} -- ${detail}`);
+      failures.push(name);
+    }
+  };
+
+  const accepted = await request({
+    path: '/api/v1/unity/heartbeat',
+    headers: { 'Content-Type': 'application/json' },
+    body: { projectName: 'verify-packed-app' }
+  });
+  check(
+    'Unity heartbeat with JSON content type is accepted',
+    accepted.status === 200 && accepted.body.includes('ACCEPTED'),
+    `got ${accepted.status} ${accepted.body}`
+  );
+
+  // Sent as text/plain: a "simple" request is precisely the one a browser may
+  // issue cross-origin with no preflight, so this is the shape that must fail.
+  const wrongType = await request({
+    path: '/api/v1/unity/heartbeat',
+    headers: { 'Content-Type': 'text/plain' },
+    body: { projectName: 'verify-packed-app' }
+  });
+  check(
+    'Request without application/json is refused (415)',
+    wrongType.status === 415,
+    `got ${wrongType.status} ${wrongType.body}`
+  );
+
+  // Browsers set Origin; native clients do not.
+  const browserish = await request({
+    path: '/api/v1/unity/heartbeat',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' },
+    body: { projectName: 'verify-packed-app' }
+  });
+  check(
+    'Request carrying an Origin header is refused (403)',
+    browserish.status === 403,
+    `got ${browserish.status} ${browserish.body}`
+  );
+
+  return failures;
 }
 
 function killApp(proc) {

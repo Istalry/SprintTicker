@@ -539,14 +539,16 @@ export class JiraProvider implements ITaskProvider {
    *
    * Jira has no single endpoint for "time I logged today": it needs a JQL
    * search for issues with a matching `worklogDate`, then a worklog fetch per
-   * issue, which is an N+1 walk. Nothing calls this today -- the IPC channel
-   * `provider:reconcile` is declared on the preload bridge but has no handler
-   * in main -- so building that walk would be speculative work behind an
-   * unreachable path. Zero is what AdHoc returns, and the local worklog table
-   * remains the source of truth either way.
+   * issue, which is an N+1 walk. Nothing calls this today, so building that
+   * walk would be speculative.
+   *
+   * It returns `null`, not `0`. The earlier zero was indistinguishable from a
+   * measured "you logged nothing today", so any UI reading it would have shown
+   * a Jira user a confident and wrong figure. `null` is the contract's way of
+   * saying this provider cannot answer -- see `ITaskProvider`.
    */
-  public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }> {
-    return { remoteLoggedTimeToday: 0 };
+  public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }> {
+    return { remoteLoggedTimeToday: null };
   }
 
   /**

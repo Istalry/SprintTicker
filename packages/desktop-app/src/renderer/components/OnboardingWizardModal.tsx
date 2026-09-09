@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DEFAULT_USB_IP } from '../../shared/device-constants';
+import { ProviderSettingsUpdateDTO } from '../../shared/dtos';
 import { X, Wifi, Plug, Gamepad2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 
 interface OnboardingWizardModalProps {
@@ -18,9 +19,64 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
   const [providerId, setProviderId] = useState<string>('openproject');
   const [fallbackKey, setFallbackKey] = useState<string>('MISC-1');
+  const [opDomain, setOpDomain] = useState<string>('');
+  const [opApiKey, setOpApiKey] = useState<string>('');
+  const [jiraSite, setJiraSite] = useState<string>('');
+  const [jiraEmail, setJiraEmail] = useState<string>('');
+  const [jiraApiToken, setJiraApiToken] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   if (!isOpen) return null;
+
+  /**
+   * Writes the choices made in step 2, then closes.
+   *
+   * This exists because the wizard used to persist **nothing**: `providerId`
+   * and `fallbackKey` were local state nothing read, so the whole step was
+   * decorative and a user who picked a provider here found the app still on
+   * its default. Failing to save is reported rather than swallowed -- silently
+   * closing on an error would land the user in the same "I configured it and
+   * nothing happened" state the step was already in.
+   *
+   * Only the fields the chosen provider needs are sent. `setActiveProvider`
+   * takes a partial update, so an unrelated provider's credentials are left
+   * untouched rather than blanked by an empty string from a form that never
+   * showed them.
+   */
+  const handleComplete = async () => {
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      // Typed as the DTO rather than Record<string, string>: the field names
+      // are the contract with main, and a misspelling would otherwise be
+      // accepted here and silently dropped there.
+      const payload: ProviderSettingsUpdateDTO = {
+        providerId,
+        fallbackTicketKey: fallbackKey.trim() || 'MISC-1'
+      };
+      if (providerId === 'openproject') {
+        if (opDomain.trim()) payload.opDomain = opDomain.trim();
+        if (opApiKey.trim()) payload.opApiKey = opApiKey.trim();
+      } else if (providerId === 'jira') {
+        if (jiraSite.trim()) payload.jiraSite = jiraSite.trim();
+        if (jiraEmail.trim()) payload.jiraEmail = jiraEmail.trim();
+        if (jiraApiToken.trim()) payload.jiraApiToken = jiraApiToken.trim();
+      }
+
+      const saved = await window.electronAPI?.setActiveProvider?.(payload);
+      if (!saved) {
+        setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+        return;
+      }
+      onClose();
+    } catch {
+      setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleTestPing = async () => {
     setPingSuccess(null);
@@ -168,9 +224,77 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                   className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
                 >
                   <option value="openproject">OpenProject (REST API v3)</option>
+                  <option value="jira">Jira Cloud (REST API v3)</option>
                   <option value="adhoc">Ad-Hoc / Custom Local Fallback</option>
                 </select>
               </div>
+
+              {providerId === 'openproject' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-mono text-text-secondary mb-1">OpenProject Domain URL</label>
+                    <input
+                      type="text"
+                      value={opDomain}
+                      onChange={e => setOpDomain(e.target.value)}
+                      placeholder="https://openproject.example.com"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono text-text-secondary mb-1">API Key</label>
+                    <input
+                      type="password"
+                      value={opApiKey}
+                      onChange={e => setOpApiKey(e.target.value)}
+                      placeholder="From My Account > Access tokens"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {providerId === 'jira' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-mono text-text-secondary mb-1">Jira Site URL</label>
+                    <input
+                      type="text"
+                      value={jiraSite}
+                      onChange={e => setJiraSite(e.target.value)}
+                      placeholder="https://your-team.atlassian.net"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono text-text-secondary mb-1">Account Email</label>
+                    <input
+                      type="text"
+                      value={jiraEmail}
+                      onChange={e => setJiraEmail(e.target.value)}
+                      placeholder="you@your-team.com"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono text-text-secondary mb-1">API Token</label>
+                    <input
+                      type="password"
+                      value={jiraApiToken}
+                      onChange={e => setJiraApiToken(e.target.value)}
+                      placeholder="Create one at id.atlassian.com"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                    />
+                  </div>
+                  {/* Jira reads status from `statusCategory`, which every workflow
+                      has, so nothing else is needed to start. Transitions are
+                      only required to have the app move an issue for you. */}
+                  <p className="text-xs text-text-secondary">
+                    That is enough to list issues and log time. Workflow transitions -- which move an issue when you
+                    start or finish a task -- are optional and live in Settings &gt; Task Providers.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-mono text-text-secondary mb-1">Fallback Overhead Ticket ID</label>
@@ -181,6 +305,11 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                   className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
                 />
               </div>
+
+              <p className="text-xs text-text-secondary">
+                You can leave the credentials blank and add them later in Settings &gt; Task Providers. Until a remote
+                provider is configured, the app runs on local ad-hoc tasks.
+              </p>
             </div>
           )}
 
@@ -210,6 +339,14 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
           )}
         </div>
 
+        {/* A failed save is shown, never swallowed: closing quietly would leave
+            the user believing the wizard had configured something. */}
+        {saveError && (
+          <div className="mx-6 mb-4 p-3 rounded-lg border border-accent-red/30 bg-accent-red/10 text-xs font-mono text-accent-red">
+            {saveError}
+          </div>
+        )}
+
         {/* Footer Navigation */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border-dark bg-dark-700/30">
           {step > 1 ? (
@@ -234,10 +371,11 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             </button>
           ) : (
             <button
-              onClick={onClose}
-              className="px-5 py-2 bg-accent-green hover:bg-emerald-600 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
+              onClick={() => void handleComplete()}
+              disabled={isSaving}
+              className="px-5 py-2 bg-accent-green hover:bg-emerald-600 disabled:opacity-50 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
             >
-              Complete Setup & Open Dashboard
+              {isSaving ? 'Saving...' : 'Complete Setup & Open Dashboard'}
             </button>
           )}
         </div>

@@ -36,7 +36,21 @@ export interface ITaskProvider {
   initialize(credentials: Record<string, string>): Promise<boolean>;
   getProjects(): Promise<ProjectDTO[]>;
   getTasks(projectId: string): Promise<TaskDTO[]>;
-  reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }>;
+  /**
+   * How much time the remote already holds for today, or `null` if this
+   * provider cannot find out.
+   *
+   * The null is load-bearing. Jira has no single endpoint for "time I logged
+   * today" -- it needs a JQL search on `worklogDate` and then a worklog fetch
+   * per issue -- and AdHoc has no remote at all, so both used to answer `0`.
+   * A caller cannot tell that apart from "you logged nothing today", and the
+   * wrong reading is the one a UI would render. `null` says "do not display a
+   * figure", which is the only honest answer either can give.
+   *
+   * OpenProject returns a real total, and returns `null` when the fetch fails
+   * rather than understating the day as zero.
+   */
+  reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }>;
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
 }

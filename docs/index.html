@@ -1,0 +1,1764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="User guide, architecture and API reference for SprintTicker, a Windows time tracker for the BUSY Bar.">
+<!-- Four lit dots on a dark bar: the front matrix, at the only size a favicon
+     has room for. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2314171D'/%3E%3Cg fill='%23E3A340'%3E%3Ccircle cx='4' cy='6' r='1.5'/%3E%3Ccircle cx='8' cy='6' r='1.5'/%3E%3Ccircle cx='12' cy='6' r='1.5'/%3E%3Ccircle cx='4' cy='10' r='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<title>SprintTicker Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<!-- GENERATED FILE. Do not edit.
+     Source: Documentation/USER-GUIDE.md, ARCHITECTURE.md, API.md
+     Rebuild: pnpm docs:build       Verify: pnpm docs:check -->
+
+<style>
+  :root {
+    --ground:      #EEF0F4;
+    --surface:     #FFFFFF;
+    --surface-2:   #F5F7FA;
+    --border:      #D5DAE3;
+    --border-soft: #E3E7EE;
+    --ink:         #171A21;
+    --ink-2:       #4A5262;
+    --ink-3:       #6F7889;
+    --accent:      #A66A10;
+    --accent-line: #C98A22;
+    --teal:        #0E6F68;
+    --danger:      #A6322A;
+    --danger-bg:   #FBEDEB;
+    --led-on:      #C98A22;
+    --panel:       #14171D;
+
+    --f-display: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E1116;
+      --surface:     #161A21;
+      --surface-2:   #1B212A;
+      --border:      #2A313D;
+      --border-soft: #222932;
+      --ink:         #E7EBF1;
+      --ink-2:       #A7B1C0;
+      --ink-3:       #7C8697;
+      --accent:      #E3A340;
+      --accent-line: #8A6524;
+      --teal:        #46BFB1;
+      --danger:      #E9776B;
+      --danger-bg:   #2A1A18;
+      --led-on:      #E3A340;
+      --panel:       #090B0F;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0E1116;
+    --surface:     #161A21;
+    --surface-2:   #1B212A;
+    --border:      #2A313D;
+    --border-soft: #222932;
+    --ink:         #E7EBF1;
+    --ink-2:       #A7B1C0;
+    --ink-3:       #7C8697;
+    --accent:      #E3A340;
+    --accent-line: #8A6524;
+    --teal:        #46BFB1;
+    --danger:      #E9776B;
+    --danger-bg:   #2A1A18;
+    --led-on:      #E3A340;
+    --panel:       #090B0F;
+  }
+
+  * { box-sizing: border-box; }
+  :root { color-scheme: light dark; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--accent); color: var(--surface); }
+
+  a { color: var(--teal); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .masthead {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 44px 32px 40px;
+  }
+
+  .masthead-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 48px;
+    align-items: center;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #E3A340;
+  }
+
+  .masthead h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(38px, 6vw, 62px);
+    line-height: .98;
+    letter-spacing: -.015em;
+    margin: 14px 0 0;
+    color: #F2F4F8;
+    text-wrap: balance;
+  }
+
+  .masthead p {
+    margin: 16px 0 0;
+    max-width: 54ch;
+    color: #9AA4B4;
+    font-size: 16.5px;
+  }
+
+  .masthead .meta { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .chip {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    letter-spacing: .03em;
+    color: #B9C2D0;
+    border: 1px solid #2C333F;
+    border-radius: 2px;
+    padding: 4px 9px;
+    background: #171B22;
+  }
+
+  .bar-figure { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin: 0; }
+
+  .bar-shell {
+    background: #05070A;
+    border: 1px solid #262D38;
+    border-radius: 5px;
+    padding: 11px 13px;
+    box-shadow: inset 0 0 26px rgba(227,163,64,.05);
+  }
+
+  #matrix { display: block; image-rendering: pixelated; }
+
+  .bar-caption {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: #6E7889;
+    letter-spacing: .02em;
+  }
+
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 32px 96px;
+    display: grid;
+    grid-template-columns: 216px minmax(0, 1fr);
+    gap: 52px;
+    align-items: start;
+  }
+
+  .rail { position: sticky; top: 28px; padding-top: 44px; }
+
+  .rail-title {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 12px;
+  }
+
+  .rail nav { display: flex; flex-direction: column; }
+
+  .rail a {
+    font-size: 14px;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 6px 0 6px 13px;
+    border-left: 2px solid var(--border-soft);
+    transition: color .12s, border-color .12s;
+  }
+  .rail a:hover { color: var(--ink); border-left-color: var(--accent); }
+  .rail a.lead { font-weight: 600; color: var(--ink); margin-top: 18px; }
+  .rail a.lead:first-child { margin-top: 0; }
+
+  main { padding-top: 44px; min-width: 0; }
+
+  section { scroll-margin-top: 24px; }
+  section + section { margin-top: 76px; }
+
+  .doc-head { border-top: 2px solid var(--ink); padding-top: 16px; margin-bottom: 30px; }
+
+  .doc-head .num {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.1;
+    letter-spacing: -.01em;
+    margin: 6px 0 0;
+    text-wrap: balance;
+  }
+
+  .doc-head p { margin: 10px 0 0; color: var(--ink-2); max-width: 66ch; }
+  .doc-head ul { color: var(--ink-2); }
+
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 21px;
+    line-height: 1.25;
+    margin: 42px 0 0;
+    scroll-margin-top: 20px;
+    text-wrap: balance;
+  }
+
+  h4 {
+    font-family: var(--f-body);
+    font-weight: 600;
+    font-size: 15.5px;
+    margin: 30px 0 0;
+    color: var(--ink);
+  }
+
+  h5 {
+    font-family: var(--f-mono);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 24px 0 0;
+  }
+
+  p, ul, ol { max-width: 68ch; }
+  p { margin: 14px 0 0; }
+  ul, ol { margin: 14px 0 0; padding-left: 20px; }
+  li { margin-top: 7px; }
+  li::marker { color: var(--ink-3); }
+
+  ol { counter-reset: step; list-style: none; padding-left: 0; }
+  ol > li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 14px;
+    padding: 13px 0;
+    margin: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  ol > li:last-child { border-bottom: 0; }
+  ol > li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+  }
+  ol ul { grid-column: 2; }
+
+  hr { border: 0; border-top: 1px solid var(--border-soft); margin: 40px 0 0; max-width: 68ch; }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: .875em;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 3px;
+    padding: 1px 5px;
+    overflow-wrap: anywhere;
+  }
+
+  pre {
+    margin: 20px 0 0;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: normal;
+  }
+
+  strong { font-weight: 600; }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+
+  th {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-align: left;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: top;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { color: var(--ink); }
+  td code { background: transparent; border: 0; padding: 0; color: var(--ink); }
+  th[align="right"], td[align="right"] { text-align: right; }
+
+  .note {
+    margin-top: 22px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--teal);
+    border-radius: 0 3px 3px 0;
+    font-size: 14.5px;
+    color: var(--ink-2);
+    max-width: 68ch;
+  }
+  .note p { margin: 0; max-width: none; }
+  .note p + p { margin-top: 9px; }
+  .note.trap { border-left-color: var(--danger); background: var(--danger-bg); }
+  .note .label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--teal);
+    display: block;
+    margin-bottom: 5px;
+  }
+  .note.trap .label { color: var(--danger); }
+
+  .diagram {
+    margin-top: 24px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 22px;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; min-width: 620px; }
+
+  footer {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 26px 32px 60px;
+    border-top: 1px solid var(--border);
+    color: var(--ink-3);
+    font-size: 13.5px;
+  }
+  footer p { max-width: 74ch; }
+  footer p + p { margin-top: 10px; }
+
+  @media (max-width: 900px) {
+    .masthead { padding: 32px 22px; }
+    .masthead-inner { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 22px 70px; }
+    .rail { position: static; padding-top: 34px; }
+    .rail nav { flex-flow: row wrap; gap: 3px 0; }
+    .rail a { padding: 5px 11px; border-left: 0; border-bottom: 2px solid var(--border-soft); }
+    .rail a.lead { margin-top: 0; }
+    footer { padding: 26px 22px 50px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <div class="eyebrow">Documentation</div>
+      <h1>SprintTicker</h1>
+      <p>
+        A Windows time tracker that puts what you are working on onto a BUSY Bar &mdash; a USB device
+        with a 72&times;16 RGB LED matrix on the front.
+      </p>
+      <div class="meta">
+        <span class="chip">Electron 44</span>
+        <span class="chip">React 18</span>
+        <span class="chip">better-sqlite3 13</span>
+        <span class="chip">Windows x64</span>
+        <span class="chip">MIT</span>
+      </div>
+    </div>
+    <figure class="bar-figure">
+      <div class="bar-shell"><canvas id="matrix" width="592" height="136"></canvas></div>
+      <figcaption class="bar-caption">Front matrix &mdash; 72&times;16 px, icon at x=0&hellip;15, text at x=17 in a 55 px field</figcaption>
+    </figure>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-title">Contents</div>
+    <nav>
+      <a class="lead" href="#guide">User guide</a>
+      <a href="#guide-first-run">First run</a>
+      <a href="#guide-the-panels">The panels</a>
+      <a href="#guide-the-bar-itself">The bar itself</a>
+      <a href="#guide-troubleshooting">Troubleshooting</a>
+      <a href="#guide-your-data">Your data</a>
+      <a class="lead" href="#architecture">Architecture</a>
+      <a href="#architecture-the-whole-thing-in-one-picture">The whole thing in one picture</a>
+      <a href="#architecture-process-boundaries">Process boundaries</a>
+      <a href="#architecture-main-process-components">Main process components</a>
+      <a href="#architecture-data">Data</a>
+      <a href="#architecture-how-a-session-flows">How a session flows</a>
+      <a href="#architecture-unity-plugin">Unity plugin</a>
+      <a href="#architecture-testing">Testing</a>
+      <a class="lead" href="#api">API reference</a>
+      <a href="#api-ipc-channels">IPC channels</a>
+      <a href="#api-local-http-api">Local HTTP API</a>
+      <a href="#api-itaskprovider">ITaskProvider</a>
+      <a href="#api-the-busy-bar-device-contract">The BUSY Bar device contract</a>
+    </nav>
+  </aside>
+
+  <main>
+
+    <section id="guide">
+      <div class="doc-head">
+        <div class="num">Document 1</div>
+        <h2>User guide</h2>
+        <p>Using SprintTicker day to day.</p>
+        <p>Installation is in the <a href="../README.md#installation">README</a>. This picks up from
+        first launch.</p>
+      </div>
+      <h3 id="guide-first-run">First run</h3>
+      <p>The onboarding wizard opens automatically. Three steps:</p>
+      <p><strong>1. Hardware.</strong> Plug the BUSY Bar in over USB. It presents a virtual Ethernet
+      adapter and always answers on <code>10.0.4.20</code>, so there is nothing to configure —
+      press <strong>Test Ping</strong> to confirm the link. A failure here is reported as a failure;
+      it never congratulates you on a connection it did not make.</p>
+      <p>No bar? Run <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen
+      emulator shows what the device would display.</p>
+      <p><strong>2. Task provider.</strong> Choose OpenProject, Jira Cloud or ad-hoc, and enter the
+      credentials for the one you picked:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Provider</th>
+      <th align="left">What it needs</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">OpenProject</td>
+      <td align="left">Domain URL, and an API key from <em>My Account → Access tokens</em></td>
+      </tr>
+      <tr>
+      <td align="left">Jira Cloud</td>
+      <td align="left">Site URL, your account email, and a token from <code>id.atlassian.com</code></td>
+      </tr>
+      <tr>
+      <td align="left">Ad-hoc</td>
+      <td align="left">Nothing — local tasks only</td>
+      </tr>
+      </tbody></table></div>
+      <p>You can leave credentials blank and add them later in <strong>Task Providers</strong>. Until
+      a remote provider is configured the app runs on local ad-hoc tasks. Completing
+      the wizard saves the choice and immediately fetches your projects.</p>
+      <p>The <strong>fallback overhead ticket</strong> (default <code>MISC-1</code>) is what ad-hoc time is
+      logged against — meetings, admin, anything without a ticket.</p>
+      <p><strong>3. Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
+      <hr>
+      <h3 id="guide-the-panels">The panels</h3>
+      <p>Nine tabs down the left.</p>
+      <h4>Active Session</h4>
+      <p>The main screen. Start a task, and the bar shows it. Pause, resume, and finish
+      from here.</p>
+      <p>Finishing asks for a comment and whether to mark the task done. Marking it done
+      fires your configured completion transition — which in Jira usually means &quot;To
+      Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
+      yourself.</p>
+      <h4>Projects &amp; Tasks</h4>
+      <p>Your cached projects and their tasks, refreshed from the provider. Create local
+      ad-hoc tasks here for work that has no ticket.</p>
+      <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
+      Task Providers refetches it.</p>
+      <h4>Work History</h4>
+      <p>Worklogs by date, with a daily summary and an end-of-day export.</p>
+      <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
+      refused a 40-second session, the time is still in your history — it just is not
+      in Jira.</p>
+      <h4>Task Providers</h4>
+      <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
+      me, everything open, or your own query (JQL for Jira, a v3 filter array for
+      OpenProject).</p>
+      <p>Below the credentials is the <strong>sync queue</strong>: every worklog that has not reached
+      the provider, with the server&#39;s own message, the attempt count against the
+      ceiling, and when the next attempt is due.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Button</th>
+      <th align="left">Does</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>Sync Now</strong></td>
+      <td align="left">Fetches projects and tasks immediately</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Retry Failed</strong></td>
+      <td align="left">Un-parks rows that gave up — use after fixing what broke them</td>
+      </tr>
+      </tbody></table></div>
+      <div class="note"><span class="label">Why a row parks</span>
+      <p></p>
+      <p>A row goes <code>FAILED</code> when the failure is permanent: a deleted issue, a revoked
+      key, a session too short for the provider to record. Retrying those on a timer
+      would send byte-identical requests forever, so the app stops and tells you
+      why. <strong>Retry Failed</strong> is for after you have fixed the cause.</p>
+      </div>
+      <h4>Unity Engine</h4>
+      <p>Discovered Unity projects and plugin injection. Once installed, the bar shows
+      compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.</p>
+      <h4>Ceremonies</h4>
+      <p>Working hours, and the three scheduled events:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left"></th>
+      <th align="left">Default</th>
+      <th align="left">Does</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>Stand-up prompt</strong></td>
+      <td align="left">09:30</td>
+      <td align="left">Prompts you, and collects answers in a modal</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Lunch</strong></td>
+      <td align="left">12:30–13:30</td>
+      <td align="left">Switches to Lunch mode</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>End-of-day wrap-up</strong></td>
+      <td align="left">17:30</td>
+      <td align="left">Prompts to wrap up; can save open editors and schedule a shutdown</td>
+      </tr>
+      </tbody></table></div>
+      <p>Both prompts can be confirmed or dismissed <strong>from the bar itself</strong> — see the
+      hardware controls below.</p>
+      <h4>Notifications</h4>
+      <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
+      <p>Per app, choose one of three:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Setting</th>
+      <th align="left">Effect</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>Don&#39;t Show</strong></td>
+      <td align="left">Ignored entirely</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Default</strong></td>
+      <td align="left">Claims the display at whatever <em>Notification — Default</em> scores</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>High Priority</strong></td>
+      <td align="left">Claims it at whatever <em>Notification — High Priority</em> scores</td>
+      </tr>
+      </tbody></table></div>
+      <p>Note what that means: an app is assigned to a <strong>class</strong>, and the Priority Rules
+      panel decides what that class is worth and how it behaves during Lunch and Away.
+      Nothing here hardcodes which app wins. In the shipped defaults those two classes
+      score 65 and 70, and a few common apps arrive pre-classified — Slack and the
+      battery warning as High Priority, Discord, Gmail and Windows as Default — but
+      all of it is yours to change.</p>
+      <p>Each app&#39;s real icon is resolved from its MSIX manifest or Start Menu shortcut
+      and downscaled to 15×15. If it picks the wrong executable — name matching is not
+      perfect — set an icon override on that app.</p>
+      <p><strong>Sender only</strong> mode shows that a message arrived without showing what it said.</p>
+      <p>Notification text is redacted from logs and the diagnostics export. Launch with
+      <code>--debug-notifications</code> to see it while troubleshooting.</p>
+      <h4>Priority Rules</h4>
+      <p>What the display shows when several things want it. Every claim has a score;
+      the highest holds the bar.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Claim</th>
+      <th align="right">Default</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Away mode</td>
+      <td align="right">100</td>
+      </tr>
+      <tr>
+      <td align="left">Lunch mode</td>
+      <td align="right">95</td>
+      </tr>
+      <tr>
+      <td align="left">End-of-day wrap-up</td>
+      <td align="right">80</td>
+      </tr>
+      <tr>
+      <td align="left">Stand-up prompt</td>
+      <td align="right">75</td>
+      </tr>
+      <tr>
+      <td align="left">Notification — High Priority</td>
+      <td align="right">70</td>
+      </tr>
+      <tr>
+      <td align="left">Notification — Default</td>
+      <td align="right">65</td>
+      </tr>
+      <tr>
+      <td align="left">Unity build failure</td>
+      <td align="right">60</td>
+      </tr>
+      <tr>
+      <td align="left">Unity compiling</td>
+      <td align="right">55</td>
+      </tr>
+      <tr>
+      <td align="left">Unity Play Mode</td>
+      <td align="right">50</td>
+      </tr>
+      <tr>
+      <td align="left">Active task tracker</td>
+      <td align="right">45</td>
+      </tr>
+      </tbody></table></div>
+      <p>Every row is editable, including what each does in each mode — <strong>Display</strong>,
+      <strong>Suppress</strong> or <strong>Queue</strong> for Work, Lunch and Away.</p>
+      <p>With the shipped ordering, notifications do not interrupt Lunch or Away. That is
+      the table working as configured, not a bug. Move the rows if you disagree.</p>
+      <h4>Device Diagnostics</h4>
+      <p>Connection status, battery, firmware, the update setting, and the animation
+      debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
+      live, drawn through the real renderer.</p>
+      <hr>
+      <h3 id="guide-the-bar-itself">The bar itself</h3>
+      <h4>What it shows</h4>
+      <p>A 72×16 RGB matrix: a 16px icon on the left, then two rows of text. Row 0 is the
+      firmware&#39;s own proportional font (roughly 14 characters of mixed case in the
+      55px field); row 1 is a fixed 3×5 font.</p>
+      <div class="note"><span class="label">Why the timer shows HH:MM</span>
+      <p></p>
+      <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
+      redraw would mean an upload a second for a digit nobody reads, so the tracker
+      deliberately shows minutes.</p>
+      </div>
+      <h4>Controls</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Control</th>
+      <th align="left">Does</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>START</strong> press</td>
+      <td align="left">Start or pause. With nothing running, opens the task picker</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Wheel</strong> turn</td>
+      <td align="left">Scroll</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Wheel</strong> click</td>
+      <td align="left">Open the task picker</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>BACK</strong> short press</td>
+      <td align="left">Dismiss the current notification</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>BACK</strong> long press</td>
+      <td align="left">Complete the active task and log the time</td>
+      </tr>
+      </tbody></table></div>
+      <p>All of these are rebindable.</p>
+      <p><strong>The task picker</strong> is two stages: turn to choose a project, click to descend
+      into it, turn to choose a task, click to start. <strong>BACK</strong> leaves at any point.
+      The second row shows the task key.</p>
+      <p><strong>During a ceremony prompt</strong>, START confirms and BACK dismisses. The end-of-day
+      wrap-up asks twice — the first START is &quot;yes&quot;, the second confirms — because it
+      can shut your machine down.</p>
+      <hr>
+      <h3 id="guide-troubleshooting">Troubleshooting</h3>
+      <p><strong>The task list is empty.</strong> Check Task Providers for a saved domain and key.
+      Press <strong>Sync Now</strong>; if it stays empty, the credentials are probably wrong — the
+      app deliberately does not invent tasks. A provider error is shown rather than
+      swallowed.</p>
+      <p><strong>A worklog never reached Jira or OpenProject.</strong> Open the sync queue panel. The
+      row carries the server&#39;s own message. Common causes:</p>
+      <ul>
+      <li><em><code>404</code> — the issue no longer exists.</em> Nothing to do; the local worklog stands.</li>
+      <li><em><code>400</code> — under a minute.</em> Jira records time to the minute; anything shorter
+      rounds to zero and is refused. The time is in your local history.</li>
+      <li><em><code>401</code>/<code>403</code> — the key was revoked.</em> Enter a new one; saving credentials
+      automatically un-parks rows the old key stranded.</li>
+      </ul>
+      <p><strong>Notifications never appear on the bar.</strong> Three things to check, in order: the
+      app is set to something other than <em>Don&#39;t Show</em>; the notification listener is
+      running (Device Diagnostics reports its status — <strong>its failures are otherwise
+      silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
+      the usual culprits.</p>
+      <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
+      higher priority. Check Priority Rules and your current mode.</p>
+      <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
+      anyway</em>. There is no way around it short of a code-signing certificate.</p>
+      <p><strong>Accented characters.</strong> These are transliterated to ASCII (<code>é</code> → <code>e</code>), because
+      the device accepts printable ASCII only. Emoji do not render.</p>
+      <hr>
+      <h3 id="guide-your-data">Your data</h3>
+      <p>One SQLite file: <code>%APPDATA%\SprintTicker\sprintticker.db</code>. Installing over a
+      previous version does not touch it.</p>
+      <p>Provider credentials are encrypted at rest with Windows&#39; own keystore. If it is
+      unavailable, the app says so rather than failing silently; if the file is read
+      by a different Windows account, the key reads back as &quot;not configured&quot; and you
+      are asked to re-enter rather than shown a crash.</p>
+      <div class="note"><span class="label">No telemetry, no account, no server</span>
+      <p></p>
+      <p>The one outbound request is a daily update check against GitHub, which sends
+      nothing about you and can be turned off in Device Diagnostics — turning it off
+      stops the request being made, rather than hiding its result.</p>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="doc-head">
+        <div class="num">Document 2</div>
+        <h2>Architecture</h2>
+        <p>How SprintTicker is put together, as shipped.</p>
+        <p>This describes the system that exists. <code>Documentation/design-history/</code> describes
+        what was <em>intended</em> before it was built, is not maintained, and disagrees with
+        the code in places — where they differ, the code is right and this document
+        tries to be.</p>
+        <p>For the rules you must not break while changing any of it — the hardware
+        contract, the process boundaries, the code standards — see
+        <a href="../CLAUDE.md">CLAUDE.md</a>. This file explains the shape; that one explains the
+        traps.</p>
+      </div>
+      <h3 id="architecture-the-whole-thing-in-one-picture">1. The whole thing in one picture</h3>
+      <div class="diagram">
+      <svg viewBox="0 0 660 330" role="img" aria-label="The renderer talks to main only through the preload contextBridge. Main hosts the time-tracking engine, the provider manager, the priority engine, the display renderer and the notification listener, owns the SQLite database, serves a loopback HTTP server for the Unity plugin, and drives the BUSY Bar over USB.">
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+          <rect x="150" y="8" width="360" height="42" rx="3" fill="var(--surface-2)" stroke="var(--border)"/>
+          <text x="330" y="26" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">RENDERER</text>
+          <text x="330" y="40" text-anchor="middle" fill="var(--ink-3)">React 18 &#183; 9 views &#183; no Node, no Electron</text><pre><code>&lt;line x1=&quot;330&quot; y1=&quot;50&quot; x2=&quot;330&quot; y2=&quot;70&quot; stroke=&quot;var(--accent-line)&quot; stroke-width=&quot;1.5&quot;/&gt;
+      &lt;text x=&quot;338&quot; y=&quot;64&quot; fill=&quot;var(--accent)&quot;&gt;window.electronAPI&lt;/text&gt;
+      
+      &lt;rect x=&quot;150&quot; y=&quot;70&quot; width=&quot;360&quot; height=&quot;34&quot; rx=&quot;3&quot; fill=&quot;var(--surface-2)&quot; stroke=&quot;var(--accent-line)&quot; stroke-dasharray=&quot;3 2&quot;/&gt;
+      &lt;text x=&quot;330&quot; y=&quot;91&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot; font-size=&quot;11&quot; font-weight=&quot;600&quot;&gt;PRELOAD &amp;#183; contextBridge &amp;#183; the only path&lt;/text&gt;
+      
+      &lt;line x1=&quot;330&quot; y1=&quot;104&quot; x2=&quot;330&quot; y2=&quot;122&quot; stroke=&quot;var(--border)&quot; stroke-width=&quot;1.5&quot;/&gt;
+      
+      &lt;rect x=&quot;16&quot; y=&quot;122&quot; width=&quot;628&quot; height=&quot;132&quot; rx=&quot;3&quot; fill=&quot;var(--surface-2)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;30&quot; y=&quot;140&quot; fill=&quot;var(--ink)&quot; font-size=&quot;12&quot; font-weight=&quot;600&quot;&gt;MAIN&lt;/text&gt;
+      
+      &lt;rect x=&quot;30&quot; y=&quot;150&quot; width=&quot;600&quot; height=&quot;26&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;330&quot; y=&quot;167&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink-2)&quot;&gt;IpcHandlerRegistry &amp;#8212; the single place a channel gets a handler&lt;/text&gt;
+      
+      &lt;rect x=&quot;30&quot; y=&quot;184&quot; width=&quot;112&quot; height=&quot;34&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;86&quot; y=&quot;199&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;TimeTracking&lt;/text&gt;
+      &lt;text x=&quot;86&quot; y=&quot;211&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Engine&lt;/text&gt;
+      
+      &lt;rect x=&quot;150&quot; y=&quot;184&quot; width=&quot;112&quot; height=&quot;34&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;206&quot; y=&quot;199&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Provider&lt;/text&gt;
+      &lt;text x=&quot;206&quot; y=&quot;211&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Manager&lt;/text&gt;
+      
+      &lt;rect x=&quot;270&quot; y=&quot;184&quot; width=&quot;112&quot; height=&quot;34&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;326&quot; y=&quot;199&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Priority&lt;/text&gt;
+      &lt;text x=&quot;326&quot; y=&quot;211&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Preemption&lt;/text&gt;
+      
+      &lt;rect x=&quot;390&quot; y=&quot;184&quot; width=&quot;112&quot; height=&quot;34&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;446&quot; y=&quot;199&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Display&lt;/text&gt;
+      &lt;text x=&quot;446&quot; y=&quot;211&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Renderer&lt;/text&gt;
+      
+      &lt;rect x=&quot;510&quot; y=&quot;184&quot; width=&quot;120&quot; height=&quot;34&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;570&quot; y=&quot;199&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Notification&lt;/text&gt;
+      &lt;text x=&quot;570&quot; y=&quot;211&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot;&gt;Listener&lt;/text&gt;
+      
+      &lt;rect x=&quot;30&quot; y=&quot;226&quot; width=&quot;232&quot; height=&quot;20&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;146&quot; y=&quot;240&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink-2)&quot;&gt;Repositories &amp;#8594; SQLite&lt;/text&gt;
+      
+      &lt;rect x=&quot;390&quot; y=&quot;226&quot; width=&quot;240&quot; height=&quot;20&quot; rx=&quot;2&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;510&quot; y=&quot;240&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink-2)&quot;&gt;WebhookServer 127.0.0.1:39123&lt;/text&gt;
+      
+      &lt;line x1=&quot;446&quot; y1=&quot;254&quot; x2=&quot;446&quot; y2=&quot;278&quot; stroke=&quot;var(--accent-line)&quot; stroke-width=&quot;1.5&quot;/&gt;
+      &lt;rect x=&quot;352&quot; y=&quot;278&quot; width=&quot;188&quot; height=&quot;38&quot; rx=&quot;3&quot; fill=&quot;var(--panel)&quot; stroke=&quot;var(--accent-line)&quot;/&gt;
+      &lt;text x=&quot;446&quot; y=&quot;294&quot; text-anchor=&quot;middle&quot; fill=&quot;#E3A340&quot; font-weight=&quot;600&quot;&gt;BUSY Bar&lt;/text&gt;
+      &lt;text x=&quot;446&quot; y=&quot;308&quot; text-anchor=&quot;middle&quot; fill=&quot;#8791A1&quot;&gt;10.0.4.20 over USB&lt;/text&gt;
+      
+      &lt;line x1=&quot;206&quot; y1=&quot;254&quot; x2=&quot;206&quot; y2=&quot;278&quot; stroke=&quot;var(--border)&quot; stroke-width=&quot;1.5&quot;/&gt;
+      &lt;rect x=&quot;112&quot; y=&quot;278&quot; width=&quot;188&quot; height=&quot;38&quot; rx=&quot;3&quot; fill=&quot;var(--surface)&quot; stroke=&quot;var(--border)&quot;/&gt;
+      &lt;text x=&quot;206&quot; y=&quot;294&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink)&quot; font-weight=&quot;600&quot;&gt;OpenProject / Jira&lt;/text&gt;
+      &lt;text x=&quot;206&quot; y=&quot;308&quot; text-anchor=&quot;middle&quot; fill=&quot;var(--ink-3)&quot;&gt;over the internet&lt;/text&gt;
+      </code></pre>
+        </g>
+      </svg>
+      </div><p>Three processes, one database, two outbound directions (the device over USB, a
+      task provider over the internet), and one inbound (the Unity plugin on
+      loopback).</p>
+      <hr>
+      <h3 id="architecture-process-boundaries">2. Process boundaries</h3>
+      <p><code>contextIsolation: true</code>, <code>nodeIntegration: false</code>, <code>sandbox: true</code>. These are
+      not defaults left in place; they are the reason the renderer can be treated as
+      untrusted.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Rule</th>
+      <th align="left">Enforced by</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Renderer must not import <code>src/main/**</code> or <code>electron</code></td>
+      <td align="left">ESLint <code>no-restricted-imports</code>, <strong>error</strong></td>
+      </tr>
+      <tr>
+      <td align="left">Main must not import <code>src/renderer/**</code></td>
+      <td align="left">ESLint <code>no-restricted-imports</code>, <strong>error</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><code>src/shared/**</code> must run in both</td>
+      <td align="left">Convention, plus the fact that both sides import it</td>
+      </tr>
+      <tr>
+      <td align="left">Preload and renderer cannot drift</td>
+      <td align="left">The <code>: IElectronAPI</code> annotation on the bridge object — a missing method is a compile error</td>
+      </tr>
+      </tbody></table></div>
+      <div class="note trap"><span class="label">Never duplicate a constant across the boundary</span>
+      <p></p>
+      <p>Main and the renderer once carried contradictory copies of the notification
+      defaults and the priority table, and which one won depended on process start
+      order. Anything both sides need — DTOs, IPC channel names, priority defaults,
+      schedule defaults, the fonts, the text sanitiser — lives in <code>src/shared/</code> and
+      is imported, never re-declared.</p>
+      </div>
+      <hr>
+      <h3 id="architecture-main-process-components">3. Main process components</h3>
+      <h4><code>TimeTrackingEngine</code> — <code>src/main/engine/</code></h4>
+      <p>Owns the session lifecycle: start, pause, resume, stop. Sessions are
+      <strong>timestamp-based</strong>, not tick-based — elapsed time is derived from
+      <code>start_time_utc</code> minus accumulated pauses, so the count survives the app being
+      closed, the machine sleeping, or a crash. <code>reconcileStartupState()</code> picks a
+      live session back up on launch.</p>
+      <p>Stopping a session does three things: writes a local worklog (always), asks the
+      active provider&#39;s <code>minimumLoggableSeconds</code> whether the duration can be recorded
+      remotely at all, and if so enqueues it and wakes the sync worker for an
+      immediate drain rather than waiting out the interval.</p>
+      <h4>Provider layer — <code>src/main/providers/</code></h4>
+      <pre><code>ITaskProvider  ← the contract (task-provider-interface.ts)
+          ├── OpenProjectProvider   REST API v3, HAL pagination
+          ├── JiraProvider          REST API v3, two pagination schemes
+          └── AdHocProvider         local only, no network
+      
+      ProviderManager   resolves the active provider, holds credentials
+      provider-http.ts  the single network call site: timeout, retries, classification
+      provider-errors.ts ProviderRequestError, with isPermanent
+      </code></pre>
+      <p>Three rules hold this together, each one a bug that already happened:</p>
+      <ul>
+      <li><strong>A provider reports failure by throwing</strong>, never by returning <code>[]</code>. An empty
+      array is indistinguishable from &quot;this user has no tasks&quot;, and the sync worker
+      prunes the local cache against what it receives (audit F-01).</li>
+      <li><strong>Only GET/HEAD/OPTIONS are retried.</strong> A worklog POST has no idempotency key
+      in either API, so repeating it after a response that was sent but never
+      received bills the session twice.</li>
+      <li><strong><code>isPermanent</code> decides whether a queued row retries.</strong> Any 4xx except 408 and
+      429 is permanent — those two describe a moment, the rest describe the request.</li>
+      </ul>
+      <h4><code>OfflineSyncWorker</code> — <code>src/main/sync/</code></h4>
+      <p>One owner of the <code>worklog_sync_queue</code> table, and rows are claimed atomically
+      (<code>UPDATE ... SET status=&#39;SYNCING&#39; WHERE id=? AND status=&#39;PENDING&#39;</code>). Two
+      uncoordinated flushers used to race here and double-bill (F-02, F-03).</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Constant</th>
+      <th align="right">Value</th>
+      <th align="left">Why</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>SYNC_INTERVAL_MS</code></td>
+      <td align="right">5 min</td>
+      <td align="left">Background pass</td>
+      </tr>
+      <tr>
+      <td align="left"><code>MAX_SYNC_ATTEMPTS</code></td>
+      <td align="right">8</td>
+      <td align="left">Then the row parks as FAILED, with the server&#39;s own message</td>
+      </tr>
+      <tr>
+      <td align="left"><code>SYNC_BACKOFF_BASE_MS</code></td>
+      <td align="right">30 s</td>
+      <td align="left">Doubles per attempt</td>
+      </tr>
+      <tr>
+      <td align="left"><code>SYNC_BACKOFF_MAX_MS</code></td>
+      <td align="right">1 h</td>
+      <td align="left">Ceiling on one wait</td>
+      </tr>
+      <tr>
+      <td align="left"><code>SYNC_CLAIM_TIMEOUT_MS</code></td>
+      <td align="right">10 min</td>
+      <td align="left">A claim left behind by a crash is reclaimable after this</td>
+      </tr>
+      </tbody></table></div>
+      <p>A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
+      <strong>coalesces</strong>, setting a flag so the new row drains before the current pass
+      ends. Without that, finishing one task and starting the next — the app&#39;s core
+      loop — waited out the full interval anyway.</p>
+      <h4><code>PriorityPreemptionEngine</code> — <code>src/main/services/</code></h4>
+      <p>Decides what the display shows. Every claim carries a score; the highest holds
+      the display and takes a named lock, which the claimant must release.</p>
+      <p>Two rules, both scars:</p>
+      <ul>
+      <li><strong>Never hardcode a ranking.</strong> The table below is a <em>default</em> the user edits in
+      the Priority Rules panel. Nothing in the code may assume a particular order.</li>
+      <li><strong>One event produces exactly one <code>evaluateRequest</code>.</strong> Evaluating twice takes
+      the lock twice under different names, and the release then never matches the
+      lock actually held.</li>
+      </ul>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Claim</th>
+      <th align="left">Event name</th>
+      <th align="right">Default score</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Away mode</td>
+      <td align="left"><code>awayModePriority</code></td>
+      <td align="right">100</td>
+      </tr>
+      <tr>
+      <td align="left">Lunch mode</td>
+      <td align="left"><code>lunchModePriority</code></td>
+      <td align="right">95</td>
+      </tr>
+      <tr>
+      <td align="left">End-of-day wrap-up</td>
+      <td align="left"><code>eodWrapUpPriority</code></td>
+      <td align="right">80</td>
+      </tr>
+      <tr>
+      <td align="left">Stand-up prompt</td>
+      <td align="left"><code>standupPromptPriority</code></td>
+      <td align="right">75</td>
+      </tr>
+      <tr>
+      <td align="left">Notification — high</td>
+      <td align="left"><code>highNotificationPriority</code></td>
+      <td align="right">70</td>
+      </tr>
+      <tr>
+      <td align="left">Notification — default</td>
+      <td align="left"><code>messagingPriority</code></td>
+      <td align="right">65</td>
+      </tr>
+      <tr>
+      <td align="left">Unity build failure</td>
+      <td align="left"><code>unityBuildFailurePriority</code></td>
+      <td align="right">60</td>
+      </tr>
+      <tr>
+      <td align="left">Unity compiling</td>
+      <td align="left"><code>unityCompilingPriority</code></td>
+      <td align="right">55</td>
+      </tr>
+      <tr>
+      <td align="left">Unity Play Mode</td>
+      <td align="left"><code>unityPlayModePriority</code></td>
+      <td align="right">50</td>
+      </tr>
+      <tr>
+      <td align="left">Active task tracker</td>
+      <td align="left"><code>activeTrackerPriority</code></td>
+      <td align="right">45</td>
+      </tr>
+      </tbody></table></div>
+      <p>Each rule also carries an action per user mode — <code>DISPLAY</code>, <code>SUPPRESS</code> or
+      <code>QUEUE</code> — for <code>WORK</code>, <code>LUNCH</code> and <code>AWAY</code>. That is how notifications correctly
+      do not interrupt a break: not a special case in the code, a row in the table.</p>
+      <h4>Render pipeline — <code>src/main/hardware/</code></h4>
+      <pre><code>DisplayRenderer      decides what a screen looks like
+            │
+      PixelCanvas          draws it into a 72×16 pixel buffer
+            │              (proportional font row 0, fixed 3×5 row 1)
+      pixel-matrix-to-png  encodes the buffer as a PNG
+            │
+      BusyBarDriver        uploads the asset, then draws it — two HTTP requests
+      </code></pre>
+      <p>Every frame is an <strong>asset upload plus a draw</strong>. <code>transmitFrame</code> hashes the frame
+      and skips an identical one, which is why a tracking session sends traffic on
+      state change rather than on every tick, and why the timer shows <code>HH:MM</code> rather
+      than seconds.</p>
+      <p>The standard front layout is a 16px icon at <code>x=0..15</code>, a one-pixel gutter, then
+      two text rows at <code>x=17</code> in a 55px field.</p>
+      <div class="note trap"><span class="label">Row 0 has no character capacity</span>
+      <p></p>
+      <p>It is set in the firmware&#39;s own proportional font, so <code>measureText</code> and
+      <code>fitToWidth</code> in <code>shared/proportional-text.ts</code> are the only correct way to ask
+      whether something fits. Both the composer and the canvas must use them: a
+      one-character disagreement truncates a row twice, and the second cut lands
+      mid-word with no marker.</p>
+      </div>
+      <p>The rear 160×80 OLED is <strong>preview only</strong>: <code>buildRearElements</code> feeds the on-screen
+      emulator, and <code>transmitFrame</code> sends the front matrix and nothing else.</p>
+      <h4><code>InputDecoder</code> — <code>src/main/hardware/</code></h4>
+      <p>Turns physical events into application actions, through a rebindable map.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Control</th>
+      <th align="left">Default action</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">START press</td>
+      <td align="left"><code>TOGGLE_TRACK_PAUSE</code></td>
+      </tr>
+      <tr>
+      <td align="left">Wheel left / right</td>
+      <td align="left"><code>NAVIGATE_QUEUE_PREV</code> / <code>NAVIGATE_QUEUE_NEXT</code></td>
+      </tr>
+      <tr>
+      <td align="left">Wheel click</td>
+      <td align="left"><code>TRIGGER_TASK_SELECTOR_MODAL</code></td>
+      </tr>
+      <tr>
+      <td align="left">BACK short press</td>
+      <td align="left"><code>DISMISS_NOTIFICATION_ALERT</code></td>
+      </tr>
+      <tr>
+      <td align="left">BACK long press</td>
+      <td align="left"><code>COMPLETE_AND_LOG_ACTIVE_TASK</code></td>
+      </tr>
+      </tbody></table></div>
+      <p>It also runs the two-stage task picker (project, then task) driven entirely from
+      the bar. The driver listener is wrapped in a try/catch on purpose: a throw
+      inside an EventEmitter listener with no error handler terminates the main
+      process, so without it a button press could take the whole app down.</p>
+      <h4><code>WindowsNotificationListenerService</code> — <code>src/main/services/</code></h4>
+      <p>Polls the Windows Action Center database via a PowerShell child process, and
+      mirrors notifications from apps you have allowed. App icons are resolved from
+      the MSIX manifest or a Start Menu shortcut and downscaled to 15×15.</p>
+      <p><strong>This is the reason the app is Windows-only in practice</strong>, and its failures are
+      silent — a listener that never starts looks exactly like an app that never
+      notifies you. Notification text is redacted from logs and from the diagnostics
+      export unless you launch with <code>--debug-notifications</code>.</p>
+      <h4><code>WebhookServer</code> — <code>src/main/api/</code></h4>
+      <p>An HTTP server on <code>127.0.0.1:39123</code> for the Unity Editor plugin. See the
+      <a href="API.md#local-http-api">API reference</a> for routes and the screening rules.</p>
+      <hr>
+      <h3 id="architecture-data">4. Data</h3>
+      <p>Everything lives in one SQLite file at
+      <code>%APPDATA%\SprintTicker\sprintticker.db</code>, for both <code>pnpm dev</code> and an installed
+      build. <strong>Development therefore shares your real database</strong> — a migration you are
+      testing runs against your actual worklogs.</p>
+      <h4>Schema</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Table</th>
+      <th align="left">Holds</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>projects</code></td>
+      <td align="left">Cached projects, with <code>provider_id</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks</code></td>
+      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>active_sessions</code></td>
+      <td align="left">The live session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>paused_intervals</code></td>
+      <td align="left">Each pause, FK to the session, <code>ON DELETE CASCADE</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklogs</code></td>
+      <td align="left">Local record of tracked time. Written even when the remote refuses it</td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklog_sync_queue</code></td>
+      <td align="left">Outbound worklogs: <code>PENDING</code> / <code>SYNCING</code> / <code>SYNCED</code> / <code>FAILED</code>, with backoff and <code>last_error</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>settings</code></td>
+      <td align="left">Key/value, including provider configuration</td>
+      </tr>
+      </tbody></table></div>
+      <p>Migrations are versioned and forward-only (<code>src/main/db/migrations.ts</code>):</p>
+      <ol>
+      <li><code>initial-schema</code> — the pre-migrations schema, reproduced verbatim so an
+      existing database replays it as a no-op and lands on v1 with its data intact.</li>
+      <li><code>sync-queue-claim-and-backoff</code> — rebuilds the queue table, because SQLite
+      cannot <code>ALTER</code> a <code>CHECK</code> constraint and the queue needed a fourth state.</li>
+      <li><code>query-indexes</code>.</li>
+      </ol>
+      <p>Credentials are encrypted at rest through Electron&#39;s <code>safeStorage</code>
+      (<code>db/secret-store.ts</code>). Every failure mode degrades rather than losing the key:
+      no keystore means plaintext plus a warning, and ciphertext written by another OS
+      account reads back as &quot;not configured&quot; so you are prompted to re-enter.</p>
+      <p><strong>Repositories take their <code>DatabaseConnection</code> through the constructor.</strong> A
+      repository that resolves the singleton itself cannot be tested — that is why the
+      suite once wrote a real database to disk. Tests use
+      <code>new DatabaseConnection(&#39;:memory:&#39;)</code>.</p>
+      <hr>
+      <h3 id="architecture-how-a-session-flows">5. How a session flows</h3>
+      <p>Start to finish, across every component:</p>
+      <ol>
+      <li><strong>You pick a task</strong> — from the UI, or with the wheel on the bar.</li>
+      <li><code>TimeTrackingEngine.startTask()</code> writes <code>active_sessions</code>, and asks the
+      provider to move the issue to its configured in-progress status.</li>
+      <li>The engine notifies subscribers → <code>DisplayRenderer</code> composes the tracker
+      screen → <code>PriorityPreemptionEngine</code> scores it at <code>activeTrackerPriority</code>
+      (45) and, if nothing outranks it, grants the display → <code>BusyBarDriver</code>
+      uploads a PNG and draws it.</li>
+      <li><strong>A Slack notification arrives.</strong> The listener matches it against your rules,
+      the engine scores it at 65 or 70, and it preempts the tracker — unless you
+      are at Lunch, whose rule sits above both.</li>
+      <li><strong>You finish.</strong> The engine writes a local worklog, checks
+      <code>minimumLoggableSeconds</code>, enqueues the row and wakes the worker.</li>
+      <li>The worker claims the row atomically, POSTs it, and marks it <code>SYNCED</code> — or
+      parks it with the server&#39;s own message if the failure is permanent, or backs
+      off if it is not.</li>
+      <li>The Sync Queue panel shows anything still in flight, with attempt count and
+      next attempt time.</li>
+      </ol>
+      <hr>
+      <h3 id="architecture-unity-plugin">6. Unity plugin</h3>
+      <p><code>packages/unity-plugin</code> is a UPM package
+      (<code>io.github.istalry.sprintticker</code>) of Editor-only C#. <code>BusyBarWebhookPublisher</code>
+      and <code>BusyBarSceneSaveListener</code> initialise themselves and POST compile state,
+      Play Mode transitions and console exceptions to the local HTTP server. It
+      modifies neither your scenes nor your project code.</p>
+      <hr>
+      <h3 id="architecture-testing">7. Testing</h3>
+      <p>Vitest, 688 tests across 49 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
+      of TSX. The floor is a ratchet (82 / 73.5 / 83.5 / 84.5) and is raised, never
+      lowered.</p>
+      <p>Two harnesses let the provider layer be exercised over a real socket without a
+      real instance: <code>scripts/fake-openproject.js</code> (<code>pnpm mock:openproject</code>) and
+      <code>scripts/fake-jira.js</code> (<code>pnpm mock:jira</code>). Both deliberately serve more than one
+      page of everything and clamp the page size server-side — a harness that fits on
+      one page cannot fail the way production failed.</p>
+      <p>What the suite structurally <strong>cannot</strong> see: application startup, IPC wiring, and
+      anything touching real hardware. Those need the app actually running — read its
+      console, not just its UI.</p>
+    </section>
+
+    <section id="api">
+      <div class="doc-head">
+        <div class="num">Document 3</div>
+        <h2>API reference</h2>
+        <p>The four API surfaces in this project:</p>
+        <ol>
+        <li><a href="#ipc-channels">IPC channels</a> — renderer ↔ main</li>
+        <li><a href="#local-http-api">Local HTTP API</a> — the Unity plugin → main</li>
+        <li><a href="#itaskprovider"><code>ITaskProvider</code></a> — the contract a task provider implements</li>
+        <li><a href="#the-busy-bar-device-contract">The BUSY Bar device contract</a> — main → hardware</li>
+        </ol>
+        <p>Source of truth for each is named at the top of its section. Where this file and
+        the code disagree, the code is right — tell us so it can be fixed here.</p>
+      </div>
+      <h3 id="api-ipc-channels">IPC channels</h3>
+      <p><strong>Source:</strong> <code>src/shared/ipc-channels.ts</code>, <code>src/preload/electron-api.d.ts</code></p>
+      <p>The renderer never touches Electron or Node directly. Every call goes through
+      <code>window.electronAPI</code>, whose shape is <code>IElectronAPI</code>. That annotation on the
+      bridge object is load-bearing: it turns preload/renderer drift into a compile
+      error rather than an undefined at runtime.</p>
+      <p>Channels named <code>ON_*</code> are main → renderer events, subscribed with a callback.
+      Everything else is a request/response <code>invoke</code>.</p>
+      <h4>Session and timer</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Channel</th>
+      <th align="left">Purpose</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>session:get-current</code></td>
+      <td align="left">The live session, or <code>null</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:start-task</code></td>
+      <td align="left">Start tracking a task</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:pause</code> / <code>session:resume</code></td>
+      <td align="left">Pause and resume</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:complete</code></td>
+      <td align="left">Stop, write a worklog, optionally mark the task done</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:discard</code></td>
+      <td align="left">Stop without recording</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:on-updated</code></td>
+      <td align="left"><strong>Event</strong> — the session changed</td>
+      </tr>
+      </tbody></table></div>
+      <h4>Providers, projects and tasks</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Channel</th>
+      <th align="left">Purpose</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>provider:get-all</code></td>
+      <td align="left">Current provider settings</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:set-active</code></td>
+      <td align="left">Persist settings, reinitialise providers, start a sync. Takes a <strong>partial</strong> <code>ProviderSettingsUpdateDTO</code>, so unrelated providers&#39; credentials are left alone</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:get-projects</code> / <code>provider:get-tasks</code></td>
+      <td align="left">Read the local cache</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:create-adhoc</code></td>
+      <td align="left">A local task with no ticket</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:fetch-op-statuses</code></td>
+      <td align="left">OpenProject status list, for the settings form</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:sync-now</code></td>
+      <td align="left">Fetch projects and tasks immediately</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:get-sync-queue</code></td>
+      <td align="left">Everything undelivered, with attempt counts and the server&#39;s own message</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:retry-failed-worklogs</code></td>
+      <td align="left">Un-park <code>FAILED</code> rows</td>
+      </tr>
+      <tr>
+      <td align="left"><code>projects:on-updated</code></td>
+      <td align="left"><strong>Event</strong> — the cached project list changed</td>
+      </tr>
+      </tbody></table></div>
+      <div class="note">
+      <p><code>provider:reconcile</code> was removed. It was declared on the bridge with no
+      handler in main, so calling it rejected. The providers keep their
+      <code>reconcileRemoteState</code> methods; the channel comes back the day a UI needs a
+      server-side day total, together with its handler.</p>
+      </div>
+      <h4>Projects, tasks and worklogs (local)</h4>
+      <p><code>projects:create</code>, <code>projects:rename</code>, <code>projects:delete</code>, <code>tasks:delete</code>,
+      <code>tasks:update</code>, <code>tasks:import</code>, <code>worklogs:get-by-date</code>,
+      <code>worklogs:get-daily-summary</code>, <code>worklog:get-todays</code>, <code>db:wipe-all-data</code>, and the
+      <code>worklog:on-updated</code> event.</p>
+      <h4>Hardware input</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Channel</th>
+      <th align="left">Purpose</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>input:get-bindings</code> / <code>input:save-bindings</code></td>
+      <td align="left">The rebindable control map</td>
+      </tr>
+      <tr>
+      <td align="left"><code>input:inject-remote-key</code></td>
+      <td align="left">Simulate a physical key</td>
+      </tr>
+      <tr>
+      <td align="left"><code>input:on-hardware-event</code></td>
+      <td align="left"><strong>Event</strong> — a physical control was used</td>
+      </tr>
+      </tbody></table></div>
+      <h4>Priority and display</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Channel</th>
+      <th align="left">Purpose</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>priority:get-rules</code> / <code>priority:save-rules</code></td>
+      <td align="left">The scoring table</td>
+      </tr>
+      <tr>
+      <td align="left"><code>priority:set-user-mode</code> / <code>priority:get-user-mode</code></td>
+      <td align="left"><code>WORK</code> / <code>LUNCH</code> / <code>AWAY</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>priority:on-user-mode-updated</code></td>
+      <td align="left"><strong>Event</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><code>display:get-state</code></td>
+      <td align="left">Current frame, for the emulator</td>
+      </tr>
+      <tr>
+      <td align="left"><code>display:on-state-updated</code></td>
+      <td align="left"><strong>Event</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><code>display:set-rear-oled-mode</code>, <code>display:set-color-theme</code>, <code>display:trigger-confetti-burst</code></td>
+      <td align="left">Display options</td>
+      </tr>
+      <tr>
+      <td align="left"><code>display:preview-screen</code></td>
+      <td align="left">Draws one <strong>real</strong> screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting</td>
+      </tr>
+      </tbody></table></div>
+      <h4>Device, ceremonies, Unity, notifications, diagnostics, updates</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Group</th>
+      <th align="left">Channels</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Device</td>
+      <td align="left"><code>device:get-status</code>, <code>device:get-config</code>, <code>device:set-config</code>, <code>device:on-status-changed</code></td>
+      </tr>
+      <tr>
+      <td align="left">Ceremonies</td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
+      </tr>
+      <tr>
+      <td align="left">Unity</td>
+      <td align="left"><code>unity:get-settings</code>, <code>unity:save-settings</code>, <code>unity:get-telemetry</code>, <code>unity:on-telemetry-updated</code>, <code>unity-injector:*</code>, <code>dialog:open-folder-picker</code></td>
+      </tr>
+      <tr>
+      <td align="left">Notifications</td>
+      <td align="left"><code>notifications:get-settings</code>, <code>notifications:save-settings</code>, <code>notifications:simulate</code>, <code>notifications:get-listener-status</code>, <code>notifications:on-log</code>, <code>notifications:open-settings</code>, <code>messaging:*</code></td>
+      </tr>
+      <tr>
+      <td align="left">Diagnostics</td>
+      <td align="left"><code>diagnostics:export-logs</code></td>
+      </tr>
+      <tr>
+      <td align="left">Updates</td>
+      <td align="left"><code>updates:check</code>, <code>updates:get-enabled</code>, <code>updates:set-enabled</code>, <code>updates:open-release-page</code>, <code>updates:on-status</code></td>
+      </tr>
+      </tbody></table></div>
+      <hr>
+      <h3 id="api-local-http-api">Local HTTP API</h3>
+      <p><strong>Source:</strong> <code>src/main/api/webhook-server.ts</code></p>
+      <p><code>http://127.0.0.1:39123</code>, bound to loopback and never reachable from the
+      network. It exists for the Unity Editor plugin.</p>
+      <h4>Routes</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Route</th>
+      <th align="left">Method</th>
+      <th align="left">Body</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>/api/v1/unity/compile</code></td>
+      <td align="left">POST</td>
+      <td align="left"><code>{ state: &#39;started&#39; | &#39;finished&#39;, projectName, type?: &#39;compile&#39; | &#39;build&#39; | &#39;bake&#39;, progress?, unityVersion?, success?, elapsedSeconds?, instanceId? }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>/api/v1/unity/playmode</code></td>
+      <td align="left">POST</td>
+      <td align="left"><code>{ state: &#39;entered&#39; | &#39;exited&#39;, projectName, instanceId? }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>/api/v1/unity/console</code></td>
+      <td align="left">POST</td>
+      <td align="left"><code>{ type: &#39;warning&#39; | &#39;error&#39; | &#39;exception&#39;, message, projectName, stackTrace?, instanceId? }</code> — throttled to one event per 3 s</td>
+      </tr>
+      <tr>
+      <td align="left"><code>/api/v1/unity/heartbeat</code></td>
+      <td align="left">POST</td>
+      <td align="left"><code>{ projectName, unityVersion?, compiling?, playMode?, savePort?, instanceId? }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>/api/input</code></td>
+      <td align="left">POST</td>
+      <td align="left"><code>{ key }</code> — or <code>?key=</code> — injects a physical key event (<code>up</code>, <code>down</code>, <code>start</code>, <code>ok</code>, <code>back</code>, …)</td>
+      </tr>
+      </tbody></table></div>
+      <p>Responses are JSON. <code>200 { status: &#39;ACCEPTED&#39; }</code> on success,
+      <code>200 { status: &#39;THROTTLED&#39; }</code> for a rate-limited console event,
+      <code>400 { error: &#39;INVALID_PAYLOAD&#39; }</code> for a body that does not validate.</p>
+      <h4>Screening</h4>
+      <div class="note trap"><span class="label">Loopback is not a security boundary</span>
+      <p></p>
+      <p>Any page in any browser on this machine can POST to <code>127.0.0.1</code>, and this API
+      can drive hardware and inject input. Requests are therefore screened before
+      routing.</p>
+      </div>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Rule</th>
+      <th align="left">Response</th>
+      <th align="left">Why</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Method must be POST</td>
+      <td align="left"><code>405</code></td>
+      <td align="left"></td>
+      </tr>
+      <tr>
+      <td align="left">An <code>Origin</code> header is present</td>
+      <td align="left"><code>403</code></td>
+      <td align="left">Browsers set it; native clients do not</td>
+      </tr>
+      <tr>
+      <td align="left"><code>Content-Type</code> is not <code>application/json</code></td>
+      <td align="left"><code>415</code></td>
+      <td align="left">A browser may send a cross-origin POST without permission only while the request stays &quot;simple&quot; — form, plain-text or multipart. Requiring JSON forces a CORS preflight, and no <code>Access-Control-Allow-Origin</code> is ever sent, so that preflight fails and the real request is never made</td>
+      </tr>
+      <tr>
+      <td align="left">Body over 64 KB</td>
+      <td align="left"><code>413</code></td>
+      <td align="left"></td>
+      </tr>
+      </tbody></table></div>
+      <p><strong>This is not authentication.</strong> Any local program can still call this API. What
+      the checks close is the path from a web page you happen to be visiting to your
+      hardware. <code>pnpm verify:packed</code> asserts all of it against a real packaged build.</p>
+      <hr>
+      <h3 id="api-itaskprovider"><code>ITaskProvider</code></h3>
+      <p><strong>Source:</strong> <code>src/main/providers/task-provider-interface.ts</code></p>
+      <p>What you implement to add a task provider. Three exist: <code>OpenProjectProvider</code>,
+      <code>JiraProvider</code>, <code>AdHocProvider</code>.</p>
+      <pre><code class="language-ts">interface ITaskProvider {
+        readonly providerId: string;
+        readonly providerName: string;
+        readonly minimumLoggableSeconds: number;
+      
+        initialize(credentials: Record&lt;string, string&gt;): Promise&lt;boolean&gt;;
+        getProjects(): Promise&lt;ProjectDTO[]&gt;;
+        getTasks(projectId: string): Promise&lt;TaskDTO[]&gt;;
+        reconcileRemoteState(): Promise&lt;{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }&gt;;
+        logTime(payload: WorklogPayload): Promise&lt;{ success: boolean; remoteWorklogId?: string }&gt;;
+        updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;): Promise&lt;boolean&gt;;
+      }
+      </code></pre>
+      <h4>The contract, in rules</h4>
+      <p><strong>Report failure by throwing a <code>ProviderRequestError</code>. Never return <code>[]</code>.</strong>
+      An empty array is indistinguishable from &quot;this user has no tasks&quot;, and
+      <code>OfflineSyncWorker</code> prunes the local cache against what it receives. Returning
+      an empty list on a network error is how the cache got deleted (F-01). A partial
+      page is the same hazard: if pagination cannot finish, throw rather than return
+      what you have.</p>
+      <p><strong><code>minimumLoggableSeconds</code> is a fact about your API, not a policy.</strong> Jira&#39;s time
+      tracking is minute-granular, so it declares 60; OpenProject and AdHoc record
+      arbitrary durations and declare 1. The engine reads it before queueing, so a
+      session too short to record is never handed to a provider that will refuse it —
+      and one provider&#39;s limitation never costs a user time on another.</p>
+      <p><strong><code>reconcileRemoteState</code> may answer <code>null</code>.</strong> <code>remoteLoggedTimeToday: null</code>
+      means &quot;this provider cannot find out&quot;. Jira has no single endpoint for &quot;time I
+      logged today&quot;, and AdHoc has no remote at all; both return <code>null</code> rather than a
+      <code>0</code> a caller would render as a measured &quot;you logged nothing today&quot;.
+      OpenProject returns a real total, and <code>null</code> when the fetch failed.</p>
+      <p><strong>Use <code>providerFetch</code>.</strong> <code>src/main/providers/provider-http.ts</code> is the one place
+      a provider talks to the network: per-attempt timeout, <code>Retry-After</code>-aware
+      backoff, bounded retries, and classification into <code>ProviderRequestError</code>. Do not
+      call <code>fetch</code> directly.</p>
+      <p><strong>Only GET/HEAD/OPTIONS are retried.</strong> Neither API has an idempotency key, so
+      repeating a worklog POST after a lost response bills the time twice. An
+      over-reported day is harder to spot than a missing entry the queue will resend.</p>
+      <p><strong><code>isPermanent</code> decides whether a queued row retries.</strong> Any 4xx except <code>408</code> and
+      <code>429</code> is permanent — those two describe a moment; the rest describe the request.
+      A permanent failure parks the row at once with the server&#39;s own message instead
+      of spending eight attempts on byte-identical requests.</p>
+      <h4>Errors</h4>
+      <p><code>ProviderRequestError</code> (<code>provider-errors.ts</code>) carries a <code>kind</code>, an optional
+      HTTP <code>status</code>, and a derived <code>isPermanent</code>.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left"><code>kind</code></th>
+      <th align="left">Means</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>not_configured</code></td>
+      <td align="left">No credentials. <strong>Always permanent</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><code>auth</code></td>
+      <td align="left"><code>401</code> or <code>403</code>. <strong>Always permanent</strong> — retrying a revoked key to the ceiling is what parked rows with no explanation</td>
+      </tr>
+      <tr>
+      <td align="left"><code>protocol</code></td>
+      <td align="left">Any other HTTP status, or a malformed response</td>
+      </tr>
+      <tr>
+      <td align="left"><code>transport</code></td>
+      <td align="left">The request never completed — network failure or timeout</td>
+      </tr>
+      </tbody></table></div>
+      <p><code>isPermanent</code> is <code>true</code> for <code>auth</code> and <code>not_configured</code> regardless of status,
+      and otherwise for any 4xx <strong>except <code>408</code> and <code>429</code></strong>. A 5xx stays retryable: the
+      request was fine and the server was not.</p>
+      <p><code>ProviderRequestError.notConfigured(providerId)</code> and
+      <code>ProviderRequestError.fromStatus(providerId, status, context, detail)</code> are the
+      two standard constructors. Pass <code>detail</code> — it is what makes a failure say
+      <code>HTTP 401 - You did not provide the correct credentials</code> instead of leaving the
+      user to guess.</p>
+      <p>Note that <code>ArgumentException</code> is <strong>not</strong> a <code>ProviderRequestError</code>: a
+      non-positive duration throws one, and the queue cannot classify it, so callers
+      must not enqueue work that will throw that way.</p>
+      <h4>Task scope</h4>
+      <p><code>src/shared/task-scope.ts</code> holds the vocabulary — assigned to me, everything
+      open, or a custom query — and each adapter renders it in its own dialect: JQL
+      for Jira, a v3 filter array for OpenProject. A custom OpenProject filter is
+      validated and <strong>throws</strong> if malformed, because an invalid filter that quietly
+      matched nothing would let the prune delete every cached task for the project.</p>
+      <hr>
+      <h3 id="api-the-busy-bar-device-contract">The BUSY Bar device contract</h3>
+      <p><strong>Source:</strong> <code>src/main/hardware/busybar-driver.ts</code>, and
+      <a href="BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md">the developer guide</a></p>
+      <p>The bar answers on the fixed address <strong><code>10.0.4.20</code></strong> over USB and needs no
+      token there. That is how the device works, not a hardcoded shortcut.</p>
+      <p>Violating the rules below does not produce a helpful error. Some of them reboot
+      the device.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Rule</th>
+      <th align="left">What happens if you break it</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Colours are <code>#RRGGBBAA</code> — exactly 8 hex digits</td>
+      <td align="left">The <strong>entire</strong> draw call 400s, so one bad element takes down the whole frame</td>
+      </tr>
+      <tr>
+      <td align="left">Text is printable ASCII (<code>0x20</code>–<code>0x7E</code>)</td>
+      <td align="left">Smart quotes and emoji corrupt the display. Use <code>sanitizeAsciiText</code>, which transliterates rather than substitutes</td>
+      </tr>
+      <tr>
+      <td align="left">A solid fill takes exactly one colour; a gradient exactly two</td>
+      <td align="left"><strong>Reboots the device.</strong> <code>formatHardwarePayload</code> normalises this — do not bypass it</td>
+      </tr>
+      <tr>
+      <td align="left">The field is <code>application_name</code>, not <code>app_id</code></td>
+      <td align="left"><code>app_id</code> is a legacy name the firmware ignores</td>
+      </tr>
+      <tr>
+      <td align="left">Asset filenames match <code>^[a-zA-Z0-9._-]+$</code></td>
+      <td align="left">No paths, no spaces</td>
+      </tr>
+      <tr>
+      <td align="left">Draw priority ≥ 95</td>
+      <td align="left">The app does not hold the display</td>
+      </tr>
+      <tr>
+      <td align="left">RTC timestamps need a numeric UTC offset, not <code>Z</code></td>
+      <td align="left">The device applies no conversion, so <code>toISOString()</code> leaves the bar showing UTC</td>
+      </tr>
+      </tbody></table></div>
+      <h4>Status codes carry meaning</h4>
+      <p>See <code>classifyDeviceResponse</code>.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Code</th>
+      <th align="left">Meaning</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>409</code></td>
+      <td align="left">Priority conflict — something else owns the display. <strong>Not a failure</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><code>413</code></td>
+      <td align="left">Payload too large. <strong>Permanent</strong> — retrying sends the same bytes</td>
+      </tr>
+      <tr>
+      <td align="left"><code>503</code></td>
+      <td align="left">Retry</td>
+      </tr>
+      </tbody></table></div>
+      <h4>Frames</h4>
+      <p>The front display is a rasterised <strong>72×16 PNG</strong>. Every frame is an asset upload
+      plus a draw — two HTTP requests. <code>transmitFrame</code> hashes the frame and skips an
+      identical one, so before adding anything that redraws on a timer, check what
+      actually changes. This is why the session timer shows <code>HH:MM</code> and not seconds.</p>
+      <p>The rear 160×80 OLED is <strong>preview only</strong> in this build.</p>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <p>
+    SprintTicker is MIT-licensed and not affiliated with, endorsed by, or supported by Flipper FZCO.
+    &ldquo;BUSY Bar&rdquo; is their product; this is a third-party companion app for it. Two files
+    carry their own terms: the <code>Animations/</code> frame sets are CC-BY-SA-4.0, and the
+    generated glyph table in <code>shared/busy-font.ts</code> is OFL-1.1.
+  </p>
+  <p>
+    Generated from <code>Documentation/USER-GUIDE.md</code>, <code>ARCHITECTURE.md</code> and
+    <code>API.md</code> by <code>pnpm docs:build</code>. Where this page and the code disagree, the
+    code is right.
+  </p>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('matrix');
+  if (!canvas || !canvas.getContext) return;
+
+  var COLS = 72, ROWS = 16, CELL = 8, DOT = 6;
+  var ctx = canvas.getContext('2d');
+
+  // Composed at true device resolution first, exactly as the app does it:
+  // a 16px icon, a one-pixel gutter, then two text rows at x=17 in a 55px field.
+  var off = document.createElement('canvas');
+  off.width = COLS; off.height = ROWS;
+  var o = off.getContext('2d');
+  var frame;
+
+  function compose() {
+    o.clearRect(0, 0, COLS, ROWS);
+    o.fillStyle = '#fff';
+    o.strokeStyle = '#fff';
+    o.textBaseline = 'alphabetic';
+    o.beginPath(); o.arc(8, 9, 5.2, 0, Math.PI * 2); o.lineWidth = 1.4; o.stroke();
+    o.fillRect(7, 2, 2, 2);
+    o.fillRect(8, 6, 1, 4);
+    o.font = '7px "IBM Plex Mono", monospace';
+    o.fillText('SPRINTTICKER', 17, 7);
+    o.font = '6px "IBM Plex Mono", monospace';
+    o.fillText('01:24 TRACKING', 17, 15);
+    frame = o.getImageData(0, 0, COLS, ROWS).data;
+  }
+
+  function paint(pulse) {
+    var on = getComputedStyle(document.documentElement).getPropertyValue('--led-on').trim() || '#E3A340';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        var lit = frame[(y * COLS + x) * 4 + 3] > 110;
+        ctx.fillStyle = lit ? on : '#1B212B';
+        ctx.globalAlpha = lit ? 1 : 0.55;
+        ctx.beginPath();
+        ctx.arc(x * CELL + CELL / 2, y * CELL + CELL / 2, DOT / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // The status dot: the one thing on a real bar that moves.
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#4FB477';
+    ctx.beginPath();
+    ctx.arc(68 * CELL + CELL / 2, 2 * CELL + CELL / 2, DOT / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function start() {
+    compose();
+    paint(1);
+    if (reduced) return;
+    var t0 = null;
+    function tick(ts) {
+      if (t0 === null) t0 = ts;
+      var phase = ((ts - t0) % 2600) / 2600;
+      paint(0.35 + 0.65 * (0.5 + 0.5 * Math.cos(phase * Math.PI * 2)));
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Wait for the webfont, so the matrix samples real glyphs and not a fallback.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(start)['catch'](start);
+  } else {
+    start();
+  }
+})();
+</script>
+</body>
+</html>

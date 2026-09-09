@@ -37,6 +37,21 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Cheap enough to gate on: pure file reads, no native module, no LFS. It
+      # catches a version drift across the three package.json files at the
+      # moment it is introduced rather than at the moment someone tries to cut a
+      # release, which is when build-windows.yml would otherwise refuse the tag.
+      # Its better-sqlite3 binding check only warns, so --ignore-scripts above
+      # does not make this fail (audit F-33).
+      - name: Pre-flight checks
+        run: pnpm preflight
+
+      # docs/index.html is generated from the three Markdown documents. This is
+      # what stops the page and its sources drifting: a rule saying "remember to
+      # rebuild" is forgettable, a failing job is not.
+      - name: Documentation is up to date
+        run: pnpm docs:check
+
   # Windows, because that is the only platform this app targets: the
   # notification listener drives PowerShell and several code paths are gated on
   # process.platform === 'win32'. Running these on ubuntu would measure a

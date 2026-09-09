@@ -850,5 +850,39 @@ this table — it is a summary, and summaries drift.
 | **Deleted rather than fixed** | F-06 (rear OLED left as emulator preview), F-18 (updater stub) |
 | **Withdrawn in part** | F-16, F-22 — see the notes on each |
 | **Open, deferred with a reason** | F-11, and the table in [ROADMAP.md](ROADMAP.md) |
-| **Open, not yet triaged** | F-33 (`preflight` is not a gate), F-34 (the ABI split -- documented in `CLAUDE.md` rather than removed), F-35 (`NODE_ENV === 'test'` branches in production code), F-36 (deprecated `.substr`) |
+| **Triaged 2026-09-09** | F-33, F-34, F-35, F-36 — see below |
 | **Publication prerequisite** | F-41 — history rewrite, [ROADMAP.md](ROADMAP.md) §1 |
+
+### Triage of the last four open findings (2026-09-09)
+
+- **F-33 — `preflight` is not a gate. Fixed.** `pnpm preflight` now runs in the
+  `static` job of `quality.yml`. It is pure file reads, so it needs neither the
+  native module nor the LFS payload that job deliberately skips, and its
+  better-sqlite3 binding check only warns, so `--ignore-scripts` does not fail
+  it. One real defect turned up while wiring it: the script printed the root
+  `package.json` version and then compared only desktop-app against
+  unity-plugin, so a drifted root passed silently — and the root is exactly what
+  `build-windows.yml` matches the git tag against before it will build. The
+  drift would have surfaced as a refused release. It now requires all three to
+  agree.
+- **F-34 — the better-sqlite3 ABI split. Closed as documented.** Not a defect to
+  remove: the two ABIs are a real property of running the same native module
+  under Node and under Electron. `pretest` and `predev` each rebuild for the
+  runtime about to load it, and CLAUDE.md §2 explains why alternating
+  `pnpm test` and `pnpm dev` rebuilds twice. The quality and packaging workflows
+  are kept on separate runners for the same reason.
+- **F-35 — `NODE_ENV === 'test'` branches in production code. Closed as
+  intentional, and made legible.** The three in `SystemAutomationService` are
+  now one named getter, `wouldTouchThisMachine`, whose docblock says why they
+  stay: the condition also requires that **nobody injected an executor**, so a
+  test exercising the real path is unaffected, and what the guard prevents is
+  this service scheduling a shutdown or driving UI automation on the machine
+  running the suite. CLAUDE.md states that as a rule; this enforces it where the
+  spawning happens rather than trusting every future test to remember. The
+  fourth, in `ipc-handler-registry`, now carries a comment: only *when* the EOD
+  display lock is released differs between the branches, never whether, and a
+  real 5-second timer would either leak a handle past the run or make every EOD
+  test wait it out.
+- **F-36 — deprecated `.substr`. Fixed.** One occurrence, in
+  `priority-preemption-engine.ts`. Note the arguments are not interchangeable:
+  `substr(2, 4)` takes a length and `slice(2, 6)` takes an end index.

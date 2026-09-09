@@ -1,5 +1,66 @@
 # Changelog
 
+## Unreleased
+
+Housekeeping after 1.1.0: regression cover for the Jira adapter, the last four
+open audit findings triaged, and several surfaces made honest about what they
+do. No user-facing behaviour changes.
+
+### Added
+
+- **A fake Jira server and an integration test.** `scripts/fake-jira.js`
+  (`pnpm mock:jira`) is a sibling of the OpenProject harness, and
+  `tests/jira-integration.test.ts` drives the real adapter over a real socket.
+  The live run in 1.1.0 removed the unknowns but left no regression cover;
+  nothing automated exercised the Jira dialect, which is where the traps are —
+  two different pagination schemes, ADF comments, and a timestamp format that
+  rejects both `toISOString()` and the `+02:00` form.
+- **Tests for the hardware task picker and the tray context menu.** Both were
+  behaviour a user reaches with a physical control and neither was covered.
+  `input-decoder.ts` went from 66% to 94%, `tray-manager.ts` from 69% to 92%,
+  and the coverage floor is ratcheted to 82 / 73.5 / 83.5 / 84.5.
+- **`pnpm preflight` now runs in CI**, catching a version drift across the three
+  `package.json` files when it is introduced rather than when someone tries to
+  cut a release.
+
+### Changed
+
+- **`verify:packed` asserts what the packaged app does.** It used to prove only
+  that the binary booted and something was listening on 39123 — true of a build
+  with broken routing. It now accepts a Unity heartbeat and refuses both
+  browser-shaped request forms, which is the boundary between a web page the
+  user happens to be visiting and hardware this API can drive.
+- **A provider can say it does not know how much time the remote holds.**
+  `reconcileRemoteState` returns `remoteLoggedTimeToday: number | null`; Jira and
+  ad-hoc return `null` where they returned a confident `0` they had not
+  measured, and OpenProject returns `null` on a failed fetch rather than
+  understating the day as zero.
+- `preflight` compares all three `package.json` versions. It printed the root
+  version and compared only the other two, so a drifted root passed silently.
+
+### Removed
+
+- **The `provider:reconcile` IPC channel.** It was declared on the preload bridge
+  with no handler in main, so calling it rejected — the same shape as the updater
+  stub deleted in 1.0.0 (audit F-18). Nothing called it. The provider methods
+  remain, so the day a UI wants a server-side day total the work is a handler
+  plus a component.
+
+### Fixed
+
+- **The first-run wizard's provider step saves what you choose.** It never did:
+  the provider dropdown and the fallback-ticket field were local state nothing
+  read, so completing the wizard configured nothing and the app stayed on its
+  default. It now persists the choice, reinitialises the providers and starts a
+  sync, so the Projects list fills instead of coming up empty. Jira is offered
+  alongside OpenProject and ad-hoc, and each collects the credentials it needs
+  to work — a Jira user no longer has to pick something else and then find the
+  provider in Settings.
+- A deprecated `.substr` in the priority engine (audit F-36).
+- An intermittent `Closing rpc while onUserConsoleLog was pending` teardown
+  error that failed the coverage run while every test passed. The suite's console
+  output was outrunning vitest's rpc channel at worker teardown.
+
 ## 1.1.0 — 2026-09-08
 
 Jira Cloud support, a readable notification banner, and the bar set in its own

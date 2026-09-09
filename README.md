@@ -61,6 +61,30 @@ failed.
 
 Local **ad-hoc tasks** cover work that has no ticket.
 
+### Jira Cloud integration
+
+Projects, issues, worklogs and status changes, against a site URL, an account
+email and an API token. Verified against a live Jira Cloud site.
+
+Two things it does differently from the OpenProject adapter, both because Jira's
+model allows it:
+
+- **Status needs no configuration.** It reads Jira's `statusCategory`, which
+  every workflow has, where OpenProject needs three numeric status ids looked up
+  and pasted into Settings by hand.
+- **Transitions are configured by name.** Jira has no writable status field — a
+  status is reached by executing a transition — and a transition id means
+  nothing outside the one workflow it belongs to, whereas the name usually
+  carries across.
+
+Which issues to fetch is a setting: assigned to me, everything open, or your own
+JQL. The same vocabulary drives the OpenProject adapter, each rendering it in its
+own dialect.
+
+One limit worth knowing: **Jira records time to the minute**, so a session
+shorter than 60 seconds cannot be stored there. The app keeps it in local
+history rather than queueing something the API will refuse.
+
 ### Front display rendering
 
 Everything on the front matrix is rasterised in the main process to a 72×16 PNG
@@ -272,16 +296,26 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 439 tests across 42 files, covering the main and shared
+`pnpm test` runs 688 tests across 49 files, covering the main and shared
 process code; the renderer is not covered. `pnpm test:coverage` enforces a
-threshold floor of 78% statements / 80% lines / 80% functions / 68% branches.
+threshold floor of 82% statements / 84.5% lines / 83.5% functions / 73.5%
+branches.
 
-Those numbers used to read 80/70, and nothing regressed to change them:
-`@vitest/coverage-v8` made AST-aware remapping the default after v1, and the
-older provider counted a whole line as covered when any part of it ran. The
-floor is a ratchet -- raise it, never lower it to make a run pass.
+The floor is a **ratchet**: raise it when the measurement rises, never lower it
+to make a run pass. It is deliberately set just under what the suite measures,
+so a real regression fails the build while an unrelated refactor has about a
+point of headroom.
 
-`pnpm preflight` runs the release pre-flight check.
+It once read 80/70 on a more generous ruler. `@vitest/coverage-v8` made
+AST-aware remapping the default after v1, and the older provider counted a whole
+line as covered when any part of it ran; the same unchanged suite then measured
+76% where it had reported 88%. Nothing regressed -- the measurement got honest,
+which is why statements and lines no longer report an identical figure.
+
+`pnpm preflight` runs the release pre-flight check: it verifies that the three
+`package.json` versions agree and that the Unity Editor scripts are present. It
+also runs in CI, so a version drift is caught when it is introduced rather than
+when someone tries to cut a release.
 
 ### Conventions
 
@@ -392,6 +426,12 @@ without modifying your scenes or project code.
   projects, the last named `Fake Project 25 (LAST)`. The same module backs
   `tests/provider-integration.test.ts`, so the automated check and the manual
   one cannot drift.
+- **Fake Jira server** — `pnpm mock:jira` serves a Jira Cloud-shaped REST v3 API
+  on `http://127.0.0.1:8098`, paginating projects on `startAt` and issues on an
+  opaque `nextPageToken` exactly as Jira does. It backs
+  `tests/jira-integration.test.ts`. Note the app itself cannot be pointed at it:
+  `JiraProvider` forces `https://`, deliberately, so the test injects a fetch
+  function instead. Use `curl` for manual pokes.
 - **Animation debugger** — in-app under **Device Diagnostics**:
   marquee speeds, particle effects, LED colours and icon rasterisation, live.
 
@@ -409,7 +449,8 @@ SprintTicker/
 │   ├── desktop-app/       # Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + SQLite
 │   └── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
 ├── Animations/            # .anim frame sets, CC-BY-SA-4.0 upstream (Git LFS)
-├── Documentation/         # Hardware guide, captured samples, design history
+├── Documentation/         # User guide, architecture, API reference, hardware guide
+├── docs/                  # Generated: those three as one page (GitHub Pages)
 ├── scripts/               # Preflight, packaging and icon tooling
 ├── tools/pixel-editor/    # Standalone 16×16 editor (pnpm editor)
 ├── CLAUDE.md              # Code standards, process boundaries, hardware contract
@@ -419,6 +460,24 @@ SprintTicker/
 ---
 
 ## Documentation
+
+The three documents below are also published as one browsable page at
+**[istalry.github.io/SprintTicker](https://istalry.github.io/SprintTicker/)**.
+That page is *generated* from them by `pnpm docs:build` — edit the Markdown,
+never `docs/index.html`, and CI fails the build if the two have drifted.
+
+**Start here:**
+
+- [**User guide**](Documentation/USER-GUIDE.md) — first run, what each panel
+  does, the controls on the bar itself, and troubleshooting.
+- [**Architecture**](Documentation/ARCHITECTURE.md) — how the system is put
+  together as shipped: process boundaries, the provider layer, the priority
+  engine, the render pipeline, the sync queue and the data model.
+- [**API reference**](Documentation/API.md) — the four API surfaces: IPC
+  channels, the local HTTP API, the `ITaskProvider` contract, and the BUSY Bar
+  device contract.
+
+**Reference:**
 
 - [BUSY Bar API & Display Technical Developer Guide](Documentation/BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md)
   — the display contract, written for this project.
@@ -440,7 +499,8 @@ you want a copy.
 - **One device, one user.** The USB address is fixed at `10.0.4.20`.
 - **The rear 160×80 OLED is preview-only.** The emulator draws it; nothing is
   transmitted to the physical panel.
-- **OpenProject is the only remote task provider.** Jira is in the roadmap.
+- **Two remote task providers**: OpenProject and Jira Cloud. Anything else means
+  writing an adapter against `ITaskProvider`.
 - **Builds are unsigned**, so SmartScreen warns on first run and in-app updates
   stay notification-only. Both are gated on a code-signing certificate.
 

@@ -25,7 +25,8 @@ display over USB, and mirrors Windows notifications onto it.
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
 pnpm test             # vitest run
-pnpm test:coverage    # floor: 79.5% stmts / 82% lines / 81.5% funcs / 70.5% branches
+pnpm test:coverage    # floor: 82% stmts / 84.5% lines / 83.5% funcs / 73.5% branches
+                      # a ratchet -- raise it, never lower it to make a run pass
 pnpm typecheck        # main and renderer tsconfigs, separately
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
 pnpm package:win      # electron-builder, unsigned
@@ -235,11 +236,85 @@ rewrite does not change `git config`, so the very next commit reintroduced the
 old address and had to be amended. If you clone this repository somewhere new,
 set the local config before committing.
 
-## 9. Reference material
+## 9. Documentation is part of the change
+
+**A change that alters observable behaviour updates its document in the same
+commit.** Not afterwards, not in a follow-up: documentation that lags is worse
+than none, because a reader trusts it.
+
+Which document depends on what moved:
+
+| You changed | Update |
+| :--- | :--- |
+| An IPC channel, an HTTP route, `ITaskProvider`, the device contract | `Documentation/API.md` |
+| A component's responsibilities, the data model, how a flow works | `Documentation/ARCHITECTURE.md` |
+| Anything a user sees, does, or has to troubleshoot | `Documentation/USER-GUIDE.md` |
+| A command, a threshold, a requirement, a feature | `README.md` |
+| Anything at all worth a release note | `CHANGELOG.md` § Unreleased |
+| The plan, or an item finished or abandoned | `ROADMAP.md` |
+| A trap, a constraint, or a rule the next agent must not break | this file |
+
+**`docs/index.html` is generated — never edit it.** It is the three documents
+above rendered into one page for GitHub Pages by `scripts/build-docs.js`:
+
+```bash
+pnpm docs:build    # rebuild it after editing any Documentation/*.md
+pnpm docs:check    # fail if it is out of date -- this runs in CI
+```
+
+It was briefly a hand-maintained second copy, which is the duplicated-constant
+hazard from §3 in different clothes: nothing fails when two copies disagree, and
+the reader trusts whichever they opened. `docs:check` in CI is what makes the
+Markdown the only source in practice rather than in principle.
+
+Two things the generator relies on, so edit the Markdown with them in mind:
+
+- **Callouts are GitHub alert syntax.** `> [!NOTE]` becomes an aside and
+  `> [!WARNING]` / `> [!CAUTION]` / `> [!IMPORTANT]` a trap block; a bold first
+  line becomes the callout's label. GitHub renders these natively, so the
+  Markdown gains a real callout rather than paying a tax for the page. An
+  earlier version guessed the severity from keywords in the label and quietly
+  filed "Row 0 has no character capacity" as a gentle aside.
+- **`<!-- docs-build:svg=architecture -->` swaps the ASCII diagram** that
+  follows it for a drawn one. The ASCII block stays because that is what renders
+  on GitHub, where there is no stylesheet to hang an SVG off.
+
+The published Artifact is a third rendering and **cannot be the same file**: the
+Artifact runtime injects `<!doctype html><html><head>…<body>` at publish time,
+so an Artifact source must not carry those tags and a standalone page must.
+Regenerating it means stripping the skeleton off `docs/index.html`.
+
+**Numbers in prose go stale silently, and this repository has already shipped
+that.** The README claimed "439 tests across 42 files" and a floor of
+78/80/80/68 while `vitest.config.ts` actually enforced 79.5/82/81.5/70.5, and it
+listed Jira as roadmap-only for a release that shipped Jira. Nothing failed;
+the numbers simply became false. So: when you change a threshold, a test count
+or a version, grep the **value you are replacing** across the Markdown before
+you finish —
+
+```bash
+git grep -n "<the old number>" -- '*.md'
+```
+
+Raising the coverage floor, for instance, has to reach `vitest.config.ts`, this
+file's command table, the README's quality-gates section and the ROADMAP's
+coverage section — four places, and only the first one fails a build when it is
+wrong. Treat a figure quoted in two places as the same hazard as a duplicated
+constant, because it is one.
+
+Two documents are **deliberately not maintained**, and neither should be
+"corrected" to match the code:
+
+- `Documentation/design-history/` — the pre-implementation design documents.
+  They describe intent, and are kept for provenance. Where they and the code
+  disagree, the code is right and the document stays as written.
+- `AUDIT.md` — a dated snapshot of one audit. Findings get a **status**
+  (fixed, deferred, withdrawn, closed-as-documented); the finding text itself
+  stays as it was written, because rewriting the evidence destroys the record of
+  what was actually wrong.
+
+## 10. Reference material
 
 `Documentation/private/` holds BUSY Bar's own OpenAPI specification, example app
 and AI teaching pack. It is deliberately untracked: useful locally, not ours to
 redistribute. Fetch it from [github.com/busy-app](https://github.com/busy-app).
-
-`Documentation/design-history/` holds the pre-implementation design documents.
-They describe intent, not the shipped system, and are not maintained.

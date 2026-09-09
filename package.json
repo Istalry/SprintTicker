@@ -19,8 +19,11 @@
     "lint:fix": "eslint packages --ext .ts,.tsx --fix",
     "dev:mock": "pnpm --filter @sprintticker/desktop-app dev:mock",
     "mock:openproject": "node scripts/fake-openproject.js",
+    "mock:jira": "node scripts/fake-jira.js",
     "probe:jira-worklog": "node scripts/jira-worklog-probe.js",
-    "verify:unity": "node scripts/verify-unity-plugin.js"
+    "verify:unity": "node scripts/verify-unity-plugin.js",
+    "docs:build": "node scripts/build-docs.js",
+    "docs:check": "node scripts/build-docs.js --check"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",
@@ -28,6 +31,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "marked": "^18.0.12",
     "prettier": "^3.2.5",
     "typescript": "^5.4.0"
   },

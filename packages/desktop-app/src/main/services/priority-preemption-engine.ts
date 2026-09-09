@@ -321,7 +321,10 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
 
   private enqueueRequest(eventName: string, priority: number, renderCallback: () => void): void {
     const item: QueuedNotificationRequest = {
-      id: `${eventName}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      // `slice`, not the deprecated `substr` (audit F-36). Note the second
+      // argument changed meaning: substr(2, 4) took a length, slice(2, 6) takes
+      // an end index. Both yield the same four characters.
+      id: `${eventName}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       eventName,
       priority,
       renderCallback,

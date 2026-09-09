@@ -18,7 +18,11 @@ export enum IPCChannel {
   GET_PROJECTS = 'provider:get-projects',
   GET_TASKS = 'provider:get-tasks',
   CREATE_AD_HOC_TASK = 'provider:create-adhoc',
-  RECONCILE_REMOTE_STATE = 'provider:reconcile',
+  // `provider:reconcile` was declared here and on the preload bridge with no
+  // handler in main, so calling it rejected -- the F-18 updater-stub shape, an
+  // API surface that throws when used. The providers keep their
+  // `reconcileRemoteState` methods; re-declare the channel the day a UI needs
+  // a server-side day total, together with the handler.
   FETCH_OP_STATUSES = 'provider:fetch-op-statuses',
 
   // Projects & Tasks Management

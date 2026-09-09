@@ -159,7 +159,9 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
     expect(projects).toHaveLength(1);
     expect(tasks).toHaveLength(1);
-    expect(reconciliation.remoteLoggedTimeToday).toBe(0);
+    // `null`, not 0: AdHoc has no remote, and "I cannot answer" must not read
+    // as a measured "you logged nothing today".
+    expect(reconciliation.remoteLoggedTimeToday).toBeNull();
     expect(result.success).toBe(true);
     expect(result.remoteWorklogId).toContain('adhoc_wl_');
   });

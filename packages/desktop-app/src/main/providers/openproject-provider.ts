@@ -290,9 +290,10 @@ export class OpenProjectProvider implements ITaskProvider {
 
   /// <summary>
   /// Reconciles remote time tracking metrics (total time logged today by the user).
+  /// Answers `null` rather than a number whenever it could not find out.
   /// </summary>
-  public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number }> {
-    if (!this._domain || !this._apiKey) return { remoteLoggedTimeToday: 0 };
+  public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }> {
+    if (!this._domain || !this._apiKey) return { remoteLoggedTimeToday: null };
 
     try {
       // The user's day, not UTC's: this filter is compared against spentOn
@@ -311,10 +312,12 @@ export class OpenProjectProvider implements ITaskProvider {
       }
       return { remoteLoggedTimeToday: totalSeconds };
     } catch (err) {
-      // A failure here understates the day's total rather than corrupting it;
-      // the local worklog table remains the source of truth.
+      // `null`, not `0`: a caller cannot tell a zero it was told from a zero
+      // invented after a failed fetch, and would render the second as "you
+      // logged nothing today". The local worklog table remains the source of
+      // truth either way.
       console.error('[OpenProjectProvider] Failed to reconcile remote state:', err);
-      return { remoteLoggedTimeToday: 0 };
+      return { remoteLoggedTimeToday: null };
     }
   }
 

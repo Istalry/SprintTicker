@@ -308,6 +308,17 @@ describe('OpenProject collection pagination', () => {
       expect(state.remoteLoggedTimeToday).toBe(5400 + 2700 + 30);
     });
 
+    it('ReconcileRemoteState_RequestFails_ReturnsNullRatherThanZero', async () => {
+      // A zero here would be indistinguishable from a measured "you logged
+      // nothing today", which is the reading a UI would render.
+      global.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const state = await provider.reconcileRemoteState();
+
+      expect(state.remoteLoggedTimeToday).toBeNull();
+    });
+
     it('FetchUnreadNotifications_RequestFails_ReturnsEmptyWithoutThrowing', async () => {
       // Notifications are not a prune input, so this one degrades rather than
       // failing its caller -- unlike getProjects/getTasks.

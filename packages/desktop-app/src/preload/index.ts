@@ -65,7 +65,6 @@ const electronAPI: IElectronAPI = {
   updateTask: (task: TaskDTO) => ipcRenderer.invoke(IPCChannel.UPDATE_TASK, task),
   importTasks: (projectId: string, tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }>) =>
     ipcRenderer.invoke(IPCChannel.IMPORT_TASKS, { projectId, tasks }),
-  reconcileRemoteState: () => ipcRenderer.invoke(IPCChannel.RECONCILE_REMOTE_STATE),
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_BY_DATE, dateString),

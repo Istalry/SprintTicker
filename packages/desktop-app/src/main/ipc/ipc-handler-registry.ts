@@ -426,6 +426,13 @@ export class IPCHandlerRegistry {
       this.renderer.renderEodCompleted('Day Complete!');
 
       // 4. Release display lock after 5 seconds to return to background active/idle display
+      //
+      // The test branch releases at once instead. Audit F-35 flagged this shape
+      // as test logic in production code, and it is -- kept because the
+      // alternative is worse: a 5s timer either leaves a handle open past the
+      // end of the run, or makes every EOD test wait out five real seconds.
+      // What differs between the branches is only *when* the lock is released,
+      // never whether, so no assertion here depends on the branch it took.
       if (process.env.NODE_ENV !== 'test') {
         setTimeout(() => {
           try {

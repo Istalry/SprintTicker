@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
@@ -19,6 +19,19 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   let taskRepo: TaskRepository;
 
   beforeEach(async () => {
+    // Installed first, before anything that logs.
+    //
+    // The decoder logs a line per action, the mock driver logs every frame and
+    // every connect, and this file now triggers those hundreds of times.
+    // Vitest forwards each line to the main thread over rpc, and the worker was
+    // tearing down with logs still in flight -- "Closing rpc while
+    // onUserConsoleLog was pending", an unhandled error that failed the run
+    // while all 688 tests passed. Intermittent, and more likely under coverage.
+    // Nobody reads this output; the volume was the whole problem.
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
     dbConn = new DatabaseConnection(':memory:');
     const sessionRepo = new SessionRepository(dbConn);
     const worklogRepo = new WorklogRepository(dbConn);
@@ -38,6 +51,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     engine.dispose();
     driver.disconnect();
     dbConn.close();
+    vi.restoreAllMocks();
   });
 
   describe('finishing a task from the bar', () => {
@@ -527,5 +541,195 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // Assert
     expect(action).toBe('CONFIRM_STANDUP_PROMPT');
     expect(lockReleased).toBe(true);
+  });
+
+  it('HandleHardwareInput_StandupPromptActive_BackPress_DismissesWithoutAnswering', () => {
+    // The confirm half is covered above; this is the half where the user
+    // declines, which must still release the lock or the prompt holds the
+    // display until something higher-priority overwrites it.
+    const released: string[] = [];
+    decoder.setPriorityEngine({
+      getActiveLockEventName: () => 'standupPromptPriority',
+      releaseActiveLock: (lock: string) => released.push(lock),
+      dismissNotification: () => false
+    } as never);
+
+    const action = decoder.handleHardwareInput({
+      key: 'back',
+      type: 'press',
+      timestamp: new Date().toISOString()
+    });
+
+    expect(action).toBe('DISMISS_STANDUP_PROMPT');
+    expect(released).toContain('standupPromptPriority');
+  });
+
+  /**
+   * The hardware task picker.
+   *
+   * None of this was covered, and it is the one screen a user drives entirely
+   * from the bar -- wheel to scroll, click to descend, back to leave. The lock
+   * assertions are the point: `renderTaskSelection` acquires `menuPriority` on
+   * every redraw, and every exit from the menu has to release it. When nothing
+   * did, the lock outlived the menu and the bar stayed on the picker until some
+   * unrelated higher-priority event happened to overwrite it (F-15).
+   */
+  describe('task selection from the bar', () => {
+    let released: string[];
+    let projectRepo: ProjectRepository;
+
+    /** A picker whose lock releases are observable. */
+    function withPriorityEngine(): void {
+      released = [];
+      decoder.setPriorityEngine({
+        // No ceremony holds the display, so input reaches the selection branch.
+        getActiveLockEventName: () => undefined,
+        releaseActiveLock: (lock: string) => released.push(lock),
+        dismissNotification: () => false
+      } as never);
+    }
+
+    /** Opens the picker the way the wheel click does, with no active session. */
+    function openPicker(): void {
+      decoder.handleHardwareInput({
+        key: 'ok',
+        type: 'press',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    function press(key: string): string {
+      return decoder.handleHardwareInput({
+        key,
+        type: 'press',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    beforeEach(() => {
+      projectRepo = new ProjectRepository(dbConn);
+      withPriorityEngine();
+    });
+
+    it('HandleHardwareInput_BackWhileSelecting_CancelsAndReleasesTheMenuLock', () => {
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      openPicker();
+
+      const action = press('back');
+
+      expect(action).toBe('CANCEL_SELECTION');
+      // The lock this test exists for.
+      expect(released).toContain('menuPriority');
+    });
+
+    it('HandleHardwareInput_ConfirmingATask_StartsItAndReleasesTheMenuLock', () => {
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
+      openPicker();
+
+      press('ok'); // PROJECT stage -> TASK stage
+      const action = press('ok'); // confirm the task
+
+      expect(action).toBe('START_TASK_FROM_SELECTION');
+      expect(released).toContain('menuPriority');
+      const session = engine.getCurrentSession();
+      expect(session?.taskId).toBe('T1');
+    });
+
+    it('HandleHardwareInput_DescendingIntoAProject_ShowsTheTaskKeyOnTheSecondRow', () => {
+      // TaskDTO carries no description. The second row used to read
+      // `t.description`, which was always undefined, so every row said
+      // "No description"; it shows the key, which is real data.
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
+      const rendered: Array<[string, string, string | undefined]> = [];
+      renderer.renderTaskSelection = ((stage: string, label: string, sub?: string) => {
+        rendered.push([stage, label, sub]);
+      }) as never;
+      openPicker();
+
+      press('ok');
+
+      const taskRow = rendered.find(([stage]) => stage === 'TASK');
+      expect(taskRow?.[1]).toBe('Write the thing');
+      expect(taskRow?.[2]).toBe('ALPHA-1');
+    });
+
+    it('HandleHardwareInput_RotatingPastEitherEnd_ClampsInsteadOfLeavingTheList', () => {
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
+      const rendered: string[] = [];
+      renderer.renderTaskSelection = ((_stage: string, label: string) => {
+        rendered.push(label);
+      }) as never;
+      openPicker();
+
+      // Up from the first entry, then down past the last.
+      press('rotate_left');
+      const atTop = rendered[rendered.length - 1];
+      press('rotate_right');
+      press('rotate_right');
+      press('rotate_right');
+      const atBottom = rendered[rendered.length - 1];
+
+      expect(atTop).toBe('Alpha');
+      expect(atBottom).toBe('Beta');
+    });
+
+    it('HandleHardwareInput_NoProjectsCached_OffersTheDefaultProjectRow', () => {
+      // An empty picker is a dead end on hardware: there is no keyboard to add
+      // a project with, so the fallback row is what keeps the menu usable.
+      const rendered: string[] = [];
+      renderer.renderTaskSelection = ((_stage: string, label: string) => {
+        rendered.push(label);
+      }) as never;
+
+      openPicker();
+
+      expect(rendered[0]).toBe('Default Project');
+    });
+
+    it('HandleHardwareInput_ProjectWithNoTasks_ShowsNoTasksAndStartsNothing', () => {
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Empty' });
+      const rendered: Array<[string, string]> = [];
+      renderer.renderTaskSelection = ((stage: string, label: string) => {
+        rendered.push([stage, label]);
+      }) as never;
+      openPicker();
+
+      press('ok'); // descend into the empty project
+      const action = press('ok'); // confirm the placeholder row
+
+      expect(rendered.some(([stage, label]) => stage === 'TASK' && label === 'No Tasks')).toBe(true);
+      // The menu closes, but the placeholder is not a task and must not start
+      // a session.
+      expect(action).toBe('START_TASK_FROM_SELECTION');
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(released).toContain('menuPriority');
+    });
+  });
+
+  it('InputDecoder_ListenerThrows_LogsWithoutTerminatingTheProcess', async () => {
+    // Driven through the driver's own event, not by calling handleHardwareInput
+    // directly, because the guard under test lives in the listener the
+    // constructor registers. A throw inside an EventEmitter listener with no
+    // error handler terminates the main process -- so a button press could take
+    // the whole app down.
+    // console.error is already stubbed by the fixture; reuse that spy rather
+    // than installing a second one and restoring the real console mid-file.
+    const errors = vi.mocked(console.error);
+    errors.mockClear();
+    decoder.setPriorityEngine({
+      getActiveLockEventName: () => {
+        throw new Error('priority engine exploded');
+      },
+      releaseActiveLock: () => undefined,
+      dismissNotification: () => false
+    } as never);
+
+    expect(() =>
+      driver.simulateInputEvent({ key: 'start', type: 'press', timestamp: new Date().toISOString() })
+    ).not.toThrow();
+    expect(errors).toHaveBeenCalled();
   });
 });

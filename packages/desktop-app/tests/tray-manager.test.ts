@@ -6,7 +6,8 @@ import { WorklogRepository } from '../src/main/db/repositories/worklog-repositor
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
-import { app, Menu, BrowserWindow } from 'electron';
+import { app, Menu, BrowserWindow, nativeImage } from 'electron';
+import fs from 'fs';
 
 // Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
 let lastMockTray: { setToolTip: ReturnType<typeof vi.fn>; setContextMenu: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> } | null = null;
@@ -37,7 +38,8 @@ vi.mock('electron', () => {
       return lastMockTray;
     }),
     nativeImage: {
-      createFromDataURL: vi.fn().mockReturnValue({})
+      createFromDataURL: vi.fn().mockReturnValue({}),
+      createFromPath: vi.fn().mockReturnValue({})
     }
   };
 });
@@ -63,7 +65,10 @@ describe('TrayManager Unit Tests', () => {
       show: vi.fn(),
       focus: vi.fn(),
       hide: vi.fn(),
-      on: vi.fn()
+      on: vi.fn(),
+      // The task-selector menu item forwards to the renderer over this, and a
+      // window without it made that one item unreachable from a test.
+      webContents: { send: vi.fn() }
     } as unknown as BrowserWindow;
   });
 
@@ -168,5 +173,131 @@ describe('TrayManager Unit Tests', () => {
 
     expect(vi.mocked(app).quit).toHaveBeenCalled();
     manager.destroy();
+  });
+
+  /**
+   * The rest of the tray context menu.
+   *
+   * `updateContextMenu` is private and runs only from `initialize`, so the
+   * click handlers are reachable only through the template Menu.buildFromTemplate
+   * receives -- the technique the quit test above established. Only quit used
+   * it, which left every item a user actually reaches for untested: the tray is
+   * how you pause without opening the window.
+   */
+  describe('context menu items', () => {
+    type MenuTemplateItem = {
+      label?: string;
+      type?: string;
+      checked?: boolean;
+      click?: (item: { checked: boolean }) => void;
+    };
+
+    let template: MenuTemplateItem[];
+
+    /** Captures the template so any item's click can be invoked by label. */
+    function captureTemplate(): void {
+      template = [];
+      vi.mocked(Menu.buildFromTemplate).mockImplementation((built: MenuTemplateItem[]) => {
+        template = built;
+        return {} as unknown as Menu;
+      });
+    }
+
+    function click(label: string, item: { checked: boolean } = { checked: false }): void {
+      const entry = template.find(i => i.label === label);
+      if (!entry?.click) throw new Error(`No clickable menu item labelled '${label}'`);
+      entry.click(item);
+    }
+
+    beforeEach(() => {
+      captureTemplate();
+    });
+
+    it('TrayManager_ContextMenu_OpenDashboard_RestoresTheWindow', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+
+      click('Open BUSY Bar Dashboard');
+
+      expect(mockWindow.show).toHaveBeenCalled();
+      expect(mockWindow.focus).toHaveBeenCalled();
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_StartPause_NoSession_RestoresTheWindowInsteadOfGuessing', () => {
+      // There is nothing to resume and no way to choose a task from a tray
+      // menu, so the only useful move is to show the window.
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+
+      click('Start / Pause Active Tracking');
+
+      expect(mockWindow.show).toHaveBeenCalled();
+      expect(engine.getCurrentSession()).toBeNull();
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_StartPause_WhileTracking_PausesTheSession', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+      engine.startTask('PROJ-301', false, 'Tray pause');
+
+      click('Start / Pause Active Tracking');
+
+      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_StartPause_WhilePaused_ResumesTheSession', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+      engine.startTask('PROJ-302', false, 'Tray resume');
+      engine.pauseSession();
+
+      click('Start / Pause Active Tracking');
+
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_TaskSelector_RestoresAndForwardsTheHardwareEvent', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+
+      click('Trigger Task Selector Modal');
+
+      expect(mockWindow.show).toHaveBeenCalled();
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith('input:hardware-event', {
+        actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL',
+        rawKey: 'ok'
+      });
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_StartupCheckbox_PassesTheCheckedStateThrough', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+
+      click('Start with Windows Startup', { checked: true });
+
+      expect(vi.mocked(app).setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true });
+      manager.destroy();
+    });
+  });
+
+  it('TrayManager_Initialize_TrayIconOnDisk_LoadsItRatherThanTheEmbeddedFallback', () => {
+    // The packaged build ships build/tray-icon.png; only a source tree without
+    // it falls back to the inline data URL. Both branches are live, and the
+    // fallback one was the only one covered.
+    const exists = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+
+    expect(vi.mocked(nativeImage).createFromPath).toHaveBeenCalledWith(
+      expect.stringContaining('tray-icon.png')
+    );
+    manager.destroy();
+    exists.mockRestore();
   });
 });
