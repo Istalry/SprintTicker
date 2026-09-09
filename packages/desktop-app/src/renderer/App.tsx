@@ -182,8 +182,17 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-dark-900 text-text-primary">
       {/* Top Navigation Bar with Hardware Display Live Emulator */}
-      <header className="flex items-center justify-between px-6 py-2.5 bg-dark-800 border-b border-border-dark select-none">
-        <div className="flex items-center space-x-3">
+      {/*
+        The header is one row at every window size, down to the 900px minimum.
+        It used to be three content-sized groups under `justify-between`, which
+        needed ~1850px -- so it overflowed and clipped at the app's own 1200px
+        default. The emulator in the middle now absorbs the slack instead
+        (`flex-1 min-w-0`), and the groups either side are `shrink-0` because
+        they are already at their minimum. `overflow-hidden` is the backstop:
+        whatever else happens, nothing escapes the window.
+      */}
+      <header className="flex items-center gap-4 overflow-hidden px-6 py-2.5 bg-dark-800 border-b border-border-dark select-none">
+        <div className="flex items-center space-x-3 shrink-0">
           <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
           <h1 className="text-lg font-bold tracking-tight text-white font-mono">
             SPRINT<span className="text-accent-blue font-sans">TICKER</span>
@@ -191,37 +200,59 @@ export const App: React.FC = () => {
         </div>
 
         {/* Live Hardware Canvas Emulator */}
-        <HardwareDisplayEmulator />
+        <div className="flex-1 min-w-0">
+          <HardwareDisplayEmulator />
+        </div>
 
-        <div className="flex items-center space-x-4 text-sm font-mono">
+        <div className="flex items-center gap-3 text-sm font-mono shrink-0">
+          {/*
+            Each control keeps a `title` covering whatever its label drops at a
+            breakpoint. Losing the word must not mean losing the meaning: at the
+            narrowest size these are icons, and a tooltip is all that is left.
+          */}
           <button
             onClick={() => setIsOnboardingOpen(true)}
-            className="flex items-center space-x-1.5 bg-dark-700 hover:bg-dark-700/80 text-accent-blue px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors"
+            title="Setup Wizard"
+            className="flex items-center gap-1.5 bg-dark-700 hover:bg-dark-700/80 text-accent-blue px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors shrink-0"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Setup Wizard</span>
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden hdr-md:inline whitespace-nowrap">Setup Wizard</span>
           </button>
 
-          <div className="flex items-center space-x-2 bg-dark-700 px-3 py-1.5 rounded-md border border-border-dark">
-            <Wifi className="w-4 h-4 text-accent-green" />
-            <span className="text-text-primary">
-              {deviceStatus.connected ? `Connected (${deviceStatus.ipAddress})` : 'Disconnected'}
+          {/*
+            The connection state survives every breakpoint: the icon's colour
+            carries it, and the pulsing dot beside the logo repeats it. Only the
+            wording and the address go.
+          */}
+          <div
+            title={deviceStatus.connected ? `Connected to ${deviceStatus.ipAddress}` : 'Disconnected'}
+            className="flex items-center gap-2 bg-dark-700 px-3 py-1.5 rounded-md border border-border-dark shrink-0"
+          >
+            <Wifi className={`w-4 h-4 shrink-0 ${deviceStatus.connected ? 'text-accent-green' : 'text-accent-red'}`} />
+            <span className="text-text-primary hidden hdr-sm:inline whitespace-nowrap">
+              {deviceStatus.connected
+                ? <><span className="hidden hdr-xl:inline">Connected </span>{deviceStatus.ipAddress}</>
+                : 'Disconnected'}
             </span>
           </div>
 
-          <div className="flex items-center space-x-2 text-text-secondary">
-            <span>Ping:</span>
-            <span className={`font-semibold ${deviceStatus.connected ? 'text-accent-green' : 'text-text-secondary'}`}>
+          <div
+            title="WebSocket round trip to the bar"
+            className="flex items-center gap-2 text-text-secondary shrink-0"
+          >
+            <span className="hidden hdr-md:inline">Ping:</span>
+            <span className={`font-semibold whitespace-nowrap ${deviceStatus.connected ? 'text-accent-green' : 'text-text-secondary'}`}>
               {deviceStatus.connected ? `${deviceStatus.webSocketPingMs}ms` : '--'}
             </span>
           </div>
 
           <button
             onClick={() => setIsEodModalOpen(true)}
-            className="flex items-center space-x-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple px-3 py-1.5 rounded-md border border-accent-purple/30 font-semibold transition-colors"
+            title="EOD Wrap-Up"
+            className="flex items-center gap-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple px-3 py-1.5 rounded-md border border-accent-purple/30 font-semibold transition-colors shrink-0"
           >
-            <Moon className="w-4 h-4" />
-            <span>EOD Wrap-Up</span>
+            <Moon className="w-4 h-4 shrink-0" />
+            <span className="hidden hdr-sm:inline whitespace-nowrap">EOD Wrap-Up</span>
           </button>
         </div>
       </header>

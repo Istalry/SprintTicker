@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HardwareDisplayStateDTO, DisplayElementDTO } from '../../shared/dtos';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
+import { computeMatrixDotSize, MATRIX_GAP, MATRIX_FRAME_CHROME } from './emulator-scaling';
+import { useElementWidth } from '../hooks/useElementWidth';
 
 /**
  * Physical Hardware Display Emulator Component.
@@ -13,6 +15,13 @@ export const HardwareDisplayEmulator: React.FC = () => {
   const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  // The matrix is sized from the space the layout leaves for it, rather than
+  // dictating the header's width as it used to. The measured element is the
+  // slot the matrix sits in -- see useElementWidth on why it must not be an
+  // ancestor of the canvas that the canvas itself can grow.
+  const [matrixSlotRef, matrixSlotWidth] = useElementWidth<HTMLDivElement>();
+  const dotSize = computeMatrixDotSize(matrixSlotWidth - MATRIX_FRAME_CHROME);
 
   useEffect(() => {
     // Fetch initial hardware display state
@@ -101,8 +110,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dotSize = 6; // 6px per LED diode (432x96 resolution)
-    const gap = 1;
+    const gap = MATRIX_GAP;
     const cellSize = dotSize + gap;
     canvas.width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH * cellSize + gap;
     canvas.height = DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT * cellSize + gap;
@@ -170,7 +178,9 @@ export const HardwareDisplayEmulator: React.FC = () => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [displayState]);
+    // dotSize belongs here: the canvas backing size is computed from it, so a
+    // resize has to tear the render loop down and set it up again.
+  }, [displayState, dotSize]);
 
   // Render Rear 160x80 OLED Screen Canvas
   useEffect(() => {
@@ -219,42 +229,51 @@ export const HardwareDisplayEmulator: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center space-x-4 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner select-none">
-      <div className="flex items-center space-x-2">
+    <div className="flex items-center gap-4 min-w-0 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner select-none">
+      {/* The matrix and its status LED take the slack; everything to the right
+          of them is fixed width and drops out at a breakpoint instead. */}
+      <div className="flex items-center gap-2 flex-1 min-w-0">
         {/* Physical Status RGB LED Light Bar */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center shrink-0">
           <div
             className={`w-3.5 h-3.5 rounded-full transition-all duration-300 shadow-md ${isAlert ? 'animate-pulse' : ''
               }`}
             style={{ backgroundColor: ledColor, boxShadow: `0 0 10px ${ledColor}` }}
             title={`Status LED (${displayState?.ledMode || 'SOLID'})`}
           />
-          <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono">RGB LED</span>
+          <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono hidden hdr-md:block">RGB LED</span>
         </div>
 
         {/* High-Precision 72x16 RGB LED Matrix Display Preview with Screen Edge Glow */}
-        <div className="flex flex-col items-center">
+        <div ref={matrixSlotRef} className="flex flex-col items-center flex-1 min-w-0">
           <div
             className="border border-dark-700 rounded p-1.5 bg-black transition-all duration-300"
             style={{ boxShadow: glowBoxShadow }}
           >
-            <canvas ref={frontCanvasRef} className="block rounded" title="Physical Front 72x16 RGB LED Matrix Display" />
+            <canvas ref={frontCanvasRef} className="block rounded max-w-full" title="Physical Front 72x16 RGB LED Matrix Display" />
           </div>
-          <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono">72×16 RGB LED Matrix</span>
+          <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono hidden hdr-md:block whitespace-nowrap">72×16 RGB LED Matrix</span>
         </div>
       </div>
 
-      {/* Rear 160x80 OLED Diagnostics Screen Preview */}
-      <div className="flex flex-col items-center border-l border-border-dark pl-4">
+      {/* Rear 160x80 OLED Diagnostics Screen Preview.
+          First to go: it is preview-only in this build -- transmitFrame sends
+          the front matrix and nothing else -- so it carries the least real
+          information of anything in the header. */}
+      <div className="hidden hdr-xl:flex flex-col items-center border-l border-border-dark pl-4 shrink-0">
         <div className="border border-dark-700 rounded p-1.5 bg-black shadow-lg">
           <canvas ref={backCanvasRef} className="block rounded" title="Physical Rear 160x80 OLED Screen" />
         </div>
         <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono">160×80 Rear OLED</span>
       </div>
 
-      {/* Interactive Physical Remote Control Pad */}
-      <div className="flex flex-col items-center border-l border-border-dark pl-4 space-y-1 font-mono">
-        <span className="text-[9px] text-text-secondary uppercase">Remote Controls</span>
+      {/* Interactive Physical Remote Control Pad.
+          Hidden last rather than first, despite looking like decoration:
+          injectRemoteKey exists nowhere else in the renderer, so this is the
+          only way to exercise hardware input without a bar attached, which is
+          the whole point of `pnpm dev:mock`. */}
+      <div className="hidden hdr-lg:flex flex-col items-center border-l border-border-dark pl-4 space-y-1 font-mono shrink-0">
+        <span className="text-[9px] text-text-secondary uppercase hidden hdr-xl:block">Remote Controls</span>
         <div className="flex items-center space-x-1">
           <button
             onClick={() => handleKeyClick('up')}

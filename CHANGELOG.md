@@ -88,6 +88,22 @@ do. No user-facing behaviour changes.
 
 ### Fixed
 
+- **The top bar fits the window.** It needed roughly 1850px to lay out, so it
+  overflowed and clipped its right-hand controls at the app's own 1200px default
+  size — the connection status and EOD button were simply cut off unless the
+  window was maximised. The three header groups were all sized by their content,
+  and the LED matrix was fixed at 505px, so nothing could yield.
+  - The emulator now absorbs the slack instead of dictating the width, and the
+    matrix scales itself from 6px LEDs down to 3px on whole-pixel steps, so the
+    diodes stay aligned while the window is dragged.
+  - Below four thresholds the least useful things step aside in order: the rear
+    OLED preview (preview-only in this build), then the "Ping:" and "Setup
+    Wizard" labels, then the remote pad and the remaining labels. Everything
+    that loses a label keeps a tooltip, and connection state stays readable from
+    the icon colour and the pulsing dot beside the logo.
+  - The remote control pad is hidden *last* rather than first: `injectRemoteKey`
+    exists nowhere else in the renderer, so it is the only way to drive hardware
+    input without a bar attached.
 - **The first-run wizard's provider step saves what you choose.** It never did:
   the provider dropdown and the fallback-ticket field were local state nothing
   read, so completing the wizard configured nothing and the app stayed on its
