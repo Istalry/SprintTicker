@@ -293,6 +293,16 @@ at all:
 > back. Earlier builds failed silently, so a diagnostics export sent in to ask
 > "why won't it connect" contained no evidence of the failure anywhere.
 
+**An animation plays in the app but not on the bar.** Fixed as of this
+release, and worth knowing why, because the symptom is confusing: the preview
+and the bar are fed by two different paths. The on-screen emulator draws every
+frame locally, while the bar is handed the whole animation file and plays it
+itself, so the preview kept animating while the bar showed nothing. Two causes,
+both addressed — a refused upload that went unreported, and the app drawing its
+own blank frame on top of the animation it had just started. If you still see
+it, export the logs from Device Diagnostics and look for `[AnimationPlayer]`
+lines naming the file and its size.
+
 **The bar shows something stale.** Something is holding the display lock at a
 higher priority. Check Priority Rules and your current mode.
 

@@ -32,6 +32,61 @@ describe('DisplayRenderer Unit Tests', () => {
     });
   });
 
+  /**
+   * The front matrix has two possible owners and only one at a time. When the
+   * device is playing a `.anim` itself, `sendPixelFrame` must not run: the
+   * `px_matrix_img` it draws is opaque across the whole 72x16 panel and
+   * composites above `hardware_anim` regardless of which arrived first, so a
+   * transmission here blacks out the animation. Every animated mode reaches
+   * this, because each one clears the canvas, starts the animation and then
+   * transmits the blank canvas.
+   *
+   * Reproduced against a real bar: upload 200, draw 200, log line saying the
+   * device was playing the file, and a black display.
+   */
+  describe('front display ownership while an animation plays', () => {
+    const deviceOwnsTheFront = (): void => {
+      vi.spyOn(
+        (renderer as unknown as { animationPlayer: { isHardwareAnimationActive: () => boolean } })
+          .animationPlayer,
+        'isHardwareAnimationActive'
+      ).mockReturnValue(true);
+    };
+
+    it('TransmitFrame_DeviceIsPlayingAnAnimation_DoesNotDrawOverIt', () => {
+      deviceOwnsTheFront();
+
+      renderer.renderActiveSession(null);
+
+      expect(mockDriver.sendPixelFrame).not.toHaveBeenCalled();
+    });
+
+    it('TransmitFrame_AnimationStops_ResumesDrawingTheFrontMatrix', () => {
+      const active = vi.spyOn(
+        (renderer as unknown as { animationPlayer: { isHardwareAnimationActive: () => boolean } })
+          .animationPlayer,
+        'isHardwareAnimationActive'
+      ).mockReturnValue(true);
+
+      renderer.renderActiveSession(null);
+      expect(mockDriver.sendPixelFrame).not.toHaveBeenCalled();
+
+      // The suppressed frame must not be remembered as transmitted, or the
+      // identical frame after the animation ends is deduplicated away and the
+      // bar keeps showing whatever the animation left.
+      active.mockReturnValue(false);
+      renderer.renderActiveSession(null);
+
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    it('TransmitFrame_NoAnimation_DrawsTheFrontMatrixAsBefore', () => {
+      renderer.renderActiveSession(null);
+
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+  });
+
   describe('renderActiveSession & themes', () => {
     it('RenderActiveSession_ValidSession_SendsDisplayPayloadWithBitmap', () => {
       const session = {

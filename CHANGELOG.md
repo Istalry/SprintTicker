@@ -60,9 +60,37 @@ reported something other than the truth, in three different ways.
     only that the field is accepted on a draw, which is a weaker claim.
   - `GET /api/screen` serves base64 raw **BGR** pixels, top-down and with no
     BMP header, despite answering `Content-Type: image/bmp`.
+- **The probe now checks hardware animation playback**, which is the gap the
+  Away regression below fell through. It uploads the largest real `.anim` in
+  `Animations/` — the app's own ~0.8–1.3 MB file, not a token — draws it, and
+  captures the panel twice 700 ms apart. That separates three outcomes a status
+  code cannot: the device refused the file, it accepted the file and drew
+  nothing, and it is genuinely animating. Only the last one shows two frames
+  differing. Set `BUSYBAR_IP` for a bar reached on another address.
 - **Generated documentation site.** `pnpm docs:build` renders the three
   Markdown documents into `docs/index.html` for GitHub Pages, and `pnpm
   docs:check` fails CI when the page and its sources have drifted.
+
+### Fixed
+
+- **Animations reached the bar and were then painted over.** Lunch, Away and
+  the meeting screens showed nothing on the hardware while the on-screen
+  emulator animated correctly. Two separate defects, both now fixed:
+  - `AnimationPlayer` chained `.then().catch()` on driver calls that report
+    failure by returning `false`, so a device that refused the file ran the
+    success path and logged nothing. The calls are awaited and checked, the
+    file and its byte count are logged on refusal, and a refusal now falls back
+    to streaming PNG frames instead of leaving the bar blank.
+  - Once that was fixed the bar was still black, because every animated mode
+    clears its canvas, starts the animation and then transmits the blank
+    canvas. That transmission draws `px_matrix_img`, a full-panel opaque PNG
+    which the firmware composites **above** the animation element whichever
+    order the two arrive in — a draw merges by element id rather than replacing
+    the element set, so drawing the animation second does not displace it.
+    `AnimationPlayer` now clears the display before handing over the `.anim`,
+    and `DisplayRenderer` does not transmit a front frame while the device owns
+    playback. Both measured against a real bar on firmware 1.2.3 by replaying
+    the two draws and reading the panel back.
 
 ### Changed
 
@@ -101,6 +129,18 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **A refused animation upload falls back to streaming frames instead of
+  leaving the bar blank.** With a `.anim` file present the player hands the
+  whole animation to the device and stops streaming PNGs, which is right when
+  the device takes it. But `uploadAsset` and `sendDisplayPayload` report refusal
+  by returning `false`, not by throwing, and the code chained
+  `.then(...).catch(...)` — so a refusal ran the *success* path, asked the
+  device to draw an asset it had never stored, and fired neither handler. The
+  result was a blank bar, an on-screen emulator animating perfectly (it is fed
+  by a separate callback that never touches the device), and a log whose only
+  line said the animation had loaded. Both results are now checked, the failure
+  names the file and its size, and playback degrades to the frame-streaming path
+  that animations without a `.anim` already use.
 - **An unreachable bar says so, instead of reporting itself connected.**
   `connect()` set `isConnected = true` even when both status probes got no
   answer, so an unplugged device showed as connected until the ping loop quietly

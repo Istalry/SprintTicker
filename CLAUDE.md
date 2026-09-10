@@ -207,6 +207,29 @@ element was measured at 17×5px and how `z_index` was shown to genuinely reorder
 overlapping elements rather than merely being accepted on a draw. When you add a
 check here, prefer one that looks at pixels over one that reads a status code.
 
+The animation check is the clearest case of why. It uploads the **largest real
+`.anim` in `Animations/`** — the app's own file, at ~0.8–1.3 MB, not a token —
+draws it, and captures the panel twice 700 ms apart. Three outcomes that a
+status code cannot tell apart are then distinguishable: the device refused the
+file, the device accepted it and drew nothing, and the device is genuinely
+animating it. That third one is only provable by two frames differing. The
+probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
+`BUSYBAR_IP=10.0.4.21 pnpm probe:busybar`.
+
+- **A draw merges by element id; it does not replace the element set. And
+  `px_matrix_img` composites above `hardware_anim` in either order.** These two
+  together cost a fortnight. `sendPixelFrame` draws the front matrix as an
+  element called `px_matrix_img`, opaque across the whole 72×16 panel. Every
+  animated mode in `DisplayRenderer` clears the canvas, hands the front display
+  to `AnimationPlayer`, and then transmits that blank canvas — so a full-panel
+  **black** image lands on top of the animation and stays there. The upload
+  returns 200, the draw returns 200, the log says the device is playing the
+  file, and the bar is black. Drawing the animation afterwards does not help;
+  only removing the image does, which is why `startHardwareAnimation` calls
+  `clearDisplay` first and `transmitFrame` skips the hardware send while
+  `isHardwareAnimationActive()`. Measured on firmware 1.2.3 by replaying both
+  draws against a real bar and reading the panel back.
+
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,
 check what actually changes: `transmitFrame` deduplicates by hashing the frame,
@@ -254,10 +277,30 @@ changing it:
 - **Providers report failure by throwing**, never by returning `[]`. An empty
   array is indistinguishable from "this user has no tasks", and treating one as
   the other deleted local data.
+- **`BusyBarDriver` is the exception: it reports failure by returning `false`.**
+  `uploadAsset`, `sendDisplayPayload`, `sendPixelFrame` and friends answer
+  `Promise<boolean>` and do not throw for a device that says no — a 4xx, a
+  timeout and a disconnected driver all come back as `false`. So **`.catch()` on
+  one of these is dead code for the failure that actually happens**, and
+  `.then()` runs regardless. Await the call and check the boolean.
+  This has shipped twice. The animation player chained
+  `uploadAsset(...).then(() => sendDisplayPayload(...).catch(...)).catch(...)`,
+  which asked the device to draw an asset it had refused to store; the bar went
+  blank while the on-screen emulator animated correctly, because the emulator is
+  fed by `onFrameCallback` and never touches hardware. Neither handler fired and
+  the log said only that the animation had loaded. When a preview and the
+  hardware disagree, suspect a swallowed boolean before anything else.
 - **No magic numbers.** Constants belong in a named module —
   `render-constants.ts`, `sync-constants.ts`, `priority-defaults.ts`.
 - **Never write an empty `catch`.** If a failure is genuinely safe to swallow,
   the comment must say why.
+- **Do not delete the working path in the commit that adds the faster one.**
+  `9b9f3bd` introduced hardware `.anim` playback and removed frame streaming for
+  any animation that had one, in a single change, so the new path had no floor
+  under it: when the device refused the file there was nothing left to fall back
+  to, and the only visible symptom was a dark bar. Land the new path with the
+  old one still reachable on failure; remove the old one later, as its own
+  change, once the new one has run against real hardware.
 - **No floating promises in main.** An unhandled rejection terminates the
   process on Node 15+; it is an ESLint error there and a warning in the renderer.
 - **Async Electron lifecycle handlers do not work.** Electron does not await
@@ -281,6 +324,12 @@ interfaces, `PascalCase` methods).
   `new DatabaseConnection(':memory:')`, not the singleton.
 - Tests must not spawn PowerShell against the developer's own machine or leave a
   database behind.
+- **If the code checks a result, there is a test where that result is the bad
+  one.** Every mock in this suite defaults to success, so a failure branch that
+  is never mocked false is never executed by anything, and a dead handler looks
+  exactly like a working one. The `.anim` regression survived a full green run
+  for that reason alone. When you add an `if (!ok)`, add the test that reaches
+  it in the same change.
 
 ### Comments
 

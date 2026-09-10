@@ -65,6 +65,19 @@ export class AnimationPlayer {
   private onFrameCallback?: (frameBuffer: Buffer, frameIndex: number) => void;
   private loop: boolean = true;
   private _powerSaveBlockerId: number | null = null;
+  /**
+   * Whether the device is playing the `.anim` itself.
+   *
+   * Gates hardware frame streaming: while the device owns playback, streaming
+   * PNGs at it as well would be two sources drawing the same element. But the
+   * flag has to be able to go *false* again, because the upload can be refused
+   * and there is no exception to catch when it is -- `uploadAsset` and
+   * `sendDisplayPayload` both answer with `false`. Before this existed, a
+   * refused upload left the bar blank with the frame-streaming path disabled
+   * and nothing logged: the on-screen emulator animated correctly the whole
+   * time, because it is fed by `onFrameCallback` and never touches the device.
+   */
+  private hardwareAnimActive: boolean = false;
 
   constructor(driver: BusyBarDriver, animationsDir?: string) {
     this.driver = driver;
@@ -246,30 +259,113 @@ export class AnimationPlayer {
     const frameIntervalMs = Math.max(1, Math.floor(1000 / effectiveFps));
 
     if (animData.animBuffer) {
-      // Hardware accelerated playback
-      this.driver.uploadAsset(DEVICE_APPLICATION_NAME, `${animName}.anim`, animData.animBuffer).then(() => {
-        if (!this.isPlaying || this.currentAnimation !== animName) return; // aborted
-        this.driver.sendDisplayPayload({
-          application_name: DEVICE_APPLICATION_NAME,
-          priority: 95,
-          led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
-          elements: [{
-            id: 'hardware_anim',
-            type: 'animation',
-            path: `${animName}.anim`,
-            x: 0,
-            y: 0,
-            display: 'front',
-            loop: this.loop,
-            section: 'default'
-          }]
-        }).catch(err => console.error(`[AnimationPlayer] Hardware anim start failed:`, err));
-      }).catch(err => console.error(`[AnimationPlayer] Hardware anim upload failed:`, err));
+      // Optimistic: streaming is suppressed while the device is expected to own
+      // playback, and `startHardwareAnimation` clears this if it turns out not
+      // to. Starting false instead would double-draw for the length of an
+      // upload, which for these files is most of a second.
+      this.hardwareAnimActive = true;
+      void this.startHardwareAnimation(animName, animData);
     }
 
     // Initial draw immediately
     this.drawCurrentFrame();
 
+    this.startFrameInterval(animData, frameIntervalMs);
+  }
+
+  /**
+   * Hands the `.anim` to the device and checks that it actually took it.
+   *
+   * Both driver calls answer with `false` rather than throwing, so the previous
+   * `.then(...).catch(...)` chain could not see a rejected upload: `then` ran
+   * regardless and asked the device to draw an asset it had never stored, and
+   * neither `catch` ever fired. The result was a blank bar, a correctly
+   * animating on-screen emulator, and a log containing one line saying the
+   * animation had loaded -- indistinguishable from success.
+   *
+   * Falls back to streaming PNG frames, which is the same path animations
+   * without a `.anim` already use, so a device that will not take the file is
+   * degraded rather than silent.
+   */
+  private async startHardwareAnimation(animName: string, animData: AnimationData): Promise<void> {
+    const buffer = animData.animBuffer;
+    if (!buffer) return;
+    const bytes = buffer.length;
+
+    const uploaded = await this.driver.uploadAsset(DEVICE_APPLICATION_NAME, `${animName}.anim`, buffer);
+    // Superseded while the upload was in flight; the newer animation owns the
+    // display and must not be torn down by this one's fallback.
+    if (!this.isPlaying || this.currentAnimation !== animName) return;
+
+    if (!uploaded) {
+      console.error(
+        `[AnimationPlayer] Device would not store ${animName}.anim (${bytes} bytes). ` +
+          'Falling back to streaming frames.'
+      );
+      this.fallBackToFrameStreaming(animData);
+      return;
+    }
+
+    // Remove whatever this application already has on the front display before
+    // handing it the animation.
+    //
+    // Measured on firmware 1.2.3, and the reason a correct upload and a correct
+    // draw still produced a black bar: a draw MERGES by element id rather than
+    // replacing the element set, and `px_matrix_img` -- the full-panel PNG
+    // `sendPixelFrame` draws -- composites ABOVE `hardware_anim` whichever
+    // order the two arrive in. So the previous screen's frame, or the blank one
+    // `DisplayRenderer` sends after clearing its canvas, stays on top of the
+    // animation forever. Drawing the animation second does not help; only
+    // removing the image does.
+    await this.driver.clearDisplay(DEVICE_APPLICATION_NAME);
+    if (!this.isPlaying || this.currentAnimation !== animName) return;
+
+    const started = await this.driver.sendDisplayPayload({
+      application_name: DEVICE_APPLICATION_NAME,
+      priority: 95,
+      led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
+      elements: [{
+        id: 'hardware_anim',
+        type: 'animation',
+        path: `${animName}.anim`,
+        x: 0,
+        y: 0,
+        display: 'front',
+        loop: this.loop,
+        section: 'default'
+      }]
+    });
+    if (!this.isPlaying || this.currentAnimation !== animName) return;
+
+    if (!started) {
+      console.error(
+        `[AnimationPlayer] Device stored ${animName}.anim (${bytes} bytes) but refused to draw it. ` +
+          'Falling back to streaming frames.'
+      );
+      this.fallBackToFrameStreaming(animData);
+      return;
+    }
+
+    console.log(`[AnimationPlayer] Device is playing ${animName}.anim (${bytes} bytes).`);
+  }
+
+  /**
+   * Drops to PNG streaming after the device declined the `.anim`.
+   *
+   * The interval is rebuilt at the animation's real frame rate: the running one
+   * is capped to `HARDWARE_PREVIEW_MAX_FPS` because it was only feeding the
+   * on-screen preview, and leaving it there would play the fallback on the bar
+   * at a quarter speed for no reason.
+   */
+  private fallBackToFrameStreaming(animData: AnimationData): void {
+    this.hardwareAnimActive = false;
+    this.startFrameInterval(animData, Math.max(1, Math.floor(1000 / animData.fps)));
+    this.drawCurrentFrame();
+  }
+
+  /** Restarts the frame timer, replacing any timer already running. */
+  private startFrameInterval(animData: AnimationData, frameIntervalMs: number): void {
+    if (this.intervalId) clearInterval(this.intervalId);
     this.intervalId = setInterval(() => {
       if (!this.loop && this.frameIndex >= animData.frames.length - 1) {
         this.stop();
@@ -296,6 +392,21 @@ export class AnimationPlayer {
     }
     this.isPlaying = false;
     this.currentAnimation = null;
+    // Cleared with the rest of the playback state: left set, the next animation
+    // without a .anim would have its frame streaming suppressed by a flag
+    // describing the previous one.
+    this.hardwareAnimActive = false;
+  }
+
+  /**
+   * Whether the device is currently playing a `.anim` on the front display.
+   *
+   * `DisplayRenderer` reads this to keep `transmitFrame` from drawing a
+   * `px_matrix_img` over the animation -- see the comment in
+   * `startHardwareAnimation` for why that image always wins.
+   */
+  public isHardwareAnimationActive(): boolean {
+    return this.hardwareAnimActive;
   }
 
   public isAnimationPlaying(): boolean {
@@ -315,8 +426,10 @@ export class AnimationPlayer {
     const frameBuffer = animData.frames[this.frameIndex];
     if (!frameBuffer) return;
 
-    // Only stream to hardware if we lack the native .anim file (Fallback mode)
-    if (!animData.animBuffer) {
+    // Stream to hardware unless the device is genuinely playing the .anim
+    // itself. Keyed on the flag rather than on `animBuffer` alone, because
+    // having the file says nothing about whether the device accepted it.
+    if (!animData.animBuffer || !this.hardwareAnimActive) {
       const ledColor = this.getLedColorCallback ? this.getLedColorCallback() : undefined;
       
       // We send the PNG buffer directly to the hardware using an image element payload.

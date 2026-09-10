@@ -542,7 +542,23 @@ export class DisplayRenderer {
       .update(this.ledMode)
       .digest('hex');
 
-    if (frameSignature !== this.lastTransmittedSignature) {
+    // While the device is playing a `.anim` itself, the front matrix is not
+    // ours to draw. `sendPixelFrame` puts down `px_matrix_img`, which
+    // composites above `hardware_anim` and is opaque across the whole 72x16
+    // panel -- so transmitting here blacks out the animation the player just
+    // started. Every animated mode hits this: the branch clears the canvas,
+    // starts the animation and then transmits the blank canvas.
+    //
+    // The rear elements and the emulator callbacks below still run, because
+    // those are what feed the on-screen preview -- which is exactly why this
+    // was invisible in development for so long.
+    const frontOwnedByAnimation = this.animationPlayer.isHardwareAnimationActive();
+
+    if (frontOwnedByAnimation) {
+      // Forget the signature rather than record one that was never sent, so the
+      // first frame after the animation stops always transmits.
+      this.lastTransmittedSignature = null;
+    } else if (frameSignature !== this.lastTransmittedSignature) {
       this.lastTransmittedSignature = frameSignature;
       this.frameBufferToggle = !this.frameBufferToggle;
       const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;

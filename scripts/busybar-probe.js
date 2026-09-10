@@ -57,7 +57,7 @@ function record(name, status, detail) {
 }
 
 /** One request to the device, with a timeout. A hung socket must not hang the probe. */
-function request(method, path, { body, contentType } = {}) {
+function request(method, path, { body, contentType, timeoutMs = TIMEOUT_MS } = {}) {
   return new Promise((resolve, reject) => {
     const payload =
       body === undefined ? undefined : Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body));
@@ -84,9 +84,9 @@ function request(method, path, { body, contentType } = {}) {
       }
     );
     req.on('error', reject);
-    req.setTimeout(TIMEOUT_MS, () => {
+    req.setTimeout(timeoutMs, () => {
       req.destroy();
-      reject(new Error(`timed out after ${TIMEOUT_MS}ms`));
+      reject(new Error(`timed out after ${timeoutMs}ms`));
     });
     if (payload) req.write(payload);
     req.end();
@@ -549,6 +549,159 @@ function cropColumns({ width, height, rgba }, from) {
   return out;
 }
 
+/** How many pixels differ between two decoded frames of the same size. */
+function framesDiffer(a, b, threshold = 24) {
+  if (a.width !== b.width || a.height !== b.height) return Infinity;
+  let changed = 0;
+  for (let i = 0; i < a.width * a.height; i++) {
+    const p = i * 4;
+    if (
+      Math.abs(a.rgba[p] - b.rgba[p]) > threshold ||
+      Math.abs(a.rgba[p + 1] - b.rgba[p + 1]) > threshold ||
+      Math.abs(a.rgba[p + 2] - b.rgba[p + 2]) > threshold
+    ) {
+      changed++;
+    }
+  }
+  return changed;
+}
+
+/** The largest `.anim` in the repository, or null if the folder is not there. */
+function findLargestAnim() {
+  const root = path.resolve(__dirname, '..', 'Animations');
+  if (!fs.existsSync(root)) return null;
+
+  const found = [];
+  const walk = dir => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.anim')) found.push({ file: full, size: fs.statSync(full).size });
+    }
+  };
+  walk(root);
+  if (found.length === 0) return null;
+  // Largest on purpose: if a size limit is what the device objects to, the
+  // biggest file is the one that finds it. The app ships all of them, so
+  // passing on the smallest would prove nothing about the others.
+  return found.sort((a, b) => b.size - a.size)[0];
+}
+
+/**
+ * Whether the device will store a `.anim` and actually play it.
+ *
+ * This check exists because its absence cost a fortnight. `9b9f3bd` moved
+ * animations from streamed PNG frames to handing the device the whole `.anim`
+ * file, and switched the streaming fallback off for any animation that had one.
+ * The upload result was never checked -- `uploadAsset` reports refusal by
+ * returning `false`, so the `.catch()` written for it was dead code -- and the
+ * on-screen emulator kept animating regardless, because it is fed from a
+ * separate callback that never touches hardware. The bar went dark, every test
+ * passed, and the only log line said the animation had loaded.
+ *
+ * Nothing reachable from a status code would have caught it, which is why this
+ * reads the panel twice and compares pixels: an animation that is *playing*
+ * changes between two captures, and an element that was accepted but renders
+ * nothing does not. Those two outcomes are indistinguishable from a 200.
+ */
+async function probeAnimation() {
+  const anim = findLargestAnim();
+  if (!anim) {
+    record('Animation upload', 'skip', 'no .anim files found under Animations/');
+    return;
+  }
+
+  const name = path.basename(anim.file);
+  const kb = Math.round(anim.size / 1024);
+
+  // Animations are Git LFS objects. Without LFS they are ~130-byte pointer
+  // text files, which the device would store happily -- a pass proving nothing
+  // about the megabyte the app actually sends.
+  if (anim.size < 4096) {
+    record('Animation upload', 'skip', `${name} is ${anim.size} bytes -- an LFS pointer, not an animation`);
+    return;
+  }
+
+  // 1. Will the device store a file this size at all? These run 250KB-1.3MB,
+  //    an order of magnitude above the 72x16 PNGs everything else uploads.
+  try {
+    const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=${name}`, {
+      body: fs.readFileSync(anim.file),
+      contentType: 'application/octet-stream',
+      // Generous on purpose. These files are ~200x the 72x16 PNGs everything
+      // else here sends, and over a proxied link the default 4s expires on a
+      // transfer that was going to succeed -- reporting a probe timeout as a
+      // device refusal, which is the one answer this check must not invent.
+      timeoutMs: 30000
+    });
+    const ok = up.status >= 200 && up.status < 300;
+    record(
+      `Animation upload (${kb}KB)`,
+      ok ? 'pass' : 'fail',
+      `${name}: ${up.status} ${up.body.slice(0, 80)}`
+    );
+    if (!ok) {
+      // 413 here is the whole answer: the app must keep streaming frames for
+      // files this size rather than relying on hardware playback.
+      record('Animation playback', 'skip', 'upload refused, nothing to draw');
+      return;
+    }
+  } catch (err) {
+    record(`Animation upload (${kb}KB)`, 'fail', err.message);
+    return;
+  }
+
+  // 2. Does drawing it put anything on the panel, and does that change?
+  try {
+    await clearProbeElements();
+    const res = await drawElements([
+      {
+        id: 'probe_anim',
+        type: 'animation',
+        path: name,
+        x: 0,
+        y: 0,
+        display: 'front',
+        loop: true,
+        section: 'default',
+        timeout: 30
+      }
+    ]);
+    if (res.status < 200 || res.status >= 300) {
+      record('Animation playback', 'fail', `draw returned ${res.status} ${res.body.slice(0, 80)}`);
+      return;
+    }
+
+    await sleep(400);
+    const first = await captureScreen('anim-1');
+    const ink = inkBounds(first);
+    if (!ink) {
+      record(
+        'Animation playback',
+        'fail',
+        'device accepted the draw but the panel is blank -- the exact failure a status code hides'
+      );
+      return;
+    }
+
+    // Long enough that any sane frame rate has advanced, short enough not to
+    // stall the probe.
+    await sleep(700);
+    const second = await captureScreen('anim-2');
+    const changed = framesDiffer(first, second);
+
+    record(
+      'Animation playback',
+      changed > 0 ? 'pass' : 'fail',
+      changed > 0
+        ? `${ink.lit}px lit, ${changed}px changed over 700ms -- the device is playing it`
+        : `${ink.lit}px lit but identical across 700ms -- drawn as a still frame, not animated`
+    );
+  } catch (err) {
+    record('Animation playback', 'fail', err.message);
+  }
+}
+
 async function main() {
   console.log(`\nBUSY Bar probe -- ${IP}\n`);
   console.log('Close SprintTicker before running this, or expect 409s that only');
@@ -683,6 +836,13 @@ async function main() {
     await probeCountdown();
   } else {
     record('Countdown element', 'skip', 'display owned; re-run with the app closed');
+  }
+
+  // Hardware animation playback -- see probeAnimation for why this is here.
+  if (!displayOwned) {
+    await probeAnimation();
+  } else {
+    record('Animation playback', 'skip', 'display owned; re-run with the app closed');
   }
 
   await cleanup();

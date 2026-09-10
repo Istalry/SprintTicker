@@ -824,6 +824,15 @@
       back. Earlier builds failed silently, so a diagnostics export sent in to ask
       &quot;why won&#39;t it connect&quot; contained no evidence of the failure anywhere.</p>
       </div>
+      <p><strong>An animation plays in the app but not on the bar.</strong> Fixed as of this
+      release, and worth knowing why, because the symptom is confusing: the preview
+      and the bar are fed by two different paths. The on-screen emulator draws every
+      frame locally, while the bar is handed the whole animation file and plays it
+      itself, so the preview kept animating while the bar showed nothing. Two causes,
+      both addressed — a refused upload that went unreported, and the app drawing its
+      own blank frame on top of the animation it had just started. If you still see
+      it, export the logs from Device Diagnostics and look for <code>[AnimationPlayer]</code>
+      lines naming the file and its size.</p>
       <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
       higher priority. Check Priority Rules and your current mode.</p>
       <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
@@ -1138,6 +1147,17 @@
       </div>
       <p>The rear 160×80 OLED is <strong>preview only</strong>: <code>buildRearElements</code> feeds the on-screen
       emulator, and <code>transmitFrame</code> sends the front matrix and nothing else.</p>
+      <div class="note trap"><span class="label">The front matrix has one owner at a time</span>
+      <p></p>
+      <p><code>transmitFrame</code> draws element <code>px_matrix_img</code>, opaque across the whole panel,
+      while <code>AnimationPlayer</code> draws <code>hardware_anim</code>. A draw merges by element id
+      rather than replacing the element set, and the firmware composites
+      <code>px_matrix_img</code> <strong>above</strong> the animation whichever order they arrive in — so
+      transmitting a frame while an animation plays blacks it out, with both calls
+      returning 200. <code>AnimationPlayer</code> clears the display before handing over the
+      <code>.anim</code>, and <code>transmitFrame</code> skips the hardware send while
+      <code>isHardwareAnimationActive()</code>.</p>
+      </div>
       <h4><code>InputDecoder</code> — <code>src/main/hardware/</code></h4>
       <p>Turns physical events into application actions, through a rebindable map.</p>
       <div class="table-wrap"><table>
@@ -1273,7 +1293,7 @@
       modifies neither your scenes nor your project code.</p>
       <hr>
       <h3 id="architecture-testing">7. Testing</h3>
-      <p>Vitest, 707 tests across 50 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 752 tests across 53 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (83 / 74 / 84.5 / 85) and is raised, never
       lowered.</p>

@@ -217,6 +217,18 @@ two text rows at `x=17` in a 55px field.
 The rear 160×80 OLED is **preview only**: `buildRearElements` feeds the on-screen
 emulator, and `transmitFrame` sends the front matrix and nothing else.
 
+> [!WARNING]
+> **The front matrix has one owner at a time**
+>
+> `transmitFrame` draws element `px_matrix_img`, opaque across the whole panel,
+> while `AnimationPlayer` draws `hardware_anim`. A draw merges by element id
+> rather than replacing the element set, and the firmware composites
+> `px_matrix_img` **above** the animation whichever order they arrive in — so
+> transmitting a frame while an animation plays blacks it out, with both calls
+> returning 200. `AnimationPlayer` clears the display before handing over the
+> `.anim`, and `transmitFrame` skips the hardware send while
+> `isHardwareAnimationActive()`.
+
 ### `InputDecoder` — `src/main/hardware/`
 
 Turns physical events into application actions, through a rebindable map.
@@ -327,7 +339,7 @@ modifies neither your scenes nor your project code.
 
 ## 7. Testing
 
-Vitest, 707 tests across 50 files. `coverage.include` is `src/main/**` and
+Vitest, 752 tests across 53 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (83 / 74 / 84.5 / 85) and is raised, never
 lowered.

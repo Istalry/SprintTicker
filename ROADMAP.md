@@ -508,6 +508,23 @@ was gated, and both are fixed — frames are hashed and deduplicated, the
 animation cache is bounded to two entries, and the blocker is released for
 looping idle animations.
 
+- [ ] **Make `BusyBarDriver` report failure by throwing, not by returning
+  `false`.** This is the real fix behind the Away animation going dark for a
+  fortnight. `uploadAsset` and `sendDisplayPayload` are `Promise<boolean>`, so a
+  refusal is indistinguishable from a success to any caller that forgets to look
+  — and `.then(...).catch(...)` on one of them puts the failure handling in a
+  `catch` that can never run. TypeScript cannot help: an ignored `boolean` is
+  legal, while an ignored rejection is an ESLint error under `no-floating-
+  promises` (CLAUDE.md §6), which turns the whole class of bug into a build
+  failure. It is a breaking change across every call site and its own commit,
+  not a drive-by.
+  - Interim, and much cheaper: an ESLint `no-restricted-syntax` rule banning
+    `.then(` under `src/main/hardware/**`. It does not catch an ignored return
+    value, but it does catch the specific shape that shipped.
+  - `pnpm probe:busybar` now covers hardware `.anim` playback at the pixel
+    level, which catches the *symptom* against real hardware. That is a
+    backstop, not a substitute: it only runs when someone runs it.
+
 - [x] **`CountdownElement` is probed, and it is a layout exercise, not a
   rewrite** (2026-09-09). `pnpm probe:busybar` now draws one, reads the panel
   back with `GET /api/screen?display=0` and measures the pixels. Every number
@@ -645,8 +662,8 @@ looping idle animations.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**83.13 statements / 74.18 branches / 84.67 functions / 85.34 lines across 707
-tests in 50 files**, and the floor is ratcheted to 83 / 74 / 84.5 / 85.
+**83.19 statements / 74.41 branches / 85.15 functions / 85.47 lines across 752
+tests in 53 files**, and the floor is ratcheted to 83 / 74 / 84.5 / 85.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
