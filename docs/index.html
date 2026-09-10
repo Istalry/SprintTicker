@@ -695,6 +695,21 @@
       <p>Connection status, battery, firmware, the update setting, and the animation
       debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
       live, drawn through the real renderer.</p>
+      <p>It also holds <strong>Connection</strong>, where you set the address the app dials and, if
+      your device needs one, an API token:</p>
+      <ul>
+      <li><strong>Device address.</strong> Defaults to <code>10.0.4.20</code>, which is where the bar answers
+      over USB. Change it for a bar on Wi-Fi, or when you are reaching the device
+      through a proxy on another address. An IPv4 address or a hostname — no
+      <code>http://</code>, no port, no path.</li>
+      <li><strong>API token.</strong> Leave empty for USB, where the bar accepts unauthenticated
+      requests. Fill it in once the device has access protection enabled, which is
+      the normal state over Wi-Fi; without it every request comes back 401 or 403.</li>
+      </ul>
+      <p><strong>Save &amp; Reconnect</strong> applies both immediately — the app re-dials without a
+      restart. Watch the connection status at the top of the window to see whether the
+      new address answered; saving means the setting was stored, not that the bar
+      replied. <strong>Reset to USB default</strong> puts the address back to <code>10.0.4.20</code>.</p>
       <hr>
       <h3 id="guide-the-bar-itself">The bar itself</h3>
       <h4>What it shows</h4>
@@ -763,6 +778,52 @@
       running (Device Diagnostics reports its status — <strong>its failures are otherwise
       silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
       the usual culprits.</p>
+      <p><strong>The bar never connects.</strong> The header shows <em>Disconnected</em> and Device
+      Diagnostics reports no firmware or battery. The bar reaches the app as a <strong>USB
+      network device on <code>10.0.4.20</code></strong>, so the question is whether that device exists
+      at all:</p>
+      <ol>
+      <li>Open <a href="http://10.0.4.20">http://10.0.4.20</a> in a browser. If the bar&#39;s own web UI loads, the link
+      is fine and the problem is in the app — export the logs from Device
+      Diagnostics and read the <code>[BusyBarDriver]</code> lines.</li>
+      <li>If the browser times out, run <code>ipconfig</code> (Windows) and look for an adapter
+      holding a <code>10.0.4.x</code> address. <strong>No such adapter means the bar is not
+      enumerating</strong>, and nothing in software can reach it.</li>
+      <li>Reseat the cable, and make sure it is a <strong>data</strong> cable rather than
+      charge-only — a charge-only cable powers the bar, so its lights come on and
+      it looks healthy while presenting no network device at all. Try a port
+      directly on the machine rather than through a hub, and confirm the bar is
+      awake.</li>
+      <li>On Windows, open Device Manager and look under <strong>Network adapters</strong> for
+      <em>Flipper FZCO Network Interface</em>. A yellow warning triangle with <strong>Code 10 —
+      &quot;This device cannot start&quot;</strong> means the bar is enumerating correctly and
+      Windows&#39; own USB network driver is refusing to bring the interface up. See
+      the note below; this is not something the app can fix.</li>
+      </ol>
+      <div class="note trap"><span class="label">in-place repair upgrade</span>
+      <p><strong>Code 10 on the Flipper network interface is a Windows driver fault, not a
+      bar fault or an app fault.</strong>
+      It has been reproduced on Windows 11 25H2 with an Intel 700-series USB
+      controller, where the composite device enumerates cleanly, every descriptor
+      reads back, and the network child still fails to start. The same bar works on
+      another computer. Reinstalling the driver, switching to the alternate inbox
+      NCM driver, <code>DISM</code>/<code>sfc</code>, clearing the USB descriptor cache and disabling
+      selective suspend all change nothing.</p>
+      <p>Two things do work. An of Windows rebuilds the
+      driver stack. Or, without touching Windows, pass the USB device through to
+      another network stack — WSL2 with <code>usbipd-win</code>, whose <code>cdc_ncm</code> driver brings
+      the adapter up without complaint — and proxy the bar back to a local address.</p>
+      <p>If you take the proxy route, <strong>put that address in Settings › Device →
+      Connection</strong>. That is what the setting is for: the bar is then reachable at,
+      say, <code>10.0.4.21</code>, and the app needs to be told.</p>
+      </div>
+      <div class="note"><span class="label">Export the logs; they now say what went wrong.</span>
+      <p>The driver records the
+      reason it could not reach the device — <code>timed out after 2000ms</code>,
+      <code>ECONNREFUSED</code>, and so on — and logs the moment a connection is lost or comes
+      back. Earlier builds failed silently, so a diagnostics export sent in to ask
+      &quot;why won&#39;t it connect&quot; contained no evidence of the failure anywhere.</p>
+      </div>
       <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
       higher priority. Check Priority Rules and your current mode.</p>
       <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
@@ -860,6 +921,13 @@
       </div><p>Three processes, one database, two outbound directions (the device over USB, a
       task provider over the internet), and one inbound (the Unity plugin on
       loopback).</p>
+      <p>The device address is a persisted setting (<code>DeviceConfigDTO.ipAddress</code>), seeded
+      from <code>10.0.4.20</code> and edited in Settings › Device. Main reads it before
+      constructing <code>BusyBarDriver</code>; changing it calls <code>reconfigure()</code>, which tears the
+      ping loop and StateStream socket down and re-dials rather than restarting the
+      app. It has to be a setting: over Wi-Fi the bar holds a DHCP lease, and a host
+      whose USB CDC-NCM driver will not start the interface is recovered by proxying
+      the bar onto a different address entirely.</p>
       <hr>
       <h3 id="architecture-process-boundaries">2. Process boundaries</h3>
       <p><code>contextIsolation: true</code>, <code>nodeIntegration: false</code>, <code>sandbox: true</code>. These are
@@ -1602,8 +1670,26 @@
       <h3 id="api-the-busy-bar-device-contract">The BUSY Bar device contract</h3>
       <p><strong>Source:</strong> <code>src/main/hardware/busybar-driver.ts</code>, and
       <a href="BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md">the developer guide</a></p>
-      <p>The bar answers on the fixed address <strong><code>10.0.4.20</code></strong> over USB and needs no
-      token there. That is how the device works, not a hardcoded shortcut.</p>
+      <p>The bar answers on <strong><code>10.0.4.20</code></strong> over USB and needs no token there. That is
+      the device&#39;s own default — but it is the app&#39;s <em>default</em>, not a constant, and
+      both the address and the token are configurable in Settings › Device.</p>
+      <div class="note trap"><span class="label">Never hardcode the device address.</span>
+      <p>Two situations put the bar somewhere else. Over Wi-Fi it holds a DHCP lease.
+      And when a host&#39;s USB CDC-NCM driver refuses to start the network interface —
+      a real failure on Windows 25H2 with Intel 700-series xHCI, where the device
+      enumerates cleanly and the adapter fails with Code 10 — the working recovery
+      is to reach the bar through a proxy on a different address. Read
+      <code>DeviceConfigDTO.ipAddress</code>, never <code>DEFAULT_USB_IP</code>.</p>
+      </div>
+      <p>Changing either value calls <code>BusyBarDriver.reconfigure()</code>, which tears down the
+      ping loop and StateStream socket, re-points the driver and reconnects, without
+      restarting the app. A host is validated with <code>isValidDeviceHost</code> before it is
+      used: an IPv4 address or hostname only, since the value is concatenated into
+      <code>http://${host}/api/...</code> where a stray <code>/</code> or <code>@</code> retargets every request.</p>
+      <p>The API token, when set, is sent as <code>x-api-token</code> — as a header on HTTP calls
+      and as a <strong>query parameter</strong> on the StateStream WebSocket URL. Anything logging
+      that URL must pass it through <code>redactTokenInUrl</code> first; console output is
+      captured into the diagnostics bundle users attach to bug reports.</p>
       <p>Violating the rules below does not produce a helpful error. Some of them reboot
       the device.</p>
       <div class="table-wrap"><table>

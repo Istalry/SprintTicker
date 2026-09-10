@@ -386,7 +386,32 @@ The Developer Guide §8 defines actionable semantics the driver ignores entirely
 
 Also: `injectRemoteKey` returns `res ? res.ok : true` (`:771`) — a network failure reports **success**. `clearDisplay`, `deleteAppAssets`, `setBrightness`, `getBrightness`, `setAudioVolume`, `playAudio`, `stopAudio`, `syncRtcTime`, `getAccessSettings`, `updateAccessSettings` all `fetch` **without any timeout**, unlike `uploadAsset`/`sendPixelFrame`/`sendDisplayPayload` which use `AbortSignal.timeout(2000)`.
 
-### F-22 — ~~Device IP address and API token are not configurable at runtime~~ (WITHDRAWN in part)
+### F-22 — Device IP address and API token are not configurable at runtime (REOPENED, then FIXED)
+
+> **Fixed.** The address and token are now `DeviceConfigDTO` fields, seeded
+> from `DEFAULT_DEVICE_CONFIG`, edited in Settings › Device, validated with
+> `isValidDeviceHost`, and applied by `BusyBarDriver.reconfigure()` without a
+> restart.
+>
+> **The withdrawal below was wrong, and worth leaving on the record.** It
+> reasoned from the device — the bar does answer on `10.0.4.20` over USB — and
+> concluded the *app* could hardcode it. Those are different claims. Two cases
+> break the second one, and one of them is not a Wi-Fi feature request at all:
+> a host whose inbox CDC-NCM driver refuses to start the interface (Windows
+> 25H2, Intel 700-series xHCI, Code 10 / `STATUS_DEVICE_HARDWARE_ERROR`) is
+> recovered by proxying the bar onto a different address. With the address
+> hardcoded, a working bar and a working recovery still left the app unable to
+> reach it, with no way to say so.
+>
+> The lesson is narrower than "make everything configurable": a constant
+> justified by how the hardware behaves is only safe if nothing between the app
+> and the hardware can move. Here, the host's driver stack could.
+>
+> **The defect noted as surviving was fixed earlier** — the decorative IP field
+> was removed and Test Ping made real. The field is now back, editable, and
+> actually persisted.
+
+Original text follows.
 
 > **Withdrawn by the maintainer.** The bar answers on the fixed address
 > `10.0.4.20` over USB and requires no token there. That is how the device

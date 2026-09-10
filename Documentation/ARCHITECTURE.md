@@ -53,15 +53,23 @@ traps.
 │   WebhookServer (127.0.0.1:39123) <── Unity Editor plugin                │
 └──────────────────────────────────┬───────────────────────────────────────┘
                                    │ HTTP
-                          ┌────────▼─────────┐
-                          │  BUSY Bar        │
-                          │  10.0.4.20 (USB) │
-                          └──────────────────┘
+                          ┌──────────────────────┐
+                          │  BUSY Bar            │
+                          │  10.0.4.20 (default) │
+                          └──────────────────────┘
 ```
 
 Three processes, one database, two outbound directions (the device over USB, a
 task provider over the internet), and one inbound (the Unity plugin on
 loopback).
+
+The device address is a persisted setting (`DeviceConfigDTO.ipAddress`), seeded
+from `10.0.4.20` and edited in Settings › Device. Main reads it before
+constructing `BusyBarDriver`; changing it calls `reconfigure()`, which tears the
+ping loop and StateStream socket down and re-dials rather than restarting the
+app. It has to be a setting: over Wi-Fi the bar holds a DHCP lease, and a host
+whose USB CDC-NCM driver will not start the interface is recovered by proxying
+the bar onto a different address entirely.
 
 ---
 

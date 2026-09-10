@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DEFAULT_USB_IP } from '../../shared/device-constants';
 import { ProviderSettingsUpdateDTO } from '../../shared/dtos';
 import { X, Wifi, Plug, Gamepad2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
@@ -10,10 +10,22 @@ interface OnboardingWizardModalProps {
 
 export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  // Not editable state. The bar answers on a fixed address over the USB
-  // Ethernet link; the field that used to accept a different one was never read
-  // by anything, so typing in it changed nothing but implied otherwise.
-  const deviceAddress = DEFAULT_USB_IP;
+  // Displayed, not edited. The address *is* configurable now -- it has to be,
+  // for a bar on Wi-Fi or behind a proxy -- but it is owned by Device settings,
+  // where it persists and reconnects the driver. Repeating an editable copy
+  // here would mean two controls writing one value, and this one runs once.
+  //
+  // Read from the saved config rather than assuming the default, so a user who
+  // has already changed it does not get shown an address the app is not using.
+  const [deviceAddress, setDeviceAddress] = useState<string>(DEFAULT_USB_IP);
+
+  useEffect(() => {
+    if (!isOpen || !window.electronAPI?.getDeviceConfig) return;
+    void window.electronAPI.getDeviceConfig()
+      .then(config => setDeviceAddress(config.ipAddress || DEFAULT_USB_IP))
+      .catch(() => { /* keep the default: the wizard still works without it */ });
+  }, [isOpen]);
+
   const [pingSuccess, setPingSuccess] = useState<boolean | null>(null);
   const [pingDetails, setPingDetails] = useState<string>('');
   const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
@@ -174,8 +186,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             <div className="space-y-4">
               <h4 className="text-sm font-bold font-mono text-white">1. Physical BUSY Bar Hardware Connection</h4>
               <p className="text-xs text-text-secondary">
-                Connect your BUSY Bar over USB. It presents a virtual Ethernet adapter and always answers on the
-                address below, so there is nothing to configure -- use Test Ping to confirm the link is up.
+                Connect your BUSY Bar over USB. It presents a virtual Ethernet adapter and answers on the
+                address below -- use Test Ping to confirm the link is up. If your bar is on Wi-Fi, or the
+                USB adapter will not start, you can change this address in Settings &gt; Device.
               </p>
 
               <div>

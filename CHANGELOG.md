@@ -4,10 +4,23 @@
 
 Housekeeping after 1.1.0: regression cover for the Jira adapter, the last four
 open audit findings triaged, and several surfaces made honest about what they
-do. No user-facing behaviour changes.
+do -- the diagnostics bundle, the device connection, and the top bar all
+reported something other than the truth, in three different ways.
 
 ### Added
 
+- **The device address and API token are configurable**, in Settings › Device.
+  Changing either reconnects the driver in place — no restart. This was
+  hardcoded to `10.0.4.20` on the reasoning that the bar always answers there
+  over USB, which is true of the *device* and not of the address the *app* has
+  to dial. Two things break it: a bar on Wi-Fi holds a DHCP lease, and a host
+  whose USB CDC-NCM driver refuses to start the network interface (Windows
+  25H2, Intel 700-series xHCI — the device enumerates cleanly and the adapter
+  fails with Code 10) is recovered by proxying the bar onto a *different*
+  address. Before this, a working bar and a working recovery still left the app
+  unable to reach it. Addresses are validated before use, since the value is
+  concatenated into a URL, and the token is redacted from the StateStream URL
+  the driver logs — that log line is captured into the diagnostics bundle.
 - **A fake Jira server and an integration test.** `scripts/fake-jira.js`
   (`pnpm mock:jira`) is a sibling of the OpenProject harness, and
   `tests/jira-integration.test.ts` drives the real adapter over a real socket.
@@ -88,6 +101,27 @@ do. No user-facing behaviour changes.
 
 ### Fixed
 
+- **An unreachable bar says so, instead of reporting itself connected.**
+  `connect()` set `isConnected = true` even when both status probes got no
+  answer, so an unplugged device showed as connected until the ping loop quietly
+  flipped it back three seconds later. Every failure path was silent: the
+  transport error was discarded, and the ping loop's `catch` set the flag with no
+  log. The net effect was that a diagnostics export sent in to ask *why the bar
+  would not connect* contained no evidence of the connection failing at all.
+  - The failure reason is kept and reported — `timed out after 2000ms`,
+    `ECONNREFUSED`, `EHOSTUNREACH` — taken from the `cause` of Node's fetch
+    error, since the top-level message is only ever `fetch failed`.
+  - Connection **loss** is now logged as well as recovery, so both edges of an
+    outage appear, plus a throttled reminder every ten minutes while down. Not
+    every failed ping: at one every three seconds that would put 1200 lines an
+    hour into a 2000-line ring and flush out every other diagnostic.
+  - A device that answers but returns a non-2xx for the status endpoints is
+    still treated as present, because a firmware that does not serve
+    `/api/status` is still a usable bar. That case now warns that telemetry is
+    unavailable rather than displaying a confident 0% battery.
+  - The test covering this asserted the old behaviour by name —
+    `..._StillConnectsDegraded` — so it passed while pinning the defect in
+    place. It now asserts the corrected behaviour.
 - **The top bar fits the window.** It needed roughly 1850px to lay out, so it
   overflowed and clipped its right-hand controls at the app's own 1200px default
   size — the connection status and EOD button were simply cut off unless the

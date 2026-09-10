@@ -241,8 +241,29 @@ matched nothing would let the prune delete every cached task for the project.
 **Source:** `src/main/hardware/busybar-driver.ts`, and
 [the developer guide](BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md)
 
-The bar answers on the fixed address **`10.0.4.20`** over USB and needs no
-token there. That is how the device works, not a hardcoded shortcut.
+The bar answers on **`10.0.4.20`** over USB and needs no token there. That is
+the device's own default — but it is the app's *default*, not a constant, and
+both the address and the token are configurable in Settings › Device.
+
+> [!IMPORTANT]
+> **Never hardcode the device address.**
+> Two situations put the bar somewhere else. Over Wi-Fi it holds a DHCP lease.
+> And when a host's USB CDC-NCM driver refuses to start the network interface —
+> a real failure on Windows 25H2 with Intel 700-series xHCI, where the device
+> enumerates cleanly and the adapter fails with Code 10 — the working recovery
+> is to reach the bar through a proxy on a different address. Read
+> `DeviceConfigDTO.ipAddress`, never `DEFAULT_USB_IP`.
+
+Changing either value calls `BusyBarDriver.reconfigure()`, which tears down the
+ping loop and StateStream socket, re-points the driver and reconnects, without
+restarting the app. A host is validated with `isValidDeviceHost` before it is
+used: an IPv4 address or hostname only, since the value is concatenated into
+`http://${host}/api/...` where a stray `/` or `@` retargets every request.
+
+The API token, when set, is sent as `x-api-token` — as a header on HTTP calls
+and as a **query parameter** on the StateStream WebSocket URL. Anything logging
+that URL must pass it through `redactTokenInUrl` first; console output is
+captured into the diagnostics bundle users attach to bug reports.
 
 Violating the rules below does not produce a helpful error. Some of them reboot
 the device.

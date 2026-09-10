@@ -168,6 +168,22 @@ Connection status, battery, firmware, the update setting, and the animation
 debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
 live, drawn through the real renderer.
 
+It also holds **Connection**, where you set the address the app dials and, if
+your device needs one, an API token:
+
+- **Device address.** Defaults to `10.0.4.20`, which is where the bar answers
+  over USB. Change it for a bar on Wi-Fi, or when you are reaching the device
+  through a proxy on another address. An IPv4 address or a hostname — no
+  `http://`, no port, no path.
+- **API token.** Leave empty for USB, where the bar accepts unauthenticated
+  requests. Fill it in once the device has access protection enabled, which is
+  the normal state over Wi-Fi; without it every request comes back 401 or 403.
+
+**Save & Reconnect** applies both immediately — the app re-dials without a
+restart. Watch the connection status at the top of the window to see whether the
+new address answered; saving means the setting was stored, not that the bar
+replied. **Reset to USB default** puts the address back to `10.0.4.20`.
+
 ---
 
 ## The bar itself
@@ -228,6 +244,54 @@ app is set to something other than *Don't Show*; the notification listener is
 running (Device Diagnostics reports its status — **its failures are otherwise
 silent**); and nothing higher-priority holds the display, Lunch and Away being
 the usual culprits.
+
+**The bar never connects.** The header shows *Disconnected* and Device
+Diagnostics reports no firmware or battery. The bar reaches the app as a **USB
+network device on `10.0.4.20`**, so the question is whether that device exists
+at all:
+
+1. Open <http://10.0.4.20> in a browser. If the bar's own web UI loads, the link
+   is fine and the problem is in the app — export the logs from Device
+   Diagnostics and read the `[BusyBarDriver]` lines.
+2. If the browser times out, run `ipconfig` (Windows) and look for an adapter
+   holding a `10.0.4.x` address. **No such adapter means the bar is not
+   enumerating**, and nothing in software can reach it.
+3. Reseat the cable, and make sure it is a **data** cable rather than
+   charge-only — a charge-only cable powers the bar, so its lights come on and
+   it looks healthy while presenting no network device at all. Try a port
+   directly on the machine rather than through a hub, and confirm the bar is
+   awake.
+4. On Windows, open Device Manager and look under **Network adapters** for
+   *Flipper FZCO Network Interface*. A yellow warning triangle with **Code 10 —
+   "This device cannot start"** means the bar is enumerating correctly and
+   Windows' own USB network driver is refusing to bring the interface up. See
+   the note below; this is not something the app can fix.
+
+> [!WARNING]
+> **Code 10 on the Flipper network interface is a Windows driver fault, not a
+> bar fault or an app fault.**
+> It has been reproduced on Windows 11 25H2 with an Intel 700-series USB
+> controller, where the composite device enumerates cleanly, every descriptor
+> reads back, and the network child still fails to start. The same bar works on
+> another computer. Reinstalling the driver, switching to the alternate inbox
+> NCM driver, `DISM`/`sfc`, clearing the USB descriptor cache and disabling
+> selective suspend all change nothing.
+>
+> Two things do work. An **in-place repair upgrade** of Windows rebuilds the
+> driver stack. Or, without touching Windows, pass the USB device through to
+> another network stack — WSL2 with `usbipd-win`, whose `cdc_ncm` driver brings
+> the adapter up without complaint — and proxy the bar back to a local address.
+>
+> If you take the proxy route, **put that address in Settings › Device →
+> Connection**. That is what the setting is for: the bar is then reachable at,
+> say, `10.0.4.21`, and the app needs to be told.
+
+> [!NOTE]
+> **Export the logs; they now say what went wrong.** The driver records the
+> reason it could not reach the device — `timed out after 2000ms`,
+> `ECONNREFUSED`, and so on — and logs the moment a connection is lost or comes
+> back. Earlier builds failed silently, so a diagnostics export sent in to ask
+> "why won't it connect" contained no evidence of the failure anywhere.
 
 **The bar shows something stale.** Something is holding the display lock at a
 higher priority. Check Priority Rules and your current mode.

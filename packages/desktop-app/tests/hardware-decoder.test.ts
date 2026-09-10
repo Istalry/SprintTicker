@@ -318,17 +318,24 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(emitted).toBe(true);
   });
 
-  it('BusyBarDriver_Connect_LiveMode_FetchFails_StillConnectsDegraded', async () => {
-    // Arrange: live-mode driver with mocked fetch that returns null (network unreachable)
+  it('BusyBarDriver_Connect_LiveMode_FetchFails_ReportsDisconnected', async () => {
+    // This test used to be `..._StillConnectsDegraded` and asserted the
+    // opposite: that an unreachable device still reported `connected: true`.
+    // That was the code's behaviour, so the test passed -- but it was a defect
+    // being pinned in place rather than behaviour being verified. A bar that is
+    // unplugged said it was connected until the ping loop silently flipped it
+    // back seconds later, and nothing anywhere logged why, so a diagnostics
+    // export sent in to ask "why won't it connect" contained no evidence of any
+    // failure at all.
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () => null as unknown as Response;
 
     const liveDriver = new BusyBarDriver('192.168.99.99', false);
     try {
       const connected = await liveDriver.connect();
-      // Even with fetch failure, driver falls back to degraded connected state
-      expect(connected).toBe(true);
-      expect(liveDriver.getDeviceStatus().connected).toBe(true);
+
+      expect(connected).toBe(false);
+      expect(liveDriver.getDeviceStatus().connected).toBe(false);
     } finally {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;

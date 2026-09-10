@@ -26,7 +26,8 @@ import { PriorityPreemptionEngine } from './services/priority-preemption-engine'
 import { ContextScheduleService } from './services/context-schedule-service';
 import { TrayManager } from './tray/tray-manager';
 import { IPCChannel } from '../shared/ipc-channels';
-import { DEVICE_APPLICATION_NAME } from '../shared/device-constants';
+import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
+import { DeviceConfigDTO } from '../shared/dtos';
 import { UpdateChecker } from './updater/update-checker';
 import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
@@ -155,11 +156,21 @@ async function startApplication(): Promise<void> {
 
   // 3. Initialize Hardware Driver, Display Renderer & Input Decoder
   const forceMock = process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
-  driver = new BusyBarDriver('10.0.4.20', forceMock);
+  // Read before constructing: the address is a user setting, not a constant.
+  // This used to be the literal '10.0.4.20', which made a bar on Wi-Fi or
+  // behind a proxy unreachable with no way to say so.
+  const deviceConfig = settingsRepo.getSetting<DeviceConfigDTO>(
+    DEVICE_CONFIG_SETTING_KEY,
+    DEFAULT_DEVICE_CONFIG
+  );
+  driver = new BusyBarDriver({
+    ipAddress: deviceConfig.ipAddress || DEFAULT_DEVICE_CONFIG.ipAddress,
+    apiToken: deviceConfig.apiToken || '',
+    forceMock
+  });
   await driver.connect();
 
   renderer = new DisplayRenderer(driver);
-  const deviceConfig = settingsRepo.getSetting<{ showIdleClockFallback: boolean }>('device_config', { showIdleClockFallback: true });
   renderer.setShowIdleClockFallback(deviceConfig.showIdleClockFallback);
   inputDecoder = new InputDecoder(driver, engine, settingsRepo);
 

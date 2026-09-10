@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download } from 'lucide-react';
+import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download, Network, Eye, EyeOff } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
+import { DeviceConfigDTO } from '../../../shared/dtos';
+import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 
 export const DeviceDiagnosticsView: React.FC = () => {
   const deviceStatus = useDeviceStatus();
@@ -10,11 +12,57 @@ export const DeviceDiagnosticsView: React.FC = () => {
   const [wiping, setWiping] = useState<boolean>(false);
   const [activeTestLog, setActiveTestLog] = useState<string | null>(null);
   const [hardwareLogs, setHardwareLogs] = useState<{ time: string; key: string; action: string }[]>([]);
-  const [deviceConfig, setDeviceConfig] = useState<{ showIdleClockFallback: boolean }>({ showIdleClockFallback: true });
+  const [deviceConfig, setDeviceConfig] = useState<DeviceConfigDTO>(DEFAULT_DEVICE_CONFIG);
+
+  // The connection fields are a draft, applied on an explicit action rather
+  // than on change. Saving per keystroke would tear down and redial the device
+  // once per character typed into the address.
+  const [addressDraft, setAddressDraft] = useState<string>(DEFAULT_DEVICE_CONFIG.ipAddress);
+  const [tokenDraft, setTokenDraft] = useState<string>('');
+  const [tokenVisible, setTokenVisible] = useState<boolean>(false);
+  const [applying, setApplying] = useState<boolean>(false);
+  const [applyResult, setApplyResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const addressValid = isValidDeviceHost(addressDraft);
+  const connectionDirty =
+    addressDraft.trim() !== deviceConfig.ipAddress || tokenDraft !== deviceConfig.apiToken;
+
+  const applyConnectionSettings = async (): Promise<void> => {
+    if (!addressValid || !window.electronAPI?.setDeviceConfig) return;
+    setApplying(true);
+    setApplyResult(null);
+    const next: DeviceConfigDTO = {
+      ...deviceConfig,
+      ipAddress: addressDraft.trim(),
+      apiToken: tokenDraft
+    };
+    try {
+      await window.electronAPI.setDeviceConfig(next);
+      setDeviceConfig(next);
+      // Deliberately not "Connected". This resolves when the setting has been
+      // saved and the reconnect attempted; whether the bar actually answered is
+      // reported by the live status header above, which is the honest source.
+      setApplyResult({
+        ok: true,
+        message: `Saved. Now dialling ${next.ipAddress} — watch the connection status above.`
+      });
+    } catch (err) {
+      setApplyResult({
+        ok: false,
+        message: err instanceof Error ? err.message : 'Could not save the connection settings.'
+      });
+    } finally {
+      setApplying(false);
+    }
+  };
 
   useEffect(() => {
     if (window.electronAPI?.getDeviceConfig) {
-      window.electronAPI.getDeviceConfig().then(config => setDeviceConfig(config));
+      window.electronAPI.getDeviceConfig().then(config => {
+        setDeviceConfig(config);
+        setAddressDraft(config.ipAddress);
+        setTokenDraft(config.apiToken);
+      });
     }
     if (window.electronAPI?.onHardwareInputEvent) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
@@ -174,21 +222,110 @@ export const DeviceDiagnosticsView: React.FC = () => {
             </select>
           </div>
 
+          <div className="bg-dark-900 p-3 rounded-lg border border-border-dark space-y-3">
+            <div className="flex items-center space-x-2 text-accent-blue">
+              <Network className="w-4 h-4" />
+              <span className="text-xs font-bold font-mono uppercase tracking-wider">Connection</span>
+            </div>
+            <p className="text-[10px] text-dark-400 leading-relaxed">
+              Over USB the bar answers on <span className="font-mono">{DEFAULT_USB_IP}</span>. Change this
+              for a bar on Wi-Fi, or when the USB network interface will not start and you are reaching
+              the device through a proxy on another address.
+            </p>
+
+            <label className="block">
+              <span className="text-[10px] uppercase tracking-wider text-text-secondary">Device address</span>
+              <input
+                type="text"
+                value={addressDraft}
+                spellCheck={false}
+                onChange={(e) => { setAddressDraft(e.target.value); setApplyResult(null); }}
+                placeholder={DEFAULT_USB_IP}
+                className={`mt-1 w-full bg-dark-800 border rounded px-2 py-1.5 text-sm font-mono text-text-primary focus:outline-none focus:ring-1 ${
+                  addressDraft.length > 0 && !addressValid
+                    ? 'border-accent-red focus:ring-accent-red'
+                    : 'border-border-dark focus:ring-accent-blue'
+                }`}
+              />
+              {addressDraft.length > 0 && !addressValid && (
+                <span className="text-[10px] text-accent-red">
+                  IPv4 address or hostname only — no http://, port or path.
+                </span>
+              )}
+            </label>
+
+            <label className="block">
+              <span className="text-[10px] uppercase tracking-wider text-text-secondary">
+                API token <span className="text-dark-400 normal-case tracking-normal">— leave empty for USB</span>
+              </span>
+              <div className="mt-1 flex items-center space-x-2">
+                <input
+                  type={tokenVisible ? 'text' : 'password'}
+                  value={tokenDraft}
+                  spellCheck={false}
+                  autoComplete="off"
+                  onChange={(e) => { setTokenDraft(e.target.value); setApplyResult(null); }}
+                  placeholder="Required only if the device has access protection enabled"
+                  className="flex-1 min-w-0 bg-dark-800 border border-border-dark rounded px-2 py-1.5 text-sm font-mono text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-blue"
+                />
+                <button
+                  type="button"
+                  onClick={() => setTokenVisible(v => !v)}
+                  title={tokenVisible ? 'Hide token' : 'Show token'}
+                  aria-label={tokenVisible ? 'Hide token' : 'Show token'}
+                  className="p-1.5 text-text-secondary hover:text-text-primary border border-border-dark rounded"
+                >
+                  {tokenVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </label>
+
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                disabled={!connectionDirty || !addressValid || applying}
+                onClick={() => { void applyConnectionSettings(); }}
+                className="px-3 py-1.5 text-xs font-bold rounded bg-accent-blue text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {applying ? 'Reconnecting...' : 'Save & Reconnect'}
+              </button>
+              {addressDraft.trim() !== DEFAULT_USB_IP && (
+                <button
+                  type="button"
+                  onClick={() => { setAddressDraft(DEFAULT_USB_IP); setApplyResult(null); }}
+                  className="text-[10px] text-text-secondary hover:text-text-primary underline"
+                >
+                  Reset to USB default
+                </button>
+              )}
+            </div>
+
+            {applyResult && (
+              <p className={`text-[10px] ${applyResult.ok ? 'text-accent-green' : 'text-accent-red'}`}>
+                {applyResult.message}
+              </p>
+            )}
+          </div>
+
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary flex flex-col">
               <span>Enable Idle Hardware Clock Fallback</span>
               <span className="text-[10px] text-dark-400">Clears app display when idle to show device native clock. LED will turn off.</span>
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 className="sr-only peer"
                 checked={deviceConfig.showIdleClockFallback}
                 onChange={(e) => {
                   const newConfig = { ...deviceConfig, showIdleClockFallback: e.target.checked };
                   setDeviceConfig(newConfig);
                   if (window.electronAPI?.setDeviceConfig) {
-                    window.electronAPI.setDeviceConfig(newConfig);
+                    // Caught, because the handler now validates the address and
+                    // rejects: an unhandled rejection here would surface as a
+                    // console error with the toggle already flipped in the UI.
+                    void window.electronAPI.setDeviceConfig(newConfig)
+                      .catch(err => console.error('[DeviceDiagnostics] setDeviceConfig failed:', err));
                   }
                 }}
               />

@@ -20,6 +20,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
+import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { OpenProjectProvider } from '../providers/openproject-provider';
@@ -343,14 +344,54 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.GET_DEVICE_CONFIG, async () => {
-      return this.settingsRepo.getSetting<DeviceConfigDTO>('device_config', {
-        showIdleClockFallback: true
-      });
+      const stored = this.settingsRepo.getSetting<DeviceConfigDTO>(
+        DEVICE_CONFIG_SETTING_KEY,
+        DEFAULT_DEVICE_CONFIG
+      );
+      // Spread over the defaults rather than returning `stored` directly: a row
+      // written before the address and token existed has neither key, and
+      // handing the renderer `undefined` puts it straight into an input.
+      return { ...DEFAULT_DEVICE_CONFIG, ...stored };
     });
 
     ipcMain.handle(IPCChannel.SET_DEVICE_CONFIG, async (_event, config: DeviceConfigDTO) => {
-      this.settingsRepo.setSetting('device_config', config);
-      this.renderer.setShowIdleClockFallback(config.showIdleClockFallback);
+      const host = (config.ipAddress ?? '').trim();
+      // Validated here, not only in the renderer. A host with a slash or an `@`
+      // is concatenated into `http://${host}/api/...` and silently retargets
+      // every device request at another origin.
+      if (!isValidDeviceHost(host)) {
+        throw new ArgumentException(
+          `'${config.ipAddress}' is not a valid device address. Use an IPv4 address or a hostname, with no scheme, port or path.`
+        );
+      }
+
+      const previous = this.settingsRepo.getSetting<DeviceConfigDTO>(
+        DEVICE_CONFIG_SETTING_KEY,
+        DEFAULT_DEVICE_CONFIG
+      );
+      const next: DeviceConfigDTO = {
+        ...DEFAULT_DEVICE_CONFIG,
+        ...config,
+        ipAddress: host,
+        apiToken: config.apiToken ?? ''
+      };
+
+      this.settingsRepo.setSetting(DEVICE_CONFIG_SETTING_KEY, next);
+      this.renderer.setShowIdleClockFallback(next.showIdleClockFallback);
+
+      // Persist first, then reconnect. If the new address does not answer, the
+      // user still has the value they typed to correct -- discarding it on a
+      // failed connection would make a typo cost the whole entry, and an
+      // address that is right but temporarily down is not a wrong address.
+      const targetChanged =
+        (previous.ipAddress ?? DEFAULT_DEVICE_CONFIG.ipAddress) !== next.ipAddress ||
+        (previous.apiToken ?? '') !== next.apiToken;
+
+      if (targetChanged) {
+        console.log(`[IPC] Device address changed to ${next.ipAddress}. Reconnecting.`);
+        await this.driver.reconfigure({ ipAddress: next.ipAddress, apiToken: next.apiToken });
+      }
+
       // Re-evaluate display state if needed
       const activeSession = this.engine.getCurrentSession();
       this.renderer.renderActiveSession(activeSession);

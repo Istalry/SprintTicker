@@ -234,8 +234,10 @@ re-running the script you actually want fixes it.
 ## First run
 
 1. Launch the app; the onboarding wizard appears on first start.
-2. The device answers at the fixed USB address `10.0.4.20`. There is no address
-   or token to configure.
+2. The device answers at `10.0.4.20` over USB, which is the default and needs no
+   token — nothing to configure for a normal USB setup. Both the address and an
+   API token are editable under **Device Diagnostics → Connection** for a bar on
+   Wi-Fi, or one reached through a proxy.
 3. For OpenProject, open the **Task Providers** panel and enter your instance URL
    and an API key. Until you do, the app runs entirely on local ad-hoc tasks.
 4. In the **Notifications** panel, choose which applications may reach the
@@ -506,7 +508,8 @@ you want a copy.
 ## Known limitations
 
 - **Windows only.** Nothing here has been run on macOS or Linux.
-- **One device, one user.** The USB address is fixed at `10.0.4.20`.
+- **One device, one user.** The address defaults to `10.0.4.20` over USB and is
+  configurable, but the app drives a single bar.
 - **The rear 160×80 OLED is preview-only.** The emulator draws it; nothing is
   transmitted to the physical panel.
 - **Two remote task providers**: OpenProject and Jira Cloud. Anything else means

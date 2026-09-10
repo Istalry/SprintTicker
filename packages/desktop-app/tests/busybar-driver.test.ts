@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BusyBarDriver, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput } from '../src/main/hardware/busybar-driver';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { BusyBarDriver, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput, describeTransportError, isUnreachableReminderDue, DEVICE_UNREACHABLE_REMINDER_PINGS, DEVICE_PING_INTERVAL_MS } from '../src/main/hardware/busybar-driver';
 
 describe('BusyBarDriver Unit Tests', () => {
   let driver: BusyBarDriver;
@@ -108,6 +108,111 @@ describe('BusyBarDriver Unit Tests', () => {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;
     }
+  });
+
+
+  it('DescribeTransportError_FetchFailureWithCause_NamesTheUnderlyingReason', () => {
+    // Node's fetch says only "fetch failed"; the actionable half is in `cause`.
+    const cause = Object.assign(new Error('connect ECONNREFUSED 10.0.4.20:80'), { code: 'ECONNREFUSED' });
+    const err = Object.assign(new TypeError('fetch failed'), { cause });
+
+    const described = describeTransportError(err);
+
+    expect(described).toContain('ECONNREFUSED');
+    expect(described).not.toBe('fetch failed');
+  });
+
+  it('DescribeTransportError_AbortTimeout_SaysItTimedOut', () => {
+    const err = Object.assign(new Error('The operation was aborted'), { name: 'TimeoutError' });
+    expect(describeTransportError(err)).toContain('timed out');
+  });
+
+  it('Connect_DeviceUnreachable_ReportsDisconnectedRatherThanConnected', async () => {
+    // The regression this test exists for: both status probes returned null and
+    // `connect()` set `isConnected = true` anyway, so an unplugged bar reported
+    // itself connected until the ping loop quietly flipped it back. A user who
+    // exported diagnostics to ask why it would not connect got a bundle with no
+    // evidence of any failure anywhere in it.
+    const originalFetch = globalThis.fetch;
+    const warnings: string[] = [];
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    });
+    globalThis.fetch = (async () => {
+      throw Object.assign(new TypeError('fetch failed'), {
+        cause: Object.assign(new Error('connect EHOSTUNREACH 10.0.4.20:80'), { code: 'EHOSTUNREACH' })
+      });
+    }) as typeof fetch;
+
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+    try {
+      const connected = await liveDriver.connect();
+
+      expect(connected).toBe(false);
+      expect(liveDriver.getDeviceStatus().connected).toBe(false);
+      // And it must say why, naming the address and the transport cause.
+      const complaint = warnings.find(w => w.includes('No response from'));
+      expect(complaint).toBeDefined();
+      expect(complaint).toContain('10.0.4.20');
+      expect(complaint).toContain('EHOSTUNREACH');
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('Connect_DeviceAnswersNonOk_StaysOptimisticButWarns', async () => {
+    // Something is listening, it just does not serve these endpoints. A
+    // firmware without /api/status is still a usable bar, so refusing to talk
+    // to it would be a regression -- but the missing telemetry has to be said
+    // out loud rather than shown as a confident 0% battery.
+    const originalFetch = globalThis.fetch;
+    const warnings: string[] = [];
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    });
+    globalThis.fetch = (async () => ({ ok: false, status: 404 }) as Response) as typeof fetch;
+
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+    try {
+      const connected = await liveDriver.connect();
+
+      expect(connected).toBe(true);
+      expect(warnings.some(w => w.includes('404') && w.includes('telemetry'))).toBe(true);
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+      warnSpy.mockRestore();
+    }
+  });
+
+
+  it('IsUnreachableReminderDue_NoFailuresYet_IsNotDue', () => {
+    // `0 % n === 0`, so a missing guard reports a reminder due before anything
+    // has actually failed.
+    expect(isUnreachableReminderDue(0)).toBe(false);
+  });
+
+  it('IsUnreachableReminderDue_BelowTheInterval_StaysQuiet', () => {
+    for (let failures = 1; failures < DEVICE_UNREACHABLE_REMINDER_PINGS; failures++) {
+      expect(isUnreachableReminderDue(failures)).toBe(false);
+    }
+  });
+
+  it('IsUnreachableReminderDue_AtEachInterval_IsDueExactlyOnce', () => {
+    // The whole point is that a 3s loop cannot flood the 2000-line diagnostics
+    // ring: over an hour of outage this must fire a handful of times, not 1200.
+    const anHourOfPings = Math.floor((60 * 60 * 1000) / DEVICE_PING_INTERVAL_MS);
+    let fired = 0;
+    for (let failures = 1; failures <= anHourOfPings; failures++) {
+      if (isUnreachableReminderDue(failures)) fired++;
+    }
+
+    expect(fired).toBe(Math.floor(anHourOfPings / DEVICE_UNREACHABLE_REMINDER_PINGS));
+    expect(fired).toBeLessThan(10);
+    expect(isUnreachableReminderDue(DEVICE_UNREACHABLE_REMINDER_PINGS)).toBe(true);
+    expect(isUnreachableReminderDue(DEVICE_UNREACHABLE_REMINDER_PINGS + 1)).toBe(false);
   });
 
   it('BusyBarDriver_Disconnect_ResetsStatusToOffline', () => {

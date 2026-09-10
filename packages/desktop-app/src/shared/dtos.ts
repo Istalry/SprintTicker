@@ -58,6 +58,26 @@ export interface HardwareBindingConfig {
 
 export interface DeviceConfigDTO {
   showIdleClockFallback: boolean;
+  /**
+   * Host the driver dials -- IPv4 or hostname, no scheme, port or path.
+   *
+   * Seeded from `DEFAULT_USB_IP`. Changing it reconnects the driver in place,
+   * so it is the one setting here that can leave the app unable to see the
+   * hardware; validate with `isValidDeviceHost` before saving.
+   */
+  ipAddress: string;
+  /**
+   * Token for `x-api-token`, or `''` when the device needs none.
+   *
+   * Empty over USB, where the bar accepts unauthenticated requests. Required
+   * once the device has access protection enabled (`mode=key`), which is the
+   * normal state over Wi-Fi -- without it every request comes back 401/403.
+   *
+   * **A secret.** It must never reach a log line or the diagnostics bundle;
+   * see `redactTokenInUrl`, which exists because the StateStream URL carries
+   * it as a query parameter.
+   */
+  apiToken: string;
 }
 
 export interface DeviceStatusDTO {

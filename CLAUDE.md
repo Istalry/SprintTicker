@@ -148,8 +148,48 @@ device.
   `scripts/busybar-probe.js` handles it and keeps a real BMP path in front for
   the day the endpoint matches its own content type.
 
-The bar answers on the fixed address `10.0.4.20` over USB and needs no token
-there. That is not a hardcoded shortcut; it is how the device works.
+**The bar answers on `10.0.4.20` over USB and needs no token there — but that
+is a default, not a constant, and the app must never hardcode it.** This file
+used to say the opposite, and an audit finding asking for a configurable
+address was withdrawn on the strength of it. Both were wrong, for two reasons
+that only showed up in use:
+
+- Over Wi-Fi the bar takes a DHCP lease and is somewhere else entirely.
+- Windows' inbox CDC-NCM driver can refuse to start the interface — a real
+  failure, reproduced on 25H2 with an Intel 700-series xHCI, where the device
+  enumerates cleanly and the network child fails with Code 10 /
+  `STATUS_DEVICE_HARDWARE_ERROR`. Ten targeted fixes changed nothing; the
+  working recovery is to pass the device through to another network stack and
+  proxy it back on a *different* address. A bar reachable only at `10.0.4.21`
+  is still a bar.
+
+So the address and token live in `DeviceConfigDTO`, seeded from
+`DEFAULT_USB_IP` and `DEFAULT_DEVICE_CONFIG` in `shared/device-constants.ts`.
+Read the configured value; never the constant.
+
+Three things that go with it:
+
+- **Validate any host before it reaches a URL.** `isValidDeviceHost` is an
+  allow-list of `[A-Za-z0-9.-]`, not a list of forbidden characters — a
+  blocklist has to enumerate `/`, `\`, `@`, `:`, `?` and `#` inside a character
+  class where several need escaping, and one that goes missing lets a typed
+  string silently retarget every device request at another origin. That is not
+  hypothetical: the first version of this check lost its backslash to a shell
+  heredoc and nothing failed.
+- **The token is a secret, and the StateStream URL carries it as a query
+  parameter.** Console output is captured verbatim into the diagnostics bundle
+  users attach to bug reports, so anything logging that URL must go through
+  `redactTokenInUrl`.
+- **Changing the address re-dials in place, so socket teardown races.**
+  `close()` does not fire `onclose` synchronously; without the `wsGeneration`
+  guard a superseded socket's close handler nulls the *live* `wsClient` and
+  orphans it, still open against the previous address with nothing able to
+  close it. Every socket handler compares its captured generation before acting.
+
+`connectionType` in `DeviceStatusDTO` is derived as "not the default USB
+address", which is all the driver can know — HTTP over USB Ethernet and HTTP
+over Wi-Fi are indistinguishable from there. A proxied bar therefore reports
+`wifi` while physically on USB. The address shown beside it is the true part.
 
 **Check the contract against a real bar after a firmware release**, with
 `pnpm probe:busybar`. It reports the firmware version, verifies the calls this

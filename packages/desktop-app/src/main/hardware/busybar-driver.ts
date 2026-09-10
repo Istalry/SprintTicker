@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
-import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO } from '../../shared/dtos';
-import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
+import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException } from '../../shared/dtos';
+import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
 
 export interface HardwareEvent {
@@ -35,6 +35,61 @@ export const DEVICE_REQUEST_TIMEOUT_MS = 2000;
 
 /** Longer, because an asset upload carries a payload rather than a few bytes. */
 export const DEVICE_UPLOAD_TIMEOUT_MS = 5000;
+
+/** How often the ping loop retries the device. */
+export const DEVICE_PING_INTERVAL_MS = 3000;
+
+/**
+ * How many consecutive failed pings between "still unreachable" reminders.
+ *
+ * Connection loss and recovery are logged on the transition, which is the
+ * useful signal -- but a log with a single line at startup does not tell a user
+ * reading it hours later that the app is still trying. This is the compromise:
+ * one line every ten minutes while down.
+ *
+ * Not every failure. The loop runs every 3s, so logging each one would put 1200
+ * lines an hour into a 2000-line ring and flush every other diagnostic out of
+ * the export. That exact mistake is on record: an OpenProject poll printed a
+ * full stack trace every 60s and made the terminal unreadable.
+ */
+export const DEVICE_UNREACHABLE_REMINDER_PINGS = 200;
+
+/**
+ * Whether a "still unreachable" reminder is due after this many failed pings.
+ *
+ * Extracted and exported so the throttle can be tested directly: it is modulo
+ * arithmetic guarding a log line, the kind of thing that silently reads
+ * "every ping" or "never" if the comparison is off by one, and neither mistake
+ * shows up until someone is reading a log hours later trying to work out why
+ * their bar is dark.
+ *
+ * The `> 0` guard matters: `0 % n === 0`, so without it a driver that has never
+ * failed a ping would report a reminder as due.
+ */
+export function isUnreachableReminderDue(consecutiveFailures: number): boolean {
+  return consecutiveFailures > 0 && consecutiveFailures % DEVICE_UNREACHABLE_REMINDER_PINGS === 0;
+}
+
+/**
+ * Turns a failed `fetch` into something a user can act on.
+ *
+ * Node's fetch reports `TypeError: fetch failed` and puts the real reason in
+ * `cause` -- `ECONNREFUSED`, `EHOSTUNREACH`, `ETIMEDOUT`, or a `TimeoutError`
+ * from the abort signal. The top-level message on its own names nothing, which
+ * is why the driver used to discard it: it looked worthless. The cause is the
+ * half worth keeping, and it is the difference between "the bar is asleep" and
+ * "the USB network adapter is not there at all".
+ */
+export function describeTransportError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause instanceof Error) {
+    const code = (cause as { code?: string }).code;
+    return code ? `${cause.message} (${code})` : cause.message;
+  }
+  return err.name === 'TimeoutError' ? `timed out after ${DEVICE_REQUEST_TIMEOUT_MS}ms` : err.message;
+}
 
 /**
  * What the device meant by a non-2xx status, per the API guide.
@@ -238,6 +293,24 @@ export class BusyBarDriver extends EventEmitter {
   private wsClient: unknown | null = null;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
+  /**
+   * Bumped every time a socket is opened or torn down, so a dead socket's
+   * handlers can tell they are dead.
+   *
+   * `close()` does not fire `onclose` synchronously. Without this, closing a
+   * socket and immediately opening another races: the *old* socket's `onclose`
+   * lands after the new one is assigned, sets `this.wsClient = null`, and the
+   * live socket is orphaned -- still open, still receiving, with nothing left
+   * holding a handle to close it. Changing the device address is exactly that
+   * sequence, so a stale socket would keep talking to the previous address
+   * forever. Every handler compares its captured generation against this and
+   * returns if they differ.
+   */
+  private wsGeneration: number = 0;
+  /** Why the last `deviceFetch` got no answer, so callers can report the cause rather than "it failed". */
+  private lastTransportError: string | null = null;
+  /** Consecutive failed pings, for the throttled "still unreachable" reminder. */
+  private consecutivePingFailures: number = 0;
   private frameInFlight: boolean = false;
   private pendingFrameArgs: Parameters<BusyBarDriver['sendPixelFrame']> | null = null;
   private framesSent: number = 0;
@@ -353,8 +426,30 @@ export class BusyBarDriver extends EventEmitter {
         }
         this.startStateStreamListener();
         void this.refreshBrightness();
-      } else {
+        console.log(
+          `[BusyBarDriver] Connected to ${this.ipAddress} (firmware ${this.firmwareVersion}, battery ${this.batteryPercent}%).`
+        );
+      } else if (response) {
+        // Something *is* listening, it just did not like these two endpoints.
+        // Stay optimistic here on purpose: a firmware that does not serve
+        // /api/status is still a usable bar, and refusing to talk to it would
+        // be a regression. Telemetry will be missing, so say that much.
         this.isConnected = true;
+        console.warn(
+          `[BusyBarDriver] ${this.ipAddress} answered HTTP ${response.status} for both status endpoints. ` +
+            `Treating the device as present, but telemetry (firmware, battery) will be unavailable.`
+        );
+      } else {
+        // Nothing answered at all. This used to set `isConnected = true`
+        // regardless, so a bar that was unplugged reported itself connected
+        // until the ping loop quietly flipped it back seconds later -- and
+        // nothing anywhere logged why.
+        this.isConnected = false;
+        console.warn(
+          `[BusyBarDriver] No response from ${this.ipAddress}: ${this.lastTransportError ?? 'no answer'}. ` +
+            `The bar is not reachable -- check that it is plugged in with a data-capable USB cable and awake. ` +
+            `Retrying every ${DEVICE_PING_INTERVAL_MS / 1000}s in the background.`
+        );
       }
 
       this.startPingLoop();
@@ -384,14 +479,21 @@ export class BusyBarDriver extends EventEmitter {
       this.wsClient = null;
     }
 
+    const generation = ++this.wsGeneration;
+
     try {
       let wsUrl = `ws://${this.ipAddress}/api/status/ws`;
       if (this.apiToken) {
         wsUrl += `?x-api-token=${encodeURIComponent(this.apiToken)}`;
       }
 
-      console.log(`[BusyBarDriver] Starting WebSocket StateStream listener on ${wsUrl}`);
-      
+      // Redacted, because this line is captured verbatim into the diagnostics
+      // bundle users attach to bug reports and the token rides in the query
+      // string. Logging the raw URL would mail the secret to whoever reads it.
+      console.log(
+        `[BusyBarDriver] Starting WebSocket StateStream listener on ${redactTokenInUrl(wsUrl)}`
+      );
+
       // Previously `eval('require("ws")')`, which defeated bundler analysis to
       // work around a resolution problem that no longer exists: 'ws' is listed
       // in ELECTRON_EXTERNALS, so a plain import is left external anyway.
@@ -399,6 +501,16 @@ export class BusyBarDriver extends EventEmitter {
       this.wsClient = ws;
 
       ws.onopen = () => {
+        // A socket superseded while it was still opening: close it rather than
+        // handshaking, or it stays open against the previous address.
+        if (generation !== this.wsGeneration) {
+          try {
+            ws.close();
+          } catch {
+            // ignore close errors
+          }
+          return;
+        }
         console.log('[BusyBarDriver] WebSocket connected. Sending handshake { enable: true }');
         try {
           ws.send(JSON.stringify({ enable: true }));
@@ -410,6 +522,8 @@ export class BusyBarDriver extends EventEmitter {
       ws.binaryType = 'arraybuffer';
 
       ws.onmessage = (event: { data: unknown }) => {
+        // Input from a superseded socket is input from the wrong device.
+        if (generation !== this.wsGeneration) return;
         const rawData = event.data;
         if (typeof rawData === 'string') {
           try {
@@ -452,15 +566,22 @@ export class BusyBarDriver extends EventEmitter {
       };
 
       ws.onerror = (err: unknown) => {
+        if (generation !== this.wsGeneration) return;
         console.warn('[BusyBarDriver] WebSocket error:', err);
       };
 
       ws.onclose = () => {
+        // The load-bearing guard. `close()` does not fire this synchronously,
+        // so without the check a superseded socket's close would null out the
+        // *live* `wsClient` and schedule a reconnect on top of it -- leaving an
+        // orphaned socket on the old address that nothing can close.
+        if (generation !== this.wsGeneration) return;
         console.log('[BusyBarDriver] WebSocket closed. Scheduling reconnection in 1s...');
         this.wsClient = null;
         if (!this.wsReconnectTimer) {
           this.wsReconnectTimer = setTimeout(() => {
             this.wsReconnectTimer = null;
+            if (generation !== this.wsGeneration) return;
             if (this.isConnected && !this.isMockMode) {
               this.startStateStreamListener();
             }
@@ -494,6 +615,12 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   public getDeviceStatus(): DeviceStatusDTO {
+    // "Not the default USB address" -- which is genuinely all this can know.
+    // HTTP over USB Ethernet and HTTP over Wi-Fi are indistinguishable from
+    // here, so a bar reached through a local proxy (the recovery when a host's
+    // CDC-NCM driver will not start) reports `wifi` while physically being on
+    // USB. Reporting the address itself, which the UI does alongside this, is
+    // the part that is always true.
     const isWifi = this.ipAddress !== DEFAULT_USB_IP;
     if (!this.isConnected && !this.isMockMode) {
       return {
@@ -835,10 +962,17 @@ export class BusyBarDriver extends EventEmitter {
     timeoutMs: number = DEVICE_REQUEST_TIMEOUT_MS
   ): Promise<Response | null> {
     try {
-      return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
-    } catch {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      this.lastTransportError = null;
+      return response;
+    } catch (err) {
       // Timeout, abort, DNS, refused connection: from the caller's point of
-      // view these are the same event -- no answer from the device.
+      // view these are the same event -- no answer from the device -- so the
+      // null return stays. What changed is that the *reason* is kept rather
+      // than dropped on the floor. Callers report it; a user who exported
+      // diagnostics to ask why the bar would not connect used to receive a
+      // bundle with no evidence of the failure anywhere in it.
+      this.lastTransportError = describeTransportError(err);
       return null;
     }
   }
@@ -1156,6 +1290,34 @@ export class BusyBarDriver extends EventEmitter {
     }
   }
 
+  /**
+   * Records a failed ping and logs it without flooding the diagnostics ring.
+   *
+   * Two lines get written and no others: one when the connection is *lost*
+   * (paired with the recovery line, so a reader sees both edges of every
+   * outage), and one every `DEVICE_UNREACHABLE_REMINDER_PINGS` failures after
+   * that, so a log read hours later still shows the app trying rather than
+   * having gone quiet.
+   */
+  private notePingFailure(wasConnected: boolean, reason: string | null): void {
+    this.consecutivePingFailures++;
+    const detail = reason ?? 'no answer';
+
+    if (wasConnected) {
+      console.warn(
+        `[BusyBarDriver] Lost connection to ${this.ipAddress}: ${detail}. Retrying every ${DEVICE_PING_INTERVAL_MS / 1000}s.`
+      );
+      return;
+    }
+
+    if (isUnreachableReminderDue(this.consecutivePingFailures)) {
+      const minutes = Math.round((this.consecutivePingFailures * DEVICE_PING_INTERVAL_MS) / 60000);
+      console.warn(
+        `[BusyBarDriver] Still cannot reach ${this.ipAddress} after ${minutes} minute(s): ${detail}.`
+      );
+    }
+  }
+
   private startPingLoop(): void {
     if (this.pingTimer) clearInterval(this.pingTimer);
 
@@ -1169,6 +1331,9 @@ export class BusyBarDriver extends EventEmitter {
         }
 
         const start = Date.now();
+        // Hoisted out of the try: the catch below needs it too, and both paths
+        // report loss only on the transition.
+        const wasConnected = this.isConnected;
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -1183,8 +1348,7 @@ export class BusyBarDriver extends EventEmitter {
 
           const elapsed = Date.now() - start;
           this.pingMs = Math.max(1, elapsed);
-        
-          const wasConnected = this.isConnected;
+
           this.isConnected = res ? res.ok : false;
 
           if (res && res.ok) {
@@ -1193,18 +1357,27 @@ export class BusyBarDriver extends EventEmitter {
               this.parseTelemetryData(data);
             }
             if (!wasConnected) {
-              console.log('[BusyBarDriver] Connection recovered in ping loop. Restarting StateStream...');
+              console.log(
+                `[BusyBarDriver] Connection to ${this.ipAddress} recovered after ${this.consecutivePingFailures} failed ping(s). Restarting StateStream...`
+              );
               this.startStateStreamListener();
               this.checkPendingFrame();
             }
+            this.consecutivePingFailures = 0;
+          } else {
+            this.notePingFailure(wasConnected, res ? `HTTP ${res.status}` : this.lastTransportError);
           }
-        } catch {
+        } catch (err) {
+          // Not an empty catch: the driver degrades to disconnected on purpose,
+          // but silently doing so is what made an unreachable bar impossible to
+          // diagnose from an exported log.
           this.isConnected = false;
+          this.notePingFailure(wasConnected, describeTransportError(err));
         }
 
         this.emit('statusChanged', this.getDeviceStatus());
       })().catch(err => console.error('[BusyBarDriver] Ping loop error:', err));
-    }, 3000);
+    }, DEVICE_PING_INTERVAL_MS);
   }
 
   public disconnect(): void {
@@ -1225,7 +1398,52 @@ export class BusyBarDriver extends EventEmitter {
       }
       this.wsClient = null;
     }
+    // After the close, so any handler still queued from the socket we just
+    // closed finds a generation it does not match and does nothing.
+    this.wsGeneration++;
     this.emit('statusChanged', this.getDeviceStatus());
+  }
+
+  /** The host currently being dialled, so callers can report it without guessing. */
+  public getIpAddress(): string {
+    return this.ipAddress;
+  }
+
+  /**
+   * Points the driver at a different device and reconnects in place.
+   *
+   * Needed because the address is not fixed in practice: over Wi-Fi the bar
+   * holds a DHCP lease, and a bar reached through a proxy (the recovery when a
+   * host's CDC-NCM driver will not start the interface) answers somewhere else
+   * entirely. Restarting the app to change it would be a poor trade when the
+   * user is trying addresses to find the one that answers.
+   *
+   * Tears down before re-pointing, deliberately. Mutating `ipAddress` under a
+   * live socket and ping loop leaves both talking to the previous host, and the
+   * socket in particular would keep reconnecting there forever; `disconnect()`
+   * bumps the generation that makes those handlers inert.
+   *
+   * Returns whether the *new* target answered. A false here is a real answer --
+   * the address was saved and did not respond -- not a failure to apply it.
+   */
+  public async reconfigure(options: { ipAddress: string; apiToken: string }): Promise<boolean> {
+    const nextIp = options.ipAddress.trim();
+    if (!nextIp) {
+      throw new ArgumentException('ipAddress must not be empty.');
+    }
+
+    const unchanged = nextIp === this.ipAddress && options.apiToken === this.apiToken;
+    if (unchanged && this.isConnected) return true;
+
+    this.disconnect();
+    this.ipAddress = nextIp;
+    this.apiToken = options.apiToken;
+    // Cleared with the target: a transport error and a failure count describing
+    // the previous host would be reported against the new one.
+    this.lastTransportError = null;
+    this.consecutivePingFailures = 0;
+
+    return this.connect();
   }
 
   public getIsMockMode(): boolean {
