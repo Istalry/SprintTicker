@@ -602,10 +602,12 @@
       </tbody></table></div>
       <p>Both prompts can be confirmed or dismissed <strong>from the bar itself</strong> — see the
       hardware controls below.</p>
-      <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>; in Away
-      mode, a steaming coffee beside <strong>AWAY</strong>. Both loop for as long as the mode
-      lasts, and the bar plays them itself, so they keep moving when the computer
-      is busy.</p>
+      <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>, on
+      teal. In Away mode it shows a steaming coffee beside <strong>AWAY</strong>, on purple. At the
+      stand-up prompt, and while you track a stand-up task, it shows three people
+      round a table taking turns to speak, beside <strong>MEETING</strong>, on blue. Each loops
+      for as long as the mode lasts, and the bar plays it itself, so it keeps moving
+      when the computer is busy.</p>
       <h4>Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p>Per app, choose one of three:</p>
@@ -1340,8 +1342,7 @@
       Which folder each mode plays is <code>FRONT_ANIMATIONS</code> in
       <code>shared/render-constants.ts</code>. A name with no folder behind it fails only as a
       log warning and an empty panel, so <code>animation-assets.test.ts</code> checks every
-      entry against the repository. Lunch and Away are studio scenes; Meeting is
-      still the firmware&#39;s set.</li>
+      entry against the repository. All three are studio scenes.</li>
       <li><strong>The server half</strong> (<code>server/api.ts</code>) runs inside the Vite dev server. It
       writes scene files and exports, and plays a scene on the bar under the
       application name <code>sprintticker_studio</code>, at priority 100 with an element
@@ -1351,7 +1352,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 805 tests across 54 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 806 tests across 54 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

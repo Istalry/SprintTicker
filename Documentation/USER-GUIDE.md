@@ -110,10 +110,12 @@ Working hours, and the three scheduled events:
 Both prompts can be confirmed or dismissed **from the bar itself** — see the
 hardware controls below.
 
-During Lunch the bar shows a sandwich building itself beside **LUNCH**; in Away
-mode, a steaming coffee beside **AWAY**. Both loop for as long as the mode
-lasts, and the bar plays them itself, so they keep moving when the computer
-is busy.
+During Lunch the bar shows a sandwich building itself beside **LUNCH**, on
+teal. In Away mode it shows a steaming coffee beside **AWAY**, on purple. At the
+stand-up prompt, and while you track a stand-up task, it shows three people
+round a table taking turns to speak, beside **MEETING**, on blue. Each loops
+for as long as the mode lasts, and the bar plays it itself, so it keeps moving
+when the computer is busy.
 
 ### Notifications
 

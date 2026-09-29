@@ -1,0 +1,956 @@
+{
+  "version": 1,
+  "id": "meeting_table_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 240,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#22538A",
+      "colorB": "#173D69",
+      "direction": "vertical",
+      "outline": "#5596DA",
+      "outlineBottom": "#285689",
+      "highlight": "#2E639B",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "spot-0",
+      "name": "Spotlight 1",
+      "visible": true,
+      "type": "glow",
+      "x": 5,
+      "y": 7,
+      "radiusX": 6,
+      "radiusY": 7,
+      "color": "#9CC8FF",
+      "strength": 0.28,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 2,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 12,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 58,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 72,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "spot-1",
+      "name": "Spotlight 2",
+      "visible": true,
+      "type": "glow",
+      "x": 11,
+      "y": 7,
+      "radiusX": 6,
+      "radiusY": 7,
+      "color": "#9CC8FF",
+      "strength": 0.28,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 82,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 92,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 138,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 152,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "spot-2",
+      "name": "Spotlight 3",
+      "visible": true,
+      "type": "glow",
+      "x": 17,
+      "y": 7,
+      "radiusX": 6,
+      "radiusY": 7,
+      "color": "#9CC8FF",
+      "strength": 0.28,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 162,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 172,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 218,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 232,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "person-0",
+      "name": "Person 1",
+      "visible": true,
+      "type": "sprite",
+      "x": 2,
+      "y": 4,
+      "loopFrom": 0,
+      "anchorX": 3,
+      "anchorY": 8,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 6,
+        "height": 8,
+        "palette": {
+          "H": "#3B2414",
+          "s": "#F1C27D",
+          "c": "#E0533D"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "......",
+              ".HHHH.",
+              ".Hsss.",
+              ".ssss.",
+              ".ssss.",
+              "cccccc",
+              "cccccc",
+              "cccccc"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 12,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 16,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 21,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 26,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 30,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 35,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 40,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 44,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 49,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 4.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "person-1",
+      "name": "Person 2",
+      "visible": true,
+      "type": "sprite",
+      "x": 8,
+      "y": 4,
+      "loopFrom": 0,
+      "anchorX": 3,
+      "anchorY": 8,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 6,
+        "height": 8,
+        "palette": {
+          "H": "#E8C15A",
+          "s": "#FFD9B3",
+          "c": "#3DB37A"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "......",
+              ".HHHH.",
+              "HssssH",
+              "HssssH",
+              "HssssH",
+              "cccccc",
+              "cccccc",
+              "cccccc"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 92,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 96,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 101,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 106,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 110,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 115,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 120,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 124,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 129,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 4.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "person-2",
+      "name": "Person 3",
+      "visible": true,
+      "type": "sprite",
+      "x": 14,
+      "y": 4,
+      "loopFrom": 0,
+      "anchorX": 3,
+      "anchorY": 8,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 6,
+        "height": 8,
+        "palette": {
+          "H": "#1A1210",
+          "s": "#9C6B43",
+          "c": "#F2A33A"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              ".HHHH.",
+              "HHHHHH",
+              "HssssH",
+              ".ssss.",
+              ".ssss.",
+              "cccccc",
+              "cccccc",
+              "cccccc"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 172,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 176,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 181,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 186,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 190,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 195,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 200,
+            "value": 4.0,
+            "ease": "out"
+          },
+          {
+            "frame": 204,
+            "value": 3.0,
+            "ease": "in"
+          },
+          {
+            "frame": 209,
+            "value": 4.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 4.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "visible": true,
+      "type": "sprite",
+      "x": 2,
+      "y": 11,
+      "loopFrom": 0,
+      "anchorX": 9.0,
+      "anchorY": 4,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 18,
+        "height": 4,
+        "palette": {
+          "t": "#C8925A",
+          "T": "#8A5A32",
+          "L": "#5E3B20"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "tttttttttttttttttt",
+              "TTTTTTTTTTTTTTTTTT",
+              ".LL............LL.",
+              ".LL............LL."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "bubble-0",
+      "name": "Bubble 1",
+      "visible": true,
+      "type": "sprite",
+      "x": 2,
+      "y": 1,
+      "loopFrom": 0,
+      "anchorX": 2.5,
+      "anchorY": 4,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 7,
+        "height": 4,
+        "palette": {
+          "w": "#F4F7FF",
+          "d": "#9AA6C4",
+          "k": "#1B2A4A"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wkwdwdw",
+              ".wwwww.",
+              "..w...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wdwkwdw",
+              ".wwwww.",
+              "..w...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wdwdwkw",
+              ".wwwww.",
+              "..w...."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 4,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 5,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 68,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 0,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 4,
+            "value": 0.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 14,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 68,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.2,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 0,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 4,
+            "value": 0.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 14,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 68,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.2,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bubble-1",
+      "name": "Bubble 2",
+      "visible": true,
+      "type": "sprite",
+      "x": 8,
+      "y": 1,
+      "loopFrom": 0,
+      "anchorX": 2.5,
+      "anchorY": 4,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 7,
+        "height": 4,
+        "palette": {
+          "w": "#F4F7FF",
+          "d": "#9AA6C4",
+          "k": "#1B2A4A"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wkwdwdw",
+              ".wwwww.",
+              "..w...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wdwkwdw",
+              ".wwwww.",
+              "..w...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wdwdwkw",
+              ".wwwww.",
+              "..w...."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 84,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 85,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 140,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 148,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 0,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 84,
+            "value": 0.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 94,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 140,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 148,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.2,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 0,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 84,
+            "value": 0.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 94,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 140,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 148,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.2,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bubble-2",
+      "name": "Bubble 3",
+      "visible": true,
+      "type": "sprite",
+      "x": 14,
+      "y": 1,
+      "loopFrom": 0,
+      "anchorX": 2.5,
+      "anchorY": 4,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 7,
+        "height": 4,
+        "palette": {
+          "w": "#F4F7FF",
+          "d": "#9AA6C4",
+          "k": "#1B2A4A"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wkwdwdw",
+              ".wwwww.",
+              "..w...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wdwkwdw",
+              ".wwwww.",
+              "..w...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".wwwww.",
+              "wdwdwkw",
+              ".wwwww.",
+              "..w...."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 164,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 165,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 220,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 228,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 0,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 164,
+            "value": 0.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 174,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 220,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 228,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.2,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 0,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 164,
+            "value": 0.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 174,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 220,
+            "value": 1.0,
+            "ease": "in"
+          },
+          {
+            "frame": 228,
+            "value": 0.2,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 0.2,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "MEETING",
+      "font": "bold-9",
+      "color": "#F0F7FF",
+      "x": 24,
+      "y": 4,
+      "width": 46,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#0A1D36",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

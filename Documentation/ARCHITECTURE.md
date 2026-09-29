@@ -372,8 +372,7 @@ scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.jso
   Which folder each mode plays is `FRONT_ANIMATIONS` in
   `shared/render-constants.ts`. A name with no folder behind it fails only as a
   log warning and an empty panel, so `animation-assets.test.ts` checks every
-  entry against the repository. Lunch and Away are studio scenes; Meeting is
-  still the firmware's set.
+  entry against the repository. All three are studio scenes.
 - **The server half** (`server/api.ts`) runs inside the Vite dev server. It
   writes scene files and exports, and plays a scene on the bar under the
   application name `sprintticker_studio`, at priority 100 with an element
@@ -386,7 +385,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 805 tests across 54 files. `coverage.include` is `src/main/**` and
+Vitest, 806 tests across 54 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

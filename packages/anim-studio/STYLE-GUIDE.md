@@ -64,6 +64,18 @@ corners   radius ≈ 2, anti-aliased: the corner pixel is a partial blend, not a
 The plate is dark enough that the icon and text do the lighting: mean panel
 luminance is 80–130 out of 255.
 
+**Ours: one plate colour per animation.** The colour says which mode the bar
+is in before the icon or the word is read, so no two of our animations share
+a hue. Taken so far:
+
+| Animation | Plate | Fill (top → bottom) |
+| :--- | :--- | :--- |
+| Lunch | teal | `#193A40` → `#10272C` |
+| Away | purple | `#381A50` → `#241036`, matching the Away LED |
+| Meeting | blue | `#22538A` → `#173D69`, lighter than the others |
+
+Pick a free hue for a new one, and add it here.
+
 ## 4. Text
 
 - **Flat colour, no anti-aliasing, 2 px strokes.** Legibility first.

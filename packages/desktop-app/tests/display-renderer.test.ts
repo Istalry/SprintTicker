@@ -150,6 +150,16 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(play).toHaveBeenCalledWith('away_coffee_72x16', expect.objectContaining({ loop: true }));
     });
 
+    it('RenderCeremonyPrompt_Standup_PlaysOurMeetingAnimation', () => {
+      const play = vi
+        .spyOn((renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer, 'play')
+        .mockResolvedValue(undefined);
+
+      renderer.renderCeremonyPrompt('STANDUP', 'Daily standup');
+
+      expect(play).toHaveBeenCalledWith('meeting_table_72x16', expect.objectContaining({ loop: true }));
+    });
+
     it('RenderCeremonyPrompt_EODType_DispatchesCeremonyPromptPayload', () => {
       const payload = renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
       expect(payload.ledColorHex).toBe('#A855F7FF');

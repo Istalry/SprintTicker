@@ -148,13 +148,15 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
-- **Lunch and Away play our own animations.** Lunch is a sandwich stacking
-  itself layer by layer; Away is a steaming coffee. They replace the firmware's
-  salad and "back soon" frame sets, which stay in the repository until they
-  are removed on their own. Both were drawn in the animation studio in the
-  official animations' style, 60 fps with smooth, anti-aliased motion, and
-  both play on the device from a `.anim` with PNG streaming as the fallback, as
-  before. A new test fails if an animation the app names has no folder behind
+- **Lunch, Away and the stand-up play our own animations.** Lunch is a
+  sandwich stacking itself layer by layer; Away is a steaming coffee; the
+  stand-up is three people round a table, speaking in turn under speech
+  bubbles. Each has its own plate colour -- teal, purple, blue -- so the mode
+  reads at a glance. They replace the firmware's salad, "back soon" and
+  meeting frame sets, which stay in the repository until they are removed on
+  their own. All three were drawn in the animation studio in the official
+  animations' style, 60 fps with smooth, anti-aliased motion, and play on the
+  device from a `.anim` with PNG streaming as the fallback, as before. A new test fails if an animation the app names has no folder behind
   it, which would otherwise show as an empty panel and a log warning.
 - **The front display's text is set in our own fonts.** Row 1 used a
   fixed-width 3×5 font with 40 characters, so `( ) , ' " # + @ & =` and the rest

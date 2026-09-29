@@ -18,13 +18,13 @@
  * log and an empty panel -- so `animation-assets.test.ts` checks every entry
  * here against the repository.
  *
- * Lunch and Away are our own, drawn in `packages/anim-studio/scenes/`. Meeting
- * is still the firmware's frame set until ours replaces it.
+ * All three are our own, drawn in `packages/anim-studio/scenes/`. Each has its
+ * own plate colour -- teal, purple, blue -- so the mode reads at a glance.
  */
 export const FRONT_ANIMATIONS = {
   LUNCH: 'lunch_sandwich_72x16',
   AWAY: 'away_coffee_72x16',
-  MEETING: 'meeting_72x16',
+  MEETING: 'meeting_table_72x16',
 } as const;
 
 export const DISPLAY_CONSTANTS = {

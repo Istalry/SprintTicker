@@ -582,11 +582,20 @@ looping idle animations.
      folder exists with its frames and `.anim`. The playback paths are
      unchanged: the device plays the `.anim`, and PNG streaming takes over if
      it refuses the file.
-   - [ ] A meeting / stand-up animation of our own.
+   - [x] **Meeting is ours too** (2026-09-29). Three people behind a table
+     speak in turn: the speaker nods, a soft spotlight comes up on them, and a
+     speech bubble with a typing indicator pops above their head, then a rest
+     before the next. It plays for the stand-up prompt and while tracking a
+     stand-up task. Chosen with the user over three speech bubbles, which was
+     the fallback if the table did not fit beside the 46 px title; it does, in
+     18 px. At the same time Away moved to a purple plate and Meeting to a
+     lighter blue, so each of the three has its own colour and reads at a
+     glance: teal, purple, blue.
    - [ ] Animated 16×16 icons for notifications and events, as `animation`
      elements beside the text image.
    - [ ] Remove the three Flipper frame sets and their CC-BY-SA notice, in its
-     own commit, once ours have run in the app on the bar.
+     own commit, once ours have run in the app on the bar. Lunch and Away have
+     (2026-09-29); Meeting is waiting on its run.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
@@ -771,7 +780,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.27 statements / 75.13 branches / 85.4 functions / 86.69 lines across 805
+**84.27 statements / 75.13 branches / 85.4 functions / 86.69 lines across 806
 tests in 54 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
