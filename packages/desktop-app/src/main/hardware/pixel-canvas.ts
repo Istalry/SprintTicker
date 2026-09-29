@@ -1,17 +1,13 @@
-import { FONT_3X5 } from '../../shared/pixel-fonts';
-import { BUSY_FONT_ASCENT } from '../../shared/busy-font';
+import { PixelFont, ROW0_FONT, ROW1_FONT } from '../../shared/fonts/pixel-font';
 import { glyphFor, measureText, fitToWidth } from '../../shared/proportional-text';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
-import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
-import { capacityFor } from '../../shared/text-capacity';
 
-const { ROW1: ROW1_FONT } = DISPLAY_CONSTANTS.FONT_METRICS;
 /**
  * PixelCanvas — a 72×16 software pixel canvas for the BUSY Bar front display.
  *
- * Provides methods to draw icons, text (the BUSY Bar's own proportional font on
- * row 0, a compact fixed-width 3×5 font on row 1), rectangles, and other
- * primitives into a (string|null)[][] buffer.
+ * Provides methods to draw icons, text (Sprint 5 on row 0, the condensed Sprint
+ * Small on row 1, both proportional), rectangles, and other primitives into a
+ * (string|null)[][] buffer.
  *
  * Coordinate system: x = 0..71 (left→right), y = 0..15 (top→bottom).
  */
@@ -95,42 +91,32 @@ export class PixelCanvas {
   }
 
   /**
-   * Renders text in the BUSY Bar's own font, proportionally spaced.
+   * Renders text proportionally in `font`, and returns the pen position after it.
    *
    * `y` is the top of the line, not the baseline, so callers keep using the
-   * same row offsets they always did. The baseline sits `BUSY_FONT_ASCENT` rows
-   * below it, and a glyph's `ofsY` is measured up from there -- negative for a
-   * descender, which is what puts the tail of a `j` below the other letters.
-   *
-   * This replaced a hand-rolled "4×6" font whose glyphs were, with two
-   * exceptions, only 3px wide inside a 4px cell. Drawn at a 5px stride that
-   * left two blank columns between every character, and dense glyphs had no
-   * room to read: `#` came out as an unrecognisable blob. See ROADMAP.md.
+   * same row offsets they always did. Every glyph is stored at the full height
+   * of its font, so a descender is simply ink in the rows below the ascent.
    */
-  public drawText(text: string, x: number, y: number, color: string): number {
+  public drawText(text: string, x: number, y: number, color: string, font: PixelFont = ROW0_FONT): number {
     let pen = x;
     for (const char of text) {
-      const glyph = glyphFor(char);
-      for (let row = 0; row < glyph.boxH; row++) {
+      const glyph = glyphFor(char, font);
+      for (let row = 0; row < glyph.rows.length; row++) {
         const bits = glyph.rows[row];
-        for (let col = 0; col < glyph.boxW; col++) {
-          if (bits & (1 << (glyph.boxW - 1 - col))) {
-            this.setPixel(
-              pen + glyph.ofsX + col,
-              y + BUSY_FONT_ASCENT - glyph.ofsY - glyph.boxH + row,
-              color
-            );
+        for (let col = 0; col < glyph.width; col++) {
+          if (bits & (1 << (glyph.width - 1 - col))) {
+            this.setPixel(pen + col, y + row, color);
           }
         }
       }
-      pen += glyph.advance;
+      pen += glyph.width + font.letterSpacing;
     }
     return pen;
   }
 
   /** Measures the pixel width a string would occupy with drawText. */
-  public measureText(text: string): number {
-    return measureText(text);
+  public measureText(text: string, font: PixelFont = ROW0_FONT): number {
+    return measureText(text, font);
   }
 
   /**
@@ -148,45 +134,27 @@ export class PixelCanvas {
    * fitted. Callers that sanitise and measure themselves, such as the
    * notification composer, are unaffected: this pass is idempotent.
    */
-  public drawTextClipped(text: string, x: number, y: number, color: string, maxWidth: number): void {
+  public drawTextClipped(
+    text: string,
+    x: number,
+    y: number,
+    color: string,
+    maxWidth: number,
+    font: PixelFont = ROW0_FONT
+  ): void {
     if (maxWidth <= 0) return;
-    this.drawText(fitToWidth(sanitizeAsciiText(text), maxWidth), x, y, color);
-  }
-
-  /** Draws a 7px-tall text row. */
-  public drawRow0Text(text: string, x: number, y: number, color: string, maxWidth: number): void {
-    this.drawTextClipped(text, x, y, color, maxWidth);
+    this.drawText(fitToWidth(sanitizeAsciiText(text), maxWidth, font), x, y, color, font);
   }
 
   /**
-   * Draws small text using the 3×5 font with full uppercase and lowercase support.
-   * Stride = 4px (3px glyph + 1px gap).
+   * Draws row-1 text: the condensed font, truncated with an ellipsis.
+   *
+   * This used to be a fixed-width 3x5 font cut at a character count with no
+   * marker, and 55 of the 95 printable characters were missing from it --
+   * `(`, `,`, `'`, `#` and the rest drew as `?`. It now goes through exactly
+   * the same measuring and truncation as row 0, in the row-1 font.
    */
   public drawSmallText(text: string, x: number, y: number, color: string, maxWidth: number): void {
-    let cx = x;
-    const maxChars = capacityFor(maxWidth, ROW1_FONT.STRIDE_X);
-    if (maxChars <= 0) return;
-    // Sanitised before the capacity cut, for the reason given on
-    // drawTextClipped: transliteration changes the character count.
-    const safe = sanitizeAsciiText(text);
-    const clipped = safe.length > maxChars ? safe.substring(0, maxChars) : safe;
-
-    for (const char of clipped) {
-      // Fallback: exact match -> uppercase match -> question mark
-      const glyph = FONT_3X5[char] ?? FONT_3X5[char.toUpperCase()] ?? FONT_3X5['?'];
-      for (let row = 0; row < glyph.length; row++) {
-        const bits = glyph[row];
-        for (let col = 0; col < 3; col++) {
-          if (bits & (0b100 >> col)) {
-            this.setPixel(cx + col, y + row, color);
-          }
-        }
-      }
-      cx += ROW1_FONT.STRIDE_X;
-    }
+    this.drawTextClipped(text, x, y, color, maxWidth, ROW1_FONT);
   }
 }
-
-// Re-exported for existing main-process importers; the definition now lives in
-// src/shared/pixel-fonts.ts so the renderer can use it without importing main.
-export { FONT_3X5 };

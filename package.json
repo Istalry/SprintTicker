@@ -24,7 +24,10 @@
     "probe:busybar": "node scripts/busybar-probe.js",
     "verify:unity": "node scripts/verify-unity-plugin.js",
     "docs:build": "node scripts/build-docs.js",
-    "docs:check": "node scripts/build-docs.js --check"
+    "docs:check": "node scripts/build-docs.js --check",
+    "fonts:build": "node tools/glyphs-to-ts.js",
+    "fonts:check": "node tools/glyphs-to-ts.js --check",
+    "fonts:preview": "node tools/glyphs-to-ts.js --preview"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -190,9 +190,12 @@ replied. **Reset to USB default** puts the address back to `10.0.4.20`.
 
 ### What it shows
 
-A 72×16 RGB matrix: a 16px icon on the left, then two rows of text. Row 0 is the
-firmware's own proportional font (roughly 14 characters of mixed case in the
-55px field); row 1 is a fixed 3×5 font.
+A 72×16 RGB matrix: a 16px icon on the left, then two rows of text, both in
+proportional fonts drawn for SprintTicker. Row 0 holds roughly twelve characters
+of mixed case in its 55px field. Row 1 uses a narrower face and holds about
+fourteen.
+Text that does not fit ends in `…`. Accented letters are shown without their
+accents, since the display draws plain ASCII only.
 
 > [!NOTE]
 > **Why the timer shows HH:MM**

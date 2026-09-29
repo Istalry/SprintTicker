@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   composeNotificationBanner,
-  fitToCapacity,
+  HIDDEN_BODY_TEXT,
   ROW0_WIDTH_PX,
-  ROW1_CAPACITY
+  ROW1_WIDTH_PX
 } from '../src/shared/notification-text';
 import { measureText } from '../src/shared/proportional-text';
-import { capacityFor } from '../src/shared/text-capacity';
+import { ROW0_FONT, ROW1_FONT } from '../src/shared/fonts/pixel-font';
 import { PixelCanvas } from '../src/main/hardware/pixel-canvas';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 
@@ -19,8 +19,9 @@ import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
  * characters were spent on a word the app icon beside them already said, and
  * the message itself never reached the display.
  *
- * These tests exist to keep the character budget honest: at eleven characters
- * an off-by-one is the difference between a readable word and a truncated one.
+ * These tests exist to keep the budget honest: at this size an off-by-one is
+ * the difference between a readable word and a truncated one. Both rows are
+ * budgeted in pixels now, in the font each is drawn in.
  */
 describe('composeNotificationBanner', () => {
   const FIELD = DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_FIELD_WIDTH;
@@ -86,7 +87,7 @@ describe('composeNotificationBanner', () => {
 
     // Measured, not counted: row 0 is proportional, so the same character
     // count can be 9px or 30px wide depending on the letters.
-    expect(measureText(text.row0)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
+    expect(measureText(text.row0, ROW0_FONT)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
     expect(text.row0.endsWith(MARKER)).toBe(true);
     expect(text.row0).not.toContain(' ' + MARKER);
   });
@@ -100,7 +101,7 @@ describe('composeNotificationBanner', () => {
       iconIdentifiesApp: true
     });
 
-    expect(measureText(text.row0)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
+    expect(measureText(text.row0, ROW0_FONT)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
     expect(text.row1).toBe('a midi');
     const withoutMarker = (text.row0 + text.row1).split(MARKER).join('');
     expect(/^[\x20-\x7E]*$/.test(withoutMarker)).toBe(true);
@@ -123,7 +124,7 @@ describe('composeNotificationBanner', () => {
     const text = composeNotificationBanner({ iconIdentifiesApp: true });
 
     expect(text.row0.length).toBeGreaterThan(0);
-    expect(measureText(text.row0)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
+    expect(measureText(text.row0, ROW0_FONT)).toBeLessThanOrEqual(ROW0_WIDTH_PX);
     expect(text.row0).not.toContain(MARKER);
   });
 
@@ -144,7 +145,8 @@ describe('composeNotificationBanner', () => {
     });
 
     expect(text.fullText).toContain('the deployment finished successfully');
-    expect(text.row1.length).toBe(ROW1_CAPACITY);
+    expect(text.row1.endsWith(MARKER)).toBe(true);
+    expect(measureText(text.row1, ROW1_FONT)).toBeLessThanOrEqual(ROW1_WIDTH_PX);
   });
 
   describe('capacity agreement with the canvas', () => {
@@ -184,18 +186,6 @@ describe('composeNotificationBanner', () => {
   });
 });
 
-describe('capacityFor', () => {
-  it('CapacityFor_FieldOfFiftyFivePixelsAtStrideFour_FitsFourteenGlyphs', () => {
-    // The last glyph occupies x=69..71 and only its trailing gap falls off the
-    // field, which is free. floor(55/4) claims thirteen and wastes a character.
-    expect(capacityFor(55, 4)).toBe(14);
-  });
-
-  it('CapacityFor_NonPositiveStride_ReturnsZeroRatherThanDividingByIt', () => {
-    expect(capacityFor(55, 0)).toBe(0);
-  });
-});
-
 describe('hidden message bodies', () => {
   // The bar sits on a desk in view of whoever walks past, so for a chat app
   // the body is the one part that should not be readable across a room.
@@ -224,7 +214,7 @@ describe('hidden message bodies', () => {
 
     expect(text.row1).not.toContain(SECRET);
     expect(text.row1.length).toBeGreaterThan(0);
-    expect(text.row1.length).toBeLessThanOrEqual(ROW1_CAPACITY);
+    expect(text.row1).toBe(HIDDEN_BODY_TEXT);
     // A placeholder that was itself truncated would read as a cut-off message.
     expect(text.row1).not.toContain('…');
   });
@@ -270,19 +260,3 @@ describe('hidden message bodies', () => {
     expect(text.row1).toBe('ship it');
   });
   });
-
-describe('fitToCapacity', () => {
-  it('FitToCapacity_TextShorterThanCapacity_ReturnsItUnchanged', () => {
-    expect(fitToCapacity('short', 11)).toBe('short');
-  });
-
-  it('FitToCapacity_TextLongerThanCapacity_ResultIsExactlyCapacity', () => {
-    // Exactly capacity, not capacity+1: the marker replaces a character rather
-    // than being appended past the field.
-    expect(fitToCapacity('abcdefghijklmnop', 11)).toHaveLength(11);
-  });
-
-  it('FitToCapacity_ZeroCapacity_ReturnsEmpty', () => {
-    expect(fitToCapacity('anything', 0)).toBe('');
-  });
-});

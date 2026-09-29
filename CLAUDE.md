@@ -31,6 +31,9 @@ pnpm typecheck        # main and renderer tsconfigs, separately
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
 pnpm package:win      # electron-builder, unsigned
 pnpm editor           # pixel editor for 16x16 bitmaps
+pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/fonts/
+pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
+pnpm fonts:preview "text"   # print text in every font, in the terminal
 ```
 
 **The better-sqlite3 ABI trap.** The native module must be built for whichever
@@ -241,20 +244,33 @@ and the timer deliberately shows `HH:MM` rather than seconds for this reason.
 The rear 160×80 OLED is **preview only** in this build. `buildRearElements` feeds
 the on-screen emulator; `transmitFrame` sends the front matrix and nothing else.
 
-**Row 0 text is proportional, so there is no character capacity.** It is set in
-the firmware's own font, generated into `shared/busy-font.ts` by
-`tools/lvgl-font-to-ts.js` — do not hand-edit either. `i` advances 2px and `#`
-advances 6, so anything asking "does this fit" must call `measureText` /
-`fitToWidth` in `shared/proportional-text.ts`. Both the text composer and
-`PixelCanvas` use those, deliberately: a one-character disagreement between them
+**Both text rows are proportional, so neither has a character capacity.** Row 0
+is set in Sprint 5, row 1 in the condensed Sprint Small. Both are our own fonts,
+drawn as ASCII art in `packages/desktop-app/fonts/*.glyphs`. The generator
+`tools/glyphs-to-ts.js` compiles them into `shared/fonts/sprint-*.ts`.
+- **Edit the sheet, never the generated file**, then run `pnpm fonts:build`.
+  `fonts:check` fails CI when the two disagree.
+- **The generator refuses a sheet** that is missing a printable ASCII character,
+  that draws two characters identically, or that leaves a blank edge column.
+  Those rules are the fixes for what the previous row-1 font got wrong: 55
+  missing characters that drew as `?`, and `g` identical to `q`.
+
+`i` advances 2px and `M` advances 6, so anything asking "does this fit" must call
+`measureText` / `fitToWidth` in `shared/proportional-text.ts`, **with the font
+the text will be drawn in**. The font is a required argument for that reason.
+The composer and `PixelCanvas` both take it from `ROW0_FONT` / `ROW1_FONT` in
+`shared/fonts/pixel-font.ts`. A one-character disagreement between them
 truncates every row twice, and the second cut lands mid-word with no marker.
 
-Row 1 is still the fixed-width 3×5 font, which is fine because it genuinely is
-fixed-width. The old row-0 "4×6" font was not — 82 of its 96 glyphs were 3px of
-ink in a 4px cell — and it is deleted, not kept as a fallback.
+Constraints a new glyph must keep:
+- Digits share one width, so a running timer does not shift.
+- Row 1's capitals stay within the ascent: the paused screen draws STOP and
+  FINISH inside 7px highlight bars.
+- Row 0's descenders end above y=8, where row 1 starts.
 
-`busy-font.ts` is **OFL-1.1**, not MIT. It is the one file in the package under a
-different licence; the notice in `LICENSE` has to travel with it.
+The tests pin all three. `pnpm probe:busybar --font-sheet` shows every glyph on
+a real bar, because legibility on the LEDs is not something a unit test can
+judge.
 
 ## 5. Priority and notifications
 

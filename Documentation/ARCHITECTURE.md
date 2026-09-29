@@ -191,7 +191,7 @@ do not interrupt a break: not a special case in the code, a row in the table.
 DisplayRenderer      decides what a screen looks like
       │
 PixelCanvas          draws it into a 72×16 pixel buffer
-      │              (proportional font row 0, fixed 3×5 row 1)
+      │              (Sprint 5 on row 0, Sprint Small on row 1)
 pixel-matrix-to-png  encodes the buffer as a PNG
       │
 BusyBarDriver        uploads the asset, then draws it — two HTTP requests
@@ -206,13 +206,21 @@ The standard front layout is a 16px icon at `x=0..15`, a one-pixel gutter, then
 two text rows at `x=17` in a 55px field.
 
 > [!WARNING]
-> **Row 0 has no character capacity**
+> **Neither text row has a character capacity**
 >
-> It is set in the firmware's own proportional font, so `measureText` and
-> `fitToWidth` in `shared/proportional-text.ts` are the only correct way to ask
-> whether something fits. Both the composer and the canvas must use them: a
-> one-character disagreement truncates a row twice, and the second cut lands
-> mid-word with no marker.
+> Both rows are set in proportional fonts drawn for this project: Sprint 5 on
+> row 0 and the condensed Sprint Small on row 1. `measureText` and `fitToWidth`
+> in `shared/proportional-text.ts` are the only correct way to ask whether
+> something fits, and they take the font as an argument. The composer and the
+> canvas both get it from `ROW0_FONT` / `ROW1_FONT`. A one-character
+> disagreement truncates a row twice, and the second cut lands mid-word with no
+> marker.
+
+The fonts are drawn as ASCII art in `packages/desktop-app/fonts/*.glyphs`, one
+block per character. `tools/glyphs-to-ts.js` compiles them into
+`shared/fonts/sprint-*.ts`, and `pnpm fonts:check` fails CI if the two drift. The
+generator refuses a sheet that is missing any printable ASCII character, draws
+two characters identically, or leaves a blank column at a glyph's edge.
 
 The rear 160×80 OLED is **preview only**: `buildRearElements` feeds the on-screen
 emulator, and `transmitFrame` sends the front matrix and nothing else.
@@ -339,7 +347,7 @@ modifies neither your scenes nor your project code.
 
 ## 7. Testing
 
-Vitest, 781 tests across 53 files. `coverage.include` is `src/main/**` and
+Vitest, 791 tests across 53 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

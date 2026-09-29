@@ -52,6 +52,12 @@ jobs:
       - name: Documentation is up to date
         run: pnpm docs:check
 
+      # The same arrangement for the pixel fonts: the glyph sheets are the
+      # source, the TypeScript tables are generated from them, and a sheet
+      # edited without regenerating would ship the old letters.
+      - name: Generated fonts are up to date
+        run: pnpm fonts:check
+
   # Windows, because that is the only platform this app targets: the
   # notification listener drives PowerShell and several code paths are gated on
   # process.platform === 'win32'. Running these on ubuntu would measure a

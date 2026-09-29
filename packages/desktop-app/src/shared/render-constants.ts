@@ -36,27 +36,9 @@ export const DISPLAY_CONSTANTS = {
     ROW0_Y: 0,
     ROW1_Y: 8,
     TEXT_FIELD_WIDTH: 55,
-  },
-
-  /**
-   * Glyph metrics for the fixed-width font.
-   *
-   * Only row 1 is here. Row 0 is set in the BUSY Bar's own proportional font,
-   * which has no single stride -- its metrics are per-glyph in `busy-font.ts`
-   * and its arithmetic is in `proportional-text.ts`.
-   *
-   * Shared because two places need the same arithmetic: the notification text
-   * composer decides how many characters fit a field *before* truncating, and
-   * PixelCanvas lays those characters out. A private copy of 4 in each is how a
-   * row gets truncated twice -- once to the composer's idea of the capacity and
-   * again to the canvas's -- and the second cut lands mid-word with no marker.
-   *
-   * A glyph's stride includes its trailing gap, but the last glyph on a row
-   * does not need that gap: it may hang off the end of the field. Capacity is
-   * therefore floor((fieldWidth + 1) / stride), not floor(fieldWidth / stride).
-   */
-  FONT_METRICS: {
-    /** 3x5 font, used for row 1: 3px glyph + 1px gap. */
-    ROW1: { GLYPH_WIDTH: 3, STRIDE_X: 4, ROWS: 5 }
   }
+
+  // No font metrics here. Both rows are proportional, so there is no stride to
+  // share: the fonts and their per-glyph widths are in `fonts/`, and the
+  // arithmetic is in `proportional-text.ts`.
 } as const;

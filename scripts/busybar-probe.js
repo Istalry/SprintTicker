@@ -35,6 +35,9 @@ const path = require('path');
  * and a status code cannot answer those. A 200 says the device accepted a
  * countdown element; only the pixels say whether it fits beside a 16px icon.
  * Pass `--out <dir>` to choose where they land (default: a temp directory).
+ *
+ * `--font-sheet` also shows every glyph of both front-panel fonts, a page at a
+ * time, for a person to judge on the LEDs -- see `probeFontSheet`.
  */
 
 const IP = process.env.BUSYBAR_IP || '10.0.4.20';
@@ -702,6 +705,94 @@ async function probeAnimation() {
   }
 }
 
+/**
+ * Shows every glyph of both front-panel fonts on the bar, and checks the panel
+ * shows exactly the pixels that were sent.
+ *
+ * Opt-in (`--font-sheet`), because its real purpose is a human looking at the
+ * LEDs: whether a letter is legible at arm's length is not something a
+ * readback can judge. Each page is held for `FONT_SHEET_HOLD_MS` for that
+ * reason. The readback is still worth doing -- it catches the canvas and the
+ * device disagreeing about which pixels are lit, which would make any verdict
+ * about the letterforms meaningless.
+ *
+ * Reads the glyph sheets directly through the same parser the generator uses,
+ * so it shows what the sheets say, not a copy of them.
+ */
+const FONT_SHEET_HOLD_MS = 3000;
+
+async function probeFontSheet() {
+  const { loadFont, renderText, FONTS, REQUIRED_CHARS } = require('../tools/glyphs-to-ts.js');
+
+  for (const { sheet } of FONTS) {
+    const font = loadFont(sheet);
+    const height = font.ascent + font.descent;
+
+    // Pack the characters into lines that fit the panel, two lines per page.
+    const lines = [];
+    let current = '';
+    for (const char of REQUIRED_CHARS) {
+      const candidate = current + char;
+      if (renderText(font, candidate)[0].length > FRONT_WIDTH && current) {
+        lines.push(current);
+        current = char;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) lines.push(current);
+
+    let exact = 0;
+    const pages = Math.ceil(lines.length / 2);
+    for (let page = 0; page < pages; page++) {
+      const rgba = Buffer.alloc(FRONT_WIDTH * FRONT_HEIGHT * 4);
+      for (let i = 0; i < FRONT_WIDTH * FRONT_HEIGHT; i++) rgba[i * 4 + 3] = 0xff;
+      const expected = new Set();
+      [lines[page * 2], lines[page * 2 + 1]].forEach((text, row) => {
+        if (!text) return;
+        const top = row * (height + 1);
+        renderText(font, text).forEach((bits, dy) => {
+          for (let x = 0; x < Math.min(bits.length, FRONT_WIDTH); x++) {
+            if (bits[x] !== '#' || top + dy >= FRONT_HEIGHT) continue;
+            const p = ((top + dy) * FRONT_WIDTH + x) * 4;
+            rgba[p] = rgba[p + 1] = rgba[p + 2] = 0xff;
+            expected.add(`${x},${top + dy}`);
+          }
+        });
+      });
+
+      const label = `font-${sheet}-${page + 1}`;
+      const file = `${label}.png`;
+      const png = encodePng(FRONT_WIDTH, FRONT_HEIGHT, rgba);
+      fs.writeFileSync(path.join(OUT_DIR, `${label}-sent.png`), png);
+      await request('POST', `/api/assets/upload?application_name=${APP}&file=${file}`, {
+        body: png,
+        contentType: 'image/png'
+      });
+      await drawElements([
+        { id: 'probe_font', type: 'image', x: 0, y: 0, display: 'front', path: file, timeout: 20 }
+      ]);
+      await sleep(FONT_SHEET_HOLD_MS);
+
+      const frame = await captureScreen(`${label}-readback`);
+      let mismatches = 0;
+      for (let y = 0; y < frame.height; y++) {
+        for (let x = 0; x < frame.width; x++) {
+          const p = (y * frame.width + x) * 4;
+          const lit = frame.rgba[p] > 24 || frame.rgba[p + 1] > 24 || frame.rgba[p + 2] > 24;
+          if (lit !== expected.has(`${x},${y}`)) mismatches++;
+        }
+      }
+      if (mismatches === 0) exact++;
+      else record(`Font sheet ${font.name}, page ${page + 1}`, 'fail', `${mismatches} pixel(s) differ from what was sent`);
+    }
+    if (exact === pages) {
+      record(`Font sheet ${font.name}`, 'pass', `${pages} page(s) drawn pixel-exact; judge legibility on the LEDs`);
+    }
+    await clearProbeElements();
+  }
+}
+
 async function main() {
   console.log(`\nBUSY Bar probe -- ${IP}\n`);
   console.log('Close SprintTicker before running this, or expect 409s that only');
@@ -843,6 +934,14 @@ async function main() {
     await probeAnimation();
   } else {
     record('Animation playback', 'skip', 'display owned; re-run with the app closed');
+  }
+
+  if (process.argv.includes('--font-sheet')) {
+    if (!displayOwned) {
+      await probeFontSheet();
+    } else {
+      record('Font sheet', 'skip', 'display owned; re-run with the app closed');
+    }
   }
 
   await cleanup();

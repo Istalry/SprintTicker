@@ -525,13 +525,21 @@ looping idle animations.
 
 **Order of work, decided 2026-09-29.** Each is its own change:
 
-1. `BusyBarDriver` reports failure by throwing (below).
-2. **Our own fonts.** Row 0 is set in the firmware's font (OFL-1.1, Flipper
-   FZCO) and row 1 in a 3x5 font that has only 39 of the 95 printable ASCII
-   glyphs -- a `(`, `,`, `'` or `#` reaches the bar as `?` -- and cuts at a
-   fixed character count with no ellipsis, so mid-word. Both are replaced by
-   fonts drawn here, same size, complete, from reviewable glyph sheets through
-   a generator, with the legibility rules written down.
+1. ~~`BusyBarDriver` reports failure by throwing~~ -- done (below).
+2. ~~**Our own fonts**~~ -- done (2026-09-29). Row 0 was the firmware's font
+   (OFL-1.1, Flipper FZCO). Row 1 was a 3x5 font with 40 glyphs: `(`, `,`, `'`
+   and `#` reached the bar as `?`, `g` and `q` were identical, and it cut at a
+   fixed character count with no ellipsis, so mid-word. Both are replaced at the
+   same size by Sprint 5 and Sprint Small.
+   - Drawn as ASCII art in `packages/desktop-app/fonts/*.glyphs` and compiled
+     by `tools/glyphs-to-ts.js`.
+   - The generator refuses a missing character, a duplicate glyph or a blank
+     edge column, and `fonts:check` runs in CI.
+   - Row 1 now truncates by width with `…`, like row 0.
+   - **Not yet judged on the LEDs.** Run `pnpm probe:busybar --font-sheet` and
+     look at the bar. A glyph that reads badly is a one-line edit to its sheet.
+   - A large display face for the animation scenes belongs with the studio
+     (item 3), which is its only user, rather than here.
 3. **An animation studio as its own package.** A standalone web editor --
    deliberately outside the Electron/React stack -- that composes scenes in
    the official animations' visual language (rounded gradient plate with an
@@ -697,7 +705,9 @@ the device a timestamp.
     LFS bandwidth cap actually charges for. The objects stay in history; they
     are Flipper FZCO's own frame sets under CC-BY-SA-4.0 and can be restored
     from there or from [github.com/busy-app](https://github.com/busy-app).
-- [x] **Row 0 is set in the BUSY Bar's own font** (2026-09-08). Reported from a
+- [x] **Row 0 is set in the BUSY Bar's own font** (2026-09-08). *Superseded on
+  2026-09-29 by our own fonts (item 2 at the top of this section); kept as the
+  record of why row 0 is proportional.* Reported from a
   photograph of the bar: every character stood two blank columns from the next,
   and `#` was an unreadable blob. Both came from one cause -- the hand-rolled
   "4x6" font was really 3px of ink in a 4px cell, drawn at a 5px stride, and 82
@@ -725,7 +735,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.29 statements / 75.16 branches / 85.29 functions / 86.72 lines across 781
+**84.27 statements / 75.13 branches / 85.4 functions / 86.69 lines across 791
 tests in 53 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

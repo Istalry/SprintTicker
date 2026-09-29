@@ -302,7 +302,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 781 tests across 53 files, covering the main and shared
+`pnpm test` runs 791 tests across 53 files, covering the main and shared
 process code; the renderer is not covered. `pnpm test:coverage` enforces a
 threshold floor of 84% statements / 86.5% lines / 85% functions / 75%
 branches.
@@ -424,6 +424,11 @@ without modifying your scenes or project code.
 
 - **16×16 pixel art editor** — `pnpm editor` serves it at
   `http://localhost:39124`, for drawing and tweaking the icons the bar renders.
+- **Pixel fonts** — the two front-display fonts are drawn as ASCII art in
+  `packages/desktop-app/fonts/*.glyphs`. Edit a glyph there, run
+  `pnpm fonts:build` to regenerate `src/shared/fonts/`, and
+  `pnpm fonts:preview "some text"` to see it in the terminal.
+  `pnpm probe:busybar --font-sheet` shows every glyph on a real bar.
 - **Icon downsampler** — `node scripts/convert-icons-pixelit.js`.
 - **Fake OpenProject server** — `pnpm mock:openproject` serves an
   OpenProject-shaped API on `http://127.0.0.1:8099` that accepts any API key and
@@ -465,6 +470,7 @@ SprintTicker/
 ├── docs/                  # Generated: those three as one page (GitHub Pages)
 ├── scripts/               # Preflight, packaging and icon tooling
 ├── tools/pixel-editor/    # Standalone 16×16 editor (pnpm editor)
+├── tools/glyphs-to-ts.js  # Compiles the pixel-font glyph sheets (pnpm fonts:build)
 ├── CLAUDE.md              # Code standards, process boundaries, hardware contract
 └── ROADMAP.md             # What is planned, and what blocks it
 ```
@@ -537,12 +543,12 @@ MIT — see [LICENSE](LICENSE).
 The BUSY Bar hardware, its firmware and its official documentation are not part
 of this repository and are not covered by that license.
 
-Two exceptions are worth knowing about, both detailed in [LICENSE](LICENSE):
+One exception is worth knowing about, detailed in [LICENSE](LICENSE):
 
 - `Animations/` -- frame sets from the BUSY Bar firmware, (c) Flipper FZCO under
   **CC-BY-SA-4.0**, not MIT. Adapting them means licensing the adaptation the
   same way.
-- `packages/desktop-app/src/shared/busy-font.ts` -- the generated glyph table
-  for the front display's text, converted from the firmware's own font and
-  therefore **OFL-1.1** (c) TakWolf and Flipper FZCO. The OFL does not affect
-  the rest of the application, but that file keeps its own licence and notice.
+
+The front display's fonts are drawn for this project and are MIT like the rest.
+Earlier versions used a table converted from the firmware's own font
+(OFL-1.1); it is no longer shipped.

@@ -713,9 +713,12 @@
       <hr>
       <h3 id="guide-the-bar-itself">The bar itself</h3>
       <h4>What it shows</h4>
-      <p>A 72×16 RGB matrix: a 16px icon on the left, then two rows of text. Row 0 is the
-      firmware&#39;s own proportional font (roughly 14 characters of mixed case in the
-      55px field); row 1 is a fixed 3×5 font.</p>
+      <p>A 72×16 RGB matrix: a 16px icon on the left, then two rows of text, both in
+      proportional fonts drawn for SprintTicker. Row 0 holds roughly twelve characters
+      of mixed case in its 55px field. Row 1 uses a narrower face and holds about
+      fourteen.
+      Text that does not fit ends in <code>…</code>. Accented letters are shown without their
+      accents, since the display draws plain ASCII only.</p>
       <div class="note"><span class="label">Why the timer shows HH:MM</span>
       <p></p>
       <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
@@ -1135,7 +1138,7 @@
       <pre><code>DisplayRenderer      decides what a screen looks like
             │
       PixelCanvas          draws it into a 72×16 pixel buffer
-            │              (proportional font row 0, fixed 3×5 row 1)
+            │              (Sprint 5 on row 0, Sprint Small on row 1)
       pixel-matrix-to-png  encodes the buffer as a PNG
             │
       BusyBarDriver        uploads the asset, then draws it — two HTTP requests
@@ -1146,14 +1149,21 @@
       than seconds.</p>
       <p>The standard front layout is a 16px icon at <code>x=0..15</code>, a one-pixel gutter, then
       two text rows at <code>x=17</code> in a 55px field.</p>
-      <div class="note trap"><span class="label">Row 0 has no character capacity</span>
+      <div class="note trap"><span class="label">Neither text row has a character capacity</span>
       <p></p>
-      <p>It is set in the firmware&#39;s own proportional font, so <code>measureText</code> and
-      <code>fitToWidth</code> in <code>shared/proportional-text.ts</code> are the only correct way to ask
-      whether something fits. Both the composer and the canvas must use them: a
-      one-character disagreement truncates a row twice, and the second cut lands
-      mid-word with no marker.</p>
+      <p>Both rows are set in proportional fonts drawn for this project: Sprint 5 on
+      row 0 and the condensed Sprint Small on row 1. <code>measureText</code> and <code>fitToWidth</code>
+      in <code>shared/proportional-text.ts</code> are the only correct way to ask whether
+      something fits, and they take the font as an argument. The composer and the
+      canvas both get it from <code>ROW0_FONT</code> / <code>ROW1_FONT</code>. A one-character
+      disagreement truncates a row twice, and the second cut lands mid-word with no
+      marker.</p>
       </div>
+      <p>The fonts are drawn as ASCII art in <code>packages/desktop-app/fonts/*.glyphs</code>, one
+      block per character. <code>tools/glyphs-to-ts.js</code> compiles them into
+      <code>shared/fonts/sprint-*.ts</code>, and <code>pnpm fonts:check</code> fails CI if the two drift. The
+      generator refuses a sheet that is missing any printable ASCII character, draws
+      two characters identically, or leaves a blank column at a glyph&#39;s edge.</p>
       <p>The rear 160×80 OLED is <strong>preview only</strong>: <code>buildRearElements</code> feeds the on-screen
       emulator, and <code>transmitFrame</code> sends the front matrix and nothing else.</p>
       <div class="note trap"><span class="label">The front matrix has one owner at a time</span>
@@ -1302,7 +1312,7 @@
       modifies neither your scenes nor your project code.</p>
       <hr>
       <h3 id="architecture-testing">7. Testing</h3>
-      <p>Vitest, 781 tests across 53 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 791 tests across 53 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>
@@ -1917,9 +1927,8 @@
 <footer>
   <p>
     SprintTicker is MIT-licensed and not affiliated with, endorsed by, or supported by Flipper FZCO.
-    &ldquo;BUSY Bar&rdquo; is their product; this is a third-party companion app for it. Two files
-    carry their own terms: the <code>Animations/</code> frame sets are CC-BY-SA-4.0, and the
-    generated glyph table in <code>shared/busy-font.ts</code> is OFL-1.1.
+    &ldquo;BUSY Bar&rdquo; is their product; this is a third-party companion app for it. One set of
+    files carries its own terms: the <code>Animations/</code> frame sets are CC-BY-SA-4.0.
   </p>
   <p>
     Generated from <code>Documentation/USER-GUIDE.md</code>, <code>ARCHITECTURE.md</code> and

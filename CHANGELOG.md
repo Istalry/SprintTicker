@@ -106,6 +106,23 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
+- **The front display's text is set in our own fonts.** Row 1 used a
+  fixed-width 3×5 font with 40 characters, so `( ) , ' " # + @ & =` and the rest
+  of the punctuation reached the bar as `?`. It cut a row at fourteen characters
+  with no marker, so "PROJ-142: Write the notes" showed as "PROJ-142: Writ", and
+  its `g` and `q` were the same bitmap. Row 0 used the firmware's own font, which
+  read well but was OFL-1.1 and the one file in the app under another licence.
+  Both are replaced, at the same size, by Sprint 5 (row 0) and the condensed
+  Sprint Small (row 1):
+  - both carry all of printable ASCII;
+  - both are proportional and end a truncated row with `…`;
+  - digits share one width, so a running timer does not shift.
+
+  The fonts are drawn as ASCII art in `packages/desktop-app/fonts/` and
+  compiled by `pnpm fonts:build`. The generator refuses a missing character, two
+  identical glyphs or a blank edge column, and `fonts:check` runs in CI.
+  `pnpm probe:busybar --font-sheet` shows every glyph on a real bar and checks
+  the panel shows exactly the pixels sent.
 - **The device driver reports failure by throwing.** `BusyBarDriver`'s commands
   answered `Promise<boolean>` and never threw, so a refusal looked like success
   to any caller that forgot to check. That shipped the blank-Away-animation bug
@@ -152,6 +169,11 @@ reported something other than the truth, in three different ways.
   stub deleted in 1.0.0 (audit F-18). Nothing called it. The provider methods
   remain, so the day a UI wants a server-side day total the work is a handler
   plus a component.
+- **The firmware font and its converter.** `shared/busy-font.ts` (OFL-1.1),
+  `tools/lvgl-font-to-ts.js`, the old 3×5 table in `shared/pixel-fonts.ts` and
+  the character-count helper `shared/text-capacity.ts`, all superseded by the
+  fonts above. `LICENSE` no longer carries the OFL notice for a file the app
+  does not ship.
 
 ### Fixed
 
