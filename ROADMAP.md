@@ -616,8 +616,14 @@ looping idle animations.
      with the user). Work in progress moves steadily; events act, then rest,
      after the stepped gear read as a stutter. All eight read back animating
      from a real bar.
-   - [ ] Task done as a full-panel scene played once, replacing the streamed
-     confetti (about 80 requests over four seconds).
+   - [x] **Task done is a full-panel scene played once** (2026-09-29), in
+     place of the streamed confetti (about 80 requests over four seconds). A
+     green badge drops in, the tick draws itself, confetti bursts and falls
+     through, beside **DONE!**. Measured first: a one-shot `.anim` holds its
+     last frame on the device, so the scene ends on the badge at rest and the
+     session returns a second later. The emulator's preview of a
+     device-played scene also keeps time with the bar now; it had been
+     running at a quarter speed.
    - [x] **The three Flipper frame sets are removed** (2026-09-29), with their
      CC-BY-SA notice in `LICENSE`, the licence line in the installer's
      copyright and the docs footer. All three replacements had run in the app
@@ -807,7 +813,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.63 statements / 75.89 branches / 85.93 functions / 86.99 lines across 891
+**84.95 statements / 76.21 branches / 85.84 functions / 87.34 lines across 900
 tests in 55 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

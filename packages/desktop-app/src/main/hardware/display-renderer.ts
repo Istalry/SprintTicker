@@ -6,7 +6,7 @@ import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
-import { ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS } from '../../shared/render-constants';
+import { ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
@@ -832,10 +832,7 @@ export class DisplayRenderer {
 
     if (session && session.status === 'TRACKING' && this.isCelebrating) {
       this.isCelebrating = false;
-      if (this.celebrationTimeout) {
-        clearTimeout(this.celebrationTimeout);
-        this.celebrationTimeout = null;
-      }
+      this.clearCelebrationTimer();
     }
 
     if (this.isCelebrating || this._contextMode === 'LUNCH' || this._contextMode === 'AWAY') {
@@ -1122,82 +1119,57 @@ export class DisplayRenderer {
   public dispose(): void {
     this.clearBannerTimers();
     this.iconAnimator.dispose();
-    if (this.celebrationTimeout) {
-      clearInterval(this.celebrationTimeout);
-      this.celebrationTimeout = null;
-    }
+    this.clearCelebrationTimer();
     this.animationPlayer.stop();
   }
 
-  public renderTaskCompletionConfetti(durationSeconds: number = 4): DisplayPayload {
+  /**
+   * Celebrates a finished task, then returns to the session.
+   *
+   * Plays our task-done scene once, on the device, like Lunch and Away. This
+   * used to be confetti drawn here and streamed at 10 fps -- an asset upload
+   * and a draw for every frame, for four seconds. The device holds a one-shot's
+   * last frame (measured on firmware 1.2.4), so `durationSeconds` can outlast
+   * the scene and the bar rests on the finished badge rather than going blank.
+   * If the device refuses the `.anim`, `AnimationPlayer` streams its frames.
+   */
+  public renderTaskCompletionConfetti(durationSeconds: number = TASK_DONE_DISPLAY_SECONDS): DisplayPayload {
     this.isCelebrating = true;
-    if (this.celebrationTimeout) {
-      clearTimeout(this.celebrationTimeout);
-      this.celebrationTimeout = null;
-    }
+    this.clearCelebrationTimer();
     this.ledMode = 'CONFETTI_EXPLOSION';
 
     const backElements = [
       { id: 'rear_confetti_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'TASK COMPLETED SUCCESSFULLY!', align: 'top_left' }
     ];
 
-    const confettiColors = ['#10B981', '#FBBF24', '#38BDF8', '#EC4899', '#AAFF00'];
-    const activeParticles = Array.from({length: 30}).map(() => ({
-      x: 16 + Math.random() * 56,
-      y: -2 - Math.random() * 10,
-      vx: (Math.random() - 0.5) * 2,
-      vy: Math.random() * 1.5 + 0.5,
-      color: confettiColors[Math.floor(Math.random() * confettiColors.length)]
-    }));
+    this.canvas.clear();
+    void this.animationPlayer.play(FRONT_ANIMATIONS.TASK_DONE, { loop: false, onFrame: this.onAnimationFrame })
+      .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
+    void this.transmitFrame('#10B981FF', backElements, [])
+      .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
 
-    let frames = 0;
-    const maxFrames = durationSeconds * 10; // 10 fps
-
-    const renderFrame = () => {
-      if (!this.isCelebrating || frames >= maxFrames) {
-        this.isCelebrating = false;
-        if (this.celebrationTimeout) clearInterval(this.celebrationTimeout);
-        this.celebrationTimeout = null;
-        this.renderActiveSession(this.lastSessionCache);
-        return;
-      }
-
-      this.canvas.clear();
-      this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 1, 15, 14);
-      this.canvas.drawTextClipped('TASK DONE!', 17, 5, '#10B981', 55);
-
-      for (const p of activeParticles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.y > 16) {
-          p.y = -2;
-          p.x = 16 + Math.random() * 56;
-        }
-
-        const drawX = Math.floor(p.x);
-        const drawY = Math.floor(p.y);
-        if (drawX >= 16 && drawX < 72 && drawY >= 0 && drawY < 16) {
-          this.canvas.setPixel(drawX, drawY, p.color);
-        }
-      }
-
-      const frontEls = this.canvasToEmulatorElements();
-      void this.transmitFrame('#10B981FF', backElements, frontEls)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      frames++;
-    };
-
-    // First frame sync
-    renderFrame();
-
-    // Loop rest async
-    this.celebrationTimeout = setInterval(renderFrame, 100);
+    this.celebrationTimeout = setTimeout(() => this.endCelebration(), durationSeconds * 1000);
 
     return {
       frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
       backElements,
       ledColorHex: '#10B981FF'
     };
+  }
+
+  private endCelebration(): void {
+    this.celebrationTimeout = null;
+    if (!this.isCelebrating) return;
+    this.isCelebrating = false;
+    this.animationPlayer.stop();
+    this.renderActiveSession(this.lastSessionCache);
+  }
+
+  private clearCelebrationTimer(): void {
+    if (this.celebrationTimeout) {
+      clearTimeout(this.celebrationTimeout);
+      this.celebrationTimeout = null;
+    }
   }
 
   /**

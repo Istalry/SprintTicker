@@ -20,14 +20,26 @@ import type { BitmapIconId } from './dtos';
  * log and an empty panel -- so `animation-assets.test.ts` checks every entry
  * here against the repository.
  *
- * All three are our own, drawn in `packages/anim-studio/scenes/`. Each has its
- * own plate colour -- teal, purple, blue -- so the mode reads at a glance.
+ * All four are our own, drawn in `packages/anim-studio/scenes/`. Each has its
+ * own plate colour -- teal, purple, blue, green -- so the mode reads at a
+ * glance.
  */
 export const FRONT_ANIMATIONS = {
   LUNCH: 'lunch_sandwich_72x16',
   AWAY: 'away_coffee_72x16',
   MEETING: 'meeting_table_72x16',
+  /** Played once, not looped: see TASK_DONE_DISPLAY_SECONDS. */
+  TASK_DONE: 'task_done_72x16',
 } as const;
+
+/**
+ * How long the task-done scene holds the display before the session returns.
+ *
+ * Longer than the scene itself (3 s) on purpose: a one-shot `.anim` holds its
+ * last frame on the device (measured on firmware 1.2.4), so the extra second
+ * shows the finished badge at rest rather than cutting away mid-fall.
+ */
+export const TASK_DONE_DISPLAY_SECONDS = 4;
 
 /**
  * Icons that animate on the device, by the static bitmap they stand over.

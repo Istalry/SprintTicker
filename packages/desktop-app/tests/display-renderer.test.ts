@@ -1,10 +1,10 @@
 import path from 'path';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
-import { ANIMATED_ICONS } from '../src/shared/render-constants';
+import { ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../src/shared/render-constants';
 import { HAMMER_16X16_BITMAP } from '../src/shared/pixel-bitmaps';
 import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
@@ -349,6 +349,66 @@ describe('DisplayRenderer Unit Tests', () => {
       const payload = renderer.renderTaskCompletionConfetti();
       expect(payload.ledColorHex).toBe('#10B981FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    describe('task done scene', () => {
+      const player = (): AnimationPlayer =>
+        (renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer;
+      const tracking = {
+        id: 's1', taskId: 't1', taskKey: 'PROJ-2', taskTitle: 'Next', status: 'TRACKING' as const,
+        elapsedSeconds: 5, isAdHoc: false
+      };
+
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        renderer.dispose();
+        vi.useRealTimers();
+      });
+
+      it('RenderTaskCompletionConfetti_Triggered_PlaysOurSceneOnce', () => {
+        const play = vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+
+        renderer.renderTaskCompletionConfetti();
+
+        expect(play).toHaveBeenCalledWith(FRONT_ANIMATIONS.TASK_DONE, expect.objectContaining({ loop: false }));
+      });
+
+      it('RenderTaskCompletionConfetti_DurationElapses_ReturnsToTheSession', () => {
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        const paused = { ...tracking, status: 'PAUSED' as const };
+        renderer.renderActiveSession(paused as never);
+
+        renderer.renderTaskCompletionConfetti(2);
+        // While celebrating, a session update is held rather than drawn over
+        // the scene.
+        const heldLed = renderer.renderActiveSession(paused as never).ledColorHex;
+        expect(heldLed).toBe('#10B981FF');
+
+        vi.advanceTimersByTime(2000);
+
+        expect(stop).toHaveBeenCalled();
+        expect(renderer.renderActiveSession(paused as never).ledColorHex).toBe('#F59E0BFF');
+      });
+
+      it('RenderActiveSession_NewTaskStartsMidCelebration_StopsTheScene', () => {
+        // The device owns the front while the scene plays and transmitFrame
+        // stands aside; left running, the new task would not reach the bar.
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        renderer.renderTaskCompletionConfetti();
+
+        renderer.renderActiveSession(tracking as never);
+
+        expect(stop).toHaveBeenCalled();
+        const stops = stop.mock.calls.length;
+        vi.advanceTimersByTime(TASK_DONE_DISPLAY_SECONDS * 1000);
+        // The cancelled timer does not fire a second return to the session.
+        expect(stop).toHaveBeenCalledTimes(stops);
+      });
     });
   });
 

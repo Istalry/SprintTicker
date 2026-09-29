@@ -1,0 +1,2352 @@
+{
+  "version": 1,
+  "id": "task_done_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 180,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#17402E",
+      "colorB": "#0F2B1F",
+      "direction": "vertical",
+      "outline": "#2E7D57",
+      "outlineBottom": "#174A33",
+      "highlight": "#1E5139",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "glow",
+      "name": "Burst glow",
+      "visible": true,
+      "type": "glow",
+      "x": 11,
+      "y": 8,
+      "radiusX": 11,
+      "radiusY": 9,
+      "color": "#A7F3D0",
+      "strength": 0.35,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 42,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 82,
+            "value": 0.25,
+            "ease": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 0.25,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-0",
+      "name": "Confetti 0",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#FBBF24"
+        },
+        "frames": [
+          {
+            "duration": 9,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 9,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 49,
+            "value": 34.2122,
+            "ease": "inOut"
+          },
+          {
+            "frame": 103,
+            "value": 33.1378,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 49,
+            "value": 6.0967,
+            "ease": "in"
+          },
+          {
+            "frame": 103,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-1",
+      "name": "Confetti 1",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#FBBF24"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 47,
+            "value": 27.7158,
+            "ease": "inOut"
+          },
+          {
+            "frame": 124,
+            "value": 25.6411,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 47,
+            "value": 5.6508,
+            "ease": "in"
+          },
+          {
+            "frame": 124,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-2",
+      "name": "Confetti 2",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#FBBF24"
+        },
+        "frames": [
+          {
+            "duration": 9,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 9,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 40,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 51,
+            "value": 20.2474,
+            "ease": "inOut"
+          },
+          {
+            "frame": 141,
+            "value": 20.8642,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 40,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 51,
+            "value": -2.4717,
+            "ease": "in"
+          },
+          {
+            "frame": 141,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 39,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 40,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-3",
+      "name": "Confetti 3",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#A3E635"
+        },
+        "frames": [
+          {
+            "duration": 7,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 7,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 40,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 54,
+            "value": 15.8371,
+            "ease": "inOut"
+          },
+          {
+            "frame": 112,
+            "value": 12.9912,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 40,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 54,
+            "value": -2.5113,
+            "ease": "in"
+          },
+          {
+            "frame": 112,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 39,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 40,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-4",
+      "name": "Confetti 4",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#F97316"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 52,
+            "value": 21.6738,
+            "ease": "inOut"
+          },
+          {
+            "frame": 113,
+            "value": 22.2434,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 52,
+            "value": -2.2989,
+            "ease": "in"
+          },
+          {
+            "frame": 113,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-5",
+      "name": "Confetti 5",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#F97316"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 38,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 48,
+            "value": 30.9379,
+            "ease": "inOut"
+          },
+          {
+            "frame": 134,
+            "value": 28.5855,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 38,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 48,
+            "value": -0.387,
+            "ease": "in"
+          },
+          {
+            "frame": 134,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 37,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 38,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-6",
+      "name": "Confetti 6",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#38BDF8"
+        },
+        "frames": [
+          {
+            "duration": 7,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 7,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 40,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 36.0944,
+            "ease": "inOut"
+          },
+          {
+            "frame": 126,
+            "value": 38.4494,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 40,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 4.0027,
+            "ease": "in"
+          },
+          {
+            "frame": 126,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 39,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 40,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-7",
+      "name": "Confetti 7",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#EC4899"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 38,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 51,
+            "value": 17.6429,
+            "ease": "inOut"
+          },
+          {
+            "frame": 122,
+            "value": 18.5145,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 38,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 51,
+            "value": -2.371,
+            "ease": "in"
+          },
+          {
+            "frame": 122,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 37,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 38,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-8",
+      "name": "Confetti 8",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#A3E635"
+        },
+        "frames": [
+          {
+            "duration": 6,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 6,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 6.363,
+            "ease": "inOut"
+          },
+          {
+            "frame": 124,
+            "value": 5.7365,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 3.7928,
+            "ease": "in"
+          },
+          {
+            "frame": 124,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-9",
+      "name": "Confetti 9",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#C084FC"
+        },
+        "frames": [
+          {
+            "duration": 7,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 7,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 39.7404,
+            "ease": "inOut"
+          },
+          {
+            "frame": 123,
+            "value": 38.5419,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 3.848,
+            "ease": "in"
+          },
+          {
+            "frame": 123,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-10",
+      "name": "Confetti 10",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#A3E635"
+        },
+        "frames": [
+          {
+            "duration": 7,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 7,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 40,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 56,
+            "value": 33.1974,
+            "ease": "inOut"
+          },
+          {
+            "frame": 111,
+            "value": 34.7738,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 40,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 56,
+            "value": 1.6906,
+            "ease": "in"
+          },
+          {
+            "frame": 111,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 39,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 40,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-11",
+      "name": "Confetti 11",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#EC4899"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 52,
+            "value": 21.9728,
+            "ease": "inOut"
+          },
+          {
+            "frame": 138,
+            "value": 23.7058,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 52,
+            "value": -2.4651,
+            "ease": "in"
+          },
+          {
+            "frame": 138,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-12",
+      "name": "Confetti 12",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#A3E635"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 5.7463,
+            "ease": "inOut"
+          },
+          {
+            "frame": 139,
+            "value": 2.2179,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 4.9346,
+            "ease": "in"
+          },
+          {
+            "frame": 139,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-13",
+      "name": "Confetti 13",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#38BDF8"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 52,
+            "value": 18.0972,
+            "ease": "inOut"
+          },
+          {
+            "frame": 133,
+            "value": 17.6907,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 52,
+            "value": -2.1336,
+            "ease": "in"
+          },
+          {
+            "frame": 133,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-14",
+      "name": "Confetti 14",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#C084FC"
+        },
+        "frames": [
+          {
+            "duration": 7,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 7,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 55,
+            "value": 49.3814,
+            "ease": "inOut"
+          },
+          {
+            "frame": 140,
+            "value": 48.7038,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 55,
+            "value": 5.3206,
+            "ease": "in"
+          },
+          {
+            "frame": 140,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-15",
+      "name": "Confetti 15",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#38BDF8"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 32.2123,
+            "ease": "inOut"
+          },
+          {
+            "frame": 109,
+            "value": 29.4227,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 2.8655,
+            "ease": "in"
+          },
+          {
+            "frame": 109,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-16",
+      "name": "Confetti 16",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#FBBF24"
+        },
+        "frames": [
+          {
+            "duration": 7,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 7,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 38,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 49,
+            "value": 4.6302,
+            "ease": "inOut"
+          },
+          {
+            "frame": 115,
+            "value": 1.7956,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 38,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 49,
+            "value": 4.8418,
+            "ease": "in"
+          },
+          {
+            "frame": 115,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 37,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 38,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-17",
+      "name": "Confetti 17",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#F97316"
+        },
+        "frames": [
+          {
+            "duration": 9,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 9,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 29.2617,
+            "ease": "inOut"
+          },
+          {
+            "frame": 144,
+            "value": 30.5014,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 2.0243,
+            "ease": "in"
+          },
+          {
+            "frame": 144,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-18",
+      "name": "Confetti 18",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#A3E635"
+        },
+        "frames": [
+          {
+            "duration": 9,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 9,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 42.3791,
+            "ease": "inOut"
+          },
+          {
+            "frame": 146,
+            "value": 41.5637,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 53,
+            "value": 0.4012,
+            "ease": "in"
+          },
+          {
+            "frame": 146,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-19",
+      "name": "Confetti 19",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#38BDF8"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 40,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 22.9785,
+            "ease": "inOut"
+          },
+          {
+            "frame": 112,
+            "value": 22.5036,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 40,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": -2.2671,
+            "ease": "in"
+          },
+          {
+            "frame": 112,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 39,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 40,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-20",
+      "name": "Confetti 20",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#F97316"
+        },
+        "frames": [
+          {
+            "duration": 6,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          },
+          {
+            "duration": 6,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 37,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 47,
+            "value": 8.9829,
+            "ease": "inOut"
+          },
+          {
+            "frame": 133,
+            "value": 5.7946,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 37,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 47,
+            "value": 3.0106,
+            "ease": "in"
+          },
+          {
+            "frame": 133,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 36,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 37,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "confetti-21",
+      "name": "Confetti 21",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 1,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 2,
+        "height": 2,
+        "palette": {
+          "c": "#38BDF8"
+        },
+        "frames": [
+          {
+            "duration": 8,
+            "rows": [
+              "c.",
+              "c."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              "cc",
+              ".."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 39,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 21.2726,
+            "ease": "inOut"
+          },
+          {
+            "frame": 139,
+            "value": 22.3479,
+            "ease": "linear"
+          }
+        ],
+        "y": [
+          {
+            "frame": 39,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 50,
+            "value": 2.0686,
+            "ease": "in"
+          },
+          {
+            "frame": 139,
+            "value": 18.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 38,
+            "value": 0.0,
+            "ease": "step"
+          },
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "badge",
+      "name": "Badge",
+      "visible": true,
+      "type": "sprite",
+      "x": 4,
+      "y": 1,
+      "loopFrom": 0,
+      "anchorX": 7.0,
+      "anchorY": 14,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 14,
+        "height": 14,
+        "palette": {
+          "g": "#22C55E",
+          "r": "#15803D",
+          "h": "#6EE7A0"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "....rrrrrr....",
+              "..rrhhhgggrr..",
+              "..rhhhgggggr..",
+              ".rhhhgggggggr.",
+              ".rhhggggggggr.",
+              ".rhgggggggggr.",
+              ".rggggggggggr.",
+              ".rggggggggggr.",
+              ".rggggggggggr.",
+              "..rggggggggr..",
+              "..rrggggggrr..",
+              "....rrrrrr....",
+              ".............."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": -17.0,
+            "ease": "in"
+          },
+          {
+            "frame": 22,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 21,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 0.72,
+            "ease": "outBack"
+          },
+          {
+            "frame": 36,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 21,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 1.2,
+            "ease": "outBack"
+          },
+          {
+            "frame": 36,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tick",
+      "name": "Tick",
+      "visible": true,
+      "type": "sprite",
+      "x": 4,
+      "y": 1,
+      "loopFrom": 10,
+      "anchorX": 7.0,
+      "anchorY": 14,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 14,
+        "height": 14,
+        "palette": {
+          "w": "#FFFFFF"
+        },
+        "frames": [
+          {
+            "duration": 30,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w..........",
+              "...w..........",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w..........",
+              "...ww.........",
+              "....w.........",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w..........",
+              "...ww.........",
+              "....ww........",
+              ".....w........",
+              "..............",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w..........",
+              "...ww.........",
+              "....ww........",
+              ".....ww.......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w..........",
+              "...ww.........",
+              "....ww.w......",
+              ".....www......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w..........",
+              "...ww...w.....",
+              "....ww.ww.....",
+              ".....www......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...w.....w....",
+              "...ww...ww....",
+              "....ww.ww.....",
+              ".....www......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "..........w...",
+              "...w.....ww...",
+              "...ww...ww....",
+              "....ww.ww.....",
+              ".....www......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...........w..",
+              "..........ww..",
+              "...w.....ww...",
+              "...ww...ww....",
+              "....ww.ww.....",
+              ".....www......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              "..............",
+              "..............",
+              "..............",
+              "..............",
+              "...........w..",
+              "..........ww..",
+              "...w.....ww...",
+              "...ww...ww....",
+              "....ww.ww.....",
+              ".....www......",
+              "......w.......",
+              "..............",
+              "..............",
+              ".............."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "DONE!",
+      "font": "bold-9",
+      "color": "#EAFBF2",
+      "x": 24,
+      "y": 4,
+      "width": 46,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#04130C",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

@@ -21,6 +21,11 @@ reported something other than the truth, in three different ways.
   Complete's tick pops. Work in progress moves steadily; an event acts, then
   rests. The tracking screen's icon stays still, since it is there all day, and
   app logos in notifications stay as they are.
+- **Finishing a task celebrates with a scene of our own.** A green badge drops
+  in and squashes on landing, its tick draws itself, and confetti bursts and
+  falls behind **DONE!**. The bar plays it once and rests on the finished
+  badge, where the old confetti was drawn here and streamed: about 80 requests
+  over four seconds, now one upload and one draw.
 - **The build and bake screens have their own icons**: a hammer that strikes,
   and a light bulb that glows. Both replace the Unity logo, which is Unity's
   mark and not ours to animate.
@@ -135,6 +140,12 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The emulator no longer plays the bar's animations at a quarter speed.**
+  While the bar plays an animation itself, the on-screen preview ticks at 15
+  fps; it stepped through every frame of a 60 fps scene, so Lunch, Away and
+  Meeting crawled on screen while the bar ran at full speed. It now skips
+  frames to keep time, and a scene played once ends on the same frame as the
+  bar.
 - **The `.anim` compiler's licence is recorded.** `scripts/busybar-anim-toolchain/`
   is the firmware's own `seq2anim.py` and helpers, GPL-2.0-or-later, and had
   been copied in with no notice. The folder now carries the licence text and

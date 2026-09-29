@@ -76,6 +76,7 @@ a hue. Taken so far:
 | Lunch | teal | `#193A40` → `#10272C` |
 | Away | purple | `#381A50` → `#241036`, matching the Away LED |
 | Meeting | blue | `#22538A` → `#173D69`, lighter than the others |
+| Task done | green | `#17402E` → `#0F2B1F` |
 
 Pick a free hue for a new one, and add it here.
 

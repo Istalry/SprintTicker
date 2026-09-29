@@ -169,7 +169,7 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string; markDone?: boolean }) => {
       const res = this.engine.stopSession(payload.comment, payload.markDone);
       if (payload.markDone) {
-        this.renderer.renderTaskCompletionConfetti(4);
+        this.renderer.renderTaskCompletionConfetti();
       }
       return res;
     });

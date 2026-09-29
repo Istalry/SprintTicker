@@ -49,7 +49,9 @@ The main screen. Start a task, and the bar shows it. Pause, resume, and finish
 from here.
 
 Finishing asks for a comment and whether to mark the task done. Marking it done
-fires your configured completion transition — which in Jira usually means "To
+celebrates on the bar -- a green badge drops in, ticks itself, and throws
+confetti beside **DONE!** -- then returns to the session. It also fires your
+configured completion transition — which in Jira usually means "To
 Review", not "Closed", because you send work for review rather than closing it
 yourself.
 

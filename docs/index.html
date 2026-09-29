@@ -528,7 +528,9 @@
       <p>The main screen. Start a task, and the bar shows it. Pause, resume, and finish
       from here.</p>
       <p>Finishing asks for a comment and whether to mark the task done. Marking it done
-      fires your configured completion transition — which in Jira usually means &quot;To
+      celebrates on the bar -- a green badge drops in, ticks itself, and throws
+      confetti beside <strong>DONE!</strong> -- then returns to the session. It also fires your
+      configured completion transition — which in Jira usually means &quot;To
       Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
       yourself.</p>
       <h4>Projects &amp; Tasks</h4>
@@ -1370,7 +1372,12 @@
       Which folder each mode plays is <code>FRONT_ANIMATIONS</code> in
       <code>shared/render-constants.ts</code>. A name with no folder behind it fails only as a
       log warning and an empty panel, so <code>animation-assets.test.ts</code> checks every
-      entry against the repository. All three are studio scenes.</li>
+      entry against the repository. All four are studio scenes. Task done is
+      the one played once (<code>loop: false</code>): the device holds a one-shot&#39;s last
+      frame, and <code>DisplayRenderer</code> returns to the session after
+      <code>TASK_DONE_DISPLAY_SECONDS</code>, a second longer than the scene. While the
+      device plays a scene, <code>AnimationPlayer</code>&#39;s preview ticks at 15 fps and skips
+      frames to keep time with it.</li>
       <li><strong>The server half</strong> (<code>server/api.ts</code>) runs inside the Vite dev server. It
       writes scene files and exports, and plays a scene on the bar under the
       application name <code>sprintticker_studio</code>, at priority 100 with an element
@@ -1380,7 +1387,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 891 tests across 55 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 900 tests across 55 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

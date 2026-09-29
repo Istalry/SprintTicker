@@ -329,6 +329,44 @@ describe('AnimationPlayer Unit Tests', () => {
       expect(player.isHardwareAnimationActive()).toBe(false);
     });
 
+    /** A 60 fps scene of `count` frames, with a .anim the device takes. */
+    const withSixtyFpsScene = (count: number): void => {
+      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      vi.spyOn(fs, 'readdirSync').mockReturnValue(
+        Array.from({ length: count }, (_, i) => `frame_${String(i).padStart(5, '0')}.png`) as never
+      );
+      vi.spyOn(fs, 'readFileSync').mockImplementation((p: unknown) => {
+        if (String(p).includes('meta.json')) return JSON.stringify({ fps: 60 });
+        return Buffer.from('mock_binary');
+      });
+    };
+
+    it('Play_DevicePlaysAnimFile_PreviewKeepsTimeWithTheDevice', async () => {
+      // The preview ticks at 15 fps. Stepping one frame per tick through a
+      // 60 fps scene ran it at a quarter of the device's speed.
+      withSixtyFpsScene(240);
+      const shown: number[] = [];
+
+      await player.play('hw_anim', { onFrame: (_frame, index) => shown.push(index) });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(shown.at(-1)).toBeGreaterThanOrEqual(56);
+      expect(shown.at(-1)).toBeLessThanOrEqual(64);
+    });
+
+    it('Play_OneShotOnTheDevice_PreviewEndsOnTheLastFrameAndStops', async () => {
+      // The device holds a one-shot's last frame; the preview must end on the
+      // same pose rather than stepping past it.
+      withSixtyFpsScene(30);
+      const shown: number[] = [];
+
+      await player.play('hw_anim', { loop: false, onFrame: (_frame, index) => shown.push(index) });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(shown.at(-1)).toBe(29);
+      expect(player.isAnimationPlaying()).toBe(false);
+    });
+
     it('Stop_AfterHardwarePlayback_LetsTheNextAnimationStreamFrames', async () => {
       // The flag describes one playback. Left set, a following animation with
       // no .anim of its own would have its streaming suppressed by state

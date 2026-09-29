@@ -162,11 +162,16 @@ export class AnimationPlayer {
     }
 
     // With hardware playback this interval only advances the on-screen preview,
-    // so it does not have to keep up with the device.
+    // so it does not have to keep up with the device -- but it does have to
+    // keep time with it. Ticking at 15 fps through every frame of a 60 fps
+    // scene played the preview at a quarter of the device's speed, so a
+    // one-shot scene had barely started on screen when the bar had finished.
+    // Skipping frames keeps the two in step.
     const effectiveFps = animData.animBuffer
       ? Math.min(animData.fps, AnimationPlayer.HARDWARE_PREVIEW_MAX_FPS)
       : animData.fps;
     const frameIntervalMs = Math.max(1, Math.floor(1000 / effectiveFps));
+    const frameStride = Math.max(1, Math.round(animData.fps / effectiveFps));
 
     if (animData.animBuffer) {
       // Optimistic: streaming is suppressed while the device is expected to own
@@ -184,7 +189,7 @@ export class AnimationPlayer {
     // Initial draw immediately
     this.drawCurrentFrame();
 
-    this.startFrameInterval(animData, frameIntervalMs);
+    this.startFrameInterval(animData, frameIntervalMs, frameStride);
   }
 
   /**
@@ -309,15 +314,22 @@ export class AnimationPlayer {
     this.drawCurrentFrame();
   }
 
-  /** Restarts the frame timer, replacing any timer already running. */
-  private startFrameInterval(animData: AnimationData, frameIntervalMs: number): void {
+  /**
+   * Restarts the frame timer, replacing any timer already running.
+   *
+   * A one-shot stops on its last frame rather than stepping past it, so the
+   * preview ends on the pose the device holds.
+   */
+  private startFrameInterval(animData: AnimationData, frameIntervalMs: number, stride: number = 1): void {
     if (this.intervalId) clearInterval(this.intervalId);
+    const last = animData.frames.length - 1;
     this.intervalId = setInterval(() => {
-      if (!this.loop && this.frameIndex >= animData.frames.length - 1) {
+      if (!this.loop && this.frameIndex >= last) {
         this.stop();
         return;
       }
-      this.frameIndex = (this.frameIndex + 1) % animData.frames.length;
+      const next = this.frameIndex + stride;
+      this.frameIndex = this.loop ? next % animData.frames.length : Math.min(next, last);
       this.drawCurrentFrame();
     }, frameIntervalMs);
   }
