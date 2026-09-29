@@ -1,9 +1,12 @@
 # Style guide: what the official animations do
 
 The three full-screen animations that ship with the BUSY Bar firmware
-(`Animations/lunch_72x16`, `back_soon_72x16`, `meeting_72x16`, © Flipper FZCO,
+(`lunch_72x16`, `back_soon_72x16`, `meeting_72x16`, © Flipper FZCO,
 CC-BY-SA-4.0) were measured frame by frame on 2026-09-29. This document records
 the **visual language** they share, so that our own animations can speak it.
+They lived in `Animations/` until ours replaced them, and were then removed;
+to look at them again, check out a revision before that removal, or take them
+from the firmware repository.
 
 It records measurements and principles, not artwork. Our scenes are drawn from
 scratch: nothing here is traced or copied. The originals are CC-BY-SA, and a

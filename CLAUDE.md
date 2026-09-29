@@ -241,7 +241,7 @@ overlapping elements rather than merely being accepted on a draw. When you add a
 check here, prefer one that looks at pixels over one that reads a status code.
 
 The animation check is the clearest case of why. It uploads the **largest real
-`.anim` in `Animations/`** — the app's own file, at ~0.8–1.3 MB, not a token —
+`.anim` in `Animations/`** — the app's own file, at ~0.3–0.6 MB, not a token —
 draws it, and captures the panel twice 700 ms apart. Three outcomes that a
 status code cannot tell apart are then distinguishable: the device refused the
 file, the device accepted it and drew nothing, and the device is genuinely

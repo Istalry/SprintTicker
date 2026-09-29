@@ -747,8 +747,7 @@ const SHELL = `<!doctype html>
 <footer>
   <p>
     SprintTicker is MIT-licensed and not affiliated with, endorsed by, or supported by Flipper FZCO.
-    &ldquo;BUSY Bar&rdquo; is their product; this is a third-party companion app for it. One set of
-    files carries its own terms: the <code>Animations/</code> frame sets are CC-BY-SA-4.0.
+    &ldquo;BUSY Bar&rdquo; is their product; this is a third-party companion app for it.
   </p>
   <p>
     Generated from <code>Documentation/USER-GUIDE.md</code>, <code>ARCHITECTURE.md</code> and

@@ -593,9 +593,11 @@ looping idle animations.
      glance: teal, purple, blue.
    - [ ] Animated 16×16 icons for notifications and events, as `animation`
      elements beside the text image.
-   - [ ] Remove the three Flipper frame sets and their CC-BY-SA notice, in its
-     own commit, once ours have run in the app on the bar. Lunch and Away have
-     (2026-09-29); Meeting is waiting on its run.
+   - [x] **The three Flipper frame sets are removed** (2026-09-29), with their
+     CC-BY-SA notice in `LICENSE`, the licence line in the installer's
+     copyright and the docs footer. All three replacements had run in the app
+     on the bar first. `Animations/` is now entirely ours; the old sets remain
+     in history. The `seq2anim` toolchain stays, by choice.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break

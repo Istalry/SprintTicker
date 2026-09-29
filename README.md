@@ -476,7 +476,7 @@ SprintTicker/
 │   ├── desktop-app/       # Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + SQLite
 │   ├── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
 │   └── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
-├── Animations/            # Frame sets + .anim; ours MIT, 3 firmware sets CC-BY-SA (LFS)
+├── Animations/            # Our full-screen animations: PNG frames (LFS) + .anim
 ├── Documentation/         # User guide, architecture, API reference, hardware guide
 ├── docs/                  # Generated: those three as one page (GitHub Pages)
 ├── scripts/               # Preflight, packaging, probe and icon tooling
@@ -555,12 +555,10 @@ MIT — see [LICENSE](LICENSE).
 The BUSY Bar hardware, its firmware and its official documentation are not part
 of this repository and are not covered by that license.
 
-One exception is worth knowing about, detailed in [LICENSE](LICENSE):
-
-- `Animations/lunch_72x16`, `back_soon_72x16` and `meeting_72x16` -- frame sets
-  from the BUSY Bar firmware, (c) Flipper FZCO under **CC-BY-SA-4.0**, not MIT.
-  Adapting them means licensing the adaptation the same way. The other
-  animations are drawn for this project and are MIT.
+The animations in `Animations/` are drawn for this project and are MIT like
+the rest. Earlier versions shipped three frame sets from the BUSY Bar firmware
+(CC-BY-SA-4.0); they are no longer part of the application, and
+[LICENSE](LICENSE) records where they came from.
 
 The front display's fonts are drawn for this project and are MIT like the rest.
 Earlier versions used a table converted from the firmware's own font

@@ -153,8 +153,7 @@ reported something other than the truth, in three different ways.
   stand-up is three people round a table, speaking in turn under speech
   bubbles. Each has its own plate colour -- teal, purple, blue -- so the mode
   reads at a glance. They replace the firmware's salad, "back soon" and
-  meeting frame sets, which stay in the repository until they are removed on
-  their own. All three were drawn in the animation studio in the official
+  meeting frame sets, which are removed (below). All three were drawn in the animation studio in the official
   animations' style, 60 fps with smooth, anti-aliased motion, and play on the
   device from a `.anim` with PNG streaming as the fallback, as before. A new test fails if an animation the app names has no folder behind
   it, which would otherwise show as an empty panel and a log warning.
@@ -226,6 +225,11 @@ reported something other than the truth, in three different ways.
   the character-count helper `shared/text-capacity.ts`, all superseded by the
   fonts above. `LICENSE` no longer carries the OFL notice for a file the app
   does not ship.
+- **The firmware's three animation frame sets**, `lunch_72x16`,
+  `back_soon_72x16` and `meeting_72x16` (CC-BY-SA-4.0), replaced by our own
+  (above). `Animations/` is now entirely MIT, so `LICENSE`, the installer's
+  copyright line and the docs footer drop the CC-BY-SA notice. The installer
+  also loses about 8.7 MB of frames it no longer plays.
 
 ### Fixed
 

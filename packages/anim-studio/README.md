@@ -99,9 +99,10 @@ Python with Pillow and colorlog.
 
 Three safeguards:
 
-- **It refuses a folder holding files it did not write.** The folders beside
-  these are firmware frame sets, and an id that happened to match one would
-  otherwise overwrite a set this tool cannot regenerate.
+- **It refuses a folder holding files it did not write.** A frame set made any
+  other way -- by hand, or restored from the firmware -- cannot be regenerated
+  from a scene, and an id that happened to match one would otherwise overwrite
+  it.
 - **It deletes stale frames from a longer earlier export.** `seq2anim` compiles
   every PNG in the folder, so a leftover frame would play after the new ones.
 - **Frames are named `frame_NNNNN.png`, with no other digit in the name.**

@@ -81,10 +81,10 @@ function validate(sequence: RenderedSequence): void {
 /**
  * Writes the frames and `meta.json` into `dir`.
  *
- * Refuses a directory holding anything the studio did not write. The folders
- * beside these are the firmware's own frame sets, and an export whose id
- * happened to match one would otherwise delete a set nobody can regenerate
- * from this tool. Stale frames from a longer earlier export *are* removed --
+ * Refuses a directory holding anything the studio did not write. A frame set
+ * made any other way -- by hand, or restored from the firmware -- cannot be
+ * regenerated from a scene, and an export whose id happened to match one would
+ * otherwise delete it. Stale frames from a longer earlier export *are* removed --
  * `seq2anim.py` compiles every PNG in the folder, so a leftover frame 90 would
  * play after a new 60-frame scene.
  */
