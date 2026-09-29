@@ -99,11 +99,11 @@ ceiling, and when the next attempt is due.
 Discovered Unity projects and plugin injection. Once installed, the bar shows
 compile progress, an "ON AIR" screen during Play Mode, and console exceptions.
 The icons move. While scripts compile the gear turns; during Play Mode the
-pad's buttons light in turn; a build shows a hammer striking and a lightmap
+pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
 bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
-a notification without an app logo rings its bell, the end-of-day prompt
-sweeps its clock hand, the lunch prompt's burger hops, and Day Complete's tick
-pops. An OpenProject notification passes a shine across the OpenProject logo;
+a notification without an app logo rings its bell, the end-of-day prompt's
+alarm clock rings, the lunch prompt's burger hops, and Day Complete's tick is
+retraced. An OpenProject notification passes a shine across the OpenProject logo;
 other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
 `[IconAnimator]` lines say why, and the screen is otherwise unaffected.
 

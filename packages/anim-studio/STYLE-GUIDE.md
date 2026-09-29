@@ -100,20 +100,33 @@ The icons so far, and which rhythm each follows:
 | Icon | Screen | Rhythm | Motion |
 | :--- | :--- | :--- | :--- |
 | Gear | Unity compiling | steady | turns |
-| Pad | Unity Play Mode | steady | buttons light in turn; the red lights breathe |
+| Pad | Unity Play Mode | steady | played: a button goes down and the pad dips a pixel, or the stick is pushed; ON AIR blinks |
 | Hammer | Unity build | steady | raises, strikes, sparks |
 | Bulb | Lightmap bake | steady | the glass glows and the rays breathe |
-| Warning | Unity exception | event | shakes, then rests |
+| Warning | Unity exception | event | shakes and flashes, then rests |
 | Bell | Notification without an app logo | event | swings and settles, the clapper a beat behind |
-| Clock | End-of-day prompt | event | the minute hand sweeps once round |
-| Burger | Lunch prompt | event | crouches, hops, lands with a squash |
-| Check | Day Complete | event | the tick pops |
+| Alarm clock | End-of-day prompt | event | rings: shakes a pixel each way with vibration lines, then rests |
+| Burger | Lunch prompt | event | crouches, then the layers hop top first and pack down on landing |
+| Check | Day Complete | event | a pen retraces the tick, which then hops a pixel |
 | OpenProject | OpenProject notification | event | a light sweeps across once; shape and blue untouched |
 
 Brightness that pulses must change **in steps**, and a sprite palette keeps the
 **most frequent colours exact**. Otherwise each channel rounds differently
 from frame to frame and the hue wanders: the bulb went through orange and
 olive before both rules were applied.
+
+**The first frame is the still icon, exactly.** The bar swaps the still icon
+for the animation the moment it starts playing, so any difference is a jump.
+Do not quantise colours to shrink the palette: that moved nearly every icon
+off its still, the clock's purple to `#9555FF`, while the docs said "pixel for
+pixel". Cap the palette by moving only the rare shades instead.
+`animation-assets.test.ts` compares each scene's first frame with its bitmap.
+
+**Move 1px detail by whole pixels.** Scaling or rotating resamples it: the
+burger's lettuce vanished and its cheese smeared into a stripe when it was
+squashed, the tick blurred over the edge of its box when it popped, and a
+rotated 2px clock hand read as a blob. Hop layers, shift by a pixel, retrace
+with light. Rotation suits a shape with no 1px detail, like the gear.
 
 ## 4. Text
 

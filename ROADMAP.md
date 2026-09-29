@@ -628,6 +628,14 @@ looping idle animations.
      notifications: a light sweeps across once, then it rests. The one app
      logo animated, by choice, and only with light -- its shape and blue are
      OpenProject's and stay exact.
+   - [x] **The icons, reviewed** (2026-09-29). The earlier claim that each
+     rest pose matched its still icon pixel for pixel was not true: colour
+     quantisation had moved most of them, so the bar changed hue when an
+     animation took over. Now exact, and a test holds it. Reworked where
+     resampling spoiled 1px detail -- the burger hops by layers, the tick is
+     retraced, the warning starts from its still -- and, at the user's
+     request, the clock is redrawn as an alarm clock that rings and the pad
+     is played rather than merely lit.
    - [x] **The three Flipper frame sets are removed** (2026-09-29), with their
      CC-BY-SA notice in `LICENSE`, the licence line in the installer's
      copyright and the docs footer. All three replacements had run in the app
@@ -817,7 +825,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.95 statements / 76.21 branches / 85.84 functions / 87.34 lines across 905
+**84.95 statements / 76.21 branches / 85.84 functions / 87.34 lines across 915
 tests in 55 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

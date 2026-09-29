@@ -302,7 +302,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 905 tests across 55 files for the app, covering the main and
+`pnpm test` runs 915 tests across 55 files for the app, covering the main and
 shared process code (the renderer is not covered), then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
 threshold floor of 84% statements / 86.5% lines / 85% functions / 75%

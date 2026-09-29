@@ -15,12 +15,18 @@ reported something other than the truth, in three different ways.
   nothing per frame. The screen keeps the still icon underneath, so a bar that
   refuses the animation shows the icon as before. The on-screen emulator
   animates it too.
-- **Every event icon of ours moves.** The Play Mode pad's buttons light in
-  turn, the exception triangle shakes, the notification bell swings, the
-  end-of-day clock's hand sweeps round, the lunch-prompt burger hops, and Day
-  Complete's tick pops. Work in progress moves steadily; an event acts, then
+- **Every event icon of ours moves.** The Play Mode pad is played, the
+  exception triangle shakes, the notification bell swings, the end-of-day
+  alarm clock rings, the lunch-prompt burger hops, and Day Complete's tick is
+  retraced. Work in progress moves steadily; an event acts, then
   rests. The tracking screen's icon stays still, since it is there all day, and
   app logos in notifications stay as they are.
+- **The icons were reviewed, and five reworked.** The end-of-day prompt shows
+  an alarm clock that rings, in place of a plain clock. The Play Mode pad is
+  played: buttons go down, the pad dips, the stick is pushed. The lunch burger
+  hops layer by layer instead of squashing, and Day Complete's tick is
+  retraced by a pen instead of scaled up. The exception triangle starts from
+  its still.
 - **OpenProject notifications shine.** A light sweeps once across the
   OpenProject logo, then it rests. The logo's shape and blue never change: it
   is OpenProject's mark, so light passing over it is as far as the animation
@@ -144,6 +150,12 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **An animated icon no longer changes colour as it starts.** The icon
+  generator quantised colours to keep the palette small, which moved most
+  icons off the still icon they replace: the end-of-day clock's purple came
+  back as `#9555FF`, the bell's orange shifted, and the gear, hammer and bulb
+  did not match at all. Every first frame is now the still icon exactly, and a
+  test compares the two.
 - **`&` reads as an ampersand** in both row fonts. It was a 4px checkerboard;
   it is now a small loop over a crossing stroke with a tail, 5px wide like `M`
   and `W`.

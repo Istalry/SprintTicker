@@ -108,22 +108,22 @@ export const BURGER_16X16_BITMAP: (string | null)[][] = [
 
 // ⏰ Away Clock 16x16 PixelIt Bitmap
 export const CLOCK_16X16_BITMAP: (string | null)[][] = [
-  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null],
-  [null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null],
-  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
-  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, '#FFFFFF', '#FFFFFF', null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
-  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, '#FFFFFF', '#FFFFFF', null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
-  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, '#FFFFFF', '#FFFFFF', null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
-  [null, '#8B5CF6', '#8B5CF6', null, null, null, null, '#FFFFFF', '#FFFFFF', null, null, null, null, '#8B5CF6', '#8B5CF6', null],
-  [null, '#8B5CF6', '#8B5CF6', null, null, null, null, '#FFFFFF', '#FFFFFF', '#FFFFFF', null, null, null, '#8B5CF6', '#8B5CF6', null],
-  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, '#FFFFFF', '#FFFFFF', '#FFFFFF', null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
-  [null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null, '#FFFFFF', '#FFFFFF', null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null],
-  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
-  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null],
-  [null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null],
-  [null, null, null, null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', null, null, null, null, null],
-  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+  [null, null, null, null, null, null, null, '#C4C9D4', '#C4C9D4', '#C4C9D4', null, null, null, null, null, null],
+  [null, null, '#A78BFA', '#A78BFA', '#A78BFA', null, null, null, '#8B93A1', null, null, null, '#A78BFA', '#A78BFA', '#A78BFA', null],
+  [null, '#A78BFA', '#DDD6FE', '#A78BFA', '#A78BFA', '#7C3AED', null, null, '#8B93A1', null, null, '#7C3AED', '#A78BFA', '#A78BFA', '#DDD6FE', '#A78BFA'],
+  [null, '#A78BFA', '#A78BFA', '#A78BFA', '#7C3AED', '#C4B5FD', '#C4B5FD', '#C4B5FD', '#C4B5FD', '#C4B5FD', '#C4B5FD', '#C4B5FD', '#7C3AED', '#A78BFA', '#A78BFA', '#A78BFA'],
+  [null, '#7C3AED', '#7C3AED', '#C4B5FD', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#6D28D9', '#7C3AED', '#7C3AED'],
+  [null, null, '#C4B5FD', '#C4B5FD', '#8B5CF6', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#8B5CF6', '#6D28D9', '#6D28D9', null],
+  [null, null, '#C4B5FD', '#8B5CF6', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#1E1B4B', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#8B5CF6', '#6D28D9', null],
+  [null, null, '#C4B5FD', '#8B5CF6', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#1E1B4B', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#8B5CF6', '#6D28D9', null],
+  [null, null, '#C4B5FD', '#8B5CF6', '#5B5480', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#1E1B4B', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#5B5480', '#8B5CF6', '#6D28D9', null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#1E1B4B', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#6D28D9', '#6D28D9', null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#F5F3FF', '#1E1B4B', '#F5F3FF', '#DDD6FE', '#6D28D9', '#6D28D9', null],
+  [null, null, '#8B5CF6', '#8B5CF6', '#8B5CF6', '#DDD6FE', '#DDD6FE', '#DDD6FE', '#5B5480', '#DDD6FE', '#DDD6FE', '#DDD6FE', '#6D28D9', '#6D28D9', '#6D28D9', null],
+  [null, null, null, '#8B5CF6', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', '#6D28D9', null, null],
+  [null, null, null, null, '#4C1D95', '#4C1D95', '#4C1D95', '#4C1D95', '#4C1D95', '#4C1D95', '#4C1D95', '#4C1D95', '#4C1D95', null, null, null],
+  [null, null, null, null, '#8B93A1', null, null, null, null, null, null, null, '#8B93A1', null, null, null],
+  [null, null, null, '#8B93A1', null, null, null, null, null, null, null, null, null, '#8B93A1', null, null]
 ];
 
 // ⏸️ Pause Task 16x16 PixelIt Bitmap
@@ -208,22 +208,22 @@ export const ERROR_16X16_BITMAP: (string | null)[][] = [
 
 // ⚡ Unity Compiling 16x16 PixelIt Bitmap
 export const COMPILING_16X16_BITMAP: (string | null)[][] = [
-  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, '#FF7C00', '#FF7C00', null, '#FF7C00', '#FF7C00', null, '#FF7C00', '#FF7C00', null, null, null, null],
-  [null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null, null],
-  [null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null],
-  [null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null],
-  [null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null, null, null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null],
-  [null, null, '#FF7C00', '#FF7C00', null, null, null, null, null, null, null, null, '#FF7C00', '#FF7C00', null, null],
-  [null, '#FF7C00', '#FF7C00', '#FF7C00', null, null, null, '#FF7C00', '#FF7C00', null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', null],
-  [null, '#FF7C00', '#FF7C00', '#FF7C00', null, null, null, '#FF7C00', '#FF7C00', null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', null],
-  [null, null, '#FF7C00', '#FF7C00', null, null, null, null, null, null, null, null, '#FF7C00', '#FF7C00', null, null],
-  [null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null, null, null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null],
-  [null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null],
-  [null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null],
-  [null, null, null, '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', '#FF7C00', null, null, null],
-  [null, null, null, null, '#FF7C00', '#FF7C00', null, '#FF7C00', '#FF7C00', null, '#FF7C00', '#FF7C00', null, null, null, null],
-  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+  [null, null, null, null, null, '#2A1500', '#151500', null, null, '#552A00', '#2A1500', null, null, null, null, null],
+  [null, null, null, '#2A1500', '#D46A00', '#FF7F00', '#7F3F00', '#151500', '#151500', '#FF7F00', '#FF7F00', '#AA5500', null, null, null, null],
+  [null, null, null, '#151500', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#6A2A00', null, null, null, null],
+  [null, null, null, '#2A1500', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#E96A00', '#2A1500', '#150000', '#2A1500', null],
+  [null, '#BF5500', '#6A3F00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#AA5500', '#AA5500', '#E96A00', '#FF7F00', '#FF7F00', '#E96A00', '#D46A00', '#AA5500', null],
+  ['#2A1500', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#BF6A00', null, null, null, null, '#AA5500', '#E97F00', '#E97F00', '#E96A00', '#E96A00', '#2A1500'],
+  ['#6A2A00', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', null, null, '#151500', '#151500', null, null, '#D46A00', '#E96A00', '#E96A00', '#6A2A00', '#151500'],
+  [null, '#151500', '#FF7F00', '#FF7F00', '#AA5500', null, '#151500', '#FF7F00', '#FF7F00', '#151500', null, '#945500', '#E96A00', '#E96A00', '#150000', null],
+  [null, '#151500', '#FF7F00', '#FF7F00', '#AA5500', null, '#151500', '#FF7F00', '#FF7F00', '#151500', null, '#943F00', '#E96A00', '#E96A00', '#150000', null],
+  ['#151500', '#6A3F00', '#FF7F00', '#FF7F00', '#E96A00', null, null, '#151500', '#151500', null, null, '#D46A00', '#E96A00', '#E96A00', '#D46A00', '#552A00'],
+  ['#2A1500', '#FF7F00', '#FF7F00', '#FF7F00', '#FF7F00', '#AA5500', null, null, null, null, '#AA5500', '#D46A00', '#D46A00', '#E96A00', '#E96A00', '#2A1500'],
+  [null, '#BF5500', '#E96A00', '#E96A00', '#FF7F00', '#E97F00', '#D46A00', '#945500', '#943F00', '#D46A00', '#D46A00', '#D46A00', '#D46A00', '#552A00', '#943F00', null],
+  [null, '#2A1500', '#150000', '#2A1500', '#E96A00', '#E97F00', '#E96A00', '#E96A00', '#E96A00', '#E96A00', '#D46A00', '#D46A00', '#2A1500', null, null, null],
+  [null, null, null, null, '#6A2A00', '#E96A00', '#E96A00', '#E96A00', '#E96A00', '#E96A00', '#E96A00', '#D46A00', '#150000', null, null, null],
+  [null, null, null, null, '#AA5500', '#E96A00', '#E96A00', '#150000', '#150000', '#6A2A00', '#E96A00', '#AA5500', '#151500', null, null, null],
+  [null, null, null, null, null, '#2A1500', '#552A00', null, null, '#151500', '#2A1500', null, null, null, null, null]
 ];
 
 // 🔴 Unity Play Mode ON AIR 16x16 PixelIt Bitmap
@@ -375,40 +375,40 @@ export const BELL_16X16_BITMAP: (string | null)[][] = [
 export const HAMMER_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, null, null, null, '#404040', '#151515', null, null, null, null, null, null, null],
-  [null, null, null, null, null, null, '#404040', '#AAAABF', '#9595AA', '#2A2A2A', null, null, null, null, null, null],
-  [null, null, null, null, null, '#2A2A2A', '#BFBFBF', '#AAAABF', '#AAAABF', '#AAAABF', '#404040', null, null, null, null, null],
-  [null, null, null, null, null, null, '#AAAABF', '#BFD4D4', '#AAAABF', '#AAAABF', '#AAAABF', '#555555', null, null, null, null],
-  [null, null, null, null, null, null, null, '#AAAA95', '#D4D4D4', '#AABFBF', '#AAAABF', '#AAAABF', '#555555', null, null, null],
-  [null, null, null, null, null, null, '#554015', '#AA6A2A', '#95806A', '#D4D4EA', '#AABFBF', '#9595AA', '#556A6A', null, null, null],
-  [null, null, null, null, null, '#402A15', '#BF6A2A', '#80552A', '#151500', '#404040', '#D4D4D4', '#6A8080', '#151515', null, null, null],
-  [null, null, null, null, '#2A1515', '#AA6A2A', '#95552A', '#2A1515', null, null, '#2A2A2A', '#404040', null, null, null, null],
-  [null, null, null, '#151500', '#AA6A2A', '#95552A', '#402A15', null, null, null, null, null, null, null, null, null],
-  [null, null, null, '#95552A', '#AA6A2A', '#402A15', null, null, null, null, null, null, null, null, null, null],
-  [null, null, '#80552A', '#AA6A2A', '#554015', null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, '#554015', '#6A4015', null, null, null, null, null, null, null, null, null, null, null, null],
-  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#3D4145', '#141617', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#363A3D', '#A9B4C0', '#959EA9', '#292B2E', null, null, null, null, null, null],
+  [null, null, null, null, null, '#2D2E30', '#B5BDC7', '#A9B4C0', '#A9B4C0', '#A2ADB8', '#363A3D', null, null, null, null, null],
+  [null, null, null, null, null, '#09090A', '#ADB0B5', '#C3CBD4', '#A9B4C0', '#A9B4C0', '#A9B4C0', '#51565C', null, null, null, null],
+  [null, null, null, null, null, null, null, '#B4A79B', '#CCD3DC', '#ABB6C2', '#A9B4C0', '#A9B4C0', '#4F565E', '#040505', null, null],
+  [null, null, null, null, null, null, '#583718', '#B16E31', '#9F8772', '#D5DCE3', '#ABB6C2', '#8E99A6', '#5A6470', '#040505', null, null],
+  [null, null, null, null, null, '#3B2510', '#B67132', '#845125', '#180F07', '#404143', '#D0D6DD', '#6D7682', '#0D0E10', null, null, null],
+  [null, null, null, null, '#2C1C0C', '#B16E31', '#905928', '#27180B', null, null, '#242526', '#363839', null, null, null, null],
+  [null, null, null, '#160E06', '#A2652D', '#985E2A', '#36210F', null, null, null, null, null, null, null, null, null],
+  [null, null, '#070502', '#935C29', '#A2642D', '#492C14', null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#845325', '#A9692F', '#5F3A1B', '#050301', null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#5D3A1A', '#70441F', '#050301', null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#050301', null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
 // Bake light bulb 16x16 -- the rest pose of `icon_bulb_16x16`, generated with
 // it. Replaces the Unity logo on the lightmap-baking screen.
 export const BULB_16X16_BITMAP: (string | null)[][] = [
-  [null, null, null, null, null, null, null, '#686030', '#686030', null, null, null, null, null, null, null],
-  [null, null, null, '#978750', null, null, null, '#282818', '#282818', null, null, null, '#978750', null, null, null],
-  [null, null, null, '#9F8F50', '#978750', '#181008', '#877030', '#CFA748', '#CFA748', '#877030', '#181008', '#978750', '#9F8F50', null, null, null],
-  [null, null, null, null, '#201808', '#DFBF58', '#FFDF87', '#FFD760', '#FFD758', '#FFD758', '#DFB750', '#201808', null, null, null, null],
-  [null, null, null, null, '#BF9F48', '#FFEFAF', '#FFF7D7', '#FFE797', '#FFD758', '#FFD758', '#FFD758', '#BF9F48', null, null, null, null],
-  [null, null, null, '#201808', '#FFD758', '#FFE797', '#FFF7CF', '#FFDF80', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#201808', null, null, null],
-  [null, '#9F8F50', '#CFB768', '#302810', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#302810', '#CFB768', '#9F8F50', null],
-  [null, null, null, '#181008', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#181008', null, null, null],
-  [null, null, null, null, '#9F8738', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#9F8738', null, null, null, null],
-  [null, null, null, null, '#080800', '#CFA748', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#CFA748', '#080800', null, null, null, null],
-  [null, null, null, null, null, '#786828', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#786828', null, null, null, null, null],
-  [null, null, null, null, null, '#404040', '#8F8778', '#8F8778', '#8F8778', '#8F8778', '#404040', null, null, null, null, null],
-  [null, null, null, null, null, '#485050', '#788087', '#788087', '#788087', '#788087', '#485050', null, null, null, null, null],
-  [null, null, null, null, null, '#485050', '#788087', '#788087', '#788087', '#788087', '#485050', null, null, null, null, null],
-  [null, null, null, null, null, '#101018', '#282830', '#505860', '#505860', '#282830', '#101018', null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#665C33', '#665C33', null, null, null, null, null, null, null],
+  [null, null, null, '#998A4D', null, null, null, '#292514', '#292514', null, null, null, '#998A4D', null, null, null],
+  [null, null, null, '#A39352', '#998A4D', '#141107', '#856E2F', '#CCAA48', '#CCAA48', '#856E2F', '#141107', '#998A4D', '#A39352', null, null, null],
+  [null, null, null, null, '#1F190B', '#E0BD59', '#FFE087', '#FFD55F', '#FFD45A', '#FFD45A', '#E0BB4F', '#1F190B', null, null, null, null],
+  [null, null, null, null, '#C2A144', '#FFECB3', '#FFF6D6', '#FFE69A', '#FFD45A', '#FFD45A', '#FFD45A', '#C2A144', null, null, null, null],
+  [null, null, null, '#1F190B', '#FFD45A', '#FFE496', '#FFF5D1', '#FFDF82', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#1F190B', null, null, null],
+  [null, '#A39352', '#CCB866', '#332A12', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#332A12', '#CCB866', '#A39352', null],
+  [null, null, null, '#141107', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#141107', null, null, null],
+  [null, null, null, null, '#A3883A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#A3883A', null, null, null, null],
+  [null, null, null, null, '#0A0804', '#CCAA48', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#CCAA48', '#0A0804', null, null, null, null],
+  [null, null, null, null, null, '#7A662B', '#FFD45A', '#FFD45A', '#FFD45A', '#FFD45A', '#7A662B', null, null, null, null, null],
+  [null, null, null, null, null, '#414242', '#8E8A7A', '#8E8A7A', '#8E8A7A', '#8E8A7A', '#414242', null, null, null, null, null],
+  [null, null, null, null, null, '#494D53', '#7A808A', '#7A808A', '#7A808A', '#7A808A', '#494D53', null, null, null, null, null],
+  [null, null, null, null, null, '#494D53', '#7A808A', '#7A808A', '#7A808A', '#7A808A', '#494D53', null, null, null, null, null],
+  [null, null, null, null, null, '#121314', '#292B2E', '#51565F', '#51565F', '#292B2E', '#121314', null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 

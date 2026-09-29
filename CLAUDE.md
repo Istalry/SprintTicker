@@ -298,6 +298,11 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     refuses the `.anim`, or a 409 holds the draw off, the bar shows the icon
     still rather than a hole. The emulator follows the same rule and stops
     animating an icon the device refused.
+  - **The animation's first frame must be that static icon, exactly**, or the
+    bar jumps when the device takes over. Quantising colours to fit the
+    palette broke this for most icons while every document said "pixel for
+    pixel"; `animation-assets.test.ts` now compares them. Change the bitmap
+    and the scene together.
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,

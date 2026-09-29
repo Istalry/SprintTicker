@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS } from '../src/shared/render-constants';
+import { getBitmapById } from '../src/shared/pixel-bitmaps';
+import { BitmapIconId } from '../src/shared/dtos';
 
 /**
  * Every animation the app names must exist on disk, in the layout
@@ -45,5 +47,34 @@ describe('front animation assets', () => {
       const anim = path.join(dir, `${name}.anim`);
       expect(fs.statSync(anim).size).toBeGreaterThan(0);
     });
+  });
+});
+
+/**
+ * An animated icon's first frame is the still icon the screen draws beneath
+ * it, pixel for pixel. It replaces that icon on the bar the moment the device
+ * starts playing, so any difference shows as a jump. One did, for most of
+ * them: the icon generator quantised colours to cap the palette, the clock's
+ * purple came back as #9555FF, and the docs said "pixel for pixel" throughout.
+ *
+ * Reads the studio scene rather than the exported PNG: the scene is what the
+ * export is made from, and the PNGs are LFS pointers where CI checks out.
+ */
+const SCENES_DIR = path.resolve(__dirname, '../../anim-studio/scenes');
+
+interface IconScene {
+  layers: Array<{ sprite: { palette: Record<string, string>; frames: Array<{ rows: string[] }> } }>;
+}
+
+describe('animated icon rest poses', () => {
+  it.each(Object.entries(ANIMATED_ICONS))('FirstFrame_%s_IsTheStillIconExactly', (icon, name) => {
+    const scene = JSON.parse(fs.readFileSync(path.join(SCENES_DIR, `${name}.scene.json`), 'utf8')) as IconScene;
+    const { palette, frames } = scene.layers[0].sprite;
+    const firstFrame = frames[0].rows.map(row =>
+      [...row].map(key => (key === '.' ? null : palette[key].toUpperCase()))
+    );
+    const still = getBitmapById(icon as BitmapIconId).map(row => row.map(c => (c ? c.toUpperCase() : null)));
+
+    expect(firstFrame).toEqual(still);
   });
 });
