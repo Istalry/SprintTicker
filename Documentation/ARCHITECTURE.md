@@ -339,9 +339,9 @@ modifies neither your scenes nor your project code.
 
 ## 7. Testing
 
-Vitest, 752 tests across 53 files. `coverage.include` is `src/main/**` and
+Vitest, 781 tests across 53 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
-of TSX. The floor is a ratchet (83 / 74 / 84.5 / 85) and is raised, never
+of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.
 
 Two harnesses let the provider layer be exercised over a real socket without a

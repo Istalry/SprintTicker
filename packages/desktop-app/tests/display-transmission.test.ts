@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
-import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { ActiveSessionDTO } from '../src/shared/dtos';
@@ -30,10 +30,10 @@ describe('Display transmission volume', () => {
 
   beforeEach(() => {
     driver = {
-      sendDisplayPayload: vi.fn().mockResolvedValue(true),
-      sendPixelFrame: vi.fn().mockResolvedValue(true),
-      clearDisplay: vi.fn().mockResolvedValue(true),
-      uploadAsset: vi.fn().mockResolvedValue(true),
+      sendDisplayPayload: vi.fn().mockResolvedValue('drawn'),
+      sendPixelFrame: vi.fn().mockResolvedValue('sent'),
+      clearDisplay: vi.fn().mockResolvedValue(undefined),
+      uploadAsset: vi.fn().mockResolvedValue(undefined),
       getDeviceStatus: vi.fn(() => ({
         connected: true,
         ipAddress: '10.0.4.20',
@@ -133,5 +133,52 @@ describe('Display transmission volume', () => {
 
     // At most the single redraw that restoring the context mode performs.
     expect(drained).toBeLessThanOrEqual(1);
+  });
+
+  /**
+   * Deduplication assumes the device shows the last frame recorded. When a
+   * frame did not land, the next identical render has to go out again, or the
+   * bar stays wrong until the picture changes -- up to a minute for the timer,
+   * never for a static screen. The reset used to hang off a `.catch` on a call
+   * that reported refusal by returning `false`, so it never ran.
+   */
+  describe('a frame that did not land', () => {
+    const settle = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+    const sendPixelFrame = (): ReturnType<typeof vi.fn> => driver.sendPixelFrame as ReturnType<typeof vi.fn>;
+
+    it('RenderActiveSession_DeviceRefusedTheFrame_RetransmitsTheSameFrame', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      sendPixelFrame().mockRejectedValueOnce(new DeviceRequestError('rejected', 'draw', 500));
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+      renderer.renderActiveSession(session(10));
+
+      expect(sendPixelFrame()).toHaveBeenCalledTimes(2);
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('RenderActiveSession_FrameSupersededMidUpload_RetransmitsTheSameFrame', async () => {
+      sendPixelFrame().mockResolvedValueOnce('superseded');
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+      renderer.renderActiveSession(session(10));
+
+      expect(sendPixelFrame()).toHaveBeenCalledTimes(2);
+    });
+
+    it('RenderActiveSession_DisplayHeldElsewhere_DoesNotResendEveryRender', async () => {
+      // A 409 means another application owns the display. Forgetting the frame
+      // would re-upload it on every render for as long as that lasts.
+      sendPixelFrame().mockResolvedValue('conflict');
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+      renderer.renderActiveSession(session(10));
+
+      expect(sendPixelFrame()).toHaveBeenCalledTimes(1);
+    });
   });
 });

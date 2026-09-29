@@ -277,14 +277,25 @@ at all:
 > NCM driver, `DISM`/`sfc`, clearing the USB descriptor cache and disabling
 > selective suspend all change nothing.
 >
-> Two things do work. An **in-place repair upgrade** of Windows rebuilds the
-> driver stack. Or, without touching Windows, pass the USB device through to
-> another network stack — WSL2 with `usbipd-win`, whose `cdc_ncm` driver brings
-> the adapter up without complaint — and proxy the bar back to a local address.
+> An **in-place repair upgrade** of Windows is the obvious next move, and on
+> this machine it did not help: the upgrade completed, the driver store was
+> rebuilt, Windows selected the same `usbncm.inf`, and the interface still came
+> up with Code 10. Try it if you like, but do not count on it.
 >
-> If you take the proxy route, **put that address in Settings › Device →
-> Connection**. That is what the setting is for: the bar is then reachable at,
-> say, `10.0.4.21`, and the app needs to be told.
+> **What does work is not using the Windows driver at all** — pass the USB
+> device through to another network stack. WSL2 with `usbipd-win` brings the
+> adapter up without complaint under its own `cdc_ncm` driver; proxy the bar
+> back to a local address from there.
+>
+> Then **put that address in Settings › Device → Connection**. That is what the
+> setting is for: the bar is reachable at, say, `10.0.4.21`, and the app needs
+> to be told.
+>
+> One thing to watch if you go this route: a `usbipd` binding, and any watcher
+> script that re-attaches the device on plug-in, will claim the bar before
+> Windows can try. If you ever want to re-test the native driver, disable the
+> watcher and `usbipd unbind` the device first, or you are only testing the
+> passthrough.
 
 > [!NOTE]
 > **Export the logs; they now say what went wrong.** The driver records the

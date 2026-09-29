@@ -2,6 +2,7 @@ import { app, powerSaveBlocker } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { BusyBarDriver } from './busybar-driver';
+import { describeError, DrawOutcome } from './device-errors';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 
 /**
@@ -264,7 +265,11 @@ export class AnimationPlayer {
       // to. Starting false instead would double-draw for the length of an
       // upload, which for these files is most of a second.
       this.hardwareAnimActive = true;
-      void this.startHardwareAnimation(animName, animData);
+      // Every device call inside handles its own failure; this catch is for a
+      // bug in that handling, which would otherwise be an unhandled rejection.
+      this.startHardwareAnimation(animName, animData).catch(err =>
+        console.error(`[AnimationPlayer] Starting ${animName}.anim failed unexpectedly:`, err)
+      );
     }
 
     // Initial draw immediately
@@ -276,12 +281,14 @@ export class AnimationPlayer {
   /**
    * Hands the `.anim` to the device and checks that it actually took it.
    *
-   * Both driver calls answer with `false` rather than throwing, so the previous
+   * The driver used to answer `false` rather than throw, so the previous
    * `.then(...).catch(...)` chain could not see a rejected upload: `then` ran
    * regardless and asked the device to draw an asset it had never stored, and
    * neither `catch` ever fired. The result was a blank bar, a correctly
    * animating on-screen emulator, and a log containing one line saying the
-   * animation had loaded -- indistinguishable from success.
+   * animation had loaded -- indistinguishable from success. The driver now
+   * throws, and each step below is awaited on its own so the log names the one
+   * that failed.
    *
    * Falls back to streaming PNG frames, which is the same path animations
    * without a `.anim` already use, so a device that will not take the file is
@@ -291,20 +298,22 @@ export class AnimationPlayer {
     const buffer = animData.animBuffer;
     if (!buffer) return;
     const bytes = buffer.length;
-
-    const uploaded = await this.driver.uploadAsset(DEVICE_APPLICATION_NAME, `${animName}.anim`, buffer);
-    // Superseded while the upload was in flight; the newer animation owns the
+    // Superseded while a request was in flight; the newer animation owns the
     // display and must not be torn down by this one's fallback.
-    if (!this.isPlaying || this.currentAnimation !== animName) return;
+    const superseded = (): boolean => !this.isPlaying || this.currentAnimation !== animName;
 
-    if (!uploaded) {
+    try {
+      await this.driver.uploadAsset(DEVICE_APPLICATION_NAME, `${animName}.anim`, buffer);
+    } catch (err) {
+      if (superseded()) return;
       console.error(
-        `[AnimationPlayer] Device would not store ${animName}.anim (${bytes} bytes). ` +
+        `[AnimationPlayer] Device would not store ${animName}.anim (${bytes} bytes): ${describeError(err)}. ` +
           'Falling back to streaming frames.'
       );
       this.fallBackToFrameStreaming(animData);
       return;
     }
+    if (superseded()) return;
 
     // Remove whatever this application already has on the front display before
     // handing it the animation.
@@ -317,30 +326,58 @@ export class AnimationPlayer {
     // `DisplayRenderer` sends after clearing its canvas, stays on top of the
     // animation forever. Drawing the animation second does not help; only
     // removing the image does.
-    await this.driver.clearDisplay(DEVICE_APPLICATION_NAME);
-    if (!this.isPlaying || this.currentAnimation !== animName) return;
-
-    const started = await this.driver.sendDisplayPayload({
-      application_name: DEVICE_APPLICATION_NAME,
-      priority: 95,
-      led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
-      elements: [{
-        id: 'hardware_anim',
-        type: 'animation',
-        path: `${animName}.anim`,
-        x: 0,
-        y: 0,
-        display: 'front',
-        loop: this.loop,
-        section: 'default'
-      }]
-    });
-    if (!this.isPlaying || this.currentAnimation !== animName) return;
-
-    if (!started) {
+    //
+    // So a failed clear is a failed start, not a detail: the animation would
+    // be drawn underneath an opaque frame and the bar would stay black.
+    try {
+      await this.driver.clearDisplay(DEVICE_APPLICATION_NAME);
+    } catch (err) {
+      if (superseded()) return;
       console.error(
-        `[AnimationPlayer] Device stored ${animName}.anim (${bytes} bytes) but refused to draw it. ` +
+        `[AnimationPlayer] Could not clear the display before playing ${animName}.anim: ${describeError(err)}. ` +
           'Falling back to streaming frames.'
+      );
+      this.fallBackToFrameStreaming(animData);
+      return;
+    }
+    if (superseded()) return;
+
+    let outcome: DrawOutcome;
+    try {
+      outcome = await this.driver.sendDisplayPayload({
+        application_name: DEVICE_APPLICATION_NAME,
+        priority: 95,
+        led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
+        elements: [{
+          id: 'hardware_anim',
+          type: 'animation',
+          path: `${animName}.anim`,
+          x: 0,
+          y: 0,
+          display: 'front',
+          loop: this.loop,
+          section: 'default'
+        }]
+      });
+    } catch (err) {
+      if (superseded()) return;
+      console.error(
+        `[AnimationPlayer] Device stored ${animName}.anim (${bytes} bytes) but refused to draw it: ${describeError(err)}. ` +
+          'Falling back to streaming frames.'
+      );
+      this.fallBackToFrameStreaming(animData);
+      return;
+    }
+    if (superseded()) return;
+
+    if (outcome === 'conflict') {
+      // Not a refusal: something with a higher priority holds the display, so
+      // the animation element was never placed. Streaming keeps offering frames
+      // and one lands as soon as the display is released, where a one-shot
+      // draw that lost the race would leave the bar without the animation for
+      // the rest of the break.
+      console.log(
+        `[AnimationPlayer] Display is held at a higher priority; streaming ${animName} frames until it is released.`
       );
       this.fallBackToFrameStreaming(animData);
       return;
@@ -433,8 +470,10 @@ export class AnimationPlayer {
       const ledColor = this.getLedColorCallback ? this.getLedColorCallback() : undefined;
       
       // We send the PNG buffer directly to the hardware using an image element payload.
-      // The driver uploads the frame and executes POST /api/display/draw
-      this.driver.sendPixelFrame(
+      // The driver uploads the frame and executes POST /api/display/draw.
+      // Not awaited: the next tick sends the next frame regardless, so a
+      // refused one is only worth a log line.
+      void this.driver.sendPixelFrame(
         frameBuffer,
         ledColor,
         DEVICE_APPLICATION_NAME,

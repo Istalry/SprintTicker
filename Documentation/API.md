@@ -289,6 +289,40 @@ See `classifyDeviceResponse`.
 | `413` | Payload too large. **Permanent** — retrying sends the same bytes |
 | `503` | Retry |
 
+### How the driver reports failure
+
+`BusyBarDriver`'s commands **throw** when the device did not do what was asked.
+The error is a `DeviceRequestError`, and its `kind` gives the reason:
+
+| `kind` | Meaning |
+| :--- | :--- |
+| `disconnected` | The driver is not connected, so nothing was sent |
+| `unreachable` | Sent, no answer: timeout, refused connection. The message carries the transport cause |
+| `conflict` | `409` on a request that is not a draw |
+| `too_large` | `413`. Permanent |
+| `busy` | `503`, still busy after the driver's own retry |
+| `rejected` | Any other non-2xx; `status` holds the code |
+
+A bad asset filename throws `ArgumentException` before anything is sent.
+
+Draws return a value instead of throwing for the answers that are not failures:
+
+| Call | Resolves to |
+| :--- | :--- |
+| `sendDisplayPayload` | `'drawn'`, or `'conflict'` when another application owns the display |
+| `sendPixelFrame` | `'sent'`; `'queued'` (disconnected or another frame in flight, so it is sent next); `'superseded'` (a clear landed mid-upload, **the device is not showing it**); `'conflict'` |
+
+`connect()` and `reconfigure()` answer a boolean and never throw. They are
+probes, and "the bar is not there" is a normal answer for them.
+
+> [!IMPORTANT]
+> **The driver used to answer `Promise<boolean>` for every command and never
+> throw.** A `.catch()` on one of those calls was therefore dead code for the
+> failure that actually happens, and `.then()` ran regardless. That is how the
+> Away animation stayed dark while the emulator played it. `.then(` is now an
+> ESLint error under `src/main/hardware/**`. Await each step so a failure names
+> the step that failed.
+
 ### Frames
 
 The front display is a rasterised **72×16 PNG**. Every frame is an asset upload

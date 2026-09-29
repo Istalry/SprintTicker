@@ -281,11 +281,11 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     try {
       // Act
       const connected = await liveDriver.connect();
-      const payloadSuccess = await liveDriver.sendDisplayPayload({ test: 'data' });
+      const payloadOutcome = await liveDriver.sendDisplayPayload({ test: 'data' });
 
       // Assert
       expect(connected).toBe(true);
-      expect(payloadSuccess).toBe(true);
+      expect(payloadOutcome).toBe('drawn');
       expect(capturedUrl).toBe('http://192.168.1.105/api/display/draw');
       expect(capturedHeaders['X-API-Token']).toBe('secret_x_api_token');
     } finally {

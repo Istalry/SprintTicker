@@ -31,7 +31,8 @@ reported something other than the truth, in three different ways.
 - **Tests for the hardware task picker and the tray context menu.** Both were
   behaviour a user reaches with a physical control and neither was covered.
   `input-decoder.ts` went from 66% to 94%, `tray-manager.ts` from 69% to 92%,
-  and the coverage floor is ratcheted to 83 / 74 / 84.5 / 85.
+  and the coverage floor is ratcheted to 83 / 74 / 84.5 / 85, and again to
+  84 / 75 / 85 / 86.5 with the driver's failure-path tests.
 - **Tests for the diagnostics export**, which had one test asserting three
   values the exporter had invented. `main/diagnostics` went from 66% to 98.5%;
   `logger-interceptor.ts` had no test file at all.
@@ -91,9 +92,34 @@ reported something other than the truth, in three different ways.
     and `DisplayRenderer` does not transmit a front frame while the device owns
     playback. Both measured against a real bar on firmware 1.2.3 by replaying
     the two draws and reading the panel back.
+  - A failed clear now also falls back to streaming, since the animation would
+    otherwise sit under the stale frame. So does a `409` on the animation draw,
+    so the animation reaches the bar once the display is released.
+- **A frame the device refused was never sent again.** The renderer skips a
+  frame identical to the last one it sent, and it was meant to forget that frame
+  when sending failed. The forgetting sat in a `.catch()` on a call that
+  reported failure by returning `false`, so it never ran. The bar kept whatever
+  it had until the picture changed, which is up to a minute for the timer and
+  never for a static screen. The frame is now resent on the next render. After a
+  `409` it is deliberately not resent, so a display held by another application
+  does not receive a re-upload on every tick.
 
 ### Changed
 
+- **The device driver reports failure by throwing.** `BusyBarDriver`'s commands
+  answered `Promise<boolean>` and never threw, so a refusal looked like success
+  to any caller that forgot to check. That shipped the blank-Away-animation bug
+  twice: a `.catch()` on one of these calls could not run for the failure that
+  actually happens. They now throw a `DeviceRequestError` that says why:
+  `disconnected`, `unreachable` (with the transport cause), `too_large`, `busy`,
+  `conflict` or `rejected`, plus the HTTP status. Two answers that are not
+  failures come back as values instead: a draw refused with `409` resolves
+  `'conflict'`, because another application owning the display is the device
+  working as designed, and a pixel frame that was queued or superseded says so
+  rather than returning the same `false` as a refusal. An ESLint rule now bans
+  `.then(` in the hardware layer, the chained shape behind both incidents.
+  `connect()` and `reconfigure()` still answer a boolean. They are probes, and
+  "the bar is not there" is a normal answer for them.
 - **ESLint 8 → 10, on flat config.** ESLint 8 is end of life. The target became
   10 rather than the planned 9 once the registry showed 9 as the `maintenance`
   tag. `.eslintrc.cjs` and `.eslintignore` are replaced by `eslint.config.mjs`,

@@ -1,5 +1,48 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { BusyBarDriver, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput, describeTransportError, isUnreachableReminderDue, DEVICE_UNREACHABLE_REMINDER_PINGS, DEVICE_PING_INTERVAL_MS } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, DeviceRequestError, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput, describeTransportError, isUnreachableReminderDue, DEVICE_UNREACHABLE_REMINDER_PINGS, DEVICE_PING_INTERVAL_MS } from '../src/main/hardware/busybar-driver';
+import { ArgumentException } from '../src/shared/dtos';
+
+/**
+ * A live (non-mock) driver, connected, whose every request past the status
+ * probe is answered by `respond`.
+ *
+ * Exists because every mock in this suite used to default to success, so the
+ * failure branches were never executed by anything -- which is how the `.anim`
+ * regression survived a green run. These tests are the bad-result half.
+ */
+async function withLiveDriver(
+  respond: (url: string, init?: RequestInit) => Promise<Response> | Response,
+  body: (driver: BusyBarDriver, calls: string[]) => Promise<void>
+): Promise<void> {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    if (url.includes('/api/status') || (url.includes('/api/display/brightness') && init?.method === 'GET')) {
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
+    }
+    calls.push(`${init?.method ?? 'GET'} ${url}`);
+    return respond(url, init);
+  }) as typeof fetch;
+  const logSpies = [
+    vi.spyOn(console, 'log').mockImplementation(() => undefined),
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined),
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  ];
+
+  const driver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+  // The state stream is a real WebSocket; nothing here is about it.
+  driver.startStateStreamListener = () => undefined;
+  try {
+    await driver.connect();
+    await body(driver, calls);
+  } finally {
+    driver.disconnect();
+    globalThis.fetch = originalFetch;
+    logSpies.forEach(spy => spy.mockRestore());
+  }
+}
+
+const status = (code: number): Response => ({ ok: code >= 200 && code < 300, status: code, json: async () => ({}) }) as Response;
 
 describe('BusyBarDriver Unit Tests', () => {
   let driver: BusyBarDriver;
@@ -303,11 +346,12 @@ describe('BusyBarDriver Unit Tests', () => {
     expect(elements[0].height).toBeUndefined();
   });
 
-  it('UploadAsset_InvalidFilenameWithSlashes_RejectsUpload', async () => {
+  it('UploadAsset_InvalidFilenameWithSlashes_ThrowsArgumentException', async () => {
     const buffer = Buffer.from('fake_image');
-    const result = await driver.uploadAsset('test_app', 'invalid/path/file!.png', buffer);
 
-    expect(result).toBe(false);
+    await expect(driver.uploadAsset('test_app', 'invalid/path/file!.png', buffer)).rejects.toBeInstanceOf(
+      ArgumentException
+    );
   });
 
   it('InjectRemoteKey_ValidKeyInMockMode_EmitsInputEvent', async () => {
@@ -316,31 +360,22 @@ describe('BusyBarDriver Unit Tests', () => {
       capturedEvent = evt as { key: string; type: string };
     });
 
-    const success = await driver.injectRemoteKey('ok');
+    await expect(driver.injectRemoteKey('ok')).resolves.toBeUndefined();
 
-    expect(success).toBe(true);
     expect(capturedEvent).not.toBeNull();
     expect(capturedEvent?.key).toBe('ok');
   });
 
-  it('SetAudioVolume_DefaultSilentFlag_ClampsVolumeAndPassesSilentOne', async () => {
-    const success = await driver.setAudioVolume(150, true);
-    expect(success).toBe(true);
-  });
-
-  it('SetBrightness_ValidValue_ReturnsTrueInMockMode', async () => {
-    const success = await driver.setBrightness(50);
-    expect(success).toBe(true);
-  });
-
-  it('SyncRtcTime_IsoTimestamp_SyncsClockInMockMode', async () => {
-    const success = await driver.syncRtcTime('2026-08-03T22:00:00Z');
-    expect(success).toBe(true);
+  it('MockMode_DeviceCommands_ResolveWithoutThrowing', async () => {
+    await expect(driver.setAudioVolume(150, true)).resolves.toBeUndefined();
+    await expect(driver.setBrightness(50)).resolves.toBeUndefined();
+    await expect(driver.syncRtcTime('2026-08-03T22:00:00Z')).resolves.toBeUndefined();
+    await expect(driver.sendDisplayPayload({ elements: [] })).resolves.toBe('drawn');
+    await expect(driver.sendPixelFrame(Buffer.from('png'))).resolves.toBe('sent');
   });
 
   it('UpdateAccessSettings_NewKey_UpdatesApiToken', async () => {
-    const success = await driver.updateAccessSettings('key', '87654321');
-    expect(success).toBe(true);
+    await driver.updateAccessSettings('key', '87654321');
     expect(driver.getApiToken()).toBe('87654321');
   });
 
@@ -544,5 +579,204 @@ describe('BusyBarDriver Unit Tests', () => {
       globalThis.fetch = originalFetch;
       vi.useRealTimers();
     }
+  });
+});
+
+describe('BusyBarDriver failure reporting', () => {
+  /** Every command that answers `void`, with a call that exercises it. */
+  const commands: Array<[string, (d: BusyBarDriver) => Promise<unknown>]> = [
+    ['uploadAsset', d => d.uploadAsset('app1', 'file.png', Buffer.from('png'))],
+    ['deleteAppAssets', d => d.deleteAppAssets('app1')],
+    ['clearDisplay', d => d.clearDisplay('app1')],
+    ['sendDisplayPayload', d => d.sendDisplayPayload({ elements: [] })],
+    ['injectRemoteKey', d => d.injectRemoteKey('ok')],
+    ['setBrightness', d => d.setBrightness(40)],
+    ['setAudioVolume', d => d.setAudioVolume(40)],
+    ['playAudio', d => d.playAudio('app1', 'a.snd')],
+    ['stopAudio', d => d.stopAudio()],
+    ['syncRtcTime', d => d.syncRtcTime()],
+    ['updateAccessSettings', d => d.updateAccessSettings('enabled')]
+  ];
+
+  it.each(commands)('%s_DeviceRefuses_ThrowsRejectedWithTheStatus', async (_name, call) => {
+    await withLiveDriver(() => status(400), async driver => {
+      const error = await call(driver).then(
+        () => null,
+        (err: unknown) => err
+      );
+
+      expect(error).toBeInstanceOf(DeviceRequestError);
+      expect((error as DeviceRequestError).kind).toBe('rejected');
+      expect((error as DeviceRequestError).status).toBe(400);
+    });
+  });
+
+  it('Command_NoAnswer_ThrowsUnreachableNamingTheTransportCause', async () => {
+    await withLiveDriver(
+      () => {
+        throw Object.assign(new TypeError('fetch failed'), {
+          cause: Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' })
+        });
+      },
+      async driver => {
+        const error = (await driver.clearDisplay().catch((err: unknown) => err)) as DeviceRequestError;
+
+        expect(error).toBeInstanceOf(DeviceRequestError);
+        expect(error.kind).toBe('unreachable');
+        expect(error.status).toBeNull();
+        expect(error.message).toContain('ECONNREFUSED');
+      }
+    );
+  });
+
+  it('UploadAsset_PayloadTooLarge_ThrowsTooLarge', async () => {
+    await withLiveDriver(() => status(413), async driver => {
+      await expect(driver.uploadAsset('app1', 'big.anim', Buffer.alloc(8))).rejects.toMatchObject({
+        kind: 'too_large',
+        status: 413
+      });
+    });
+  });
+
+  it('SendDisplayPayload_DisplayOwnedElsewhere_ResolvesConflictRatherThanThrowing', async () => {
+    // A 409 is the device working as designed, so it is an answer, not an error.
+    await withLiveDriver(() => status(409), async driver => {
+      await expect(driver.sendDisplayPayload({ elements: [] })).resolves.toBe('conflict');
+    });
+  });
+
+  it('NonDrawCommand_409_ThrowsConflict', async () => {
+    // Display ownership means nothing to a brightness change, so here a 409 is
+    // just another refusal.
+    await withLiveDriver(() => status(409), async driver => {
+      await expect(driver.setBrightness(10)).rejects.toMatchObject({ kind: 'conflict' });
+    });
+  });
+
+  it('Command_WhileDisconnected_ThrowsDisconnectedWithoutSendingAnything', async () => {
+    await withLiveDriver(() => status(200), async (driver, calls) => {
+      driver.disconnect();
+
+      await expect(driver.sendDisplayPayload({ elements: [] })).rejects.toMatchObject({ kind: 'disconnected' });
+      await expect(driver.uploadAsset('app1', 'f.png', Buffer.from('x'))).rejects.toMatchObject({
+        kind: 'disconnected'
+      });
+      expect(calls).toHaveLength(0);
+    });
+  });
+
+  it('InjectRemoteKey_WhileDisconnected_StillEmitsTheLocalEventAndResolves', async () => {
+    await withLiveDriver(() => status(500), async (driver, calls) => {
+      driver.disconnect();
+      const keys: string[] = [];
+      driver.on('input', (evt: { key: string }) => keys.push(evt.key));
+
+      await expect(driver.injectRemoteKey('start')).resolves.toBeUndefined();
+
+      expect(keys).toEqual(['start']);
+      expect(calls).toHaveLength(0);
+    });
+  });
+
+  it('UpdateAccessSettings_DeviceRefusesNewKey_KeepsTheOldToken', async () => {
+    // Adopting a key the device never accepted would lock the driver out of a
+    // bar that still has the old one.
+    await withLiveDriver(() => status(400), async driver => {
+      driver.setApiToken('old-token');
+
+      await expect(driver.updateAccessSettings('key', 'new-token')).rejects.toBeInstanceOf(DeviceRequestError);
+
+      expect(driver.getApiToken()).toBe('old-token');
+    });
+  });
+
+  describe('sendPixelFrame', () => {
+    const frame = Buffer.from('png');
+
+    it('SendPixelFrame_UploadRefused_ThrowsAndCountsTheFailure', async () => {
+      await withLiveDriver(
+        url => (url.includes('/api/assets/upload') ? status(500) : status(200)),
+        async (driver, calls) => {
+          await expect(driver.sendPixelFrame(frame)).rejects.toMatchObject({ kind: 'rejected', status: 500 });
+
+          // The draw must not be attempted for an image the device never stored.
+          expect(calls.some(c => c.startsWith('POST') && c.includes('/api/display/draw'))).toBe(false);
+          expect(driver.getDeviceStatus().framesFailed).toBe(1);
+        }
+      );
+    });
+
+    it('SendPixelFrame_DrawRefused_ThrowsAndCountsTheFailure', async () => {
+      await withLiveDriver(
+        url => (url.includes('/api/display/draw') ? status(400) : status(200)),
+        async driver => {
+          await expect(driver.sendPixelFrame(frame)).rejects.toMatchObject({ kind: 'rejected', status: 400 });
+          expect(driver.getDeviceStatus().framesFailed).toBe(1);
+          expect(driver.getDeviceStatus().framesSent).toBe(0);
+        }
+      );
+    });
+
+    it('SendPixelFrame_DrawConflict_ResolvesConflictWithoutCountingAFailure', async () => {
+      await withLiveDriver(
+        url => (url.includes('/api/display/draw') ? status(409) : status(200)),
+        async driver => {
+          await expect(driver.sendPixelFrame(frame)).resolves.toBe('conflict');
+          expect(driver.getDeviceStatus().framesFailed).toBe(0);
+        }
+      );
+    });
+
+    it('SendPixelFrame_Success_ResolvesSent', async () => {
+      await withLiveDriver(() => status(200), async driver => {
+        await expect(driver.sendPixelFrame(frame)).resolves.toBe('sent');
+        expect(driver.getDeviceStatus().framesSent).toBe(1);
+      });
+    });
+
+    it('SendPixelFrame_WhileAnotherIsInFlight_ResolvesQueued', async () => {
+      let releaseUpload: () => void = () => undefined;
+      await withLiveDriver(
+        url =>
+          url.includes('/api/assets/upload')
+            ? new Promise<Response>(resolve => {
+                releaseUpload = () => resolve(status(200));
+              })
+            : status(200),
+        async driver => {
+          const first = driver.sendPixelFrame(frame);
+          await expect(driver.sendPixelFrame(frame)).resolves.toBe('queued');
+          releaseUpload();
+          await expect(first).resolves.toBe('sent');
+        }
+      );
+    });
+
+    it('SendPixelFrame_ClearedDuringUpload_ResolvesSupersededAndSkipsTheDraw', async () => {
+      let releaseUpload: () => void = () => undefined;
+      await withLiveDriver(
+        url =>
+          url.includes('/api/assets/upload')
+            ? new Promise<Response>(resolve => {
+                releaseUpload = () => resolve(status(200));
+              })
+            : status(200),
+        async (driver, calls) => {
+          const pending = driver.sendPixelFrame(frame);
+          await driver.clearDisplay();
+          releaseUpload();
+
+          await expect(pending).resolves.toBe('superseded');
+          expect(calls.some(c => c.startsWith('POST') && c.includes('/api/display/draw'))).toBe(false);
+        }
+      );
+    });
+
+    it('SendPixelFrame_WhileDisconnected_ResolvesQueued', async () => {
+      await withLiveDriver(() => status(200), async driver => {
+        driver.disconnect();
+        await expect(driver.sendPixelFrame(frame)).resolves.toBe('queued');
+      });
+    });
   });
 });

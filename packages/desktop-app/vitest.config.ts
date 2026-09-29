@@ -65,11 +65,15 @@ export default defineConfig({
       // exporter's corrupted-database branches were unreachable from the one
       // test that existed. That test also asserted three values the exporter
       // had invented rather than measured, so it passed while the bundle lied.
+      // Raised again when the device driver moved to throwing: measured
+      // 84.29 / 75.16 / 85.29 / 86.72. The new tests are the bad-result half
+      // for every driver command -- each mock used to default to success, so
+      // no failure branch in the driver had ever been executed.
       thresholds: {
-        lines: 85,
-        functions: 84.5,
-        branches: 74,
-        statements: 83
+        lines: 86.5,
+        functions: 85,
+        branches: 75,
+        statements: 84
       }
     }
   },

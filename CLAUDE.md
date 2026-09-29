@@ -25,7 +25,7 @@ display over USB, and mirrors Windows notifications onto it.
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
 pnpm test             # vitest run
-pnpm test:coverage    # floor: 83% stmts / 85% lines / 84.5% funcs / 74% branches
+pnpm test:coverage    # floor: 84% stmts / 86.5% lines / 85% funcs / 75% branches
                       # a ratchet -- raise it, never lower it to make a run pass
 pnpm typecheck        # main and renderer tsconfigs, separately
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
@@ -158,10 +158,13 @@ that only showed up in use:
 - Windows' inbox CDC-NCM driver can refuse to start the interface — a real
   failure, reproduced on 25H2 with an Intel 700-series xHCI, where the device
   enumerates cleanly and the network child fails with Code 10 /
-  `STATUS_DEVICE_HARDWARE_ERROR`. Ten targeted fixes changed nothing; the
-  working recovery is to pass the device through to another network stack and
-  proxy it back on a *different* address. A bar reachable only at `10.0.4.21`
-  is still a bar.
+  `STATUS_DEVICE_HARDWARE_ERROR`. Ten targeted fixes changed nothing, and
+  neither did an in-place repair upgrade of Windows — it completed, rebuilt the
+  driver store, re-selected the same `usbncm.inf`, and the interface still came
+  up Code 10, so do not suggest it again as though it were untried. The working
+  recovery is to pass the device through to another network stack and proxy it
+  back on a *different* address. A bar reachable only at `10.0.4.21` is still a
+  bar.
 
 So the address and token live in `DeviceConfigDTO`, seeded from
 `DEFAULT_USB_IP` and `DEFAULT_DEVICE_CONFIG` in `shared/device-constants.ts`.
@@ -277,19 +280,37 @@ changing it:
 - **Providers report failure by throwing**, never by returning `[]`. An empty
   array is indistinguishable from "this user has no tasks", and treating one as
   the other deleted local data.
-- **`BusyBarDriver` is the exception: it reports failure by returning `false`.**
-  `uploadAsset`, `sendDisplayPayload`, `sendPixelFrame` and friends answer
-  `Promise<boolean>` and do not throw for a device that says no — a 4xx, a
-  timeout and a disconnected driver all come back as `false`. So **`.catch()` on
-  one of these is dead code for the failure that actually happens**, and
-  `.then()` runs regardless. Await the call and check the boolean.
-  This has shipped twice. The animation player chained
+- **`BusyBarDriver` commands throw too.** Every command (`uploadAsset`,
+  `clearDisplay`, `sendDisplayPayload`, `sendPixelFrame`, `injectRemoteKey`,
+  and the rest) throws a `DeviceRequestError` whose `kind` says why:
+  `disconnected`, `unreachable`, `conflict`, `too_large`, `busy` or `rejected`.
+  A bad asset filename is an `ArgumentException`. Two answers that are not
+  failures come back as values, and you must read them:
+  - `sendDisplayPayload` resolves `'drawn' | 'conflict'`. A `409` means another
+    application owns the display, which is the device working as designed.
+  - `sendPixelFrame` resolves `'sent' | 'queued' | 'superseded' | 'conflict'`.
+    `superseded` means a clear landed mid-upload and **the device is not showing
+    this frame**.
+
+  `connect()` and `reconfigure()` still answer a boolean on purpose: they are
+  probes, and "the bar is not there" is a normal answer for them. The getters
+  answer `null` for "unknown".
+
+  It used to be the other way round, and that shipped the same bug twice. Every
+  command answered `Promise<boolean>` and never threw, so `.catch()` was dead
+  code for the failure that actually happens and `.then()` ran regardless. The
+  animation player chained
   `uploadAsset(...).then(() => sendDisplayPayload(...).catch(...)).catch(...)`,
-  which asked the device to draw an asset it had refused to store; the bar went
+  which asked the device to draw an asset it had refused to store. The bar went
   blank while the on-screen emulator animated correctly, because the emulator is
-  fed by `onFrameCallback` and never touches hardware. Neither handler fired and
-  the log said only that the animation had loaded. When a preview and the
-  hardware disagree, suspect a swallowed boolean before anything else.
+  fed by `onFrameCallback` and never touches hardware. Neither handler fired, and
+  the log said only that the animation had loaded. The renderer's "forget the
+  frame so it is resent" logic sat in the same kind of dead `.catch()`.
+
+  An ignored rejection is a lint error in main (`no-floating-promises`), and
+  `.then(` is banned under `src/main/hardware/**`, so this cannot silently come
+  back. When a preview and the hardware disagree, still suspect the failure
+  path before anything else.
 - **No magic numbers.** Constants belong in a named module —
   `render-constants.ts`, `sync-constants.ts`, `priority-defaults.ts`.
 - **Never write an empty `catch`.** If a failure is genuinely safe to swallow,

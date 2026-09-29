@@ -500,6 +500,21 @@ Also worth doing while this area is open:
 
 ---
 
+## Device connection
+
+- [x] **The bar's address and token are settings, not constants** (`ff8c072`).
+  The app used to assume `10.0.4.20` over USB with no token, which held only
+  until it did not: over Wi-Fi the bar takes a DHCP lease, and on one machine
+  Windows' inbox CDC-NCM driver refused to start the interface at all (Code 10),
+  leaving a passthrough-and-proxy on another address as the only way in. Both
+  now live in `DeviceConfigDTO`, a changed address re-dials in place, and the
+  host is validated against an allow-list before it reaches a URL. The traps
+  that came with it -- token redaction in logged URLs, the `wsGeneration`
+  guard against a superseded socket orphaning the live one -- are in
+  `CLAUDE.md` §4, and the troubleshooting path is in the user guide.
+
+---
+
 ## 4. Animation and visual work
 
 **Blocked on:** nothing now. F-07 (a full PNG upload every second) and F-08 (a
@@ -508,22 +523,66 @@ was gated, and both are fixed — frames are hashed and deduplicated, the
 animation cache is bounded to two entries, and the blocker is released for
 looping idle animations.
 
-- [ ] **Make `BusyBarDriver` report failure by throwing, not by returning
-  `false`.** This is the real fix behind the Away animation going dark for a
-  fortnight. `uploadAsset` and `sendDisplayPayload` are `Promise<boolean>`, so a
-  refusal is indistinguishable from a success to any caller that forgets to look
-  — and `.then(...).catch(...)` on one of them puts the failure handling in a
-  `catch` that can never run. TypeScript cannot help: an ignored `boolean` is
-  legal, while an ignored rejection is an ESLint error under `no-floating-
-  promises` (CLAUDE.md §6), which turns the whole class of bug into a build
-  failure. It is a breaking change across every call site and its own commit,
-  not a drive-by.
-  - Interim, and much cheaper: an ESLint `no-restricted-syntax` rule banning
-    `.then(` under `src/main/hardware/**`. It does not catch an ignored return
-    value, but it does catch the specific shape that shipped.
-  - `pnpm probe:busybar` now covers hardware `.anim` playback at the pixel
-    level, which catches the *symptom* against real hardware. That is a
-    backstop, not a substitute: it only runs when someone runs it.
+**Order of work, decided 2026-09-29.** Each is its own change:
+
+1. `BusyBarDriver` reports failure by throwing (below).
+2. **Our own fonts.** Row 0 is set in the firmware's font (OFL-1.1, Flipper
+   FZCO) and row 1 in a 3x5 font that has only 39 of the 95 printable ASCII
+   glyphs -- a `(`, `,`, `'` or `#` reaches the bar as `?` -- and cuts at a
+   fixed character count with no ellipsis, so mid-word. Both are replaced by
+   fonts drawn here, same size, complete, from reviewable glyph sheets through
+   a generator, with the legibility rules written down.
+3. **An animation studio as its own package.** A standalone web editor --
+   deliberately outside the Electron/React stack -- that composes scenes in
+   the official animations' visual language (rounded gradient plate with an
+   outline, an animated icon on the left, large text on the right), exports a
+   PNG sequence that `build-anims` already compiles, and previews on a real
+   bar.
+4. **Our own animations and notification/event effects**, made with it:
+   a sandwich stacking itself for Lunch, a steaming coffee for Away, animated
+   icons for notifications and events. The three Flipper frame sets are
+   removed in a separate change once the replacements have run on hardware.
+   The `seq2anim` toolchain stays.
+5. The rear OLED, below.
+
+Dropped on the same date, by choice rather than blocker: the lunch and break
+countdown, the `coding` and `on_call` animations, and with the countdown the
+device clock-skew correction, which only mattered for an element that hands
+the device a timestamp.
+
+- [x] **`BusyBarDriver` reports failure by throwing, not by returning `false`**
+  (2026-09-29). This is the real fix behind the Away animation going dark for a
+  fortnight. `uploadAsset` and `sendDisplayPayload` were `Promise<boolean>`, so a
+  refusal was indistinguishable from a success to any caller that forgot to look.
+  `.then(...).catch(...)` on one of them put the failure handling in a `catch`
+  that could never run. TypeScript cannot help, because an ignored `boolean` is
+  legal. An ignored rejection is an ESLint error under `no-floating-promises`, so
+  throwing turns the whole class of bug into a build failure.
+  - Every command now throws a `DeviceRequestError` with a `kind` (`disconnected`,
+    `unreachable`, `conflict`, `too_large`, `busy`, `rejected`). A `409` on a
+    draw is **not** an error: it resolves `'conflict'`. `sendPixelFrame` also
+    tells `queued` and `superseded` apart from a refusal; all three used to be
+    the same `false`. `connect()` and `reconfigure()` stay boolean, because they
+    are probes.
+  - **Converting the callers found the same bug a third time.** The renderer's
+    frame deduplication was meant to forget a frame that did not land so it
+    would be resent. The forgetting was a `.catch()` on `sendPixelFrame`, which
+    never threw, so a refused frame stayed missing until the picture changed.
+    A `409` deliberately keeps the frame, so a display held by another
+    application is not re-uploaded on every render.
+  - The animation player now also falls back to streaming when the clear before
+    the draw fails (the animation would otherwise sit under the stale frame),
+    and when the draw gets a `409`.
+  - The ESLint `no-restricted-syntax` rule banning `.then(` under
+    `src/main/hardware/**` landed with it, as a guard against the chained shape
+    returning.
+  - The suite gained the bad-result half for every command. Each mock had
+    defaulted to success, so no failure branch in the driver had ever run.
+  - `pnpm probe:busybar` covers hardware `.anim` playback at the pixel level,
+    which catches the *symptom* against real hardware. It is a backstop, not a
+    substitute: it only runs when someone runs it.
+  - **Not yet run against a real bar.** Verify with `pnpm dev` and the console,
+    per the section below.
 
 - [x] **`CountdownElement` is probed, and it is a layout exercise, not a
   rewrite** (2026-09-09). `pnpm probe:busybar` now draws one, reads the panel
@@ -559,8 +618,9 @@ looping idle animations.
     would mean a frame upload every second for a digit nobody reads. The
     countdown element is what makes seconds affordable, and it is now measured
     rather than hypothetical.
-- **Countdown display for lunch and breaks** — deferred by choice, not by
-  blocker. Revisit after the probe.
+- ~~**Countdown display for lunch and breaks**~~ — dropped (2026-09-29). Not
+  wanted; the measurements above stay as a record of how the element behaves,
+  and the clock-skew work they describe is dropped with it.
 - **Wire up the rear 160×80 OLED.** `buildRearElements` already produces valid
   8-digit `#RRGGBBAA` elements and feeds the on-screen emulator;
   `transmitFrame` sends the front matrix and nothing else. The re-entry path is
@@ -624,6 +684,9 @@ looping idle animations.
       differ, and the higher value is the one drawn on top. That is the fact §4
       would be designed around, so it is measured rather than inferred from a
       `200`.
+    - `coding` and `on_call` are dropped (2026-09-29): not wanted, whatever
+      the device now allows. The layering finding still matters for animated
+      notification icons beside rendered text.
     - This does **not** make the animation work small. The blocker was one of
       three reasons; `coding` still has to coexist with the task key and timer
       inside 72×16, and `on_call` still needs a presence signal the app does not
@@ -662,8 +725,8 @@ looping idle animations.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**83.19 statements / 74.41 branches / 85.15 functions / 85.47 lines across 752
-tests in 53 files**, and the floor is ratcheted to 83 / 74 / 84.5 / 85.
+**84.29 statements / 75.16 branches / 85.29 functions / 86.72 lines across 781
+tests in 53 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

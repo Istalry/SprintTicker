@@ -351,8 +351,21 @@ app.on('will-quit', event => {
         // keeps showing the last frame -- "Working on FEAT-42" hours after the
         // app closed -- and every frame_0/frame_1 PNG ever uploaded stays in
         // the device's own storage under our application name.
-        await driver.clearDisplay(DEVICE_APPLICATION_NAME);
-        await driver.deleteAppAssets(DEVICE_APPLICATION_NAME);
+        //
+        // Each in its own try: they throw when the device refuses or is not
+        // there, and a failed clear must not skip the asset cleanup, nor
+        // either of them the disconnect. A bar that is unplugged at quit is
+        // the ordinary case for both to fail, so they only warn.
+        try {
+          await driver.clearDisplay(DEVICE_APPLICATION_NAME);
+        } catch (err) {
+          console.warn('[Main] Could not clear the display on shutdown:', err);
+        }
+        try {
+          await driver.deleteAppAssets(DEVICE_APPLICATION_NAME);
+        } catch (err) {
+          console.warn('[Main] Could not delete uploaded assets on shutdown:', err);
+        }
         driver.disconnect();
       }
       if (dbConnection) {

@@ -564,15 +564,7 @@ export class DisplayRenderer {
       const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
 
       // Fire-and-forget hardware transmission (non-blocking for render callers)
-      void this._driver
-        .sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, dynamicFilename)
-        .catch(err => {
-          console.error('[DisplayRenderer] sendPixelFrame failed:', err);
-          // The device may or may not have taken the frame. Forget the
-          // signature so the next render transmits rather than assuming the
-          // display already shows this.
-          this.lastTransmittedSignature = null;
-        });
+      void this.sendFrameToDevice(pngBuffer, ledColorHex, dynamicFilename);
     }
 
     this.lastState = {
@@ -586,6 +578,34 @@ export class DisplayRenderer {
 
     for (const callback of this.stateChangeCallbacks) {
       callback(this.lastState);
+    }
+  }
+
+  /**
+   * Sends one frame and forgets its signature when it did not land.
+   *
+   * The deduplication in `transmitFrame` assumes the device shows the last
+   * frame recorded. When it does not, the next identical render has to go out
+   * again, or the bar stays wrong until the picture happens to change -- which
+   * for an `HH:MM` timer is up to a minute, and for a static screen is never.
+   * This used to be a `.catch` on a call that reported failure by returning
+   * `false`, so the reset below could not run for the one failure that
+   * actually happens.
+   *
+   * A `409` keeps the signature on purpose. Another application holds the
+   * display, and forgetting would re-upload the same frame on every render
+   * for as long as it does; our last accepted frame is what the device shows
+   * when it lets go.
+   */
+  private async sendFrameToDevice(pngBuffer: Buffer, ledColorHex: string, filename: string): Promise<void> {
+    try {
+      const outcome = await this._driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, filename);
+      if (outcome === 'superseded') {
+        this.lastTransmittedSignature = null;
+      }
+    } catch (err) {
+      console.error('[DisplayRenderer] sendPixelFrame failed:', err);
+      this.lastTransmittedSignature = null;
     }
   }
 

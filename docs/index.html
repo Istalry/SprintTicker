@@ -809,13 +809,22 @@
       another computer. Reinstalling the driver, switching to the alternate inbox
       NCM driver, <code>DISM</code>/<code>sfc</code>, clearing the USB descriptor cache and disabling
       selective suspend all change nothing.</p>
-      <p>Two things do work. An of Windows rebuilds the
-      driver stack. Or, without touching Windows, pass the USB device through to
-      another network stack — WSL2 with <code>usbipd-win</code>, whose <code>cdc_ncm</code> driver brings
-      the adapter up without complaint — and proxy the bar back to a local address.</p>
-      <p>If you take the proxy route, <strong>put that address in Settings › Device →
-      Connection</strong>. That is what the setting is for: the bar is then reachable at,
-      say, <code>10.0.4.21</code>, and the app needs to be told.</p>
+      <p>An of Windows is the obvious next move, and on
+      this machine it did not help: the upgrade completed, the driver store was
+      rebuilt, Windows selected the same <code>usbncm.inf</code>, and the interface still came
+      up with Code 10. Try it if you like, but do not count on it.</p>
+      <p><strong>What does work is not using the Windows driver at all</strong> — pass the USB
+      device through to another network stack. WSL2 with <code>usbipd-win</code> brings the
+      adapter up without complaint under its own <code>cdc_ncm</code> driver; proxy the bar
+      back to a local address from there.</p>
+      <p>Then <strong>put that address in Settings › Device → Connection</strong>. That is what the
+      setting is for: the bar is reachable at, say, <code>10.0.4.21</code>, and the app needs
+      to be told.</p>
+      <p>One thing to watch if you go this route: a <code>usbipd</code> binding, and any watcher
+      script that re-attaches the device on plug-in, will claim the bar before
+      Windows can try. If you ever want to re-test the native driver, disable the
+      watcher and <code>usbipd unbind</code> the device first, or you are only testing the
+      passthrough.</p>
       </div>
       <div class="note"><span class="label">Export the logs; they now say what went wrong.</span>
       <p>The driver records the
@@ -1293,9 +1302,9 @@
       modifies neither your scenes nor your project code.</p>
       <hr>
       <h3 id="architecture-testing">7. Testing</h3>
-      <p>Vitest, 752 tests across 53 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 781 tests across 53 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
-      of TSX. The floor is a ratchet (83 / 74 / 84.5 / 85) and is raised, never
+      of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>
       <p>Two harnesses let the provider layer be exercised over a real socket without a
       real instance: <code>scripts/fake-openproject.js</code> (<code>pnpm mock:openproject</code>) and
@@ -1774,6 +1783,69 @@
       <td align="left">Retry</td>
       </tr>
       </tbody></table></div>
+      <h4>How the driver reports failure</h4>
+      <p><code>BusyBarDriver</code>&#39;s commands <strong>throw</strong> when the device did not do what was asked.
+      The error is a <code>DeviceRequestError</code>, and its <code>kind</code> gives the reason:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left"><code>kind</code></th>
+      <th align="left">Meaning</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>disconnected</code></td>
+      <td align="left">The driver is not connected, so nothing was sent</td>
+      </tr>
+      <tr>
+      <td align="left"><code>unreachable</code></td>
+      <td align="left">Sent, no answer: timeout, refused connection. The message carries the transport cause</td>
+      </tr>
+      <tr>
+      <td align="left"><code>conflict</code></td>
+      <td align="left"><code>409</code> on a request that is not a draw</td>
+      </tr>
+      <tr>
+      <td align="left"><code>too_large</code></td>
+      <td align="left"><code>413</code>. Permanent</td>
+      </tr>
+      <tr>
+      <td align="left"><code>busy</code></td>
+      <td align="left"><code>503</code>, still busy after the driver&#39;s own retry</td>
+      </tr>
+      <tr>
+      <td align="left"><code>rejected</code></td>
+      <td align="left">Any other non-2xx; <code>status</code> holds the code</td>
+      </tr>
+      </tbody></table></div>
+      <p>A bad asset filename throws <code>ArgumentException</code> before anything is sent.</p>
+      <p>Draws return a value instead of throwing for the answers that are not failures:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Call</th>
+      <th align="left">Resolves to</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>sendDisplayPayload</code></td>
+      <td align="left"><code>&#39;drawn&#39;</code>, or <code>&#39;conflict&#39;</code> when another application owns the display</td>
+      </tr>
+      <tr>
+      <td align="left"><code>sendPixelFrame</code></td>
+      <td align="left"><code>&#39;sent&#39;</code>; <code>&#39;queued&#39;</code> (disconnected or another frame in flight, so it is sent next); <code>&#39;superseded&#39;</code> (a clear landed mid-upload, <strong>the device is not showing it</strong>); <code>&#39;conflict&#39;</code></td>
+      </tr>
+      </tbody></table></div>
+      <p><code>connect()</code> and <code>reconfigure()</code> answer a boolean and never throw. They are
+      probes, and &quot;the bar is not there&quot; is a normal answer for them.</p>
+      <div class="note trap">
+      <p><strong>The driver used to answer <code>Promise&lt;boolean&gt;</code> for every command and never
+      throw.</strong> A <code>.catch()</code> on one of those calls was therefore dead code for the
+      failure that actually happens, and <code>.then()</code> ran regardless. That is how the
+      Away animation stayed dark while the emulator played it. <code>.then(</code> is now an
+      ESLint error under <code>src/main/hardware/**</code>. Await each step so a failure names
+      the step that failed.</p>
+      </div>
       <h4>Frames</h4>
       <p>The front display is a rasterised <strong>72×16 PNG</strong>. Every frame is an asset upload
       plus a draw — two HTTP requests. <code>transmitFrame</code> hashes the frame and skips an

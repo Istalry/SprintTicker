@@ -3,6 +3,10 @@ import WebSocket from 'ws';
 import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException } from '../../shared/dtos';
 import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
+import { DeviceRequestError, DrawOutcome, FrameOutcome } from './device-errors';
+
+export { DeviceRequestError } from './device-errors';
+export type { DeviceFailureKind, DrawOutcome, FrameOutcome } from './device-errors';
 
 export interface HardwareEvent {
   key: string;
@@ -383,6 +387,12 @@ export class BusyBarDriver extends EventEmitter {
 
   /**
    * Initializes hardware connection and starts ping loop & WebSocket listener.
+   *
+   * Answers a boolean and does not throw, unlike the commands below. This is a
+   * probe, not a command: "the bar is not there" is a normal answer here, the
+   * ping loop keeps retrying in the background either way, and nothing a
+   * caller could do with an exception would differ from reading the result.
+   * `reconfigure` answers the same way for the same reason.
    */
   public async connect(): Promise<boolean> {
     if (this.isMockMode) {
@@ -747,106 +757,129 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
+   * Throws unless the driver is connected (or mocked).
+   *
+   * A request to a device we know is absent would only time out, two seconds
+   * later, with a less useful message.
+   */
+  private requireConnected(operation: string): void {
+    if (!this.isConnected && !this.isMockMode) {
+      throw new DeviceRequestError('disconnected', operation, null, `not connected to ${this.ipAddress}`);
+    }
+  }
+
+  /**
+   * Sends one request and throws unless the device carried it out.
+   *
+   * With `allowConflict`, a `409` comes back as `'conflict'` rather than
+   * throwing: for a draw it means another application owns the display, which
+   * is the device working as designed. For anything else it is thrown like any
+   * other refusal.
+   */
+  private async deviceRequest(
+    operation: string,
+    url: string,
+    init: RequestInit,
+    options: { allowConflict?: boolean; timeoutMs?: number } = {}
+  ): Promise<'ok' | 'conflict'> {
+    const response = await this.deviceFetch(url, init, options.timeoutMs);
+    const kind = this.reportDeviceResponse(operation, response);
+    if (kind === 'ok') return 'ok';
+    if (kind === 'conflict' && options.allowConflict) return 'conflict';
+    throw DeviceRequestError.fromResponseKind(kind, operation, response, this.lastTransportError);
+  }
+
+  /**
    * Uploads binary asset file to POST /api/assets/upload?application_name={app}&file={filename}
    * Validates filename strictly against regex ^[a-zA-Z0-9._-]+$.
+   *
+   * @throws ArgumentException for a filename the firmware would reject.
+   * @throws DeviceRequestError when the device did not store the file.
    */
-  public async uploadAsset(applicationName: string, filename: string, binaryData: Buffer | Uint8Array): Promise<boolean> {
-    if (!this.isConnected && !this.isMockMode) {
-      return false;
-    }
+  public async uploadAsset(applicationName: string, filename: string, binaryData: Buffer | Uint8Array): Promise<void> {
     const cleanFilename = filename.replace(/^.*[\\/]/, '');
     if (!ASSET_FILENAME_REGEX.test(cleanFilename)) {
-      console.error(`[BusyBarDriver] Invalid asset filename '${filename}'. Must match ${ASSET_FILENAME_REGEX}`);
-      return false;
+      throw new ArgumentException(`Invalid asset filename '${filename}'. Must match ${ASSET_FILENAME_REGEX}.`, 'filename');
     }
+    const operation = `asset upload ${cleanFilename}`;
+    this.requireConnected(operation);
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK ASSET UPLOAD] app=${applicationName}, file=${cleanFilename}, bytes=${binaryData.byteLength}`);
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(cleanFilename)}`;
-      const response = await this.deviceFetch(
-        url,
-        {
-          method: 'POST',
-          headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
-          // Buffer is not part of the DOM BodyInit union TypeScript models for
-          // fetch. A Uint8Array view over the same bytes is, with no copy. The
-          // ArrayBuffer assertion is needed because TypedArrays became generic
-          // over their backing buffer in TS 5.7, and the default ArrayBufferLike
-          // admits SharedArrayBuffer, which BodyInit excludes.
-          body: new Uint8Array(
-            binaryData.buffer as ArrayBuffer,
-            binaryData.byteOffset,
-            binaryData.byteLength
-          )
-        },
-        // An upload carries a payload rather than a few bytes of JSON.
-        DEVICE_UPLOAD_TIMEOUT_MS
-      );
-
-      return this.reportDeviceResponse(`asset upload ${cleanFilename}`, response) === 'ok';
-    } catch (err) {
-      console.error(`[BusyBarDriver] Asset upload failed for ${cleanFilename}:`, err);
-      return false;
-    }
+    const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(cleanFilename)}`;
+    await this.deviceRequest(
+      operation,
+      url,
+      {
+        method: 'POST',
+        headers: this.getHeaders({ 'Content-Type': 'application/octet-stream' }),
+        // Buffer is not part of the DOM BodyInit union TypeScript models for
+        // fetch. A Uint8Array view over the same bytes is, with no copy. The
+        // ArrayBuffer assertion is needed because TypedArrays became generic
+        // over their backing buffer in TS 5.7, and the default ArrayBufferLike
+        // admits SharedArrayBuffer, which BodyInit excludes.
+        body: new Uint8Array(
+          binaryData.buffer as ArrayBuffer,
+          binaryData.byteOffset,
+          binaryData.byteLength
+        )
+      },
+      // An upload carries a payload rather than a few bytes of JSON.
+      { timeoutMs: DEVICE_UPLOAD_TIMEOUT_MS }
+    );
   }
 
   /**
    * Deletes all asset files for application: DELETE /api/assets/upload?application_name={app}
+   *
+   * @throws DeviceRequestError when the device did not delete them.
    */
-  public async deleteAppAssets(applicationName: string): Promise<boolean> {
+  public async deleteAppAssets(applicationName: string): Promise<void> {
+    const operation = `asset delete ${applicationName}`;
+    this.requireConnected(operation);
+
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK ASSET DELETE] app=${applicationName}`);
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}`;
-      const response = await this.deviceFetch(url, {
-        method: 'DELETE',
-        headers: this.getHeaders()
-      });
-
-      return response ? response.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Asset delete failed for ${applicationName}:`, err);
-      return false;
-    }
+    const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}`;
+    await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
   }
 
   /**
    * Clears display elements for application: DELETE /api/display/draw?application_name={app}
+   *
+   * @throws DeviceRequestError when the device did not clear them.
    */
-  public async clearDisplay(applicationName: string = DEVICE_APPLICATION_NAME): Promise<boolean> {
-    if (!this.isConnected && !this.isMockMode) {
-      return false;
-    }
+  public async clearDisplay(applicationName: string = DEVICE_APPLICATION_NAME): Promise<void> {
+    const operation = 'clear display';
+    this.requireConnected(operation);
     this.displayVersion++;
     this.pendingFrameArgs = null;
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK CLEAR] app=${applicationName}`);
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
-      const response = await this.deviceFetch(url, {
-        method: 'DELETE',
-        headers: this.getHeaders()
-      });
-      return response ? response.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Clear display failed:`, err);
-      return false;
-    }
+    const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
+    await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
   }
 
   /**
    * Renders pixel art matrix PNG to physical display via uploadAsset + single ImageElement draw.
+   *
+   * Only one frame is ever in flight. A frame requested while another is being
+   * sent, or while the device is disconnected, replaces whatever was waiting and
+   * is sent next -- so the latest state always lands and nothing floods the
+   * device. See `FrameOutcome` for what each answer means.
+   *
+   * @throws ArgumentException for a filename the firmware would reject.
+   * @throws DeviceRequestError when the upload or the draw was refused.
    */
   public async sendPixelFrame(
     pngBuffer: Buffer,
@@ -854,42 +887,40 @@ export class BusyBarDriver extends EventEmitter {
     applicationName: string = DEVICE_APPLICATION_NAME,
     filename: string = 'frame.png',
     priority: number = DEFAULT_DRAW_PRIORITY
-  ): Promise<boolean> {
+  ): Promise<FrameOutcome> {
     if (!this.isConnected && !this.isMockMode) {
+      // Sent by the ping loop's recovery path once the device answers again.
       this.pendingFrameArgs = [pngBuffer, ledColorHex, applicationName, filename, priority];
-      return false;
+      return 'queued';
     }
     const cleanFilename = filename.replace(/^.*[\\/]/, '');
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK PIXEL FRAME] app=${applicationName}, file=${cleanFilename}, bytes=${pngBuffer.byteLength}, led=${ledColorHex ?? 'none'}`);
-      return true;
+      return 'sent';
     }
 
     if (this.frameInFlight) {
       // Store the latest requested frame so it gets drawn after the current one finishes.
       // This guarantees we don't drop critical static state changes (like task finishing)
       this.pendingFrameArgs = [pngBuffer, ledColorHex, applicationName, filename, priority];
-      return false; // Skip this hardware transmission to avoid queue flooding
+      return 'queued';
     }
 
     const currentVersion = this.displayVersion;
     this.frameInFlight = true;
     try {
-      const uploadOk = await this.uploadAsset(applicationName, cleanFilename, pngBuffer);
-      
-      // If a clearDisplay or sendDisplayPayload was called during the asset upload, abort the draw
-      if (this.displayVersion !== currentVersion) {
-        this.frameInFlight = false;
-        this.checkPendingFrame();
-        return false;
+      try {
+        await this.uploadAsset(applicationName, cleanFilename, pngBuffer);
+      } catch (err) {
+        // A clear that landed mid-upload makes the outcome moot either way.
+        if (this.displayVersion !== currentVersion) return 'superseded';
+        this.framesFailed++;
+        throw err;
       }
 
-      if (!uploadOk) {
-        console.warn(`[BusyBarDriver] PNG asset upload failed for ${cleanFilename}, skipping draw.`);
-        this.framesFailed++;
-        this.frameInFlight = false;
-        this.checkPendingFrame();
-        return false;
+      // If a clearDisplay or sendDisplayPayload was called during the asset upload, abort the draw
+      if (this.displayVersion !== currentVersion) {
+        return 'superseded';
       }
 
       const drawPayload: Record<string, unknown> = {
@@ -930,22 +961,19 @@ export class BusyBarDriver extends EventEmitter {
 
       if (kind === 'ok') {
         this.framesSent++;
-      } else if (kind !== 'conflict') {
+        return 'sent';
+      }
+      if (kind === 'conflict') {
         // A 409 is the display legitimately belonging to something else, not a
         // transmission that went wrong, so it does not count against the frame
         // statistics the diagnostics panel reports.
-        this.framesFailed++;
+        return 'conflict';
       }
-
-      this.frameInFlight = false;
-      this.checkPendingFrame();
-      return kind === 'ok';
-    } catch (err) {
-      console.error(`[BusyBarDriver] sendPixelFrame failed:`, err);
       this.framesFailed++;
+      throw DeviceRequestError.fromResponseKind(kind, 'draw', drawResponse, this.lastTransportError);
+    } finally {
       this.frameInFlight = false;
       this.checkPendingFrame();
-      return false;
     }
   }
 
@@ -1014,6 +1042,8 @@ export class BusyBarDriver extends EventEmitter {
       this.pendingFrameArgs = null;
       // Fire next frame asynchronously without blocking, with a 35ms network throttle
       setTimeout(() => {
+        // Nobody awaits a deferred frame, so this is where its failure is
+        // reported. The next render sends a fresh one anyway.
         this.sendPixelFrame(...args).catch(err => {
           console.warn(`[BusyBarDriver] Throttled frame dropped: ${err}`);
         });
@@ -1023,39 +1053,47 @@ export class BusyBarDriver extends EventEmitter {
 
   /**
    * Posts draw payload to POST /api/display/draw.
+   *
+   * @returns `'conflict'` when another application owns the display (409).
+   * @throws DeviceRequestError when the device refused the draw.
    */
-  public async sendDisplayPayload(payload: Record<string, unknown>): Promise<boolean> {
-    if (!this.isConnected && !this.isMockMode) {
-      return false;
-    }
+  public async sendDisplayPayload(payload: Record<string, unknown>): Promise<DrawOutcome> {
+    const operation = 'display payload';
+    this.requireConnected(operation);
     this.displayVersion++;
     this.pendingFrameArgs = null;
-    
+
     const formattedPayload = this.formatHardwarePayload(payload);
 
     if (this.isMockMode) {
       console.log('[BusyBarDriver] [MOCK DISPLAY DRAW]:', JSON.stringify(formattedPayload));
-      return true;
+      return 'drawn';
     }
 
-    try {
-      const response = await this.deviceFetch(`http://${this.ipAddress}/api/display/draw`, {
+    const result = await this.deviceRequest(
+      operation,
+      `http://${this.ipAddress}/api/display/draw`,
+      {
         method: 'POST',
         headers: this.getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(formattedPayload)
-      });
-
-      return this.reportDeviceResponse('display payload', response) === 'ok';
-    } catch (err) {
-      console.error(`[BusyBarDriver] Error posting display payload to http://${this.ipAddress}/api/display/draw:`, err);
-      return false;
-    }
+      },
+      { allowConflict: true }
+    );
+    return result === 'ok' ? 'drawn' : 'conflict';
   }
 
   /**
    * Remote key event injection: POST /api/input?key={key}
+   *
+   * The local input event is emitted first and always: the app's own handlers
+   * react to the key whether or not a device is attached. Only the forwarding
+   * to the device can fail, and while disconnected it is skipped rather than
+   * reported, since there is no device for the key to reach.
+   *
+   * @throws DeviceRequestError when a connected device refused the key.
    */
-  public async injectRemoteKey(key: string): Promise<boolean> {
+  public async injectRemoteKey(key: string): Promise<void> {
     const lowerKey = key.toLowerCase();
     if (!(VALID_HARDWARE_KEYS as readonly string[]).includes(lowerKey)) {
       console.warn(`[BusyBarDriver] Unknown hardware key '${key}' injected.`);
@@ -1069,48 +1107,30 @@ export class BusyBarDriver extends EventEmitter {
     });
 
     if (this.isMockMode || !this.isConnected) {
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/input?key=${encodeURIComponent(lowerKey)}`;
-      const res = await this.deviceFetch(url, {
-        method: 'POST',
-        headers: this.getHeaders()
-      });
-
-      // Previously `res ? res.ok : true`, and `true` again from the catch, so a
-      // device that never answered was reported as having accepted the key.
-      // The local event above was still emitted -- that part did happen -- but
-      // callers asking whether the hardware took it were told yes regardless.
-      return this.reportDeviceResponse('input injection', res) === 'ok';
-    } catch (err) {
-      console.warn('[BusyBarDriver] Input injection failed:', err);
-      return false;
-    }
+    // Previously `res ? res.ok : true`, and `true` again from a catch, so a
+    // device that never answered was reported as having accepted the key.
+    const url = `http://${this.ipAddress}/api/input?key=${encodeURIComponent(lowerKey)}`;
+    await this.deviceRequest('input injection', url, { method: 'POST', headers: this.getHeaders() });
   }
 
   /**
    * Controls matrix brightness: POST /api/display/brightness?value={val}
+   *
+   * @throws DeviceRequestError when the device did not apply it.
    */
-  public async setBrightness(value: number | 'auto'): Promise<boolean> {
+  public async setBrightness(value: number | 'auto'): Promise<void> {
+    const operation = 'set brightness';
+    this.requireConnected(operation);
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK BRIGHTNESS SET] value=${value}`);
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/display/brightness?value=${encodeURIComponent(String(value))}`;
-      const res = await this.deviceFetch(url, {
-        method: 'POST',
-        headers: this.getHeaders()
-      });
-
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Set brightness failed:`, err);
-      return false;
-    }
+    const url = `http://${this.ipAddress}/api/display/brightness?value=${encodeURIComponent(String(value))}`;
+    await this.deviceRequest(operation, url, { method: 'POST', headers: this.getHeaders() });
   }
 
   /**
@@ -1139,99 +1159,81 @@ export class BusyBarDriver extends EventEmitter {
   /**
    * Configures device audio volume: POST /api/audio/volume?volume={0-100}&silent={0|1}
    * Default silent=1 suppresses hardware volume change chime during updates per user preference.
+   *
+   * @throws DeviceRequestError when the device did not apply it.
    */
-  public async setAudioVolume(volume: number, silent: boolean = true): Promise<boolean> {
+  public async setAudioVolume(volume: number, silent: boolean = true): Promise<void> {
+    const operation = 'set audio volume';
+    this.requireConnected(operation);
     const clampedVolume = Math.max(0, Math.min(100, volume));
     const silentParam = silent ? 1 : 0;
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK AUDIO VOLUME] volume=${clampedVolume}, silent=${silentParam}`);
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/audio/volume?volume=${clampedVolume}&silent=${silentParam}`;
-      const res = await this.deviceFetch(url, {
-        method: 'POST',
-        headers: this.getHeaders()
-      });
-
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Set audio volume failed:`, err);
-      return false;
-    }
+    const url = `http://${this.ipAddress}/api/audio/volume?volume=${clampedVolume}&silent=${silentParam}`;
+    await this.deviceRequest(operation, url, { method: 'POST', headers: this.getHeaders() });
   }
 
   /**
    * Triggers audio playback (.snd): POST /api/audio/play
+   *
+   * @throws DeviceRequestError when the device did not start playback.
    */
-  public async playAudio(applicationName: string, soundPath: string): Promise<boolean> {
+  public async playAudio(applicationName: string, soundPath: string): Promise<void> {
+    const operation = 'play audio';
+    this.requireConnected(operation);
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK AUDIO PLAY] app=${applicationName}, path=${soundPath}`);
-      return true;
+      return;
     }
 
-    try {
-      const res = await this.deviceFetch(`http://${this.ipAddress}/api/audio/play`, {
-        method: 'POST',
-        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ application_name: applicationName, path: soundPath })
-      });
-
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Play audio failed:`, err);
-      return false;
-    }
+    await this.deviceRequest(operation, `http://${this.ipAddress}/api/audio/play`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ application_name: applicationName, path: soundPath })
+    });
   }
 
   /**
    * Stops active audio playback: DELETE /api/audio/play
+   *
+   * @throws DeviceRequestError when the device did not stop playback.
    */
-  public async stopAudio(): Promise<boolean> {
+  public async stopAudio(): Promise<void> {
+    const operation = 'stop audio';
+    this.requireConnected(operation);
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK AUDIO STOP]`);
-      return true;
+      return;
     }
 
-    try {
-      const res = await this.deviceFetch(`http://${this.ipAddress}/api/audio/play`, {
-        method: 'DELETE',
-        headers: this.getHeaders()
-      });
-
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Stop audio failed:`, err);
-      return false;
-    }
+    await this.deviceRequest(operation, `http://${this.ipAddress}/api/audio/play`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
   }
 
   /**
    * Synchronizes system RTC clock: POST /api/time/timestamp?timestamp={iso}
+   *
+   * @throws DeviceRequestError when the device did not set its clock.
    */
-  public async syncRtcTime(timestampIso?: string): Promise<boolean> {
+  public async syncRtcTime(timestampIso?: string): Promise<void> {
+    const operation = 'RTC sync';
+    this.requireConnected(operation);
     // Local offset, not `Z`. See `toIsoWithLocalOffset`.
     const ts = timestampIso || toIsoWithLocalOffset();
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK RTC TIME SYNC] timestamp=${ts}`);
-      return true;
+      return;
     }
 
-    try {
-      const url = `http://${this.ipAddress}/api/time/timestamp?timestamp=${encodeURIComponent(ts)}`;
-      const res = await this.deviceFetch(url, {
-        method: 'POST',
-        headers: this.getHeaders()
-      });
-
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] RTC sync failed:`, err);
-      return false;
-    }
+    const url = `http://${this.ipAddress}/api/time/timestamp?timestamp=${encodeURIComponent(ts)}`;
+    await this.deviceRequest(operation, url, { method: 'POST', headers: this.getHeaders() });
   }
 
   /**
@@ -1259,34 +1261,30 @@ export class BusyBarDriver extends EventEmitter {
 
   /**
    * Updates API access protection mode & key: POST /api/access?mode={mode}&key={key}
+   *
+   * @throws DeviceRequestError when the device did not apply it.
    */
-  public async updateAccessSettings(mode: 'disabled' | 'enabled' | 'key', key?: string): Promise<boolean> {
+  public async updateAccessSettings(mode: 'disabled' | 'enabled' | 'key', key?: string): Promise<void> {
+    const operation = 'update access settings';
+    this.requireConnected(operation);
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK ACCESS SETTINGS UPDATE] mode=${mode}, key=${key ? '****' : 'none'}`);
       if (mode === 'key' && key) {
         this.setApiToken(key);
       }
-      return true;
+      return;
     }
 
-    try {
-      let url = `http://${this.ipAddress}/api/access?mode=${encodeURIComponent(mode)}`;
-      if (key) {
-        url += `&key=${encodeURIComponent(key)}`;
-      }
+    let url = `http://${this.ipAddress}/api/access?mode=${encodeURIComponent(mode)}`;
+    if (key) {
+      url += `&key=${encodeURIComponent(key)}`;
+    }
 
-      const res = await this.deviceFetch(url, {
-        method: 'POST',
-        headers: this.getHeaders()
-      });
-
-      if (res && res.ok && mode === 'key' && key) {
-        this.setApiToken(key);
-      }
-      return res ? res.ok : false;
-    } catch (err) {
-      console.error(`[BusyBarDriver] Update access settings failed:`, err);
-      return false;
+    // Throws before the token is adopted: switching to a key the device never
+    // accepted would lock this driver out of a bar that still has the old one.
+    await this.deviceRequest(operation, url, { method: 'POST', headers: this.getHeaders() });
+    if (mode === 'key' && key) {
+      this.setApiToken(key);
     }
   }
 

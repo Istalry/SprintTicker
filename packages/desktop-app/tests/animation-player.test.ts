@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
-import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import fs from 'fs';
 
 vi.mock('electron', () => ({
@@ -56,10 +56,10 @@ describe('AnimationPlayer Unit Tests', () => {
     );
 
     driver = {
-      sendPixelFrame: vi.fn().mockResolvedValue(true),
-      uploadAsset: vi.fn().mockResolvedValue(true),
-      sendDisplayPayload: vi.fn().mockResolvedValue(true),
-      clearDisplay: vi.fn().mockResolvedValue(true)
+      sendPixelFrame: vi.fn().mockResolvedValue('sent'),
+      uploadAsset: vi.fn().mockResolvedValue(undefined),
+      sendDisplayPayload: vi.fn().mockResolvedValue('drawn'),
+      clearDisplay: vi.fn().mockResolvedValue(undefined)
     } as unknown as BusyBarDriver;
     player = new AnimationPlayer(driver, '/mock/animations');
     vi.useFakeTimers();
@@ -189,9 +189,9 @@ describe('AnimationPlayer Unit Tests', () => {
 
   /**
    * Hardware playback hands the whole `.anim` to the device instead of
-   * streaming PNGs at it. The device can refuse, and it refuses by answering
-   * `false` -- `uploadAsset` and `sendDisplayPayload` never throw for it. The
-   * original code chained `.then().catch()`, so a refusal ran the success path
+   * streaming PNGs at it. The device can refuse. The driver used to report
+   * that by answering `false` rather than throwing, and the original code
+   * chained `.then().catch()`, so a refusal ran the success path
    * and fired no handler: the bar stayed blank, the on-screen emulator animated
    * correctly off `onFrameCallback`, and the log said only that the animation
    * had loaded. These pin the difference.
@@ -205,6 +205,9 @@ describe('AnimationPlayer Unit Tests', () => {
         return Buffer.from('mock_binary');
       });
     };
+
+    /** What the driver throws when the device says no. */
+    const refused = (operation: string): DeviceRequestError => new DeviceRequestError('rejected', operation, 400);
 
     /** Lets the fire-and-forget upload chain settle under fake timers. */
     const settle = async (): Promise<void> => {
@@ -229,7 +232,7 @@ describe('AnimationPlayer Unit Tests', () => {
 
     it('Play_DeviceWillNotStoreTheAnimFile_FallsBackToStreamingFrames', async () => {
       withAnimFile();
-      (driver.uploadAsset as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (driver.uploadAsset as ReturnType<typeof vi.fn>).mockRejectedValue(refused('asset upload'));
       const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await player.play('hw_anim');
@@ -242,7 +245,7 @@ describe('AnimationPlayer Unit Tests', () => {
 
     it('Play_DeviceStoresTheFileButRefusesToDrawIt_FallsBackToStreamingFrames', async () => {
       withAnimFile();
-      (driver.sendDisplayPayload as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (driver.sendDisplayPayload as ReturnType<typeof vi.fn>).mockRejectedValue(refused('display payload'));
       const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await player.play('hw_anim');
@@ -252,12 +255,42 @@ describe('AnimationPlayer Unit Tests', () => {
       expect(logged).toHaveBeenCalledWith(expect.stringContaining('refused to draw it'));
     });
 
+    it('Play_ClearBeforeDrawFails_FallsBackToStreamingFrames', async () => {
+      // Without the clear, the stale full-panel frame stays on top of the
+      // animation (see the test below), so a failed clear is a failed start.
+      withAnimFile();
+      (driver.clearDisplay as ReturnType<typeof vi.fn>).mockRejectedValue(refused('clear display'));
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await player.play('hw_anim');
+      await settle();
+
+      expect(driver.sendDisplayPayload).not.toHaveBeenCalled();
+      expect(driver.sendPixelFrame).toHaveBeenCalled();
+      expect(player.isHardwareAnimationActive()).toBe(false);
+      expect(logged).toHaveBeenCalledWith(expect.stringContaining('Could not clear the display'));
+    });
+
+    it('Play_DisplayHeldAtHigherPriority_StreamsFramesUntilReleased', async () => {
+      // A 409 is not a refusal, but the animation element was never placed.
+      // Streaming keeps offering frames, so one lands once the display is free.
+      withAnimFile();
+      (driver.sendDisplayPayload as ReturnType<typeof vi.fn>).mockResolvedValue('conflict');
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await player.play('hw_anim');
+      await settle();
+
+      expect(driver.sendPixelFrame).toHaveBeenCalled();
+      expect(player.isHardwareAnimationActive()).toBe(false);
+    });
+
     it('Play_UploadRejected_ReportsTheSizeThatWasRejected', async () => {
       // The size is the first thing worth knowing when a device refuses a file,
       // and nothing recorded it before -- these animations are 0.8-1.3 MB
       // against a 5s upload timeout.
       withAnimFile();
-      (driver.uploadAsset as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (driver.uploadAsset as ReturnType<typeof vi.fn>).mockRejectedValue(refused('asset upload'));
       const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await player.play('hw_anim');

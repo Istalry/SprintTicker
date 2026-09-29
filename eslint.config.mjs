@@ -137,6 +137,28 @@ export default tseslint.config(
   },
 
   {
+    // No `.then(` in the hardware layer. This is the shape that shipped the
+    // dark-Away-animation bug twice: `uploadAsset(...).then(() => draw(...))`
+    // runs the draw whether or not the upload succeeded, and a `.catch` hung off
+    // it only sees a rejection -- so when the driver reported a refusal as a
+    // value, neither handler ran. The driver throws now, which is the real fix;
+    // this keeps the chained form from coming back, because awaiting each step
+    // is what lets the caller see which one failed. `.catch(` on its own stays
+    // allowed: it is how a deliberately unawaited call reports its failure.
+    files: ['packages/desktop-app/src/main/hardware/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='then']",
+          message:
+            'Await device calls instead of chaining .then(): a chained step runs even when the one before it failed. See CLAUDE.md §6.'
+        }
+      ]
+    }
+  },
+
+  {
     // In the renderer an unhandled rejection is logged by the browser and the
     // UI keeps running, so this is a warning while the remaining call sites
     // are worked through. Several of them sit in views slated for deletion.

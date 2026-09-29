@@ -325,10 +325,18 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.INJECT_REMOTE_KEY, async (_event, payload: string | { key: string }) => {
       const key = typeof payload === 'string' ? payload : payload?.key;
-      if (key) {
-        return this.driver.injectRemoteKey(key);
+      if (!key) return false;
+      // The bridge answers a boolean, and a rejection would reach the renderer
+      // as an opaque IPC error. The key has already been handled locally by
+      // the time the driver can fail -- only its forwarding to the device was
+      // refused -- so `false` is the honest answer.
+      try {
+        await this.driver.injectRemoteKey(key);
+        return true;
+      } catch (err) {
+        console.warn('[IPC] Remote key was not forwarded to the device:', err);
+        return false;
       }
-      return false;
     });
 
     this.inputDecoder.registerActionHandler((action, inputKey) => {

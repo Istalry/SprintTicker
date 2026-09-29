@@ -10,10 +10,10 @@ describe('DisplayRenderer Unit Tests', () => {
 
   beforeEach(() => {
     mockDriver = {
-      sendDisplayPayload: vi.fn().mockResolvedValue(true),
-      sendPixelFrame: vi.fn().mockResolvedValue(true),
-      clearDisplay: vi.fn().mockResolvedValue(true),
-      uploadAsset: vi.fn().mockResolvedValue(true),
+      sendDisplayPayload: vi.fn().mockResolvedValue('drawn'),
+      sendPixelFrame: vi.fn().mockResolvedValue('sent'),
+      clearDisplay: vi.fn().mockResolvedValue(undefined),
+      uploadAsset: vi.fn().mockResolvedValue(undefined),
       getDeviceStatus: vi.fn(() => ({
         connected: true,
         ipAddress: '10.0.4.20',

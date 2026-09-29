@@ -7,7 +7,7 @@ import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
-import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
@@ -179,6 +179,28 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       const handler = injectCall[1];
       const res = await handler({}, 'up');
       expect(res).toBe(true);
+    }
+  });
+
+  it('RegisterAllHandlers_InjectRemoteKeyDeviceRefuses_AnswersFalseRatherThanRejecting', async () => {
+    // The driver throws when the device refuses the key. The bridge answers a
+    // boolean, and a rejection would reach the renderer as an opaque IPC error.
+    // On the prototype because the handler found below may belong to a registry
+    // built by an earlier test, with its own driver instance.
+    const refuse = vi
+      .spyOn(BusyBarDriver.prototype, 'injectRemoteKey')
+      .mockRejectedValue(new DeviceRequestError('rejected', 'input injection', 400));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      registry.registerAllHandlers();
+      const handleCalls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const handler = handleCalls.find(call => call[0] === 'input:inject-remote-key')?.[1];
+
+      await expect(handler({}, 'up')).resolves.toBe(false);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('not forwarded'), expect.any(DeviceRequestError));
+    } finally {
+      refuse.mockRestore();
+      warn.mockRestore();
     }
   });
 
