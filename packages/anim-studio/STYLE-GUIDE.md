@@ -87,9 +87,12 @@ drawn, so three rules on top of the ones above:
 - **The rest pose is the app's static icon** (`shared/pixel-bitmaps.ts`): same
   silhouette, same colours. The static one is what shows before the animation
   lands and whenever the device refuses it, so the swap must not be visible.
-- **Act, rest, repeat**, as for the full-panel scenes. The gear advances one
-  tooth and rests; with eight identical teeth each rest is the start pose, so
-  the loop closes on its own.
+- **An event acts and rests; ongoing work moves steadily.** A notification or
+  a finished task is an event, and follows the official rhythm above. A
+  compile is work in progress, and a pause there reads as a stall: the gear
+  first advanced a tooth and rested, and on the bar it looked like it was
+  stuttering. It now turns at a constant speed. With eight identical teeth, a
+  loop of exactly one tooth closes on its own.
 
 ## 4. Text
 

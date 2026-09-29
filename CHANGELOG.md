@@ -9,8 +9,8 @@ reported something other than the truth, in three different ways.
 
 ### Added
 
-- **Animated icons.** While Unity compiles, the gear on the bar turns: it
-  advances a tooth, rests, and turns again. The bar plays the icon itself, laid
+- **Animated icons.** While Unity compiles, the gear on the bar turns,
+  steadily, for as long as the compile lasts. The bar plays the icon itself, laid
   over the screen with `z_index`, so it costs one upload per connection and
   nothing per frame. The screen keeps the still icon underneath, so a bar that
   refuses the animation shows the icon as before. The on-screen emulator
