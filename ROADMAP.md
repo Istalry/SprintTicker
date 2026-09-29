@@ -540,12 +540,17 @@ looping idle animations.
      look at the bar. A glyph that reads badly is a one-line edit to its sheet.
    - A large display face for the animation scenes belongs with the studio
      (item 3), which is its only user, rather than here.
-3. **An animation studio as its own package.** A standalone web editor --
-   deliberately outside the Electron/React stack -- that composes scenes in
-   the official animations' visual language (rounded gradient plate with an
-   outline, an animated icon on the left, large text on the right), exports a
-   PNG sequence that `build-anims` already compiles, and previews on a real
-   bar.
+3. ~~**An animation studio as its own package**~~ -- done (2026-09-29):
+   `pnpm studio`, in `packages/anim-studio`. It is a standalone web editor,
+   deliberately outside the Electron/React stack, that composes scenes in the
+   official animations' visual language: a rounded gradient plate with an
+   outline, an animated icon on the left, large text on the right.
+   - It exports the PNG sequence `build-anims` already compiles.
+   - It plays a scene on a real bar under its own application name.
+   - Its display face, Bold 7, is generated alongside the app's fonts.
+   - **Its bar preview has not yet run against a real bar.** Export and `.anim`
+     compilation were exercised end to end; the upload and draw are covered
+     only by tests against a scripted device.
 4. **Our own animations and notification/event effects**, made with it:
    a sandwich stacking itself for Lunch, a steaming coffee for Away, animated
    icons for notifications and events. The three Flipper frame sets are

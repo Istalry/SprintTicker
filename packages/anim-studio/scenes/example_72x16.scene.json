@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "id": "example_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 30,
+  "frameCount": 60,
+  "layers": [
+    {
+      "id": "plate-1",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 0,
+      "y": 0,
+      "width": 72,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#3A1B2E",
+      "colorB": "#140B12",
+      "direction": "horizontal",
+      "outline": "#6E2E4A",
+      "motion": "pulse",
+      "period": 60
+    },
+    {
+      "id": "icon-1",
+      "name": "Heart",
+      "visible": true,
+      "type": "sprite",
+      "x": 3,
+      "y": 2,
+      "loopFrom": 0,
+      "sprite": {
+        "width": 12,
+        "height": 12,
+        "palette": {
+          "a": "#FF4D6D",
+          "b": "#FFFFFF"
+        },
+        "frames": [
+          {
+            "duration": 10,
+            "rows": [
+              "............",
+              "..aa....aa..",
+              ".abaa..aaaa.",
+              "aaaaaaaaaaaa",
+              "aaaaaaaaaaaa",
+              "aaaaaaaaaaaa",
+              ".aaaaaaaaaa.",
+              "..aaaaaaaa..",
+              "...aaaaaa...",
+              "....aaaa....",
+              ".....aa.....",
+              "............"
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "............",
+              "............",
+              "...a....a...",
+              "..aba..aaa..",
+              "..aaaaaaaa..",
+              "..aaaaaaaa..",
+              "...aaaaaa...",
+              "....aaaa....",
+              ".....aa.....",
+              "............",
+              "............",
+              "............"
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "............",
+              "..aa....aa..",
+              ".abaa..aaaa.",
+              "aaaaaaaaaaaa",
+              "aaaaaaaaaaaa",
+              "aaaaaaaaaaaa",
+              ".aaaaaaaaaa.",
+              "..aaaaaaaa..",
+              "...aaaaaa...",
+              "....aaaa....",
+              ".....aa.....",
+              "............"
+            ]
+          },
+          {
+            "duration": 10,
+            "rows": [
+              "............",
+              "............",
+              "...a....a...",
+              "..aba..aaa..",
+              "..aaaaaaaa..",
+              "..aaaaaaaa..",
+              "...aaaaaa...",
+              "....aaaa....",
+              ".....aa.....",
+              "............",
+              "............",
+              "............"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "text-1",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "HELLO",
+      "font": "bold-7",
+      "color": "#FFC2D1",
+      "x": 18,
+      "y": 4,
+      "width": 52,
+      "align": "center",
+      "effect": "shine",
+      "period": 60
+    }
+  ]
+}

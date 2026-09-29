@@ -22,10 +22,11 @@
  *   and the rest of the punctuation were missing and drew as `?`, and `g` and
  *   `q` were the same bitmap.
  *
- * So the generator refuses a sheet that is missing any printable ASCII
- * character, that draws two characters identically, or that leaves a blank
- * column at either edge of a glyph (spacing is the font's `letterSpacing` and
- * nothing else, so every pair of letters is the same distance apart).
+ * So the generator refuses a sheet that is missing any character of its
+ * charset (all of printable ASCII for the app's fonts), that draws two
+ * characters identically, or that leaves a blank column at either edge of a
+ * glyph (spacing is the font's `letterSpacing` and nothing else, so every pair
+ * of letters is the same distance apart).
  *
  * Deliberately dependency-free CommonJS, like everything else in `tools/`: it
  * has to run before anything is installed, and it is not linted or typed.
@@ -35,22 +36,51 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const FONT_DIR = path.join(REPO_ROOT, 'packages/desktop-app/fonts');
-const OUT_DIR = path.join(REPO_ROOT, 'packages/desktop-app/src/shared/fonts');
 
-/** Every font the app ships. The sheet name is also the generated file's name. */
+const APP_FONTS = {
+  dir: 'packages/desktop-app/fonts',
+  outDir: 'packages/desktop-app/src/shared/fonts',
+  typeImport: './pixel-font'
+};
+const STUDIO_FONTS = {
+  dir: 'packages/anim-studio/fonts',
+  outDir: 'packages/anim-studio/src/fonts',
+  // The studio reads the app's fonts in place rather than keeping a copy, so
+  // the type comes from the same place. A relative path, not a Vite alias: the
+  // studio's server code is bundled into its Vite config, which resolves no
+  // aliases.
+  typeImport: '../../../desktop-app/src/shared/fonts/pixel-font'
+};
+
+/**
+ * Every font there is. The sheet name is also the generated file's name.
+ *
+ * The first two draw the front display's text rows. The display face exists
+ * for the animation studio's large scene text and is never drawn by the app.
+ */
 const FONTS = [
-  { sheet: 'sprint-5', exportName: 'SPRINT_5' },
-  { sheet: 'sprint-small', exportName: 'SPRINT_SMALL' }
+  { sheet: 'sprint-5', exportName: 'SPRINT_5', ...APP_FONTS },
+  { sheet: 'sprint-small', exportName: 'SPRINT_SMALL', ...APP_FONTS },
+  { sheet: 'sprint-bold-7', exportName: 'SPRINT_BOLD_7', ...STUDIO_FONTS }
 ];
 
 /** Printable ASCII, plus the ellipsis that marks a truncated row. */
-const REQUIRED_CHARS = (() => {
+const ASCII_CHARS = (() => {
   const chars = [];
   for (let code = 0x20; code <= 0x7e; code++) chars.push(String.fromCharCode(code));
   chars.push('…');
   return chars;
 })();
+
+/**
+ * A display face's characters: capitals, digits and the punctuation a
+ * one- or two-word scene title uses. It has no lowercase -- text drawn in it is
+ * upper-cased first -- which is what lets it be large and bold at 7px.
+ */
+const DISPLAY_CHARS = [..." !%&'()+,-./0123456789:?ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+
+/** What each `charset:` header value requires, in output order. */
+const CHARSETS = { ascii: ASCII_CHARS, display: DISPLAY_CHARS };
 
 /** Glyph names that cannot be written literally after `glyph`. */
 const NAMED_CHARS = { space: ' ' };
@@ -113,11 +143,16 @@ function parseGlyphSheet(text, sourceName = '<sheet>') {
   for (const key of ['name', 'ascent', 'descent', 'letterSpacing']) {
     if (header[key] === undefined) throw new Error(`${sourceName}: missing header '${key}:'`);
   }
+  const charset = header.charset ?? 'ascii';
+  if (!CHARSETS[charset]) {
+    throw new Error(`${sourceName}: unknown charset '${charset}' (expected ${Object.keys(CHARSETS).join(' or ')})`);
+  }
   const font = {
     name: header.name,
     ascent: Number(header.ascent),
     descent: Number(header.descent),
     letterSpacing: Number(header.letterSpacing),
+    chars: CHARSETS[charset],
     glyphs
   };
   validateFont(font, sourceName);
@@ -129,8 +164,12 @@ function validateFont(font, sourceName) {
   const height = font.ascent + font.descent;
   const problems = [];
 
-  for (const char of REQUIRED_CHARS) {
+  for (const char of font.chars) {
     if (!font.glyphs.has(char)) problems.push(`missing glyph ${JSON.stringify(char)}`);
+  }
+  for (const char of font.glyphs.keys()) {
+    // Would be dropped from the output without a word otherwise.
+    if (!font.chars.includes(char)) problems.push(`glyph ${JSON.stringify(char)} is not in this font's charset`);
   }
 
   const seen = new Map();
@@ -174,8 +213,8 @@ function toBinaryLiteral(row) {
   return `0b${row.replace(/#/g, '1').replace(/\./g, '0')}`;
 }
 
-function generateTypeScript(font, sheet, exportName) {
-  const entries = REQUIRED_CHARS.map(char => {
+function generateTypeScript(font, { sheet, exportName, dir, typeImport }) {
+  const entries = font.chars.map(char => {
     const glyph = font.glyphs.get(char);
     const rows = glyph.rows.map(toBinaryLiteral).join(', ');
     return `  ${JSON.stringify(char)}: { width: ${glyph.rows[0].length}, rows: [${rows}] }`;
@@ -186,10 +225,10 @@ function generateTypeScript(font, sheet, exportName) {
     ` * The ${font.name} pixel font.`,
     ' *',
     ' * GENERATED FILE -- do not edit by hand. The source is the glyph sheet',
-    ` * packages/desktop-app/fonts/${sheet}.glyphs; regenerate with \`pnpm fonts:build\`.`,
+    ` * ${dir}/${sheet}.glyphs; regenerate with \`pnpm fonts:build\`.`,
     ' */',
     '',
-    "import type { PixelFont } from './pixel-font';",
+    `import type { PixelFont } from '${typeImport}';`,
     '',
     `export const ${exportName}: PixelFont = {`,
     `  name: ${JSON.stringify(font.name)},`,
@@ -205,7 +244,9 @@ function generateTypeScript(font, sheet, exportName) {
 }
 
 function loadFont(sheet) {
-  const file = path.join(FONT_DIR, `${sheet}.glyphs`);
+  const entry = FONTS.find(f => f.sheet === sheet);
+  if (!entry) throw new Error(`unknown font '${sheet}'`);
+  const file = path.join(REPO_ROOT, entry.dir, `${sheet}.glyphs`);
   return parseGlyphSheet(fs.readFileSync(file, 'utf8'), path.relative(REPO_ROOT, file));
 }
 
@@ -214,7 +255,7 @@ function renderText(font, text) {
   const height = font.ascent + font.descent;
   const lines = Array.from({ length: height }, () => '');
   for (const char of text) {
-    const glyph = font.glyphs.get(char) ?? font.glyphs.get('?');
+    const glyph = font.glyphs.get(char) ?? font.glyphs.get(char.toUpperCase()) ?? font.glyphs.get('?');
     const gap = '.'.repeat(font.letterSpacing);
     glyph.rows.forEach((row, index) => {
       lines[index] += row + gap;
@@ -228,7 +269,7 @@ function main() {
 
   const previewIndex = args.indexOf('--preview');
   if (previewIndex >= 0) {
-    const text = args[previewIndex + 1] ?? REQUIRED_CHARS.join('');
+    const text = args[previewIndex + 1] ?? ASCII_CHARS.join('');
     for (const { sheet } of FONTS) {
       const font = loadFont(sheet);
       console.log(`${font.name}:`);
@@ -240,10 +281,11 @@ function main() {
 
   const check = args.includes('--check');
   let stale = 0;
-  for (const { sheet, exportName } of FONTS) {
+  for (const entry of FONTS) {
+    const { sheet, outDir } = entry;
     const font = loadFont(sheet);
-    const output = generateTypeScript(font, sheet, exportName);
-    const outFile = path.join(OUT_DIR, `${sheet}.ts`);
+    const output = generateTypeScript(font, entry);
+    const outFile = path.join(REPO_ROOT, outDir, `${sheet}.ts`);
     const relative = path.relative(REPO_ROOT, outFile);
 
     if (check) {
@@ -255,7 +297,7 @@ function main() {
       continue;
     }
 
-    fs.mkdirSync(OUT_DIR, { recursive: true });
+    fs.mkdirSync(path.dirname(outFile), { recursive: true });
     fs.writeFileSync(outFile, output);
     console.log(`[fonts] Wrote ${relative} (${font.glyphs.size} glyphs).`);
   }
@@ -266,7 +308,7 @@ function main() {
   }
 }
 
-module.exports = { parseGlyphSheet, renderText, loadFont, FONTS, REQUIRED_CHARS };
+module.exports = { parseGlyphSheet, renderText, loadFont, FONTS, ASCII_CHARS, DISPLAY_CHARS };
 
 if (require.main === module) {
   try {

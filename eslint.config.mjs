@@ -215,6 +215,40 @@ export default tseslint.config(
   },
 
   {
+    // The animation studio. Its server half runs inside the Vite dev server,
+    // where an unhandled rejection kills `pnpm studio` mid-export, so floating
+    // promises are errors here as in main. The page marks the ones it means to
+    // leave unawaited with `void`.
+    files: ['packages/anim-studio/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: ['./packages/anim-studio/tsconfig.json'],
+        tsconfigRootDir: import.meta.dirname
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      // The studio reads the app's fonts and shared constants in place, and
+      // nothing else: main pulls in electron and better-sqlite3, the renderer
+      // pulls in React, and either would tie this tool to the app's stack --
+      // the thing it was split out to avoid.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/desktop-app/src/main/**', '**/desktop-app/src/renderer/**', 'electron', 'react'],
+              message: 'The studio may import only from desktop-app/src/shared/. See packages/anim-studio/README.md.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
     // Tests may reach into either process to build fixtures.
     files: ['packages/desktop-app/tests/**/*.ts', 'packages/desktop-app/tests/**/*.tsx'],
     rules: {

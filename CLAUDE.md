@@ -9,12 +9,13 @@ and invisible in the source.
 
 ## 1. What this is
 
-A pnpm workspace with two packages:
+A pnpm workspace with three packages:
 
 | Package | What it is |
 | :--- | :--- |
-| `packages/desktop-app` | Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. ~90% of the code. |
+| `packages/desktop-app` | Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
 | `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. |
+| `packages/anim-studio` | The animation scene editor (`pnpm studio`): Vite + plain TypeScript, no React, no Electron. A development tool; nothing in it ships. |
 
 The desktop app tracks time against tasks, drives a physical BUSY Bar LED
 display over USB, and mirrors Windows notifications onto it.
@@ -24,13 +25,15 @@ display over USB, and mirrors Windows notifications onto it.
 ```bash
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
-pnpm test             # vitest run
+pnpm test             # vitest run, the app then the studio
+pnpm test:studio      # the studio's tests only; no native module involved
 pnpm test:coverage    # floor: 84% stmts / 86.5% lines / 85% funcs / 75% branches
                       # a ratchet -- raise it, never lower it to make a run pass
-pnpm typecheck        # main and renderer tsconfigs, separately
+pnpm typecheck        # main and renderer tsconfigs, separately, then the studio
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
 pnpm package:win      # electron-builder, unsigned
 pnpm editor           # pixel editor for 16x16 bitmaps
+pnpm studio           # animation studio on http://127.0.0.1:5180
 pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/fonts/
 pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
 pnpm fonts:preview "text"   # print text in every font, in the terminal
@@ -101,6 +104,23 @@ main process only through the contextBridge preload.
 - `src/preload/electron-api.d.ts` declares the `window.electronAPI` global. The
   `: IElectronAPI` annotation on the bridge object is load-bearing — it is what
   turns preload/renderer drift into a compile error.
+
+**The animation studio imports from `desktop-app/src/shared/` and nowhere else
+in the app.** It reads the app's fonts and `isValidDeviceHost` in place rather
+than copying them; main or the renderer would drag Electron, better-sqlite3 or
+React into a tool that was split out to stay clear of them. An ESLint error, as
+above. Two more things about it that cost time to find:
+
+- **Its server code is loaded by the dev server, never imported by
+  `vite.config.ts`.** The config uses `ssrLoadModule('/server/api.ts')`. Import
+  it directly and every start prints a wall of warnings: Vite's coming native
+  config loader cannot load extensionless TypeScript imports from across the
+  workspace. For the same reason the studio imports the app's fonts by relative
+  path rather than through an alias.
+- **Its device calls go through `scripts/lib/busybar-device.js`**, shared with
+  the probe. It is typed on the studio side by `DeviceModule` in
+  `server/export.ts`, since `scripts/` is untyped JavaScript; change the two
+  together.
 
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification

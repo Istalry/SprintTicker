@@ -345,7 +345,37 @@ modifies neither your scenes nor your project code.
 
 ---
 
-## 7. Testing
+## 7. Animation studio
+
+`packages/anim-studio` is a development tool, not part of the app: nothing in it
+ships, and the app never imports it. It produces the frame sets the app plays.
+
+```
+scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.json ──► seq2anim ──► .anim
+                     │                          Animations/<id>/<id>/
+                     └──► editor preview                                  └──► bar preview
+```
+
+- **A scene is data**: a size, a frame rate, a length, and layers drawn bottom to
+  top: a plate, an icon sprite, text. `parseScene` validates every field, so a
+  malformed colour cannot reach the device.
+- **The compositor is a pure function of the scene and the frame number.** The
+  editor, the exporter and the tests all call it, so the preview is exactly
+  what gets exported.
+- **The export lands where the app already looks.** `AnimationPlayer` reads
+  `Animations/<id>/<id>/`, prefers `<id>.anim` when present and streams the
+  PNGs otherwise, so an exported scene plays without any change to the app.
+- **The server half** (`server/api.ts`) runs inside the Vite dev server. It
+  writes scene files and exports, and plays a scene on the bar under the
+  application name `sprintticker_studio`, at priority 100 with an element
+  timeout. It refuses requests from any other origin.
+
+It imports only from `desktop-app/src/shared/`, which is where the fonts and
+`isValidDeviceHost` live.
+
+---
+
+## 8. Testing
 
 Vitest, 791 tests across 53 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
@@ -357,6 +387,9 @@ real instance: `scripts/fake-openproject.js` (`pnpm mock:openproject`) and
 `scripts/fake-jira.js` (`pnpm mock:jira`). Both deliberately serve more than one
 page of everything and clamp the page size server-side — a harness that fits on
 one page cannot fail the way production failed.
+
+The animation studio has its own suite, 75 tests across 5 files, run by
+`pnpm test` after the app's and on its own by `pnpm test:studio`.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and
 anything touching real hardware. Those need the app actually running — read its

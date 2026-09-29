@@ -1,8 +1,7 @@
-const http = require('http');
-const zlib = require('zlib');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { createDeviceClient, encodePng } = require('./lib/busybar-device');
 
 /**
  * Checks a real BUSY Bar against the contract this app relies on, and reports
@@ -15,6 +14,7 @@ const path = require('path');
  *
  *   node scripts/busybar-probe.js              # against 10.0.4.20 over USB
  *   BUSYBAR_IP=10.0.4.20 node scripts/busybar-probe.js
+ *   BUSYBAR_TOKEN=... when the bar requires an API token (usually over Wi-Fi)
  *
  * **Close SprintTicker first.** It holds the display at priority 95, and this
  * probe draws at the same priority; with the app running you will get 409s that
@@ -59,42 +59,8 @@ function record(name, status, detail) {
   console.log(`${tag} ${name}${detail ? ' -- ' + detail : ''}`);
 }
 
-/** One request to the device, with a timeout. A hung socket must not hang the probe. */
-function request(method, path, { body, contentType, timeoutMs = TIMEOUT_MS } = {}) {
-  return new Promise((resolve, reject) => {
-    const payload =
-      body === undefined ? undefined : Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body));
-    const req = http.request(
-      {
-        host: IP,
-        port: 80,
-        method,
-        path,
-        headers: payload
-          ? { 'Content-Type': contentType || 'application/json', 'Content-Length': payload.length }
-          : {}
-      },
-      res => {
-        // Collected as Buffers, not by string concatenation: `GET /api/screen`
-        // returns a BMP, and appending binary chunks to a string decodes them as
-        // UTF-8 and silently mangles every byte above 0x7F.
-        const chunks = [];
-        res.on('data', c => chunks.push(c));
-        res.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          resolve({ status: res.statusCode, body: buffer.toString('utf8'), buffer });
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(timeoutMs, () => {
-      req.destroy();
-      reject(new Error(`timed out after ${timeoutMs}ms`));
-    });
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
+// One request to the device, with a timeout; shared with the animation studio.
+const { request } = createDeviceClient({ host: IP, token: process.env.BUSYBAR_TOKEN || '', timeoutMs: TIMEOUT_MS });
 
 /**
  * Builds a real PNG of the front matrix's dimensions.
@@ -116,52 +82,6 @@ function makePng(width = 72, height = 16) {
     }
   }
   return encodePng(width, height, rgba);
-}
-
-/** Encodes tightly-packed RGBA into a PNG. Shared by the upload and the readback. */
-function encodePng(width, height, rgba) {
-  const raw = Buffer.alloc(height * (1 + width * 4));
-  for (let y = 0; y < height; y++) {
-    const rowStart = y * (1 + width * 4);
-    raw[rowStart] = 0; // filter: none
-    rgba.copy(raw, rowStart + 1, y * width * 4, (y + 1) * width * 4);
-  }
-
-  const chunk = (type, data) => {
-    const len = Buffer.alloc(4);
-    len.writeUInt32BE(data.length);
-    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(body) >>> 0);
-    return Buffer.concat([len, body, crc]);
-  };
-
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // colour type: RGBA
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', zlib.deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0))
-  ]);
-}
-
-let CRC_TABLE = null;
-function crc32(buf) {
-  if (!CRC_TABLE) {
-    CRC_TABLE = new Int32Array(256);
-    for (let n = 0; n < 256; n++) {
-      let c = n;
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-      CRC_TABLE[n] = c;
-    }
-  }
-  let c = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
-  return c ^ 0xffffffff;
 }
 
 const FRONT_WIDTH = 72;
@@ -706,7 +626,7 @@ async function probeAnimation() {
 }
 
 /**
- * Shows every glyph of both front-panel fonts on the bar, and checks the panel
+ * Shows every glyph of every pixel font on the bar, and checks the panel
  * shows exactly the pixels that were sent.
  *
  * Opt-in (`--font-sheet`), because its real purpose is a human looking at the
@@ -722,7 +642,7 @@ async function probeAnimation() {
 const FONT_SHEET_HOLD_MS = 3000;
 
 async function probeFontSheet() {
-  const { loadFont, renderText, FONTS, REQUIRED_CHARS } = require('../tools/glyphs-to-ts.js');
+  const { loadFont, renderText, FONTS } = require('../tools/glyphs-to-ts.js');
 
   for (const { sheet } of FONTS) {
     const font = loadFont(sheet);
@@ -731,7 +651,7 @@ async function probeFontSheet() {
     // Pack the characters into lines that fit the panel, two lines per page.
     const lines = [];
     let current = '';
-    for (const char of REQUIRED_CHARS) {
+    for (const char of font.chars) {
       const candidate = current + char;
       if (renderText(font, candidate)[0].length > FRONT_WIDTH && current) {
         lines.push(current);

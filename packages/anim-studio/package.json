@@ -1,0 +1,19 @@
+{
+  "name": "@sprintticker/anim-studio",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Scene editor for SprintTicker's BUSY Bar animations: composes layered scenes and exports PNG sequences",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^5.4.0",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
+  }
+}

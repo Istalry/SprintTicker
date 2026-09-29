@@ -1,0 +1,371 @@
+:root {
+  --bg: #121216;
+  --panel: #1a1a20;
+  --panel-2: #22222a;
+  --line: #2e2e38;
+  --text: #e4e4ea;
+  --muted: #8a8a98;
+  --accent: #4fb38a;
+  --accent-2: #2e5e4a;
+  --danger: #d9534f;
+  --warn: #e0a84a;
+  color-scheme: dark;
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+}
+
+h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+h3 {
+  font-size: 12px;
+  margin: 0 0 6px;
+  color: var(--muted);
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.primary,
+button.active {
+  background: var(--accent-2);
+  border-color: var(--accent);
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.icon {
+  padding: 0 5px;
+  background: transparent;
+  border-color: transparent;
+}
+
+input[type='number'] {
+  width: 64px;
+}
+
+input[type='color'] {
+  width: 36px;
+  height: 24px;
+  padding: 1px;
+}
+
+input.invalid {
+  border-color: var(--danger);
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+
+.toolbar.busy {
+  cursor: progress;
+}
+
+.brand {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.title {
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  min-height: 0;
+}
+
+.panel {
+  padding: 12px;
+  overflow: auto;
+}
+
+.panel + .panel,
+.inspector {
+  border-left: 1px solid var(--line);
+  overflow-x: hidden;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: auto;
+}
+
+.preview {
+  border-bottom: 1px solid var(--line);
+}
+
+.screens {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+canvas.leds {
+  max-width: 100%;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+canvas.actual {
+  /* Twice the panel's pixels: at 1:1 a 72x16 image is a smudge on a modern
+     display, and the point of this view is to judge the image unzoomed. */
+  width: calc(var(--w) * 2px);
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.timeline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.scrubber {
+  flex: 1;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.frame-label {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: pre;
+  min-width: 140px;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.layers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.layers li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.layers li:hover {
+  background: var(--panel-2);
+}
+
+.layers li.selected {
+  background: var(--accent-2);
+}
+
+.layers li.empty {
+  color: var(--muted);
+  cursor: default;
+}
+
+.layers .type {
+  width: 14px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.layers .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.field > span:first-child {
+  color: var(--muted);
+}
+
+.field.compact {
+  display: inline-flex;
+  margin: 0;
+}
+
+.inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.check {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.hint.warn {
+  color: var(--warn);
+}
+
+.inspector section + section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sprite-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.sprite-grid {
+  cursor: crosshair;
+  touch-action: none;
+  border: 1px solid var(--line);
+}
+
+.side {
+  min-width: 170px;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+}
+
+.swatch.active {
+  border-color: var(--text);
+}
+
+.strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.thumb canvas {
+  image-rendering: pixelated;
+}
+
+.thumb.active {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.thumb.loop-start {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+.status {
+  padding: 6px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  min-height: 30px;
+}
+
+.status.error {
+  color: var(--danger);
+}

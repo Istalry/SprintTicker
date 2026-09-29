@@ -302,8 +302,9 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 791 tests across 53 files, covering the main and shared
-process code; the renderer is not covered. `pnpm test:coverage` enforces a
+`pnpm test` runs 791 tests across 53 files for the app, covering the main and
+shared process code (the renderer is not covered), then the animation studio's
+75 across 5 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
 threshold floor of 84% statements / 86.5% lines / 85% functions / 75%
 branches.
 
@@ -422,6 +423,14 @@ without modifying your scenes or project code.
 
 ## Tools
 
+- **Animation studio** — `pnpm studio` serves a scene editor at
+  `http://127.0.0.1:5180` for the bar's full-screen animations: a rounded
+  gradient plate, a frame-by-frame animated icon and a line of large text, each
+  with optional motion. It exports the PNG sequence and `meta.json` the app
+  plays from `Animations/<id>/<id>/`, optionally compiles the `.anim`, and can
+  play the scene on a real bar under its own name. Scenes are saved as JSON in
+  `packages/anim-studio/scenes/`. See
+  [packages/anim-studio/README.md](packages/anim-studio/README.md).
 - **16×16 pixel art editor** — `pnpm editor` serves it at
   `http://localhost:39124`, for drawing and tweaking the icons the bar renders.
 - **Pixel fonts** — the two front-display fonts are drawn as ASCII art in
@@ -464,11 +473,13 @@ Windows batch shortcuts for the common commands sit in the repository root:
 SprintTicker/
 ├── packages/
 │   ├── desktop-app/       # Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + SQLite
-│   └── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
+│   ├── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
+│   └── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
 ├── Animations/            # .anim frame sets, CC-BY-SA-4.0 upstream (Git LFS)
 ├── Documentation/         # User guide, architecture, API reference, hardware guide
 ├── docs/                  # Generated: those three as one page (GitHub Pages)
-├── scripts/               # Preflight, packaging and icon tooling
+├── scripts/               # Preflight, packaging, probe and icon tooling
+├── scripts/lib/           # Device helpers shared by the probe and the studio
 ├── tools/pixel-editor/    # Standalone 16×16 editor (pnpm editor)
 ├── tools/glyphs-to-ts.js  # Compiles the pixel-font glyph sheets (pnpm fonts:build)
 ├── CLAUDE.md              # Code standards, process boundaries, hardware contract

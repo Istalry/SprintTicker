@@ -58,6 +58,12 @@ jobs:
       - name: Generated fonts are up to date
         run: pnpm fonts:check
 
+      # The animation studio's tests are pure TypeScript -- no native module,
+      # no Python, no bar -- so they run here rather than on the Windows
+      # runner, whose install rebuilds better-sqlite3 they do not need.
+      - name: Animation studio tests
+        run: pnpm test:studio
+
   # Windows, because that is the only platform this app targets: the
   # notification listener drives PowerShell and several code paths are gated on
   # process.platform === 'win32'. Running these on ubuntu would measure a
@@ -85,9 +91,10 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # Enforces the configured floor (78% statements, 80% lines and
-      # functions, 68% branches), which is ratcheted up as the measurement
-      # rises. `pnpm test` alone would report green below it.
+      # Enforces the coverage floor configured in vitest.config.ts, which is
+      # ratcheted up as the measurement rises. `pnpm test` alone would report
+      # green below it. The figures are deliberately not repeated here: this
+      # comment quoted 78/80/80/68 long after the floor had moved on.
       - name: Test with coverage
         run: pnpm test:coverage
 
