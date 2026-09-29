@@ -598,8 +598,20 @@ looping idle animations.
      18 px. At the same time Away moved to a purple plate and Meeting to a
      lighter blue, so each of the three has its own colour and reads at a
      glance: teal, purple, blue.
-   - [ ] Animated 16×16 icons for notifications and events, as `animation`
-     elements beside the text image.
+   - [x] **Animated icons: the mechanism, with the compiling gear**
+     (2026-09-29). The screen keeps the static icon in its PNG at `z_index` 1;
+     `IconAnimator` lays the 16×16 `.anim` over it at `z_index` 2, uploads it
+     once per connection, and removes it alone with `element_ids` when the next
+     screen has none. Every failure leaves the static icon showing. The probe
+     gained two pixel checks for the layering the app uses: the icon stays on
+     top of a redrawn frame, and removing it leaves the frame (firmware 1.2.4).
+     Chosen with the user: Unity, the generic notification bell and the
+     ceremony prompts animate; the tracking icon stays still, since it is on
+     screen all day; app logos stay as they are.
+   - [ ] The other icons: Play Mode, build and bake, exception, bell, the EOD
+     clock, the lunch-prompt burger, the Day Complete check.
+   - [ ] Task done as a full-panel scene played once, replacing the streamed
+     confetti (about 80 requests over four seconds).
    - [x] **The three Flipper frame sets are removed** (2026-09-29), with their
      CC-BY-SA notice in `LICENSE`, the licence line in the installer's
      copyright and the docs footer. All three replacements had run in the app
@@ -789,8 +801,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.27 statements / 75.13 branches / 85.4 functions / 86.69 lines across 806
-tests in 54 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**84.63 statements / 75.61 branches / 85.93 functions / 86.99 lines across 848
+tests in 55 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

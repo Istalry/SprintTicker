@@ -96,6 +96,9 @@ ceiling, and when the next attempt is due.
 
 Discovered Unity projects and plugin injection. Once installed, the bar shows
 compile progress, an "ON AIR" screen during Play Mode, and console exceptions.
+While scripts compile, the gear on the bar turns. The bar animates it itself;
+if it ever shows the gear still, the log's `[IconAnimator]` lines say why, and
+the screen is otherwise unaffected.
 
 ### Ceremonies
 

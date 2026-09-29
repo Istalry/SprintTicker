@@ -1,7 +1,11 @@
+import path from 'path';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
+import { IconAnimator } from '../src/main/hardware/icon-animator';
+import { ANIMATED_ICONS } from '../src/shared/render-constants';
+import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 
@@ -15,6 +19,8 @@ describe('DisplayRenderer Unit Tests', () => {
       sendPixelFrame: vi.fn().mockResolvedValue('sent'),
       clearDisplay: vi.fn().mockResolvedValue(undefined),
       uploadAsset: vi.fn().mockResolvedValue(undefined),
+      drawOverlay: vi.fn().mockResolvedValue('drawn'),
+      removeDisplayElements: vi.fn().mockResolvedValue(undefined),
       getDeviceStatus: vi.fn(() => ({
         connected: true,
         ipAddress: '10.0.4.20',
@@ -365,6 +371,93 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(payload.ledColorHex).toBe('#EF4444FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
       expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('EXCEPTION: ProjectY'))).toBe(true);
+    });
+  });
+
+  /**
+   * The static icon stays in the frame; an animated one is laid over it. What
+   * matters to the renderer is which icon each screen asks for, and that a
+   * screen asking for none takes the previous one away -- otherwise the gear
+   * keeps turning over the next screen's text.
+   */
+  describe('animated icons', () => {
+    let iconAnimator: { show: ReturnType<typeof vi.fn>; reset: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> };
+
+    beforeEach(() => {
+      iconAnimator = { show: vi.fn(), reset: vi.fn(), dispose: vi.fn() };
+      renderer = new DisplayRenderer(mockDriver, undefined, { iconAnimator: iconAnimator as unknown as IconAnimator });
+    });
+
+    const lastShown = (): unknown => iconAnimator.show.mock.calls[iconAnimator.show.mock.calls.length - 1][0];
+
+    it('RenderCompilation_Always_AsksForTheTurningGear', () => {
+      renderer.renderCompilation('ProjectX');
+
+      expect(lastShown()).toBe(ANIMATED_ICONS.compiling);
+      expect(lastShown()).toBe('icon_gear_16x16');
+    });
+
+    it('RenderActiveSession_AfterCompilation_TakesTheGearAway', () => {
+      renderer.renderCompilation('ProjectX');
+      renderer.renderActiveSession(null);
+
+      expect(lastShown()).toBeNull();
+    });
+
+    it('RenderException_IconWithoutAnAnimation_AsksForNone', () => {
+      renderer.renderCompilation('ProjectX');
+      renderer.renderException('ProjectX', 'NullReferenceException');
+
+      expect(lastShown()).toBeNull();
+    });
+
+    it('RenderCompilation_WhileAFullPanelAnimationPlays_AsksForNone', () => {
+      // The device owns the whole panel then; an icon drawn over it would sit
+      // on top of the lunch sandwich.
+      vi.spyOn(
+        (renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer,
+        'isHardwareAnimationActive'
+      ).mockReturnValue(true);
+
+      renderer.renderCompilation('ProjectX');
+
+      expect(lastShown()).toBeNull();
+    });
+
+    it('InvalidateFrameCache_Always_ForgetsWhatTheDeviceHolds', () => {
+      renderer.invalidateFrameCache();
+
+      expect(iconAnimator.reset).toHaveBeenCalled();
+    });
+
+    it('Dispose_Always_StopsTheIconPreview', () => {
+      renderer.dispose();
+
+      expect(iconAnimator.dispose).toHaveBeenCalled();
+    });
+
+    it('RenderCompilation_EmulatorWatching_OverlaysTheIconFrameOnTheScreen', async () => {
+      // A real IconAnimator reading the real exported gear, so the preview
+      // path is exercised end to end rather than through a stub.
+      renderer = new DisplayRenderer(mockDriver, undefined, {
+        animationsDir: path.resolve(__dirname, '../../../Animations')
+      });
+      const states: HardwareDisplayStateDTO[] = [];
+      renderer.onStateChanged(state => states.push({ ...state, frontElements: [...state.frontElements] }));
+
+      renderer.renderCompilation('ProjectX');
+      const deadline = Date.now() + 2000;
+      const hasOverlay = (): boolean =>
+        states.some(s => s.frontElements.some(el => el.id === 'icon_anim_preview' && el.x === 0 && el.y === 0));
+      while (!hasOverlay() && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      expect(hasOverlay()).toBe(true);
+
+      renderer.renderActiveSession(null);
+      const last = states[states.length - 1];
+      expect(last.frontElements.some(el => el.id === 'icon_anim_preview')).toBe(false);
+      renderer.dispose();
     });
   });
 

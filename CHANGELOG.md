@@ -9,6 +9,16 @@ reported something other than the truth, in three different ways.
 
 ### Added
 
+- **Animated icons.** While Unity compiles, the gear on the bar turns: it
+  advances a tooth, rests, and turns again. The bar plays the icon itself, laid
+  over the screen with `z_index`, so it costs one upload per connection and
+  nothing per frame. The screen keeps the still icon underneath, so a bar that
+  refuses the animation shows the icon as before. The on-screen emulator
+  animates it too. The other Unity, notification and ceremony icons follow.
+- **`pnpm probe:busybar --compositing` checks the layering the app uses**: an
+  icon stays above a redrawn frame, and removing it with `element_ids` leaves
+  the frame. It also records that removing an element the device does not hold
+  answers 400.
 - **The device address and API token are configurable**, in Settings › Device.
   Changing either reconnects the driver in place — no restart. This was
   hardcoded to `10.0.4.20` on the reasoning that the bar always answers there

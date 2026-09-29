@@ -358,6 +358,8 @@ export interface DisplayElementDTO {
    * as having no overlap.
    */
   type: 'text' | 'bitmap' | 'rectangle' | 'image';
+  /** Every element main builds carries one; the emulator's overlays are found by it. */
+  id?: string;
   x: number;
   y: number;
   text?: string;

@@ -237,8 +237,8 @@ app depends on, and says which newer fields the device accepts. It draws only
 under its own `application_name`, sends no `rectangle` elements — a wrong colour
 count there reboots the device, and no probe is worth that — and removes what it
 drew. Close the app first, or its priority-95 claim turns into 409s that mean
-only that the app owns the display. Last run: **firmware 1.2.3, all checks
-passing** (2026-09-09).
+only that the app owns the display. Last run: **firmware 1.2.4, all checks
+passing** (2026-09-29).
 
 It also reads the panel back and writes every frame out as a PNG (`--out <dir>`,
 default a temp directory), because the questions worth asking of a *display* are
@@ -280,6 +280,24 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   --compositing` (2026-09-29), which reads the panel back twice for every case.
   That check draws at priority 100 with element timeouts, so it runs with the
   app open.
+- **Animated icons use exactly that layering, and three things about it are
+  traps.** `px_matrix_img` is drawn at `z_index` 1 with the icon's *static*
+  pixels in it; `IconAnimator` draws `icon_anim`, the 16×16 `.anim`, at
+  `z_index` 2 over them (`FRONT_LAYER_Z`). Measured on firmware 1.2.4: the icon
+  stays on top through any number of frame redraws, and `element_ids` removes
+  it alone, leaving the frame.
+  - **Draw the icon with `drawOverlay`, never `sendDisplayPayload`.** The
+    latter bumps `displayVersion`, so a frame whose upload is still in flight
+    abandons its draw as `superseded` -- and the icon lands over the
+    *previous* screen's text.
+  - **Removing an element that is not there answers 400**, not 404, which the
+    driver reports as `rejected`. A full-panel animation clears everything
+    first, so the icon's removal often finds nothing. Read `rejected` on a
+    removal as "already gone", or every render retries it.
+  - **Keep the static icon in the frame.** It is the fallback: when the device
+    refuses the `.anim`, or a 409 holds the draw off, the bar shows the icon
+    still rather than a hole. The emulator follows the same rule and stops
+    animating an icon the device refused.
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,

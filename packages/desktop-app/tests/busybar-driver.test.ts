@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BusyBarDriver, DeviceRequestError, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput, describeTransportError, isUnreachableReminderDue, DEVICE_UNREACHABLE_REMINDER_PINGS, DEVICE_PING_INTERVAL_MS } from '../src/main/hardware/busybar-driver';
-import { ArgumentException } from '../src/shared/dtos';
+import { ArgumentException, ArgumentNullException } from '../src/shared/dtos';
+import { FRONT_LAYER_Z } from '../src/shared/device-constants';
 
 /**
  * A live (non-mock) driver, connected, whose every request past the status
@@ -776,6 +777,120 @@ describe('BusyBarDriver failure reporting', () => {
       await withLiveDriver(() => status(200), async driver => {
         driver.disconnect();
         await expect(driver.sendPixelFrame(frame)).resolves.toBe('queued');
+      });
+    });
+
+    it('SendPixelFrame_Draw_PutsTheFrameOnTheLayerBelowAnimatedIcons', async () => {
+      const draws: Array<Record<string, unknown>> = [];
+      await withLiveDriver(
+        (url, init) => {
+          if (url.includes('/api/display/draw') && init?.method === 'POST') draws.push(JSON.parse(String(init.body)));
+          return status(200);
+        },
+        async driver => {
+          await driver.sendPixelFrame(frame);
+        }
+      );
+
+      // Without a z_index the frame composites above an animation whichever
+      // arrived first, and an animated icon would never be seen.
+      const element = (draws[0].elements as Array<Record<string, unknown>>)[0];
+      expect(element.id).toBe('px_matrix_img');
+      expect(element.z_index).toBe(FRONT_LAYER_Z.FRAME);
+      expect(FRONT_LAYER_Z.ICON).toBeGreaterThan(FRONT_LAYER_Z.FRAME);
+    });
+  });
+
+  describe('drawOverlay', () => {
+    const icon = [{ id: 'icon_anim', type: 'animation', path: 'icon_gear_16x16.anim', x: 0, y: 0, z_index: 2 }];
+
+    it('DrawOverlay_WhileAFrameUploads_DoesNotSupersedeTheFrame', async () => {
+      let releaseUpload: () => void = () => undefined;
+      await withLiveDriver(
+        url =>
+          url.includes('/api/assets/upload')
+            ? new Promise<Response>(resolve => {
+                releaseUpload = () => resolve(status(200));
+              })
+            : status(200),
+        async driver => {
+          const pending = driver.sendPixelFrame(Buffer.from('png'));
+          await expect(driver.drawOverlay('sprintticker', icon)).resolves.toBe('drawn');
+          releaseUpload();
+
+          // The icon belongs to the frame under it; abandoning that frame's draw
+          // would leave the icon over the previous screen's text.
+          await expect(pending).resolves.toBe('sent');
+        }
+      );
+    });
+
+    it('DrawOverlay_Success_SendsTheElementsWithTheirZIndex', async () => {
+      const bodies: Array<Record<string, unknown>> = [];
+      await withLiveDriver(
+        (_url, init) => {
+          if (init?.method === 'POST') bodies.push(JSON.parse(String(init.body)));
+          return status(200);
+        },
+        async driver => {
+          await driver.drawOverlay('sprintticker', icon, 95);
+        }
+      );
+
+      expect(bodies[0]).toMatchObject({ application_name: 'sprintticker', priority: 95 });
+      expect((bodies[0].elements as Array<Record<string, unknown>>)[0]).toMatchObject({ id: 'icon_anim', z_index: 2 });
+    });
+
+    it('DrawOverlay_DisplayHeldElsewhere_ResolvesConflict', async () => {
+      await withLiveDriver(() => status(409), async driver => {
+        await expect(driver.drawOverlay('sprintticker', icon)).resolves.toBe('conflict');
+      });
+    });
+
+    it('DrawOverlay_Refused_ThrowsRejected', async () => {
+      await withLiveDriver(() => status(400), async driver => {
+        await expect(driver.drawOverlay('sprintticker', icon)).rejects.toMatchObject({ kind: 'rejected', status: 400 });
+      });
+    });
+
+    it('DrawOverlay_NoElements_ThrowsArgumentNullException', async () => {
+      await withLiveDriver(() => status(200), async driver => {
+        await expect(driver.drawOverlay('sprintticker', [])).rejects.toBeInstanceOf(ArgumentNullException);
+      });
+    });
+  });
+
+  describe('removeDisplayElements', () => {
+    it('RemoveDisplayElements_Success_DeletesOnlyTheNamedElements', async () => {
+      const requests: Array<{ method?: string; body: Record<string, unknown> }> = [];
+      await withLiveDriver(
+        (_url, init) => {
+          requests.push({ method: init?.method, body: JSON.parse(String(init?.body)) });
+          return status(200);
+        },
+        async driver => {
+          await driver.removeDisplayElements('sprintticker', ['icon_anim']);
+        }
+      );
+
+      expect(requests).toEqual([
+        { method: 'DELETE', body: { application_name: 'sprintticker', element_ids: ['icon_anim'] } }
+      ]);
+    });
+
+    it('RemoveDisplayElements_ElementNotThere_ThrowsRejected', async () => {
+      // What firmware 1.2.4 answers for an id it does not hold.
+      await withLiveDriver(() => status(400), async driver => {
+        await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).rejects.toMatchObject({
+          kind: 'rejected',
+          status: 400
+        });
+      });
+    });
+
+    it('RemoveDisplayElements_NoIds_ThrowsArgumentNullException', async () => {
+      await withLiveDriver(() => status(200), async driver => {
+        await expect(driver.removeDisplayElements('sprintticker', [])).rejects.toBeInstanceOf(ArgumentNullException);
       });
     });
   });

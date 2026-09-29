@@ -237,6 +237,28 @@ emulator, and `transmitFrame` sends the front matrix and nothing else.
 > `.anim`, and `transmitFrame` skips the hardware send while
 > `isHardwareAnimationActive()`.
 
+**Animated icons are a second layer, not a second owner.** The screen is still
+one PNG with the icon's static pixels in it. `IconAnimator` lays the icon's
+16×16 `.anim` over them as element `icon_anim`, and `z_index` keeps it on top
+(`FRONT_LAYER_Z`: frame 1, icon 2), so the device animates it with no traffic
+per frame.
+
+- **Which icons animate** is `ANIMATED_ICONS` in `shared/render-constants.ts`,
+  keyed by the static bitmap each one stands over. The paint helpers take the
+  bitmap id, `transmitFrame` hands the result to `IconAnimator.show()`, and a
+  screen that names no animated icon removes the previous one.
+- **Each `.anim` is uploaded once per connection.** `show()` is called on every
+  transmitted frame and does nothing when the icon has not changed.
+  `invalidateFrameCache()` resets it after a clear or a reconnect.
+- **The static icon is the fallback.** A refused upload, a refused draw, or a
+  409 leaves it showing. A refused icon is not retried until the next reset.
+- **The emulator animates the icon locally** from its PNG frames, laid over the
+  screen as `icon_anim_preview`, and stops when the device has refused it, so
+  the preview never animates what the bar shows still.
+
+Both players read animations through `animation-sequence.ts`, which owns the
+folder layout and frame ordering.
+
 ### `InputDecoder` — `src/main/hardware/`
 
 Turns physical events into application actions, through a rebindable map.
@@ -385,7 +407,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 806 tests across 54 files. `coverage.include` is `src/main/**` and
+Vitest, 848 tests across 55 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

@@ -37,6 +37,24 @@ export const DEFAULT_USB_IP = '10.0.4.20';
 export const DEVICE_APPLICATION_NAME = 'sprintticker';
 
 /**
+ * Stacking order of the two layers the app draws on the front panel.
+ *
+ * The whole screen is one full-panel PNG, `px_matrix_img`, with every icon's
+ * static pixels already in it. An animated icon is a separate `animation`
+ * element at x=0 drawn *above* it, so the static icon underneath is what shows
+ * whenever the animation is not there -- refused, not yet uploaded, or removed.
+ *
+ * Numbers rather than draw order, because draw order does not decide it:
+ * without `z_index`, the image composites above an animation whichever of the
+ * two arrived first. With it, the icon stays on top through any number of
+ * frame redraws. Measured on firmware 1.2.4 (`pnpm probe:busybar --compositing`).
+ */
+export const FRONT_LAYER_Z = {
+  FRAME: 1,
+  ICON: 2
+} as const;
+
+/**
  * Whether `value` is usable as the device's host part of a URL.
  *
  * Accepts a dotted IPv4 address or a DNS/mDNS hostname, because both are real:

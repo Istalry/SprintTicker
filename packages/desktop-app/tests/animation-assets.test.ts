@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { FRONT_ANIMATIONS } from '../src/shared/render-constants';
+import { ANIMATED_ICONS, FRONT_ANIMATIONS } from '../src/shared/render-constants';
 
 /**
  * Every animation the app names must exist on disk, in the layout
@@ -15,8 +15,15 @@ import { FRONT_ANIMATIONS } from '../src/shared/render-constants';
  */
 const ANIMATIONS_DIR = path.resolve(__dirname, '../../../Animations');
 
+const NAMED_ANIMATIONS = [
+  ...Object.entries(FRONT_ANIMATIONS),
+  // An animated icon with no files behind it degrades to its static bitmap,
+  // silently; the test is what notices.
+  ...Object.entries(ANIMATED_ICONS).map(([icon, name]) => [`icon ${icon}`, name as string])
+];
+
 describe('front animation assets', () => {
-  describe.each(Object.entries(FRONT_ANIMATIONS))('%s (%s)', (_key, name) => {
+  describe.each(NAMED_ANIMATIONS)('%s (%s)', (_key, name) => {
     const dir = path.join(ANIMATIONS_DIR, name, name);
 
     it('Folder_NamedAnimation_ExistsInTheNestedLayout', () => {

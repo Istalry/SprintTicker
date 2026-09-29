@@ -832,6 +832,7 @@ async function observe(label) {
   const text = regionStats(b, TEXT_X, FRONT_WIDTH - 1);
   return {
     iconRed: icon.red,
+    iconGreen: icon.green,
     iconMoving: regionChanged(a, b, 0, ICON - 1),
     textGreen: text.green,
     textCells: (FRONT_WIDTH - TEXT_X) * FRONT_HEIGHT,
@@ -858,7 +859,8 @@ async function probeCompositing() {
     ['probe_text.png', makeGreenPng(FRONT_WIDTH - TEXT_X, 0), 'image/png'],
     ['probe_text2.png', makeGreenPng(FRONT_WIDTH - TEXT_X, 8), 'image/png'],
     ['probe_holed.png', makeGreenPng(FRONT_WIDTH, TEXT_X), 'image/png'],
-    ['probe_opaque.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png']
+    ['probe_opaque.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png'],
+    ['probe_opaque2.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png']
   ];
   for (const [file, body, contentType] of uploads) {
     const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=${file}`, {
@@ -954,6 +956,44 @@ async function probeCompositing() {
     }
   } catch (err) {
     record('Text replaced while the icon plays', 'fail', err.message);
+  }
+
+  // The app's own layering, in the app's own order: the full-panel frame is
+  // drawn first at z 1, the icon on its own draw at z 2. Then the two things
+  // the app does next. It redraws the frame under a *different* file name
+  // (sendPixelFrame alternates two), which must leave the icon on top. And
+  // when the next screen has no animated icon, it removes that element alone
+  // with element_ids, which must leave the frame -- and the static icon inside
+  // it -- where it was. An accepted DELETE says nothing about either.
+  try {
+    await clearProbeElements();
+    await drawAbove([image('probe_opaque.png', 0, { z_index: 1 })]);
+    await drawAbove([anim({ z_index: 2 })]);
+    await sleep(400);
+    const redraw = await drawAbove([image('probe_opaque2.png', 0, { z_index: 1 })]);
+    if (redraw.status < 200 || redraw.status >= 300) {
+      record('Icon stays above a redrawn frame', 'fail', `draw returned ${redraw.status}`);
+    } else {
+      const o = await observe('icon-above-redrawn-frame');
+      record('Icon stays above a redrawn frame', o.iconRed > 0 && o.iconMoving > 0 ? 'pass' : 'info', describe(o));
+    }
+
+    const del = await request('DELETE', '/api/display/draw', {
+      body: { application_name: APP, element_ids: ['cmp_anim'] }
+    });
+    if (del.status < 200 || del.status >= 300) {
+      record('Removing only the icon keeps the frame', 'fail', `DELETE returned ${del.status}`);
+    } else {
+      const o = await observe('icon-removed-frame-kept');
+      const kept = o.iconRed === 0 && o.iconMoving === 0 && o.iconGreen > ICON * FRONT_HEIGHT * 0.9;
+      record(
+        'Removing only the icon keeps the frame',
+        kept ? 'pass' : 'info',
+        `${describe(o)} (icon region ${o.iconGreen} green px)`
+      );
+    }
+  } catch (err) {
+    record('Icon layering the app uses', 'fail', err.message);
   }
 
   await clearProbeElements();

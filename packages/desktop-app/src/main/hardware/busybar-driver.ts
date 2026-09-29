@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
-import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException } from '../../shared/dtos';
-import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, redactTokenInUrl } from '../../shared/device-constants';
+import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
+import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_LAYER_Z, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
 import { DeviceRequestError, DrawOutcome, FrameOutcome } from './device-errors';
 
@@ -932,7 +932,8 @@ export class BusyBarDriver extends EventEmitter {
           path: cleanFilename,
           x: 0,
           y: 0,
-          display: 'front'
+          display: 'front',
+          z_index: FRONT_LAYER_Z.FRAME
         }]
       };
 
@@ -1081,6 +1082,77 @@ export class BusyBarDriver extends EventEmitter {
       { allowConflict: true }
     );
     return result === 'ok' ? 'drawn' : 'conflict';
+  }
+
+  /**
+   * Draws elements over whatever is on the front panel, leaving it in place.
+   *
+   * Unlike `sendDisplayPayload`, this does not supersede a frame in flight.
+   * That method bumps `displayVersion`, which makes a `sendPixelFrame` whose
+   * upload is still running abandon its draw -- right for a payload that
+   * replaces the screen, wrong for an animated icon laid over it, where the
+   * frame underneath is the very thing the icon belongs to. A draw merges by
+   * element id, so the frame stays.
+   *
+   * @returns `'conflict'` when another application owns the display (409).
+   * @throws DeviceRequestError when the device refused the draw.
+   */
+  public async drawOverlay(
+    applicationName: string,
+    elements: Array<Record<string, unknown>>,
+    priority: number = DEFAULT_DRAW_PRIORITY
+  ): Promise<DrawOutcome> {
+    if (!elements || elements.length === 0) throw new ArgumentNullException('elements');
+    const operation = 'overlay draw';
+    this.requireConnected(operation);
+
+    const formattedPayload = this.formatHardwarePayload({ application_name: applicationName, priority, elements });
+
+    if (this.isMockMode) {
+      console.log('[BusyBarDriver] [MOCK OVERLAY DRAW]:', JSON.stringify(formattedPayload));
+      return 'drawn';
+    }
+
+    const result = await this.deviceRequest(
+      operation,
+      `http://${this.ipAddress}/api/display/draw`,
+      {
+        method: 'POST',
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(formattedPayload)
+      },
+      { allowConflict: true }
+    );
+    return result === 'ok' ? 'drawn' : 'conflict';
+  }
+
+  /**
+   * Removes named elements and nothing else: DELETE /api/display/draw with
+   * `element_ids` in the body.
+   *
+   * `clearDisplay` removes everything the application drew, which would take
+   * the screen down with an icon. Measured on firmware 1.2.4: this removes only
+   * the named element and the frame beside it stays. An element that is not
+   * there answers **400**, not 404 -- so a caller removing something that may
+   * already be gone has to read a `rejected` error as "already gone".
+   *
+   * @throws DeviceRequestError when the device did not remove them.
+   */
+  public async removeDisplayElements(applicationName: string, elementIds: string[]): Promise<void> {
+    if (!elementIds || elementIds.length === 0) throw new ArgumentNullException('elementIds');
+    const operation = `remove ${elementIds.join(', ')}`;
+    this.requireConnected(operation);
+
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK REMOVE] app=${applicationName}, ids=${elementIds.join(',')}`);
+      return;
+    }
+
+    await this.deviceRequest(operation, `http://${this.ipAddress}/api/display/draw`, {
+      method: 'DELETE',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ application_name: applicationName, element_ids: elementIds })
+    });
   }
 
   /**

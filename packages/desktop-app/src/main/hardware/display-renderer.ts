@@ -6,10 +6,12 @@ import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
-import { DISPLAY_CONSTANTS, FRONT_ANIMATIONS } from '../../shared/render-constants';
+import { ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS } from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
+import { IconAnimator } from './icon-animator';
+import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 
 /** Behaviour switches for {@link DisplayRenderer.requestRender}. */
@@ -72,6 +74,20 @@ export interface DisplayPayload {
 
 const APP_NAME = DEVICE_APPLICATION_NAME;
 
+/** The emulator-only element the animated icon's current frame is shown as. */
+const ICON_PREVIEW_ELEMENT_ID = 'icon_anim_preview';
+
+/** Collaborators a test may substitute. */
+export interface DisplayRendererOptions {
+  iconAnimator?: IconAnimator;
+  /**
+   * Where the animations live. The default is derived from `__dirname`, which
+   * is only right in the bundled build (`dist/main`); from source, as under
+   * the test runner, it points one level short of the repository.
+   */
+  animationsDir?: string;
+}
+
 /**
  * Service rendering hardware display screen payloads according to physical pixel templates.
  * Front Display (72x16 RGB LED): All content is rasterized into a pixel canvas, encoded as
@@ -110,6 +126,15 @@ export class DisplayRenderer {
   /** Tracked so a second banner cannot be cut short by the first one's timer. */
   private _bannerReleaseTimer: NodeJS.Timeout | null = null;
   private frameBufferToggle: boolean = false;
+  private iconAnimator: IconAnimator;
+  /**
+   * The animated icon the frame being painted carries, if any.
+   *
+   * Set by the paint helpers and consumed by `transmitFrame`, which resets it:
+   * a screen that does not ask for an animated icon therefore removes the
+   * previous screen's, rather than leaving it spinning over the wrong text.
+   */
+  private frameIcon: string | null = null;
   private showIdleClockFallback: boolean = false;
 
   /** The software 72×16 pixel canvas that is encoded and uploaded each frame. */
@@ -118,15 +143,37 @@ export class DisplayRenderer {
     DISPLAY_CONSTANTS.FRONT_GRID_HEIGHT
   );
 
-  constructor(driver: BusyBarDriver, priorityEngine?: IPriorityPreemptionEngine) {
+  constructor(driver: BusyBarDriver, priorityEngine?: IPriorityPreemptionEngine, options: DisplayRendererOptions = {}) {
     if (!driver) {
       throw new ArgumentNullException('driver');
     }
     this._driver = driver;
     this.priorityEngine = priorityEngine;
-    this.animationPlayer = new AnimationPlayer(driver);
+    const animationsDir = options.animationsDir ?? defaultAnimationsDir();
+    this.animationPlayer = new AnimationPlayer(driver, animationsDir);
     this.animationPlayer.setLedColorCallback(() => this.lastState.ledColorHex);
     this.onAnimationFrame = this.onAnimationFrame.bind(this);
+    this.iconAnimator =
+      options.iconAnimator ??
+      new IconAnimator(driver, name => loadAnimationSequence(animationsDir, name), {
+        onPreviewFrame: frame => this.onIconPreviewFrame(frame)
+      });
+  }
+
+  /**
+   * Lays the animated icon's current frame over the emulator's copy of the
+   * screen. Emulator only: the device animates the icon itself.
+   */
+  private onIconPreviewFrame(frame: Buffer | null): void {
+    if (this.stateChangeCallbacks.size === 0) return;
+    const base = this.lastState.frontElements.filter(el => el.id !== ICON_PREVIEW_ELEMENT_ID);
+    const overlay = frame
+      ? [{ id: ICON_PREVIEW_ELEMENT_ID, type: 'image', x: 0, y: 0, data: `data:image/png;base64,${frame.toString('base64')}` }]
+      : [];
+    this.lastState.frontElements = [...base, ...(overlay as unknown as DisplayElementDTO[])];
+    for (const callback of this.stateChangeCallbacks) {
+      callback(this.lastState);
+    }
   }
 
   private onAnimationFrame(frameBuffer: Buffer, _frameIndex: number) {
@@ -159,6 +206,7 @@ export class DisplayRenderer {
    */
   public invalidateFrameCache(): void {
     this.lastTransmittedSignature = null;
+    this.iconAnimator.reset();
   }
 
   /// <summary>
@@ -477,9 +525,11 @@ export class DisplayRenderer {
     row0Text: string,
     row1Text: string,
     row0Color: string,
-    row1Color: string
+    row1Color: string,
+    animatedIcon?: BitmapIconId
   ): void {
     this.canvas.clear();
+    this.frameIcon = animatedIcon ? ANIMATED_ICONS[animatedIcon] ?? null : null;
     // Draw 16×16 icon, centered vertically in the 16px display height
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
     this.canvas.drawBitmap(iconBitmap, 0, 0, layout.ICON_SIZE, layout.ICON_SIZE);
@@ -498,9 +548,11 @@ export class DisplayRenderer {
     titleText: string,
     titleColor: string,
     progressPercent: number,
-    barColor: string
+    barColor: string,
+    animatedIcon?: BitmapIconId
   ): void {
     this.canvas.clear();
+    this.frameIcon = animatedIcon ? ANIMATED_ICONS[animatedIcon] ?? null : null;
     this.canvas.drawBitmap(iconBitmap, 0, 0, 16, 16);
     this.canvas.drawTextClipped(titleText, 17, 1, titleColor, 55);
 
@@ -554,6 +606,10 @@ export class DisplayRenderer {
     // was invisible in development for so long.
     const frontOwnedByAnimation = this.animationPlayer.isHardwareAnimationActive();
 
+    // Consumed here, whatever the frame, so the next screen starts without one.
+    const animatedIcon = frontOwnedByAnimation ? null : this.frameIcon;
+    this.frameIcon = null;
+
     if (frontOwnedByAnimation) {
       // Forget the signature rather than record one that was never sent, so the
       // first frame after the animation stops always transmits.
@@ -566,6 +622,10 @@ export class DisplayRenderer {
       // Fire-and-forget hardware transmission (non-blocking for render callers)
       void this.sendFrameToDevice(pngBuffer, ledColorHex, dynamicFilename);
     }
+
+    // After the frame, though the order does not matter on the device: with
+    // `z_index` the icon composites above the frame whichever lands first.
+    this.iconAnimator.show(animatedIcon);
 
     this.lastState = {
       frontElements: frontElementsForEmulator as unknown as DisplayElementDTO[],
@@ -1050,6 +1110,7 @@ export class DisplayRenderer {
    */
   public dispose(): void {
     this.clearBannerTimers();
+    this.iconAnimator.dispose();
     if (this.celebrationTimeout) {
       clearInterval(this.celebrationTimeout);
       this.celebrationTimeout = null;
@@ -1168,7 +1229,8 @@ export class DisplayRenderer {
         'COMPILING:',
         projectName,
         colors.keyColor,
-        '#FFFFFF'
+        '#FFFFFF',
+        'compiling'
       );
 
       const backElements = [

@@ -310,7 +310,13 @@ Draws return a value instead of throwing for the answers that are not failures:
 | Call | Resolves to |
 | :--- | :--- |
 | `sendDisplayPayload` | `'drawn'`, or `'conflict'` when another application owns the display |
+| `drawOverlay` | The same, for elements laid **over** the screen. Unlike `sendDisplayPayload` it does not supersede a frame whose upload is in flight |
 | `sendPixelFrame` | `'sent'`; `'queued'` (disconnected or another frame in flight, so it is sent next); `'superseded'` (a clear landed mid-upload, **the device is not showing it**); `'conflict'` |
+
+`removeDisplayElements(app, ids)` removes the named elements and nothing
+else. An id the device does not hold answers **400**, so it throws `rejected`;
+a caller removing something that may already be gone has to read that as
+success.
 
 `connect()` and `reconfigure()` answer a boolean and never throw. They are
 probes, and "the bar is not there" is a normal answer for them.
@@ -371,14 +377,16 @@ proves what this app *sends* and nothing about what the device does with it —
 every hardware defect in this project's history was found by running the app and
 reading a console.
 
-Verified on **firmware 1.2.3** (2026-09-09): everything above still holds, and
-two additions are available that were not before.
+Verified on **firmware 1.2.3** (2026-09-09) and again on **1.2.4**
+(2026-09-29): everything above still holds, and two additions are available
+that were not before.
 
 | Field | Where | What it enables |
 | :--- | :--- | :--- |
 | `z_index` | On any display element | Integer, higher drawn on top. Elements at the same priority can be layered instead of overwriting one another |
 | `element_ids` | `DELETE /api/display/draw` | An array of element ids to remove, with `application_name` as a sanity check that you own them. Omit it to remove everything |
 
-Neither is used yet. They matter because they lift the compositing blocker
-recorded in ROADMAP §4 — an animation used to be all-or-nothing across the whole
-panel.
+Both are used for animated icons. The screen, `px_matrix_img`, is drawn at
+`z_index` 1; the icon, `icon_anim`, at `z_index` 2 over it; and the icon is
+removed on its own with `element_ids`. Without them an animation was
+all-or-nothing across the whole panel.

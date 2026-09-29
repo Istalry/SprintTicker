@@ -79,6 +79,18 @@ a hue. Taken so far:
 
 Pick a free hue for a new one, and add it here.
 
+**Ours: 16×16 animated icons.** These play over a screen the app has already
+drawn, so three rules on top of the ones above:
+
+- **No plate; black is the background.** The `.anim` has no alpha, and the
+  screen around the icon is black.
+- **The rest pose is the app's static icon** (`shared/pixel-bitmaps.ts`): same
+  silhouette, same colours. The static one is what shows before the animation
+  lands and whenever the device refuses it, so the swap must not be visible.
+- **Act, rest, repeat**, as for the full-panel scenes. The gear advances one
+  tooth and rests; with eight identical teeth each rest is the start pose, so
+  the loop closes on its own.
+
 ## 4. Text
 
 - **Flat colour, no anti-aliasing, 2 px strokes.** Legibility first.

@@ -573,7 +573,10 @@
       </div>
       <h4>Unity Engine</h4>
       <p>Discovered Unity projects and plugin injection. Once installed, the bar shows
-      compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.</p>
+      compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.
+      While scripts compile, the gear on the bar turns. The bar animates it itself;
+      if it ever shows the gear still, the log&#39;s <code>[IconAnimator]</code> lines say why, and
+      the screen is otherwise unaffected.</p>
       <h4>Ceremonies</h4>
       <p>Working hours, and the three scheduled events:</p>
       <div class="table-wrap"><table>
@@ -1184,6 +1187,27 @@
       <code>.anim</code>, and <code>transmitFrame</code> skips the hardware send while
       <code>isHardwareAnimationActive()</code>.</p>
       </div>
+      <p><strong>Animated icons are a second layer, not a second owner.</strong> The screen is still
+      one PNG with the icon&#39;s static pixels in it. <code>IconAnimator</code> lays the icon&#39;s
+      16×16 <code>.anim</code> over them as element <code>icon_anim</code>, and <code>z_index</code> keeps it on top
+      (<code>FRONT_LAYER_Z</code>: frame 1, icon 2), so the device animates it with no traffic
+      per frame.</p>
+      <ul>
+      <li><strong>Which icons animate</strong> is <code>ANIMATED_ICONS</code> in <code>shared/render-constants.ts</code>,
+      keyed by the static bitmap each one stands over. The paint helpers take the
+      bitmap id, <code>transmitFrame</code> hands the result to <code>IconAnimator.show()</code>, and a
+      screen that names no animated icon removes the previous one.</li>
+      <li><strong>Each <code>.anim</code> is uploaded once per connection.</strong> <code>show()</code> is called on every
+      transmitted frame and does nothing when the icon has not changed.
+      <code>invalidateFrameCache()</code> resets it after a clear or a reconnect.</li>
+      <li><strong>The static icon is the fallback.</strong> A refused upload, a refused draw, or a
+      409 leaves it showing. A refused icon is not retried until the next reset.</li>
+      <li><strong>The emulator animates the icon locally</strong> from its PNG frames, laid over the
+      screen as <code>icon_anim_preview</code>, and stops when the device has refused it, so
+      the preview never animates what the bar shows still.</li>
+      </ul>
+      <p>Both players read animations through <code>animation-sequence.ts</code>, which owns the
+      folder layout and frame ordering.</p>
       <h4><code>InputDecoder</code> — <code>src/main/hardware/</code></h4>
       <p>Turns physical events into application actions, through a rebindable map.</p>
       <div class="table-wrap"><table>
@@ -1352,7 +1376,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 806 tests across 54 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 848 tests across 55 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>
@@ -1884,10 +1908,18 @@
       <td align="left"><code>&#39;drawn&#39;</code>, or <code>&#39;conflict&#39;</code> when another application owns the display</td>
       </tr>
       <tr>
+      <td align="left"><code>drawOverlay</code></td>
+      <td align="left">The same, for elements laid <strong>over</strong> the screen. Unlike <code>sendDisplayPayload</code> it does not supersede a frame whose upload is in flight</td>
+      </tr>
+      <tr>
       <td align="left"><code>sendPixelFrame</code></td>
       <td align="left"><code>&#39;sent&#39;</code>; <code>&#39;queued&#39;</code> (disconnected or another frame in flight, so it is sent next); <code>&#39;superseded&#39;</code> (a clear landed mid-upload, <strong>the device is not showing it</strong>); <code>&#39;conflict&#39;</code></td>
       </tr>
       </tbody></table></div>
+      <p><code>removeDisplayElements(app, ids)</code> removes the named elements and nothing
+      else. An id the device does not hold answers <strong>400</strong>, so it throws <code>rejected</code>;
+      a caller removing something that may already be gone has to read that as
+      success.</p>
       <p><code>connect()</code> and <code>reconfigure()</code> answer a boolean and never throw. They are
       probes, and &quot;the bar is not there&quot; is a normal answer for them.</p>
       <div class="note trap">
@@ -1937,8 +1969,9 @@
       proves what this app <em>sends</em> and nothing about what the device does with it —
       every hardware defect in this project&#39;s history was found by running the app and
       reading a console.</p>
-      <p>Verified on <strong>firmware 1.2.3</strong> (2026-09-09): everything above still holds, and
-      two additions are available that were not before.</p>
+      <p>Verified on <strong>firmware 1.2.3</strong> (2026-09-09) and again on <strong>1.2.4</strong>
+      (2026-09-29): everything above still holds, and two additions are available
+      that were not before.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1958,9 +1991,10 @@
       <td align="left">An array of element ids to remove, with <code>application_name</code> as a sanity check that you own them. Omit it to remove everything</td>
       </tr>
       </tbody></table></div>
-      <p>Neither is used yet. They matter because they lift the compositing blocker
-      recorded in ROADMAP §4 — an animation used to be all-or-nothing across the whole
-      panel.</p>
+      <p>Both are used for animated icons. The screen, <code>px_matrix_img</code>, is drawn at
+      <code>z_index</code> 1; the icon, <code>icon_anim</code>, at <code>z_index</code> 2 over it; and the icon is
+      removed on its own with <code>element_ids</code>. Without them an animation was
+      all-or-nothing across the whole panel.</p>
     </section>
 
   </main>

@@ -1,3 +1,5 @@
+import type { BitmapIconId } from './dtos';
+
 /**
  * Physical dimensions and layout metrics for the two BUSY Bar displays.
  *
@@ -26,6 +28,21 @@ export const FRONT_ANIMATIONS = {
   AWAY: 'away_coffee_72x16',
   MEETING: 'meeting_table_72x16',
 } as const;
+
+/**
+ * Icons that animate on the device, by the static bitmap they stand over.
+ *
+ * Each value is a 16x16 animation under `Animations/<name>/<name>/`. The screen
+ * still draws the static bitmap into its frame; `IconAnimator` plays the
+ * `.anim` above it, so anything missing here, or refused by the device, shows
+ * the static icon instead. `animation-assets.test.ts` checks every entry.
+ *
+ * App logos are deliberately absent: they are the applications' own marks,
+ * not ours to animate.
+ */
+export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
+  compiling: 'icon_gear_16x16',
+};
 
 export const DISPLAY_CONSTANTS = {
   /** Front RGB LED matrix. */
