@@ -9,6 +9,24 @@
  * 8 hex digits and rejects the entire draw otherwise, so anything destined for
  * a draw payload must keep the alpha pair.
  */
+/**
+ * Full-screen animations, by folder name under `Animations/`.
+ *
+ * `AnimationPlayer` resolves a name to `Animations/<name>/<name>/` and plays
+ * `<name>.anim` on the device when it is there, streaming the PNG frames
+ * otherwise. A name with no folder behind it fails silently -- a warning in the
+ * log and an empty panel -- so `animation-assets.test.ts` checks every entry
+ * here against the repository.
+ *
+ * Lunch and Away are our own, drawn in `packages/anim-studio/scenes/`. Meeting
+ * is still the firmware's frame set until ours replaces it.
+ */
+export const FRONT_ANIMATIONS = {
+  LUNCH: 'lunch_sandwich_72x16',
+  AWAY: 'away_coffee_72x16',
+  MEETING: 'meeting_72x16',
+} as const;
+
 export const DISPLAY_CONSTANTS = {
   /** Front RGB LED matrix. */
   FRONT_GRID_WIDTH: 72,

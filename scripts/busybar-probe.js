@@ -38,6 +38,10 @@ const { createDeviceClient, encodePng } = require('./lib/busybar-device');
  *
  * `--font-sheet` also shows every glyph of both front-panel fonts, a page at a
  * time, for a person to judge on the LEDs -- see `probeFontSheet`.
+ *
+ * `--compositing` measures whether an animated 16x16 icon can play beside a
+ * text image, which decides how notification icons animate -- see
+ * `probeCompositing`. It draws above the app, so it runs with the app open.
  */
 
 const IP = process.env.BUSYBAR_IP || '10.0.4.20';
@@ -713,6 +717,249 @@ async function probeFontSheet() {
   }
 }
 
+/**
+ * Can an animated icon run on the device beside a text image the app uploads?
+ *
+ * This decides how notification and event icons animate (ROADMAP §4). If a
+ * 16x16 `animation` element keeps playing next to an `image` element, a
+ * notification costs one text upload and the icon animates for free. If not,
+ * every icon frame has to be streamed as a full-panel PNG, two HTTP requests
+ * each. Status codes cannot answer it -- `px_matrix_img` over `hardware_anim`
+ * returned 200 twice while the bar stayed black -- so every case here reads
+ * the panel back twice and looks at the pixels.
+ *
+ * Opt-in (`--compositing`). It draws at `COMPOSITING_PRIORITY`, above the app's
+ * 95, with element timeouts, so it runs with SprintTicker open: the app's own
+ * draws get 409 meanwhile and resume when the probe removes its elements. The
+ * test animation is generated here and compiled with the repository's
+ * `seq2anim.py`, so it needs Python with Pillow.
+ */
+const COMPOSITING_PRIORITY = 100;
+const ICON = 16;
+const TEXT_X = 17;
+const RED = [230, 30, 30];
+const NAVY = [0, 0, 90];
+const GREEN = [0, 170, 0];
+
+/** A 16x16 loop: a red 6x6 block sliding left and right on navy, 30 fps. */
+function buildIconAnim(dir) {
+  const { execFileSync } = require('child_process');
+  const frames = 60;
+  const seq = path.join(dir, 'seq');
+  fs.mkdirSync(seq, { recursive: true });
+  for (let f = 0; f < frames; f++) {
+    const bx = Math.round(5 - 5 * Math.cos((2 * Math.PI * f) / frames));
+    const rgba = Buffer.alloc(ICON * ICON * 4);
+    for (let y = 0; y < ICON; y++) {
+      for (let x = 0; x < ICON; x++) {
+        const inBlock = x >= bx && x < bx + 6 && y >= 5 && y < 11;
+        const [r, g, b] = inBlock ? RED : NAVY;
+        const p = (y * ICON + x) * 4;
+        rgba[p] = r;
+        rgba[p + 1] = g;
+        rgba[p + 2] = b;
+        rgba[p + 3] = 0xff;
+      }
+    }
+    fs.writeFileSync(path.join(seq, `frame_${String(f).padStart(5, '0')}.png`), encodePng(ICON, ICON, rgba));
+  }
+  fs.writeFileSync(path.join(seq, 'meta.json'), JSON.stringify({ fps: 30, color_mode: 'rgb888', sections: [] }));
+  const out = path.join(dir, 'probe_icon16.anim');
+  execFileSync(process.env.PYTHON || 'python', [
+    path.join(__dirname, 'busybar-anim-toolchain', 'seq2anim.py'),
+    '-o',
+    out,
+    seq
+  ]);
+  return out;
+}
+
+/** A PNG `width` wide, green from column `from` onward and fully transparent before it. */
+function makeGreenPng(width, from) {
+  const rgba = Buffer.alloc(width * FRONT_HEIGHT * 4);
+  for (let y = 0; y < FRONT_HEIGHT; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = (y * width + x) * 4;
+      if (x < from) continue; // alpha 0
+      rgba[p] = GREEN[0];
+      rgba[p + 1] = GREEN[1];
+      rgba[p + 2] = GREEN[2];
+      rgba[p + 3] = 0xff;
+    }
+  }
+  return encodePng(width, FRONT_HEIGHT, rgba);
+}
+
+/** What a readback shows in one column range: red pixels, green pixels. */
+function regionStats({ width, rgba }, x0, x1) {
+  let red = 0;
+  let green = 0;
+  for (let y = 0; y < FRONT_HEIGHT; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const p = (y * width + x) * 4;
+      const [r, g, b] = [rgba[p], rgba[p + 1], rgba[p + 2]];
+      if (r > 150 && g < 90 && b < 90) red++;
+      if (g > 100 && r < 80 && b < 80) green++;
+    }
+  }
+  return { red, green };
+}
+
+function regionChanged(a, b, x0, x1) {
+  let changed = 0;
+  for (let y = 0; y < FRONT_HEIGHT; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const p = (y * a.width + x) * 4;
+      if (a.rgba[p] !== b.rgba[p] || a.rgba[p + 1] !== b.rgba[p + 1] || a.rgba[p + 2] !== b.rgba[p + 2]) changed++;
+    }
+  }
+  return changed;
+}
+
+async function drawAbove(elements) {
+  return request('POST', '/api/display/draw', {
+    body: { application_name: APP, priority: COMPOSITING_PRIORITY, elements }
+  });
+}
+
+/** Two readbacks 350 ms apart: is the icon there, is it moving, what is beside it. */
+async function observe(label) {
+  await sleep(600);
+  const a = await captureScreen(`${label}-1`);
+  await sleep(350);
+  const b = await captureScreen(`${label}-2`);
+  const icon = regionStats(b, 0, ICON - 1);
+  const text = regionStats(b, TEXT_X, FRONT_WIDTH - 1);
+  return {
+    iconRed: icon.red,
+    iconMoving: regionChanged(a, b, 0, ICON - 1),
+    textGreen: text.green,
+    textCells: (FRONT_WIDTH - TEXT_X) * FRONT_HEIGHT,
+    file: b.file
+  };
+}
+
+function describe(o) {
+  return `icon: ${o.iconRed} red px, ${o.iconMoving} px changed in 350ms; text: ${o.textGreen}/${o.textCells} green. ${o.file}`;
+}
+
+async function probeCompositing() {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'busybar-compositing-'));
+  let animFile;
+  try {
+    animFile = buildIconAnim(work);
+  } catch (err) {
+    record('Compositing', 'skip', `could not build the test animation (Python + Pillow?): ${err.message}`);
+    return;
+  }
+
+  const uploads = [
+    ['probe_icon16.anim', fs.readFileSync(animFile), 'application/octet-stream'],
+    ['probe_text.png', makeGreenPng(FRONT_WIDTH - TEXT_X, 0), 'image/png'],
+    ['probe_text2.png', makeGreenPng(FRONT_WIDTH - TEXT_X, 8), 'image/png'],
+    ['probe_holed.png', makeGreenPng(FRONT_WIDTH, TEXT_X), 'image/png'],
+    ['probe_opaque.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png']
+  ];
+  for (const [file, body, contentType] of uploads) {
+    const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=${file}`, {
+      body,
+      contentType,
+      timeoutMs: 30000
+    });
+    if (up.status < 200 || up.status >= 300) {
+      record('Compositing', 'fail', `upload of ${file} returned ${up.status} ${up.body.slice(0, 80)}`);
+      return;
+    }
+  }
+  record('16x16 animation upload', 'pass', `${Math.round(fs.statSync(animFile).size / 1024)}KB accepted`);
+
+  const anim = (extra = {}) => ({
+    id: 'cmp_anim',
+    type: 'animation',
+    path: 'probe_icon16.anim',
+    x: 0,
+    y: 0,
+    display: 'front',
+    loop: true,
+    section: 'default',
+    timeout: 20,
+    ...extra
+  });
+  const image = (file, x, extra = {}) => ({
+    id: 'cmp_img',
+    type: 'image',
+    path: file,
+    x,
+    y: 0,
+    display: 'front',
+    timeout: 20,
+    ...extra
+  });
+
+  const cases = [
+    {
+      name: 'Animated icon beside a text image',
+      elements: [anim(), image('probe_text.png', TEXT_X)],
+      want: o => o.iconRed > 0 && o.iconMoving > 0 && o.textGreen > o.textCells * 0.9
+    },
+    {
+      name: 'Animated icon under a full-panel image with a transparent hole',
+      elements: [anim(), image('probe_holed.png', 0)],
+      want: o => o.iconRed > 0 && o.iconMoving > 0
+    },
+    {
+      name: 'Animated icon with z_index above a full-panel opaque image',
+      elements: [anim({ z_index: 2 }), image('probe_opaque.png', 0, { z_index: 1 })],
+      want: o => o.iconRed > 0 && o.iconMoving > 0
+    },
+    {
+      name: 'Control: z_index below a full-panel opaque image hides it',
+      elements: [anim({ z_index: 1 }), image('probe_opaque.png', 0, { z_index: 2 })],
+      want: o => o.iconRed === 0
+    }
+  ];
+
+  for (const c of cases) {
+    try {
+      await clearProbeElements();
+      const draw = await drawAbove(c.elements);
+      if (draw.status < 200 || draw.status >= 300) {
+        record(c.name, 'fail', `draw returned ${draw.status} ${draw.body.slice(0, 80)}`);
+        continue;
+      }
+      const o = await observe(c.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase());
+      record(c.name, c.want(o) ? 'pass' : 'info', describe(o));
+    } catch (err) {
+      record(c.name, 'fail', err.message);
+    }
+  }
+
+  // The app would replace the text on every notification while the icon plays.
+  // A draw merges by element id, so sending only the image should leave the
+  // animation element alone -- but whether it keeps *playing* is the question.
+  try {
+    await clearProbeElements();
+    await drawAbove([anim(), image('probe_text.png', TEXT_X)]);
+    await sleep(600);
+    const swap = await drawAbove([image('probe_text2.png', TEXT_X)]);
+    if (swap.status < 200 || swap.status >= 300) {
+      record('Text replaced while the icon plays', 'fail', `draw returned ${swap.status}`);
+    } else {
+      const o = await observe('text-replaced-while-playing');
+      record(
+        'Text replaced while the icon plays',
+        o.iconRed > 0 && o.iconMoving > 0 ? 'pass' : 'info',
+        describe(o)
+      );
+    }
+  } catch (err) {
+    record('Text replaced while the icon plays', 'fail', err.message);
+  }
+
+  await clearProbeElements();
+  fs.rmSync(work, { recursive: true, force: true });
+}
+
 async function main() {
   console.log(`\nBUSY Bar probe -- ${IP}\n`);
   console.log('Close SprintTicker before running this, or expect 409s that only');
@@ -854,6 +1101,11 @@ async function main() {
     await probeAnimation();
   } else {
     record('Animation playback', 'skip', 'display owned; re-run with the app closed');
+  }
+
+  // Runs whether or not the app holds the display: it draws above it.
+  if (process.argv.includes('--compositing')) {
+    await probeCompositing();
   }
 
   if (process.argv.includes('--font-sheet')) {

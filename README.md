@@ -302,7 +302,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 791 tests across 53 files for the app, covering the main and
+`pnpm test` runs 805 tests across 54 files for the app, covering the main and
 shared process code (the renderer is not covered), then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
 threshold floor of 84% statements / 86.5% lines / 85% functions / 75%
@@ -459,7 +459,8 @@ without modifying your scenes or project code.
   which newer fields the device accepts. Run it after a firmware release; the
   test suite mocks the driver and so proves what we *send*, never what the
   device does with it. Close the app first, or its priority-95 claim shows up as
-  409s.
+  409s. `--compositing` measures whether an animated icon plays beside a text
+  image; that check draws above the app, so it runs with the app open.
 
 Windows batch shortcuts for the common commands sit in the repository root:
 `install.bat`, `run_editor.bat`, `package-win.bat`, `verify-unity.bat`,
@@ -475,7 +476,7 @@ SprintTicker/
 │   ├── desktop-app/       # Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + SQLite
 │   ├── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
 │   └── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
-├── Animations/            # .anim frame sets, CC-BY-SA-4.0 upstream (Git LFS)
+├── Animations/            # Frame sets + .anim; ours MIT, 3 firmware sets CC-BY-SA (LFS)
 ├── Documentation/         # User guide, architecture, API reference, hardware guide
 ├── docs/                  # Generated: those three as one page (GitHub Pages)
 ├── scripts/               # Preflight, packaging, probe and icon tooling
@@ -556,9 +557,10 @@ of this repository and are not covered by that license.
 
 One exception is worth knowing about, detailed in [LICENSE](LICENSE):
 
-- `Animations/` -- frame sets from the BUSY Bar firmware, (c) Flipper FZCO under
-  **CC-BY-SA-4.0**, not MIT. Adapting them means licensing the adaptation the
-  same way.
+- `Animations/lunch_72x16`, `back_soon_72x16` and `meeting_72x16` -- frame sets
+  from the BUSY Bar firmware, (c) Flipper FZCO under **CC-BY-SA-4.0**, not MIT.
+  Adapting them means licensing the adaptation the same way. The other
+  animations are drawn for this project and are MIT.
 
 The front display's fonts are drawn for this project and are MIT like the rest.
 Earlier versions used a table converted from the firmware's own font

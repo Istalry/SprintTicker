@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 
@@ -127,6 +128,26 @@ describe('DisplayRenderer Unit Tests', () => {
       const payload = renderer.renderAwayMode();
       expect(payload.ledColorHex).toBe('#A855F7FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    it('RenderLunchMode_Always_PlaysOurSandwichAnimation', () => {
+      const play = vi
+        .spyOn((renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer, 'play')
+        .mockResolvedValue(undefined);
+
+      renderer.renderLunchMode();
+
+      expect(play).toHaveBeenCalledWith('lunch_sandwich_72x16', expect.objectContaining({ loop: true }));
+    });
+
+    it('RenderAwayMode_Always_PlaysOurCoffeeAnimation', () => {
+      const play = vi
+        .spyOn((renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer, 'play')
+        .mockResolvedValue(undefined);
+
+      renderer.renderAwayMode();
+
+      expect(play).toHaveBeenCalledWith('away_coffee_72x16', expect.objectContaining({ loop: true }));
     });
 
     it('RenderCeremonyPrompt_EODType_DispatchesCeremonyPromptPayload', () => {

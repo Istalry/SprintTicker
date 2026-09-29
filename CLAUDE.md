@@ -165,7 +165,8 @@ device.
   the device a timestamp and lets *it* do the arithmetic (`CountdownElement` is
   the one that matters) shows a time wrong by the skew, with nothing anywhere
   reporting it. Read `GET /api/time`, take the offset, and apply it; re-read it
-  periodically, because drift is what produced the 19 seconds.
+  periodically, because drift is what produced the 19 seconds -- the same bar
+  read **29.7 seconds** behind three weeks later (2026-09-29).
 - **`GET /api/screen?display=0` does not return what it says it does.** It
   answers `Content-Type: image/bmp`, and `streaming.yaml` types the body as
   base64 — but on 1.2.3 what arrives is base64-encoded **raw** pixels with no
@@ -261,6 +262,17 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   `clearDisplay` first and `transmitFrame` skips the hardware send while
   `isHardwareAnimationActive()`. Measured on firmware 1.2.3 by replaying both
   draws against a real bar and reading the panel back.
+- **`z_index` decides that stacking, and PNG alpha is respected.** "Either
+  order" above is *draw* order. Given `z_index`, an animation element does
+  draw above a full-panel opaque image, and below it when the numbers are
+  swapped. A transparent pixel in an image shows the animation beneath it. So
+  an animated 16×16 icon can play at x=0 beside a text image at x=17, or under
+  a full-panel image with a transparent hole, at no HTTP cost per frame.
+  Replacing only the text image, which is a merge by id, leaves the icon
+  playing. All measured on firmware 1.2.3 with `pnpm probe:busybar
+  --compositing` (2026-09-29), which reads the panel back twice for every case.
+  That check draws at priority 100 with element timeouts, so it runs with the
+  app open.
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,

@@ -565,11 +565,28 @@ looping idle animations.
      plate's graded outline and highlight, text shadow and gradient, and Bold 9.
      Chosen with the user: pixel-art parts moved by smooth keyframes, 9px
      one-line titles, 60 fps.
-   - [ ] Measure on the bar whether a 16×16 `animation` element can sit beside a
-     text image (`z_index`, PNG alpha). This decides how notification and
-     event icons animate.
-   - [ ] Draw Lunch (sandwich) and Away (coffee), and wire them in with the
-     streaming path kept as a fallback.
+   - [x] **Measured: an animated icon can sit beside a text image**
+     (2026-09-29, `pnpm probe:busybar --compositing`). A 16×16 `animation`
+     element at x=0 plays beside an `image` at x=17, and under a full-panel
+     image with a transparent hole. With a higher `z_index` it plays above a
+     full-panel opaque image. It keeps playing when only the text image is
+     replaced. Notification and event icons can therefore animate on the
+     device at zero requests per frame: the text is uploaded once.
+   - [x] **Lunch and Away are ours** (2026-09-29). Lunch is a sandwich whose
+     five layers fall, squash and stack, rest, then hop off the panel. Away is
+     a coffee cup with three steam wisps rising and fading on staggered
+     cycles. Both are studio scenes in `packages/anim-studio/scenes/`, 60 fps,
+     with loops that close on their first frame, and both were read back
+     animating from a real bar. `FRONT_ANIMATIONS` in
+     `shared/render-constants.ts` names them, and a test checks each named
+     folder exists with its frames and `.anim`. The playback paths are
+     unchanged: the device plays the `.anim`, and PNG streaming takes over if
+     it refuses the file.
+   - [ ] A meeting / stand-up animation of our own.
+   - [ ] Animated 16×16 icons for notifications and events, as `animation`
+     elements beside the text image.
+   - [ ] Remove the three Flipper frame sets and their CC-BY-SA notice, in its
+     own commit, once ours have run in the app on the bar.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
@@ -754,8 +771,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.27 statements / 75.13 branches / 85.4 functions / 86.69 lines across 791
-tests in 53 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**84.27 statements / 75.13 branches / 85.4 functions / 86.69 lines across 805
+tests in 54 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

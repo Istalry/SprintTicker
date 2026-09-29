@@ -54,8 +54,11 @@ It does not cover, and this project makes no claim over:
 Attribution
 -----------
 
-`Animations/` contains the LED animation frame sets from the BUSY Bar firmware
-(`assets/animations/`), redistributed here unmodified.
+`Animations/lunch_72x16`, `Animations/back_soon_72x16` and
+`Animations/meeting_72x16` are LED animation frame sets from the BUSY Bar
+firmware (`assets/animations/`), redistributed here unmodified.
+The other folders in `Animations/` are drawn for this project, from the scenes
+in `packages/anim-studio/scenes/`, and are covered by the MIT terms above.
 
   Copyright (c) 2024-2026 Flipper FZCO
   Licensed under Creative Commons Attribution-ShareAlike 4.0 International

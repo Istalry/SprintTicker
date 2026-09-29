@@ -110,6 +110,11 @@ Working hours, and the three scheduled events:
 Both prompts can be confirmed or dismissed **from the bar itself** — see the
 hardware controls below.
 
+During Lunch the bar shows a sandwich building itself beside **LUNCH**; in Away
+mode, a steaming coffee beside **AWAY**. Both loop for as long as the mode
+lasts, and the bar plays them itself, so they keep moving when the computer
+is busy.
+
 ### Notifications
 
 Which applications may reach the bar. **Nothing is mirrored until you allow it.**

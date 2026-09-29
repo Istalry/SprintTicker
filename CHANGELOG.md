@@ -104,6 +104,13 @@ reported something other than the truth, in three different ways.
   - a loop-seam check under the timeline.
 
   Scenes default to 60 fps. Scene files saved earlier still open.
+- **`pnpm probe:busybar --compositing`** measures whether an animated icon
+  can play beside the app's text on the device. It builds a 16×16 test
+  animation and reads the panel back twice for each case: side by side, under
+  a transparent hole, above and below an opaque image by `z_index`, and with
+  the text replaced mid-play. On firmware 1.2.3 all of them work, so a
+  notification icon can animate with no per-frame traffic. The check draws
+  above the app at priority 100, so it runs with SprintTicker open.
 - **`scripts/lib/busybar-device.js`**, the device client and PNG encoder, is
   split out of the probe so the probe and the studio share one copy.
 
@@ -141,6 +148,14 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
+- **Lunch and Away play our own animations.** Lunch is a sandwich stacking
+  itself layer by layer; Away is a steaming coffee. They replace the firmware's
+  salad and "back soon" frame sets, which stay in the repository until they
+  are removed on their own. Both were drawn in the animation studio in the
+  official animations' style, 60 fps with smooth, anti-aliased motion, and
+  both play on the device from a `.anim` with PNG streaming as the fallback, as
+  before. A new test fails if an animation the app names has no folder behind
+  it, which would otherwise show as an empty panel and a log warning.
 - **The front display's text is set in our own fonts.** Row 1 used a
   fixed-width 3×5 font with 40 characters, so `( ) , ' " # + @ & =` and the rest
   of the punctuation reached the bar as `?`. It cut a row at fourteen characters

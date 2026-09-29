@@ -602,6 +602,10 @@
       </tbody></table></div>
       <p>Both prompts can be confirmed or dismissed <strong>from the bar itself</strong> — see the
       hardware controls below.</p>
+      <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>; in Away
+      mode, a steaming coffee beside <strong>AWAY</strong>. Both loop for as long as the mode
+      lasts, and the bar plays them itself, so they keep moving when the computer
+      is busy.</p>
       <h4>Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p>Per app, choose one of three:</p>
@@ -1332,7 +1336,12 @@
       A sprite at rest on whole pixels renders exactly as drawn.</li>
       <li><strong>The export lands where the app already looks.</strong> <code>AnimationPlayer</code> reads
       <code>Animations/&lt;id&gt;/&lt;id&gt;/</code>, prefers <code>&lt;id&gt;.anim</code> when present and streams the
-      PNGs otherwise, so an exported scene plays without any change to the app.</li>
+      PNGs otherwise, so an exported scene plays without any change to the app.
+      Which folder each mode plays is <code>FRONT_ANIMATIONS</code> in
+      <code>shared/render-constants.ts</code>. A name with no folder behind it fails only as a
+      log warning and an empty panel, so <code>animation-assets.test.ts</code> checks every
+      entry against the repository. Lunch and Away are studio scenes; Meeting is
+      still the firmware&#39;s set.</li>
       <li><strong>The server half</strong> (<code>server/api.ts</code>) runs inside the Vite dev server. It
       writes scene files and exports, and plays a scene on the bar under the
       application name <code>sprintticker_studio</code>, at priority 100 with an element
@@ -1342,7 +1351,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 791 tests across 53 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 805 tests across 54 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

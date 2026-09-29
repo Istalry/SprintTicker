@@ -1,0 +1,712 @@
+{
+  "version": 1,
+  "id": "away_coffee_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 240,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#1E2046",
+      "colorB": "#13152E",
+      "direction": "vertical",
+      "outline": "#434A8C",
+      "outlineBottom": "#1F2350",
+      "highlight": "#282B58",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "glow",
+      "name": "Warmth",
+      "visible": true,
+      "type": "glow",
+      "x": 8,
+      "y": 10,
+      "radiusX": 11,
+      "radiusY": 8,
+      "color": "#FF9A4D",
+      "strength": 0.2,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.6,
+            "ease": "inOut"
+          },
+          {
+            "frame": 120,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 240,
+            "value": 0.6,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "steam-1",
+      "name": "Steam 1",
+      "visible": true,
+      "type": "sprite",
+      "x": 4,
+      "y": 5,
+      "loopFrom": 0,
+      "anchorX": 2,
+      "anchorY": 7,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 4,
+        "height": 7,
+        "palette": {
+          "s": "#FFFFFF"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss.."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss.."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss"
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": 5.0,
+            "ease": "out"
+          },
+          {
+            "frame": 119,
+            "value": -5.0,
+            "ease": "step"
+          },
+          {
+            "frame": 120,
+            "value": 5.0,
+            "ease": "out"
+          },
+          {
+            "frame": 239,
+            "value": -5.0,
+            "ease": "step"
+          },
+          {
+            "frame": 240,
+            "value": 5.0,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 30,
+            "value": 0.9,
+            "ease": "in"
+          },
+          {
+            "frame": 120,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 150,
+            "value": 0.9,
+            "ease": "in"
+          },
+          {
+            "frame": 240,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ],
+        "x": [
+          {
+            "frame": 0,
+            "value": 4.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 60,
+            "value": 5.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 120,
+            "value": 4.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 180,
+            "value": 5.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 240,
+            "value": 4.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "steam-2",
+      "name": "Steam 2",
+      "visible": true,
+      "type": "sprite",
+      "x": 7,
+      "y": 5,
+      "loopFrom": 0,
+      "anchorX": 2,
+      "anchorY": 7,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 4,
+        "height": 7,
+        "palette": {
+          "s": "#FFFFFF"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss.."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss.."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss"
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": -4.648,
+            "ease": "out"
+          },
+          {
+            "frame": 39,
+            "value": -5.0,
+            "ease": "step"
+          },
+          {
+            "frame": 40,
+            "value": 5.0,
+            "ease": "out"
+          },
+          {
+            "frame": 159,
+            "value": -5.0,
+            "ease": "step"
+          },
+          {
+            "frame": 160,
+            "value": 5.0,
+            "ease": "out"
+          },
+          {
+            "frame": 240,
+            "value": -4.648,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.7457,
+            "ease": "in"
+          },
+          {
+            "frame": 40,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 70,
+            "value": 0.9,
+            "ease": "in"
+          },
+          {
+            "frame": 160,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 190,
+            "value": 0.9,
+            "ease": "in"
+          },
+          {
+            "frame": 240,
+            "value": 0.7457,
+            "ease": "linear"
+          }
+        ],
+        "x": [
+          {
+            "frame": 0,
+            "value": 8.2778,
+            "ease": "inOut"
+          },
+          {
+            "frame": 40,
+            "value": 7.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 100,
+            "value": 8.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 160,
+            "value": 7.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 220,
+            "value": 8.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 240,
+            "value": 8.2778,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "steam-3",
+      "name": "Steam 3",
+      "visible": true,
+      "type": "sprite",
+      "x": 10,
+      "y": 5,
+      "loopFrom": 0,
+      "anchorX": 2,
+      "anchorY": 7,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 4,
+        "height": 7,
+        "palette": {
+          "s": "#FFFFFF"
+        },
+        "frames": [
+          {
+            "duration": 5,
+            "rows": [
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss.."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss.."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              ".ss.",
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss."
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "..ss",
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss"
+            ]
+          },
+          {
+            "duration": 5,
+            "rows": [
+              "..ss",
+              ".ss.",
+              "ss..",
+              "ss..",
+              ".ss.",
+              "..ss",
+              "..ss"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": -2.0742,
+            "ease": "out"
+          },
+          {
+            "frame": 79,
+            "value": -5.0,
+            "ease": "step"
+          },
+          {
+            "frame": 80,
+            "value": 5.0,
+            "ease": "out"
+          },
+          {
+            "frame": 199,
+            "value": -5.0,
+            "ease": "step"
+          },
+          {
+            "frame": 200,
+            "value": 5.0,
+            "ease": "out"
+          },
+          {
+            "frame": 240,
+            "value": -2.0742,
+            "ease": "linear"
+          }
+        ],
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.8988,
+            "ease": "in"
+          },
+          {
+            "frame": 80,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 110,
+            "value": 0.9,
+            "ease": "in"
+          },
+          {
+            "frame": 200,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 230,
+            "value": 0.9,
+            "ease": "in"
+          },
+          {
+            "frame": 240,
+            "value": 0.8988,
+            "ease": "linear"
+          }
+        ],
+        "x": [
+          {
+            "frame": 0,
+            "value": 11.2778,
+            "ease": "inOut"
+          },
+          {
+            "frame": 20,
+            "value": 11.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 80,
+            "value": 10.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 140,
+            "value": 11.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 200,
+            "value": 10.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 240,
+            "value": 11.2778,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cup",
+      "name": "Cup",
+      "visible": true,
+      "type": "sprite",
+      "x": 3,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 6.5,
+      "anchorY": 8,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 13,
+        "height": 8,
+        "palette": {
+          "w": "#F4F1EA",
+          "W": "#C4C7D2",
+          "k": "#5A3316",
+          "K": "#8A5A30"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "wwwwwwwwww...",
+              "wkkKkkkkKw...",
+              "wwwwwwwwWWww.",
+              "wwwwwwwwWW..w",
+              "wwwwwwwwWW..w",
+              "wwwwwwwwWWww.",
+              ".wwwwwwWW....",
+              "..WWWWWW....."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "saucer",
+      "name": "Saucer",
+      "visible": true,
+      "type": "sprite",
+      "x": 1,
+      "y": 14,
+      "loopFrom": 0,
+      "anchorX": 7.0,
+      "anchorY": 1,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 14,
+        "height": 1,
+        "palette": {
+          "w": "#F4F1EA",
+          "W": "#C4C7D2",
+          "k": "#5A3316",
+          "K": "#8A5A30"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              ".WWwwwwwwwwWW."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "AWAY",
+      "font": "bold-9",
+      "color": "#E8ECFF",
+      "x": 24,
+      "y": 4,
+      "width": 46,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#07081A",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

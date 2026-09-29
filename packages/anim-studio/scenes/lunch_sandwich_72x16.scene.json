@@ -1,0 +1,646 @@
+{
+  "version": 1,
+  "id": "lunch_sandwich_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 300,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#193A40",
+      "colorB": "#10272C",
+      "direction": "vertical",
+      "outline": "#2F6B74",
+      "outlineBottom": "#173C42",
+      "highlight": "#20474E",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "glow",
+      "name": "Warm glow",
+      "visible": true,
+      "type": "glow",
+      "x": 12,
+      "y": 9,
+      "radiusX": 13,
+      "radiusY": 9,
+      "color": "#FFB347",
+      "strength": 0.22,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 96,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 106,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 150,
+            "value": 0.4,
+            "ease": "linear"
+          },
+          {
+            "frame": 250,
+            "value": 0.4,
+            "ease": "in"
+          },
+          {
+            "frame": 270,
+            "value": 0.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bun-bottom",
+      "name": "Bottom bun",
+      "visible": true,
+      "type": "sprite",
+      "x": 3,
+      "y": 12,
+      "loopFrom": 0,
+      "anchorX": 9.0,
+      "anchorY": 3,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 18,
+        "height": 3,
+        "palette": {
+          "c": "#C8843C",
+          "h": "#E8B368",
+          "s": "#FFF1C8",
+          "d": "#8A5424",
+          "b": "#F0CE92"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "bbbbbbbbbbbbbbbbbb",
+              "cccccccccccccccccc",
+              ".dddddddddddddddd."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 10,
+            "value": -6.0,
+            "ease": "in"
+          },
+          {
+            "frame": 24,
+            "value": 12.0,
+            "ease": "out"
+          },
+          {
+            "frame": 28,
+            "value": 11.0,
+            "ease": "in"
+          },
+          {
+            "frame": 32,
+            "value": 12.0,
+            "ease": "step"
+          },
+          {
+            "frame": 250,
+            "value": 12.0,
+            "ease": "out"
+          },
+          {
+            "frame": 258,
+            "value": 13.0,
+            "ease": "step"
+          },
+          {
+            "frame": 274,
+            "value": 13.0,
+            "ease": "in"
+          },
+          {
+            "frame": 290,
+            "value": -8.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 23,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 25,
+            "value": 0.6,
+            "ease": "outBack"
+          },
+          {
+            "frame": 36,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 23,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 25,
+            "value": 1.18,
+            "ease": "outBack"
+          },
+          {
+            "frame": 36,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lettuce",
+      "name": "Lettuce",
+      "visible": true,
+      "type": "sprite",
+      "x": 3,
+      "y": 10,
+      "loopFrom": 0,
+      "anchorX": 9.0,
+      "anchorY": 2,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 18,
+        "height": 2,
+        "palette": {
+          "g": "#7CCB4B",
+          "G": "#3F8A2A"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "..g.gg..gg.gg..g..",
+              "gGgGGgGgGgGgGGgGgG"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 26,
+            "value": -8.0,
+            "ease": "in"
+          },
+          {
+            "frame": 40,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 44,
+            "value": 9.0,
+            "ease": "in"
+          },
+          {
+            "frame": 48,
+            "value": 10.0,
+            "ease": "step"
+          },
+          {
+            "frame": 250,
+            "value": 10.0,
+            "ease": "out"
+          },
+          {
+            "frame": 258,
+            "value": 11.0,
+            "ease": "step"
+          },
+          {
+            "frame": 271,
+            "value": 11.0,
+            "ease": "in"
+          },
+          {
+            "frame": 287,
+            "value": -10.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 41,
+            "value": 0.6,
+            "ease": "outBack"
+          },
+          {
+            "frame": 52,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 39,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 41,
+            "value": 1.18,
+            "ease": "outBack"
+          },
+          {
+            "frame": 52,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tomato",
+      "name": "Tomato",
+      "visible": true,
+      "type": "sprite",
+      "x": 4,
+      "y": 8,
+      "loopFrom": 0,
+      "anchorX": 8.0,
+      "anchorY": 2,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 16,
+        "height": 2,
+        "palette": {
+          "r": "#E8412E",
+          "R": "#FF8A6A"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              ".rrrrrr..rrrrrr.",
+              "rrRrRrrrrrRrRrrr"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 42,
+            "value": -10.0,
+            "ease": "in"
+          },
+          {
+            "frame": 56,
+            "value": 8.0,
+            "ease": "out"
+          },
+          {
+            "frame": 60,
+            "value": 7.0,
+            "ease": "in"
+          },
+          {
+            "frame": 64,
+            "value": 8.0,
+            "ease": "step"
+          },
+          {
+            "frame": 250,
+            "value": 8.0,
+            "ease": "out"
+          },
+          {
+            "frame": 258,
+            "value": 9.0,
+            "ease": "step"
+          },
+          {
+            "frame": 268,
+            "value": 9.0,
+            "ease": "in"
+          },
+          {
+            "frame": 284,
+            "value": -12.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 55,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 57,
+            "value": 0.6,
+            "ease": "outBack"
+          },
+          {
+            "frame": 68,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 55,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 57,
+            "value": 1.18,
+            "ease": "outBack"
+          },
+          {
+            "frame": 68,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cheese",
+      "name": "Cheese",
+      "visible": true,
+      "type": "sprite",
+      "x": 3,
+      "y": 6,
+      "loopFrom": 0,
+      "anchorX": 9.0,
+      "anchorY": 3,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 18,
+        "height": 3,
+        "palette": {
+          "y": "#FFD23F",
+          "Y": "#E0A21E"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "yyyyyyyyyyyyyyyyyy",
+              "YyyyyYyyyyyyYyyyyY",
+              ".Y.......Y.....Y.."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 58,
+            "value": -12.0,
+            "ease": "in"
+          },
+          {
+            "frame": 72,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 76,
+            "value": 5.0,
+            "ease": "in"
+          },
+          {
+            "frame": 80,
+            "value": 6.0,
+            "ease": "step"
+          },
+          {
+            "frame": 250,
+            "value": 6.0,
+            "ease": "out"
+          },
+          {
+            "frame": 258,
+            "value": 7.0,
+            "ease": "step"
+          },
+          {
+            "frame": 265,
+            "value": 7.0,
+            "ease": "in"
+          },
+          {
+            "frame": 281,
+            "value": -14.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 71,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 73,
+            "value": 0.6,
+            "ease": "outBack"
+          },
+          {
+            "frame": 84,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 71,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 73,
+            "value": 1.18,
+            "ease": "outBack"
+          },
+          {
+            "frame": 84,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bun-top",
+      "name": "Top bun",
+      "visible": true,
+      "type": "sprite",
+      "x": 3,
+      "y": 1,
+      "loopFrom": 0,
+      "anchorX": 9.0,
+      "anchorY": 5,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 18,
+        "height": 5,
+        "palette": {
+          "c": "#C8843C",
+          "h": "#E8B368",
+          "s": "#FFF1C8",
+          "d": "#8A5424",
+          "b": "#F0CE92"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              ".....cccccccc.....",
+              "...cchhhhshhhcc...",
+              "..chhshhhhhhhshc..",
+              ".chhhhhhshhhhhhhc.",
+              ".dcccccccccccccccd"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 74,
+            "value": -17.0,
+            "ease": "in"
+          },
+          {
+            "frame": 88,
+            "value": 1.0,
+            "ease": "out"
+          },
+          {
+            "frame": 92,
+            "value": 0.0,
+            "ease": "in"
+          },
+          {
+            "frame": 96,
+            "value": 1.0,
+            "ease": "step"
+          },
+          {
+            "frame": 250,
+            "value": 1.0,
+            "ease": "out"
+          },
+          {
+            "frame": 258,
+            "value": 2.0,
+            "ease": "step"
+          },
+          {
+            "frame": 262,
+            "value": 2.0,
+            "ease": "in"
+          },
+          {
+            "frame": 278,
+            "value": -19.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 87,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 89,
+            "value": 0.6,
+            "ease": "outBack"
+          },
+          {
+            "frame": 100,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 87,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 89,
+            "value": 1.18,
+            "ease": "outBack"
+          },
+          {
+            "frame": 100,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "LUNCH",
+      "font": "bold-9",
+      "color": "#E6F7F2",
+      "x": 24,
+      "y": 4,
+      "width": 46,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#061214",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

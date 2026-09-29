@@ -79,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          lfs: false # no test reads Animations/
+          lfs: false # tests read Animations/ file names, meta.json and .anim -- none of them LFS
 
       - uses: pnpm/action-setup@v6
 

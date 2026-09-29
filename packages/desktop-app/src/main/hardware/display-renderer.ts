@@ -6,7 +6,7 @@ import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
-import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
+import { DISPLAY_CONSTANTS, FRONT_ANIMATIONS } from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
@@ -635,7 +635,7 @@ export class DisplayRenderer {
     return this.requestRender('lunchModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
-      void this.animationPlayer.play('lunch_72x16', { loop: true, onFrame: this.onAnimationFrame })
+      void this.animationPlayer.play(FRONT_ANIMATIONS.LUNCH, { loop: true, onFrame: this.onAnimationFrame })
         .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
       const backElements = [
@@ -663,7 +663,7 @@ export class DisplayRenderer {
     return this.requestRender('awayModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
-      void this.animationPlayer.play('back_soon_72x16', { loop: true, onFrame: this.onAnimationFrame })
+      void this.animationPlayer.play(FRONT_ANIMATIONS.AWAY, { loop: true, onFrame: this.onAnimationFrame })
         .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
       const backElements = [
@@ -698,7 +698,7 @@ export class DisplayRenderer {
 
       if (type === 'STANDUP') {
         this.canvas.clear();
-        void this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame })
+        void this.animationPlayer.play(FRONT_ANIMATIONS.MEETING, { loop: true, onFrame: this.onAnimationFrame })
           .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       } else {
         this.paintIconAndTwoRows(
@@ -853,7 +853,7 @@ export class DisplayRenderer {
 
       this.canvas.clear();
       if (isStandup && isTracking) {
-        void this.animationPlayer.play('meeting_72x16', { loop: true, onFrame: this.onAnimationFrame })
+        void this.animationPlayer.play(FRONT_ANIMATIONS.MEETING, { loop: true, onFrame: this.onAnimationFrame })
           .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       } else {
         this.animationPlayer.stop();
