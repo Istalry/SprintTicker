@@ -473,7 +473,8 @@ describe('DisplayRenderer Unit Tests', () => {
       ['end-of-day prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('EOD', 'Wrap up'), 'icon_clock_16x16'],
       ['lunch prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('LUNCH', 'Lunch'), 'icon_burger_16x16'],
       ['Day Complete', (r: DisplayRenderer) => r.renderEodCompleted(), 'icon_check_16x16'],
-      ['notification without an app icon', (r: DisplayRenderer) => r.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' }), 'icon_bell_16x16']
+      ['notification without an app icon', (r: DisplayRenderer) => r.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' }), 'icon_bell_16x16'],
+      ['OpenProject notification', (r: DisplayRenderer) => r.renderNotificationBanner({ appName: 'OpenProject', title: 'T', body: 'B', iconId: 'openproject' }), 'icon_openproject_16x16']
     ])('Render_%s_AsksForItsAnimatedIcon', (_screen, render, expected) => {
       render(renderer);
 
@@ -487,7 +488,7 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(lastShown()).toBeNull();
     });
 
-    it('RenderNotificationBanner_BrandBitmap_KeepsItStill', () => {
+    it('RenderNotificationBanner_OtherBrandBitmap_KeepsItStill', () => {
       renderer.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'slack' });
 
       expect(lastShown()).toBeNull();

@@ -103,7 +103,8 @@ pad's buttons light in turn; a build shows a hammer striking and a lightmap
 bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
 a notification without an app logo rings its bell, the end-of-day prompt
 sweeps its clock hand, the lunch prompt's burger hops, and Day Complete's tick
-pops. The bar animates them itself. If one ever shows still, the log's
+pops. An OpenProject notification passes a shine across the OpenProject logo;
+other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
 `[IconAnimator]` lines say why, and the screen is otherwise unaffected.
 
 ### Ceremonies

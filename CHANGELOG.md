@@ -21,6 +21,10 @@ reported something other than the truth, in three different ways.
   Complete's tick pops. Work in progress moves steadily; an event acts, then
   rests. The tracking screen's icon stays still, since it is there all day, and
   app logos in notifications stay as they are.
+- **OpenProject notifications shine.** A light sweeps once across the
+  OpenProject logo, then it rests. The logo's shape and blue never change: it
+  is OpenProject's mark, so light passing over it is as far as the animation
+  goes. Other apps' logos stay still.
 - **Finishing a task celebrates with a scene of our own.** A green badge drops
   in and squashes on landing, its tick draws itself, and confetti bursts and
   falls behind **DONE!**. The bar plays it once and rests on the finished

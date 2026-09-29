@@ -624,6 +624,10 @@ looping idle animations.
      session returns a second later. The emulator's preview of a
      device-played scene also keeps time with the bar now; it had been
      running at a quarter speed.
+   - [x] **The OpenProject logo shines** (2026-09-29), on OpenProject
+     notifications: a light sweeps across once, then it rests. The one app
+     logo animated, by choice, and only with light -- its shape and blue are
+     OpenProject's and stay exact.
    - [x] **The three Flipper frame sets are removed** (2026-09-29), with their
      CC-BY-SA notice in `LICENSE`, the licence line in the installer's
      copyright and the docs footer. All three replacements had run in the app
@@ -813,7 +817,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.95 statements / 76.21 branches / 85.84 functions / 87.34 lines across 900
+**84.95 statements / 76.21 branches / 85.84 functions / 87.34 lines across 905
 tests in 55 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

@@ -49,8 +49,10 @@ export const TASK_DONE_DISPLAY_SECONDS = 4;
  * `.anim` above it, so anything missing here, or refused by the device, shows
  * the static icon instead. `animation-assets.test.ts` checks every entry.
  *
- * App logos are deliberately absent: they are the applications' own marks,
- * not ours to animate.
+ * App logos are absent, as the applications' own marks, with one exception:
+ * OpenProject, the tracker this app is built around, asked for by the user.
+ * Its animation only passes a light across it -- the shape and the brand blue
+ * never change -- which is as far as a mark that is not ours should go.
  */
 export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   // Work in progress: moves steadily, since a pause reads as a stall.
@@ -64,6 +66,7 @@ export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   clock: 'icon_clock_16x16',
   burger: 'icon_burger_16x16',
   checkmark: 'icon_check_16x16',
+  openproject: 'icon_openproject_16x16',
 };
 
 export const DISPLAY_CONSTANTS = {

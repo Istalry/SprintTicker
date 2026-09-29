@@ -108,6 +108,7 @@ The icons so far, and which rhythm each follows:
 | Clock | End-of-day prompt | event | the minute hand sweeps once round |
 | Burger | Lunch prompt | event | crouches, hops, lands with a squash |
 | Check | Day Complete | event | the tick pops |
+| OpenProject | OpenProject notification | event | a light sweeps across once; shape and blue untouched |
 
 Brightness that pulses must change **in steps**, and a sprite palette keeps the
 **most frequent colours exact**. Otherwise each channel rounds differently
