@@ -574,9 +574,13 @@
       <h4>Unity Engine</h4>
       <p>Discovered Unity projects and plugin injection. Once installed, the bar shows
       compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.
-      While scripts compile, the gear on the bar turns. The bar animates it itself;
-      if it ever shows the gear still, the log&#39;s <code>[IconAnimator]</code> lines say why, and
-      the screen is otherwise unaffected.</p>
+      The icons move. While scripts compile the gear turns; during Play Mode the
+      pad&#39;s buttons light in turn; a build shows a hammer striking and a lightmap
+      bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
+      a notification without an app logo rings its bell, the end-of-day prompt
+      sweeps its clock hand, the lunch prompt&#39;s burger hops, and Day Complete&#39;s tick
+      pops. The bar animates them itself. If one ever shows still, the log&#39;s
+      <code>[IconAnimator]</code> lines say why, and the screen is otherwise unaffected.</p>
       <h4>Ceremonies</h4>
       <p>Working hours, and the three scheduled events:</p>
       <div class="table-wrap"><table>
@@ -1376,7 +1380,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 848 tests across 55 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 891 tests across 55 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

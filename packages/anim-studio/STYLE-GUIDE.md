@@ -94,6 +94,25 @@ drawn, so three rules on top of the ones above:
   stuttering. It now turns at a constant speed. With eight identical teeth, a
   loop of exactly one tooth closes on its own.
 
+The icons so far, and which rhythm each follows:
+
+| Icon | Screen | Rhythm | Motion |
+| :--- | :--- | :--- | :--- |
+| Gear | Unity compiling | steady | turns |
+| Pad | Unity Play Mode | steady | buttons light in turn; the red lights breathe |
+| Hammer | Unity build | steady | raises, strikes, sparks |
+| Bulb | Lightmap bake | steady | the glass glows and the rays breathe |
+| Warning | Unity exception | event | shakes, then rests |
+| Bell | Notification without an app logo | event | swings and settles, the clapper a beat behind |
+| Clock | End-of-day prompt | event | the minute hand sweeps once round |
+| Burger | Lunch prompt | event | crouches, hops, lands with a squash |
+| Check | Day Complete | event | the tick pops |
+
+Brightness that pulses must change **in steps**, and a sprite palette keeps the
+**most frequent colours exact**. Otherwise each channel rounds differently
+from frame to frame and the hue wanders: the bulb went through orange and
+olive before both rules were applied.
+
 ## 4. Text
 
 - **Flat colour, no anti-aliasing, 2 px strokes.** Legibility first.

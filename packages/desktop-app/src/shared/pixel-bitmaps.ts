@@ -368,6 +368,50 @@ export const BELL_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
+// Build hammer 16x16 -- the rest pose of `icon_hammer_16x16`, generated with
+// it, so the still icon and the first frame of the animation are the same
+// pixels. Replaces the Unity logo on the build screen: the logo is Unity's
+// mark, not ours to animate.
+export const HAMMER_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#404040', '#151515', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#404040', '#AAAABF', '#9595AA', '#2A2A2A', null, null, null, null, null, null],
+  [null, null, null, null, null, '#2A2A2A', '#BFBFBF', '#AAAABF', '#AAAABF', '#AAAABF', '#404040', null, null, null, null, null],
+  [null, null, null, null, null, null, '#AAAABF', '#BFD4D4', '#AAAABF', '#AAAABF', '#AAAABF', '#555555', null, null, null, null],
+  [null, null, null, null, null, null, null, '#AAAA95', '#D4D4D4', '#AABFBF', '#AAAABF', '#AAAABF', '#555555', null, null, null],
+  [null, null, null, null, null, null, '#554015', '#AA6A2A', '#95806A', '#D4D4EA', '#AABFBF', '#9595AA', '#556A6A', null, null, null],
+  [null, null, null, null, null, '#402A15', '#BF6A2A', '#80552A', '#151500', '#404040', '#D4D4D4', '#6A8080', '#151515', null, null, null],
+  [null, null, null, null, '#2A1515', '#AA6A2A', '#95552A', '#2A1515', null, null, '#2A2A2A', '#404040', null, null, null, null],
+  [null, null, null, '#151500', '#AA6A2A', '#95552A', '#402A15', null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#95552A', '#AA6A2A', '#402A15', null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#80552A', '#AA6A2A', '#554015', null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#554015', '#6A4015', null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+// Bake light bulb 16x16 -- the rest pose of `icon_bulb_16x16`, generated with
+// it. Replaces the Unity logo on the lightmap-baking screen.
+export const BULB_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, '#686030', '#686030', null, null, null, null, null, null, null],
+  [null, null, null, '#978750', null, null, null, '#282818', '#282818', null, null, null, '#978750', null, null, null],
+  [null, null, null, '#9F8F50', '#978750', '#181008', '#877030', '#CFA748', '#CFA748', '#877030', '#181008', '#978750', '#9F8F50', null, null, null],
+  [null, null, null, null, '#201808', '#DFBF58', '#FFDF87', '#FFD760', '#FFD758', '#FFD758', '#DFB750', '#201808', null, null, null, null],
+  [null, null, null, null, '#BF9F48', '#FFEFAF', '#FFF7D7', '#FFE797', '#FFD758', '#FFD758', '#FFD758', '#BF9F48', null, null, null, null],
+  [null, null, null, '#201808', '#FFD758', '#FFE797', '#FFF7CF', '#FFDF80', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#201808', null, null, null],
+  [null, '#9F8F50', '#CFB768', '#302810', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#302810', '#CFB768', '#9F8F50', null],
+  [null, null, null, '#181008', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#181008', null, null, null],
+  [null, null, null, null, '#9F8738', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#9F8738', null, null, null, null],
+  [null, null, null, null, '#080800', '#CFA748', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#CFA748', '#080800', null, null, null, null],
+  [null, null, null, null, null, '#786828', '#FFD758', '#FFD758', '#FFD758', '#FFD758', '#786828', null, null, null, null, null],
+  [null, null, null, null, null, '#404040', '#8F8778', '#8F8778', '#8F8778', '#8F8778', '#404040', null, null, null, null, null],
+  [null, null, null, null, null, '#485050', '#788087', '#788087', '#788087', '#788087', '#485050', null, null, null, null, null],
+  [null, null, null, null, null, '#485050', '#788087', '#788087', '#788087', '#788087', '#485050', null, null, null, null, null],
+  [null, null, null, null, null, '#101018', '#282830', '#505860', '#505860', '#282830', '#101018', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
 /**
  * Retrieves 16x16 pixel bitmap matrix by identifier.
  */
@@ -410,6 +454,10 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return COMPILING_16X16_BITMAP;
     case 'playmode':
       return PLAYMODE_16X16_BITMAP;
+    case 'hammer':
+      return HAMMER_16X16_BITMAP;
+    case 'bulb':
+      return BULB_16X16_BITMAP;
     case 'unity':
     default:
       return UNITY_16X16_BITMAP;

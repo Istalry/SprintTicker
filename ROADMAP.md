@@ -608,8 +608,14 @@ looping idle animations.
      Chosen with the user: Unity, the generic notification bell and the
      ceremony prompts animate; the tracking icon stays still, since it is on
      screen all day; app logos stay as they are.
-   - [ ] The other icons: Play Mode, build and bake, exception, bell, the EOD
-     clock, the lunch-prompt burger, the Day Complete check.
+   - [x] **The other icons** (2026-09-29): Play Mode, exception, bell, the
+     end-of-day clock, the lunch-prompt burger and the Day Complete check,
+     each animated from its own static bitmap so the rest pose matches it
+     pixel for pixel. Build and bake get icons of our own, a hammer and a
+     bulb, in place of the Unity logo, which is not ours to animate (chosen
+     with the user). Work in progress moves steadily; events act, then rest,
+     after the stepped gear read as a stutter. All eight read back animating
+     from a real bar.
    - [ ] Task done as a full-panel scene played once, replacing the streamed
      confetti (about 80 requests over four seconds).
    - [x] **The three Flipper frame sets are removed** (2026-09-29), with their
@@ -801,7 +807,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.63 statements / 75.61 branches / 85.93 functions / 86.99 lines across 848
+**84.63 statements / 75.89 branches / 85.93 functions / 86.99 lines across 891
 tests in 55 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

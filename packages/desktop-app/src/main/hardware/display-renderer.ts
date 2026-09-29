@@ -766,7 +766,8 @@ export class DisplayRenderer {
           label,
           title || 'Click to Start',
           accentColor,
-          '#FFFFFF'
+          '#FFFFFF',
+          iconId
         );
       }
 
@@ -797,7 +798,8 @@ export class DisplayRenderer {
         'EOD COMPLETE',
         message,
         '#10B981',
-        '#FFFFFF'
+        '#FFFFFF',
+        'checkmark'
       );
 
       const backElements = [
@@ -1046,7 +1048,16 @@ export class DisplayRenderer {
       // The same two-row template every other screen uses. This was the only
       // screen drawing a single centred row, which left the lower row -- and
       // with it the message body -- permanently blank.
-      this.paintIconAndTwoRows(bitmapData, text.row0, text.row1, accentColor, '#FFFFFF');
+      // Only our own fallback bitmap can animate. A resolved icon is the
+      // application's own mark, and stays as it is.
+      this.paintIconAndTwoRows(
+        bitmapData,
+        text.row0,
+        text.row1,
+        accentColor,
+        '#FFFFFF',
+        customIconData ? undefined : iconId
+      );
 
       const backElements = [
         { id: 'rear_notif_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `NOTIFICATION (Priority ${priority})`, align: 'top_left' },
@@ -1199,7 +1210,8 @@ export class DisplayRenderer {
         'ON AIR',
         projectName,
         '#FF0000',
-        '#3B82F6'
+        '#3B82F6',
+        'playmode'
       );
 
       const backElements = [
@@ -1258,11 +1270,12 @@ export class DisplayRenderer {
       const progressColorHex = `${barColor}FF`;
 
       this.paintIconProgressBar(
-        getBitmapById('unity'),
+        getBitmapById('hammer'),
         `BUILDING: ${projectName}`,
         barColor,
         progress,
-        barColor
+        barColor,
+        'hammer'
       );
 
       // Overlay bar_build_active as identifiable element for tests (virtual — real data is in canvas)
@@ -1302,11 +1315,12 @@ export class DisplayRenderer {
       const barColor = '#FBBF24';
 
       this.paintIconProgressBar(
-        getBitmapById('unity'),
+        getBitmapById('bulb'),
         `BAKING: ${projectName}`,
         barColor,
         progress,
-        barColor
+        barColor,
+        'bulb'
       );
 
       const backElements = [
@@ -1335,7 +1349,8 @@ export class DisplayRenderer {
         'EXCEPTION:',
         message,
         '#EF4444',
-        '#FFFFFF'
+        '#FFFFFF',
+        'error'
       );
 
       const backElements = [

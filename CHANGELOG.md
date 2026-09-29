@@ -14,7 +14,16 @@ reported something other than the truth, in three different ways.
   over the screen with `z_index`, so it costs one upload per connection and
   nothing per frame. The screen keeps the still icon underneath, so a bar that
   refuses the animation shows the icon as before. The on-screen emulator
-  animates it too. The other Unity, notification and ceremony icons follow.
+  animates it too.
+- **Every event icon of ours moves.** The Play Mode pad's buttons light in
+  turn, the exception triangle shakes, the notification bell swings, the
+  end-of-day clock's hand sweeps round, the lunch-prompt burger hops, and Day
+  Complete's tick pops. Work in progress moves steadily; an event acts, then
+  rests. The tracking screen's icon stays still, since it is there all day, and
+  app logos in notifications stay as they are.
+- **The build and bake screens have their own icons**: a hammer that strikes,
+  and a light bulb that glows. Both replace the Unity logo, which is Unity's
+  mark and not ours to animate.
 - **`pnpm probe:busybar --compositing` checks the layering the app uses**: an
   icon stays above a redrawn frame, and removing it with `element_ids` leaves
   the frame. It also records that removing an element the device does not hold

@@ -96,9 +96,13 @@ ceiling, and when the next attempt is due.
 
 Discovered Unity projects and plugin injection. Once installed, the bar shows
 compile progress, an "ON AIR" screen during Play Mode, and console exceptions.
-While scripts compile, the gear on the bar turns. The bar animates it itself;
-if it ever shows the gear still, the log's `[IconAnimator]` lines say why, and
-the screen is otherwise unaffected.
+The icons move. While scripts compile the gear turns; during Play Mode the
+pad's buttons light in turn; a build shows a hammer striking and a lightmap
+bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
+a notification without an app logo rings its bell, the end-of-day prompt
+sweeps its clock hand, the lunch prompt's burger hops, and Day Complete's tick
+pops. The bar animates them itself. If one ever shows still, the log's
+`[IconAnimator]` lines say why, and the screen is otherwise unaffected.
 
 ### Ceremonies
 

@@ -41,7 +41,17 @@ export const FRONT_ANIMATIONS = {
  * not ours to animate.
  */
 export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
+  // Work in progress: moves steadily, since a pause reads as a stall.
   compiling: 'icon_gear_16x16',
+  playmode: 'icon_playmode_16x16',
+  hammer: 'icon_hammer_16x16',
+  bulb: 'icon_bulb_16x16',
+  // Events and prompts: act, then rest.
+  error: 'icon_warning_16x16',
+  bell: 'icon_bell_16x16',
+  clock: 'icon_clock_16x16',
+  burger: 'icon_burger_16x16',
+  checkmark: 'icon_check_16x16',
 };
 
 export const DISPLAY_CONSTANTS = {

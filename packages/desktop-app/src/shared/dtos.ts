@@ -347,7 +347,8 @@ export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BU
 export type BitmapIconId =
   | 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark'
   | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows'
-  | 'bell' | 'openproject' | 'wave' | 'pause' | 'play' | 'resume' | 'stop';
+  | 'bell' | 'openproject' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
+  | 'hammer' | 'bulb';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 

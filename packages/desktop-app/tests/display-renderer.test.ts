@@ -5,6 +5,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import { ANIMATED_ICONS } from '../src/shared/render-constants';
+import { HAMMER_16X16_BITMAP } from '../src/shared/pixel-bitmaps';
 import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -404,11 +405,55 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(lastShown()).toBeNull();
     });
 
-    it('RenderException_IconWithoutAnAnimation_AsksForNone', () => {
-      renderer.renderCompilation('ProjectX');
-      renderer.renderException('ProjectX', 'NullReferenceException');
+    it.each([
+      ['Unity Play Mode', (r: DisplayRenderer) => r.renderPlayMode('P'), 'icon_playmode_16x16'],
+      ['Unity exception', (r: DisplayRenderer) => r.renderException('P', 'NullReferenceException'), 'icon_warning_16x16'],
+      ['Unity build', (r: DisplayRenderer) => r.renderBuilding('P', 40), 'icon_hammer_16x16'],
+      ['Unity bake', (r: DisplayRenderer) => r.renderBaking('P', 40), 'icon_bulb_16x16'],
+      ['end-of-day prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('EOD', 'Wrap up'), 'icon_clock_16x16'],
+      ['lunch prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('LUNCH', 'Lunch'), 'icon_burger_16x16'],
+      ['Day Complete', (r: DisplayRenderer) => r.renderEodCompleted(), 'icon_check_16x16'],
+      ['notification without an app icon', (r: DisplayRenderer) => r.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' }), 'icon_bell_16x16']
+    ])('Render_%s_AsksForItsAnimatedIcon', (_screen, render, expected) => {
+      render(renderer);
+
+      expect(lastShown()).toBe(expected);
+    });
+
+    it('RenderNotificationBanner_ResolvedAppIcon_KeepsTheAppsMarkStill', () => {
+      const appIcon = Array.from({ length: 16 }, () => Array(16).fill('#FF0000'));
+      renderer.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell', customIconData: appIcon });
 
       expect(lastShown()).toBeNull();
+    });
+
+    it('RenderNotificationBanner_BrandBitmap_KeepsItStill', () => {
+      renderer.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'slack' });
+
+      expect(lastShown()).toBeNull();
+    });
+
+    it('RenderActiveSession_Tracking_KeepsItsIconStill', () => {
+      // On screen all day: a moving icon there would be a distraction.
+      renderer.renderEodCompleted();
+      renderer.renderActiveSession({
+        taskId: 'T-1',
+        taskKey: 'T-1',
+        taskTitle: 'Write the tests',
+        status: 'TRACKING',
+        elapsedSeconds: 60,
+        startedAtUtc: new Date().toISOString()
+      });
+
+      expect(lastShown()).toBeNull();
+    });
+
+    it('RenderBuilding_Always_DrawsOurHammerRatherThanTheUnityLogo', () => {
+      renderer.renderBuilding('P', 40);
+      const pixels = (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();
+      const icon = pixels.slice(0, 16).map(row => row.slice(0, 16));
+
+      expect(icon).toEqual(HAMMER_16X16_BITMAP.map(row => row.map(c => c)));
     });
 
     it('RenderCompilation_WhileAFullPanelAnimationPlays_AsksForNone', () => {
