@@ -44,6 +44,10 @@ It does not cover, and this project makes no claim over:
     authors -- see https://github.com/busy-app. Local copies of that material,
     if present, live in `Documentation/private/`, which is untracked and never
     redistributed from here.
+  * `scripts/busybar-anim-toolchain/` -- the firmware's `.anim` compiler,
+    (c) 2024-2026 Flipper FZCO under GPL-2.0-or-later. Its licence text and
+    provenance are in that folder. It runs as a separate program at build
+    time and is not part of the installer.
   * Third-party trademarks and brand marks. Application names and logos appear
     only to identify the applications whose notifications this software
     displays; ownership remains with their respective holders.

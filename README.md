@@ -555,6 +555,11 @@ MIT — see [LICENSE](LICENSE).
 The BUSY Bar hardware, its firmware and its official documentation are not part
 of this repository and are not covered by that license.
 
+One folder is not MIT: `scripts/busybar-anim-toolchain/`, the firmware's own
+`.anim` compiler, is (c) Flipper FZCO under **GPL-2.0-or-later**. It runs as a
+separate program at build time, is not bundled into the installer, and carries
+its licence and provenance in its own folder.
+
 The animations in `Animations/` are drawn for this project and are MIT like
 the rest. Earlier versions shipped three frame sets from the BUSY Bar firmware
 (CC-BY-SA-4.0); they are no longer part of the application, and

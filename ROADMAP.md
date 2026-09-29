@@ -37,6 +37,13 @@ objects survive on GitHub's servers.
       redistribution with attribution. `LICENSE` carries the notice. The
       ShareAlike condition is worth remembering before anyone edits a frame:
       the edit, not the app, becomes CC-BY-SA-4.0.
+- [x] **The `.anim` toolchain's licence recorded** (2026-09-29).
+      `scripts/busybar-anim-toolchain/` came from the firmware without a
+      notice. The firmware's `REUSE.toml` puts its `scripts/` under
+      GPL-2.0-or-later, so the folder now carries the GPL text, its provenance,
+      and a modification notice on `seq2anim.py`, which differs from firmware
+      1.2.3. `LICENSE` and the README name it as the one non-MIT part. It
+      is not in the installer.
 - [x] **No credentials in history.** A scan of all commits found only test
       placeholders (`my_secret_token`, `<cloud-token>`), before and after the
       rewrite. The `secrets` job in `quality.yml` runs gitleaks over the full

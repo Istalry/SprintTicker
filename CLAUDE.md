@@ -127,6 +127,13 @@ above. Two more things about it that cost time to find:
   the probe. It is typed on the studio side by `DeviceModule` in
   `server/export.ts`, since `scripts/` is untyped JavaScript; change the two
   together.
+- **`seq2anim.py` is GPL-2.0-or-later, and must stay a separate process.**
+  `scripts/busybar-anim-toolchain/` is the firmware's compiler, and the one
+  part of the repository that is not MIT. The studio, the probe and
+  `build-anims.js` call it with `execFile`, which keeps the GPL at arm's length.
+  Porting it to TypeScript, importing it, or copying the firmware's own TS port
+  would bring our code under the GPL. If you change the script, add the change
+  and its date to its header: GPL-2.0 requires a modified file to say so.
 
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification

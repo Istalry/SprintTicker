@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2024-2026 Flipper FZCO
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# From the BUSY Bar firmware, scripts/seq2anim.py
+# (https://github.com/busy-app/busybar-firmware). See LICENSE beside this file.
+#
+# Modified for SprintTicker on 2026-08-25:
+#   - accepts a directory of frames as well as a .zip;
+#   - annotates FileFrame.encode's return as "FileFrame" rather than
+#     typing.Self, which needs Python 3.11.
 
 import struct
 import json

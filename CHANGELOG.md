@@ -116,6 +116,14 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The `.anim` compiler's licence is recorded.** `scripts/busybar-anim-toolchain/`
+  is the firmware's own `seq2anim.py` and helpers, GPL-2.0-or-later, and had
+  been copied in with no notice. The folder now carries the licence text and
+  its provenance. `seq2anim.py` is marked as modified, since it accepts a
+  directory and runs on Python older than 3.11. `LICENSE` and the README name
+  it as the one part of the repository that is not MIT. Nothing changes for the
+  app: the toolchain runs at build time and is not in the installer.
+
 - **Animations reached the bar and were then painted over.** Lunch, Away and
   the meeting screens showed nothing on the hardware while the on-screen
   emulator animated correctly. Two separate defects, both now fixed:
