@@ -144,6 +144,16 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **`&` reads as an ampersand** in both row fonts. It was a 4px checkerboard;
+  it is now a small loop over a crossing stroke with a tail, 5px wide like `M`
+  and `W`.
+- **`pnpm probe:busybar --font-sheet` shows every glyph whole.** It put two
+  lines on every page, which is 19px of Sprint Bold 9 on a 16px panel, so the
+  second line lost its bottom rows; it now fits as many lines as the font's
+  height allows. And the animation check left its element on the panel for
+  30 seconds, so the Sprint 5 sheet drawn next failed its readback by some 850
+  pixels with nothing wrong in the font. Both checks now start from, and
+  leave, a clear panel.
 - **The emulator no longer plays the bar's animations at a quarter speed.**
   While the bar plays an animation itself, the on-screen preview ticks at 15
   fps; it stepped through every frame of a 60 fps scene, so Lunch, Away and

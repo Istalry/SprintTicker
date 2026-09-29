@@ -36,7 +36,7 @@ const { createDeviceClient, encodePng } = require('./lib/busybar-device');
  * countdown element; only the pixels say whether it fits beside a 16px icon.
  * Pass `--out <dir>` to choose where they land (default: a temp directory).
  *
- * `--font-sheet` also shows every glyph of both front-panel fonts, a page at a
+ * `--font-sheet` also shows every glyph of every pixel font, a page at a
  * time, for a person to judge on the LEDs -- see `probeFontSheet`.
  *
  * `--compositing` measures whether an animated 16x16 icon can play beside a
@@ -626,6 +626,11 @@ async function probeAnimation() {
     );
   } catch (err) {
     record('Animation playback', 'fail', err.message);
+  } finally {
+    // The element was drawn with a 30 s timeout, and the checks after this
+    // one read the panel back. Left in place it sat over the first font
+    // sheet, which then failed by 850 pixels with nothing wrong in the font.
+    await clearProbeElements();
   }
 }
 
@@ -647,12 +652,18 @@ const FONT_SHEET_HOLD_MS = 3000;
 
 async function probeFontSheet() {
   const { loadFont, renderText, FONTS } = require('../tools/glyphs-to-ts.js');
+  // Every page is compared pixel for pixel, so anything an earlier check left
+  // on the panel reads as a font defect.
+  await clearProbeElements();
 
   for (const { sheet } of FONTS) {
     const font = loadFont(sheet);
     const height = font.ascent + font.descent;
 
-    // Pack the characters into lines that fit the panel, two lines per page.
+    // Pack the characters into lines that fit the panel, and as many lines a
+    // page as fit its height. This was a fixed two, which is 19px of Bold 9 on
+    // a 16px panel: the second line lost its bottom rows, and the readback
+    // still passed because it only compares pixels that are on the panel.
     const lines = [];
     let current = '';
     for (const char of font.chars) {
@@ -666,14 +677,14 @@ async function probeFontSheet() {
     }
     if (current) lines.push(current);
 
+    const linesPerPage = Math.max(1, Math.floor((FRONT_HEIGHT + 1) / (height + 1)));
     let exact = 0;
-    const pages = Math.ceil(lines.length / 2);
+    const pages = Math.ceil(lines.length / linesPerPage);
     for (let page = 0; page < pages; page++) {
       const rgba = Buffer.alloc(FRONT_WIDTH * FRONT_HEIGHT * 4);
       for (let i = 0; i < FRONT_WIDTH * FRONT_HEIGHT; i++) rgba[i * 4 + 3] = 0xff;
       const expected = new Set();
-      [lines[page * 2], lines[page * 2 + 1]].forEach((text, row) => {
-        if (!text) return;
+      lines.slice(page * linesPerPage, (page + 1) * linesPerPage).forEach((text, row) => {
         const top = row * (height + 1);
         renderText(font, text).forEach((bits, dy) => {
           for (let x = 0; x < Math.min(bits.length, FRONT_WIDTH); x++) {
