@@ -1,8 +1,8 @@
-import { createPlate, createSprite, createText, Layer } from '../model/scene';
+import { createGlow, createPlate, createSprite, createText, Layer } from '../model/scene';
 import { button, clear, h } from './dom';
 import { Store } from './store';
 
-const TYPE_ICONS: Record<Layer['type'], string> = { plate: '▭', sprite: '✦', text: 'T' };
+const TYPE_ICONS: Record<Layer['type'], string> = { plate: '▭', sprite: '✦', text: 'T', glow: '◌' };
 
 /**
  * The layer list, top of the stack first -- the order a person reads a
@@ -16,7 +16,8 @@ export function mountLayersPanel(root: HTMLElement, store: Store): void {
     { class: 'row' },
     button('+ Plate', () => add(createPlate(store.scene))),
     button('+ Icon', () => add(createSprite(store.scene, Math.min(16, store.scene.height)))),
-    button('+ Text', () => add(createText(store.scene)))
+    button('+ Text', () => add(createText(store.scene))),
+    button('+ Glow', () => add(createGlow(store.scene)))
   );
   root.append(h('h2', {}, 'Layers'), addBar, list);
 

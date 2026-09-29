@@ -556,6 +556,20 @@ looping idle animations.
    icons for notifications and events. The three Flipper frame sets are
    removed in a separate change once the replacements have run on hardware.
    The `seq2anim` toolchain stays.
+   - [x] **The official animations measured** (2026-09-29), in
+     `packages/anim-studio/STYLE-GUIDE.md`. Only the icon moves, smoothly and
+     anti-aliased at 60 fps. Every action is followed by a 1–1.6 s rest, and
+     the loop ends on its first frame.
+   - [x] **The studio brought up to that language** (2026-09-29). It gained
+     keyframes with easing, anti-aliasing, motion blur, a glow layer, the
+     plate's graded outline and highlight, text shadow and gradient, and Bold 9.
+     Chosen with the user: pixel-art parts moved by smooth keyframes, 9px
+     one-line titles, 60 fps.
+   - [ ] Measure on the bar whether a 16×16 `animation` element can sit beside a
+     text image (`z_index`, PNG alpha). This decides how notification and
+     event icons animate.
+   - [ ] Draw Lunch (sandwich) and Away (coffee), and wire them in with the
+     streaming path kept as a fallback.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break

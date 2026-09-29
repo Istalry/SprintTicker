@@ -51,6 +51,31 @@ export class Raster {
     this.data[p + 2] = b;
   }
 
+  /**
+   * Lays `colour` over the pixel at `alpha` (0..1). How anti-aliased edges,
+   * fades and shadows reach the panel: the LED has no alpha, so everything is
+   * flattened onto what is already there.
+   */
+  public blend(x: number, y: number, colour: RgbTriplet, alpha: number): void {
+    if (!this.inBounds(x, y) || alpha <= 0) return;
+    if (alpha >= 1) {
+      this.set(x, y, colour);
+      return;
+    }
+    this.set(x, y, mix(this.get(x, y), colour, alpha));
+  }
+
+  /** Adds light: what a glow does to the pixels under it. */
+  public add(x: number, y: number, colour: RgbTriplet, amount: number): void {
+    if (!this.inBounds(x, y) || amount <= 0) return;
+    const [r, g, b] = this.get(x, y);
+    this.set(x, y, [
+      Math.min(255, Math.round(r + colour[0] * amount)),
+      Math.min(255, Math.round(g + colour[1] * amount)),
+      Math.min(255, Math.round(b + colour[2] * amount))
+    ]);
+  }
+
   public get(x: number, y: number): RgbTriplet {
     const p = (y * this.width + x) * 4;
     return [this.data[p], this.data[p + 1], this.data[p + 2]];

@@ -1,4 +1,5 @@
-import { renderFrame } from '../render/compositor';
+import { keyFrames } from '../model/motion';
+import { loopSeam, renderFrame } from '../render/compositor';
 import { Raster } from '../render/raster';
 import { button, h } from './dom';
 import { Store } from './store';
@@ -45,6 +46,8 @@ export function mountPreview(root: HTMLElement, store: Store): void {
   const actual = h('canvas', { class: 'actual', title: 'Actual size' });
   const scrubber = h('input', { type: 'range', min: 0, step: 1, class: 'scrubber' });
   const frameLabel = h('span', { class: 'frame-label' });
+  const keyStrip = h('div', { class: 'key-strip', title: 'Keyframes of the selected layer' });
+  const seam = h('span', { class: 'seam' });
   const playButton = button('Play', () => store.setPlaying(!store.playing), { class: 'primary' });
 
   const timeline = h(
@@ -54,10 +57,10 @@ export function mountPreview(root: HTMLElement, store: Store): void {
     button('◀', () => store.setFrame(store.frame - 1), { title: 'Previous frame (,)' }),
     playButton,
     button('▶', () => store.setFrame(store.frame + 1), { title: 'Next frame (.)' }),
-    scrubber,
+    h('div', { class: 'scrub' }, scrubber, keyStrip),
     frameLabel
   );
-  root.append(h('div', { class: 'screens' }, leds, actual), timeline);
+  root.append(h('div', { class: 'screens' }, leds, actual), timeline, h('div', { class: 'row' }, seam));
 
   scrubber.addEventListener('input', () => {
     store.setPlaying(false);
@@ -88,6 +91,26 @@ export function mountPreview(root: HTMLElement, store: Store): void {
     playButton.textContent = store.playing ? 'Pause' : 'Play';
   }
 
+  /** Diamonds under the scrubber at each keyed frame of the selected layer. */
+  function drawKeys(): void {
+    keyStrip.replaceChildren();
+    const layer = store.selectedLayer;
+    if (!layer || layer.type === 'plate') return;
+    const last = Math.max(1, store.scene.frameCount - 1);
+    for (const f of keyFrames(layer.tracks)) {
+      const marker = h('span', { class: 'key-marker', title: `Frame ${f + 1}` }, '◆');
+      marker.style.left = `${(Math.min(f, last) / last) * 100}%`;
+      marker.addEventListener('click', () => store.setFrame(f));
+      keyStrip.append(marker);
+    }
+  }
+
+  function checkSeam(): void {
+    const jump = loopSeam(store.scene);
+    seam.textContent = jump === 0 ? 'Loop: seamless' : `Loop: ${jump} px jump when it restarts`;
+    seam.classList.toggle('warn', jump > 0);
+  }
+
   // Playback runs off the wall clock rather than one frame per animation
   // tick, so a 30 fps scene plays at 30 fps on a 144 Hz monitor too.
   let startedAt = 0;
@@ -107,6 +130,10 @@ export function mountPreview(root: HTMLElement, store: Store): void {
       requestAnimationFrame(tick);
     }
     if (reason === 'scene' || reason === 'frame' || reason === 'playback' || reason === 'selection') draw();
+    if (reason === 'scene' || reason === 'selection') drawKeys();
+    if (reason === 'scene') checkSeam();
   });
   draw();
+  drawKeys();
+  checkSeam();
 }

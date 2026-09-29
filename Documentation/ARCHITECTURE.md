@@ -362,6 +362,10 @@ scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.jso
 - **The compositor is a pure function of the scene and the frame number.** The
   editor, the exporter and the tests all call it, so the preview is exactly
   what gets exported.
+- **Motion is keyframed, and rendering is supersampled 4 × 4.** Icons move by
+  fractions of a pixel with anti-aliased edges and optional motion blur, which
+  is how the official animations move (`packages/anim-studio/STYLE-GUIDE.md`).
+  A sprite at rest on whole pixels renders exactly as drawn.
 - **The export lands where the app already looks.** `AnimationPlayer` reads
   `Animations/<id>/<id>/`, prefers `<id>.anim` when present and streams the
   PNGs otherwise, so an exported scene plays without any change to the app.
@@ -388,7 +392,7 @@ real instance: `scripts/fake-openproject.js` (`pnpm mock:openproject`) and
 page of everything and clamp the page size server-side — a harness that fits on
 one page cannot fail the way production failed.
 
-The animation studio has its own suite, 75 tests across 5 files, run by
+The animation studio has its own suite, 113 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and

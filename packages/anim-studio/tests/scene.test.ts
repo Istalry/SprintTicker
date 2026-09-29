@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createGlow,
   createPlate,
   createScene,
   createSprite,
@@ -91,7 +92,7 @@ describe('parseScene', () => {
   it('ParseScene_UnknownLayerType_Throws', () => {
     const json = asJson(sampleScene());
     json.layers[0].type = 'circle';
-    expect(() => parseScene(json)).toThrow('must be plate, sprite or text');
+    expect(() => parseScene(json)).toThrow('must be plate, sprite, text or glow');
   });
 
   it('ParseScene_WrongVersion_Throws', () => {
@@ -138,5 +139,57 @@ describe('construction helpers', () => {
     const palette: Record<string, string> = {};
     for (const key of 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') palette[key] = '#000000';
     expect(nextPaletteKey({ width: 1, height: 1, palette, frames: [] })).toBeNull();
+  });
+});
+
+describe('parseScene, motion and depth fields', () => {
+  it('ParseScene_FileSavedBeforeMotionExisted_OpensWithDefaults', () => {
+    const json = asJson(sampleScene());
+    const [plate, sprite, text] = json.layers;
+    for (const key of ['outlineBottom', 'highlight']) delete plate[key];
+    for (const key of ['tracks', 'anchorX', 'anchorY', 'shutter']) delete sprite[key];
+    for (const key of ['tracks', 'colorB', 'gradient', 'shadow']) delete text[key];
+    const scene = parseScene(json);
+    const parsed = scene.layers[1] as { tracks: object; anchorX: number; anchorY: number; shutter: number };
+    expect(parsed.tracks).toEqual({});
+    expect(parsed.shutter).toBe(0);
+    expect([parsed.anchorX, parsed.anchorY]).toEqual([2, 2]);
+    expect((scene.layers[2] as { shadow: unknown }).shadow).toBeNull();
+  });
+
+  it('ParseScene_KeyframesOutOfOrder_Throws', () => {
+    const json = asJson(sampleScene());
+    json.layers[1].tracks = {
+      y: [
+        { frame: 10, value: 0, ease: 'linear' },
+        { frame: 5, value: 1, ease: 'linear' }
+      ]
+    };
+    expect(() => parseScene(json)).toThrow('increasing frame order');
+  });
+
+  it('ParseScene_ScaleTrackOnText_Throws', () => {
+    // Text moves but never scales: scaled pixel text is unreadable.
+    const json = asJson(sampleScene());
+    json.layers[2].tracks = { scaleX: [{ frame: 0, value: 2, ease: 'linear' }] };
+    expect(() => parseScene(json)).toThrow('is not a track this layer has');
+  });
+
+  it('ParseScene_OpacityAboveOne_Throws', () => {
+    const json = asJson(sampleScene());
+    json.layers[1].tracks = { opacity: [{ frame: 0, value: 1.5, ease: 'linear' }] };
+    expect(() => parseScene(json)).toThrow('tracks.opacity[0].value');
+  });
+
+  it('ParseScene_UnknownEasing_Throws', () => {
+    const json = asJson(sampleScene());
+    json.layers[1].tracks = { y: [{ frame: 0, value: 1, ease: 'wobble' }] };
+    expect(() => parseScene(json)).toThrow('ease');
+  });
+
+  it('ParseScene_GlowLayer_RoundTrips', () => {
+    const scene = sampleScene();
+    scene.layers.push(createGlow(scene));
+    expect(parseScene(asJson(scene))).toEqual(scene);
   });
 });

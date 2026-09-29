@@ -12,9 +12,10 @@ function storeWithPlate(): Store {
 describe('Store history', () => {
   it('Undo_AfterCommit_RestoresThePreviousScene', () => {
     const store = storeWithPlate();
+    const before = store.scene.fps;
     store.commit(s => void (s.fps = 12));
     store.undo();
-    expect(store.scene.fps).toBe(30);
+    expect(store.scene.fps).toBe(before);
     store.redo();
     expect(store.scene.fps).toBe(12);
   });
@@ -29,11 +30,12 @@ describe('Store history', () => {
 
   it('TransientStroke_ManyMutations_UndoAsOneStep', () => {
     const store = storeWithPlate();
+    const before = store.scene.fps;
     store.beginTransient();
     for (let i = 1; i <= 5; i++) store.mutate(s => void (s.fps = i));
     store.endTransient();
     store.undo();
-    expect(store.scene.fps).toBe(30);
+    expect(store.scene.fps).toBe(before);
     expect(store.canUndo).toBe(false);
   });
 

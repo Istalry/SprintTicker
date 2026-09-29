@@ -132,7 +132,7 @@ input.invalid {
 
 .workspace {
   display: grid;
-  grid-template-columns: 240px 1fr 280px;
+  grid-template-columns: 220px 1fr 340px;
   min-height: 0;
 }
 
@@ -368,4 +368,93 @@ canvas.actual {
 
 .status.error {
   color: var(--danger);
+}
+
+.scrub {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.key-strip {
+  position: relative;
+  height: 12px;
+}
+
+.key-marker {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--warn);
+  cursor: pointer;
+}
+
+.seam {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.seam.warn {
+  color: var(--warn);
+}
+
+.motion {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.motion-row {
+  display: grid;
+  grid-template-columns: 56px 72px 24px;
+  gap: 4px 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.motion-row .label {
+  color: var(--muted);
+}
+
+.motion-row .keys-list {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.key-item {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding-left: 12px;
+}
+
+.key-item.here {
+  background: var(--panel-2);
+  border-radius: 4px;
+}
+
+.key-item select {
+  width: 110px;
+}
+
+.key-item .hint {
+  margin: 0;
+  min-width: 56px;
+  white-space: nowrap;
+}
+
+button.key.on {
+  color: var(--warn);
+}
+
+button.link {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  padding: 0 4px;
+  min-width: 32px;
 }

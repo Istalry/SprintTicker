@@ -14,6 +14,8 @@
  * input.
  */
 
+import { EASINGS, Keyframe, TRACK_LIMITS, TRACK_PROPS, Tracks } from './motion';
+
 /** `#RRGGBB`. Scene colours are opaque; transparency is a sprite pixel left empty. */
 export type Rgb = string;
 
@@ -33,7 +35,7 @@ export const PALETTE_KEY_PATTERN = /^[a-zA-Z0-9]$/;
 /** The pixel in a sprite row that is left transparent. */
 export const TRANSPARENT = '.';
 
-export const FONT_IDS = ['bold-7', 'sprint-5', 'sprint-small'] as const;
+export const FONT_IDS = ['bold-9', 'bold-7', 'sprint-5', 'sprint-small'] as const;
 export type FontId = (typeof FONT_IDS)[number];
 
 export const PLATE_MOTIONS = ['none', 'slide', 'pulse'] as const;
@@ -78,6 +80,14 @@ export interface PlateLayer extends LayerBase {
   direction: 'horizontal' | 'vertical';
   /** A one-pixel border, or none. */
   outline: Rgb | null;
+  /**
+   * The outline's colour at the bottom, graded from `outline` at the top; null
+   * for a flat outline. The official plates are lit from above, and their
+   * outline fades down the sides with them.
+   */
+  outlineBottom: Rgb | null;
+  /** A 1px line just inside the top outline: the plate's catch-light. */
+  highlight: Rgb | null;
   motion: PlateMotion;
   /** Frames per cycle of `motion`. */
   period: number;
@@ -92,10 +102,24 @@ export interface PlateLayer extends LayerBase {
  */
 export interface SpriteLayer extends LayerBase {
   type: 'sprite';
+  /** Top-left, in panel pixels, when no track moves it. */
   x: number;
   y: number;
   sprite: Sprite;
   loopFrom: number;
+  /**
+   * The point scale is applied about, in sprite pixels from its top-left.
+   * A squash wants the base (`height`); a flip wants the centre.
+   */
+  anchorX: number;
+  anchorY: number;
+  /** Keyframed x, y, scaleX, scaleY and opacity; x and y are the top-left. */
+  tracks: Tracks;
+  /**
+   * Motion blur, as the fraction of a frame the shutter stays open (0 = none).
+   * The official toss smears its fast frames; this is that.
+   */
+  shutter: number;
 }
 
 export interface Sprite {
@@ -126,9 +150,52 @@ export interface TextLayer extends LayerBase {
   effect: TextEffect;
   /** Frames per cycle of `effect` (per character, for the typewriter). */
   period: number;
+  /** A second colour the text is graded towards, or null for flat text. */
+  colorB: Rgb | null;
+  gradient: TextGradient;
+  shadow: TextShadow | null;
+  /** Keyframed x, y and opacity. Positions are rounded: text stays crisp. */
+  tracks: Tracks;
 }
 
-export type Layer = PlateLayer | SpriteLayer | TextLayer;
+export const TEXT_GRADIENTS = ['vertical', 'diagonal'] as const;
+export type TextGradient = (typeof TEXT_GRADIENTS)[number];
+
+/**
+ * Depth under the text, as the official titles have (STYLE-GUIDE.md §4): a
+ * hard 1px drop, or a soft blurred shade.
+ */
+export interface TextShadow {
+  color: Rgb;
+  dx: number;
+  dy: number;
+  soft: boolean;
+}
+
+export const GLOW_MODES = ['light', 'shade'] as const;
+export type GlowMode = (typeof GLOW_MODES)[number];
+
+/**
+ * A soft elliptical pool of light (or of shadow) -- the halo behind the Back
+ * Soon clock, the dark spot behind its words. `light` adds to what is below;
+ * `shade` darkens it.
+ */
+export interface GlowLayer extends LayerBase {
+  type: 'glow';
+  /** Centre, in panel pixels. */
+  x: number;
+  y: number;
+  radiusX: number;
+  radiusY: number;
+  color: Rgb;
+  /** Peak strength at the centre, 0..1. */
+  strength: number;
+  mode: GlowMode;
+  /** Keyframed x, y, scaleX, scaleY (of the radii) and opacity. */
+  tracks: Tracks;
+}
+
+export type Layer = PlateLayer | SpriteLayer | TextLayer | GlowLayer;
 
 export interface Scene {
   version: 1;
@@ -183,6 +250,66 @@ function rgb(value: unknown, path: string): Rgb {
   // colour, so nothing loose gets past the file format.
   if (!RGB_PATTERN.test(s)) throw new SceneError(path, `must be a #RRGGBB colour, got ${JSON.stringify(s)}`);
   return s.toUpperCase();
+}
+
+function num(value: unknown, path: string, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    throw new SceneError(path, `must be a number from ${min} to ${max}`);
+  }
+  return value;
+}
+
+/**
+ * Fields added after the first scenes were saved default when absent, so an
+ * older file still opens. Present, they are validated like any other.
+ */
+function opt<T>(value: unknown, fallback: T, parse: (v: unknown) => T): T {
+  return value === undefined ? fallback : parse(value);
+}
+
+function rgbOrNull(value: unknown, path: string): Rgb | null {
+  return value === null ? null : rgb(value, path);
+}
+
+const ALL_TRACKS = TRACK_PROPS;
+const TEXT_TRACKS = ['x', 'y', 'opacity'] as const;
+
+function parseTracks(value: unknown, path: string, allowed: readonly string[]): Tracks {
+  const t = obj(value, path);
+  const tracks: Tracks = {};
+  for (const [prop, raw] of Object.entries(t)) {
+    if (!allowed.includes(prop)) {
+      throw new SceneError(`${path}.${prop}`, `is not a track this layer has (${allowed.join(', ')})`);
+    }
+    if (!Array.isArray(raw)) throw new SceneError(`${path}.${prop}`, 'must be an array of keyframes');
+    const limits = TRACK_LIMITS[prop as keyof typeof TRACK_LIMITS];
+    let previous = -1;
+    tracks[prop as keyof Tracks] = raw.map((k, i): Keyframe => {
+      const kp = `${path}.${prop}[${i}]`;
+      const key = obj(k, kp);
+      const frame = int(key.frame, `${kp}.frame`, 0, MAX_FRAMES);
+      // Strictly increasing: two keys on one frame make the value jump
+      // without saying which one wins.
+      if (frame <= previous) throw new SceneError(`${kp}.frame`, 'keyframes must be in increasing frame order');
+      previous = frame;
+      return {
+        frame,
+        value: num(key.value, `${kp}.value`, limits.min, limits.max),
+        ease: oneOf(key.ease, `${kp}.ease`, EASINGS)
+      };
+    });
+  }
+  return tracks;
+}
+
+function parseShadow(value: unknown, path: string): TextShadow {
+  const s = obj(value, path);
+  return {
+    color: rgb(s.color, `${path}.color`),
+    dx: int(s.dx, `${path}.dx`, -4, 4),
+    dy: int(s.dy, `${path}.dy`, -4, 4),
+    soft: bool(s.soft, `${path}.soft`)
+  };
 }
 
 function oneOf<T extends string>(value: unknown, path: string, options: readonly T[]): T {
@@ -257,6 +384,8 @@ function parseLayer(value: unknown, path: string): Layer {
         colorB: rgb(l.colorB, `${path}.colorB`),
         direction: oneOf(l.direction, `${path}.direction`, ['horizontal', 'vertical'] as const),
         outline: l.outline === null ? null : rgb(l.outline, `${path}.outline`),
+        outlineBottom: opt(l.outlineBottom, null, v => rgbOrNull(v, `${path}.outlineBottom`)),
+        highlight: opt(l.highlight, null, v => rgbOrNull(v, `${path}.highlight`)),
         motion: oneOf(l.motion, `${path}.motion`, PLATE_MOTIONS),
         period: int(l.period, `${path}.period`, 1, MAX_FRAMES)
       };
@@ -268,7 +397,11 @@ function parseLayer(value: unknown, path: string): Layer {
         x: int(l.x, `${path}.x`, COORD_MIN, COORD_MAX),
         y: int(l.y, `${path}.y`, COORD_MIN, COORD_MAX),
         sprite,
-        loopFrom: int(l.loopFrom, `${path}.loopFrom`, 0, sprite.frames.length - 1)
+        loopFrom: int(l.loopFrom, `${path}.loopFrom`, 0, sprite.frames.length - 1),
+        anchorX: opt(l.anchorX, sprite.width / 2, v => num(v, `${path}.anchorX`, COORD_MIN, COORD_MAX)),
+        anchorY: opt(l.anchorY, sprite.height / 2, v => num(v, `${path}.anchorY`, COORD_MIN, COORD_MAX)),
+        tracks: opt(l.tracks, {}, v => parseTracks(v, `${path}.tracks`, ALL_TRACKS)),
+        shutter: opt(l.shutter, 0, v => num(v, `${path}.shutter`, 0, 1))
       };
     }
     case 'text':
@@ -283,10 +416,27 @@ function parseLayer(value: unknown, path: string): Layer {
         width: int(l.width, `${path}.width`, 1, 72),
         align: oneOf(l.align, `${path}.align`, TEXT_ALIGNS),
         effect: oneOf(l.effect, `${path}.effect`, TEXT_EFFECTS),
-        period: int(l.period, `${path}.period`, 1, MAX_FRAMES)
+        period: int(l.period, `${path}.period`, 1, MAX_FRAMES),
+        colorB: opt(l.colorB, null, v => rgbOrNull(v, `${path}.colorB`)),
+        gradient: opt(l.gradient, 'vertical', v => oneOf(v, `${path}.gradient`, TEXT_GRADIENTS)),
+        shadow: opt(l.shadow, null, v => (v === null ? null : parseShadow(v, `${path}.shadow`))),
+        tracks: opt(l.tracks, {}, v => parseTracks(v, `${path}.tracks`, TEXT_TRACKS))
+      };
+    case 'glow':
+      return {
+        ...base,
+        type: 'glow',
+        x: num(l.x, `${path}.x`, COORD_MIN, COORD_MAX),
+        y: num(l.y, `${path}.y`, COORD_MIN, COORD_MAX),
+        radiusX: num(l.radiusX, `${path}.radiusX`, 0.5, 72),
+        radiusY: num(l.radiusY, `${path}.radiusY`, 0.5, 72),
+        color: rgb(l.color, `${path}.color`),
+        strength: num(l.strength, `${path}.strength`, 0, 1),
+        mode: oneOf(l.mode, `${path}.mode`, GLOW_MODES),
+        tracks: opt(l.tracks, {}, v => parseTracks(v, `${path}.tracks`, ALL_TRACKS))
       };
     default:
-      throw new SceneError(`${path}.type`, 'must be plate, sprite or text');
+      throw new SceneError(`${path}.type`, 'must be plate, sprite, text or glow');
   }
 }
 
@@ -366,7 +516,9 @@ export function spriteFrameIndexAt(layer: Pick<SpriteLayer, 'sprite' | 'loopFrom
 
 /** A new, empty scene of one of the supported sizes. */
 export function createScene(id: string, width = 72, height = 16): Scene {
-  return { version: 1, id, width, height, fps: 30, frameCount: 90, layers: [] };
+  // 60 fps like the official animations (STYLE-GUIDE.md §7): holds cost
+  // nothing, and smooth motion needs the frames. Four seconds to start with.
+  return { version: 1, id, width, height, fps: 60, frameCount: 240, layers: [] };
 }
 
 /** A layer id not yet used in `scene`, derived from `base`. */
@@ -384,15 +536,21 @@ export function createPlate(scene: Scene): PlateLayer {
     name: 'Plate',
     visible: true,
     type: 'plate',
-    x: 0,
+    // One dark column at each end, as the official plates leave
+    // (STYLE-GUIDE.md §2); an icon scene uses the whole square.
+    x: scene.width > 16 ? 1 : 0,
     y: 0,
-    width: scene.width,
+    width: scene.width > 16 ? scene.width - 2 : scene.width,
     height: scene.height,
-    radius: scene.width > 16 ? 3 : 2,
-    colorA: '#1B3A2E',
-    colorB: '#0B1A14',
-    direction: 'horizontal',
-    outline: '#2E5E4A',
+    radius: 2,
+    // Lit from above: the fill darkens downwards, the outline is brighter
+    // and more saturated than the fill, and fades down the sides.
+    colorA: '#223A33',
+    colorB: '#1A2B26',
+    direction: 'vertical',
+    outline: '#2C5A36',
+    outlineBottom: '#19331E',
+    highlight: '#274236',
     motion: 'none',
     period: 60
   };
@@ -413,7 +571,11 @@ export function createSprite(scene: Scene, size = 16): SpriteLayer {
       palette: { a: '#FFFFFF' },
       frames: [{ duration: 6, rows: Array.from({ length: size }, () => blank) }]
     },
-    loopFrom: 0
+    loopFrom: 0,
+    anchorX: size / 2,
+    anchorY: size,
+    tracks: {},
+    shutter: 0
   };
 }
 
@@ -425,14 +587,37 @@ export function createText(scene: Scene): TextLayer {
     visible: true,
     type: 'text',
     text: 'HELLO',
-    font: 'bold-7',
+    // The one-line title face: the official single-word titles are 9px tall.
+    font: 'bold-9',
     color: '#FFFFFF',
     x,
-    y: Math.max(0, Math.floor((scene.height - 7) / 2)),
+    // Centred, rounding down-panel: the shadow below needs the spare row.
+    y: Math.max(0, Math.ceil((scene.height - 9) / 2)),
     width: scene.width - x - 1,
     align: 'center',
     effect: 'none',
-    period: 30
+    period: 30,
+    colorB: null,
+    gradient: 'vertical',
+    shadow: { color: '#0E1A16', dx: 0, dy: 1, soft: true },
+    tracks: {}
+  };
+}
+
+export function createGlow(scene: Scene): GlowLayer {
+  return {
+    id: nextLayerId(scene, 'glow'),
+    name: 'Glow',
+    visible: true,
+    type: 'glow',
+    x: scene.width > 16 ? 10 : 8,
+    y: 8,
+    radiusX: 10,
+    radiusY: 8,
+    color: '#3A7BD5',
+    strength: 0.5,
+    mode: 'light',
+    tracks: {}
   };
 }
 

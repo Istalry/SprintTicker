@@ -117,6 +117,12 @@ above. Two more things about it that cost time to find:
   config loader cannot load extensionless TypeScript imports from across the
   workspace. For the same reason the studio imports the app's fonts by relative
   path rather than through an alias.
+- **Before making or judging an animation, read
+  `packages/anim-studio/STYLE-GUIDE.md`.** It is what the official animations
+  measurably do. Only the icon moves, and it moves smoothly. Every action rests
+  afterwards, and a loop ends on its first frame. Our art is drawn from
+  scratch: the originals are CC-BY-SA, so a traced copy would carry that
+  licence.
 - **Its device calls go through `scripts/lib/busybar-device.js`**, shared with
   the probe. It is typed on the studio side by `DeviceModule` in
   `server/export.ts`, since `scripts/` is untyped JavaScript; change the two

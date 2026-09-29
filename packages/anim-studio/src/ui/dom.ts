@@ -65,7 +65,8 @@ export function numberInput(value: number, { min, max, step = 1, onCommit }: Num
       input.value = String(value);
       return;
     }
-    const clamped = Math.min(max, Math.max(min, Math.round(parsed / step) * step));
+    // toFixed: 0.1 steps otherwise store 0.30000000000000004 in the scene file.
+    const clamped = Number(Math.min(max, Math.max(min, Math.round(parsed / step) * step)).toFixed(6));
     input.value = String(clamped);
     onCommit(clamped);
   });

@@ -3,46 +3,87 @@
   "id": "example_72x16",
   "width": 72,
   "height": 16,
-  "fps": 30,
-  "frameCount": 60,
+  "fps": 60,
+  "frameCount": 240,
   "layers": [
     {
       "id": "plate-1",
       "name": "Plate",
       "visible": true,
       "type": "plate",
-      "x": 0,
+      "x": 1,
       "y": 0,
-      "width": 72,
+      "width": 70,
       "height": 16,
       "radius": 2,
       "colorA": "#3A1B2E",
-      "colorB": "#140B12",
-      "direction": "horizontal",
+      "colorB": "#26121E",
+      "direction": "vertical",
       "outline": "#6E2E4A",
-      "motion": "pulse",
+      "outlineBottom": "#3A1628",
+      "highlight": "#452234",
+      "motion": "none",
       "period": 60
+    },
+    {
+      "id": "glow-1",
+      "name": "Impact glow",
+      "visible": true,
+      "type": "glow",
+      "x": 10,
+      "y": 9,
+      "radiusX": 11,
+      "radiusY": 9,
+      "color": "#FF4D6D",
+      "strength": 0.45,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 20,
+            "value": 0,
+            "ease": "out"
+          },
+          {
+            "frame": 26,
+            "value": 1,
+            "ease": "inOut"
+          },
+          {
+            "frame": 80,
+            "value": 0,
+            "ease": "linear"
+          }
+        ]
+      }
     },
     {
       "id": "icon-1",
       "name": "Heart",
       "visible": true,
       "type": "sprite",
-      "x": 3,
-      "y": 2,
+      "x": 4,
+      "y": 3,
       "loopFrom": 0,
+      "anchorX": 6,
+      "anchorY": 10,
+      "shutter": 0.5,
       "sprite": {
         "width": 12,
-        "height": 12,
+        "height": 10,
         "palette": {
           "a": "#FF4D6D",
           "b": "#FFFFFF"
         },
         "frames": [
           {
-            "duration": 10,
+            "duration": 1,
             "rows": [
-              "............",
               "..aa....aa..",
               ".abaa..aaaa.",
               "aaaaaaaaaaaa",
@@ -52,60 +93,106 @@
               "..aaaaaaaa..",
               "...aaaaaa...",
               "....aaaa....",
-              ".....aa.....",
-              "............"
+              ".....aa....."
             ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": -12,
+            "ease": "in"
           },
           {
-            "duration": 5,
-            "rows": [
-              "............",
-              "............",
-              "...a....a...",
-              "..aba..aaa..",
-              "..aaaaaaaa..",
-              "..aaaaaaaa..",
-              "...aaaaaa...",
-              "....aaaa....",
-              ".....aa.....",
-              "............",
-              "............",
-              "............"
-            ]
+            "frame": 20,
+            "value": 3,
+            "ease": "step"
           },
           {
-            "duration": 5,
-            "rows": [
-              "............",
-              "..aa....aa..",
-              ".abaa..aaaa.",
-              "aaaaaaaaaaaa",
-              "aaaaaaaaaaaa",
-              "aaaaaaaaaaaa",
-              ".aaaaaaaaaa.",
-              "..aaaaaaaa..",
-              "...aaaaaa...",
-              "....aaaa....",
-              ".....aa.....",
-              "............"
-            ]
+            "frame": 202,
+            "value": 3,
+            "ease": "in"
           },
           {
-            "duration": 10,
-            "rows": [
-              "............",
-              "............",
-              "...a....a...",
-              "..aba..aaa..",
-              "..aaaaaaaa..",
-              "..aaaaaaaa..",
-              "...aaaaaa...",
-              "....aaaa....",
-              ".....aa.....",
-              "............",
-              "............",
-              "............"
-            ]
+            "frame": 222,
+            "value": -12,
+            "ease": "linear"
+          }
+        ],
+        "scaleY": [
+          {
+            "frame": 20,
+            "value": 1,
+            "ease": "out"
+          },
+          {
+            "frame": 24,
+            "value": 0.7,
+            "ease": "outBack"
+          },
+          {
+            "frame": 42,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 196,
+            "value": 1,
+            "ease": "out"
+          },
+          {
+            "frame": 202,
+            "value": 0.75,
+            "ease": "out"
+          },
+          {
+            "frame": 208,
+            "value": 1.1,
+            "ease": "out"
+          },
+          {
+            "frame": 222,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "scaleX": [
+          {
+            "frame": 20,
+            "value": 1,
+            "ease": "out"
+          },
+          {
+            "frame": 24,
+            "value": 1.25,
+            "ease": "outBack"
+          },
+          {
+            "frame": 42,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 196,
+            "value": 1,
+            "ease": "out"
+          },
+          {
+            "frame": 202,
+            "value": 1.2,
+            "ease": "out"
+          },
+          {
+            "frame": 208,
+            "value": 0.9,
+            "ease": "out"
+          },
+          {
+            "frame": 222,
+            "value": 1,
+            "ease": "linear"
           }
         ]
       }
@@ -116,14 +203,23 @@
       "visible": true,
       "type": "text",
       "text": "HELLO",
-      "font": "bold-7",
-      "color": "#FFC2D1",
-      "x": 18,
+      "font": "bold-9",
+      "color": "#FFD6E0",
+      "x": 20,
       "y": 4,
-      "width": 52,
+      "width": 50,
       "align": "center",
-      "effect": "shine",
-      "period": 60
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#12060C",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
     }
   ]
 }

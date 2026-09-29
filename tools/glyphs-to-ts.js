@@ -46,21 +46,23 @@ const STUDIO_FONTS = {
   dir: 'packages/anim-studio/fonts',
   outDir: 'packages/anim-studio/src/fonts',
   // The studio reads the app's fonts in place rather than keeping a copy, so
-  // the type comes from the same place. A relative path, not a Vite alias: the
-  // studio's server code is bundled into its Vite config, which resolves no
-  // aliases.
+  // the type comes from the same place. A relative path, not an alias, so the
+  // import resolves the same under tsc, Vitest and the dev server's SSR loader
+  // without teaching each of them an alias.
   typeImport: '../../../desktop-app/src/shared/fonts/pixel-font'
 };
 
 /**
  * Every font there is. The sheet name is also the generated file's name.
  *
- * The first two draw the front display's text rows. The display face exists
- * for the animation studio's large scene text and is never drawn by the app.
+ * The first two draw the front display's text rows. The two display faces
+ * exist for the animation studio's large scene text and are never drawn by
+ * the app: Bold 9 for a one-line title, Bold 7 for two lines.
  */
 const FONTS = [
   { sheet: 'sprint-5', exportName: 'SPRINT_5', ...APP_FONTS },
   { sheet: 'sprint-small', exportName: 'SPRINT_SMALL', ...APP_FONTS },
+  { sheet: 'sprint-bold-9', exportName: 'SPRINT_BOLD_9', ...STUDIO_FONTS },
   { sheet: 'sprint-bold-7', exportName: 'SPRINT_BOLD_7', ...STUDIO_FONTS }
 ];
 

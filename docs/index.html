@@ -1326,6 +1326,10 @@
       <li><strong>The compositor is a pure function of the scene and the frame number.</strong> The
       editor, the exporter and the tests all call it, so the preview is exactly
       what gets exported.</li>
+      <li><strong>Motion is keyframed, and rendering is supersampled 4 × 4.</strong> Icons move by
+      fractions of a pixel with anti-aliased edges and optional motion blur, which
+      is how the official animations move (<code>packages/anim-studio/STYLE-GUIDE.md</code>).
+      A sprite at rest on whole pixels renders exactly as drawn.</li>
       <li><strong>The export lands where the app already looks.</strong> <code>AnimationPlayer</code> reads
       <code>Animations/&lt;id&gt;/&lt;id&gt;/</code>, prefers <code>&lt;id&gt;.anim</code> when present and streams the
       PNGs otherwise, so an exported scene plays without any change to the app.</li>
@@ -1347,7 +1351,7 @@
       <code>scripts/fake-jira.js</code> (<code>pnpm mock:jira</code>). Both deliberately serve more than one
       page of everything and clamp the page size server-side — a harness that fits on
       one page cannot fail the way production failed.</p>
-      <p>The animation studio has its own suite, 75 tests across 5 files, run by
+      <p>The animation studio has its own suite, 113 tests across 6 files, run by
       <code>pnpm test</code> after the app&#39;s and on its own by <code>pnpm test:studio</code>.</p>
       <p>What the suite structurally <strong>cannot</strong> see: application startup, IPC wiring, and
       anything touching real hardware. Those need the app actually running — read its
