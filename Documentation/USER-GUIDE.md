@@ -248,7 +248,11 @@ All of these are rebindable.
 
 **The task picker** is two stages: turn to choose a project, click to descend
 into it, turn to choose a task, click to start. **BACK** leaves at any point.
-The second row shows the task key.
+A blue folder means you are choosing a project, a checklist a task. The second
+row shows the task key, and on its right where you are in the list -- `3/12` --
+with a thin line along the bottom whose bright segment slides from left to
+right as you scroll: at the far left there is nothing before, at the far right
+nothing after.
 
 **During a ceremony prompt**, START confirms and BACK dismisses. The end-of-day
 wrap-up asks twice — the first START is "yes", the second confirms — because it

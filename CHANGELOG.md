@@ -26,6 +26,12 @@ reported something other than the truth, in three different ways.
   shared: green while a task runs, amber with blinking pause bars while
   paused, dim grey when nothing runs. The idle screen reads "Ready / No task
   running" instead of a cut-off "No Active Ta...".
+- **The task picker on the bar says where you are.** A folder while you choose
+  a project and a checklist while you choose a task, where it was bare text;
+  the item's place in the list (`3/12`) at the end of row 2; and a one-pixel
+  scroll bar along the bottom, whose thumb shows whether there is more before
+  or after. A project with no tasks shows no position, rather than a "1/1"
+  that would suggest something to pick.
 - **The paused screen shows the whole task key.** STOP and FINISH now sit side
   by side on row 1, which leaves row 0 to the key and its time. Stacked in a
   column on the right, they left the title 26px, and it came out as "SPR-...".

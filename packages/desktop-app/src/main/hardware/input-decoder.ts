@@ -7,6 +7,9 @@ import { DisplayRenderer } from './display-renderer';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
+/** The selector's placeholder row for a project with no tasks; not a task id. */
+const NO_TASKS_ID = 'none';
+
 /**
  * Event decoder mapping physical BUSY Bar inputs (wheel scroll, wheel click, short/long press)
  * to user-configured rebindable application actions, managing active notification dismissal,
@@ -261,7 +264,7 @@ export class InputDecoder {
             }));
           }
           if (this._tasksList.length === 0) {
-            this._tasksList = [{ id: 'none', title: 'No Tasks', description: '' }];
+            this._tasksList = [{ id: NO_TASKS_ID, title: 'No Tasks', description: '' }];
           }
           this._selectedTaskIndex = 0;
         }
@@ -271,7 +274,7 @@ export class InputDecoder {
         
         if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
           const task = this._tasksList[this._selectedTaskIndex];
-          if (task && task.id !== 'none') {
+          if (task && task.id !== NO_TASKS_ID) {
              this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
           }
           this._isSelectingTask = false;
@@ -281,13 +284,7 @@ export class InputDecoder {
       }
       
       if (this._isSelectingTask) {
-        if (this._selectionStage === 'PROJECT') {
-          const proj = this._projectsList[this._selectedProjectIndex];
-          this._renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects');
-        } else {
-          const task = this._tasksList[this._selectedTaskIndex];
-          this._renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', task?.description);
-        }
+        this.renderSelection();
         return 'UPDATE_SELECTION';
       }
     }
@@ -431,8 +428,27 @@ export class InputDecoder {
       this._projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];
     }
     this._selectedProjectIndex = 0;
-    if (this._renderer) {
-      this._renderer.renderTaskSelection('PROJECT', this._projectsList[0].name);
+    this.renderSelection();
+  }
+
+  /**
+   * Draws the selector at its current step and item, with the item's place in
+   * its list. The "No Tasks" placeholder is not an item, so it gets no
+   * position: "1/1" beside it would say there is a task to pick.
+   */
+  private renderSelection(): void {
+    if (!this._renderer) return;
+    if (this._selectionStage === 'PROJECT') {
+      const proj = this._projectsList[this._selectedProjectIndex];
+      this._renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects', undefined, proj
+        ? { index: this._selectedProjectIndex, count: this._projectsList.length }
+        : undefined);
+      return;
     }
+    const task = this._tasksList[this._selectedTaskIndex];
+    const isReal = task !== undefined && task.id !== NO_TASKS_ID;
+    this._renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', task?.description, isReal
+      ? { index: this._selectedTaskIndex, count: this._tasksList.length }
+      : undefined);
   }
 }

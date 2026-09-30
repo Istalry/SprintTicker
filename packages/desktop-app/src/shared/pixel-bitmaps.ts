@@ -477,12 +477,58 @@ export const STOPWATCH_IDLE_16X16_BITMAP: (string | null)[][] = [
 ];
 
 /**
+ * The task selector's icons: a folder while choosing a project, a checklist
+ * card while choosing a task. Hand-drawn; blue to match the selector's LED.
+ */
+export const FOLDER_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', null, null, null, null, null, null, null, null, null, null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null, null, null, null, null, null, null, null, null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null],
+  [null, '#1D4ED8', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#1D4ED8', null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null],
+  [null, '#1D4ED8', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1D4ED8', null],
+  [null, '#1D4ED8', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#1D4ED8', null],
+  [null, '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', '#1D4ED8', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const TASK_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null, null, null, null, null],
+  [null, null, '#9CA3AF', '#9CA3AF', '#9CA3AF', '#3B82F6', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#3B82F6', '#9CA3AF', '#9CA3AF', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#10B981', '#10B981', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#10B981', '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+/**
  * Retrieves 16x16 pixel bitmap matrix by identifier.
  */
 export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number = 0): (string | null)[][] {
   switch (iconId.toLowerCase()) {
     case 'checkmark':
       return CHECKMARK_16X16_BITMAP;
+    case 'folder':
+      return FOLDER_16X16_BITMAP;
+    case 'task':
+      return TASK_16X16_BITMAP;
     case 'slack':
       return SLACK_16X16_BITMAP;
     case 'discord':

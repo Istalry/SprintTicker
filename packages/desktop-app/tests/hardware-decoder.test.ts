@@ -698,6 +698,61 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(rendered[0]).toBe('Default Project');
     });
 
+    describe('position in the list', () => {
+      type Position = { index: number; count: number } | undefined;
+      let positions: Array<[string, string, Position]>;
+
+      beforeEach(() => {
+        positions = [];
+        renderer.renderTaskSelection = ((stage: string, label: string, _sub?: string, position?: Position) => {
+          positions.push([stage, label, position]);
+        }) as never;
+      });
+
+      it('HandleHardwareInput_ScrollingProjects_ReportsWhereEachOneSits', () => {
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+        projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
+        projectRepo.saveProject({ id: 'P3', key: 'P3', name: 'Gamma' });
+        openPicker();
+
+        press('rotate_right');
+        press('rotate_right');
+        press('rotate_right'); // clamped at the end
+
+        expect(positions.map(([, , position]) => position)).toEqual([
+          { index: 0, count: 3 },
+          { index: 1, count: 3 },
+          { index: 2, count: 3 },
+          { index: 2, count: 3 }
+        ]);
+      });
+
+      it('HandleHardwareInput_DescendingIntoAProject_CountsItsTasks', () => {
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'One', status: 'todo' });
+        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'ALPHA-2', title: 'Two', status: 'todo' });
+        openPicker();
+
+        press('ok');
+        press('rotate_right');
+
+        const taskPositions = positions.filter(([stage]) => stage === 'TASK').map(([, , position]) => position);
+        expect(taskPositions).toEqual([{ index: 0, count: 2 }, { index: 1, count: 2 }]);
+      });
+
+      it('HandleHardwareInput_ProjectWithNoTasks_ShowsNoPosition', () => {
+        // "1/1" beside "No Tasks" would say there is a task to pick.
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Empty' });
+        openPicker();
+
+        press('ok');
+
+        const noTasks = positions.find(([stage, label]) => stage === 'TASK' && label === 'No Tasks');
+        expect(noTasks).toBeDefined();
+        expect(noTasks?.[2]).toBeUndefined();
+      });
+    });
+
     it('HandleHardwareInput_ProjectWithNoTasks_ShowsNoTasksAndStartsNothing', () => {
       projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Empty' });
       const rendered: Array<[string, string]> = [];

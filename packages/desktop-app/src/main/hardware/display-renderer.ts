@@ -1,7 +1,7 @@
 import { BusyBarDriver } from './busybar-driver';
 import { createHash } from 'crypto';
 import * as os from 'os';
-import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentNullException } from '../../shared/dtos';
+import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
@@ -26,6 +26,22 @@ const PAUSED_BAR_HEIGHT = 7;
  */
 const PAUSED_TIMER_GAP_PX = 2;
 const PAUSED_CHOICE_GAP_PX = 3;
+
+/** Between the task selector's row-1 label and its `3/12`. */
+const SELECTION_LABEL_GAP_PX = 2;
+const SELECTION_LABEL_COLOR = '#9CA3AF';
+const SELECTION_POSITION_COLOR = '#E5E7EB';
+/** The selector's scroll bar: the Unity progress line's track, a thumb in the selector's blue. */
+const SELECTION_TRACK_COLOR = '#1E293B';
+const SELECTION_THUMB_COLOR = '#3B82F6';
+/** A thumb narrower than this reads as a stray pixel on the LEDs. */
+const SELECTION_THUMB_MIN_PX = 3;
+
+/** Where the selector's current item sits in its list; `index` counts from 0. */
+export interface SelectionPosition {
+  index: number;
+  count: number;
+}
 
 /** Behaviour switches for {@link DisplayRenderer.requestRender}. */
 export interface RequestRenderOptions {
@@ -998,19 +1014,53 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders the hardware Task Selection Menu directly on the front display.
+   * Renders the hardware task selector: pick a project, then a task.
+   *
+   * Laid out like every other screen -- icon, then two rows -- where it used
+   * to be bare text with nothing saying which of the two steps it was, how
+   * long the list was, or whether turning the wheel would find anything.
+   *
+   * - The icon names the step: a folder for projects, a checklist for tasks.
+   * - Row 0 is the item; row 1 says what kind, or gives the task's key.
+   * - Row 1 ends with the position, `3/12`, and a one-pixel scroll bar under
+   *   the rows shows where that is in the list.
+   *
+   * Arrows either side of the number were tried first and do not fit: with
+   * them, `SPR-1428` beside `12/12` needs 62px of a 55px field, and the key
+   * would be cut -- the fault the paused screen had just been rid of. Without
+   * them it takes 54.
+   *
+   * @param position Where `itemName` sits in its list. Omitted for a list with
+   *   nothing real in it ("No Tasks"), which gets neither number nor bar.
+   * @throws ArgumentException for a position outside its list.
    */
-  public renderTaskSelection(stage: 'PROJECT' | 'TASK', itemName: string, description?: string): DisplayPayload {
-    return this.requestRender('menuPriority', () => {
-      this.canvas.clear();
-      if (stage === 'PROJECT') {
-        this.canvas.drawTextClipped(itemName, 0, 4, '#FFFFFF', 72);
-      } else {
-        this.canvas.drawTextClipped(itemName, 0, 0, '#FFFFFF', 72);
-        if (description) {
-          this.canvas.drawSmallText(description, 0, 8, '#888888', 72);
-        }
+  public renderTaskSelection(
+    stage: 'PROJECT' | 'TASK',
+    itemName: string,
+    description?: string,
+    position?: SelectionPosition
+  ): DisplayPayload {
+    if (position) {
+      const { index, count } = position;
+      if (!Number.isInteger(count) || count < 1) {
+        throw new ArgumentException(`Selection count must be a positive integer, got ${count}.`, 'position');
       }
+      if (!Number.isInteger(index) || index < 0 || index >= count) {
+        throw new ArgumentException(`Selection index ${index} is outside a list of ${count}.`, 'position');
+      }
+    }
+
+    return this.requestRender('menuPriority', () => {
+      const isProject = stage === 'PROJECT';
+      const iconId: BitmapIconId = isProject ? 'folder' : 'task';
+      const label = isProject ? 'Project' : description || 'Task';
+
+      this.paintIconAndTwoRows(getBitmapById(iconId), itemName, '', '#FFFFFF', SELECTION_LABEL_COLOR);
+      const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+      const labelWidth = position
+        ? this.paintSelectionPosition(position) - layout.TEXT_X - SELECTION_LABEL_GAP_PX
+        : layout.TEXT_FIELD_WIDTH;
+      this.canvas.drawSmallText(label, layout.TEXT_X, layout.ROW1_Y, SELECTION_LABEL_COLOR, labelWidth);
 
       const backElements = [
         { id: 'rear_menu_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#3B82F6FF', text: `SELECTION: ${stage}`, align: 'top_left' },
@@ -1029,6 +1079,32 @@ export class DisplayRenderer {
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
+  }
+
+  /**
+   * Draws `3/12` flush right on row 1, and a scroll bar under the rows.
+   * Returns the x where the number starts.
+   *
+   * The bar is the one-pixel line the Unity screens use for progress: a thumb
+   * at the item's place in the list, on a dark track. At the far left there is
+   * nothing before; at the far right, nothing after. A single-item list gets no
+   * bar, since there is nowhere to scroll.
+   */
+  private paintSelectionPosition({ index, count }: SelectionPosition): number {
+    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+    const text = `${index + 1}/${count}`;
+    const textWidth = measureText(text, ROW1_FONT);
+    const textX = layout.TEXT_X + layout.TEXT_FIELD_WIDTH - textWidth;
+    this.canvas.drawSmallText(text, textX, layout.ROW1_Y, SELECTION_POSITION_COLOR, textWidth);
+
+    if (count > 1) {
+      const track = layout.TEXT_FIELD_WIDTH;
+      const thumb = Math.max(SELECTION_THUMB_MIN_PX, Math.round(track / count));
+      const thumbX = layout.TEXT_X + Math.round((index * (track - thumb)) / (count - 1));
+      this.canvas.drawRect(layout.TEXT_X, layout.PROGRESS_BAR_Y, track, 1, SELECTION_TRACK_COLOR);
+      this.canvas.drawRect(thumbX, layout.PROGRESS_BAR_Y, thumb, 1, SELECTION_THUMB_COLOR);
+    }
+    return textX;
   }
 
   /**

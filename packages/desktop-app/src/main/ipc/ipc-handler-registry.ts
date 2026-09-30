@@ -864,7 +864,7 @@ export class IPCHandlerRegistry {
           this.renderer.renderException(project, 'NullReferenceException');
           return true;
         case 'TASK_SELECTION':
-          this.renderer.renderTaskSelection('TASK', 'PROJ-142', 'Implement dash');
+          this.renderer.renderTaskSelection('TASK', 'Implement dash', 'PROJ-142', { index: 2, count: 12 });
           return true;
         default:
           throw new ArgumentException(`Unknown preview screen: ${String(screen)}`);

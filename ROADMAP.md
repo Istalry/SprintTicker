@@ -667,7 +667,10 @@ looping idle animations.
        `pnpm probe:busybar --teardown-soak` repeated the idle-clock release
        ten times with the 500 ms pause: no hang, uploads flat at 24-53 ms.
        The same release without the pause had hung on round 6.
-     - [ ] 9b, task selection: its own icons, scroll arrows and position.
+     - [x] 9b, task selection (2026-09-30): a folder and a checklist for the
+       two steps, the position as `3/12`, and a one-pixel scroll bar under
+       the rows. Arrows beside the number were tried first and dropped: they
+       cut a four-digit key such as `SPR-1428` beside `12/12`.
      - [ ] 9c, one-shot scenes: GO! on starting a task from the bar, LOGGED
        on STOP, and the end-of-day scene.
 5. The rear OLED, below.
@@ -854,7 +857,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**85.80 statements / 77.13 branches / 86.50 functions / 88.04 lines across 991
+**85.93 statements / 77.42 branches / 86.54 functions / 88.13 lines across 1011
 tests in 56 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

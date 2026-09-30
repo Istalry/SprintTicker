@@ -785,7 +785,11 @@
       <p>All of these are rebindable.</p>
       <p><strong>The task picker</strong> is two stages: turn to choose a project, click to descend
       into it, turn to choose a task, click to start. <strong>BACK</strong> leaves at any point.
-      The second row shows the task key.</p>
+      A blue folder means you are choosing a project, a checklist a task. The second
+      row shows the task key, and on its right where you are in the list -- <code>3/12</code> --
+      with a thin line along the bottom whose bright segment slides from left to
+      right as you scroll: at the far left there is nothing before, at the far right
+      nothing after.</p>
       <p><strong>During a ceremony prompt</strong>, START confirms and BACK dismisses. The end-of-day
       wrap-up asks twice — the first START is &quot;yes&quot;, the second confirms — because it
       can shut your machine down.</p>
@@ -1426,7 +1430,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 991 tests across 56 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1011 tests across 56 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

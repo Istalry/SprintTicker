@@ -6,10 +6,11 @@ import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../src/shared/render-constants';
 import {
-  HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
+  FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
 } from '../src/shared/pixel-bitmaps';
 import { measureText } from '../src/shared/proportional-text';
-import { ROW0_FONT } from '../src/shared/fonts/pixel-font';
+import { ROW0_FONT, ROW1_FONT } from '../src/shared/fonts/pixel-font';
+import { ArgumentException } from '../src/shared/dtos';
 import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -686,6 +687,134 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(listener).toHaveBeenCalled();
 
       unsubscribe();
+    });
+  });
+
+  /**
+   * The hardware task selector. It used to be bare text: nothing said whether
+   * the wheel was choosing a project or a task, how long the list was, or
+   * whether turning it further would find anything.
+   */
+  describe('task selection screen', () => {
+    const THUMB_BLUE = '#3B82F6';
+    const TRACK = '#1E293B';
+    const pixels = (): (string | null)[][] =>
+      (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();
+    /** The scroll bar under the rows: where its thumb is, and whether it is there at all. */
+    const scrollBar = (): { thumbStart: number; thumbEnd: number; trackPixels: number } => {
+      const row = pixels()[15];
+      const thumb = row.map((c, x) => (x >= 17 && c?.toUpperCase() === THUMB_BLUE ? x : -1)).filter(x => x >= 0);
+      const trackPixels = row.filter((c, x) => x >= 17 && c?.toUpperCase() === TRACK).length;
+      return { thumbStart: thumb[0] ?? -1, thumbEnd: thumb[thumb.length - 1] ?? -1, trackPixels };
+    };
+    const textCalls = (): unknown[][] => {
+      const canvas = (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas;
+      return vi.spyOn(canvas, 'drawTextClipped').mock.calls;
+    };
+
+    it.each([
+      ['PROJECT', FOLDER_16X16_BITMAP],
+      ['TASK', TASK_16X16_BITMAP]
+    ] as const)('RenderTaskSelection_%s_DrawsItsOwnIcon', (stage, expected) => {
+      renderer.renderTaskSelection(stage, 'Alpha', 'ALPHA-1', { index: 0, count: 3 });
+
+      expect(pixels().slice(0, 16).map(row => row.slice(0, 16))).toEqual(expected.map(row => [...row]));
+    });
+
+    it('RenderTaskSelection_FirstOfSeveral_PutsTheThumbAtTheLeft', () => {
+      renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, { index: 0, count: 3 });
+
+      expect(scrollBar().thumbStart).toBe(17);
+      expect(scrollBar().thumbEnd).toBeLessThan(71);
+    });
+
+    it('RenderTaskSelection_LastOfSeveral_PutsTheThumbAtTheRight', () => {
+      renderer.renderTaskSelection('PROJECT', 'Gamma', undefined, { index: 2, count: 3 });
+
+      expect(scrollBar().thumbEnd).toBe(71);
+      expect(scrollBar().thumbStart).toBeGreaterThan(17);
+    });
+
+    it('RenderTaskSelection_ScrollingDown_MovesTheThumbRight', () => {
+      const starts: number[] = [];
+      for (let index = 0; index < 12; index++) {
+        renderer.renderTaskSelection('TASK', 'Task', 'K-1', { index, count: 12 });
+        starts.push(scrollBar().thumbStart);
+      }
+
+      for (let i = 1; i < starts.length; i++) expect(starts[i]).toBeGreaterThan(starts[i - 1]);
+    });
+
+    it('RenderTaskSelection_LongList_KeepsTheThumbVisible', () => {
+      // 55px over 200 items rounds to nothing; a one-pixel thumb reads as a
+      // stray LED.
+      renderer.renderTaskSelection('TASK', 'Task', 'K-1', { index: 100, count: 200 });
+
+      const { thumbStart, thumbEnd } = scrollBar();
+      expect(thumbEnd - thumbStart + 1).toBeGreaterThanOrEqual(3);
+    });
+
+    it('RenderTaskSelection_OnlyItem_HasNoScrollBar', () => {
+      renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, { index: 0, count: 1 });
+
+      expect(scrollBar()).toEqual({ thumbStart: -1, thumbEnd: -1, trackPixels: 0 });
+    });
+
+    it('RenderTaskSelection_NoPosition_DrawsNeitherNumberNorBar', () => {
+      const calls = textCalls();
+      renderer.renderTaskSelection('TASK', 'No Tasks');
+
+      expect(scrollBar()).toEqual({ thumbStart: -1, thumbEnd: -1, trackPixels: 0 });
+      expect(calls.some(([text]) => typeof text === 'string' && text.includes('/'))).toBe(false);
+    });
+
+    it('RenderTaskSelection_Position_CountsFromOne', () => {
+      const calls = textCalls();
+      renderer.renderTaskSelection('TASK', 'Write it', 'ALPHA-3', { index: 2, count: 12 });
+
+      expect(calls.some(([text]) => text === '3/12')).toBe(true);
+    });
+
+    it('RenderTaskSelection_Position_EndsAtTheRightEdge', () => {
+      const calls = textCalls();
+      renderer.renderTaskSelection('TASK', 'Write it', 'ALPHA-3', { index: 9, count: 12 });
+
+      const position = calls.find(([text]) => text === '10/12');
+      expect((position?.[1] as number) + measureText('10/12', ROW1_FONT)).toBe(72);
+    });
+
+    it('RenderTaskSelection_FourDigitKeyAtTheEndOfALongList_ShowsTheWholeKey', () => {
+      // With arrows beside the number, SPR-1428 was cut to "SPR-...".
+      const calls = textCalls();
+      renderer.renderTaskSelection('TASK', 'Write the tests', 'SPR-1428', { index: 11, count: 12 });
+
+      const key = calls.find(([text]) => text === 'SPR-1428');
+      expect(key?.[4] as number).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW1_FONT));
+    });
+
+    it('RenderTaskSelection_LongKey_StopsShortOfTheNumber', () => {
+      const calls = textCalls();
+      renderer.renderTaskSelection('TASK', 'Write it', 'VERYLONGPROJECT-12345', { index: 4, count: 12 });
+
+      const label = calls.find(([text]) => text === 'VERYLONGPROJECT-12345');
+      const position = calls.find(([text]) => text === '5/12');
+      expect((label?.[1] as number) + (label?.[4] as number)).toBeLessThan(position?.[1] as number);
+    });
+
+    it('RenderTaskSelection_ProjectStep_SaysSoOnRowOne', () => {
+      const calls = textCalls();
+      renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, { index: 0, count: 2 });
+
+      expect(calls.some(([text, , , , , font]) => text === 'Project' && font === ROW1_FONT)).toBe(true);
+    });
+
+    it.each([
+      ['IndexPastTheEnd', { index: 3, count: 3 }],
+      ['NegativeIndex', { index: -1, count: 3 }],
+      ['EmptyList', { index: 0, count: 0 }],
+      ['FractionalIndex', { index: 0.5, count: 3 }]
+    ])('RenderTaskSelection_%s_ThrowsArgumentException', (_case, position) => {
+      expect(() => renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, position)).toThrow(ArgumentException);
     });
   });
 });
