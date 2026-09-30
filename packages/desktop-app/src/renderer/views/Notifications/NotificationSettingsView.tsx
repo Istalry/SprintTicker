@@ -46,7 +46,9 @@ export const NotificationSettingsView: React.FC = () => {
   const [logFilter, setLogFilter] = useState<string>('ALL');
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
-  const [loaded, setLoaded] = useState<boolean>(false);
+  // With no stored settings to read there is nothing to wait for; loaded
+  // is otherwise set once the read settles.
+  const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getNotificationSettings);
   const [newAppId, setNewAppId] = useState<string>('');
   const [newAppName, setNewAppName] = useState<string>('');
   const [newIconId, setNewIconId] = useState<BitmapIconId>('bell');
@@ -85,8 +87,6 @@ export const NotificationSettingsView: React.FC = () => {
         // table, and writing that over the stored one would discard every
         // per-app priority the user had set.
         .finally(() => setLoaded(true));
-    } else {
-      setLoaded(true);
     }
 
     if (window.electronAPI?.getPriorityRules) {

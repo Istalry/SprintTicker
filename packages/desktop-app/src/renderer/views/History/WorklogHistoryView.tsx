@@ -3,32 +3,51 @@ import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight } fr
 import { WorklogDTO } from '../../../shared/dtos';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 
+interface DaySummary {
+  totalSeconds: number;
+  tasksCount: number;
+  items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string }>;
+}
+
+interface DayRead {
+  date: string;
+  worklogs: WorklogDTO[];
+  summary: DaySummary;
+}
+
+const EMPTY_SUMMARY: DaySummary = { totalSeconds: 0, tasksCount: 0, items: [] };
+
+async function readDay(date: string): Promise<DayRead> {
+  const api = window.electronAPI;
+  const worklogs = api?.getWorklogsByDate ? await api.getWorklogsByDate(date) : [];
+  const summary = api?.getDailyWorklogSummary ? await api.getDailyWorklogSummary(date) : EMPTY_SUMMARY;
+  return { date, worklogs, summary };
+}
+
 export const WorklogHistoryView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(localDateKey());
-  const [worklogs, setWorklogs] = useState<WorklogDTO[]>([]);
-  const [summary, setSummary] = useState<{
-    totalSeconds: number;
-    tasksCount: number;
-    items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string }>;
-  }>({ totalSeconds: 0, tasksCount: 0, items: [] });
-  const [loading, setLoading] = useState<boolean>(true);
-
-  // Fetch worklogs and summary for selectedDate
-  const fetchWorklogsForDate = async (dateStr: string) => {
-    setLoading(true);
-    if (window.electronAPI?.getWorklogsByDate) {
-      const logs = await window.electronAPI.getWorklogsByDate(dateStr);
-      setWorklogs(logs);
-    }
-    if (window.electronAPI?.getDailyWorklogSummary) {
-      const sum = await window.electronAPI.getDailyWorklogSummary(dateStr);
-      setSummary(sum);
-    }
-    setLoading(false);
-  };
+  // The last day read, which may trail the selected one while its read is in
+  // flight. Loading is the gap between the two, derived rather than flagged:
+  // a flag raised before the request is state set synchronously in an effect.
+  const [day, setDay] = useState<DayRead | null>(null);
+  const worklogs = day?.worklogs ?? [];
+  const summary = day?.summary ?? EMPTY_SUMMARY;
+  const loading = day?.date !== selectedDate;
 
   useEffect(() => {
-    fetchWorklogsForDate(selectedDate);
+    // Stepping through days quickly can answer out of order; only the read
+    // for the day still selected may land.
+    let current = true;
+    readDay(selectedDate).then(
+      read => { if (current) setDay(read); },
+      err => {
+        // Without this the spinner never stopped: the read failed and nothing
+        // ever marked the day as done.
+        console.error('[WorklogHistoryView] Failed to read worklogs for', selectedDate, err);
+        if (current) setDay({ date: selectedDate, worklogs: [], summary: EMPTY_SUMMARY });
+      }
+    );
+    return () => { current = false; };
   }, [selectedDate]);
 
   // Date Navigation Helpers

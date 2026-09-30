@@ -6,7 +6,8 @@ import { ActiveSessionDTO } from '../../shared/dtos';
  */
 export function useSession() {
   const [session, setSession] = useState<ActiveSessionDTO | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Without the bridge there is nothing to wait for.
+  const [loading, setLoading] = useState<boolean>(() => Boolean(window.electronAPI));
 
   useEffect(() => {
     // 1. Initial fetch
@@ -25,8 +26,6 @@ export function useSession() {
       });
 
       return () => unsubscribe();
-    } else {
-      setLoading(false);
     }
     return undefined;
   }, []);

@@ -212,6 +212,15 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The end-of-day dialog offers the wrap-up again when reopened.** Once a
+  wrap-up had completed, every later opening -- the next evening's prompt, or
+  the header button -- showed "Day Complete!" until the app restarted.
+- **A sync no longer throws the task picker back to step 1.** The picker reset
+  itself whenever the project list changed, so a sync landing while you were
+  choosing a task started the choice over.
+- **Work History copes with a failed read and with fast date changes.** A read
+  that failed left "Loading session history..." up for good, and stepping
+  through days quickly could show the worklogs of a day no longer selected.
 - **Finishing a task from the app plays DONE! once.** Both finish dialogs
   asked the bar for the scene after the stop had already played it, so it
   started twice: two uploads of the same file, the second over the one the

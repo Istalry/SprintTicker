@@ -18,18 +18,30 @@ import { formatSeconds } from '../utils/formatters';
  * sub-minute row is precisely the kind this panel exists to explain, and
  * rounding it to "0h 00m" would hide the evidence.
  */
+/**
+ * A snapshot and the moment it was read. A row's "next attempt" is judged
+ * against that moment rather than the clock at render: nothing re-renders the
+ * panel as time passes, so the read is the only instant the rows describe.
+ */
+interface QueueRead {
+  snapshot: SyncQueueSnapshotDTO;
+  readAtMs: number;
+}
+
 export const SyncQueuePanel: React.FC = () => {
-  const [snapshot, setSnapshot] = useState<SyncQueueSnapshotDTO | null>(null);
+  const [read, setRead] = useState<QueueRead | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const refresh = useCallback(async (): Promise<void> => {
-    if (!window.electronAPI?.getSyncQueue) return;
-    try {
-      setSnapshot(await window.electronAPI.getSyncQueue());
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Could not read the sync queue.');
-    }
+  // A promise chain rather than an async body: the effect below calls this,
+  // and state set in an async function's body reads to the hooks linter as set
+  // synchronously in the effect.
+  const refresh = useCallback((): Promise<void> => {
+    if (!window.electronAPI?.getSyncQueue) return Promise.resolve();
+    return window.electronAPI.getSyncQueue().then(
+      snapshot => setRead({ snapshot, readAtMs: Date.now() }),
+      err => setNotice(err instanceof Error ? err.message : 'Could not read the sync queue.')
+    );
   }, []);
 
   useEffect(() => {
@@ -81,6 +93,7 @@ export const SyncQueuePanel: React.FC = () => {
     }
   };
 
+  const snapshot = read?.snapshot;
   const counts = snapshot?.counts;
   const items = snapshot?.items ?? [];
 
@@ -145,7 +158,7 @@ export const SyncQueuePanel: React.FC = () => {
       ) : (
         <div className="space-y-2">
           {items.map(item => (
-            <QueueRow key={item.id} item={item} maxAttempts={snapshot?.maxAttempts ?? 0} />
+            <QueueRow key={item.id} item={item} maxAttempts={snapshot?.maxAttempts ?? 0} readAtMs={read?.readAtMs ?? 0} />
           ))}
         </div>
       )}
@@ -175,9 +188,13 @@ const STATUS_TONE: Record<SyncQueueItemDTO['status'], string> = {
   FAILED: 'text-accent-red border-accent-red'
 };
 
-const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number }> = ({ item, maxAttempts }) => {
+const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs: number }> = ({
+  item,
+  maxAttempts,
+  readAtMs
+}) => {
   const waitingUntil = item.nextAttemptAtUtc ? new Date(item.nextAttemptAtUtc) : null;
-  const stillWaiting = waitingUntil !== null && waitingUntil.getTime() > Date.now();
+  const stillWaiting = waitingUntil !== null && waitingUntil.getTime() > readAtMs;
 
   return (
     <div className="bg-dark-900 border border-border-dark rounded-lg px-4 py-3">

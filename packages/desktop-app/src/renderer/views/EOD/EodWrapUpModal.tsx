@@ -9,8 +9,15 @@ interface EodWrapUpModalProps {
   onSnooze?: (minutes?: number) => Promise<void>;
 }
 
-export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
-  isOpen,
+/**
+ * Each opening mounts the dialog afresh. It used to stay mounted and reset
+ * only the confirm step on close, in an effect -- so a wrap-up completed one
+ * evening still showed as completed when the prompt came back the next.
+ */
+export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = props =>
+  props.isOpen ? <EodWrapUpDialog {...props} /> : null;
+
+const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
   onClose,
   onConfirmEod,
   onSnooze
@@ -27,25 +34,21 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
   });
 
   useEffect(() => {
-    if (isOpen) {
-      if (window.electronAPI?.getDailyWorklogSummary) {
-        const todayStr = localDateKey();
-        window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
-      }
-      if (window.electronAPI?.getScheduleSettings) {
-        window.electronAPI.getScheduleSettings().then((sched) => {
-          if (sched) {
-            const isShutdownDefault = sched.shutdownByDefault ?? sched.eodShutdownByDefault ?? false;
-            setShouldShutdown(Boolean(isShutdownDefault));
-          }
-        }).catch((err) => {
-          console.warn('[EodWrapUpModal] Failed to load schedule settings for shutdown default:', err);
-        });
-      }
-    } else {
-      setConfirmStep(0);
+    if (window.electronAPI?.getDailyWorklogSummary) {
+      const todayStr = localDateKey();
+      window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
     }
-  }, [isOpen]);
+    if (window.electronAPI?.getScheduleSettings) {
+      window.electronAPI.getScheduleSettings().then((sched) => {
+        if (sched) {
+          const isShutdownDefault = sched.shutdownByDefault ?? sched.eodShutdownByDefault ?? false;
+          setShouldShutdown(Boolean(isShutdownDefault));
+        }
+      }).catch((err) => {
+        console.warn('[EodWrapUpModal] Failed to load schedule settings for shutdown default:', err);
+      });
+    }
+  }, []);
 
   const handleExecuteEod = React.useCallback(async () => {
     if (executing || completed) return;
@@ -66,7 +69,7 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
 
   // Handle Hardware Buttons (START to confirm, BACK/CANCEL to dismiss)
   useEffect(() => {
-    if (!isOpen || completed || executing) return;
+    if (completed || executing) return;
 
     if (window.electronAPI?.onHardwareInputEvent) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
@@ -94,9 +97,7 @@ export const EodWrapUpModal: React.FC<EodWrapUpModalProps> = ({
     }
     // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
     return undefined;
-  }, [isOpen, completed, executing, handleExecuteEod, onClose]);
-
-  if (!isOpen) return null;
+  }, [completed, executing, handleExecuteEod, onClose]);
 
   const formatDuration = (seconds: number): string => {
     const h = Math.floor(seconds / 3600);

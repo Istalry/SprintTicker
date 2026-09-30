@@ -12,7 +12,9 @@ export const CeremoniesView: React.FC = () => {
   const [eodTime, setEodTime] = useState<string>('17:30');
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
   const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
-  const [loaded, setLoaded] = useState<boolean>(false);
+  // With no stored settings to read there is nothing to wait for; loaded
+  // is otherwise set once the read settles.
+  const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getScheduleSettings);
   const [testStatusMessage, setTestStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,8 +36,6 @@ export const CeremoniesView: React.FC = () => {
         // Auto-save must stay off until the stored schedule has arrived, or
         // the panel would write its defaults over it.
         .finally(() => setLoaded(true));
-    } else {
-      setLoaded(true);
     }
   }, []);
 

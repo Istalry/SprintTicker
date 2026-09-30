@@ -24,9 +24,14 @@ export function useAutoSave(
   const [status, setStatus] = useState<AutoSaveStatus>('idle');
 
   // Held in a ref so a new closure on every render does not rebuild the
-  // scheduler and lose its baseline.
+  // scheduler and lose its baseline. Updated in an effect, not during render:
+  // a render React discards would otherwise leave its closure behind. Declared
+  // before the sync effect, and effects run in order, so a save that sync
+  // triggers already calls this render's closure.
   const saveRef = useRef(save);
-  saveRef.current = save;
+  useEffect(() => {
+    saveRef.current = save;
+  });
 
   const schedulerRef = useRef<AutoSaveScheduler | null>(null);
 

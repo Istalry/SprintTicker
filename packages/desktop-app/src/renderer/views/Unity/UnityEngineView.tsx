@@ -12,7 +12,9 @@ export const UnityEngineView: React.FC = () => {
   const [enablePlayModeDnd, setEnablePlayModeDnd] = useState<boolean>(true);
   const [showUnityErrors, setShowUnityErrors] = useState<boolean>(false);
   const [errorDurationSeconds, setErrorDurationSeconds] = useState<number>(5);
-  const [loaded, setLoaded] = useState<boolean>(false);
+  // With no stored settings to read there is nothing to wait for; loaded
+  // is otherwise set once the read settles.
+  const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getUnitySettings);
 
   // Live Telemetry State
   const [telemetry, setTelemetry] = useState<UnityTelemetryDTO>({
@@ -62,8 +64,6 @@ export const UnityEngineView: React.FC = () => {
         // Gated so the panel cannot write its defaults -- which include
         // enableFailureSound and enablePlayModeDnd as true -- over stored ones.
         .finally(() => setLoaded(true));
-    } else {
-      setLoaded(true);
     }
 
     if (window.electronAPI?.getUnityTelemetry) {

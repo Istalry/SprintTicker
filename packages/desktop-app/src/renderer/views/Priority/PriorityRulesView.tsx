@@ -19,7 +19,9 @@ export const PriorityRulesView: React.FC = () => {
   // the device never actually used.
   const [rules, setRules] = useState<PriorityRule[]>(() => [...DEFAULT_PRIORITY_RULES]);
 
-  const [loaded, setLoaded] = useState<boolean>(false);
+  // With no stored settings to read there is nothing to wait for; loaded
+  // is otherwise set once the read settles.
+  const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getPriorityRules);
 
   useEffect(() => {
     if (window.electronAPI?.getPriorityRules) {
@@ -54,8 +56,6 @@ export const PriorityRulesView: React.FC = () => {
         // off until this settles so the panel cannot write DEFAULT_PRIORITY_RULES
         // over the stored matrix -- which would silently reorder the display.
         .finally(() => setLoaded(true));
-    } else {
-      setLoaded(true);
     }
 
     const api = window.electronAPI as unknown as {

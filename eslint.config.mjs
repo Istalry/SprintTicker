@@ -74,19 +74,18 @@ export default tseslint.config(
     },
     rules: {
       ...react.configs.flat.recommended.rules,
-      // Deliberately the two classic rules rather than
-      // `reactHooks.configs['recommended-latest']`.
+      // The React Compiler set, in full, since 2026-09-30. It was held back to
+      // the two classic rules until the renderer had smoke tests; its 16
+      // findings were fixed under them, not suppressed.
       //
-      // eslint-plugin-react-hooks went 4 -> 7 in this migration (v4 has no flat
-      // config at all), and v7's recommended set is the React Compiler one --
-      // it adds `set-state-in-effect`, `purity` and `refs`, which report **16
-      // findings** across the renderer. They look like real anti-patterns and
-      // are probably worth fixing, but they are renderer refactoring in code
-      // that has no tests, and this commit is a config migration. Adopting the
-      // expanded set belongs after the smoke harness exists, as its own change
-      // with its own verification. See ROADMAP.
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      // The one that shapes code most is set-state-in-effect. It flags any
+      // call, in an effect's body, to a local function that sets state --
+      // including one that only sets it after an `await`, because the
+      // compiler does not model `await`. State set in a `.then` callback or a
+      // subscription callback is fine. So a read that an effect starts is a
+      // promise chain, or a stateless reader whose answer is applied in
+      // `.then`; see useWorklogs.
+      ...reactHooks.configs['recommended-latest'].rules,
       'react/react-in-jsx-scope': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',

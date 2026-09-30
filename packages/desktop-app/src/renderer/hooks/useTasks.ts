@@ -1,5 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TaskDTO, ProjectDTO } from '../../shared/dtos';
+
+interface ProjectsAndTasks {
+  projects: ProjectDTO[];
+  tasks: TaskDTO[];
+}
+
+/** The projects, and the tasks of the selected one or else the first; null when the read failed. */
+async function readProjectsAndTasks(selectedProjectId?: string): Promise<ProjectsAndTasks | null> {
+  if (!window.electronAPI) return null;
+  try {
+    const projects = (await window.electronAPI.getProjects()) || [];
+    const targetProjId = selectedProjectId || (projects.length > 0 ? projects[0].id : '');
+    const tasks = targetProjId ? (await window.electronAPI.getTasks(targetProjId)) || [] : [];
+    return { projects, tasks };
+  } catch (err) {
+    console.error('[useTasks] Error fetching projects and tasks:', err);
+    return null;
+  }
+}
 
 /**
  * Custom React hook fetching projects and tasks with support for fuzzy filtering.
@@ -7,41 +26,31 @@ import { TaskDTO, ProjectDTO } from '../../shared/dtos';
 export function useTasks(selectedProjectId?: string) {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [tasks, setTasks] = useState<TaskDTO[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Without the bridge there is nothing to wait for.
+  const [loading, setLoading] = useState<boolean>(() => Boolean(window.electronAPI));
 
-  const fetchProjectsAndTasks = async () => {
-    if (!window.electronAPI) {
-      setLoading(false);
-      return;
+  // State changes only once the read has answered; see useWorklogs.
+  const applyRead = useCallback((read: ProjectsAndTasks | null) => {
+    if (read) {
+      setProjects(read.projects);
+      setTasks(read.tasks);
     }
-    try {
-      setLoading(true);
-      const projs = await window.electronAPI.getProjects();
-      setProjects(projs || []);
+    setLoading(false);
+  }, []);
 
-      const targetProjId = selectedProjectId || (projs && projs.length > 0 ? projs[0].id : '');
-      if (targetProjId) {
-        const taskList = await window.electronAPI.getTasks(targetProjId);
-        setTasks(taskList || []);
-      } else {
-        setTasks([]);
-      }
-    } catch (err) {
-      console.error('[useTasks] Error fetching projects and tasks:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refresh = useCallback(
+    () => readProjectsAndTasks(selectedProjectId).then(applyRead),
+    [selectedProjectId, applyRead]
+  );
 
   useEffect(() => {
-    fetchProjectsAndTasks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProjectId]);
+    void refresh();
+  }, [refresh]);
 
   return {
     projects,
     tasks,
     loading,
-    refresh: fetchProjectsAndTasks
+    refresh
   };
 }

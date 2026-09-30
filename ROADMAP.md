@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1119
-tests in 60 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1130
+tests in 62 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1004,8 +1004,8 @@ already measures.
     across the renderer -- `set-state-in-effect` x14, `purity`, `refs`. They are
     not adopted here: this commit is a config migration, and those are renderer
     refactors in code that has no tests. Only the two classic rules are enabled.
-    **Adopting the expanded set is the natural follow-up once the smoke harness
-    below exists**, and it is the most valuable thing in this section now.
+    **Adopted in full once the smoke harness below existed** -- see the
+    `react-hooks` item after it.
 - [x] **A renderer smoke-test harness** (2026-09-30). A second Vitest project
   in jsdom with Testing Library: every tab mounts and shows its view, a session
   pushed from main reaches the screen, and the session card's finish paths are
@@ -1013,7 +1013,16 @@ already measures.
   `window.electronAPI` mock is typed as the whole `IElectronAPI` and
   type-checked by `tsconfig.renderer-tests.json`, so adding a bridge method
   without teaching the mock fails `pnpm typecheck`; that was checked by doing
-  it. The two items below were blocked on this.
+  it. The items below were blocked on this.
+- [x] **The full `react-hooks` rule set** (2026-09-30). `recommended-latest`
+  replaces the two classic rules, and its 16 findings are fixed, none
+  suppressed: `set-state-in-effect` x14, `purity`, `refs`. Two of the fixes
+  were real bugs the rule had found: the end-of-day dialog stayed "Day
+  Complete!" when reopened, and the task picker threw the user back to step 1
+  when a sync landed mid-choice. Both modals now mount afresh on each opening.
+  The history view also stopped trusting answer order and stopped spinning
+  forever on a failed read. Each is pinned by a renderer test that fails on
+  the old code.
 - **React 18 -> 19.** No security advisory; doing it for its own sake. It was
   blocked on the smoke harness above, which now exists. Note that `lucide-react` 0.359 caps
   its React peer at 18, so this drags a coupled bump with it -- the same shape

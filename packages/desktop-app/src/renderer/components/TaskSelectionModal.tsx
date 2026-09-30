@@ -16,74 +16,67 @@ const statusConfig: Record<string, { label: string; icon: React.FC<{ className?:
   todo: { label: 'To Do', icon: AlertCircle, color: 'text-text-secondary' }
 };
 
-export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
-  isOpen,
+/**
+ * Each opening mounts the dialog afresh, so it starts on step 1 with nothing
+ * typed. That reset used to be an effect on `isOpen` that set eight pieces of
+ * state -- a render spent on the stale ones first, and, because it also
+ * listened to `projects`, a sync landing mid-choice threw the user back to
+ * step 1.
+ */
+export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = props =>
+  props.isOpen ? <TaskSelectionDialog {...props} /> : null;
+
+const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   onClose,
   projects: propProjects,
   onSelectTask
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
+  // The prop is what App had; the dialog asks main for the current list on
+  // mount and falls back to the prop if that fails.
   const [activeProjects, setActiveProjects] = useState<ProjectDTO[]>(propProjects || []);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [projectTasks, setProjectTasks] = useState<TaskDTO[]>([]);
-  const [loadingTasks, setLoadingTasks] = useState<boolean>(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(() => propProjects?.[0]?.id ?? '');
+  const [loadedTasks, setLoadedTasks] = useState<{ projectId: string; tasks: TaskDTO[] } | null>(null);
   const [isAdHocMode, setIsAdHocMode] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customTitle, setCustomTitle] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-  // Dynamically fetch tasks from SQLite for the selected project
-  const fetchTasksForProject = async (projectId: string) => {
-    if (!projectId || !window.electronAPI?.getTasks) return;
-    setLoadingTasks(true);
-    try {
-      const tasks = await window.electronAPI.getTasks(projectId);
-      setProjectTasks(tasks);
-    } catch (err) {
-      console.warn('[TaskSelectionModal] Failed to load tasks for project:', projectId, err);
-      setProjectTasks([]);
-    } finally {
-      setLoadingTasks(false);
-    }
-  };
-
-  // When project changes in Step 2, fetch tasks for that project
   useEffect(() => {
-    if (selectedProjectId && step === 2 && !isAdHocMode) {
-      fetchTasksForProject(selectedProjectId);
-    }
+    if (!window.electronAPI?.getProjects) return;
+    window.electronAPI.getProjects().then(projs => {
+      const list = projs || [];
+      setActiveProjects(list);
+      setSelectedProjectId(list.length > 0 ? list[0].id : '');
+    }).catch(() => {
+      setActiveProjects(propProjects || []);
+    });
+    // Once per opening: a later `projects` prop must not reset a choice in progress.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProjectId, step]);
+  }, []);
 
+  // Tasks are fetched for the project on step 2, and belong to the project
+  // they were fetched for. Loading is derived from that rather than flagged:
+  // a flag set before the request is state set synchronously in an effect,
+  // and a late answer for the previous project could overwrite the current one.
+  const wantsTasks = step === 2 && !isAdHocMode && Boolean(selectedProjectId) && Boolean(window.electronAPI?.getTasks);
   useEffect(() => {
-    if (isOpen) {
-      setStep(1);
-      setSearchQuery('');
-      setCustomTitle('');
-      setIsAdHocMode(false);
-      setSelectedIndex(0);
-      setProjectTasks([]);
-
-      if (window.electronAPI?.getProjects) {
-        window.electronAPI.getProjects().then(projs => {
-          const list = projs || [];
-          setActiveProjects(list);
-          if (list.length > 0) {
-            setSelectedProjectId(list[0].id);
-          } else {
-            setSelectedProjectId('');
-          }
-        }).catch(() => {
-          setActiveProjects(propProjects || []);
-        });
-      } else {
-        setActiveProjects(propProjects || []);
-        if (propProjects && propProjects.length > 0) {
-          setSelectedProjectId(propProjects[0].id);
-        }
+    if (!wantsTasks) return undefined;
+    let current = true;
+    const projectId = selectedProjectId;
+    window.electronAPI.getTasks(projectId).then(
+      tasks => { if (current) setLoadedTasks({ projectId, tasks }); },
+      err => {
+        console.warn('[TaskSelectionModal] Failed to load tasks for project:', projectId, err);
+        if (current) setLoadedTasks({ projectId, tasks: [] });
       }
-    }
-  }, [isOpen, propProjects]);
+    );
+    return () => { current = false; };
+  }, [wantsTasks, selectedProjectId]);
+
+  const tasksAreForSelection = loadedTasks?.projectId === selectedProjectId;
+  const projectTasks = tasksAreForSelection ? loadedTasks.tasks : [];
+  const loadingTasks = wantsTasks && !tasksAreForSelection;
 
   const filteredTasks = projectTasks.filter(t =>
     t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -92,8 +85,6 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
 
   // Handle keyboard events (Esc to close, Enter to confirm, Arrow keys)
   useEffect(() => {
-    if (!isOpen) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -122,9 +113,7 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, step, isAdHocMode, customTitle, filteredTasks, selectedIndex, onClose, onSelectTask]);
-
-  if (!isOpen) return null;
+  }, [step, isAdHocMode, customTitle, filteredTasks, selectedIndex, onClose, onSelectTask]);
 
   const selectedProject = activeProjects.find(p => p.id === selectedProjectId);
 

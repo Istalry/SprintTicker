@@ -8,7 +8,8 @@ export const ProjectTaskManagerView: React.FC = () => {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [tasks, setTasks] = useState<TaskDTO[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Without the bridge there is nothing to wait for.
+  const [loading, setLoading] = useState<boolean>(() => Boolean(window.electronAPI?.getProjects));
   const [activeSession, setActiveSession] = useState<ActiveSessionDTO | null>(null);
 
   /**
@@ -39,29 +40,28 @@ export const ProjectTaskManagerView: React.FC = () => {
   const [importText, setImportText] = useState<string>('');
   const [importStatus, setImportStatus] = useState<string>('');
 
-  // Fetch Projects
-  const fetchProjects = async () => {
-    if (window.electronAPI?.getProjects) {
-      const projs = await window.electronAPI.getProjects();
+  // Both are promise chains rather than async bodies because the mount effect
+  // calls them, and state set in an async function's body reads to the hooks
+  // linter as set synchronously in the effect. State changes only once main
+  // has answered.
+  const fetchProjects = (): Promise<void> => {
+    if (!window.electronAPI?.getProjects) return Promise.resolve();
+    return window.electronAPI.getProjects().then(projs => {
       setProjects(projs);
-      if (projs.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(projs[0].id);
-      }
-    }
-    setLoading(false);
+      // Keep a choice already made; a refetch after creating a project must
+      // not jump back to the first one.
+      setSelectedProjectId(current => current || (projs.length > 0 ? projs[0].id : ''));
+      setLoading(false);
+    });
   };
 
-  // Fetch Tasks for active project
-  const fetchTasks = async (projId: string): Promise<void> => {
-    if (!projId) return;
-    if (window.electronAPI?.getTasks) {
-      const taskList = await window.electronAPI.getTasks(projId);
-      setTasks(taskList);
-    }
+  const fetchTasks = (projId: string): Promise<void> => {
+    if (!projId || !window.electronAPI?.getTasks) return Promise.resolve();
+    return window.electronAPI.getTasks(projId).then(setTasks);
   };
 
   useEffect(() => {
-    fetchProjects();
+    void fetchProjects();
 
     if (window.electronAPI?.getCurrentSession) {
       window.electronAPI.getCurrentSession().then(setActiveSession);
@@ -104,7 +104,6 @@ export const ProjectTaskManagerView: React.FC = () => {
     // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
     if (unsubscribes.length === 0) return undefined;
     return () => unsubscribes.forEach(fn => fn());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

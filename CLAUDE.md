@@ -80,10 +80,23 @@ each presents as "the migration broke everything":
 - **`@typescript-eslint/no-var-requires` was renamed `no-require-imports`.** A
   disable comment naming the old rule silently stops suppressing anything.
 
-`eslint-plugin-react-hooks` is on 7, but only `rules-of-hooks` and
-`exhaustive-deps` are enabled. Its full recommended set is the React Compiler
-one and reports 16 findings in the renderer; adopting it is a real task with
-real refactoring behind it, not a config flip. See ROADMAP.
+`eslint-plugin-react-hooks` is on 7 with its full `recommended-latest` set --
+the React Compiler rules, not just `rules-of-hooks` and `exhaustive-deps`. The
+one that shapes renderer code is **`set-state-in-effect`**, and it is stricter
+than it reads: it flags any call in an effect's body to a local function that
+sets state, **even when the state is only set after an `await`** -- the
+compiler does not model `await`, so an `async` loader called from `useEffect`
+is always a finding. State set in a `.then` callback or a subscription
+callback is fine. The idioms that came out of fixing its 16 findings:
+- A read an effect starts is a promise chain, or a stateless reader whose
+  answer is applied in `.then` (`useWorklogs`).
+- "Loading" is derived where it can be -- the day read versus the day
+  selected -- rather than a flag raised before the request. The derived form
+  also drops a late answer for a previous selection.
+- A flag that is true only because the bridge is missing is a lazy
+  `useState` initialiser, not an `else` branch in the effect.
+- A modal that must start clean on every opening mounts its content only when
+  open, so `useState` initial values are the reset.
 
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and
