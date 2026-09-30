@@ -212,6 +212,10 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The test suite no longer changes the machine's git configuration.** On a
+  machine with no global `core.excludesfile` -- a CI runner, a fresh checkout
+  -- running the tests pointed it at a temporary file the tests then deleted.
+  The app's own "set up global gitignore" behaves as before.
 - **A notification that waited its turn is no longer wiped the moment it
   shows.** When two arrived together, the second was queued behind the first
   -- and when the first ended, the second was drawn and then immediately

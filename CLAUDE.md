@@ -554,7 +554,12 @@ interfaces, `PascalCase` methods).
 - Prefer a real collaborator to a stub where it is cheap. Use
   `new DatabaseConnection(':memory:')`, not the singleton.
 - Tests must not spawn PowerShell against the developer's own machine or leave a
-  database behind.
+  database behind. **Every service that shells out takes its executor by
+  constructor** -- `SystemAutomationService`'s `CommandExecFn`,
+  `UnityInjectorService`'s `GitRunner`, `AppIconResolver`'s runners -- and a
+  test passes a fake. A path override is not enough: the injector had one and
+  still ran `git config --global` for real, *writing* the test's temp file into
+  the global config of any machine where `core.excludesfile` was unset.
 - **If the code checks a result, there is a test where that result is the bad
   one.** Every mock in this suite defaults to success, so a failure branch that
   is never mocked false is never executed by anything, and a dead handler looks

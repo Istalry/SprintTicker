@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UnityTelemetryService } from '../src/main/services/unity-telemetry-service';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { UnitySettingsDTO } from '../src/shared/dtos';
@@ -239,6 +239,233 @@ describe('UnityTelemetryService', () => {
 
     it('Dispose_ClearsPruneTimer_DisposesCleanly', () => {
       expect(() => service.dispose()).not.toThrow();
+    });
+  });
+});
+
+/**
+ * What the bar shows while Unity works, stated as behaviour: which screen is
+ * up, and whether it comes down again. Every one of these paths ends with the
+ * bar either showing the right thing or stuck on a stale Unity screen.
+ */
+describe('UnityTelemetryService display behaviour', () => {
+  type Renderer = Record<'renderCompilation' | 'renderBuilding' | 'renderBaking' | 'renderPlayMode' | 'renderException' | 'renderIdle' | 'renderActiveSession', ReturnType<typeof vi.fn>>;
+  let renderer: Renderer;
+  let priority: { evaluateRequest: ReturnType<typeof vi.fn>; releaseActiveLock: ReturnType<typeof vi.fn> };
+  let stored: Record<string, unknown>;
+  let telemetry: UnityTelemetryService;
+
+  const repo = () => ({
+    getSetting: vi.fn((key: string, defaultValue: unknown) => stored[key] ?? defaultValue),
+    setSetting: vi.fn()
+  }) as unknown as SettingsRepository;
+
+  const make = (webhook?: unknown) =>
+    new UnityTelemetryService(repo(), webhook as never, renderer as unknown as DisplayRenderer, undefined, priority as unknown as IPriorityPreemptionEngine);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    stored = {};
+    renderer = {
+      renderCompilation: vi.fn(), renderBuilding: vi.fn(), renderBaking: vi.fn(), renderPlayMode: vi.fn(),
+      renderException: vi.fn(), renderIdle: vi.fn(), renderActiveSession: vi.fn()
+    };
+    priority = {
+      evaluateRequest: vi.fn().mockReturnValue({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 55 }),
+      releaseActiveLock: vi.fn()
+    };
+    telemetry = make();
+  });
+
+  afterEach(() => {
+    telemetry.dispose();
+    vi.useRealTimers();
+  });
+
+  it('WebhookEvents_FromTheEditor_ReachTheService', () => {
+    const handlers: Record<string, (p: unknown) => void> = {};
+    const webhook = {
+      onHeartbeatEvent: (cb: (p: unknown) => void) => { handlers.heartbeat = cb; },
+      onCompileEvent: (cb: (p: unknown) => void) => { handlers.compile = cb; },
+      onPlayModeEvent: (cb: (p: unknown) => void) => { handlers.playMode = cb; },
+      onConsoleEvent: (cb: (p: unknown) => void) => { handlers.console = cb; }
+    };
+    stored.unity_settings = { showUnityErrors: true, enablePlayModeDnd: true };
+    telemetry.dispose();
+    telemetry = make(webhook);
+
+    handlers.heartbeat({ projectName: 'Game' });
+    handlers.compile({ projectName: 'Game', state: 'started' });
+    handlers.console({ projectName: 'Game', type: 'error', message: 'boom' });
+    handlers.playMode({ projectName: 'Game', state: 'entered' });
+
+    expect(telemetry.getTelemetry().isConnected).toBe(true);
+    expect(renderer.renderCompilation).toHaveBeenCalledWith('Game');
+    expect(renderer.renderException).toHaveBeenCalledWith('Game', 'boom');
+    expect(renderer.renderPlayMode).toHaveBeenCalledWith('Game');
+  });
+
+  it.each(['handleHeartbeat', 'handleCompile', 'handleConsole', 'handlePlayMode'] as const)(
+    '%s_NoProjectName_IsIgnored',
+    method => {
+      (telemetry[method] as (p: unknown) => void)({ state: 'started', type: 'error', message: 'x' });
+
+      expect(telemetry.getTelemetry().isConnected).toBe(false);
+      expect(Object.values(renderer).every(fn => fn.mock.calls.length === 0)).toBe(true);
+    }
+  );
+
+  it('PruneTimer_EditorStopsPinging_DisconnectsWithoutBeingAsked', () => {
+    const listener = vi.fn();
+    telemetry.onTelemetryUpdated(listener);
+    telemetry.handleHeartbeat({ projectName: 'Game' });
+    listener.mockClear();
+
+    vi.advanceTimersByTime(20_000);
+
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ isConnected: false }));
+  });
+
+  it('PruneTimer_EditorVanishesMidCompile_TakesTheCompilingScreenDown', () => {
+    // Unity crashing or being closed mid-compile sends no "finished". Without
+    // this the bar would say COMPILING until something else drew over it.
+    telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+
+    vi.advanceTimersByTime(20_000);
+
+    expect(telemetry.getTelemetry().compilationState).toBe('Idle');
+    expect(renderer.renderIdle).toHaveBeenCalled();
+  });
+
+  it('OnTelemetryUpdated_Unsubscribed_HearsNothingMore', () => {
+    const listener = vi.fn();
+    const unsubscribe = telemetry.onTelemetryUpdated(listener);
+
+    unsubscribe();
+    telemetry.handleHeartbeat({ projectName: 'Game' });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('HandleHeartbeat_PlayModeFlagAbsent_KeepsPlayModeFromTheEvent', () => {
+    // Heartbeats only ever add to what the play-mode event said.
+    telemetry.handlePlayMode({ projectName: 'Game', state: 'entered' });
+
+    telemetry.handleHeartbeat({ projectName: 'Game' });
+
+    expect(telemetry.getTelemetry().playModeStatus).toBe('In Play Mode');
+  });
+
+  it('GetTelemetry_TwoEditorsOneCompiling_ReportsCompiling', () => {
+    telemetry.handleHeartbeat({ projectName: 'A', instanceId: 'a' });
+    telemetry.handleCompile({ projectName: 'B', instanceId: 'b', state: 'started' });
+
+    const state = telemetry.getTelemetry();
+    expect(state.activeProjectName).toBe('2 Unity Instances Connected');
+    expect(state.compilationState).toBe('Compiling');
+  });
+
+  describe('compile, build and bake', () => {
+    it('HandleCompile_WhileBuilding_LeavesTheBuildScreenUp', () => {
+      // A build compiles scripts as part of itself; that must not replace the
+      // build's progress screen with a bare "compiling".
+      telemetry.handleCompile({ projectName: 'Game', state: 'started', type: 'build', progress: 0.4 });
+      telemetry.handleCompile({ projectName: 'Game', state: 'started', type: 'compile' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished', type: 'compile' });
+
+      expect(renderer.renderBuilding).toHaveBeenCalledWith('Game', 0.4);
+      expect(renderer.renderCompilation).not.toHaveBeenCalled();
+      expect(renderer.renderIdle).not.toHaveBeenCalled();
+    });
+
+    it('HandleCompile_BuildFinished_RestoresTheDisplay', () => {
+      telemetry.handleCompile({ projectName: 'Game', state: 'started', type: 'build' });
+
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished', type: 'build' });
+
+      expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityCompilingPriority');
+      expect(renderer.renderIdle).toHaveBeenCalled();
+    });
+
+    it('HandleCompile_Outranked_DrawsNothing', () => {
+      priority.evaluateRequest.mockReturnValue({ shouldRender: false, action: 'DISPLAY', evaluatedPriority: 55 });
+
+      telemetry.handleCompile({ projectName: 'Game', state: 'started', type: 'bake' });
+
+      expect(renderer.renderBaking).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('exceptions', () => {
+    it('HandleConsole_Outranked_DrawsNothing', () => {
+      priority.evaluateRequest.mockReturnValue({ shouldRender: false, action: 'DISPLAY', evaluatedPriority: 60 });
+
+      telemetry.handleConsole({ projectName: 'Game', type: 'exception', message: 'NRE' });
+
+      expect(renderer.renderException).not.toHaveBeenCalled();
+    });
+
+    it('HandleConsole_Exception_StaysForTheConfiguredTimeThenRestores', () => {
+      stored.unity_settings = { showUnityErrors: true, errorDurationSeconds: 3, enablePlayModeDnd: true };
+      telemetry.handleConsole({ projectName: 'Game', type: 'exception', message: 'NRE' });
+
+      vi.advanceTimersByTime(2999);
+      expect(priority.releaseActiveLock).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+
+      expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityBuildFailurePriority');
+      expect(renderer.renderIdle).toHaveBeenCalled();
+    });
+
+    it('HandleConsole_SecondExceptionWhileShowing_RestartsTheClock', () => {
+      stored.unity_settings = { showUnityErrors: true, errorDurationSeconds: 5, enablePlayModeDnd: true };
+      telemetry.handleConsole({ projectName: 'Game', type: 'exception', message: 'first' });
+      vi.advanceTimersByTime(4000);
+
+      telemetry.handleConsole({ projectName: 'Game', type: 'exception', message: 'second' });
+      vi.advanceTimersByTime(4000);
+
+      expect(priority.releaseActiveLock).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1000);
+      expect(priority.releaseActiveLock).toHaveBeenCalledTimes(1);
+    });
+
+    it('HandleConsole_PlainLog_DrawsNothing', () => {
+      telemetry.handleConsole({ projectName: 'Game', type: 'log', message: 'hello' });
+
+      expect(renderer.renderException).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('play mode', () => {
+    it('HandlePlayMode_Outranked_DrawsNothing', () => {
+      priority.evaluateRequest.mockReturnValue({ shouldRender: false, action: 'DISPLAY', evaluatedPriority: 50 });
+
+      telemetry.handlePlayMode({ projectName: 'Game', state: 'entered' });
+
+      expect(renderer.renderPlayMode).not.toHaveBeenCalled();
+    });
+
+    it('HandleCompile_FinishedWhileAnotherEditorPlays_ReturnsToThatPlayMode', () => {
+      // Restoring means "what should be up now", and an editor still in play
+      // mode outranks the idle screen.
+      telemetry.handlePlayMode({ projectName: 'Player', instanceId: 'p', state: 'entered' });
+      renderer.renderPlayMode.mockClear();
+      telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'started' });
+
+      telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'finished' });
+
+      expect(renderer.renderPlayMode).toHaveBeenCalledWith('Player');
+      expect(renderer.renderIdle).not.toHaveBeenCalled();
+    });
+
+    it('HandlePlayMode_DndDisabled_DoesNotTakeTheDisplay', () => {
+      stored.unity_settings = { enablePlayModeDnd: false, showUnityErrors: false };
+
+      telemetry.handlePlayMode({ projectName: 'Game', state: 'entered' });
+
+      expect(renderer.renderPlayMode).not.toHaveBeenCalled();
+      expect(telemetry.getTelemetry().playModeStatus).toBe('In Play Mode');
     });
   });
 });

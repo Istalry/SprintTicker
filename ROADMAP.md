@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.43 statements / 78.55 branches / 87.23 functions / 88.53 lines across 1160
-tests in 64 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**89.42 statements / 81.46 branches / 89.63 functions / 91.32 lines across 1236
+tests in 65 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -894,10 +894,24 @@ problem; each is a specific untested path:
 | Area | Statements | Note |
 | :--- | ---: | :--- |
 | `main/diagnostics` | 98.5% | Was 66%. Closed below. |
-| `main/services` | 79.7% | Depth, not absence — every service has a test file. `priority-preemption-engine.ts` is now 100% (below); `windows-notification-listener-service.ts` (63%) and `system-automation-service.ts` (61%) are what is left. |
+| `main/services` | 94.8% | Was 78%. Closed below; what is left is mostly the default executors that shell out, which tests replace by design. |
 | `main/hardware` | 87% | Was 74%. `input-decoder.ts` is now 94%. |
 | `main/tray` | 92% | Was 69%. Closed below. |
 
+- **`main/services` 79.7% → 94.8%** (2026-09-30). The notification listener
+  (63% → 96%) is now tested against a fake PowerShell process: its status and
+  error lines, notifications shown and suppressed, message text kept out of the
+  log, and the restart backoff -- including that the exit caused by a
+  deliberate stop does not restart it, which mutating the guard showed nothing
+  had pinned. `system-automation-service.ts` (61% → 99%) gained the macOS and
+  Linux paths and a test that its test-environment guard never reaches the
+  machine; Unity telemetry (83% → 98%) the screens that must come down --
+  Unity closing mid-compile, a compile inside a build, the exception timer.
+  **One defect, in the suite rather than the app:** the Unity injector's
+  gitignore setup ran `git config --global` for real even with its path
+  overridden, and on a machine with no `core.excludesfile` -- a CI runner, a
+  fresh checkout -- *wrote* the test's temporary file into the global git
+  config. Git is now an injected `GitRunner`, like the other shell-outs.
 - **`priority-preemption-engine.ts` 83% → 100%** (2026-09-30), and this one
   found a defect too. Releasing a lock replays the next queued alert, then
   restores the context mode "if nothing was replayed" -- tested as the queue

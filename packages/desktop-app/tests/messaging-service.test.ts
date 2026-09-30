@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MessagingIntegrationService } from '../src/main/services/messaging-service';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
@@ -146,5 +146,83 @@ describe('MessagingIntegrationService', () => {
       expect(mockOpProvider.fetchUnreadNotifications).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
+  });
+});
+
+describe('MessagingIntegrationService OpenProject polling behaviour', () => {
+  let stored: Record<string, unknown>;
+  let renderer: DisplayRenderer;
+  let fetchUnread: ReturnType<typeof vi.fn>;
+  let providers: ProviderManager;
+
+  const repo = () => ({
+    getSetting: vi.fn((key: string, defaultValue: unknown) => stored[key] ?? defaultValue),
+    setSetting: vi.fn((key: string, value: unknown) => { stored[key] = value; })
+  }) as unknown as SettingsRepository;
+
+  const shown = () => vi.mocked(renderer.renderNotificationBanner).mock.calls.map(c => c[0].title);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    stored = {};
+    renderer = { renderNotificationBanner: vi.fn() } as unknown as DisplayRenderer;
+    fetchUnread = vi.fn().mockResolvedValue([]);
+    providers = {
+      getProvider: vi.fn().mockReturnValue({ fetchUnreadNotifications: fetchUnread }),
+      getActiveProvider: vi.fn().mockReturnValue({ providerId: 'openproject' })
+    } as unknown as ProviderManager;
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('Poll_SameNotificationStillUnread_IsShownOnce', async () => {
+    // Unread stays unread until the user reads it in OpenProject; every poll
+    // returns it again, and the bar must not announce it every minute.
+    fetchUnread.mockResolvedValue([{ id: '7', actorName: 'Charlie', subject: 'Review' }]);
+    new MessagingIntegrationService(repo(), renderer, providers);
+
+    await vi.advanceTimersByTimeAsync(2000 + 60_000 * 2);
+
+    expect(fetchUnread).toHaveBeenCalledTimes(3);
+    expect(shown()).toEqual(['Charlie']);
+  });
+
+  it('Poll_ServerFails_KeepsPollingAfterwards', async () => {
+    fetchUnread
+      .mockRejectedValueOnce(new Error('503'))
+      .mockResolvedValueOnce([{ id: '8', actorName: 'Dana', subject: 'Done' }]);
+    new MessagingIntegrationService(repo(), renderer, providers);
+
+    await vi.advanceTimersByTimeAsync(2000 + 60_000);
+
+    expect(shown()).toEqual(['Dana']);
+  });
+
+  it('Polling_DisabledInSettings_NeverDialsOpenProject', async () => {
+    stored.messaging_settings = { enableOpenProjectNotifications: false, openProjectPollingIntervalSeconds: 60, notificationTimeoutSeconds: 10 };
+    new MessagingIntegrationService(repo(), renderer, providers);
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+    expect(fetchUnread).not.toHaveBeenCalled();
+  });
+
+  it('SaveSettings_NewInterval_ReplacesTheOldTimerRatherThanAddingOne', async () => {
+    const service = new MessagingIntegrationService(repo(), renderer, providers);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(fetchUnread).toHaveBeenCalledTimes(1);
+
+    service.saveSettings({ enableOpenProjectNotifications: true, openProjectPollingIntervalSeconds: 300, notificationTimeoutSeconds: 10 });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(fetchUnread).toHaveBeenCalledTimes(2);
+
+    // The old 60 s timer would have fired four times in here.
+    await vi.advanceTimersByTimeAsync(4 * 60_000);
+    expect(fetchUnread).toHaveBeenCalledTimes(2);
   });
 });

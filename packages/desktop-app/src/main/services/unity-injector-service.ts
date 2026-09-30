@@ -1,8 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { UnityProjectInjectionResult } from '../../shared/dtos';
+
+/**
+ * Runs `git` with the given arguments and returns its stdout. Throws on a
+ * non-zero exit -- which is also how `git config` answers for an unset key.
+ */
+export type GitRunner = (args: string[]) => string;
+
+const defaultGitRunner: GitRunner = args => execFileSync('git', args, { encoding: 'utf-8' });
 
 /**
  * Service responsible for managing global Gitignore configurations
@@ -11,6 +19,7 @@ import { UnityProjectInjectionResult } from '../../shared/dtos';
 export class UnityInjectorService {
   private readonly _pluginSourceRelativePath: string;
   private readonly _globalGitignorePathOverride?: string;
+  private readonly _runGit: GitRunner;
 
   /**
    * Initializes a new instance of UnityInjectorService.
@@ -23,10 +32,26 @@ export class UnityInjectorService {
    *   this writes to the developer's own home directory, which is how a stale
    *   entry from an earlier run kept an assertion passing after the thing it
    *   asserted on had been renamed.
+   * @param runGit How `git` is run. Injectable for the same reason, and not
+   *   covered by the path override: setup also *writes* `core.excludesfile`
+   *   when none is set. With the real runner, a suite on a machine without that
+   *   setting -- a CI runner, a fresh checkout -- pointed the machine's global
+   *   git config at the test's temporary file, deleted a moment later.
    */
-  constructor(customPluginSourcePath?: string, globalGitignorePath?: string) {
+  constructor(customPluginSourcePath?: string, globalGitignorePath?: string, runGit: GitRunner = defaultGitRunner) {
     this._pluginSourceRelativePath = customPluginSourcePath || this.resolvePluginSourcePath();
     this._globalGitignorePathOverride = globalGitignorePath;
+    this._runGit = runGit;
+  }
+
+  /** The global value of a git setting, or '' when it is unset or git is unavailable. */
+  private readGlobalGitConfig(key: string): string {
+    try {
+      return this._runGit(['config', '--global', key]).trim();
+    } catch {
+      // Unset keys exit non-zero, and so does a missing git; both mean "no value".
+      return '';
+    }
   }
 
   /// <summary>
@@ -71,17 +96,13 @@ export class UnityInjectorService {
         fs.appendFileSync(gitignorePath, formattedAppend, 'utf-8');
       }
 
-      // Configure git global core.excludesfile if not already set
-      try {
-        const currentConfigured = execSync('git config --global core.excludesfile', { encoding: 'utf-8' }).trim();
-        if (!currentConfigured) {
-          execSync(`git config --global core.excludesfile "${gitignorePath.replace(/\\/g, '/')}"`);
-        }
-      } catch {
+      // Point git at the file only if nothing else is configured: a user's own
+      // excludes file is where the entries above were just written.
+      if (!this.readGlobalGitConfig('core.excludesfile')) {
         try {
-          execSync(`git config --global core.excludesfile "${gitignorePath.replace(/\\/g, '/')}"`);
+          this._runGit(['config', '--global', 'core.excludesfile', gitignorePath.replace(/\\/g, '/')]);
         } catch {
-          // git command might fail if git CLI is missing; file was created/updated regardless
+          // git CLI missing: the file was still written, and git can be pointed at it later.
         }
       }
 
@@ -227,16 +248,12 @@ export class UnityInjectorService {
       return this._globalGitignorePathOverride;
     }
 
-    try {
-      const gitConfigPath = execSync('git config --global core.excludesfile', { encoding: 'utf-8' }).trim();
-      if (gitConfigPath) {
-        if (gitConfigPath.startsWith('~')) {
-          return path.join(os.homedir(), gitConfigPath.slice(1));
-        }
-        return path.resolve(gitConfigPath);
+    const gitConfigPath = this.readGlobalGitConfig('core.excludesfile');
+    if (gitConfigPath) {
+      if (gitConfigPath.startsWith('~')) {
+        return path.join(os.homedir(), gitConfigPath.slice(1));
       }
-    } catch {
-      // Fall through to default
+      return path.resolve(gitConfigPath);
     }
     return path.join(os.homedir(), '.gitignore_global');
   }
