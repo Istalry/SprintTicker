@@ -50,7 +50,10 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       driver,
       inputDecoder: decoder,
       renderer,
-      getWindow: () => null
+      getWindow: () => null,
+      // The wrap-up tests below run the real handler; the default saver POSTs
+      // to every Unity Editor open on this machine and saves its scenes.
+      saveUnityScenes: async () => false
     });
   });
 

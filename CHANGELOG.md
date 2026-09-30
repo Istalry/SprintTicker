@@ -212,6 +212,13 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The end-of-day wrap-up takes two presses on the bar again.** Every press
+  reached the app twice, so when the wrap-up window was open without the bar
+  showing its prompt, a single START both said "yes" and confirmed -- running
+  the wrap-up, and the shutdown if it was ticked. Device Diagnostics also
+  listed every press twice.
+- **The test suite no longer saves open Unity scenes.** The wrap-up tests
+  asked every Unity Editor on the machine to save, as the real wrap-up does.
 - **The test suite no longer changes the machine's git configuration.** On a
   machine with no global `core.excludesfile` -- a CI runner, a fresh checkout
   -- running the tests pointed it at a temporary file the tests then deleted.

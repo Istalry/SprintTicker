@@ -291,4 +291,35 @@ describe('Saving provider settings triggers a sync', () => {
       expect(drainCalls).toBe(0);
     });
   });
+
+  describe('when the background sync goes wrong', () => {
+    const stub = () => syncWorker as unknown as Record<string, unknown>;
+    const save = () =>
+      handlerFor(IPCChannel.SET_ACTIVE_PROVIDER)({}, { providerId: 'openproject', opDomain: 'http://x', opApiKey: 'k' });
+
+    it('SetActiveProvider_RevivedWorklogsFailToDrain_LogsItAndStillSyncs', async () => {
+      // Not awaited by the handler, so a rejection here would otherwise be
+      // unhandled -- and an unhandled rejection ends the main process.
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      stub().requeueFailedWorklogs = () => 2;
+      stub().processPendingQueue = async () => { throw new Error('provider down'); };
+
+      await save();
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(errors).toHaveBeenCalledWith(expect.stringContaining('Draining the requeued worklogs failed'), expect.any(Error));
+      expect(syncCalls).toBe(1);
+    });
+
+    it('SetActiveProvider_SyncThrows_LogsItAndBroadcastsNothing', async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      stub().syncTasksAndProjects = async () => { throw new Error('defect'); };
+
+      await save();
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(errors).toHaveBeenCalledWith(expect.stringContaining('threw unexpectedly'), expect.any(Error));
+      expect(sent.some(m => m.channel === IPCChannel.ON_PROJECTS_UPDATED)).toBe(false);
+    });
+  });
 });

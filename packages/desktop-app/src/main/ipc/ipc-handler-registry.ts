@@ -30,6 +30,7 @@ import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
+import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -63,6 +64,8 @@ export interface IPCHandlerRegistryDeps {
   providerManager?: ProviderManager;
   syncWorker?: OfflineSyncWorker;
   updateChecker?: UpdateChecker;
+  /** Asks open Unity Editors to save; defaults to the real HTTP call. */
+  saveUnityScenes?: UnitySceneSaver;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
   webhookServer?: { getStatus(): { listening: boolean; port: number } };
 }
@@ -89,6 +92,7 @@ export class IPCHandlerRegistry {
   private diagnosticExporter: DiagnosticExporter;
   private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
+  private saveUnityScenes: UnitySceneSaver;
 
   constructor(deps: IPCHandlerRegistryDeps) {
     const {
@@ -140,6 +144,7 @@ export class IPCHandlerRegistry {
       webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
     });
     this.systemAutomationService = systemAutomationService || new SystemAutomationService();
+    this.saveUnityScenes = deps.saveUnityScenes ?? createUnitySceneSaver();
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -346,13 +351,6 @@ export class IPCHandlerRegistry {
       }
     });
 
-    this.inputDecoder.registerActionHandler((action, inputKey) => {
-      const window = this.getWindow();
-      if (window && !window.isDestroyed()) {
-        window.webContents.send(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
-      }
-    });
-
     // 4. Device Status & Config IPC Handlers
     ipcMain.handle(IPCChannel.GET_DEVICE_STATUS, async () => {
       return this.driver.getDeviceStatus();
@@ -453,26 +451,8 @@ export class IPCHandlerRegistry {
         this.engine.stopSession('Finalized during End-of-Day Wrap-Up');
       }
 
-      // 1. Issue RPC save scenes request to Unity Editors
-      let savedUnityScenes = false;
-      try {
-        const ports = [8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089];
-        const fetchPromises = ports.map(async (port) => {
-          try {
-            const response = await fetch(`http://localhost:${port}/sprintticker/save-scenes/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              signal: AbortSignal.timeout(1500)
-            });
-            if (response.ok) savedUnityScenes = true;
-          } catch {
-            // Ignore inactive ports
-          }
-        });
-        await Promise.all(fetchPromises);
-      } catch (err) {
-        console.log('[EOD] Unity scene save error:', err);
-      }
+      // 1. Ask open Unity Editors to save their scenes
+      const savedUnityScenes = await this.saveUnityScenes();
 
       // 2. Instruct open code editors (VS Code, Cursor) to save open dirty files
       let savedVSCode = false;
@@ -974,6 +954,10 @@ export class IPCHandlerRegistry {
       this.broadcast(IPCChannel.ON_DEVICE_STATUS_CHANGED, status);
     });
 
+    // Registered once. A second registration here sent every press to the
+    // renderer twice, and the wrap-up modal counts presses: its two-step
+    // confirmation took one START, and ran the wrap-up -- shutdown included,
+    // when ticked -- on a single press.
     this.inputDecoder.registerActionHandler((action: string, inputKey: string) => {
       this.broadcast(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
     });

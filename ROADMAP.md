@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**92.01 statements / 84.81 branches / 90.37 functions / 93.86 lines across 1312
-tests in 67 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**93.12 statements / 86.25 branches / 91.13 functions / 94.75 lines across 1360
+tests in 69 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -896,8 +896,22 @@ problem; each is a specific untested path:
 | `main/diagnostics` | 98.5% | Was 66%. Closed below. |
 | `main/services` | 94.8% | Was 78%. Closed below; what is left is mostly the default executors that shell out, which tests replace by design. |
 | `main/hardware` | 93.7% | Was 74%. Closed below; what is left is mostly `display-renderer` and `animation-player` error paths. |
+| `main/ipc` | 93.7% | Was 82%, branches 64%. Closed below. |
 | `main/tray` | 92% | Was 69%. Closed below. |
 
+- **`main/ipc` 82% → 93.7%** (2026-09-30), branches 64% → 87%, and this one
+  found a defect. The registry subscribed to the decoder's actions twice, and
+  both subscriptions sent `ON_HARDWARE_INPUT_EVENT`, so every press reached
+  the renderer twice. The wrap-up modal counts presses: with the bar not on
+  its prompt, one START armed the confirmation and the duplicate confirmed it,
+  running the wrap-up -- and the shutdown, if ticked. The new tests drive the
+  handlers by channel and payload shape: the wrap-up's partial failures, the
+  shutdown aborted only when pending, lunch splitting and resuming a session,
+  provider secrets stored sealed, the release-page allow-list, the diagnostics
+  export's cancel and failure paths. **One more thing the suite did to the
+  machine:** the wrap-up tests POSTed to ports 8081-8089, which saves the
+  scenes of any Unity Editor open with the plugin. The save is now an
+  injected `UnitySceneSaver`.
 - **`main/hardware` 87% → 93.7%** (2026-09-30). `app-icon-bitmap-processor`
   (48% → 97%) is tested against a fake `nativeImage` whose `toBitmap()` hands
   back BGRA, as Chromium does -- swapping two channels fails four tests, where

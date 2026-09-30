@@ -560,6 +560,9 @@ interfaces, `PascalCase` methods).
   test passes a fake. A path override is not enough: the injector had one and
   still ran `git config --global` for real, *writing* the test's temp file into
   the global config of any machine where `core.excludesfile` was unset.
+  The same goes for localhost: the wrap-up's Unity scene save is an injected
+  `UnitySceneSaver`, because the default POSTs to every Editor open on the
+  machine, and the wrap-up tests used to save the developer's scenes.
 - **If the code checks a result, there is a test where that result is the bad
   one.** Every mock in this suite defaults to success, so a failure branch that
   is never mocked false is never executed by anything, and a dead handler looks
