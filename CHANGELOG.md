@@ -205,6 +205,10 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **Finishing a task from the app plays DONE! once.** Both finish dialogs
+  asked the bar for the scene after the stop had already played it, so it
+  started twice: two uploads of the same file, the second over the one the
+  bar was playing. The desktop confetti is unchanged.
 - **The bar no longer freezes after a few lunch, away or meeting screens.**
   Starting one of those scenes cleared the whole display first, and on
   firmware 1.2.4 clearing it while a picture and an animation are both on it

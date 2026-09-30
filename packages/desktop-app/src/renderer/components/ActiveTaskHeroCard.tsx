@@ -24,13 +24,11 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
 
   const handleFinishOption = (markDone: boolean) => {
     setIsFinishModalOpen(false);
+    // The bar's DONE! is played by `session:complete` itself, once a session
+    // has actually stopped. Asking for it here as well started the scene
+    // twice -- two uploads for one finish.
     if (markDone) {
       triggerDesktopConfetti();
-      if (window.electronAPI?.triggerConfettiBurst) {
-        window.electronAPI.triggerConfettiBurst().catch(err =>
-          console.warn('[Confetti] Hardware trigger warning:', err)
-        );
-      }
     }
     onComplete(undefined, markDone);
   };

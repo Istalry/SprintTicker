@@ -634,13 +634,9 @@ export const ProjectTaskManagerView: React.FC = () => {
           setIsFinishModalOpen(false);
           if (!window.electronAPI) return;
           await window.electronAPI.completeSession(undefined, markDone);
+          // The bar's DONE! comes from `session:complete`; see ActiveTaskHeroCard.
           if (markDone) {
             triggerDesktopConfetti();
-            if (window.electronAPI.triggerConfettiBurst) {
-              window.electronAPI.triggerConfettiBurst().catch(err => 
-                console.warn('[Confetti] Hardware trigger warning:', err)
-              );
-            }
           }
           await fetchTasks(selectedProjectId);
         }} 
