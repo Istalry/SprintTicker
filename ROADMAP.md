@@ -1023,10 +1023,16 @@ already measures.
   The history view also stopped trusting answer order and stopped spinning
   forever on a failed read. Each is pinned by a renderer test that fails on
   the old code.
-- **React 18 -> 19.** No security advisory; doing it for its own sake. It was
-  blocked on the smoke harness above, which now exists. Note that `lucide-react` 0.359 caps
-  its React peer at 18, so this drags a coupled bump with it -- the same shape
-  as the better-sqlite3 / Electron pairing in `CLAUDE.md` §2.
+- [x] **React 18 -> 19** (2026-09-30), with `lucide-react` 0.359 -> 1.48 in the
+  same change, because 0.359 capped its React peer at 18 -- the same shape as
+  the better-sqlite3 / Electron pairing in `CLAUDE.md` §2. No security
+  advisory; done for its own sake once the smoke harness could see a
+  regression. Nothing in the renderer used what React 19 removed, and every
+  icon it imports still exists in lucide 1.x, so the only code change is the
+  literal React version in the lint config. Typecheck, lint, the renderer
+  tests (no React warnings on stderr) and a production build all pass.
+  lucide is 1.48 rather than 1.49 because 1.49 was younger than pnpm's
+  minimum release age; see `CLAUDE.md` §2.
 - **Renderer bundle audit.** Electron 44 ships a much newer Chromium, so several
   `@vitejs/plugin-react` and browserslist assumptions are now conservative.
 

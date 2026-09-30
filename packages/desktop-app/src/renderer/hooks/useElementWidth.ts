@@ -18,8 +18,8 @@ import { useEffect, useRef, useState } from 'react';
  */
 // The return type is inferred rather than annotated on purpose: React 18 and 19
 // disagree about whether `useRef`'s result is a `MutableRefObject` or a
-// `RefObject`, and naming either one here would have to be edited during the
-// React 19 upgrade. Inference is correct under both.
+// `RefObject`, and inference is what let the React 19 upgrade leave this
+// file alone.
 export function useElementWidth<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const [width, setWidth] = useState(0);

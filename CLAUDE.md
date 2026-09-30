@@ -13,7 +13,7 @@ A pnpm workspace with three packages:
 
 | Package | What it is |
 | :--- | :--- |
-| `packages/desktop-app` | Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
+| `packages/desktop-app` | Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
 | `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. |
 | `packages/anim-studio` | The animation scene editor (`pnpm studio`): Vite + plain TypeScript, no React, no Electron. A development tool; nothing in it ships. |
 
@@ -97,6 +97,17 @@ callback is fine. The idioms that came out of fixing its 16 findings:
   `useState` initialiser, not an `else` branch in the effect.
 - A modal that must start clean on every opening mounts its content only when
   open, so `useState` initial values are the reset.
+
+**pnpm refuses versions younger than its minimum release age -- and `pnpm
+add` quietly writes an exception for them.** Adding `lucide-react@^1.49.0`
+the day 1.49.0 shipped did not fail: pnpm appended `minimumReleaseAgeExclude:
+[lucide-react@1.49.0]` to `pnpm-workspace.yaml` and installed it, which is
+the supply-chain policy switched off for that package by a side effect. A
+later install then rejected the lockfile outright. Check
+`git diff pnpm-workspace.yaml` after every `pnpm add`; if the exclusion
+appeared, revert it and ask for the newest version old enough instead (1.48.0
+there). An exclusion is a decision for the user, not something to keep
+because a tool wrote it.
 
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and

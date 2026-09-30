@@ -21,7 +21,7 @@ traps.
 ```
                     ┌─────────────────────────────────────────┐
                     │              RENDERER                   │
-                    │  React 18 + Vite + Tailwind             │
+                    │  React 19 + Vite + Tailwind             │
                     │  9 views, no Node, no Electron          │
                     └────────────────┬────────────────────────┘
                                      │ window.electronAPI

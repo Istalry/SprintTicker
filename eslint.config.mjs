@@ -70,7 +70,7 @@ export default tseslint.config(
     },
     plugins: { react, 'react-hooks': reactHooks },
     settings: {
-      react: { version: '18.2' }
+      react: { version: '19.3' }
     },
     rules: {
       ...react.configs.flat.recommended.rules,

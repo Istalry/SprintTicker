@@ -475,7 +475,7 @@ Windows batch shortcuts for the common commands sit in the repository root:
 ```
 SprintTicker/
 ├── packages/
-│   ├── desktop-app/       # Electron 44 + React 18 + Vite 8 + Vitest 5 + Tailwind + SQLite
+│   ├── desktop-app/       # Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + SQLite
 │   ├── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
 │   └── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
 ├── Animations/            # Our full-screen animations: PNG frames (LFS) + .anim

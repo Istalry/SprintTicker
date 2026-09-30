@@ -47,7 +47,7 @@ const ARCHITECTURE_SVG = `<div class="diagram">
   <g font-family="IBM Plex Mono, monospace" font-size="10.5">
     <rect x="150" y="8" width="360" height="42" rx="3" fill="var(--surface-2)" stroke="var(--border)"/>
     <text x="330" y="26" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">RENDERER</text>
-    <text x="330" y="40" text-anchor="middle" fill="var(--ink-3)">React 18 &#183; 9 views &#183; no Node, no Electron</text>
+    <text x="330" y="40" text-anchor="middle" fill="var(--ink-3)">React 19 &#183; 9 views &#183; no Node, no Electron</text>
 
     <line x1="330" y1="50" x2="330" y2="70" stroke="var(--accent-line)" stroke-width="1.5"/>
     <text x="338" y="64" fill="var(--accent)">window.electronAPI</text>

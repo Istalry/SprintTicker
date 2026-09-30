@@ -296,6 +296,9 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
+- **React 19.** The renderer moved from React 18, and `lucide-react` from
+  0.359 to 1.48 with it, since the old icons capped React at 18. Nothing
+  should look different.
 - **Lunch, Away and the stand-up play our own animations.** Lunch is a
   sandwich stacking itself layer by layer; Away is a steaming coffee; the
   stand-up is three people round a table, speaking in turn under speech
