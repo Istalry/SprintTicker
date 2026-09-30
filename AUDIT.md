@@ -469,8 +469,9 @@ Also in the same file: `app.on('will-quit', async () => {...})` — Electron doe
 > deleted under surviving worklogs. `tasks.project_id` and
 > `worklog_sync_queue.task_id` stay unconstrained by decision -- an archived
 > task outlives its project, and a queued worklog outlives its task until the
-> provider refuses it. The `active_sessions` constraint is deferred; see
-> ROADMAP.
+> provider refuses it. `active_sessions` allows one open session from
+> migration 6 (2026-09-30), which first closes any left open behind the
+> current one and keeps their time as a local worklog.
 
 Original text follows.
 

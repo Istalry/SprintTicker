@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { DatabaseConnection } from '../src/main/db/database-connection';
-import { runMigrations, MIGRATIONS, LATEST_SCHEMA_VERSION, TOMBSTONE_PROJECT_ID } from '../src/main/db/migrations';
+import { runMigrations, MIGRATIONS, LATEST_SCHEMA_VERSION, TOMBSTONE_PROJECT_ID, RECOVERED_SESSION_COMMENT } from '../src/main/db/migrations';
 
 /**
  * The pre-migration schema, exactly as the old `initTables()` produced it.
@@ -313,6 +313,98 @@ describe('Schema Migrations', () => {
         .all()
         .map(r => r.name);
       expect(indexes).toEqual(expect.arrayContaining(['idx_worklogs_task_id', 'idx_worklogs_session_id', 'idx_worklogs_created_at']));
+    });
+  });
+
+  describe('migration 6: at most one open session', () => {
+    /** A version-5 database, as the build before this one leaves it. */
+    function atVersion5(): void {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 5)) migration.up(db);
+      db.pragma('user_version = 5');
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('t1', 'P1', 'A-1', 'Task', 'todo', '2026-01-01T00:00:00.000Z')"
+      ).run();
+    }
+
+    function open(id: string, start: string, extra: { status?: string; taskId?: string; paused?: number; pauseStart?: string } = {}): void {
+      db.prepare(
+        `INSERT INTO active_sessions (id, project_id, task_id, task_key, task_title, start_time_utc, status, total_paused_seconds, last_pause_start_utc)
+         VALUES (?, 'P1', ?, 'K-1', 'Named in the session', ?, ?, ?, ?)`
+      ).run(id, extra.taskId ?? 't1', start, extra.status ?? 'TRACKING', extra.paused ?? 0, extra.pauseStart ?? null);
+    }
+
+    const status = (id: string) =>
+      db.prepare<[string], { status: string }>('SELECT status FROM active_sessions WHERE id = ?').get(id)?.status;
+    const recovered = () =>
+      db
+        .prepare<[string], { session_id: string; duration_seconds: number; created_at_utc: string }>(
+          'SELECT session_id, duration_seconds, created_at_utc FROM worklogs WHERE comment = ?'
+        )
+        .all(RECOVERED_SESSION_COMMENT);
+
+    beforeEach(() => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('Migration006_OlderSessionLeftOpen_IsClosedWhereTheNextBeganAndItsTimeKept', () => {
+      // The newer one is what the app shows and resumes; the older one was
+      // invisible, never stopped, and its time never logged.
+      atVersion5();
+      open('old', '2026-03-01T09:00:00.000Z');
+      open('new', '2026-03-01T10:00:00.000Z');
+
+      runMigrations(db);
+
+      expect(status('old')).toBe('COMPLETED');
+      expect(status('new')).toBe('TRACKING');
+      expect(recovered()).toEqual([{ session_id: 'old', duration_seconds: 3600, created_at_utc: '2026-03-01T10:00:00.000Z' }]);
+    });
+
+    it('Migration006_OlderSessionPaused_CountsThePauseUpToTheNextStart', () => {
+      // 60 minutes open, 10 already paused, and paused again for the last 20.
+      atVersion5();
+      open('old', '2026-03-01T09:00:00.000Z', { status: 'PAUSED', paused: 600, pauseStart: '2026-03-01T09:40:00.000Z' });
+      open('new', '2026-03-01T10:00:00.000Z');
+
+      runMigrations(db);
+
+      expect(recovered()[0].duration_seconds).toBe(1800);
+    });
+
+    it('Migration006_OlderSessionsTaskIsGone_NamesItFromTheSession', () => {
+      // The worklog needs a task row under the foreign key from migration 5.
+      db.pragma('foreign_keys = ON');
+      atVersion5();
+      open('old', '2026-03-01T09:00:00.000Z', { taskId: 'pruned' });
+      open('new', '2026-03-01T10:00:00.000Z');
+
+      runMigrations(db);
+
+      expect(db.prepare("SELECT key, title FROM tasks WHERE id = 'pruned'").get()).toEqual({ key: 'K-1', title: 'Named in the session' });
+      expect(recovered()).toHaveLength(1);
+    });
+
+    it('Migration006_OneOpenSession_IsLeftRunning', () => {
+      atVersion5();
+      open('only', '2026-03-01T09:00:00.000Z');
+
+      runMigrations(db);
+
+      expect(status('only')).toBe('TRACKING');
+      expect(recovered()).toEqual([]);
+    });
+
+    it('Migration006_FromThenOn_ASecondOpenSessionIsRefused', () => {
+      atVersion5();
+      open('first', '2026-03-01T09:00:00.000Z');
+      runMigrations(db);
+
+      expect(() => open('second', '2026-03-01T10:00:00.000Z', { status: 'PAUSED' })).toThrow(/UNIQUE/);
+      db.prepare("UPDATE active_sessions SET status = 'COMPLETED' WHERE id = 'first'").run();
+      expect(() => open('second', '2026-03-01T10:00:00.000Z')).not.toThrow();
     });
   });
 });

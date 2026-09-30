@@ -549,6 +549,10 @@
       stays in your history. The same happens when your provider stops listing a task
       you worked on — reassigned, closed or moved — and if it lists it again, it
       comes back.</p>
+      <p>An entry whose comment starts <strong>&quot;Recovered:&quot;</strong> is a session an earlier version
+      left running behind another one. Its end is where the next session began, the
+      latest it can have run, so check it before copying it to a timesheet; it is not
+      sent to your provider.</p>
       <h4>Task Providers</h4>
       <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
       me, everything open, or your own query (JQL for Jira, a v3 filter array for
@@ -1349,7 +1353,7 @@
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
-      <td align="left">The live session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code></td>
+      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index</td>
       </tr>
       <tr>
       <td align="left"><code>paused_intervals</code></td>
@@ -1384,6 +1388,12 @@
       id gets a <strong>tombstone</strong>: an archived task named from the session that
       logged it, or from its id when that session is gone too. No worklog is
       dropped.</li>
+      <li><code>one-open-session</code> — a partial unique index allows one open session. The
+      engine always meant one, but a crash could leave an older row open, never
+      shown or stopped. Before the index is built, each such row is closed where
+      the next session began, the latest it can have run, and its time written as
+      a local worklog marked as recovered. It is not queued for the provider: the
+      end is inferred, and sending it is the user&#39;s call.</li>
       </ol>
       <p><strong>Tasks with history are archived, never deleted.</strong> The sync prune, deleting a
       project and deleting a task all go through <code>retireTasks</code>, which deletes a task
@@ -1478,7 +1488,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1376 tests across 70 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1381 tests across 70 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

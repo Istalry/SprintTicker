@@ -78,6 +78,11 @@ stays in your history. The same happens when your provider stops listing a task
 you worked on — reassigned, closed or moved — and if it lists it again, it
 comes back.
 
+An entry whose comment starts **"Recovered:"** is a session an earlier version
+left running behind another one. Its end is where the next session began, the
+latest it can have run, so check it before copying it to a timesheet; it is not
+sent to your provider.
+
 ### Task Providers
 
 Credentials, the completion transitions, and which tasks to fetch — assigned to

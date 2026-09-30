@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { createId, IdPrefix } from './id-generator';
 
 /**
  * A single forward-only schema change.
@@ -250,13 +251,108 @@ function m005WorklogTaskForeignKey(db: Database.Database): void {
   `);
 }
 
+/** Comment on the worklog migration 6 writes for a session it had to close. */
+export const RECOVERED_SESSION_COMMENT =
+  'Recovered: this session was never stopped. Closed where the next session began; not sent to the provider.';
+
+interface OpenSessionRow {
+  id: string;
+  project_id: string;
+  task_id: string;
+  task_key: string;
+  task_title: string;
+  start_time_utc: string;
+  status: 'TRACKING' | 'PAUSED';
+  total_paused_seconds: number;
+  last_pause_start_utc: string | null;
+}
+
+/**
+ * Migration 6 allows at most one open session -- `TRACKING` or `PAUSED` -- with
+ * a partial unique index.
+ *
+ * The engine has always meant there to be one: starting a task stops the
+ * current session first, and `getActiveSession` reads only the newest open
+ * row. But nothing enforced it (audit F-25), so a crash or a race between the
+ * two could leave an older row open. That row was invisible from then on --
+ * never shown, never stopped, its time never logged.
+ *
+ * The index would refuse to build over such rows, which is why it waited for
+ * a repair: every open session but the newest -- the one the app already
+ * shows -- is closed where the next session began, the latest it can have
+ * run, and its time is written as a local worklog saying so. Not queued for
+ * the provider: the end is inferred, and sending an inferred duration to a
+ * timesheet is a decision for the user, who can see it in history.
+ *
+ * The SQL that names a missing task repeats `TaskRepository.ensureTaskExists`
+ * on purpose. A migration is frozen once shipped, so it must not call code
+ * that may change after it.
+ */
+function m006OneOpenSession(db: Database.Database): void {
+  const open = db
+    .prepare<[], OpenSessionRow>(
+      `SELECT id, project_id, task_id, task_key, task_title, start_time_utc, status,
+              total_paused_seconds, last_pause_start_utc
+       FROM active_sessions
+       WHERE status IN ('TRACKING', 'PAUSED')
+       ORDER BY start_time_utc DESC, rowid DESC`
+    )
+    .all();
+
+  const nextStart = db.prepare<[string, string], { start_time_utc: string }>(
+    `SELECT start_time_utc FROM active_sessions
+     WHERE start_time_utc >= ? AND id <> ?
+     ORDER BY start_time_utc ASC LIMIT 1`
+  );
+  const close = db.prepare(
+    "UPDATE active_sessions SET status = 'COMPLETED', total_paused_seconds = ?, last_pause_start_utc = NULL WHERE id = ?"
+  );
+  const ensureTask = db.prepare(`
+    INSERT INTO tasks (id, project_id, key, title, status, created_at_utc, archived_at_utc)
+    VALUES (?, ?, ?, ?, 'done', ?, ?)
+    ON CONFLICT(id) DO NOTHING
+  `);
+  const log = db.prepare(`
+    INSERT INTO worklogs (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const now = new Date().toISOString();
+  // The first row is the newest, the one getActiveSession returns: it stays open.
+  for (const session of open.slice(1)) {
+    const endIso = nextStart.get(session.start_time_utc, session.id)!.start_time_utc;
+    const end = Date.parse(endIso);
+    const openPause =
+      session.status === 'PAUSED' && session.last_pause_start_utc
+        ? Math.max(0, Math.floor((end - Date.parse(session.last_pause_start_utc)) / 1000))
+        : 0;
+    const paused = session.total_paused_seconds + openPause;
+    const seconds = Math.max(0, Math.floor((end - Date.parse(session.start_time_utc)) / 1000) - paused);
+
+    close.run(paused, session.id);
+    ensureTask.run(session.task_id, session.project_id, session.task_key, session.task_title, now, now);
+    log.run(createId(IdPrefix.WORKLOG), session.id, session.task_id, seconds, session.start_time_utc, RECOVERED_SESSION_COMMENT, endIso);
+  }
+
+  if (open.length > 1) {
+    console.warn(`[Migrations] Closed ${open.length - 1} session(s) left open behind the current one; their time is in history.`);
+  }
+
+  db.exec(`
+    CREATE UNIQUE INDEX idx_active_sessions_one_open
+      ON active_sessions((1))
+      WHERE status IN ('TRACKING', 'PAUSED');
+  `);
+}
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
   { version: 2, name: 'sync-queue-claim-and-backoff', up: m002RebuildSyncQueue },
   { version: 3, name: 'query-indexes', up: db => db.exec(M003_INDEXES) },
   { version: 4, name: 'task-priority-rank', up: db => db.exec(M004_TASK_PRIORITY) },
-  { version: 5, name: 'worklog-task-foreign-key', up: m005WorklogTaskForeignKey }
+  { version: 5, name: 'worklog-task-foreign-key', up: m005WorklogTaskForeignKey },
+  { version: 6, name: 'one-open-session', up: m006OneOpenSession }
 ];
 
 /** Schema version a fully migrated database reports. */

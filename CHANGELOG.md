@@ -214,6 +214,12 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **A session left running behind another one is recovered.** If the app ever
+  stopped with two sessions open, only the newer one showed; the older one was
+  never stopped and its time never logged. Upgrading closes it where the next
+  session began and puts its time in Work History, marked as recovered and not
+  sent to your provider. From then on the database refuses a second open
+  session.
 - **Work History names your tasks.** Each entry showed the provider's internal
   id -- Jira's `10001` rather than `SCRUM-2` -- and the daily summary guessed a
   key from the id and used the worklog's comment, usually "Completed session

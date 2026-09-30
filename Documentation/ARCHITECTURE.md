@@ -329,7 +329,7 @@ testing runs against your actual worklogs.
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id` |
 | `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs |
-| `active_sessions` | The live session — `TRACKING` / `PAUSED` / `COMPLETED` |
+| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
 | `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error` |
@@ -351,6 +351,12 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
    id gets a **tombstone**: an archived task named from the session that
    logged it, or from its id when that session is gone too. No worklog is
    dropped.
+6. `one-open-session` — a partial unique index allows one open session. The
+   engine always meant one, but a crash could leave an older row open, never
+   shown or stopped. Before the index is built, each such row is closed where
+   the next session began, the latest it can have run, and its time written as
+   a local worklog marked as recovered. It is not queued for the provider: the
+   end is inferred, and sending it is the user's call.
 
 **Tasks with history are archived, never deleted.** The sync prune, deleting a
 project and deleting a task all go through `retireTasks`, which deletes a task
@@ -460,7 +466,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1376 tests across 70 files, in two projects: `main` in Node for
+Vitest, 1381 tests across 70 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

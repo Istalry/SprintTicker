@@ -875,7 +875,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.11 statements / 86.08 branches / 91.16 functions / 94.76 lines across 1376
+**93.14 statements / 86.11 branches / 91.18 functions / 94.79 lines across 1381
 tests in 70 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
@@ -1127,7 +1127,7 @@ nobody got to.
 | F-12 residue — no `fetch` timeouts in the provider layer | Closed | `provider-http.ts` gives every provider request a timeout, so a hung OpenProject can no longer stall a sync pass indefinitely. Saving credentials still does not await its sync, which is now a choice about UI responsiveness rather than a hedge against an unbounded request. |
 | F-12 residue — `getTasks` hardcodes `assignee = "me"` | Closed | Now the `op_task_scope` setting: assigned to me (the default, unchanged behaviour), everything open, or a custom v3 filter array. The scope vocabulary is shared so Jira reuses it rather than inventing a second one. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
-| Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
+| Partial unique index on `active_sessions` | Done | Migration 6 (2026-09-30). The repair path: every open session behind the newest is closed where the next one began, and its time kept as a local worklog marked as recovered, not sent to the provider. |
 | Foreign keys on `worklogs` → `tasks` | Done | Migration 5 (2026-09-30). The orphan decision: an archived tombstone per orphaned task, named from the session that logged it, and from then on a task with worklogs is archived rather than deleted. `tasks.project_id` and `worklog_sync_queue.task_id` stay unconstrained on purpose: an archived task outlives its project, and a queued worklog outlives its task until the provider answers 404. |
 | Sync idempotency | Documented limitation | `reclaimStaleSyncItems` can re-POST if the app died after OpenProject accepted but before the row was marked `SYNCED`. The v3 API has no idempotency key; the sync id is embedded in the comment so duplicates are greppable. |
 | Task description field | Feature, not a fix | `input-decoder` renders the task **key** where a non-existent `TaskDTO.description` was read. A real description field is a schema change plus provider mapping. |
