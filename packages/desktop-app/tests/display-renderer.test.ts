@@ -6,7 +6,7 @@ import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../src/shared/render-constants';
 import {
-  FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
+  FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
 } from '../src/shared/pixel-bitmaps';
 import { measureText } from '../src/shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT } from '../src/shared/fonts/pixel-font';
@@ -716,20 +716,52 @@ describe('DisplayRenderer Unit Tests', () => {
       ['PROJECT', FOLDER_16X16_BITMAP],
       ['TASK', TASK_16X16_BITMAP]
     ] as const)('RenderTaskSelection_%s_DrawsItsOwnIcon', (stage, expected) => {
-      renderer.renderTaskSelection(stage, 'Alpha', 'ALPHA-1', { index: 0, count: 3 });
+      renderer.renderTaskSelection(stage, 'Alpha', { description: 'ALPHA-1', position: { index: 0, count: 3 } });
 
       expect(pixels().slice(0, 16).map(row => row.slice(0, 16))).toEqual(expected.map(row => [...row]));
     });
 
+    it.each([
+      ['todo', TASK_16X16_BITMAP],
+      ['in_progress', TASK_IN_PROGRESS_16X16_BITMAP],
+      ['done', TASK_DONE_16X16_BITMAP]
+    ] as const)('RenderTaskSelection_TaskThatIs_%s_ShowsItsStatusCard', (status, expected) => {
+      renderer.renderTaskSelection('TASK', 'Alpha', { description: 'A-1', position: { index: 0, count: 2 }, status });
+
+      expect(pixels().slice(0, 16).map(row => row.slice(0, 16))).toEqual(expected.map(row => [...row]));
+    });
+
+    it('RenderTaskSelection_StatusCards_AreAllDifferent', () => {
+      const cards = [TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP].map(b => JSON.stringify(b));
+      expect(new Set(cards).size).toBe(3);
+    });
+
+    it.each([
+      ['done', '#9CA3AF'],
+      ['todo', '#FFFFFF'],
+      ['in_progress', '#FFFFFF']
+    ] as const)('RenderTaskSelection_TaskThatIs_%s_DrawsTheNameIn_%s', (status, color) => {
+      const calls = textCalls();
+      renderer.renderTaskSelection('TASK', 'Alpha', { description: 'A-1', position: { index: 0, count: 2 }, status });
+
+      expect(calls.find(([text]) => text === 'Alpha')?.[3]).toBe(color);
+    });
+
+    it('RenderTaskSelection_Project_IgnoresAStatus', () => {
+      renderer.renderTaskSelection('PROJECT', 'Alpha', { position: { index: 0, count: 2 }, status: 'done' });
+
+      expect(pixels().slice(0, 16).map(row => row.slice(0, 16))).toEqual(FOLDER_16X16_BITMAP.map(row => [...row]));
+    });
+
     it('RenderTaskSelection_FirstOfSeveral_PutsTheThumbAtTheLeft', () => {
-      renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, { index: 0, count: 3 });
+      renderer.renderTaskSelection('PROJECT', 'Alpha', { position: { index: 0, count: 3 } });
 
       expect(scrollBar().thumbStart).toBe(17);
       expect(scrollBar().thumbEnd).toBeLessThan(71);
     });
 
     it('RenderTaskSelection_LastOfSeveral_PutsTheThumbAtTheRight', () => {
-      renderer.renderTaskSelection('PROJECT', 'Gamma', undefined, { index: 2, count: 3 });
+      renderer.renderTaskSelection('PROJECT', 'Gamma', { position: { index: 2, count: 3 } });
 
       expect(scrollBar().thumbEnd).toBe(71);
       expect(scrollBar().thumbStart).toBeGreaterThan(17);
@@ -738,7 +770,7 @@ describe('DisplayRenderer Unit Tests', () => {
     it('RenderTaskSelection_ScrollingDown_MovesTheThumbRight', () => {
       const starts: number[] = [];
       for (let index = 0; index < 12; index++) {
-        renderer.renderTaskSelection('TASK', 'Task', 'K-1', { index, count: 12 });
+        renderer.renderTaskSelection('TASK', 'Task', { description: 'K-1', position: { index, count: 12 } });
         starts.push(scrollBar().thumbStart);
       }
 
@@ -748,14 +780,14 @@ describe('DisplayRenderer Unit Tests', () => {
     it('RenderTaskSelection_LongList_KeepsTheThumbVisible', () => {
       // 55px over 200 items rounds to nothing; a one-pixel thumb reads as a
       // stray LED.
-      renderer.renderTaskSelection('TASK', 'Task', 'K-1', { index: 100, count: 200 });
+      renderer.renderTaskSelection('TASK', 'Task', { description: 'K-1', position: { index: 100, count: 200 } });
 
       const { thumbStart, thumbEnd } = scrollBar();
       expect(thumbEnd - thumbStart + 1).toBeGreaterThanOrEqual(3);
     });
 
     it('RenderTaskSelection_OnlyItem_HasNoScrollBar', () => {
-      renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, { index: 0, count: 1 });
+      renderer.renderTaskSelection('PROJECT', 'Alpha', { position: { index: 0, count: 1 } });
 
       expect(scrollBar()).toEqual({ thumbStart: -1, thumbEnd: -1, trackPixels: 0 });
     });
@@ -770,14 +802,14 @@ describe('DisplayRenderer Unit Tests', () => {
 
     it('RenderTaskSelection_Position_CountsFromOne', () => {
       const calls = textCalls();
-      renderer.renderTaskSelection('TASK', 'Write it', 'ALPHA-3', { index: 2, count: 12 });
+      renderer.renderTaskSelection('TASK', 'Write it', { description: 'ALPHA-3', position: { index: 2, count: 12 } });
 
       expect(calls.some(([text]) => text === '3/12')).toBe(true);
     });
 
     it('RenderTaskSelection_Position_EndsAtTheRightEdge', () => {
       const calls = textCalls();
-      renderer.renderTaskSelection('TASK', 'Write it', 'ALPHA-3', { index: 9, count: 12 });
+      renderer.renderTaskSelection('TASK', 'Write it', { description: 'ALPHA-3', position: { index: 9, count: 12 } });
 
       const position = calls.find(([text]) => text === '10/12');
       expect((position?.[1] as number) + measureText('10/12', ROW1_FONT)).toBe(72);
@@ -786,7 +818,7 @@ describe('DisplayRenderer Unit Tests', () => {
     it('RenderTaskSelection_FourDigitKeyAtTheEndOfALongList_ShowsTheWholeKey', () => {
       // With arrows beside the number, SPR-1428 was cut to "SPR-...".
       const calls = textCalls();
-      renderer.renderTaskSelection('TASK', 'Write the tests', 'SPR-1428', { index: 11, count: 12 });
+      renderer.renderTaskSelection('TASK', 'Write the tests', { description: 'SPR-1428', position: { index: 11, count: 12 } });
 
       const key = calls.find(([text]) => text === 'SPR-1428');
       expect(key?.[4] as number).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW1_FONT));
@@ -794,7 +826,7 @@ describe('DisplayRenderer Unit Tests', () => {
 
     it('RenderTaskSelection_LongKey_StopsShortOfTheNumber', () => {
       const calls = textCalls();
-      renderer.renderTaskSelection('TASK', 'Write it', 'VERYLONGPROJECT-12345', { index: 4, count: 12 });
+      renderer.renderTaskSelection('TASK', 'Write it', { description: 'VERYLONGPROJECT-12345', position: { index: 4, count: 12 } });
 
       const label = calls.find(([text]) => text === 'VERYLONGPROJECT-12345');
       const position = calls.find(([text]) => text === '5/12');
@@ -803,7 +835,7 @@ describe('DisplayRenderer Unit Tests', () => {
 
     it('RenderTaskSelection_ProjectStep_SaysSoOnRowOne', () => {
       const calls = textCalls();
-      renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, { index: 0, count: 2 });
+      renderer.renderTaskSelection('PROJECT', 'Alpha', { position: { index: 0, count: 2 } });
 
       expect(calls.some(([text, , , , , font]) => text === 'Project' && font === ROW1_FONT)).toBe(true);
     });
@@ -814,7 +846,7 @@ describe('DisplayRenderer Unit Tests', () => {
       ['EmptyList', { index: 0, count: 0 }],
       ['FractionalIndex', { index: 0.5, count: 3 }]
     ])('RenderTaskSelection_%s_ThrowsArgumentException', (_case, position) => {
-      expect(() => renderer.renderTaskSelection('PROJECT', 'Alpha', undefined, position)).toThrow(ArgumentException);
+      expect(() => renderer.renderTaskSelection('PROJECT', 'Alpha', { position: position })).toThrow(ArgumentException);
     });
   });
 });

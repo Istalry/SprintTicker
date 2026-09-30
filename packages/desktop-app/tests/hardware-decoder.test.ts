@@ -96,7 +96,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     it('HandleHardwareInput_StopFromThePausedMenu_LeavesTheTaskOpen', () => {
       // The other half of the contract, and the reason the flag exists: STOP
       // logs the time and the task stays on the board.
-      decoder.handleHardwareInput({ type: 'press', key: 'down' } as never);
+      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
       expect(renderer.getPausedSelection()).toBe('STOP');
 
       decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
@@ -378,20 +378,59 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     }
   });
 
-  it('HandleHardwareInput_TaskPaused_WheelScrollTogglesStopFinishSelection', () => {
-    // Arrange: Start task and pause it
-    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-    decoder.setRenderer(renderer);
-    engine.pauseSession();
+  describe('paused STOP/FINISH choice', () => {
+    const turn = (key: string): string =>
+      decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
 
-    expect(renderer.getPausedSelection()).toBe('FINISH');
+    beforeEach(() => {
+      engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
+      decoder.setRenderer(renderer);
+      engine.pauseSession();
+    });
 
-    // Act: Scroll wheel
-    const action = decoder.handleHardwareInput({ key: 'down', type: 'press', timestamp: new Date().toISOString() });
+    it('HandleHardwareInput_TaskPaused_StartsOnFinish', () => {
+      expect(renderer.getPausedSelection()).toBe('FINISH');
+    });
 
-    // Assert
-    expect(action).toBe('TOGGLE_PAUSED_SELECTION');
-    expect(renderer.getPausedSelection()).toBe('STOP');
+    it('HandleHardwareInput_TaskPaused_TurningLeftPicksStop', () => {
+      const action = turn('rotate_left');
+
+      expect(action).toBe('MOVE_PAUSED_SELECTION');
+      expect(renderer.getPausedSelection()).toBe('STOP');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningRightPastFinishStaysOnFinish', () => {
+      // FINISH is the right-hand end. A toggle used to flip back to STOP.
+      turn('rotate_right');
+      turn('rotate_right');
+      turn('down');
+
+      expect(renderer.getPausedSelection()).toBe('FINISH');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningLeftPastStopStaysOnStop', () => {
+      turn('rotate_left');
+      turn('up');
+      turn('rotate_left');
+
+      expect(renderer.getPausedSelection()).toBe('STOP');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningBackAndForthFollowsTheWheel', () => {
+      turn('rotate_left');
+      turn('rotate_right');
+
+      expect(renderer.getPausedSelection()).toBe('FINISH');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningAgainstAnEnd_DoesNotRedraw', () => {
+      // Each redraw is an upload and a draw; turning against the end is free.
+      const redraws = vi.spyOn(renderer, 'renderActiveSession');
+      turn('rotate_right');
+      turn('rotate_right');
+
+      expect(redraws).not.toHaveBeenCalled();
+    });
   });
 
   it('HandleHardwareInput_TaskPaused_WheelClickValidatesSelectionAndStopsTask', () => {
@@ -652,8 +691,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
       taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
       const rendered: Array<[string, string, string | undefined]> = [];
-      renderer.renderTaskSelection = ((stage: string, label: string, sub?: string) => {
-        rendered.push([stage, label, sub]);
+      renderer.renderTaskSelection = ((stage: string, label: string, options?: { description?: string }) => {
+        rendered.push([stage, label, options?.description]);
       }) as never;
       openPicker();
 
@@ -704,8 +743,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
       beforeEach(() => {
         positions = [];
-        renderer.renderTaskSelection = ((stage: string, label: string, _sub?: string, position?: Position) => {
-          positions.push([stage, label, position]);
+        renderer.renderTaskSelection = ((stage: string, label: string, options?: { position?: Position }) => {
+          positions.push([stage, label, options?.position]);
         }) as never;
       });
 
@@ -738,6 +777,38 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
         const taskPositions = positions.filter(([stage]) => stage === 'TASK').map(([, , position]) => position);
         expect(taskPositions).toEqual([{ index: 0, count: 2 }, { index: 1, count: 2 }]);
+      });
+
+      it('HandleHardwareInput_DescendingIntoAProject_ListsInProgressThenTodoThenDone', () => {
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Finished', status: 'done' });
+        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Waiting', status: 'todo' });
+        taskRepo.saveTask({ id: 'T3', projectId: 'P1', key: 'A-3', title: 'Under way', status: 'in_progress' });
+        const shown: Array<[string, string | undefined]> = [];
+        renderer.renderTaskSelection = ((stage: string, label: string, options?: { status?: string }) => {
+          if (stage === 'TASK') shown.push([label, options?.status]);
+        }) as never;
+        openPicker();
+
+        press('ok');
+        press('rotate_right');
+        press('rotate_right');
+
+        expect(shown).toEqual([['Under way', 'in_progress'], ['Waiting', 'todo'], ['Finished', 'done']]);
+      });
+
+      it('HandleHardwareInput_ConfirmingAfterSorting_StartsTheTaskShown', () => {
+        // The index must refer to the sorted list, or the click starts the
+        // task that used to be in that place.
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Finished', status: 'done' });
+        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Under way', status: 'in_progress' });
+        openPicker();
+
+        press('ok');
+        press('ok');
+
+        expect(engine.getCurrentSession()?.taskId).toBe('T2');
       });
 
       it('HandleHardwareInput_ProjectWithNoTasks_ShowsNoPosition', () => {

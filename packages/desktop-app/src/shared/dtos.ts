@@ -349,7 +349,7 @@ export type BitmapIconId =
   | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows'
   | 'bell' | 'openproject' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
   | 'hammer' | 'bulb' | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
-  | 'folder' | 'task';
+  | 'folder' | 'task' | 'task_in_progress' | 'task_done';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 

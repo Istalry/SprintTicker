@@ -1,7 +1,8 @@
 import { BusyBarDriver, HardwareEvent } from './busybar-driver';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { HardwareBindingConfig } from '../../shared/dtos';
+import { HardwareBindingConfig, TaskDTO } from '../../shared/dtos';
+import { orderTasksForSelection } from '../../shared/task-order';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
 
@@ -40,7 +41,7 @@ export class InputDecoder {
   }
   private _selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
   private _projectsList: { id: string, name: string }[] = [];
-  private _tasksList: { id: string, title: string, description: string }[] = [];
+  private _tasksList: { id: string, title: string, description: string, status?: TaskDTO['status'] }[] = [];
   private _selectedProjectIndex: number = 0;
   private _selectedTaskIndex: number = 0;
   private _eodConfirmStep: number = 0;
@@ -257,10 +258,13 @@ export class InputDecoder {
             // TaskDTO carries no description; `t.description` was always
             // undefined, so every row read "No description". The key is real
             // data and identifies the task. A description field is Phase 2.
-            this._tasksList = this._engine.getTasksForProject(proj.id).map(t => ({
+            // In progress, then to do, then done -- see `orderTasksForSelection`.
+            // A long list used to come in whatever order the store returned.
+            this._tasksList = orderTasksForSelection(this._engine.getTasksForProject(proj.id)).map(t => ({
                id: t.id,
                title: t.title,
-               description: t.key
+               description: t.key,
+               status: t.status
             }));
           }
           if (this._tasksList.length === 0) {
@@ -292,20 +296,16 @@ export class InputDecoder {
     const activeSession = this._engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
 
-    // Interactive Paused State Controls: Wheel scroll toggles STOP/FINISH, wheel click validates choice
+    // Interactive Paused State Controls: the wheel moves between STOP (left)
+    // and FINISH (right) and stops at either end; a click validates the choice.
     if (isPaused && this._renderer) {
-      const isWheelScroll =
-        normalizedKey === 'up' ||
-        normalizedKey === 'down' ||
-        normalizedKey === 'rotate_left' ||
-        normalizedKey === 'rotate_right' ||
-        event.type === 'rotate_left' ||
-        event.type === 'rotate_right';
+      const isLeft = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
+      const isRight = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
 
-      if (isWheelScroll) {
-        this._renderer.togglePausedSelection();
-        this.notifyActionHandlers('TOGGLE_PAUSED_SELECTION', normalizedKey);
-        return 'TOGGLE_PAUSED_SELECTION';
+      if (isLeft || isRight) {
+        this._renderer.selectPausedChoice(isLeft ? 'STOP' : 'FINISH');
+        this.notifyActionHandlers('MOVE_PAUSED_SELECTION', normalizedKey);
+        return 'MOVE_PAUSED_SELECTION';
       }
 
       const isWheelClick = (normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type);
@@ -440,15 +440,17 @@ export class InputDecoder {
     if (!this._renderer) return;
     if (this._selectionStage === 'PROJECT') {
       const proj = this._projectsList[this._selectedProjectIndex];
-      this._renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects', undefined, proj
-        ? { index: this._selectedProjectIndex, count: this._projectsList.length }
-        : undefined);
+      this._renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects', {
+        position: proj ? { index: this._selectedProjectIndex, count: this._projectsList.length } : undefined
+      });
       return;
     }
     const task = this._tasksList[this._selectedTaskIndex];
     const isReal = task !== undefined && task.id !== NO_TASKS_ID;
-    this._renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', task?.description, isReal
-      ? { index: this._selectedTaskIndex, count: this._tasksList.length }
-      : undefined);
+    this._renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', {
+      description: task?.description,
+      position: isReal ? { index: this._selectedTaskIndex, count: this._tasksList.length } : undefined,
+      status: isReal ? task.status : undefined
+    });
   }
 }

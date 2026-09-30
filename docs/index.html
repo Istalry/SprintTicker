@@ -740,8 +740,8 @@
       with a quarter filled while a task runs, amber with blinking pause bars while
       it is paused, dim grey when nothing runs (the screen then reads <strong>Ready / No
       task running</strong>). While paused, row 0 shows the task key and its time, and row
-      1 offers <strong>STOP</strong> and <strong>FINISH</strong> side by side; turn the wheel to choose, click
-      to confirm. STOP logs the time and leaves the task open; FINISH also marks it
+      1 offers <strong>STOP</strong> and <strong>FINISH</strong> side by side; turn the wheel left for STOP,
+      right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open; FINISH also marks it
       done.</p>
       <p>Unity screens all read the same way: what is happening on row 0 (with the
       percentage for a build or a lightmap bake), the project on row 1, and for a
@@ -785,7 +785,10 @@
       <p>All of these are rebindable.</p>
       <p><strong>The task picker</strong> is two stages: turn to choose a project, click to descend
       into it, turn to choose a task, click to start. <strong>BACK</strong> leaves at any point.
-      A blue folder means you are choosing a project, a checklist a task. The second
+      A blue folder means you are choosing a project, a checklist a task. The
+      checklist also gives the task&#39;s status: grey for to do, amber for in progress,
+      green for done, and a done task&#39;s name is dimmed. Tasks come in that order of
+      use: in progress first, then to do, then done. The second
       row shows the task key, and on its right where you are in the list -- <code>3/12</code> --
       with a thin line along the bottom whose bright segment slides from left to
       right as you scroll: at the far left there is nothing before, at the far right
@@ -1430,7 +1433,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1011 tests across 56 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1032 tests across 57 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

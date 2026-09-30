@@ -1,7 +1,7 @@
 import { BusyBarDriver } from './busybar-driver';
 import { createHash } from 'crypto';
 import * as os from 'os';
-import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
+import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
@@ -42,6 +42,25 @@ export interface SelectionPosition {
   index: number;
   count: number;
 }
+
+/** What the task selector shows beside the item's name. */
+export interface TaskSelectionOptions {
+  /** Row 1's text for a task: its key. Ignored for a project, which reads "Project". */
+  description?: string;
+  /** Omitted for a list with nothing real in it ("No Tasks"): no number, no bar. */
+  position?: SelectionPosition;
+  /** A task's status, shown by its card; a project has none. */
+  status?: TaskDTO['status'];
+}
+
+/** The card each task status is drawn with. */
+const TASK_STATUS_ICONS: Readonly<Record<TaskDTO['status'], BitmapIconId>> = {
+  todo: 'task',
+  in_progress: 'task_in_progress',
+  done: 'task_done'
+};
+/** A finished task's name is dimmed, so the eye skips it. */
+const SELECTION_DONE_TITLE_COLOR = '#9CA3AF';
 
 /** Behaviour switches for {@link DisplayRenderer.requestRender}. */
 export interface RequestRenderOptions {
@@ -329,10 +348,19 @@ export class DisplayRenderer {
   private pausedSelection: 'STOP' | 'FINISH' = 'FINISH';
 
   /// <summary>
-  /// Toggles interactive paused task option selection between STOP and FINISH.
+  /// Moves the paused screen's selection to STOP or FINISH.
   /// </summary>
-  public togglePausedSelection(): 'STOP' | 'FINISH' {
-    this.pausedSelection = this.pausedSelection === 'STOP' ? 'FINISH' : 'STOP';
+  /**
+   * Sets rather than toggles: STOP is on the left and FINISH on the right, so
+   * turning the wheel left picks STOP and right picks FINISH, and a further
+   * turn the same way stays put. A toggle flipped on every notch, which let
+   * one notch too many land on the other choice just before the click.
+   *
+   * Redraws only on a change, so turning against an end costs nothing.
+   */
+  public selectPausedChoice(choice: 'STOP' | 'FINISH'): 'STOP' | 'FINISH' {
+    if (choice === this.pausedSelection) return choice;
+    this.pausedSelection = choice;
     if (this.lastSessionCache && this.lastSessionCache.status === 'PAUSED') {
       this.renderActiveSession(this.lastSessionCache);
     }
@@ -1030,16 +1058,17 @@ export class DisplayRenderer {
    * would be cut -- the fault the paused screen had just been rid of. Without
    * them it takes 54.
    *
-   * @param position Where `itemName` sits in its list. Omitted for a list with
-   *   nothing real in it ("No Tasks"), which gets neither number nor bar.
+   * A task's card shows its status -- grey to do, amber in progress, green
+   * done -- and a finished task's name is dimmed.
+   *
    * @throws ArgumentException for a position outside its list.
    */
   public renderTaskSelection(
     stage: 'PROJECT' | 'TASK',
     itemName: string,
-    description?: string,
-    position?: SelectionPosition
+    options: TaskSelectionOptions = {}
   ): DisplayPayload {
+    const { description, position, status } = options;
     if (position) {
       const { index, count } = position;
       if (!Number.isInteger(count) || count < 1) {
@@ -1052,10 +1081,11 @@ export class DisplayRenderer {
 
     return this.requestRender('menuPriority', () => {
       const isProject = stage === 'PROJECT';
-      const iconId: BitmapIconId = isProject ? 'folder' : 'task';
+      const iconId: BitmapIconId = isProject ? 'folder' : TASK_STATUS_ICONS[status ?? 'todo'] ?? 'task';
       const label = isProject ? 'Project' : description || 'Task';
+      const titleColor = !isProject && status === 'done' ? SELECTION_DONE_TITLE_COLOR : '#FFFFFF';
 
-      this.paintIconAndTwoRows(getBitmapById(iconId), itemName, '', '#FFFFFF', SELECTION_LABEL_COLOR);
+      this.paintIconAndTwoRows(getBitmapById(iconId), itemName, '', titleColor, SELECTION_LABEL_COLOR);
       const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
       const labelWidth = position
         ? this.paintSelectionPosition(position) - layout.TEXT_X - SELECTION_LABEL_GAP_PX

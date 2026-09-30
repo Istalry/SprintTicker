@@ -218,8 +218,8 @@ The session screen's icon is a stopwatch whose colour says where you are: green
 with a quarter filled while a task runs, amber with blinking pause bars while
 it is paused, dim grey when nothing runs (the screen then reads **Ready / No
 task running**). While paused, row 0 shows the task key and its time, and row
-1 offers **STOP** and **FINISH** side by side; turn the wheel to choose, click
-to confirm. STOP logs the time and leaves the task open; FINISH also marks it
+1 offers **STOP** and **FINISH** side by side; turn the wheel left for STOP,
+right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open; FINISH also marks it
 done.
 
 Unity screens all read the same way: what is happening on row 0 (with the
@@ -248,7 +248,10 @@ All of these are rebindable.
 
 **The task picker** is two stages: turn to choose a project, click to descend
 into it, turn to choose a task, click to start. **BACK** leaves at any point.
-A blue folder means you are choosing a project, a checklist a task. The second
+A blue folder means you are choosing a project, a checklist a task. The
+checklist also gives the task's status: grey for to do, amber for in progress,
+green for done, and a done task's name is dimmed. Tasks come in that order of
+use: in progress first, then to do, then done. The second
 row shows the task key, and on its right where you are in the list -- `3/12` --
 with a thin line along the bottom whose bright segment slides from left to
 right as you scroll: at the far left there is nothing before, at the far right

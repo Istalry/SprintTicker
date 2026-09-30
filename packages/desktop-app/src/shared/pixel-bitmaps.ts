@@ -479,6 +479,9 @@ export const STOPWATCH_IDLE_16X16_BITMAP: (string | null)[][] = [
 /**
  * The task selector's icons: a folder while choosing a project, a checklist
  * card while choosing a task. Hand-drawn; blue to match the selector's LED.
+ *
+ * The card says the task's status: grey and unticked to do, amber with one
+ * box ticked and the next under way in progress, green and all ticked done.
  */
 export const FOLDER_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
@@ -505,8 +508,8 @@ export const TASK_16X16_BITMAP: (string | null)[][] = [
   [null, null, '#9CA3AF', '#9CA3AF', '#9CA3AF', '#3B82F6', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#3B82F6', '#9CA3AF', '#9CA3AF', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
-  [null, null, '#9CA3AF', '#1F2937', '#10B981', '#10B981', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#9CA3AF', null, null],
-  [null, null, '#9CA3AF', '#1F2937', '#10B981', '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#9CA3AF', null, null],
+  [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#1F2937', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
@@ -515,6 +518,44 @@ export const TASK_16X16_BITMAP: (string | null)[][] = [
   [null, null, '#9CA3AF', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#9CA3AF', null, null],
   [null, null, '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', '#9CA3AF', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const TASK_IN_PROGRESS_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null, null, null, null, null],
+  [null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#3B82F6', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#3B82F6', '#F59E0B', '#F59E0B', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#1F2937', '#1F2937', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#10B981', '#10B981', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#10B981', '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#F59E0B', '#F59E0B', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#F59E0B', '#F59E0B', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#6B7280', '#6B7280', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#F59E0B', null, null],
+  [null, null, '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const TASK_DONE_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', null, null, null, null, null, null],
+  [null, null, '#10B981', '#10B981', '#10B981', '#3B82F6', '#93C5FD', '#93C5FD', '#93C5FD', '#93C5FD', '#3B82F6', '#10B981', '#10B981', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#1F2937', '#1F2937', '#3B82F6', '#3B82F6', '#3B82F6', '#3B82F6', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#10B981', '#10B981', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#10B981', '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#10B981', '#10B981', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#10B981', '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#10B981', '#10B981', '#1F2937', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#D1D5DB', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#10B981', '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#1F2937', '#10B981', null, null],
+  [null, null, '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
@@ -529,6 +570,10 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return FOLDER_16X16_BITMAP;
     case 'task':
       return TASK_16X16_BITMAP;
+    case 'task_in_progress':
+      return TASK_IN_PROGRESS_16X16_BITMAP;
+    case 'task_done':
+      return TASK_DONE_16X16_BITMAP;
     case 'slack':
       return SLACK_16X16_BITMAP;
     case 'discord':

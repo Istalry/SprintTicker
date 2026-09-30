@@ -32,6 +32,13 @@ reported something other than the truth, in three different ways.
   scroll bar along the bottom, whose thumb shows whether there is more before
   or after. A project with no tasks shows no position, rather than a "1/1"
   that would suggest something to pick.
+- **Tasks in the picker are sorted and show their status.** In progress
+  first, then to do, then done, keeping the provider's order within each; the
+  checklist icon is grey, amber or green to match, and a done task's name is
+  dimmed. The list used to come in whatever order the store returned.
+- **STOP and FINISH follow the wheel.** Left picks STOP, right picks FINISH,
+  and turning further stays put, where every notch used to flip the choice --
+  one notch too many before the click landed on the other one.
 - **The paused screen shows the whole task key.** STOP and FINISH now sit side
   by side on row 1, which leaves row 0 to the key and its time. Stacked in a
   column on the right, they left the title 26px, and it came out as "SPR-...".
