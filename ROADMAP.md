@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.12 statements / 86.25 branches / 91.13 functions / 94.75 lines across 1360
-tests in 69 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**93.11 statements / 86.08 branches / 91.16 functions / 94.76 lines across 1376
+tests in 70 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1128,7 +1128,7 @@ nobody got to.
 | F-12 residue — `getTasks` hardcodes `assignee = "me"` | Closed | Now the `op_task_scope` setting: assigned to me (the default, unchanged behaviour), everything open, or a custom v3 filter array. The scope vocabulary is shared so Jira reuses it rather than inventing a second one. |
 | F-18 — updater | Deleted, not implemented | The stub claimed to check for updates and did not. Deleting a lie is an improvement; §2 is the real fix. |
 | Partial unique index on `active_sessions` | Deferred | Would convert a rare data anomaly into a hard crash on startup. Needs a repair path first. |
-| Foreign keys on `worklogs` → `tasks` | Deferred | **Would fail on existing data**: F-01 already deleted tasks that surviving worklogs reference. Needs an orphan-cleanup decision. |
+| Foreign keys on `worklogs` → `tasks` | Done | Migration 5 (2026-09-30). The orphan decision: an archived tombstone per orphaned task, named from the session that logged it, and from then on a task with worklogs is archived rather than deleted. `tasks.project_id` and `worklog_sync_queue.task_id` stay unconstrained on purpose: an archived task outlives its project, and a queued worklog outlives its task until the provider answers 404. |
 | Sync idempotency | Documented limitation | `reclaimStaleSyncItems` can re-POST if the app died after OpenProject accepted but before the row was marked `SYNCED`. The v3 API has no idempotency key; the sync id is embedded in the comment so duplicates are greppable. |
 | Task description field | Feature, not a fix | `input-decoder` renders the task **key** where a non-existent `TaskDTO.description` was read. A real description field is a schema change plus provider mapping. |
 | Code signing | Not planned | Deliberate, as of 2026-09-09, not a gap. A SmartScreen-satisfying certificate costs money annually and requires identity verification, which is out of proportion to a personal project whose manual install works. Builds stay unsigned and the first-run warning is documented where a user meets it. Note that the old "adding one is two repository secrets" claim no longer holds: new code-signing keys must sit on a hardware token or in a cloud HSM, so CI signing needs a signing service, not a `.pfx` in a secret. |

@@ -95,6 +95,7 @@ describe('Project & Task Management and Worklog History Unit Tests', () => {
   it('WorklogRepository_GetWorklogsByDateAndDailySummary_ReturnsAggregatedMetrics', () => {
     const nowIso = new Date().toISOString();
     const todayStr = nowIso.split('T')[0];
+    taskRepo.saveTask({ id: 'PROJ-101', projectId: 'PROJ', key: 'PROJ-101', title: 'Dash mechanics', status: 'todo' });
 
     worklogRepo.saveWorklog({
       id: 'wl_hist_1',
@@ -123,5 +124,7 @@ describe('Project & Task Management and Worklog History Unit Tests', () => {
     expect(summary.totalSeconds).toBe(3000);
     expect(summary.tasksCount).toBe(1);
     expect(summary.items[0].durationSeconds).toBe(3000);
+    // Named from the task, not guessed from the id or taken from the comment.
+    expect(summary.items[0]).toMatchObject({ key: 'PROJ-101', title: 'Dash mechanics' });
   });
 });

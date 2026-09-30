@@ -61,6 +61,11 @@ Everything else is a request/response `invoke`.
 `worklogs:get-daily-summary`, `worklog:get-todays`, `db:wipe-all-data`, and the
 `worklog:on-updated` event.
 
+`projects:delete` and `tasks:delete` delete a task only if no time was logged
+against it; one with worklogs is archived -- off every list, still in history.
+Worklogs come back with `taskKey` and `taskTitle` beside `taskId`, read from
+the task row, archived or not.
+
 ### Hardware input
 
 | Channel | Purpose |

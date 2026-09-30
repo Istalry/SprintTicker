@@ -366,7 +366,15 @@ export class TimeTrackingEngine extends EventEmitter {
 
     const worklogComment = comment || 'Completed session via SprintTicker';
 
-    // 1. Save worklog to SQLite
+    // 1. Save worklog to SQLite, under a task row that is guaranteed to
+    // exist: the foreign key would otherwise refuse a worklog whose task was
+    // pruned mid-session, and the time just tracked would be lost.
+    this._taskRepo.ensureTaskExists({
+      id: active.taskId,
+      key: active.taskKey,
+      title: active.taskTitle,
+      projectId: active.projectId
+    });
     this._worklogRepo.saveWorklog({
       id: createId(IdPrefix.WORKLOG),
       sessionId: active.sessionId,

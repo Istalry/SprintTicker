@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { DatabaseConnection } from '../src/main/db/database-connection';
-import { runMigrations, MIGRATIONS, LATEST_SCHEMA_VERSION } from '../src/main/db/migrations';
+import { runMigrations, MIGRATIONS, LATEST_SCHEMA_VERSION, TOMBSTONE_PROJECT_ID } from '../src/main/db/migrations';
 
 /**
  * The pre-migration schema, exactly as the old `initTables()` produced it.
@@ -217,5 +217,102 @@ describe('Schema Migrations', () => {
     } finally {
       conn.close();
     }
+  });
+
+  describe('migration 5: worklogs reference their task', () => {
+    /** A version-4 database, as the build before this one leaves it. */
+    function atVersion4(): void {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 4)) migration.up(db);
+      db.pragma('user_version = 4');
+    }
+
+    function session(id: string, taskId: string, key: string, title: string): void {
+      db.prepare(
+        `INSERT INTO active_sessions (id, project_id, task_id, task_key, task_title, start_time_utc, status)
+         VALUES (?, 'P9', ?, ?, ?, '2026-03-01T09:00:00.000Z', 'COMPLETED')`
+      ).run(id, taskId, key, title);
+    }
+
+    function worklog(id: string, sessionId: string, taskId: string, createdAt = '2026-03-01T10:00:00.000Z'): void {
+      db.prepare(
+        `INSERT INTO worklogs (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc)
+         VALUES (?, ?, ?, 900, '2026-03-01T09:00:00.000Z', 'work', ?)`
+      ).run(id, sessionId, taskId, createdAt);
+    }
+
+    const task = (id: string) =>
+      db.prepare<[string], { project_id: string; key: string; title: string; archived_at_utc: string | null }>(
+        'SELECT project_id, key, title, archived_at_utc FROM tasks WHERE id = ?'
+      ).get(id);
+
+    it('Migration005_WorklogOfADeletedTask_KeepsItsTimeUnderANamedArchivedTask', () => {
+      // The sync prune deleted tasks that worklogs still referenced. The
+      // session that produced the worklog kept the name the bar showed.
+      atVersion4();
+      session('s1', '10001', 'SCRUM-2', 'Fix the login');
+      worklog('w1', 's1', '10001');
+
+      runMigrations(db);
+
+      expect(task('10001')).toMatchObject({ project_id: 'P9', key: 'SCRUM-2', title: 'Fix the login' });
+      expect(task('10001')?.archived_at_utc).not.toBeNull();
+      expect(db.prepare('SELECT COUNT(*) AS n FROM worklogs').get()).toEqual({ n: 1 });
+    });
+
+    it('Migration005_OrphanWithNoSessionEither_IsStillKept', () => {
+      atVersion4();
+      worklog('w1', 'gone-session', 'lost-task');
+
+      runMigrations(db);
+
+      expect(task('lost-task')).toMatchObject({ project_id: TOMBSTONE_PROJECT_ID, key: 'lost-task', title: 'lost-task' });
+      expect(db.prepare('SELECT id FROM worklogs').all()).toEqual([{ id: 'w1' }]);
+    });
+
+    it('Migration005_TaskRenamedBetweenSessions_TakesTheLatestName', () => {
+      atVersion4();
+      session('s1', '10001', 'SCRUM-2', 'Old title');
+      session('s2', '10001', 'SCRUM-2', 'New title');
+      worklog('w1', 's1', '10001', '2026-03-01T10:00:00.000Z');
+      worklog('w2', 's2', '10001', '2026-03-02T10:00:00.000Z');
+
+      runMigrations(db);
+
+      expect(task('10001')?.title).toBe('New title');
+    });
+
+    it('Migration005_TaskThatStillExists_IsLeftAsItWas', () => {
+      atVersion4();
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('t1', 'p1', 'A-1', 'Live', 'todo', '2026-01-01T00:00:00.000Z')"
+      ).run();
+      worklog('w1', 's1', 't1');
+
+      runMigrations(db);
+
+      expect(task('t1')).toEqual({ project_id: 'p1', key: 'A-1', title: 'Live', archived_at_utc: null });
+    });
+
+    it('Migration005_FromThenOn_TheConstraintHolds', () => {
+      // `NO ACTION` on delete: a path that forgets to archive fails loudly
+      // instead of orphaning history again.
+      db.pragma('foreign_keys = ON');
+      atVersion4();
+      worklog('w1', 's1', 'orphan');
+      runMigrations(db);
+
+      expect(() => worklog('w2', 's1', 'never-existed')).toThrow(/FOREIGN KEY/);
+      expect(() => db.prepare("DELETE FROM tasks WHERE id = 'orphan'").run()).toThrow(/FOREIGN KEY/);
+    });
+
+    it('Migration005_RebuiltTable_KeepsItsIndexes', () => {
+      runMigrations(db);
+
+      const indexes = db
+        .prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'worklogs'")
+        .all()
+        .map(r => r.name);
+      expect(indexes).toEqual(expect.arrayContaining(['idx_worklogs_task_id', 'idx_worklogs_session_id', 'idx_worklogs_created_at']));
+    });
   });
 });

@@ -167,12 +167,96 @@ const M004_TASK_PRIORITY = `
   ALTER TABLE tasks ADD COLUMN priority_rank INTEGER;
 `;
 
+/**
+ * Where a tombstone task goes when nothing records its project. Not a real
+ * project row: `tasks.project_id` has no foreign key, and an archived task is
+ * listed under no project anyway.
+ */
+export const TOMBSTONE_PROJECT_ID = 'ARCHIVED';
+
+/**
+ * Migration 5 makes `worklogs.task_id` a foreign key to `tasks`.
+ *
+ * It could not simply be declared: the sync prune and project deletion had
+ * already deleted tasks that surviving worklogs reference (audit F-01, F-25),
+ * so a constraint alone would refuse to rebuild the table on exactly the
+ * databases with the most history. Those orphans get a **tombstone** -- an
+ * archived task row -- instead of being dropped, because a worklog is billable
+ * time the user recorded and losing it to a schema change would be the worst
+ * outcome available here.
+ *
+ * A tombstone is named from the session its worklog came from, since
+ * `active_sessions` kept the key and title the bar showed; the task id stands
+ * in only when that session is gone too.
+ *
+ * `archived_at_utc` is what hides a row from the task lists while history can
+ * still name it. From here on a task with worklogs is archived rather than
+ * deleted, and the constraint -- `NO ACTION` on delete -- is what makes a path
+ * that forgets fail loudly rather than orphan history again.
+ */
+function m005WorklogTaskForeignKey(db: Database.Database): void {
+  const now = new Date().toISOString();
+  db.exec('ALTER TABLE tasks ADD COLUMN archived_at_utc TEXT;');
+
+  db.prepare(`
+    INSERT INTO tasks (id, project_id, key, title, status, created_at_utc, archived_at_utc)
+    SELECT
+        o.task_id,
+        COALESCE(s.project_id, ?),
+        COALESCE(s.task_key, o.task_id),
+        COALESCE(s.task_title, o.task_id),
+        'done',
+        o.first_logged_at,
+        ?
+    FROM (
+        SELECT task_id, MIN(created_at_utc) AS first_logged_at
+        FROM worklogs
+        WHERE task_id NOT IN (SELECT id FROM tasks)
+        GROUP BY task_id
+    ) o
+    LEFT JOIN active_sessions s ON s.id = (
+        SELECT w.session_id FROM worklogs w
+        JOIN active_sessions ws ON ws.id = w.session_id
+        WHERE w.task_id = o.task_id
+        ORDER BY w.created_at_utc DESC
+        LIMIT 1
+    )
+  `).run(TOMBSTONE_PROJECT_ID, now);
+
+  db.exec(`
+    CREATE TABLE worklogs_v2 (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        duration_seconds INTEGER NOT NULL,
+        started_at_utc TEXT NOT NULL,
+        comment TEXT NOT NULL,
+        created_at_utc TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id)
+    );
+
+    INSERT INTO worklogs_v2 (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc)
+    SELECT id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc
+    FROM worklogs;
+
+    DROP TABLE worklogs;
+    ALTER TABLE worklogs_v2 RENAME TO worklogs;
+
+    -- Dropped with the old table; the same three as migration 3.
+    CREATE INDEX idx_worklogs_task_id    ON worklogs(task_id);
+    CREATE INDEX idx_worklogs_session_id ON worklogs(session_id);
+    CREATE INDEX idx_worklogs_created_at ON worklogs(created_at_utc);
+    CREATE INDEX idx_tasks_archived      ON tasks(project_id, archived_at_utc);
+  `);
+}
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
   { version: 2, name: 'sync-queue-claim-and-backoff', up: m002RebuildSyncQueue },
   { version: 3, name: 'query-indexes', up: db => db.exec(M003_INDEXES) },
-  { version: 4, name: 'task-priority-rank', up: db => db.exec(M004_TASK_PRIORITY) }
+  { version: 4, name: 'task-priority-rank', up: db => db.exec(M004_TASK_PRIORITY) },
+  { version: 5, name: 'worklog-task-foreign-key', up: m005WorklogTaskForeignKey }
 ];
 
 /** Schema version a fully migrated database reports. */

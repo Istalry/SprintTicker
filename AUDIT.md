@@ -463,6 +463,17 @@ Also in the same file: `app.on('will-quit', async () => {...})` — Electron doe
 ### F-25 — No database schema versioning
 `database-connection.ts:57-120`
 
+> **Fixed, the secondary issues in part.** Versioning is `migrations.ts`, and
+> migration 3 added the indexes. `worklogs.task_id` became a foreign key in
+> migration 5 (2026-09-30), with an archived tombstone for every task already
+> deleted under surviving worklogs. `tasks.project_id` and
+> `worklog_sync_queue.task_id` stay unconstrained by decision -- an archived
+> task outlives its project, and a queued worklog outlives its task until the
+> provider refuses it. The `active_sessions` constraint is deferred; see
+> ROADMAP.
+
+Original text follows.
+
 `initTables()` is a single `CREATE TABLE IF NOT EXISTS` block with no `PRAGMA user_version`, no migration runner, and no version table. The moment a column is added or changed, **existing user databases will silently keep the old schema** and start failing at query time with `no such column`. For an app whose entire value proposition is a local record of billable time, that is a data-integrity landmine.
 
 Secondary schema issues: `tasks.project_id`, `worklogs.task_id`, and `worklog_sync_queue.task_id` declare no `FOREIGN KEY` even though `foreign_keys = ON` is set (only `paused_intervals` has one); there are **no indexes** on `worklogs(task_id)`, `worklogs(created_at_utc)`, `worklog_sync_queue(status)`, or `active_sessions(status)`; `active_sessions` has no constraint preventing two concurrent `TRACKING` rows.

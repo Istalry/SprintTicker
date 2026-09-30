@@ -1,4 +1,5 @@
 import { DatabaseConnection } from '../database-connection';
+import { retireTasks } from './task-repository';
 import { ProjectDTO } from '../../../shared/dtos';
 
 /**
@@ -100,7 +101,8 @@ export class ProjectRepository {
   }
 
   /**
-   * Deletes a project and its associated tasks from SQLite.
+   * Deletes a project and retires its tasks: a task with logged time is
+   * archived rather than deleted, so the project's history survives it.
    */
   public deleteProject(id: string): void {
     if (!id) {
@@ -111,8 +113,7 @@ export class ProjectRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return;
 
-      const deleteTasksStmt = db.prepare('DELETE FROM tasks WHERE project_id = ?');
-      deleteTasksStmt.run(id);
+      retireTasks(db, 'project_id = ?', [id]);
 
       const deleteProjStmt = db.prepare('DELETE FROM projects WHERE id = ?');
       deleteProjStmt.run(id);
@@ -122,8 +123,8 @@ export class ProjectRepository {
   }
 
   /**
-   * Deletes all projects (and their tasks) that are NOT in the provided active list.
-   * Excludes the 'ADHOC' built-in project.
+   * Deletes all projects that are NOT in the provided active list, and retires
+   * their tasks as `deleteProject` does. Excludes the 'ADHOC' built-in project.
    */
   public deleteProjectsNotIn(activeProjectIds: string[]): void {
     if (!Array.isArray(activeProjectIds)) return;
@@ -146,14 +147,11 @@ export class ProjectRepository {
 
       console.log(`[ProjectRepository] Deleting ${projectsToDelete.length} outdated projects...`);
 
-      // Delete tasks for those projects
-      const deleteTasksStmt = db.prepare('DELETE FROM tasks WHERE project_id = ?');
-      // Delete the projects themselves
       const deleteProjStmt = db.prepare('DELETE FROM projects WHERE id = ?');
 
       const transaction = db.transaction((projects: { id: string }[]) => {
         for (const p of projects) {
-          deleteTasksStmt.run(p.id);
+          retireTasks(db, 'project_id = ?', [p.id]);
           deleteProjStmt.run(p.id);
         }
       });

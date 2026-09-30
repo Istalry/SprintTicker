@@ -9,6 +9,51 @@ export interface WorklogRecord {
   startedAtUtc: string;
   comment: string;
   createdAtUtc: string;
+  /** The task's key, as the user knows it -- `SCRUM-2`, not Jira's `10001`. Read-only; filled on reads. */
+  taskKey?: string;
+  /** The task's title. Read-only; filled on reads. */
+  taskTitle?: string;
+}
+
+/** A worklog row joined to its task. */
+interface WorklogRow {
+  id: string;
+  session_id: string;
+  task_id: string;
+  duration_seconds: number;
+  started_at_utc: string;
+  comment: string;
+  created_at_utc: string;
+  task_key: string | null;
+  task_title: string | null;
+}
+
+/**
+ * Worklogs with the name of their task.
+ *
+ * The join can be trusted because `worklogs.task_id` is a foreign key and a
+ * task with worklogs is archived rather than deleted (migration 5). It is a
+ * LEFT JOIN all the same, so a row the constraint somehow missed still shows
+ * its time.
+ */
+const SELECT_WORKLOGS = `
+  SELECT w.*, t.key AS task_key, t.title AS task_title
+  FROM worklogs w
+  LEFT JOIN tasks t ON t.id = w.task_id`;
+
+function toRecord(r: WorklogRow): WorklogRecord {
+  const record: WorklogRecord = {
+    id: r.id,
+    sessionId: r.session_id,
+    taskId: r.task_id,
+    durationSeconds: r.duration_seconds,
+    startedAtUtc: r.started_at_utc,
+    comment: r.comment,
+    createdAtUtc: r.created_at_utc
+  };
+  if (r.task_key !== null) record.taskKey = r.task_key;
+  if (r.task_title !== null) record.taskTitle = r.task_title;
+  return record;
 }
 
 export type SyncQueueStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
@@ -357,26 +402,11 @@ export class WorklogRepository {
    * Retrieves today's completed worklogs from SQLite database.
    */
   public getTodaysWorklogs(): WorklogRecord[] {
-    const stmt = this.dbConn.getDb().prepare<[], {
-      id: string;
-      session_id: string;
-      task_id: string;
-      duration_seconds: number;
-      started_at_utc: string;
-      comment: string;
-      created_at_utc: string;
-    }>('SELECT * FROM worklogs ORDER BY created_at_utc DESC LIMIT 50');
+    const stmt = this.dbConn.getDb().prepare<[], WorklogRow>(
+      `${SELECT_WORKLOGS} ORDER BY w.created_at_utc DESC LIMIT 50`
+    );
 
-    const rows = stmt.all();
-    return rows.map(r => ({
-      id: r.id,
-      sessionId: r.session_id,
-      taskId: r.task_id,
-      durationSeconds: r.duration_seconds,
-      startedAtUtc: r.started_at_utc,
-      comment: r.comment,
-      createdAtUtc: r.created_at_utc
-    }));
+    return stmt.all().map(toRecord);
   }
 
   /**
@@ -396,33 +426,16 @@ export class WorklogRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return [];
 
-      const stmt = db.prepare<[string, string], {
-        id: string;
-        session_id: string;
-        task_id: string;
-        duration_seconds: number;
-        started_at_utc: string;
-        comment: string;
-        created_at_utc: string;
-      }>(
-        `SELECT * FROM worklogs
-          WHERE created_at_utc >= ? AND created_at_utc < ?
-          ORDER BY created_at_utc DESC`
+      const stmt = db.prepare<[string, string], WorklogRow>(
+        `${SELECT_WORKLOGS}
+          WHERE w.created_at_utc >= ? AND w.created_at_utc < ?
+          ORDER BY w.created_at_utc DESC`
       );
 
       // Half-open, so an entry exactly at local midnight belongs to the day
       // beginning then rather than the one ending.
       const { startUtc, endUtc } = localDayBoundsUtc(dateString);
-      const rows = stmt.all(startUtc, endUtc);
-      return rows.map(r => ({
-        id: r.id,
-        sessionId: r.session_id,
-        taskId: r.task_id,
-        durationSeconds: r.duration_seconds,
-        startedAtUtc: r.started_at_utc,
-        comment: r.comment,
-        createdAtUtc: r.created_at_utc
-      }));
+      return stmt.all(startUtc, endUtc).map(toRecord);
     } catch (err) {
       console.warn(`[WorklogRepository] Failed to fetch worklogs for date ${dateString}:`, err);
       return [];
@@ -457,10 +470,15 @@ export class WorklogRepository {
           existing.comment += `; ${log.comment}`;
         }
       } else {
+        // Named from the task row. This used to guess: the key was whatever
+        // followed the first underscore in the id -- the random half of an
+        // ad-hoc id, all of a Jira `10001` -- and the title was the worklog's
+        // comment, which is "Completed session via SprintTicker" for nearly
+        // every session.
         taskMap.set(log.taskId, {
           taskId: log.taskId,
-          key: log.taskId.split('_')[1] || log.taskId,
-          title: log.comment || log.taskId,
+          key: log.taskKey ?? log.taskId,
+          title: log.taskTitle ?? log.taskId,
           durationSeconds: log.durationSeconds,
           comment: log.comment
         });

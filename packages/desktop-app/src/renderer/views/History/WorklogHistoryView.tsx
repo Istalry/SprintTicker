@@ -194,7 +194,8 @@ export const WorklogHistoryView: React.FC = () => {
               >
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-white">{log.taskId}</span>
+                    <span className="font-bold text-white">{log.taskKey ?? log.taskId}</span>
+                    {log.taskTitle && <span className="text-text-secondary">{log.taskTitle}</span>}
                     <span className="text-text-secondary">• {new Date(log.startedAtUtc).toLocaleTimeString()}</span>
                   </div>
                   {log.comment && (

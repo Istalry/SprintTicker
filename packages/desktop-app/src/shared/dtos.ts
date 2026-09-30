@@ -229,6 +229,10 @@ export interface WorklogDTO {
   startedAtUtc: string;
   comment: string;
   createdAtUtc: string;
+  /** The task's key, e.g. `SCRUM-2`. Absent only for a worklog whose task row is missing. */
+  taskKey?: string;
+  /** The task's title. Absent only for a worklog whose task row is missing. */
+  taskTitle?: string;
 }
 
 export interface UnitySettingsDTO {

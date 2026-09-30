@@ -612,6 +612,14 @@ logging, and treat anything an agent reports about this file as a hypothesis.
 The same caution applies to *writing*: a backup or restore performed from such a
 shell may not land where the installed app will look for it.
 
+**Never `DELETE FROM tasks`.** `worklogs.task_id` is a foreign key (migration
+5), so deleting a task with logged time fails -- by design, because the paths
+that used to do it left history naming ids nothing could resolve. Tasks leave
+through `retireTasks`, which deletes the untouched ones and archives the rest,
+and anything listing tasks filters `archived_at_utc IS NULL`. A worklog is
+written only after `ensureTaskExists`, because a session's task can vanish
+while it runs.
+
 ## 8. Commit identity
 
 This repository is configured with a **repo-local** author identity:

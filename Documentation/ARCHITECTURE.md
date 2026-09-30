@@ -328,10 +328,10 @@ testing runs against your actual worklogs.
 | Table | Holds |
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id` |
-| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL |
+| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs |
 | `active_sessions` | The live session — `TRACKING` / `PAUSED` / `COMPLETED` |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
-| `worklogs` | Local record of tracked time. Written even when the remote refuses it |
+| `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
 | `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error` |
 | `settings` | Key/value, including provider configuration |
 
@@ -345,6 +345,22 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
 4. `task-priority-rank` — a nullable `priority_rank` on `tasks`. Adding a
    nullable column rewrites nothing; existing rows stay NULL until the next
    sync brings a priority.
+5. `worklog-task-foreign-key` — `worklogs.task_id` becomes a foreign key to
+   `tasks`, and `tasks` gains `archived_at_utc`. Earlier builds deleted tasks
+   that worklogs still referenced, so before the table is rebuilt each orphaned
+   id gets a **tombstone**: an archived task named from the session that
+   logged it, or from its id when that session is gone too. No worklog is
+   dropped.
+
+**Tasks with history are archived, never deleted.** The sync prune, deleting a
+project and deleting a task all go through `retireTasks`, which deletes a task
+nobody logged time against and archives the rest: gone from every list, still
+there for history to name. A task the provider lists again comes back with its
+history. The foreign key has no `ON DELETE` action, so a path that forgets this
+fails rather than orphaning worklogs. And a session whose task disappears while
+it runs -- pruned mid-session, or started on an id that was never cached --
+leaves an archived row named from the session when it stops, so the time is
+logged rather than refused.
 
 Credentials are encrypted at rest through Electron's `safeStorage`
 (`db/secret-store.ts`). Every failure mode degrades rather than losing the key:
@@ -444,7 +460,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1360 tests across 69 files, in two projects: `main` in Node for
+Vitest, 1376 tests across 70 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

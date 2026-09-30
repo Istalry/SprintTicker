@@ -72,6 +72,12 @@ Worklogs by date, with a daily summary and an end-of-day export.
 refused a 40-second session, the time is still in your history — it just is not
 in Jira.
 
+Each entry is named by its task's key and title. **Deleting a task or a project
+does not delete the time logged against it**: the task leaves your lists and
+stays in your history. The same happens when your provider stops listing a task
+you worked on — reassigned, closed or moved — and if it lists it again, it
+comes back.
+
 ### Task Providers
 
 Credentials, the completion transitions, and which tasks to fetch — assigned to

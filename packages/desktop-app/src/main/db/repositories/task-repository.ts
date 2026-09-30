@@ -1,6 +1,33 @@
+import type Database from 'better-sqlite3';
 import { DatabaseConnection } from '../database-connection';
 import { createId, IdPrefix } from '../id-generator';
+import { TOMBSTONE_PROJECT_ID } from '../migrations';
 import { TaskDTO } from '../../../shared/dtos';
+
+/** True for a `tasks` row that some worklog references. */
+const HAS_WORKLOGS = 'EXISTS (SELECT 1 FROM worklogs w WHERE w.task_id = tasks.id)';
+
+/**
+ * Takes the tasks matching `where` off the lists: deletes those with no logged
+ * time and archives the rest.
+ *
+ * The one way tasks leave this database. A worklog is billable time, and the
+ * sync prune used to delete the task under it whenever the provider stopped
+ * listing it -- reassigned, closed, moved -- which left history naming a task
+ * id nothing could resolve. `worklogs.task_id` is now a foreign key, so a
+ * plain DELETE of such a task fails; this is what every caller uses instead.
+ *
+ * `where` is SQL over `tasks`, with `?` placeholders bound from `params`.
+ */
+export function retireTasks(db: Database.Database, where: string, params: unknown[]): { archived: number; deleted: number } {
+  const retire = db.transaction(() => ({
+    archived: db
+      .prepare(`UPDATE tasks SET archived_at_utc = ? WHERE (${where}) AND archived_at_utc IS NULL AND ${HAS_WORKLOGS}`)
+      .run(new Date().toISOString(), ...params).changes,
+    deleted: db.prepare(`DELETE FROM tasks WHERE (${where}) AND NOT ${HAS_WORKLOGS}`).run(...params).changes
+  }));
+  return retire();
+}
 
 /**
  * Repository layer for managing tasks and ad-hoc task creation in SQLite.
@@ -42,7 +69,7 @@ export class TaskRepository {
         title: string;
         status: 'todo' | 'in_progress' | 'done';
         priorityRank: number | null;
-      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank FROM tasks WHERE project_id = ?');
+      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank FROM tasks WHERE project_id = ? AND archived_at_utc IS NULL');
 
       const rows = stmt.all(projectId);
       return rows.map(r => TaskRepository.toDto(r));
@@ -53,7 +80,8 @@ export class TaskRepository {
   }
 
   /**
-   * Retrieves a single task record by its ID.
+   * Retrieves a single task record by its ID, archived or not -- history has
+   * to be able to name a task the lists no longer show.
    */
   public getTaskById(taskId: string): TaskDTO | null {
     if (!taskId) return null;
@@ -98,7 +126,9 @@ export class TaskRepository {
    * Upserts a task record into SQLite.
    *
    * The priority is overwritten along with everything else, so a priority the
-   * provider no longer reports clears rather than lingering.
+   * provider no longer reports clears rather than lingering. So is the archive
+   * mark: a task the provider lists again -- reassigned back, reopened --
+   * returns to the lists with its history attached.
    */
   public saveTask(task: TaskDTO): void {
     if (!task.id || !task.projectId || !task.key || !task.title) {
@@ -117,7 +147,8 @@ export class TaskRepository {
           key = excluded.key,
           title = excluded.title,
           status = excluded.status,
-          priority_rank = excluded.priority_rank
+          priority_rank = excluded.priority_rank,
+          archived_at_utc = NULL
       `);
 
       stmt.run(
@@ -151,7 +182,8 @@ export class TaskRepository {
   }
 
   /**
-   * Deletes a task record from SQLite.
+   * Removes a task from the lists: deleted if no time was logged against it,
+   * archived otherwise. Deleting it from the app does not delete the hours.
    */
   public deleteTask(taskId: string): void {
     if (!taskId) {
@@ -162,11 +194,32 @@ export class TaskRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return;
 
-      const stmt = db.prepare('DELETE FROM tasks WHERE id = ?');
-      stmt.run(taskId);
+      retireTasks(db, 'id = ?', [taskId]);
     } catch (err) {
       console.warn('[TaskRepository] Failed to delete task:', err);
     }
+  }
+
+  /**
+   * Makes sure a worklog for `task` has a row to reference, creating an
+   * archived one if there is none.
+   *
+   * A session outlives its task more easily than it sounds: a sync pass can
+   * prune the task while it is being tracked, and a session can be started on
+   * an id that was never cached. Before the foreign key that orphaned the
+   * worklog; after it, the insert would fail and the tracked time would be
+   * lost. The session still knows the key and title it showed, so the row it
+   * leaves behind is named properly -- and archived, since no list offered it.
+   */
+  public ensureTaskExists(task: { id: string; key?: string; title?: string; projectId?: string }): void {
+    if (!task.id) throw new Error('Task ID is required');
+
+    const now = new Date().toISOString();
+    this.dbConn.getDb().prepare(`
+      INSERT INTO tasks (id, project_id, key, title, status, created_at_utc, archived_at_utc)
+      VALUES (?, ?, ?, ?, 'done', ?, ?)
+      ON CONFLICT(id) DO NOTHING
+    `).run(task.id, task.projectId || TOMBSTONE_PROJECT_ID, task.key || task.id, task.title || task.id, now, now);
   }
 
   /**
@@ -203,8 +256,9 @@ export class TaskRepository {
   }
 
   /**
-   * Deletes all tasks for a given project that are NOT in the provided active list.
-   * Excludes tasks starting with 'adhoc_'.
+   * Retires every task of a project that is NOT in the provided active list --
+   * see `retireTasks` for what retiring means. Excludes tasks starting with
+   * 'adhoc_'.
    */
   public deleteTasksNotIn(projectId: string, activeTaskIds: string[]): void {
     if (!projectId || !Array.isArray(activeTaskIds)) return;
@@ -214,24 +268,17 @@ export class TaskRepository {
       if (!db || !db.open) return;
 
       if (activeTaskIds.length === 0) {
-        // If there are no active tasks, delete all tasks for this project (except adhoc)
-        const stmt = db.prepare('DELETE FROM tasks WHERE project_id = ? AND id NOT LIKE ?');
-        stmt.run(projectId, 'adhoc_%');
+        // No active tasks: retire all of this project's tasks (except adhoc)
+        retireTasks(db, 'project_id = ? AND id NOT LIKE ?', [projectId, 'adhoc_%']);
         return;
       }
 
-      // Dynamically build the query parameters
       const placeholders = activeTaskIds.map(() => '?').join(',');
-      const params = [projectId, ...activeTaskIds, 'adhoc_%'];
-
-      const stmt = db.prepare(`
-        DELETE FROM tasks 
-        WHERE project_id = ? 
-          AND id NOT IN (${placeholders}) 
-          AND id NOT LIKE ?
-      `);
-
-      stmt.run(...params);
+      retireTasks(db, `project_id = ? AND id NOT IN (${placeholders}) AND id NOT LIKE ?`, [
+        projectId,
+        ...activeTaskIds,
+        'adhoc_%'
+      ]);
     } catch (err) {
       console.warn(`[TaskRepository] Failed to delete outdated tasks for project ${projectId}:`, err);
     }

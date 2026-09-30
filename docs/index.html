@@ -544,6 +544,11 @@
       <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
       refused a 40-second session, the time is still in your history — it just is not
       in Jira.</p>
+      <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
+      does not delete the time logged against it</strong>: the task leaves your lists and
+      stays in your history. The same happens when your provider stops listing a task
+      you worked on — reassigned, closed or moved — and if it lists it again, it
+      comes back.</p>
       <h4>Task Providers</h4>
       <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
       me, everything open, or your own query (JQL for Jira, a v3 filter array for
@@ -1340,7 +1345,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
-      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL</td>
+      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs</td>
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
@@ -1352,7 +1357,7 @@
       </tr>
       <tr>
       <td align="left"><code>worklogs</code></td>
-      <td align="left">Local record of tracked time. Written even when the remote refuses it</td>
+      <td align="left">Local record of tracked time. Written even when the remote refuses it. <code>task_id</code> is a FK to <code>tasks</code></td>
       </tr>
       <tr>
       <td align="left"><code>worklog_sync_queue</code></td>
@@ -1373,7 +1378,22 @@
       <li><code>task-priority-rank</code> — a nullable <code>priority_rank</code> on <code>tasks</code>. Adding a
       nullable column rewrites nothing; existing rows stay NULL until the next
       sync brings a priority.</li>
+      <li><code>worklog-task-foreign-key</code> — <code>worklogs.task_id</code> becomes a foreign key to
+      <code>tasks</code>, and <code>tasks</code> gains <code>archived_at_utc</code>. Earlier builds deleted tasks
+      that worklogs still referenced, so before the table is rebuilt each orphaned
+      id gets a <strong>tombstone</strong>: an archived task named from the session that
+      logged it, or from its id when that session is gone too. No worklog is
+      dropped.</li>
       </ol>
+      <p><strong>Tasks with history are archived, never deleted.</strong> The sync prune, deleting a
+      project and deleting a task all go through <code>retireTasks</code>, which deletes a task
+      nobody logged time against and archives the rest: gone from every list, still
+      there for history to name. A task the provider lists again comes back with its
+      history. The foreign key has no <code>ON DELETE</code> action, so a path that forgets this
+      fails rather than orphaning worklogs. And a session whose task disappears while
+      it runs -- pruned mid-session, or started on an id that was never cached --
+      leaves an archived row named from the session when it stops, so the time is
+      logged rather than refused.</p>
       <p>Credentials are encrypted at rest through Electron&#39;s <code>safeStorage</code>
       (<code>db/secret-store.ts</code>). Every failure mode degrades rather than losing the key:
       no keystore means plaintext plus a warning, and ciphertext written by another OS
@@ -1458,7 +1478,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1360 tests across 69 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1376 tests across 70 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -1588,6 +1608,10 @@
       <code>tasks:update</code>, <code>tasks:import</code>, <code>worklogs:get-by-date</code>,
       <code>worklogs:get-daily-summary</code>, <code>worklog:get-todays</code>, <code>db:wipe-all-data</code>, and the
       <code>worklog:on-updated</code> event.</p>
+      <p><code>projects:delete</code> and <code>tasks:delete</code> delete a task only if no time was logged
+      against it; one with worklogs is archived -- off every list, still in history.
+      Worklogs come back with <code>taskKey</code> and <code>taskTitle</code> beside <code>taskId</code>, read from
+      the task row, archived or not.</p>
       <h4>Hardware input</h4>
       <div class="table-wrap"><table>
       <thead>

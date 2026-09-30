@@ -214,6 +214,16 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **Work History names your tasks.** Each entry showed the provider's internal
+  id -- Jira's `10001` rather than `SCRUM-2` -- and the daily summary guessed a
+  key from the id and used the worklog's comment, usually "Completed session
+  via SprintTicker", as the title. Both now show the task's key and title.
+- **Time logged against a task is never left nameless.** A sync that no longer
+  listed a task you had worked on, or deleting it or its project, deleted the
+  task and left its hours pointing at nothing. Such a task is now archived:
+  gone from the lists, still in history, back if the provider lists it again.
+  Upgrading names the hours already orphaned from the sessions that logged
+  them; none are dropped.
 - **The end-of-day wrap-up takes two presses on the bar again.** Every press
   reached the app twice, so when the wrap-up window was open without the bar
   showing its prompt, a single START both said "yes" and confirmed -- running

@@ -148,6 +148,8 @@ describe('SQLite Repositories Unit Tests', () => {
     const { startUtc } = localDayBoundsUtc(day);
     const oneMsEarlier = new Date(Date.parse(startUtc) - 1).toISOString();
     const base = { sessionId: 'sess-1', taskId: 'TASK-1', durationSeconds: 60, comment: '' };
+    // A worklog references a real task row: worklogs.task_id is a foreign key.
+    taskRepo.saveTask({ id: 'TASK-1', projectId: 'P1', key: 'T-1', title: 'Task', status: 'todo' });
 
     worklogRepo.saveWorklog({ ...base, id: 'wl_at_midnight', startedAtUtc: startUtc, createdAtUtc: startUtc });
     worklogRepo.saveWorklog({ ...base, id: 'wl_just_before', startedAtUtc: oneMsEarlier, createdAtUtc: oneMsEarlier });
