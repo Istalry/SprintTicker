@@ -238,7 +238,7 @@ under its own `application_name`, sends no `rectangle` elements — a wrong colo
 count there reboots the device, and no probe is worth that — and removes what it
 drew. Close the app first, or its priority-95 claim turns into 409s that mean
 only that the app owns the display. Last run: **firmware 1.2.4, all checks
-passing** (2026-09-29).
+passing** (2026-09-30).
 
 It also reads the panel back and writes every frame out as a PNG (`--out <dir>`,
 default a temp directory), because the questions worth asking of a *display* are
@@ -265,10 +265,11 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   **black** image lands on top of the animation and stays there. The upload
   returns 200, the draw returns 200, the log says the device is playing the
   file, and the bar is black. Drawing the animation afterwards does not help;
-  only removing the image does, which is why `startHardwareAnimation` calls
-  `clearDisplay` first and `transmitFrame` skips the hardware send while
-  `isHardwareAnimationActive()`. Measured on firmware 1.2.3 by replaying both
-  draws against a real bar and reading the panel back.
+  only removing the image does, which is why `startHardwareAnimation` removes
+  `px_matrix_img` once the scene is down and `transmitFrame` skips the
+  hardware send while `isHardwareAnimationActive()`. Measured on firmware 1.2.3
+  by replaying both draws against a real bar and reading the panel back. It
+  used to call `clearDisplay` for this, which is the next trap.
 - **`z_index` decides that stacking, and PNG alpha is respected.** "Either
   order" above is *draw* order. Given `z_index`, an animation element does
   draw above a full-panel opaque image, and below it when the numbers are
@@ -291,9 +292,14 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     abandons its draw as `superseded` -- and the icon lands over the
     *previous* screen's text.
   - **Removing an element that is not there answers 400**, not 404, which the
-    driver reports as `rejected`. A full-panel animation clears everything
-    first, so the icon's removal often finds nothing. Read `rejected` on a
-    removal as "already gone", or every render retries it.
+    driver reports as `rejected`. A clear for the idle clock, or another
+    application taking the panel, leaves the icon's removal finding nothing.
+    Read a 400 on a removal as "already gone" (`isElementAbsent`), or every
+    render retries it -- but only a 400: a 500 says nothing about the element.
+  - **A removal naming several ids is all or nothing.** The firmware checks
+    every id before removing any (`canvas_element_destroy_multi`), so one
+    missing id answers 400 and removes *none* of the others. Remove one id per
+    request wherever one may already be gone.
   - **Keep the static icon in the frame.** It is the fallback: when the device
     refuses the `.anim`, or a 409 holds the draw off, the bar shows the icon
     still rather than a hole. The emulator follows the same rule and stops
@@ -303,6 +309,46 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     palette broke this for most icons while every document said "pixel for
     pixel"; `animation-assets.test.ts` now compares them. Change the bitmap
     and the scene together.
+- **Never empty the panel to change screens: emptying it closes the device's
+  screen, and that can hang the bar.** When the application's element set
+  becomes empty -- a full `DELETE /api/display/draw`, or removing the last
+  element by id -- firmware 1.2.4 closes its screen (`canvas_screen_close`)
+  and reopens it on the next draw. Measured on 2026-09-30 with ten-round
+  loops: closing it while an image and an animation share it hung the bar on
+  round 3 and round 4 of two runs; removing the animation by id and closing
+  *immediately* hung it on round 6. Uploads slowing from ~50 ms to 300-600 ms
+  came first every time; then nothing answered, and the bar sometimes
+  rebooted itself about 45 s later. An animation alone closed safely ten
+  times, and so did every loop that never emptied the panel. The app now
+  follows the second rule everywhere it changes screens:
+  - **Scenes go in under the frame and come out under the next one** (make
+    before break). `AnimationPlayer` draws `hardware_anim` at
+    `FRONT_LAYER_Z.SCENE` (0), below the frame, then removes `px_matrix_img`
+    to reveal it. When it ends, the renderer's next frame lands at z 1 over
+    the still-playing scene, and only after that frame is `sent` does
+    `retireScene` remove the scene -- and not even then if the driver believes
+    nothing else is on the panel. Scene draws and removals share one id, so
+    they run under a lock: a late removal would take down the scene just
+    drawn, with the frame already gone.
+  - **The one deliberate close is `clearDisplay`** -- the idle clock and quit,
+    which have to hand the display back. The driver tracks every element it
+    has drawn (`shownElementIds`), removes each animation by id first, waits
+    `ANIMATION_TEARDOWN_SETTLE_MS` (500 ms), and only then clears. **The wait
+    is what makes the difference**: without it this is the K case above,
+    which hung on round 6; with it, `pnpm probe:busybar --teardown-soak` ran
+    ten releases clean on firmware 1.2.4 (2026-09-30), uploads flat at
+    24-53 ms throughout. Do not shorten it without re-running that soak --
+    deliberately, alone, since a wait that is too short hangs the bar.
+    A draw that lands during the wait makes the clear `superseded` instead of
+    wiping the screen that replaced the one being released.
+  - **An upload over an `.anim` the device is playing answers 508** ("Failed to
+    open file for writing"). Restarting the scene that is still on the panel
+    therefore draws it from the copy the device holds instead of uploading it
+    again, and uploads once more only if that draw is refused.
+  - **The probe follows the same rule.** `--compositing` keeps a transparent
+    floor element under every case so removing the case never empties the
+    panel, and closes once at the end, animations first. It used to clear
+    between cases -- a dozen image-plus-animation closes in a row.
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,

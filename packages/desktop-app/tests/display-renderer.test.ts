@@ -5,7 +5,11 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../src/shared/render-constants';
-import { HAMMER_16X16_BITMAP } from '../src/shared/pixel-bitmaps';
+import {
+  HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
+} from '../src/shared/pixel-bitmaps';
+import { measureText } from '../src/shared/proportional-text';
+import { ROW0_FONT } from '../src/shared/fonts/pixel-font';
 import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -507,6 +511,48 @@ describe('DisplayRenderer Unit Tests', () => {
       });
 
       expect(lastShown()).toBeNull();
+    });
+
+    it('RenderActiveSession_Paused_AsksForTheBlinkingPauseStopwatch', () => {
+      renderer.renderActiveSession({
+        taskId: 'T-1', taskKey: 'T-1', taskTitle: 'Write the tests', status: 'PAUSED',
+        elapsedSeconds: 60, startedAtUtc: new Date().toISOString()
+      });
+
+      expect(lastShown()).toBe('icon_stopwatch_paused_16x16');
+    });
+
+    it.each([
+      ['tracking', 'TRACKING', STOPWATCH_16X16_BITMAP],
+      ['paused', 'PAUSED', STOPWATCH_PAUSED_16X16_BITMAP],
+      ['idle', null, STOPWATCH_IDLE_16X16_BITMAP]
+    ] as const)('RenderActiveSession_%s_DrawsItsOwnStopwatch', (_state, status, expected) => {
+      // Tracking, paused, idle and Day Complete all used to show the same
+      // checkmark, so the bar could not say whether work was running.
+      renderer.renderActiveSession(status ? {
+        taskId: 'T-1', taskKey: 'T-1', taskTitle: 'Write the tests', status,
+        elapsedSeconds: 60, startedAtUtc: new Date().toISOString()
+      } : null);
+      const pixels = (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();
+
+      expect(pixels.slice(0, 16).map(row => row.slice(0, 16))).toEqual(expected.map(row => [...row]));
+    });
+
+    it('RenderActiveSession_Paused_ShowsTheWholeTaskKey', () => {
+      // STOP and FINISH used to sit in a column beside a 26px title, which cut
+      // "KEY: title" to "SPR-..." and could not fit even the key.
+      const drawn = vi.spyOn(
+        (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas,
+        'drawTextClipped'
+      );
+      renderer.renderActiveSession({
+        taskId: 'T-1', taskKey: 'SPR-1428', taskTitle: 'A long task title', status: 'PAUSED',
+        elapsedSeconds: 5025, startedAtUtc: new Date().toISOString()
+      });
+
+      const keyCall = drawn.mock.calls.find(([text]) => text === 'SPR-1428');
+      expect(keyCall).toBeDefined();
+      expect(keyCall?.[4] as number).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW0_FONT));
     });
 
     it('RenderBuilding_Always_DrawsOurHammerRatherThanTheUnityLogo', () => {

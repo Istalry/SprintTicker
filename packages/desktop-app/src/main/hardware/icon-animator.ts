@@ -1,11 +1,11 @@
 import { BusyBarDriver, DEFAULT_DRAW_PRIORITY } from './busybar-driver';
-import { DeviceRequestError, describeError } from './device-errors';
+import { describeError, isElementAbsent } from './device-errors';
 import { AnimationData } from './animation-sequence';
-import { DEVICE_APPLICATION_NAME, FRONT_LAYER_Z } from '../../shared/device-constants';
+import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
 import { ArgumentNullException } from '../../shared/dtos';
 
 /** The device element the animated icon is drawn as. One at a time, so one id. */
-export const ICON_ELEMENT_ID = 'icon_anim';
+export const ICON_ELEMENT_ID = FRONT_ELEMENT_IDS.ICON;
 
 /** The slice of the driver this needs, so a test can hand it exactly that. */
 export type IconAnimatorDriver = Pick<BusyBarDriver, 'uploadAsset' | 'drawOverlay' | 'removeDisplayElements'>;
@@ -187,9 +187,10 @@ export class IconAnimator {
       this.drawn = null;
     } catch (err) {
       // The device answers 400 for an element that is not there -- measured on
-      // firmware 1.2.4 -- which is what a full clear beforehand (an animation
-      // taking the whole panel) leaves behind. Gone is what was wanted.
-      if (err instanceof DeviceRequestError && err.kind === 'rejected') {
+      // firmware 1.2.4 -- which is what a clear for the idle clock, or a
+      // higher-priority application taking the panel, leaves behind. Gone is
+      // what was wanted.
+      if (isElementAbsent(err)) {
         this.drawn = null;
         return;
       }

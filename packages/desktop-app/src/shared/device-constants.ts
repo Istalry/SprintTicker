@@ -37,21 +37,45 @@ export const DEFAULT_USB_IP = '10.0.4.20';
 export const DEVICE_APPLICATION_NAME = 'sprintticker';
 
 /**
- * Stacking order of the two layers the app draws on the front panel.
+ * Stacking order of the layers the app draws on the front panel.
  *
  * The whole screen is one full-panel PNG, `px_matrix_img`, with every icon's
  * static pixels already in it. An animated icon is a separate `animation`
  * element at x=0 drawn *above* it, so the static icon underneath is what shows
  * whenever the animation is not there -- refused, not yet uploaded, or removed.
  *
+ * A full-panel scene (lunch, away, meeting, task done) goes *below* the frame.
+ * That is what lets the screen change without ever being emptied: the scene is
+ * drawn hidden under the current frame, then the frame is removed to reveal
+ * it; on the way back the next frame covers the scene before the scene is
+ * removed. Emptying the element set closes the device's screen, and on
+ * firmware 1.2.4 closing it after an image and an animation have shared it
+ * hangs the bar -- see `FRONT_ELEMENT_IDS`.
+ *
  * Numbers rather than draw order, because draw order does not decide it:
  * without `z_index`, the image composites above an animation whichever of the
  * two arrived first. With it, the icon stays on top through any number of
  * frame redraws. Measured on firmware 1.2.4 (`pnpm probe:busybar --compositing`).
+ * 0 is the schema's minimum.
  */
 export const FRONT_LAYER_Z = {
+  SCENE: 0,
   FRAME: 1,
   ICON: 2
+} as const;
+
+/**
+ * The ids of the elements the app draws on the front panel, one per layer.
+ *
+ * Shared because the driver, the animation player and the icon animator each
+ * remove elements the others drew, and a removal by an id that drifted from
+ * the draw answers 400 -- which reads as "already gone" and hides the element
+ * that is in fact still there.
+ */
+export const FRONT_ELEMENT_IDS = {
+  SCENE: 'hardware_anim',
+  FRAME: 'px_matrix_img',
+  ICON: 'icon_anim'
 } as const;
 
 /**

@@ -214,6 +214,19 @@ fourteen.
 Text that does not fit ends in `…`. Accented letters are shown without their
 accents, since the display draws plain ASCII only.
 
+The session screen's icon is a stopwatch whose colour says where you are: green
+with a quarter filled while a task runs, amber with blinking pause bars while
+it is paused, dim grey when nothing runs (the screen then reads **Ready / No
+task running**). While paused, row 0 shows the task key and its time, and row
+1 offers **STOP** and **FINISH** side by side; turn the wheel to choose, click
+to confirm. STOP logs the time and leaves the task open; FINISH also marks it
+done.
+
+Unity screens all read the same way: what is happening on row 0 (with the
+percentage for a build or a lightmap bake), the project on row 1, and for a
+build or bake a thin progress line along the bottom. An exception shows its
+message on row 1 instead of the project.
+
 > [!NOTE]
 > **Why the timer shows HH:MM**
 >
@@ -333,6 +346,17 @@ both addressed — a refused upload that went unreported, and the app drawing it
 own blank frame on top of the animation it had just started. If you still see
 it, export the logs from Device Diagnostics and look for `[AnimationPlayer]`
 lines naming the file and its size.
+
+**The bar freezes and stops answering.** The panel stops changing, the app
+reports the bar disconnected, and sometimes the bar restarts on its own about
+45 seconds later. On firmware 1.2.4 this is what happens when the display is
+cleared a few times while a picture and an animation are both on it. Earlier
+builds did exactly that each time Lunch, Away or a meeting began from a screen
+with an animated icon. This release switches scenes without clearing, so it
+should not happen in normal use. If it does, unplug and replug the bar, then
+export the logs from Device Diagnostics: the lines just before the freeze say
+what the app was drawing. Uploads taking several hundred milliseconds, rather
+than about fifty, are the warning sign.
 
 **The bar shows something stale.** Something is holding the display lock at a
 higher priority. Check Priority Rules and your current mode.

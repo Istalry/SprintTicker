@@ -202,6 +202,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const frontEls = payload.frontElements as Record<string, unknown>[];
     const buildTitle = frontEls.find(e => e.id === 'txt_build');
     expect(buildTitle).toBeDefined();
+    // State and percentage on row 0; the project keeps row 1 to itself.
+    expect((buildTitle as Record<string, unknown>).text).toBe('BUILDING 75%');
     const activeBar = frontEls.find(e => e.id === 'bar_build_active');
     expect(activeBar).toBeDefined();
     expect((activeBar as Record<string, unknown>).x).toBe(17); // canvas icon is 15px, text starts at 17

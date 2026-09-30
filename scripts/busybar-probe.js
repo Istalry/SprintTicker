@@ -40,8 +40,13 @@ const { createDeviceClient, encodePng } = require('./lib/busybar-device');
  * time, for a person to judge on the LEDs -- see `probeFontSheet`.
  *
  * `--compositing` measures whether an animated 16x16 icon can play beside a
- * text image, which decides how notification icons animate -- see
- * `probeCompositing`. It draws above the app, so it runs with the app open.
+ * text image, which decides how notification icons animate, and how the app
+ * swaps a full-panel scene in and out -- see `probeCompositing`. It draws above
+ * the app, so it runs with the app open.
+ *
+ * `--teardown-soak` repeats the one screen close the app still makes -- see
+ * `probeTeardownSoak`. **It can hang the bar.** Run it on purpose, alone, with
+ * someone at hand to power-cycle the device.
  */
 
 const IP = process.env.BUSYBAR_IP || '10.0.4.20';
@@ -845,6 +850,7 @@ async function observe(label) {
     iconRed: icon.red,
     iconGreen: icon.green,
     iconMoving: regionChanged(a, b, 0, ICON - 1),
+    panelMoving: regionChanged(a, b, 0, FRONT_WIDTH - 1),
     textGreen: text.green,
     textCells: (FRONT_WIDTH - TEXT_X) * FRONT_HEIGHT,
     file: b.file
@@ -852,7 +858,59 @@ async function observe(label) {
 }
 
 function describe(o) {
-  return `icon: ${o.iconRed} red px, ${o.iconMoving} px changed in 350ms; text: ${o.textGreen}/${o.textCells} green. ${o.file}`;
+  return (
+    `icon: ${o.iconRed} red px, ${o.iconMoving} px changed in 350ms; text: ${o.textGreen}/${o.textCells} green; ` +
+    `panel: ${o.panelMoving} px changed. ${o.file}`
+  );
+}
+
+/**
+ * Removes probe elements by id, one request each, reading 400 as "not there".
+ *
+ * One each because the device's multi-id removal is all or nothing: a single
+ * missing id fails the request and removes none of the others.
+ */
+async function removeIds(ids) {
+  for (const id of ids) {
+    const res = await request('DELETE', '/api/display/draw', { body: { application_name: APP, element_ids: [id] } });
+    if (res.status !== 400 && (res.status < 200 || res.status >= 300)) {
+      throw new Error(`removing ${id} returned ${res.status} ${res.body.slice(0, 80)}`);
+    }
+  }
+}
+
+/**
+ * The pause the app leaves between taking its animations down and releasing
+ * the display, read from the driver so the probe measures what ships rather
+ * than a copy of it.
+ */
+function teardownSettleMs() {
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'packages', 'desktop-app', 'src', 'main', 'hardware', 'busybar-driver.ts'),
+    'utf8'
+  );
+  const match = /ANIMATION_TEARDOWN_SETTLE_MS\s*=\s*(\d+)/.exec(source);
+  if (!match) throw new Error('ANIMATION_TEARDOWN_SETTLE_MS not found in busybar-driver.ts');
+  return Number(match[1]);
+}
+
+/**
+ * The ids of every element this check draws, and the animations among them.
+ *
+ * Between cases the check removes these by id rather than clearing the panel.
+ * A clear empties the element set, which closes the device's screen, and on
+ * firmware 1.2.4 closing it after an image and an animation have shared it
+ * hangs the bar within three or four cycles (measured 2026-09-30) -- which the
+ * cases here, image and animation each, would otherwise do a dozen times in a
+ * row. A transparent full-panel floor stays underneath the whole time so no
+ * removal empties the set; the one close comes at the end, animations first.
+ */
+const COMPOSITING_CASE_IDS = ['cmp_anim', 'cmp_img', 'cmp_scene'];
+const COMPOSITING_ANIMATION_IDS = ['cmp_anim', 'cmp_scene'];
+
+async function clearCase() {
+  await removeIds(COMPOSITING_CASE_IDS);
+  await sleep(250);
 }
 
 async function probeCompositing() {
@@ -871,8 +929,13 @@ async function probeCompositing() {
     ['probe_text2.png', makeGreenPng(FRONT_WIDTH - TEXT_X, 8), 'image/png'],
     ['probe_holed.png', makeGreenPng(FRONT_WIDTH, TEXT_X), 'image/png'],
     ['probe_opaque.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png'],
-    ['probe_opaque2.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png']
+    ['probe_opaque2.png', makeGreenPng(FRONT_WIDTH, 0), 'image/png'],
+    ['probe_floor.png', makeGreenPng(FRONT_WIDTH, FRONT_WIDTH), 'image/png']
   ];
+  // A real full-panel scene of the app's, for the scene swap below.
+  const scene = findLargestAnim();
+  const haveScene = scene && scene.size >= 4096;
+  if (haveScene) uploads.push(['probe_scene.anim', fs.readFileSync(scene.file), 'application/octet-stream']);
   for (const [file, body, contentType] of uploads) {
     const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=${file}`, {
       body,
@@ -909,6 +972,31 @@ async function probeCompositing() {
     ...extra
   });
 
+  // Whatever an earlier check left, before any animation shares the panel with
+  // an image; then the floor that keeps the panel from emptying until the end.
+  await clearProbeElements();
+  const floor = await drawAbove([image('probe_floor.png', 0, { id: 'cmp_floor', timeout: 120, z_index: 0 })]);
+  if (floor.status < 200 || floor.status >= 300) {
+    record('Compositing', 'fail', `floor draw returned ${floor.status} ${floor.body.slice(0, 80)}`);
+    return;
+  }
+
+  try {
+    await compositingCases(anim, image, haveScene);
+  } finally {
+    // The one close: animations off first, the app's settle, then the rest.
+    try {
+      await removeIds(COMPOSITING_ANIMATION_IDS);
+      await sleep(teardownSettleMs());
+    } catch (err) {
+      console.log(`  (compositing teardown: ${err.message})`);
+    }
+    await clearProbeElements();
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+}
+
+async function compositingCases(anim, image, haveScene) {
   const cases = [
     {
       name: 'Animated icon beside a text image',
@@ -934,7 +1022,7 @@ async function probeCompositing() {
 
   for (const c of cases) {
     try {
-      await clearProbeElements();
+      await clearCase();
       const draw = await drawAbove(c.elements);
       if (draw.status < 200 || draw.status >= 300) {
         record(c.name, 'fail', `draw returned ${draw.status} ${draw.body.slice(0, 80)}`);
@@ -951,7 +1039,7 @@ async function probeCompositing() {
   // A draw merges by element id, so sending only the image should leave the
   // animation element alone -- but whether it keeps *playing* is the question.
   try {
-    await clearProbeElements();
+    await clearCase();
     await drawAbove([anim(), image('probe_text.png', TEXT_X)]);
     await sleep(600);
     const swap = await drawAbove([image('probe_text2.png', TEXT_X)]);
@@ -977,7 +1065,7 @@ async function probeCompositing() {
   // with element_ids, which must leave the frame -- and the static icon inside
   // it -- where it was. An accepted DELETE says nothing about either.
   try {
-    await clearProbeElements();
+    await clearCase();
     await drawAbove([image('probe_opaque.png', 0, { z_index: 1 })]);
     await drawAbove([anim({ z_index: 2 })]);
     await sleep(400);
@@ -1007,8 +1095,185 @@ async function probeCompositing() {
     record('Icon layering the app uses', 'fail', err.message);
   }
 
-  await clearProbeElements();
-  fs.rmSync(work, { recursive: true, force: true });
+  if (haveScene) {
+    await probeSceneSwap(anim, image);
+  } else {
+    record('Scene swapped in under the frame', 'skip', 'no real .anim under Animations/ (Git LFS?)');
+  }
+  await clearCase();
+}
+
+/**
+ * How the app switches to a full-panel scene and back without ever emptying
+ * the panel, replayed step by step and read back at each one.
+ *
+ * The scene is drawn at z 0 under the frame (z 1) and the animated icon
+ * (z 2), removing the frame reveals it, the next frame covers it, and only
+ * then is it removed. The app used to clear the display instead, which is the
+ * close that hangs firmware 1.2.4. Each step is a claim a status code cannot
+ * check: that a scene under an opaque frame is invisible, that it plays once
+ * uncovered, that a frame redrawn over a *playing* animation hides it.
+ */
+async function probeSceneSwap(anim, image) {
+  const scene = {
+    id: 'cmp_scene',
+    type: 'animation',
+    path: 'probe_scene.anim',
+    x: 0,
+    y: 0,
+    display: 'front',
+    loop: true,
+    section: 'default',
+    timeout: 30,
+    z_index: 0
+  };
+  const panelCells = ICON * FRONT_HEIGHT;
+  try {
+    await clearCase();
+    await drawAbove([image('probe_opaque.png', 0, { z_index: 1 })]);
+    await drawAbove([anim({ z_index: 2 })]);
+    await sleep(400);
+
+    await drawAbove([scene]);
+    const hidden = await observe('scene-under-frame');
+    record(
+      'Scene drawn under the frame stays hidden',
+      hidden.textGreen > hidden.textCells * 0.9 && hidden.iconRed > 0 ? 'pass' : 'info',
+      describe(hidden)
+    );
+
+    // What `AnimationPlayer` does once the scene is down, and what the icon
+    // animator does for a screen with no animated icon.
+    await removeIds(['cmp_img']);
+    await removeIds(['cmp_anim']);
+    const revealed = await observe('scene-revealed');
+    record(
+      'Removing the frame reveals the playing scene',
+      revealed.textGreen < revealed.textCells * 0.5 && revealed.panelMoving > 0 ? 'pass' : 'info',
+      describe(revealed)
+    );
+
+    // The renderer's next frame, over a scene that is still playing.
+    await drawAbove([image('probe_opaque2.png', 0, { z_index: 1 })]);
+    const covered = await observe('frame-over-scene');
+    const coveredOk =
+      covered.textGreen > covered.textCells * 0.9 && covered.iconGreen > panelCells * 0.9 && covered.panelMoving === 0;
+    record('A frame covers the scene still playing under it', coveredOk ? 'pass' : 'info', describe(covered));
+
+    await removeIds(['cmp_scene']);
+    const retired = await observe('scene-retired');
+    const retiredOk =
+      retired.textGreen > retired.textCells * 0.9 && retired.iconGreen > panelCells * 0.9 && retired.panelMoving === 0;
+    record('Removing the covered scene leaves the frame', retiredOk ? 'pass' : 'info', describe(retired));
+  } catch (err) {
+    record('Scene swapped in under the frame', 'fail', err.message);
+  }
+}
+
+/**
+ * Repeats the one screen close the app still makes, to find out whether it is
+ * safe: releasing the display for the idle clock, from a frame with an
+ * animated icon over it.
+ *
+ * Firmware 1.2.4 closes its screen when the element set empties, and closing
+ * it after an image and an animation have shared it hung the bar within three
+ * or four rounds of a plain clear, and within six when the animation was
+ * removed by id immediately before. The app now removes the animation, waits
+ * `ANIMATION_TEARDOWN_SETTLE_MS` and only then clears. This is the
+ * measurement of whether that wait is enough: ten rounds clean at 500 ms on
+ * firmware 1.2.4 (2026-09-30). Re-run it before changing the wait, and after
+ * a firmware release.
+ *
+ * **Opt-in and dangerous: when the answer is "no", the bar hangs** and has to
+ * be power-cycled; it has also rebooted itself about 45 s later. Upload time
+ * climbing from ~50 ms to several hundred is the warning sign that preceded
+ * every hang, so it is reported per round.
+ *
+ * Uses the app's own animated icon and draws the way the app does, under the
+ * probe's `application_name`.
+ */
+const SOAK_ROUNDS = 10;
+
+/** Whether a file is a Git LFS pointer rather than the object it stands for. */
+function isLfsPointer(file) {
+  const head = Buffer.alloc(64);
+  const fd = fs.openSync(file, 'r');
+  try {
+    fs.readSync(fd, head, 0, head.length, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return head.toString('latin1').startsWith('version https://git-lfs');
+}
+
+async function probeTeardownSoak() {
+  const iconDir = path.join(__dirname, '..', 'Animations', 'icon_stopwatch_paused_16x16', 'icon_stopwatch_paused_16x16');
+  const iconFile = path.join(iconDir, 'icon_stopwatch_paused_16x16.anim');
+  // By content, not size: this icon is a real 1.2 KB file -- pause bars
+  // blinking compress to almost nothing -- which a "< 4 KB is a pointer" rule
+  // skipped as if Git LFS had not been run.
+  if (!fs.existsSync(iconFile) || isLfsPointer(iconFile)) {
+    record('Teardown soak', 'skip', `${iconFile} missing or an LFS pointer`);
+    return;
+  }
+  const settle = teardownSettleMs();
+  console.log(`\n  Teardown soak: ${SOAK_ROUNDS} rounds, ${settle} ms settle. This can hang the bar.\n`);
+
+  try {
+    await clearProbeElements();
+    const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=soak_icon.anim`, {
+      body: fs.readFileSync(iconFile),
+      contentType: 'application/octet-stream',
+      timeoutMs: 30000
+    });
+    if (up.status < 200 || up.status >= 300) {
+      record('Teardown soak', 'fail', `icon upload returned ${up.status}`);
+      return;
+    }
+
+    for (let round = 1; round <= SOAK_ROUNDS; round++) {
+      // The frame, uploaded under one of two names as `sendPixelFrame` does.
+      const started = Date.now();
+      const frameUp = await request('POST', `/api/assets/upload?application_name=${APP}&file=soak_${round % 2}.png`, {
+        body: makeGreenPng(FRONT_WIDTH, 0),
+        contentType: 'image/png'
+      });
+      const uploadMs = Date.now() - started;
+      if (frameUp.status < 200 || frameUp.status >= 300) throw new Error(`frame upload returned ${frameUp.status}`);
+      await drawElements([
+        { id: 'soak_frame', type: 'image', path: `soak_${round % 2}.png`, x: 0, y: 0, display: 'front', z_index: 1 }
+      ]);
+      await drawElements([
+        {
+          id: 'soak_icon',
+          type: 'animation',
+          path: 'soak_icon.anim',
+          x: 0,
+          y: 0,
+          display: 'front',
+          loop: true,
+          section: 'default',
+          z_index: 2
+        }
+      ]);
+      await sleep(2000);
+
+      // The release, exactly as `clearDisplay` makes it.
+      await removeIds(['soak_icon']);
+      await sleep(settle);
+      await request('DELETE', `/api/display/draw?application_name=${APP}`);
+      await sleep(1500);
+      const alive = await request('GET', '/api/version');
+      console.log(`    round ${round}: frame upload ${uploadMs} ms, bar answered ${alive.status}`);
+    }
+    record('Teardown soak', 'pass', `${SOAK_ROUNDS} releases survived with a ${settle} ms settle`);
+  } catch (err) {
+    record(
+      'Teardown soak',
+      'fail',
+      `${err.message} -- the bar stopped answering: a ${settle} ms settle is not enough. Power-cycle it.`
+    );
+  }
 }
 
 async function main() {
@@ -1157,6 +1422,14 @@ async function main() {
   // Runs whether or not the app holds the display: it draws above it.
   if (process.argv.includes('--compositing')) {
     await probeCompositing();
+  }
+
+  if (process.argv.includes('--teardown-soak')) {
+    if (!displayOwned) {
+      await probeTeardownSoak();
+    } else {
+      record('Teardown soak', 'skip', 'display owned; re-run with the app closed');
+    }
   }
 
   if (process.argv.includes('--font-sheet')) {

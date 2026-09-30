@@ -10,9 +10,22 @@ import { ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
+import { FrameOutcome } from './device-errors';
 import { IconAnimator } from './icon-animator';
 import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
+import { measureText } from '../../shared/proportional-text';
+import { ROW0_FONT, ROW1_FONT } from '../../shared/fonts/pixel-font';
+
+/** The paused screen's STOP/FINISH bars: row 1's capitals fit inside 7px. */
+const PAUSED_BAR_Y = 9;
+const PAUSED_BAR_HEIGHT = 7;
+/**
+ * Space between the task and its time -- 2px, so an eight-character key such
+ * as SPR-1428 fits beside HH:MM -- and between the two choices.
+ */
+const PAUSED_TIMER_GAP_PX = 2;
+const PAUSED_CHOICE_GAP_PX = 3;
 
 /** Behaviour switches for {@link DisplayRenderer.requestRender}. */
 export interface RequestRenderOptions {
@@ -540,33 +553,54 @@ export class DisplayRenderer {
   }
 
   /**
-   * Paints the icon + 1 text row + progress bar layout.
-   * Progress bar occupies y=11..15 (5px tall), x=17..72.
+   * The paused screen's text: the task and its time on row 0, STOP and FINISH
+   * side by side on row 1, the chosen one inside a 7px highlight bar.
+   *
+   * The two used to be stacked in a column on the right, which left the task
+   * 26px: "KEY: title" came out as "SPR-..." and even the key alone did not
+   * fit. Side by side they also follow the wheel, which turns left and right.
    */
-  private paintIconProgressBar(
+  private paintPausedRows(taskText: string, timerText: string, color: string): void {
+    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+    const right = layout.TEXT_X + layout.TEXT_FIELD_WIDTH;
+    const timerWidth = measureText(timerText, ROW0_FONT);
+    this.canvas.drawTextClipped(timerText, right - timerWidth, layout.ROW0_Y, color, timerWidth);
+    this.canvas.drawTextClipped(
+      taskText, layout.TEXT_X, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - timerWidth - PAUSED_TIMER_GAP_PX
+    );
+
+    let x = layout.TEXT_X;
+    for (const choice of ['STOP', 'FINISH'] as const) {
+      const width = measureText(choice, ROW1_FONT) + 1;       // a pixel of bar each side
+      const chosen = this.pausedSelection === choice;
+      if (chosen) this.canvas.drawRect(x, PAUSED_BAR_Y, width, PAUSED_BAR_HEIGHT, '#F59E0B');
+      this.canvas.drawSmallText(choice, x + 1, PAUSED_BAR_Y + 1, chosen ? '#000000' : '#888888', width);
+      x += width + PAUSED_CHOICE_GAP_PX;
+    }
+  }
+
+  /**
+   * Paints the icon + two rows layout with a one-pixel progress bar under row 1.
+   *
+   * The same layout as every other Unity screen -- state in row 0, project in
+   * row 1 -- where the bar used to take row 1 and push the project into row 0
+   * beside the label, cut to "BUILDING: M...".
+   */
+  private paintIconTwoRowsAndBar(
     iconBitmap: (string | null)[][],
-    titleText: string,
-    titleColor: string,
+    row0Text: string,
+    row1Text: string,
+    row0Color: string,
     progressPercent: number,
     barColor: string,
     animatedIcon?: BitmapIconId
-  ): void {
-    this.canvas.clear();
-    this.frameIcon = animatedIcon ? ANIMATED_ICONS[animatedIcon] ?? null : null;
-    this.canvas.drawBitmap(iconBitmap, 0, 0, 16, 16);
-    this.canvas.drawTextClipped(titleText, 17, 1, titleColor, 55);
-
-    // Progress bar: x=17, y=9, width=55 total
-    const barTotalW = 55;
-    const barFillW = Math.max(1, Math.floor((progressPercent * barTotalW) / 100));
-
-    // Track (background)
-    this.canvas.drawRect(17, 10, barTotalW, 4, '#1E293B');
-    // Fill
-    this.canvas.drawRect(17, 10, barFillW, 4, barColor);
-    // End-cap white pixel
-    const capX = 17 + barFillW - 1;
-    this.canvas.drawRect(capX, 9, 2, 6, '#FFFFFF');
+  ): number {
+    this.paintIconAndTwoRows(iconBitmap, row0Text, row1Text, row0Color, '#FFFFFF', animatedIcon);
+    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+    const barFillW = Math.max(1, Math.floor((progressPercent * layout.TEXT_FIELD_WIDTH) / 100));
+    this.canvas.drawRect(layout.TEXT_X, layout.PROGRESS_BAR_Y, layout.TEXT_FIELD_WIDTH, 1, '#1E293B');
+    this.canvas.drawRect(layout.TEXT_X, layout.PROGRESS_BAR_Y, barFillW, 1, barColor);
+    return barFillW;
   }
 
   /**
@@ -658,14 +692,24 @@ export class DisplayRenderer {
    * when it lets go.
    */
   private async sendFrameToDevice(pngBuffer: Buffer, ledColorHex: string, filename: string): Promise<void> {
+    let outcome: FrameOutcome;
     try {
-      const outcome = await this._driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, filename);
-      if (outcome === 'superseded') {
-        this.lastTransmittedSignature = null;
-      }
+      outcome = await this._driver.sendPixelFrame(pngBuffer, ledColorHex, APP_NAME, filename);
     } catch (err) {
       console.error('[DisplayRenderer] sendPixelFrame failed:', err);
       this.lastTransmittedSignature = null;
+      return;
+    }
+    if (outcome === 'superseded') {
+      this.lastTransmittedSignature = null;
+      return;
+    }
+    // A finished scene is still on the panel, under this frame. It goes only
+    // now that the frame is known to have landed above it: removed any earlier,
+    // the panel would be left empty, which closes the device's screen -- and
+    // that, after an image and an animation shared it, is what hangs the bar.
+    if (outcome === 'sent' && !this.animationPlayer.isHardwareAnimationActive()) {
+      await this.animationPlayer.retireScene();
     }
   }
 
@@ -900,8 +944,12 @@ export class DisplayRenderer {
       const isTracking = session?.status === 'TRACKING';
       const isStandup = session?.taskTitle?.toLowerCase().includes('standup');
 
-      const titleText = session ? `${session.taskKey}: ${session.taskTitle}` : 'No Active Task';
-      const timerText = session ? this.formatTime(session.elapsedSeconds, false) : '00:00';
+      const titleText = !session
+        ? 'Ready'
+        : isPaused
+          ? session.taskKey || session.taskTitle
+          : `${session.taskKey}: ${session.taskTitle}`;
+      const timerText = session ? this.formatTime(session.elapsedSeconds, false) : 'No task running';
 
       const row0Color = isPaused ? '#F59E0B' : session ? colors.keyColor : '#888888';
       const row1Color = isPaused ? '#F59E0B' : session ? '#FFFFFF' : '#888888';
@@ -916,24 +964,15 @@ export class DisplayRenderer {
           .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       } else {
         this.animationPlayer.stop();
-        this.canvas.drawBitmap(getBitmapById('checkmark'), 0, 0, 16, 16);
+        // One stopwatch in three states, where all three -- and Day Complete --
+        // used to share the checkmark.
+        const icon: BitmapIconId = isPaused ? 'stopwatch_paused' : session ? 'stopwatch' : 'stopwatch_idle';
+        this.canvas.drawBitmap(getBitmapById(icon), 0, 0, 16, 16);
+        this.frameIcon = ANIMATED_ICONS[icon] ?? null;
       }
 
       if (isPaused) {
-        // Clipped title & timer on left, interactive STOP/FINISH selection on right
-        this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 26);
-        this.canvas.drawSmallText(timerText, 17, 8, row1Color, 26);
-
-        // Render STOP vs FINISH controls moved down 1px to y=1 and y=9
-        if (this.pausedSelection === 'STOP') {
-          this.canvas.drawRect(44, 1, 27, 7, '#F59E0B');
-          this.canvas.drawSmallText('STOP', 45, 2, '#000000', 26);
-          this.canvas.drawSmallText('FINISH', 45, 10, '#888888', 26);
-        } else {
-          this.canvas.drawSmallText('STOP', 45, 2, '#888888', 26);
-          this.canvas.drawRect(44, 9, 27, 7, '#F59E0B');
-          this.canvas.drawSmallText('FINISH', 45, 10, '#000000', 26);
-        }
+        this.paintPausedRows(titleText, timerText, row0Color);
       } else {
         // Row 0: Task Title
         this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 55);
@@ -1210,7 +1249,7 @@ export class DisplayRenderer {
       const colors = this.getThemeColors();
       this.paintIconAndTwoRows(
         getBitmapById('compiling'),
-        'COMPILING:',
+        'COMPILING',
         projectName,
         colors.keyColor,
         '#FFFFFF',
@@ -1241,18 +1280,15 @@ export class DisplayRenderer {
       const barColor = progress >= 80 ? '#10B981' : progress >= 40 ? '#3B82F6' : '#FBBF24';
       const progressColorHex = `${barColor}FF`;
 
-      this.paintIconProgressBar(
+      const barFillW = this.paintIconTwoRowsAndBar(
         getBitmapById('hammer'),
-        `BUILDING: ${projectName}`,
+        `BUILDING ${progress}%`,
+        projectName,
         barColor,
         progress,
         barColor,
         'hammer'
       );
-
-      // Overlay bar_build_active as identifiable element for tests (virtual — real data is in canvas)
-      const barTotalW = 55;
-      const barFillW = Math.max(1, Math.floor((progress * barTotalW) / 100));
 
       const backElements = [
         { id: 'rear_build_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `Building ${projectName} (${progress}%)`, align: 'top_left' }
@@ -1263,8 +1299,11 @@ export class DisplayRenderer {
       const testEls: Array<Record<string, unknown>> = [
         ...canvasEls,
         // Sentinel elements so tests can find by id — not sent to hardware
-        { id: 'txt_build', type: 'text', text: `BUILDING: ${projectName}`, x: 17, y: 1 },
-        { id: 'bar_build_active', type: 'rectangle', x: 17, y: 10, width: barFillW, height: 4 }
+        { id: 'txt_build', type: 'text', text: `BUILDING ${progress}%`, x: 17, y: 0 },
+        {
+          id: 'bar_build_active', type: 'rectangle', x: 17,
+          y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.PROGRESS_BAR_Y, width: barFillW, height: 1
+        }
       ];
 
       const payload: DisplayPayload = {
@@ -1286,9 +1325,10 @@ export class DisplayRenderer {
     return this.requestRender('unityCompilingPriority', () => {
       const barColor = '#FBBF24';
 
-      this.paintIconProgressBar(
+      this.paintIconTwoRowsAndBar(
         getBitmapById('bulb'),
-        `BAKING: ${projectName}`,
+        `BAKING ${progress}%`,
+        projectName,
         barColor,
         progress,
         barColor,
@@ -1318,7 +1358,7 @@ export class DisplayRenderer {
     return this.requestRender('unityBuildFailurePriority', () => {
       this.paintIconAndTwoRows(
         getBitmapById('error'),
-        'EXCEPTION:',
+        'EXCEPTION',
         message,
         '#EF4444',
         '#FFFFFF',

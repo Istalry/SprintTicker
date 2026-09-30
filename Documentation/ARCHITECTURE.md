@@ -233,14 +233,32 @@ emulator, and `transmitFrame` sends the front matrix and nothing else.
 > rather than replacing the element set, and the firmware composites
 > `px_matrix_img` **above** the animation whichever order they arrive in — so
 > transmitting a frame while an animation plays blacks it out, with both calls
-> returning 200. `AnimationPlayer` clears the display before handing over the
-> `.anim`, and `transmitFrame` skips the hardware send while
+> returning 200. `transmitFrame` skips the hardware send while
 > `isHardwareAnimationActive()`.
+
+**Changing owner never empties the panel.** Emptying the element set closes
+the device's screen, and on firmware 1.2.4 closing it after an image and an
+animation have shared it hangs the bar (see API.md). So the handover is make
+before break, with `z_index` doing the work:
+
+1. `AnimationPlayer` uploads the `.anim` and draws `hardware_anim` at z 0,
+   under the frame at z 1 -- the bar still shows the previous screen.
+2. It removes `px_matrix_img`, revealing the scene. A frame that cannot be
+   removed means a scene nobody can see, so that falls back to streaming.
+3. When the scene stops, the renderer's next frame lands at z 1 over it.
+4. Once that frame comes back `sent`, the renderer calls `retireScene`, which
+   removes `hardware_anim` -- unless the driver believes nothing else is on
+   the panel, since removing it then would empty the panel after all.
+
+Steps 1-2 and 4 address the same element id, so they run under one lock in
+`AnimationPlayer`. `clearDisplay` remains for handing the display back (the
+idle clock, quit); the driver tracks what it has drawn (`shownElementIds`) and
+takes every animation down by id, with a pause, before that clear.
 
 **Animated icons are a second layer, not a second owner.** The screen is still
 one PNG with the icon's static pixels in it. `IconAnimator` lays the icon's
 16×16 `.anim` over them as element `icon_anim`, and `z_index` keeps it on top
-(`FRONT_LAYER_Z`: frame 1, icon 2), so the device animates it with no traffic
+(`FRONT_LAYER_Z`: scene 0, frame 1, icon 2), so the device animates it with no traffic
 per frame.
 
 - **Which icons animate** is `ANIMATED_ICONS` in `shared/render-constants.ts`,
@@ -412,7 +430,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 915 tests across 55 files. `coverage.include` is `src/main/**` and
+Vitest, 991 tests across 56 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

@@ -21,6 +21,18 @@ reported something other than the truth, in three different ways.
   retraced. Work in progress moves steadily; an event acts, then
   rests. The tracking screen's icon stays still, since it is there all day, and
   app logos in notifications stay as they are.
+- **The session screen shows where you are.** A stopwatch replaces the
+  checkmark that the tracking, paused, idle and Day Complete screens all
+  shared: green while a task runs, amber with blinking pause bars while
+  paused, dim grey when nothing runs. The idle screen reads "Ready / No task
+  running" instead of a cut-off "No Active Ta...".
+- **The paused screen shows the whole task key.** STOP and FINISH now sit side
+  by side on row 1, which leaves row 0 to the key and its time. Stacked in a
+  column on the right, they left the title 26px, and it came out as "SPR-...".
+- **The Unity screens read the same way.** State on row 0, project on row 1,
+  and for a build or bake the percentage beside the state and a one-pixel
+  progress line along the bottom. "COMPILING:" lost its dangling colon, and a
+  build no longer cuts the project name to "BUILDING: M...".
 - **The icons were reviewed, and five reworked.** The end-of-day prompt shows
   an alarm clock that rings, in place of a plain clock. The Play Mode pad is
   played: buttons go down, the pad dips, the stick is pushed. The lunch burger
@@ -150,6 +162,15 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The bar no longer freezes after a few lunch, away or meeting screens.**
+  Starting one of those scenes cleared the whole display first, and on
+  firmware 1.2.4 clearing it while a picture and an animation are both on it
+  hangs the bar within three or four times -- a screen with an animated icon,
+  followed by a scene, is exactly that. Scenes now slide in under the current
+  screen and out under the next one, so the display is never emptied to
+  change screens. Handing the display back for the idle clock or at quit
+  still clears it, but takes every animation down first and gives the bar a
+  moment before the clear.
 - **An animated icon no longer changes colour as it starts.** The icon
   generator quantised colours to keep the palette small, which moved most
   icons off the still icon they replace: the end-of-day clock's purple came

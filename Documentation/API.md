@@ -312,11 +312,53 @@ Draws return a value instead of throwing for the answers that are not failures:
 | `sendDisplayPayload` | `'drawn'`, or `'conflict'` when another application owns the display |
 | `drawOverlay` | The same, for elements laid **over** the screen. Unlike `sendDisplayPayload` it does not supersede a frame whose upload is in flight |
 | `sendPixelFrame` | `'sent'`; `'queued'` (disconnected or another frame in flight, so it is sent next); `'superseded'` (a clear landed mid-upload, **the device is not showing it**); `'conflict'` |
+| `clearDisplay` | `'cleared'`; or `'superseded'` when a draw landed while it was taking animations down, in which case the display is **not** released |
 
 `removeDisplayElements(app, ids)` removes the named elements and nothing
 else. An id the device does not hold answers **400**, so it throws `rejected`;
 a caller removing something that may already be gone has to read that as
-success.
+success -- `isElementAbsent(err)` says so, for a 400 and nothing else. **Several
+ids in one call are all or nothing**: one missing id fails the request and
+removes none of the others, so remove one id per call when any may be gone.
+
+`shownElementIds(app, type?)` lists what the driver has drawn for an
+application and not yet removed -- id and element type, from its own
+successful draws and removals, since the device has no endpoint that lists
+them. It can only be stale in one direction (an element the device dropped by
+itself), and a removal of such an element answers 400, which reads as gone.
+
+### Emptying the panel closes the device's screen
+
+When an application's element set becomes empty -- a full `DELETE
+/api/display/draw`, or removing its last element by id -- the firmware closes
+its screen, and reopens it on the next draw.
+
+> [!CAUTION]
+> **On firmware 1.2.4, closing the screen after an image and an animation have
+> shared it hangs the bar within a few cycles.** Measured 2026-09-30: a clear
+> with both on the panel hung it on round 3 and round 4; removing the
+> animation by id and clearing at once hung it on round 6. Uploads slowing
+> from ~50 ms to several hundred came first. An animation alone, and every
+> sequence that never emptied the panel, ran ten rounds clean.
+
+So the app never empties the panel to change screens:
+
+| Transition | How |
+| :--- | :--- |
+| Into a full-panel scene | Draw `hardware_anim` at `z_index` 0, under the frame; then remove `px_matrix_img` |
+| Out of it | The next frame lands at `z_index` 1 over the scene; once it is `sent`, remove `hardware_anim` |
+| Scene to scene | Same element id, so the draw replaces it in place |
+| Release for the idle clock, and quit | `clearDisplay`: every tracked animation removed by id, `ANIMATION_TEARDOWN_SETTLE_MS`, then the full DELETE |
+
+That last row is the only close left, and the pause is what makes it safe:
+the same release without it hung the bar on round 6, and with the 500 ms pause
+`pnpm probe:busybar --teardown-soak` ran ten rounds clean on firmware 1.2.4
+(2026-09-30), uploads flat at 24-53 ms. Re-run that soak before changing the
+pause -- a pause too short hangs the bar.
+
+Uploading over an `.anim` the device is playing answers **508**, so a scene
+still on the panel is redrawn from the copy the device holds rather than
+uploaded again.
 
 `connect()` and `reconfigure()` answer a boolean and never throw. They are
 probes, and "the bar is not there" is a normal answer for them.
@@ -386,7 +428,9 @@ that were not before.
 | `z_index` | On any display element | Integer, higher drawn on top. Elements at the same priority can be layered instead of overwriting one another |
 | `element_ids` | `DELETE /api/display/draw` | An array of element ids to remove, with `application_name` as a sanity check that you own them. Omit it to remove everything |
 
-Both are used for animated icons. The screen, `px_matrix_img`, is drawn at
-`z_index` 1; the icon, `icon_anim`, at `z_index` 2 over it; and the icon is
-removed on its own with `element_ids`. Without them an animation was
-all-or-nothing across the whole panel.
+Both are used for animated icons and scenes (`FRONT_LAYER_Z`,
+`FRONT_ELEMENT_IDS`). A full-panel scene, `hardware_anim`, is drawn at
+`z_index` 0; the screen, `px_matrix_img`, at 1; the icon, `icon_anim`, at 2
+over it. Each is removed on its own with `element_ids`. Without them an
+animation was all-or-nothing across the whole panel, and changing screens
+meant emptying it -- see above for why that is no longer done.

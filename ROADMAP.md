@@ -641,6 +641,35 @@ looping idle animations.
      copyright and the docs footer. All three replacements had run in the app
      on the bar first. `Animations/` is now entirely ours; the old sets remain
      in history. The `seq2anim` toolchain stays, by choice.
+   - [ ] **Every screen, redone** (from 2026-09-30). An inventory of all
+     twenty screens, rendered through the real renderer, found the checkmark
+     shared by the tracking, paused, idle and Day Complete screens, the
+     paused title cut to "SPR-...", and the Unity screens laying out the same
+     information three different ways. Chosen with the user: Day Complete
+     becomes a full-panel scene; the rest keep icon and two rows, put in
+     order; interactions on the bar get feedback of their own.
+     - [x] 9a, the screens put in order (2026-09-30): a stopwatch in three
+       states for tracking, paused and idle; the paused task key whole, with
+       STOP and FINISH side by side; every Unity screen as state, then
+       project, then a one-pixel progress line.
+     - [x] **Found on the way: clearing the display hangs the bar**
+       (2026-09-30). Showing the new screens on the bar froze it, repeatedly.
+       Measured in ten-round loops on firmware 1.2.4: emptying the panel
+       closes the device's screen, and closing it after a picture and an
+       animation have shared it hangs the bar within three to six rounds.
+       Scene starts cleared the display, from screens that now carry
+       animated icons. Scenes now go in under the frame and out under the
+       next one, so changing screens never empties the panel; the driver
+       tracks what it drew and takes animations down, with a pause, before
+       the one clear left (idle clock, quit). A test replays the whole
+       renderer against the firmware's screen rules.
+     - [x] **The pause before the last clear, measured** (2026-09-30).
+       `pnpm probe:busybar --teardown-soak` repeated the idle-clock release
+       ten times with the 500 ms pause: no hang, uploads flat at 24-53 ms.
+       The same release without the pause had hung on round 6.
+     - [ ] 9b, task selection: its own icons, scroll arrows and position.
+     - [ ] 9c, one-shot scenes: GO! on starting a task from the bar, LOGGED
+       on STOP, and the end-of-day scene.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
@@ -825,8 +854,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**84.95 statements / 76.21 branches / 85.84 functions / 87.34 lines across 915
-tests in 55 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**85.80 statements / 77.13 branches / 86.50 functions / 88.04 lines across 991
+tests in 56 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

@@ -1,7 +1,7 @@
 import { powerSaveBlocker } from 'electron';
-import { BusyBarDriver } from './busybar-driver';
-import { describeError, DrawOutcome } from './device-errors';
-import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
+import { BusyBarDriver, DEFAULT_DRAW_PRIORITY } from './busybar-driver';
+import { describeError, DrawOutcome, isElementAbsent } from './device-errors';
+import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
 import { AnimationData, defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 
 /**
@@ -46,14 +46,23 @@ export class AnimationPlayer {
    *
    * Gates hardware frame streaming: while the device owns playback, streaming
    * PNGs at it as well would be two sources drawing the same element. But the
-   * flag has to be able to go *false* again, because the upload can be refused
-   * and there is no exception to catch when it is -- `uploadAsset` and
-   * `sendDisplayPayload` both answer with `false`. Before this existed, a
-   * refused upload left the bar blank with the frame-streaming path disabled
-   * and nothing logged: the on-screen emulator animated correctly the whole
-   * time, because it is fed by `onFrameCallback` and never touches the device.
+   * flag has to be able to go *false* again, because the device can refuse the
+   * upload or the draw. Before this existed, a refused upload left the bar
+   * blank with the frame-streaming path disabled and nothing logged: the
+   * on-screen emulator animated correctly the whole time, because it is fed by
+   * `onFrameCallback` and never touches the device.
    */
   private hardwareAnimActive: boolean = false;
+  /**
+   * The `.anim` the scene element on the device is showing, or null when the
+   * device holds no scene of ours.
+   *
+   * Outlives `stop()` on purpose: a finished scene stays on the panel, under
+   * the next frame, until `retireScene` removes it.
+   */
+  private sceneOnDevice: string | null = null;
+  /** Orders scene draws and removals; see `withSceneLock`. */
+  private sceneLock: Promise<void> = Promise.resolve();
 
   constructor(driver: BusyBarDriver, animationsDir?: string) {
     this.driver = driver;
@@ -204,6 +213,15 @@ export class AnimationPlayer {
    * throws, and each step below is awaited on its own so the log names the one
    * that failed.
    *
+   * **The screen is never emptied on the way in** (make before break). The
+   * scene is drawn at `FRONT_LAYER_Z.SCENE`, underneath the frame already on
+   * the panel, and only then is the frame removed to reveal it. This used to
+   * clear the display first, and on firmware 1.2.4 emptying the screen after an
+   * image and an animation have shared it hangs the bar within a few cycles --
+   * which a frame with an animated icon, followed by a scene, is exactly.
+   * Measured 2026-09-30: the same sequence without the empty ran ten rounds
+   * clean, 346 KB scene included.
+   *
    * Falls back to streaming PNG frames, which is the same path animations
    * without a `.anim` already use, so a device that will not take the file is
    * degraded rather than silent.
@@ -212,79 +230,88 @@ export class AnimationPlayer {
     const buffer = animData.animBuffer;
     if (!buffer) return;
     const bytes = buffer.length;
+    const path = `${animName}.anim`;
     // Superseded while a request was in flight; the newer animation owns the
     // display and must not be torn down by this one's fallback.
     const superseded = (): boolean => !this.isPlaying || this.currentAnimation !== animName;
 
-    try {
-      await this.driver.uploadAsset(DEVICE_APPLICATION_NAME, `${animName}.anim`, buffer);
-    } catch (err) {
-      if (superseded()) return;
-      console.error(
-        `[AnimationPlayer] Device would not store ${animName}.anim (${bytes} bytes): ${describeError(err)}. ` +
-          'Falling back to streaming frames.'
-      );
-      this.fallBackToFrameStreaming(animData);
-      return;
-    }
-    if (superseded()) return;
+    // Twice at most: skipping the upload of the scene already on the panel can
+    // meet a device that rebooted and lost it, which gets one fresh upload.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      // The device answers 508 to an upload over an `.anim` it is playing, so
+      // the scene still on the panel -- the same one, restarted before the
+      // screen after it retired it -- is drawn from the copy it already holds.
+      const reuse = attempt === 0 && this.sceneOnDevice === path;
+      if (!reuse) {
+        try {
+          await this.driver.uploadAsset(DEVICE_APPLICATION_NAME, path, buffer);
+        } catch (err) {
+          if (superseded()) return;
+          console.error(
+            `[AnimationPlayer] Device would not store ${path} (${bytes} bytes): ${describeError(err)}. ` +
+              'Falling back to streaming frames.'
+          );
+          this.fallBackToFrameStreaming(animData);
+          return;
+        }
+        if (superseded()) return;
+      }
 
-    // Remove whatever this application already has on the front display before
-    // handing it the animation.
-    //
-    // Measured on firmware 1.2.3, and the reason a correct upload and a correct
-    // draw still produced a black bar: a draw MERGES by element id rather than
-    // replacing the element set, and `px_matrix_img` -- the full-panel PNG
-    // `sendPixelFrame` draws -- composites ABOVE `hardware_anim` whichever
-    // order the two arrive in. So the previous screen's frame, or the blank one
-    // `DisplayRenderer` sends after clearing its canvas, stays on top of the
-    // animation forever. Drawing the animation second does not help; only
-    // removing the image does.
-    //
-    // So a failed clear is a failed start, not a detail: the animation would
-    // be drawn underneath an opaque frame and the bar would stay black.
-    try {
-      await this.driver.clearDisplay(DEVICE_APPLICATION_NAME);
-    } catch (err) {
-      if (superseded()) return;
-      console.error(
-        `[AnimationPlayer] Could not clear the display before playing ${animName}.anim: ${describeError(err)}. ` +
-          'Falling back to streaming frames.'
-      );
-      this.fallBackToFrameStreaming(animData);
-      return;
+      const drawn = await this.withSceneLock(() => this.drawScene(animName, animData, path, bytes, reuse, superseded));
+      if (drawn !== 'retry') return;
     }
-    if (superseded()) return;
+  }
+
+  /**
+   * Draws the scene under the frame and removes the frame above it.
+   *
+   * Runs under the scene lock, so a retirement of the previous scene -- same
+   * element id -- cannot land after this draw and take the new scene down.
+   */
+  private async drawScene(
+    animName: string,
+    animData: AnimationData,
+    path: string,
+    bytes: number,
+    reused: boolean,
+    superseded: () => boolean
+  ): Promise<'done' | 'retry'> {
+    if (superseded()) return 'done';
 
     let outcome: DrawOutcome;
     try {
       outcome = await this.driver.sendDisplayPayload({
         application_name: DEVICE_APPLICATION_NAME,
-        priority: 95,
+        priority: DEFAULT_DRAW_PRIORITY,
         led_notification_color: this.getLedColorCallback ? this.getLedColorCallback() : undefined,
         elements: [{
-          id: 'hardware_anim',
+          id: FRONT_ELEMENT_IDS.SCENE,
           type: 'animation',
-          path: `${animName}.anim`,
+          path,
           x: 0,
           y: 0,
           display: 'front',
           loop: this.loop,
-          section: 'default'
+          section: 'default',
+          z_index: FRONT_LAYER_Z.SCENE
         }]
       });
     } catch (err) {
-      if (superseded()) return;
+      if (superseded()) return 'done';
+      if (reused) {
+        this.sceneOnDevice = null;
+        return 'retry';
+      }
       console.error(
-        `[AnimationPlayer] Device stored ${animName}.anim (${bytes} bytes) but refused to draw it: ${describeError(err)}. ` +
+        `[AnimationPlayer] Device stored ${path} (${bytes} bytes) but refused to draw it: ${describeError(err)}. ` +
           'Falling back to streaming frames.'
       );
       this.fallBackToFrameStreaming(animData);
-      return;
+      return 'done';
     }
-    if (superseded()) return;
 
     if (outcome === 'conflict') {
+      if (superseded()) return 'done';
       // Not a refusal: something with a higher priority holds the display, so
       // the animation element was never placed. Streaming keeps offering frames
       // and one lands as soon as the display is released, where a one-shot
@@ -294,10 +321,88 @@ export class AnimationPlayer {
         `[AnimationPlayer] Display is held at a higher priority; streaming ${animName} frames until it is released.`
       );
       this.fallBackToFrameStreaming(animData);
-      return;
+      return 'done';
+    }
+    this.sceneOnDevice = path;
+    if (superseded()) return 'done';
+
+    // The frame is opaque across the whole panel and sits above the scene, so
+    // until it goes the scene plays unseen. A 400 is the device holding no
+    // frame -- a scene following a scene, or a screen the idle clock released.
+    try {
+      await this.driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]);
+    } catch (err) {
+      if (!isElementAbsent(err)) {
+        if (superseded()) return 'done';
+        console.error(
+          `[AnimationPlayer] ${path} is on the device but the frame above it could not be removed: ${describeError(err)}. ` +
+            'Falling back to streaming frames.'
+        );
+        this.fallBackToFrameStreaming(animData);
+        return 'done';
+      }
     }
 
-    console.log(`[AnimationPlayer] Device is playing ${animName}.anim (${bytes} bytes).`);
+    console.log(`[AnimationPlayer] Device is playing ${path} (${bytes} bytes).`);
+    return 'done';
+  }
+
+  /**
+   * Removes a scene that has finished and been covered by a frame.
+   *
+   * The other half of make before break: `DisplayRenderer` calls this once a
+   * frame has landed after the animation stopped, so the frame is already
+   * above the scene when the scene goes and the screen is never empty.
+   *
+   * Does nothing while a scene is playing, when none is left on the device, or
+   * when the driver does not believe anything else is on the panel -- removing
+   * the scene then would empty the screen, the one thing this exists to avoid.
+   */
+  public async retireScene(): Promise<void> {
+    if (this.sceneOnDevice === null) return;
+    await this.withSceneLock(async () => {
+      if (this.sceneOnDevice === null || this.hardwareAnimActive) return;
+      const others = this.driver
+        .shownElementIds(DEVICE_APPLICATION_NAME)
+        .filter(id => id !== FRONT_ELEMENT_IDS.SCENE);
+      if (others.length === 0) return;
+
+      try {
+        await this.driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.SCENE]);
+        this.sceneOnDevice = null;
+      } catch (err) {
+        if (isElementAbsent(err)) {
+          // Already gone: a clear, a higher-priority application, a reboot.
+          this.sceneOnDevice = null;
+          return;
+        }
+        // Kept, so the next frame tries again. Harmless meanwhile: the frame
+        // covers it.
+        console.warn(`[AnimationPlayer] Could not remove the finished scene: ${describeError(err)}`);
+      }
+    });
+  }
+
+  /**
+   * Runs `operation` after every scene operation before it has finished.
+   *
+   * Starting a scene and retiring the last one address the same element id;
+   * interleaved, a late removal takes down the scene that was just drawn, and
+   * with the frame already removed that empties the screen.
+   */
+  private async withSceneLock<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.sceneLock;
+    let release: () => void = () => undefined;
+    this.sceneLock = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    try {
+      // Never rejects: every link is resolved by a `finally` like this one.
+      await previous;
+      return await operation();
+    } finally {
+      release();
+    }
   }
 
   /**
@@ -360,8 +465,8 @@ export class AnimationPlayer {
    * Whether the device is currently playing a `.anim` on the front display.
    *
    * `DisplayRenderer` reads this to keep `transmitFrame` from drawing a
-   * `px_matrix_img` over the animation -- see the comment in
-   * `startHardwareAnimation` for why that image always wins.
+   * `px_matrix_img` over the animation: the frame is opaque across the whole
+   * panel and sits above the scene by `z_index`, so it would hide it.
    */
   public isHardwareAnimationActive(): boolean {
     return this.hardwareAnimActive;

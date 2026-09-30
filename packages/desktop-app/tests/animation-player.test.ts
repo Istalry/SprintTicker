@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
+import { FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../src/shared/device-constants';
 import fs from 'fs';
 
 vi.mock('electron', () => ({
@@ -59,7 +60,9 @@ describe('AnimationPlayer Unit Tests', () => {
       sendPixelFrame: vi.fn().mockResolvedValue('sent'),
       uploadAsset: vi.fn().mockResolvedValue(undefined),
       sendDisplayPayload: vi.fn().mockResolvedValue('drawn'),
-      clearDisplay: vi.fn().mockResolvedValue(undefined)
+      clearDisplay: vi.fn().mockResolvedValue('cleared'),
+      removeDisplayElements: vi.fn().mockResolvedValue(undefined),
+      shownElementIds: vi.fn().mockReturnValue([])
     } as unknown as BusyBarDriver;
     player = new AnimationPlayer(driver, '/mock/animations');
     vi.useFakeTimers();
@@ -255,22 +258,6 @@ describe('AnimationPlayer Unit Tests', () => {
       expect(logged).toHaveBeenCalledWith(expect.stringContaining('refused to draw it'));
     });
 
-    it('Play_ClearBeforeDrawFails_FallsBackToStreamingFrames', async () => {
-      // Without the clear, the stale full-panel frame stays on top of the
-      // animation (see the test below), so a failed clear is a failed start.
-      withAnimFile();
-      (driver.clearDisplay as ReturnType<typeof vi.fn>).mockRejectedValue(refused('clear display'));
-      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      await player.play('hw_anim');
-      await settle();
-
-      expect(driver.sendDisplayPayload).not.toHaveBeenCalled();
-      expect(driver.sendPixelFrame).toHaveBeenCalled();
-      expect(player.isHardwareAnimationActive()).toBe(false);
-      expect(logged).toHaveBeenCalledWith(expect.stringContaining('Could not clear the display'));
-    });
-
     it('Play_DisplayHeldAtHigherPriority_StreamsFramesUntilReleased', async () => {
       // A 409 is not a refusal, but the animation element was never placed.
       // Streaming keeps offering frames, so one lands once the display is free.
@@ -297,24 +284,6 @@ describe('AnimationPlayer Unit Tests', () => {
       await settle();
 
       expect(logged).toHaveBeenCalledWith(expect.stringMatching(/\(\d+ bytes\)/));
-    });
-
-    it('Play_BeforeDrawingTheAnimation_ClearsTheStalePixelFrameOffTheDisplay', async () => {
-      // Measured on firmware 1.2.3: a draw merges by element id instead of
-      // replacing the element set, and the full-panel `px_matrix_img` that
-      // `sendPixelFrame` leaves behind composites ABOVE `hardware_anim` in
-      // either order. So an upload and a draw that both succeed still show a
-      // black bar until the image is removed. Reproduced against a real device
-      // before this test was written.
-      withAnimFile();
-
-      await player.play('hw_anim');
-      await settle();
-
-      expect(driver.clearDisplay).toHaveBeenCalled();
-      const clearedAt = (driver.clearDisplay as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
-      const drewAt = (driver.sendDisplayPayload as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
-      expect(clearedAt).toBeLessThan(drewAt);
     });
 
     it('IsHardwareAnimationActive_WhileDevicePlaysTheFile_ReportsTrue', async () => {
@@ -383,6 +352,323 @@ describe('AnimationPlayer Unit Tests', () => {
       await settle();
 
       expect(driver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    /**
+     * The screen must never be emptied on the way into or out of a scene.
+     *
+     * Emptying the device's element set closes its screen, and on firmware
+     * 1.2.4 closing it after an image and an animation have shared it hangs the
+     * bar within a few cycles (measured 2026-09-30). Starting a scene used to
+     * clear the display first -- from a frame with an animated icon on it,
+     * which is precisely that pattern. The scene now goes in underneath the
+     * frame and the frame comes out afterwards; on the way back, the renderer's
+     * next frame covers the scene before `retireScene` removes it.
+     */
+    describe('make before break', () => {
+      const mocked = (fn: unknown): ReturnType<typeof vi.fn> => fn as ReturnType<typeof vi.fn>;
+      const absent = (): DeviceRequestError => new DeviceRequestError('rejected', 'remove', 400);
+      const unreachable = (): DeviceRequestError => new DeviceRequestError('unreachable', 'remove');
+      const sceneElement = (call = 0): Record<string, unknown> =>
+        (mocked(driver.sendDisplayPayload).mock.calls[call][0].elements as Array<Record<string, unknown>>)[0];
+      const removals = (): string[][] => mocked(driver.removeDisplayElements).mock.calls.map(call => call[1] as string[]);
+
+      /** Plays a scene the device accepts, then stops it with a frame shown above. */
+      const playThenStop = async (name = 'hw_anim'): Promise<void> => {
+        await player.play(name);
+        await settle();
+        player.stop();
+        mocked(driver.shownElementIds).mockReturnValue([FRONT_ELEMENT_IDS.FRAME, FRONT_ELEMENT_IDS.SCENE]);
+      };
+
+      it('Play_StartingAScene_NeverClearsTheDisplay', async () => {
+        withAnimFile();
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(driver.clearDisplay).not.toHaveBeenCalled();
+        expect(player.isHardwareAnimationActive()).toBe(true);
+      });
+
+      it('Play_StartingAScene_DrawsItUnderTheFrameBeforeRemovingTheFrame', async () => {
+        withAnimFile();
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(sceneElement()).toMatchObject({ id: FRONT_ELEMENT_IDS.SCENE, type: 'animation', z_index: FRONT_LAYER_Z.SCENE });
+        expect(FRONT_LAYER_Z.SCENE).toBeLessThan(FRONT_LAYER_Z.FRAME);
+        expect(removals()).toEqual([[FRONT_ELEMENT_IDS.FRAME]]);
+        const drewAt = mocked(driver.sendDisplayPayload).mock.invocationCallOrder[0];
+        const removedAt = mocked(driver.removeDisplayElements).mock.invocationCallOrder[0];
+        expect(drewAt).toBeLessThan(removedAt);
+      });
+
+      it('Play_NoFrameOnTheDevice_ReadsTheRemovalRefusalAsAlreadyGone', async () => {
+        // A scene following a scene, or a panel the idle clock released.
+        withAnimFile();
+        mocked(driver.removeDisplayElements).mockRejectedValue(absent());
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(player.isHardwareAnimationActive()).toBe(true);
+        expect(driver.sendPixelFrame).not.toHaveBeenCalled();
+      });
+
+      it('Play_FrameCouldNotBeRemoved_FallsBackToStreamingFrames', async () => {
+        // The scene is on the device but hidden under an opaque frame: without
+        // streaming the bar would show the previous screen for the whole break.
+        withAnimFile();
+        mocked(driver.removeDisplayElements).mockRejectedValue(unreachable());
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(player.isHardwareAnimationActive()).toBe(false);
+        expect(driver.sendPixelFrame).toHaveBeenCalled();
+        expect(logged).toHaveBeenCalledWith(expect.stringContaining('could not be removed'));
+      });
+
+      it('Play_FrameRemovalFailsWithAnotherRefusal_DoesNotTreatItAsGone', async () => {
+        // Only 400 means "not there". A 500 says nothing about the frame.
+        withAnimFile();
+        mocked(driver.removeDisplayElements).mockRejectedValue(new DeviceRequestError('rejected', 'remove', 500));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(player.isHardwareAnimationActive()).toBe(false);
+        expect(driver.sendPixelFrame).toHaveBeenCalled();
+      });
+
+      it.each([
+        ['held at a higher priority', (): void => void mocked(driver.sendDisplayPayload).mockResolvedValue('conflict')],
+        ['refused', (): void => void mocked(driver.sendDisplayPayload).mockRejectedValue(refused('display payload'))],
+        ['not stored', (): void => void mocked(driver.uploadAsset).mockRejectedValue(refused('asset upload'))]
+      ])('Play_SceneWas%s_LeavesTheFrameInPlace', async (_case, arrange) => {
+        // Removing the frame with no scene under it would empty the panel.
+        withAnimFile();
+        arrange();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+        expect(driver.sendPixelFrame).toHaveBeenCalled();
+      });
+
+      it('Play_StoppedDuringTheUpload_DrawsNothing', async () => {
+        withAnimFile();
+        let finishUpload: () => void = () => undefined;
+        mocked(driver.uploadAsset).mockReturnValue(new Promise<void>(resolve => (finishUpload = resolve)));
+
+        await player.play('hw_anim');
+        player.stop();
+        finishUpload();
+        await settle();
+
+        expect(driver.sendDisplayPayload).not.toHaveBeenCalled();
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+      });
+
+      it('Play_StoppedWhileTheSceneWasBeingDrawn_LeavesTheNextFrameAlone', async () => {
+        // The renderer is about to put the next screen's frame down; removing
+        // "the frame" now would take that one instead.
+        withAnimFile();
+        let finishDraw: (outcome: string) => void = () => undefined;
+        mocked(driver.sendDisplayPayload).mockReturnValue(new Promise(resolve => (finishDraw = resolve)));
+
+        await player.play('hw_anim');
+        await settle();
+        player.stop();
+        finishDraw('drawn');
+        await settle();
+
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+      });
+
+      it('RetireScene_WhileTheSceneIsPlaying_DoesNothing', async () => {
+        withAnimFile();
+        await player.play('hw_anim');
+        await settle();
+        mocked(driver.shownElementIds).mockReturnValue([FRONT_ELEMENT_IDS.FRAME, FRONT_ELEMENT_IDS.SCENE]);
+        mocked(driver.removeDisplayElements).mockClear();
+
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+      });
+
+      it('RetireScene_AfterStopWithAFrameAboveIt_RemovesOnlyTheScene', async () => {
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.removeDisplayElements).mockClear();
+
+        await player.retireScene();
+
+        expect(removals()).toEqual([[FRONT_ELEMENT_IDS.SCENE]]);
+      });
+
+      it('RetireScene_NothingElseOnThePanel_KeepsTheScene', async () => {
+        // Removing it would empty the screen -- the close this all avoids.
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.shownElementIds).mockReturnValue([FRONT_ELEMENT_IDS.SCENE]);
+        mocked(driver.removeDisplayElements).mockClear();
+
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+      });
+
+      it('RetireScene_NoSceneEverDrawn_MakesNoRequest', async () => {
+        mocked(driver.shownElementIds).mockReturnValue([FRONT_ELEMENT_IDS.FRAME]);
+
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+      });
+
+      it('RetireScene_CalledTwice_RemovesTheSceneOnce', async () => {
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.removeDisplayElements).mockClear();
+
+        await player.retireScene();
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).toHaveBeenCalledTimes(1);
+      });
+
+      it('RetireScene_SceneAlreadyGone_ForgetsIt', async () => {
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.removeDisplayElements).mockClear();
+        mocked(driver.removeDisplayElements).mockRejectedValueOnce(absent());
+
+        await player.retireScene();
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).toHaveBeenCalledTimes(1);
+      });
+
+      it('RetireScene_DeviceUnreachable_TriesAgainWithTheNextFrame', async () => {
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.removeDisplayElements).mockClear();
+        mocked(driver.removeDisplayElements).mockRejectedValueOnce(unreachable());
+        const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await player.retireScene();
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).toHaveBeenCalledTimes(2);
+        expect(warned).toHaveBeenCalledWith(expect.stringContaining('Could not remove the finished scene'));
+      });
+
+      it('RetireScene_RacingANewScene_RemovesTheOldOneBeforeTheNewOneIsDrawn', async () => {
+        // Both use the same element id. A removal landing after the new draw
+        // would take the new scene down, with its frame already gone.
+        withAnimFile();
+        await playThenStop('first');
+        mocked(driver.removeDisplayElements).mockClear();
+        mocked(driver.sendDisplayPayload).mockClear();
+        let finishRemoval: () => void = () => undefined;
+        mocked(driver.removeDisplayElements).mockReturnValueOnce(new Promise<void>(resolve => (finishRemoval = resolve)));
+
+        const retiring = player.retireScene();
+        await player.play('second');
+        await settle();
+        expect(driver.sendDisplayPayload).not.toHaveBeenCalled();
+
+        finishRemoval();
+        await retiring;
+        await settle();
+
+        expect(driver.sendDisplayPayload).toHaveBeenCalledTimes(1);
+        expect(sceneElement()).toMatchObject({ path: 'second.anim' });
+        expect(removals()[0]).toEqual([FRONT_ELEMENT_IDS.SCENE]);
+      });
+
+      it('RetireScene_AfterANewSceneStarted_LeavesTheNewScene', async () => {
+        withAnimFile();
+        await playThenStop('first');
+        await player.play('second');
+        await settle();
+        mocked(driver.removeDisplayElements).mockClear();
+
+        await player.retireScene();
+
+        expect(driver.removeDisplayElements).not.toHaveBeenCalled();
+      });
+
+      it('Play_SameSceneStillOnTheDevice_DrawsItWithoutUploadingOverIt', async () => {
+        // The device answers 508 to an upload over an .anim it is playing.
+        withAnimFile();
+        await playThenStop();
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(driver.uploadAsset).toHaveBeenCalledTimes(1);
+        expect(driver.sendDisplayPayload).toHaveBeenCalledTimes(2);
+        expect(player.isHardwareAnimationActive()).toBe(true);
+      });
+
+      it('Play_ReusedSceneRefusedBecauseTheDeviceLostIt_UploadsAgainAndDraws', async () => {
+        // A bar that rebooted keeps no assets; the copy we counted on is gone.
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.sendDisplayPayload).mockRejectedValueOnce(refused('display payload'));
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(driver.uploadAsset).toHaveBeenCalledTimes(2);
+        expect(driver.sendDisplayPayload).toHaveBeenCalledTimes(3);
+        expect(player.isHardwareAnimationActive()).toBe(true);
+      });
+
+      it('Play_ReusedSceneRefusedTwice_FallsBackToStreamingFrames', async () => {
+        withAnimFile();
+        await playThenStop();
+        mocked(driver.sendDisplayPayload).mockRejectedValue(refused('display payload'));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(driver.uploadAsset).toHaveBeenCalledTimes(2);
+        expect(player.isHardwareAnimationActive()).toBe(false);
+        expect(driver.sendPixelFrame).toHaveBeenCalled();
+      });
+
+      it('Play_AfterTheSceneWasRetired_UploadsItAgain', async () => {
+        withAnimFile();
+        await playThenStop();
+        await player.retireScene();
+
+        await player.play('hw_anim');
+        await settle();
+
+        expect(driver.uploadAsset).toHaveBeenCalledTimes(2);
+      });
+
+      it('Play_ADifferentScene_UploadsIt', async () => {
+        withAnimFile();
+        await playThenStop('first');
+
+        await player.play('second');
+        await settle();
+
+        expect(mocked(driver.uploadAsset).mock.calls.map(call => call[1])).toEqual(['first.anim', 'second.anim']);
+      });
     });
   });
 });

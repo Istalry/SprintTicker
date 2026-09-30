@@ -412,6 +412,70 @@ export const BULB_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 
+// The session stopwatch, in its three states. One drawing, so the tracking,
+// paused and idle screens read as one object changing state: green with a
+// quarter elapsed while tracking, amber with pause bars, dim grey with the
+// hand at twelve when nothing runs. These replace the checkmark, which the
+// tracking, paused, idle and Day Complete screens all shared, so the bar could
+// not say whether work was running, stopped or finished. Paused is the rest
+// pose of `icon_stopwatch_paused_16x16`.
+export const STOPWATCH_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, '#D1D5DB', '#D1D5DB', '#D1D5DB', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#9CA3AF', null, null, null, '#D1D5DB', '#D1D5DB', null, null, null],
+  [null, null, null, null, null, null, null, '#9CA3AF', null, null, '#9CA3AF', '#9CA3AF', null, null, null, null],
+  [null, null, null, null, '#6EE7B7', '#6EE7B7', '#10B981', '#10B981', '#10B981', '#10B981', '#10B981', null, null, null, null, null],
+  [null, null, null, '#6EE7B7', '#6EE7B7', '#F0FDF4', '#F0FDF4', '#34D399', '#A7F3D0', '#A7F3D0', '#10B981', '#10B981', null, null, null, null],
+  [null, null, '#6EE7B7', '#6EE7B7', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#A7F3D0', '#A7F3D0', '#A7F3D0', '#10B981', '#10B981', null, null, null],
+  [null, '#6EE7B7', '#6EE7B7', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#A7F3D0', '#A7F3D0', '#A7F3D0', '#A7F3D0', '#10B981', '#10B981', null, null],
+  [null, '#6EE7B7', '#6EE7B7', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#A7F3D0', '#A7F3D0', '#A7F3D0', '#A7F3D0', '#10B981', '#047857', null, null],
+  [null, '#6EE7B7', '#10B981', '#34D399', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#064E3B', '#064E3B', '#064E3B', '#064E3B', '#34D399', '#10B981', '#047857', null, null],
+  [null, '#10B981', '#10B981', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#047857', '#047857', null, null],
+  [null, '#10B981', '#10B981', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#047857', '#047857', null, null],
+  [null, '#10B981', '#10B981', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#047857', '#047857', null, null],
+  [null, null, '#10B981', '#10B981', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#F0FDF4', '#047857', '#047857', null, null, null],
+  [null, null, null, '#10B981', '#047857', '#F0FDF4', '#F0FDF4', '#34D399', '#F0FDF4', '#F0FDF4', '#047857', '#047857', null, null, null, null],
+  [null, null, null, null, '#047857', '#047857', '#047857', '#047857', '#047857', '#047857', '#047857', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const STOPWATCH_PAUSED_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, '#D1D5DB', '#D1D5DB', '#D1D5DB', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#9CA3AF', null, null, null, '#D1D5DB', '#D1D5DB', null, null, null],
+  [null, null, null, null, null, null, null, '#9CA3AF', null, null, '#9CA3AF', '#9CA3AF', null, null, null, null],
+  [null, null, null, null, '#FCD34D', '#FCD34D', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', null, null, null, null, null],
+  [null, null, null, '#FCD34D', '#FCD34D', '#FFFBEB', '#FFFBEB', '#FBBF24', '#FFFBEB', '#FFFBEB', '#F59E0B', '#F59E0B', null, null, null, null],
+  [null, null, '#FCD34D', '#FCD34D', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#F59E0B', '#F59E0B', null, null, null],
+  [null, '#FCD34D', '#FCD34D', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#FFFBEB', '#F59E0B', '#F59E0B', null, null],
+  [null, '#FCD34D', '#FCD34D', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#FFFBEB', '#F59E0B', '#B45309', null, null],
+  [null, '#FCD34D', '#F59E0B', '#FBBF24', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#FBBF24', '#F59E0B', '#B45309', null, null],
+  [null, '#F59E0B', '#F59E0B', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', null, null],
+  [null, '#F59E0B', '#F59E0B', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', null, null],
+  [null, '#F59E0B', '#F59E0B', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#B45309', '#B45309', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', null, null],
+  [null, null, '#F59E0B', '#F59E0B', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', null, null, null],
+  [null, null, null, '#F59E0B', '#B45309', '#FFFBEB', '#FFFBEB', '#FBBF24', '#FFFBEB', '#FFFBEB', '#B45309', '#B45309', null, null, null, null],
+  [null, null, null, null, '#B45309', '#B45309', '#B45309', '#B45309', '#B45309', '#B45309', '#B45309', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const STOPWATCH_IDLE_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, '#6B7280', '#6B7280', '#6B7280', null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, '#4B5563', null, null, null, '#6B7280', '#6B7280', null, null, null],
+  [null, null, null, null, null, null, null, '#4B5563', null, null, '#4B5563', '#4B5563', null, null, null, null],
+  [null, null, null, null, '#9CA3AF', '#9CA3AF', '#6B7280', '#6B7280', '#6B7280', '#6B7280', '#6B7280', null, null, null, null, null],
+  [null, null, null, '#9CA3AF', '#9CA3AF', '#374151', '#374151', '#6B7280', '#374151', '#374151', '#6B7280', '#6B7280', null, null, null, null],
+  [null, null, '#9CA3AF', '#9CA3AF', '#374151', '#374151', '#374151', '#D1D5DB', '#374151', '#374151', '#374151', '#6B7280', '#6B7280', null, null, null],
+  [null, '#9CA3AF', '#9CA3AF', '#374151', '#374151', '#374151', '#374151', '#D1D5DB', '#374151', '#374151', '#374151', '#374151', '#6B7280', '#6B7280', null, null],
+  [null, '#9CA3AF', '#9CA3AF', '#374151', '#374151', '#374151', '#374151', '#D1D5DB', '#374151', '#374151', '#374151', '#374151', '#6B7280', '#374151', null, null],
+  [null, '#9CA3AF', '#6B7280', '#6B7280', '#374151', '#374151', '#374151', '#D1D5DB', '#374151', '#374151', '#374151', '#6B7280', '#6B7280', '#374151', null, null],
+  [null, '#6B7280', '#6B7280', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', null, null],
+  [null, '#6B7280', '#6B7280', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', null, null],
+  [null, '#6B7280', '#6B7280', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', null, null],
+  [null, null, '#6B7280', '#6B7280', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', null, null, null],
+  [null, null, null, '#6B7280', '#374151', '#374151', '#374151', '#6B7280', '#374151', '#374151', '#374151', '#374151', null, null, null, null],
+  [null, null, null, null, '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', '#374151', null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
 /**
  * Retrieves 16x16 pixel bitmap matrix by identifier.
  */
@@ -458,6 +522,12 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return HAMMER_16X16_BITMAP;
     case 'bulb':
       return BULB_16X16_BITMAP;
+    case 'stopwatch':
+      return STOPWATCH_16X16_BITMAP;
+    case 'stopwatch_paused':
+      return STOPWATCH_PAUSED_16X16_BITMAP;
+    case 'stopwatch_idle':
+      return STOPWATCH_IDLE_16X16_BITMAP;
     case 'unity':
     default:
       return UNITY_16X16_BITMAP;

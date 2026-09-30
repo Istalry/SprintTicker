@@ -67,6 +67,9 @@ export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   burger: 'icon_burger_16x16',
   checkmark: 'icon_check_16x16',
   openproject: 'icon_openproject_16x16',
+  // Waiting rather than working: the pause bars blink slowly. The tracking
+  // stopwatch stays still, since it is on screen all day.
+  stopwatch_paused: 'icon_stopwatch_paused_16x16',
 };
 
 export const DISPLAY_CONSTANTS = {
@@ -96,6 +99,12 @@ export const DISPLAY_CONSTANTS = {
     ROW0_Y: 0,
     ROW1_Y: 8,
     TEXT_FIELD_WIDTH: 55,
+    /**
+     * A progress bar is one pixel, under row 1. It used to take row 1 over,
+     * which pushed the project name into row 0 beside the label, where it was
+     * cut to "BUILDING: M...". Row 1's descenders end at y=14.
+     */
+    PROGRESS_BAR_Y: 15,
   }
 
   // No font metrics here. Both rows are proportional, so there is no stride to

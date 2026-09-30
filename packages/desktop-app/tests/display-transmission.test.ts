@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
+import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -179,6 +180,66 @@ describe('Display transmission volume', () => {
       renderer.renderActiveSession(session(10));
 
       expect(sendPixelFrame()).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  /**
+   * A finished scene stays on the panel under the next frame and is removed
+   * only once that frame has landed. Removed any earlier, the panel empties,
+   * which closes the device's screen -- the event that hangs firmware 1.2.4
+   * after an image and an animation have shared it.
+   */
+  describe('a finished scene', () => {
+    const settle = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+    const sendPixelFrame = (): ReturnType<typeof vi.fn> => driver.sendPixelFrame as ReturnType<typeof vi.fn>;
+
+    it('RenderActiveSession_FrameLanded_RetiresTheSceneAfterIt', async () => {
+      const retire = vi.spyOn(AnimationPlayer.prototype, 'retireScene').mockResolvedValue(undefined);
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+
+      expect(retire).toHaveBeenCalledTimes(1);
+      expect(sendPixelFrame().mock.invocationCallOrder[0]).toBeLessThan(retire.mock.invocationCallOrder[0]);
+      retire.mockRestore();
+    });
+
+    it.each(['conflict', 'superseded', 'queued'])('RenderActiveSession_FrameCameBack%s_KeepsTheScene', async outcome => {
+      // The frame is not on the panel, so nothing covers the scene yet.
+      const retire = vi.spyOn(AnimationPlayer.prototype, 'retireScene').mockResolvedValue(undefined);
+      sendPixelFrame().mockResolvedValue(outcome);
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+
+      expect(retire).not.toHaveBeenCalled();
+      retire.mockRestore();
+    });
+
+    it('RenderActiveSession_FrameRefused_KeepsTheScene', async () => {
+      const retire = vi.spyOn(AnimationPlayer.prototype, 'retireScene').mockResolvedValue(undefined);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      sendPixelFrame().mockRejectedValue(new DeviceRequestError('unreachable', 'draw'));
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+
+      expect(retire).not.toHaveBeenCalled();
+      retire.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it('RenderActiveSession_WhileTheDevicePlaysAScene_NeitherDrawsNorRetires', async () => {
+      const retire = vi.spyOn(AnimationPlayer.prototype, 'retireScene').mockResolvedValue(undefined);
+      const active = vi.spyOn(AnimationPlayer.prototype, 'isHardwareAnimationActive').mockReturnValue(true);
+
+      renderer.renderActiveSession(session(10));
+      await settle();
+
+      expect(sendPixelFrame()).not.toHaveBeenCalled();
+      expect(retire).not.toHaveBeenCalled();
+      retire.mockRestore();
+      active.mockRestore();
     });
   });
 });

@@ -1,12 +1,12 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
-import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_LAYER_Z, redactTokenInUrl } from '../../shared/device-constants';
+import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
-import { DeviceRequestError, DrawOutcome, FrameOutcome } from './device-errors';
+import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, isElementAbsent } from './device-errors';
 
 export { DeviceRequestError } from './device-errors';
-export type { DeviceFailureKind, DrawOutcome, FrameOutcome } from './device-errors';
+export type { ClearOutcome, DeviceFailureKind, DrawOutcome, FrameOutcome } from './device-errors';
 
 export interface HardwareEvent {
   key: string;
@@ -18,6 +18,8 @@ export interface BusyBarDriverOptions {
   ipAddress?: string;
   apiToken?: string;
   forceMock?: boolean;
+  /** Overrides `ANIMATION_TEARDOWN_SETTLE_MS`; tests pass 0 or step fake timers. */
+  animationTeardownSettleMs?: number;
 }
 
 // Re-exported rather than redeclared: the onboarding wizard displays this and
@@ -39,6 +41,28 @@ export const DEVICE_REQUEST_TIMEOUT_MS = 2000;
 
 /** Longer, because an asset upload carries a payload rather than a few bytes. */
 export const DEVICE_UPLOAD_TIMEOUT_MS = 5000;
+
+/**
+ * Pause between removing this application's animations and releasing the
+ * display, in `clearDisplay`.
+ *
+ * Releasing the display empties the device's element set, and an empty set
+ * closes its screen. Measured on firmware 1.2.4 (2026-09-30): closing it while
+ * an image and an animation are both on it hangs the bar within three or four
+ * cycles, and removing the animation by id first and closing *at once* only
+ * stretched that to six. An animation alone closes safely every time. So the
+ * animations go first, and the device gets this long -- a few of its refresh
+ * ticks -- to finish tearing their players down before the close.
+ *
+ * Measured sufficient on firmware 1.2.4 (2026-09-30): `pnpm probe:busybar
+ * --teardown-soak` ran this exact release ten times with no hang and upload
+ * times flat at 24-53 ms, where the same release without the pause hung on
+ * round 6. Re-run that soak before shortening it; too short hangs the bar.
+ * Never emptying the screen stays the rule for changing screens, which is why
+ * `AnimationPlayer` switches scenes without a clear at all and this path is
+ * left to quit and the idle clock.
+ */
+export const ANIMATION_TEARDOWN_SETTLE_MS = 500;
 
 /** How often the ping loop retries the device. */
 export const DEVICE_PING_INTERVAL_MS = 3000;
@@ -320,6 +344,26 @@ export class BusyBarDriver extends EventEmitter {
   private framesSent: number = 0;
   private framesFailed: number = 0;
   private displayVersion: number = 0;
+  /**
+   * The highest `displayVersion` a draw has landed under.
+   *
+   * Lets `clearDisplay` tell a draw that raced it -- a new screen, which must
+   * not be wiped -- from a frame that was already on its way before the clear
+   * began, which must.
+   */
+  private latestDrawVersion: number = -1;
+  /**
+   * What each application is believed to have on the display: element id to
+   * element type.
+   *
+   * Written from our own successful draws and removals, so it can be stale in
+   * one direction only -- an element the device dropped by itself (a reboot, a
+   * higher-priority application taking the screen) still listed here. A
+   * removal of such an element answers 400, which is read as "already gone",
+   * so the staleness costs a request and nothing else.
+   */
+  private readonly shownElements = new Map<string, Map<string, string>>();
+  private readonly animationTeardownSettleMs: number;
 
   constructor(ipAddressOrOptions: string | BusyBarDriverOptions = DEFAULT_USB_IP, forceMock: boolean = false) {
     super();
@@ -328,9 +372,11 @@ export class BusyBarDriver extends EventEmitter {
       this.ipAddress = ipAddressOrOptions.ipAddress || DEFAULT_USB_IP;
       this.apiToken = ipAddressOrOptions.apiToken || '';
       this.isMockMode = ipAddressOrOptions.forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
+      this.animationTeardownSettleMs = ipAddressOrOptions.animationTeardownSettleMs ?? ANIMATION_TEARDOWN_SETTLE_MS;
     } else {
       this.ipAddress = ipAddressOrOptions;
       this.isMockMode = forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
+      this.animationTeardownSettleMs = ANIMATION_TEARDOWN_SETTLE_MS;
     }
   }
 
@@ -851,23 +897,106 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * Clears display elements for application: DELETE /api/display/draw?application_name={app}
+   * Removes everything this application drew and releases the display:
+   * DELETE /api/display/draw?application_name={app}.
    *
-   * @throws DeviceRequestError when the device did not clear them.
+   * The DELETE itself is the dangerous part. It empties the device's element
+   * set, which closes its screen, and on firmware 1.2.4 closing the screen
+   * while an image and an animation share it hangs the bar after a few cycles
+   * (measured 2026-09-30; the bar stops answering and sometimes reboots itself
+   * about 45 s later). So any animation this application is known to show is
+   * removed by id first, one request per id, and the device gets
+   * `ANIMATION_TEARDOWN_SETTLE_MS` before the close. An id the device no longer
+   * holds answers 400 and counts as removed.
+   *
+   * Changing screens never needs this -- see `AnimationPlayer`, which switches
+   * to and from full-panel scenes without emptying the screen. This is for
+   * releasing the display on purpose: the idle clock, and quit.
+   *
+   * @returns `'superseded'` when something was drawn during the teardown, in
+   *   which case the display is left to the newer screen and not released.
+   * @throws DeviceRequestError when the device did not remove an animation or
+   *   did not clear. A failed animation removal stops the clear: releasing the
+   *   display with the animation still up is the pattern that hangs the bar.
    */
-  public async clearDisplay(applicationName: string = DEVICE_APPLICATION_NAME): Promise<void> {
+  public async clearDisplay(applicationName: string = DEVICE_APPLICATION_NAME): Promise<ClearOutcome> {
     const operation = 'clear display';
     this.requireConnected(operation);
-    this.displayVersion++;
+    const clearVersion = ++this.displayVersion;
     this.pendingFrameArgs = null;
+
+    const animations = this.shownElementIds(applicationName, 'animation');
+    if (animations.length > 0) {
+      for (const id of animations) {
+        await this.removeElementIfPresent(applicationName, id);
+      }
+      await delay(this.animationTeardownSettleMs);
+    }
+
+    if (this.latestDrawVersion >= clearVersion) {
+      console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while its animations came down.');
+      return 'superseded';
+    }
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK CLEAR] app=${applicationName}`);
-      return;
+      this.shownElements.delete(applicationName);
+      return 'cleared';
     }
 
     const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
     await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
+    this.shownElements.delete(applicationName);
+    return 'cleared';
+  }
+
+  /**
+   * Removes one element, reading the device's 400 for a missing id as success.
+   * One id per request, because a request naming several is all or nothing.
+   *
+   * @throws DeviceRequestError for any other failure.
+   */
+  private async removeElementIfPresent(applicationName: string, elementId: string): Promise<void> {
+    try {
+      await this.removeDisplayElements(applicationName, [elementId]);
+    } catch (err) {
+      if (isElementAbsent(err)) return;
+      throw err;
+    }
+  }
+
+  /**
+   * The ids this application is believed to show, optionally only those of
+   * one element type.
+   *
+   * What the driver has drawn and not yet removed, not what the device
+   * reports: there is no endpoint that lists the elements on the display.
+   */
+  public shownElementIds(applicationName: string, type?: string): string[] {
+    const shown = this.shownElements.get(applicationName);
+    if (!shown) return [];
+    return [...shown].filter(([, elementType]) => type === undefined || elementType === type).map(([id]) => id);
+  }
+
+  /** Records the elements a draw put on the display, and the version it was sent under. */
+  private noteDrawn(applicationName: string, elements: unknown, version: number): void {
+    this.latestDrawVersion = Math.max(this.latestDrawVersion, version);
+    if (!Array.isArray(elements)) return;
+    let shown = this.shownElements.get(applicationName);
+    if (!shown) {
+      shown = new Map();
+      this.shownElements.set(applicationName, shown);
+    }
+    for (const element of elements as Array<Record<string, unknown>>) {
+      if (typeof element?.id === 'string') shown.set(element.id, String(element.type ?? 'unknown'));
+    }
+  }
+
+  private noteRemoved(applicationName: string, elementIds: string[]): void {
+    const shown = this.shownElements.get(applicationName);
+    if (!shown) return;
+    for (const id of elementIds) shown.delete(id);
+    if (shown.size === 0) this.shownElements.delete(applicationName);
   }
 
   /**
@@ -896,6 +1025,7 @@ export class BusyBarDriver extends EventEmitter {
     const cleanFilename = filename.replace(/^.*[\\/]/, '');
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK PIXEL FRAME] app=${applicationName}, file=${cleanFilename}, bytes=${pngBuffer.byteLength}, led=${ledColorHex ?? 'none'}`);
+      this.noteDrawn(applicationName, [{ id: FRONT_ELEMENT_IDS.FRAME, type: 'image' }], this.displayVersion);
       return 'sent';
     }
 
@@ -927,7 +1057,7 @@ export class BusyBarDriver extends EventEmitter {
         application_name: applicationName,
         priority,
         elements: [{
-          id: 'px_matrix_img',
+          id: FRONT_ELEMENT_IDS.FRAME,
           type: 'image',
           path: cleanFilename,
           x: 0,
@@ -962,6 +1092,7 @@ export class BusyBarDriver extends EventEmitter {
 
       if (kind === 'ok') {
         this.framesSent++;
+        this.noteDrawn(applicationName, drawPayload.elements, currentVersion);
         return 'sent';
       }
       if (kind === 'conflict') {
@@ -1061,13 +1192,15 @@ export class BusyBarDriver extends EventEmitter {
   public async sendDisplayPayload(payload: Record<string, unknown>): Promise<DrawOutcome> {
     const operation = 'display payload';
     this.requireConnected(operation);
-    this.displayVersion++;
+    const version = ++this.displayVersion;
     this.pendingFrameArgs = null;
 
     const formattedPayload = this.formatHardwarePayload(payload);
+    const applicationName = String(formattedPayload.application_name ?? DEVICE_APPLICATION_NAME);
 
     if (this.isMockMode) {
       console.log('[BusyBarDriver] [MOCK DISPLAY DRAW]:', JSON.stringify(formattedPayload));
+      this.noteDrawn(applicationName, formattedPayload.elements, version);
       return 'drawn';
     }
 
@@ -1081,7 +1214,9 @@ export class BusyBarDriver extends EventEmitter {
       },
       { allowConflict: true }
     );
-    return result === 'ok' ? 'drawn' : 'conflict';
+    if (result === 'conflict') return 'conflict';
+    this.noteDrawn(applicationName, formattedPayload.elements, version);
+    return 'drawn';
   }
 
   /**
@@ -1105,11 +1240,13 @@ export class BusyBarDriver extends EventEmitter {
     if (!elements || elements.length === 0) throw new ArgumentNullException('elements');
     const operation = 'overlay draw';
     this.requireConnected(operation);
+    const version = this.displayVersion;
 
     const formattedPayload = this.formatHardwarePayload({ application_name: applicationName, priority, elements });
 
     if (this.isMockMode) {
       console.log('[BusyBarDriver] [MOCK OVERLAY DRAW]:', JSON.stringify(formattedPayload));
+      this.noteDrawn(applicationName, formattedPayload.elements, version);
       return 'drawn';
     }
 
@@ -1123,7 +1260,9 @@ export class BusyBarDriver extends EventEmitter {
       },
       { allowConflict: true }
     );
-    return result === 'ok' ? 'drawn' : 'conflict';
+    if (result === 'conflict') return 'conflict';
+    this.noteDrawn(applicationName, formattedPayload.elements, version);
+    return 'drawn';
   }
 
   /**
@@ -1136,6 +1275,14 @@ export class BusyBarDriver extends EventEmitter {
    * there answers **400**, not 404 -- so a caller removing something that may
    * already be gone has to read a `rejected` error as "already gone".
    *
+   * **All or nothing.** The firmware checks every id before removing any
+   * (`canvas_element_destroy_multi`), so one missing id fails the whole request
+   * with 400 and removes *nothing* -- the ids that were there stay. Pass one id
+   * per call wherever an id may already be gone.
+   *
+   * Removing the last element closes the device's screen exactly as
+   * `clearDisplay` does; see there for why that matters.
+   *
    * @throws DeviceRequestError when the device did not remove them.
    */
   public async removeDisplayElements(applicationName: string, elementIds: string[]): Promise<void> {
@@ -1145,14 +1292,26 @@ export class BusyBarDriver extends EventEmitter {
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK REMOVE] app=${applicationName}, ids=${elementIds.join(',')}`);
+      this.noteRemoved(applicationName, elementIds);
       return;
     }
 
-    await this.deviceRequest(operation, `http://${this.ipAddress}/api/display/draw`, {
-      method: 'DELETE',
-      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ application_name: applicationName, element_ids: elementIds })
-    });
+    try {
+      await this.deviceRequest(operation, `http://${this.ipAddress}/api/display/draw`, {
+        method: 'DELETE',
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ application_name: applicationName, element_ids: elementIds })
+      });
+    } catch (err) {
+      // A 400 on a single id is the device saying it does not hold it. On
+      // several ids it says only that one of them is missing, and that nothing
+      // was removed, so the others stay listed.
+      if (elementIds.length === 1 && isElementAbsent(err)) {
+        this.noteRemoved(applicationName, elementIds);
+      }
+      throw err;
+    }
+    this.noteRemoved(applicationName, elementIds);
   }
 
   /**

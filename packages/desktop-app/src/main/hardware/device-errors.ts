@@ -55,6 +55,30 @@ export type DrawOutcome = 'drawn' | 'conflict';
  */
 export type FrameOutcome = 'sent' | 'queued' | 'superseded' | 'conflict';
 
+/**
+ * What a `clearDisplay` achieved.
+ *
+ * - `cleared` -- the application's elements are gone and the display is
+ *   released.
+ * - `superseded` -- something was drawn while the clear was taking its
+ *   animations down, so the full clear was skipped: releasing the display then
+ *   would wipe the screen that just replaced the one being cleared.
+ */
+export type ClearOutcome = 'cleared' | 'superseded';
+
+/**
+ * Whether a failed element removal means the element was not there.
+ *
+ * Firmware 1.2.4 answers **400** -- not 404 -- to `DELETE /api/display/draw`
+ * naming an id it does not hold. Only that status reads as "already gone":
+ * any other refusal says nothing about the element, and treating it as gone
+ * before releasing the display is how an animation would be left up for the
+ * close that hangs the bar.
+ */
+export function isElementAbsent(err: unknown): boolean {
+  return err instanceof DeviceRequestError && err.kind === 'rejected' && err.status === 400;
+}
+
 /** A thrown value as one log-friendly line. */
 export function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

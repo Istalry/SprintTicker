@@ -736,6 +736,17 @@
       fourteen.
       Text that does not fit ends in <code>…</code>. Accented letters are shown without their
       accents, since the display draws plain ASCII only.</p>
+      <p>The session screen&#39;s icon is a stopwatch whose colour says where you are: green
+      with a quarter filled while a task runs, amber with blinking pause bars while
+      it is paused, dim grey when nothing runs (the screen then reads <strong>Ready / No
+      task running</strong>). While paused, row 0 shows the task key and its time, and row
+      1 offers <strong>STOP</strong> and <strong>FINISH</strong> side by side; turn the wheel to choose, click
+      to confirm. STOP logs the time and leaves the task open; FINISH also marks it
+      done.</p>
+      <p>Unity screens all read the same way: what is happening on row 0 (with the
+      percentage for a build or a lightmap bake), the project on row 1, and for a
+      build or bake a thin progress line along the bottom. An exception shows its
+      message on row 1 instead of the project.</p>
       <div class="note"><span class="label">Why the timer shows HH:MM</span>
       <p></p>
       <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
@@ -862,6 +873,16 @@
       own blank frame on top of the animation it had just started. If you still see
       it, export the logs from Device Diagnostics and look for <code>[AnimationPlayer]</code>
       lines naming the file and its size.</p>
+      <p><strong>The bar freezes and stops answering.</strong> The panel stops changing, the app
+      reports the bar disconnected, and sometimes the bar restarts on its own about
+      45 seconds later. On firmware 1.2.4 this is what happens when the display is
+      cleared a few times while a picture and an animation are both on it. Earlier
+      builds did exactly that each time Lunch, Away or a meeting began from a screen
+      with an animated icon. This release switches scenes without clearing, so it
+      should not happen in normal use. If it does, unplug and replug the bar, then
+      export the logs from Device Diagnostics: the lines just before the freeze say
+      what the app was drawing. Uploads taking several hundred milliseconds, rather
+      than about fifty, are the warning sign.</p>
       <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
       higher priority. Check Priority Rules and your current mode.</p>
       <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
@@ -1190,14 +1211,31 @@
       rather than replacing the element set, and the firmware composites
       <code>px_matrix_img</code> <strong>above</strong> the animation whichever order they arrive in — so
       transmitting a frame while an animation plays blacks it out, with both calls
-      returning 200. <code>AnimationPlayer</code> clears the display before handing over the
-      <code>.anim</code>, and <code>transmitFrame</code> skips the hardware send while
+      returning 200. <code>transmitFrame</code> skips the hardware send while
       <code>isHardwareAnimationActive()</code>.</p>
       </div>
+      <p><strong>Changing owner never empties the panel.</strong> Emptying the element set closes
+      the device&#39;s screen, and on firmware 1.2.4 closing it after an image and an
+      animation have shared it hangs the bar (see API.md). So the handover is make
+      before break, with <code>z_index</code> doing the work:</p>
+      <ol>
+      <li><code>AnimationPlayer</code> uploads the <code>.anim</code> and draws <code>hardware_anim</code> at z 0,
+      under the frame at z 1 -- the bar still shows the previous screen.</li>
+      <li>It removes <code>px_matrix_img</code>, revealing the scene. A frame that cannot be
+      removed means a scene nobody can see, so that falls back to streaming.</li>
+      <li>When the scene stops, the renderer&#39;s next frame lands at z 1 over it.</li>
+      <li>Once that frame comes back <code>sent</code>, the renderer calls <code>retireScene</code>, which
+      removes <code>hardware_anim</code> -- unless the driver believes nothing else is on
+      the panel, since removing it then would empty the panel after all.</li>
+      </ol>
+      <p>Steps 1-2 and 4 address the same element id, so they run under one lock in
+      <code>AnimationPlayer</code>. <code>clearDisplay</code> remains for handing the display back (the
+      idle clock, quit); the driver tracks what it has drawn (<code>shownElementIds</code>) and
+      takes every animation down by id, with a pause, before that clear.</p>
       <p><strong>Animated icons are a second layer, not a second owner.</strong> The screen is still
       one PNG with the icon&#39;s static pixels in it. <code>IconAnimator</code> lays the icon&#39;s
       16×16 <code>.anim</code> over them as element <code>icon_anim</code>, and <code>z_index</code> keeps it on top
-      (<code>FRONT_LAYER_Z</code>: frame 1, icon 2), so the device animates it with no traffic
+      (<code>FRONT_LAYER_Z</code>: scene 0, frame 1, icon 2), so the device animates it with no traffic
       per frame.</p>
       <ul>
       <li><strong>Which icons animate</strong> is <code>ANIMATED_ICONS</code> in <code>shared/render-constants.ts</code>,
@@ -1388,7 +1426,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 915 tests across 55 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 991 tests across 56 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>
@@ -1927,11 +1965,66 @@
       <td align="left"><code>sendPixelFrame</code></td>
       <td align="left"><code>&#39;sent&#39;</code>; <code>&#39;queued&#39;</code> (disconnected or another frame in flight, so it is sent next); <code>&#39;superseded&#39;</code> (a clear landed mid-upload, <strong>the device is not showing it</strong>); <code>&#39;conflict&#39;</code></td>
       </tr>
+      <tr>
+      <td align="left"><code>clearDisplay</code></td>
+      <td align="left"><code>&#39;cleared&#39;</code>; or <code>&#39;superseded&#39;</code> when a draw landed while it was taking animations down, in which case the display is <strong>not</strong> released</td>
+      </tr>
       </tbody></table></div>
       <p><code>removeDisplayElements(app, ids)</code> removes the named elements and nothing
       else. An id the device does not hold answers <strong>400</strong>, so it throws <code>rejected</code>;
       a caller removing something that may already be gone has to read that as
-      success.</p>
+      success -- <code>isElementAbsent(err)</code> says so, for a 400 and nothing else. <strong>Several
+      ids in one call are all or nothing</strong>: one missing id fails the request and
+      removes none of the others, so remove one id per call when any may be gone.</p>
+      <p><code>shownElementIds(app, type?)</code> lists what the driver has drawn for an
+      application and not yet removed -- id and element type, from its own
+      successful draws and removals, since the device has no endpoint that lists
+      them. It can only be stale in one direction (an element the device dropped by
+      itself), and a removal of such an element answers 400, which reads as gone.</p>
+      <h4>Emptying the panel closes the device&#39;s screen</h4>
+      <p>When an application&#39;s element set becomes empty -- a full <code>DELETE /api/display/draw</code>, or removing its last element by id -- the firmware closes
+      its screen, and reopens it on the next draw.</p>
+      <div class="note trap">
+      <p><strong>On firmware 1.2.4, closing the screen after an image and an animation have
+      shared it hangs the bar within a few cycles.</strong> Measured 2026-09-30: a clear
+      with both on the panel hung it on round 3 and round 4; removing the
+      animation by id and clearing at once hung it on round 6. Uploads slowing
+      from ~50 ms to several hundred came first. An animation alone, and every
+      sequence that never emptied the panel, ran ten rounds clean.</p>
+      </div>
+      <p>So the app never empties the panel to change screens:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Transition</th>
+      <th align="left">How</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Into a full-panel scene</td>
+      <td align="left">Draw <code>hardware_anim</code> at <code>z_index</code> 0, under the frame; then remove <code>px_matrix_img</code></td>
+      </tr>
+      <tr>
+      <td align="left">Out of it</td>
+      <td align="left">The next frame lands at <code>z_index</code> 1 over the scene; once it is <code>sent</code>, remove <code>hardware_anim</code></td>
+      </tr>
+      <tr>
+      <td align="left">Scene to scene</td>
+      <td align="left">Same element id, so the draw replaces it in place</td>
+      </tr>
+      <tr>
+      <td align="left">Release for the idle clock, and quit</td>
+      <td align="left"><code>clearDisplay</code>: every tracked animation removed by id, <code>ANIMATION_TEARDOWN_SETTLE_MS</code>, then the full DELETE</td>
+      </tr>
+      </tbody></table></div>
+      <p>That last row is the only close left, and the pause is what makes it safe:
+      the same release without it hung the bar on round 6, and with the 500 ms pause
+      <code>pnpm probe:busybar --teardown-soak</code> ran ten rounds clean on firmware 1.2.4
+      (2026-09-30), uploads flat at 24-53 ms. Re-run that soak before changing the
+      pause -- a pause too short hangs the bar.</p>
+      <p>Uploading over an <code>.anim</code> the device is playing answers <strong>508</strong>, so a scene
+      still on the panel is redrawn from the copy the device holds rather than
+      uploaded again.</p>
       <p><code>connect()</code> and <code>reconfigure()</code> answer a boolean and never throw. They are
       probes, and &quot;the bar is not there&quot; is a normal answer for them.</p>
       <div class="note trap">
@@ -2003,10 +2096,12 @@
       <td align="left">An array of element ids to remove, with <code>application_name</code> as a sanity check that you own them. Omit it to remove everything</td>
       </tr>
       </tbody></table></div>
-      <p>Both are used for animated icons. The screen, <code>px_matrix_img</code>, is drawn at
-      <code>z_index</code> 1; the icon, <code>icon_anim</code>, at <code>z_index</code> 2 over it; and the icon is
-      removed on its own with <code>element_ids</code>. Without them an animation was
-      all-or-nothing across the whole panel.</p>
+      <p>Both are used for animated icons and scenes (<code>FRONT_LAYER_Z</code>,
+      <code>FRONT_ELEMENT_IDS</code>). A full-panel scene, <code>hardware_anim</code>, is drawn at
+      <code>z_index</code> 0; the screen, <code>px_matrix_img</code>, at 1; the icon, <code>icon_anim</code>, at 2
+      over it. Each is removed on its own with <code>element_ids</code>. Without them an
+      animation was all-or-nothing across the whole panel, and changing screens
+      meant emptying it -- see above for why that is no longer done.</p>
     </section>
 
   </main>
