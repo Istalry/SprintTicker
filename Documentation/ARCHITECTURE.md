@@ -444,10 +444,13 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1104 tests across 58 files. `coverage.include` is `src/main/**` and
-`src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
-of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
-lowered.
+Vitest, 1119 tests across 60 files, in two projects: `main` in Node for
+`src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
+(`tests/renderer/`). The renderer's tests mount every view against a mock
+bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
+`coverage.include` is `src/main/**` and `src/shared/**` — **the renderer is not
+measured**, which is roughly 4,700 lines of TSX. The floor is a ratchet
+(84 / 75 / 85 / 86.5) and is raised, never lowered.
 
 Two harnesses let the provider layer be exercised over a real socket without a
 real instance: `scripts/fake-openproject.js` (`pnpm mock:openproject`) and

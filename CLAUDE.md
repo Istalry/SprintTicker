@@ -29,7 +29,7 @@ pnpm test             # vitest run, the app then the studio
 pnpm test:studio      # the studio's tests only; no native module involved
 pnpm test:coverage    # floor: 84% stmts / 86.5% lines / 85% funcs / 75% branches
                       # a ratchet -- raise it, never lower it to make a run pass
-pnpm typecheck        # main and renderer tsconfigs, separately, then the studio
+pnpm typecheck        # main, renderer and renderer-test tsconfigs, then the studio
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
 pnpm package:win      # electron-builder, unsigned
 pnpm editor           # pixel editor for 16x16 bitmaps
@@ -492,6 +492,18 @@ interfaces, `PascalCase` methods).
 
 - `MethodName_StateUnderTest_ExpectedBehavior`, e.g.
   `UploadAsset_ValidFile_ReturnsSuccess`.
+- **The renderer has its own Vitest project**, in jsdom, under
+  `tests/renderer/*.test.tsx`; everything else runs in Node. Its
+  `window.electronAPI` is `tests/renderer/electron-api-mock.ts`, typed as the
+  whole `IElectronAPI` -- so **a method added to the bridge must be added to
+  the mock**, or `pnpm typecheck` fails (`tsconfig.renderer-tests.json`; the
+  tests are type-checked nowhere else). That failure is the point: a partial
+  mock would let a view call something the bridge no longer has and pass on
+  `undefined`. `installElectronApi({ ... })` swaps in other answers for one
+  test; `emit` pushes an update the way main would. The views guard their
+  bridge calls, so a smoke test does not catch a missing method at runtime --
+  the typed mock catches it at compile time. The renderer is still outside
+  `coverage.include`.
 - **Test the behaviour, not the implementation you just wrote.** A suite that
   asserted a high-priority notification evaluated to priority 95 passed happily
   while the feature was broken end to end, because nothing produces 95.

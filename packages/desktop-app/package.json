@@ -25,7 +25,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "dev:mock": "cross-env MOCK_HARDWARE=true pnpm dev",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.renderer.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.renderer-tests.json"
   },
   "dependencies": {
     "@busy-app/busy-lib": "^0.17.0",
@@ -40,6 +40,8 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.13.3",
     "@types/react": "^18.2.66",
@@ -52,6 +54,7 @@
     "cross-env": "^10.1.0",
     "electron": "^44.2.0",
     "electron-builder": "^26.15.3",
+    "jsdom": "^30.1.1",
     "postcss": "^8.4.38",
     "prebuild-install": "^7.1.2",
     "tailwindcss": "^3.4.1",

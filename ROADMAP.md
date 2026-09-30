@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1104
-tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1119
+tests in 60 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -960,9 +960,10 @@ coverage runs since. The fixture stubs stay, because keeping the suite's output
 readable is a separate and still-good reason for them.
 
 The renderer is not measured at all -- `coverage.include` is `src/main/**` and
-`src/shared/**`. Roughly 4,700 lines of TSX have no tests. Extending the gate
-to cover it is a separate decision from raising the floor on what it already
-measures.
+`src/shared/**`. Since 2026-09-30 it has smoke tests (below) that mount every
+view, but roughly 4,700 lines of TSX are still otherwise untested. Extending
+the gate to cover it is a separate decision from raising the floor on what it
+already measures.
 
 ---
 
@@ -1005,9 +1006,16 @@ measures.
     refactors in code that has no tests. Only the two classic rules are enabled.
     **Adopting the expanded set is the natural follow-up once the smoke harness
     below exists**, and it is the most valuable thing in this section now.
-- **React 18 -> 19.** No security advisory; doing it for its own sake. Blocked
-  on a renderer smoke-test harness, because the renderer has no tests and
-  nothing automated could see a regression. Note that `lucide-react` 0.359 caps
+- [x] **A renderer smoke-test harness** (2026-09-30). A second Vitest project
+  in jsdom with Testing Library: every tab mounts and shows its view, a session
+  pushed from main reaches the screen, and the session card's finish paths are
+  pinned -- including the DONE! the card used to request a second time. The
+  `window.electronAPI` mock is typed as the whole `IElectronAPI` and
+  type-checked by `tsconfig.renderer-tests.json`, so adding a bridge method
+  without teaching the mock fails `pnpm typecheck`; that was checked by doing
+  it. The two items below were blocked on this.
+- **React 18 -> 19.** No security advisory; doing it for its own sake. It was
+  blocked on the smoke harness above, which now exists. Note that `lucide-react` 0.359 caps
   its React peer at 18, so this drags a coupled bump with it -- the same shape
   as the better-sqlite3 / Electron pairing in `CLAUDE.md` §2.
 - **Renderer bundle audit.** Electron 44 ships a much newer Chromium, so several

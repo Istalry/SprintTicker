@@ -9,6 +9,13 @@ reported something other than the truth, in three different ways.
 
 ### Added
 
+- **The renderer has tests.** A second Vitest project runs in jsdom with
+  Testing Library: every tab mounts, a session update from main reaches the
+  screen, and the session card's finish paths are pinned. Its
+  `window.electronAPI` mock is typed as the whole bridge and type-checked by
+  `pnpm typecheck`, so a bridge change that the renderer's tests do not follow
+  fails the build.
+
 - **Animated icons.** While Unity compiles, the gear on the bar turns,
   steadily, for as long as the compile lasts. The bar plays the icon itself, laid
   over the screen with `z_index`, so it costs one upload per connection and

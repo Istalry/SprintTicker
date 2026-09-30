@@ -1,0 +1,19 @@
+{
+  // The renderer's tests, type-checked like the renderer itself.
+  //
+  // Without this nothing checks them: tsconfig.json stops at src/, and Vitest
+  // strips types without reading them. That matters more here than anywhere,
+  // because the electronAPI mock is typed as the whole IElectronAPI precisely
+  // so that a bridge change breaks it -- which only happens if something runs
+  // the compiler over it.
+  "extends": "./tsconfig.renderer.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": [
+    "tests/renderer/**/*",
+    "src/renderer/**/*",
+    "src/shared/**/*",
+    "src/preload/electron-api.d.ts"
+  ]
+}

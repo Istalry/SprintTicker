@@ -5,9 +5,31 @@ export default defineConfig({
   root: __dirname,
   test: {
     globals: true,
-    environment: 'node',
     setupFiles: ['./tests/setup.ts'],
-    include: ['tests/**/*.test.ts'],
+    // Two projects in one run. Main and shared run in Node, as they always
+    // have. The renderer runs in jsdom, in its own folder: it used to have no
+    // tests at all, so a view that no longer mounted -- or a preload method it
+    // called that no longer existed -- was found by clicking through the app.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'main',
+          environment: 'node',
+          include: ['tests/**/*.test.ts'],
+          exclude: ['tests/renderer/**']
+        }
+      },
+      {
+        extends: true,
+        test: {
+          name: 'renderer',
+          environment: 'jsdom',
+          include: ['tests/renderer/**/*.test.tsx'],
+          setupFiles: ['./tests/renderer/setup.ts']
+        }
+      }
+    ],
     // Console output goes straight to stdout instead of being forwarded to the
     // main thread over rpc.
     //
