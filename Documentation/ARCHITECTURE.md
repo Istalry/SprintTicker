@@ -450,7 +450,7 @@ Vitest, 1360 tests across 69 files, in two projects: `main` in Node for
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
 `coverage.include` is `src/main/**` and `src/shared/**` — **the renderer is not
 measured**, which is roughly 4,700 lines of TSX. The floor is a ratchet
-(84 / 75 / 85 / 86.5) and is raised, never lowered.
+(92 / 85 / 90 / 93.5) and is raised, never lowered.
 
 Two harnesses let the provider layer be exercised over a real socket without a
 real instance: `scripts/fake-openproject.js` (`pnpm mock:openproject`) and

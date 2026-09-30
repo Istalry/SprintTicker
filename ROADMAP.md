@@ -876,7 +876,7 @@ the device a timestamp.
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
 **93.12 statements / 86.25 branches / 91.13 functions / 94.75 lines across 1360
-tests in 69 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+tests in 69 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

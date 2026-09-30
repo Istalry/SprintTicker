@@ -128,7 +128,9 @@ reported something other than the truth, in three different ways.
   behaviour a user reaches with a physical control and neither was covered.
   `input-decoder.ts` went from 66% to 94%, `tray-manager.ts` from 69% to 92%,
   and the coverage floor is ratcheted to 83 / 74 / 84.5 / 85, and again to
-  84 / 75 / 85 / 86.5 with the driver's failure-path tests.
+  84 / 75 / 85 / 86.5 with the driver's failure-path tests, and to
+  92 / 85 / 90 / 93.5 once the priority engine, services, hardware and IPC
+  were covered.
 - **Tests for the diagnostics export**, which had one test asserting three
   values the exporter had invented. `main/diagnostics` went from 66% to 98.5%;
   `logger-interceptor.ts` had no test file at all.

@@ -90,11 +90,16 @@ export default defineConfig({
       // 84.29 / 75.16 / 85.29 / 86.72. The new tests are the bad-result half
       // for every driver command -- each mock used to default to success, so
       // no failure branch in the driver had ever been executed.
+      // Raised again after the priority engine, services, hardware and IPC
+      // were covered in turn: measured 93.12 / 86.25 / 91.13 / 94.75. Those
+      // tests found a replayed alert wiped as it drew, every bar press
+      // delivered twice, and a suite that wrote the global git config and
+      // saved open Unity scenes.
       thresholds: {
-        lines: 86.5,
-        functions: 85,
-        branches: 75,
-        statements: 84
+        lines: 93.5,
+        functions: 90,
+        branches: 85,
+        statements: 92
       }
     }
   },

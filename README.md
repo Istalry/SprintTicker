@@ -306,7 +306,7 @@ pnpm test:coverage
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
-threshold floor of 84% statements / 86.5% lines / 85% functions / 75%
+threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.
 
 The floor is a **ratchet**: raise it when the measurement rises, never lower it

@@ -27,7 +27,7 @@ pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
 pnpm test             # vitest run, the app then the studio
 pnpm test:studio      # the studio's tests only; no native module involved
-pnpm test:coverage    # floor: 84% stmts / 86.5% lines / 85% funcs / 75% branches
+pnpm test:coverage    # floor: 92% stmts / 93.5% lines / 90% funcs / 85% branches
                       # a ratchet -- raise it, never lower it to make a run pass
 pnpm typecheck        # main, renderer and renderer-test tsconfigs, then the studio
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
