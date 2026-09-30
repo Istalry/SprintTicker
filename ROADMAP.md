@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**89.42 statements / 81.46 branches / 89.63 functions / 91.32 lines across 1236
-tests in 65 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**92.01 statements / 84.81 branches / 90.37 functions / 93.86 lines across 1312
+tests in 67 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -895,9 +895,23 @@ problem; each is a specific untested path:
 | :--- | ---: | :--- |
 | `main/diagnostics` | 98.5% | Was 66%. Closed below. |
 | `main/services` | 94.8% | Was 78%. Closed below; what is left is mostly the default executors that shell out, which tests replace by design. |
-| `main/hardware` | 87% | Was 74%. `input-decoder.ts` is now 94%. |
+| `main/hardware` | 93.7% | Was 74%. Closed below; what is left is mostly `display-renderer` and `animation-player` error paths. |
 | `main/tray` | 92% | Was 69%. Closed below. |
 
+- **`main/hardware` 87% → 93.7%** (2026-09-30). `app-icon-bitmap-processor`
+  (48% → 97%) is tested against a fake `nativeImage` whose `toBitmap()` hands
+  back BGRA, as Chromium does -- swapping two channels fails four tests, where
+  before it would have drawn every app icon with red and blue exchanged. The
+  driver (84% → 93%) gained the StateStream socket against a fake `ws`: the
+  `wsGeneration` guards on a superseded socket's close and messages are each
+  pinned by a test that fails when the guard is removed, and the token is
+  checked to reach the URL but never the log. Also the ping loop's loss,
+  recovery and reminder, and the contract `formatHardwarePayload` enforces --
+  every colour count in, exactly one or two out, since a wrong count reboots
+  the bar. `input-decoder` (94% → 99%) covers a START that dismisses a
+  notification instead of pausing, and the end-of-day confirmation starting
+  over when its prompt leaves and returns. No defects found; one dead setter
+  removed.
 - **`main/services` 79.7% → 94.8%** (2026-09-30). The notification listener
   (63% → 96%) is now tested against a fake PowerShell process: its status and
   error lines, notifications shown and suppressed, message text kept out of the

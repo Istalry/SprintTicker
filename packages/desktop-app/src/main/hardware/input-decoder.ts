@@ -113,13 +113,6 @@ export class InputDecoder {
   }
 
   /// <summary>
-  /// Sets current EOD confirmation step.
-  /// </summary>
-  public setEodConfirmStep(step: number): void {
-    this._eodConfirmStep = step;
-  }
-
-  /// <summary>
   /// Retrieves current rebindable hardware key bindings from settings.
   /// </summary>
   public getBindings(): HardwareBindingConfig {

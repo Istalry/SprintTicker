@@ -1250,3 +1250,151 @@ describe('BusyBarDriver display teardown', () => {
     });
   });
 });
+
+/**
+ * The hardware contract, as the driver enforces it. Each of these is a way the
+ * bar misbehaves -- or reboots -- rather than returning a useful error.
+ */
+describe('BusyBarDriver contract enforcement', () => {
+  const mock = () => new BusyBarDriver('10.0.4.20', true);
+  const rectangle = (fill: string, count: number) => ({
+    frontElements: [{ id: 'r', type: 'rectangle', fill, fill_colors: ['#111111FF', '#222222FF', '#333333FF'].slice(0, count) }]
+  });
+  const colours = (payload: Record<string, unknown>) =>
+    ((mock().formatHardwarePayload(payload).elements as Array<Record<string, unknown>>)[0].fill_colors as string[]);
+
+  // A solid fill takes exactly one colour and a gradient exactly two; any
+  // other count reboots the device (CLAUDE.md §4). Every count in, the right
+  // count out.
+  it.each([0, 1, 2, 3])('FormatHardwarePayload_Solid%iColours_SendsExactlyOne', count => {
+    expect(colours(rectangle('solid', count))).toHaveLength(1);
+  });
+
+  it.each([0, 1, 2, 3])('FormatHardwarePayload_NoFill%iColours_SendsExactlyOne', count => {
+    expect(colours(rectangle('none', count))).toHaveLength(1);
+  });
+
+  it.each(['gradient_h', 'gradient_v'].flatMap(fill => [0, 1, 2, 3].map(count => [fill, count] as const)))(
+    'FormatHardwarePayload_%s%iColours_SendsExactlyTwo',
+    (fill, count) => {
+      expect(colours(rectangle(fill, count))).toHaveLength(2);
+    }
+  );
+
+  it('FormatHardwarePayload_GradientWithThree_KeepsTheFirstTwo', () => {
+    expect(colours(rectangle('gradient_h', 3))).toEqual(['#111111FF', '#222222FF']);
+  });
+
+  it('FormatHardwarePayload_BackElements_AreDrawnOnTheBack', () => {
+    const formatted = mock().formatHardwarePayload({ backElements: [{ type: 'text', text: 'hi' }] });
+
+    expect((formatted.elements as Array<Record<string, unknown>>)[0].display).toBe('back');
+  });
+
+  it('FormatHardwarePayload_OnlyRawElements_KeepsTheirOwnDisplay', () => {
+    const formatted = mock().formatHardwarePayload({ elements: [{ type: 'text', text: 'x', display: 'back' }, { type: 'text', text: 'y' }] });
+
+    expect((formatted.elements as Array<Record<string, unknown>>).map(e => e.display)).toEqual(['back', 'front']);
+  });
+
+  it('FormatHardwarePayload_Animation_SendsAFilenameAndNoSize', () => {
+    // Asset names are bare filenames on the device; width and height are not
+    // part of the element schema.
+    const formatted = mock().formatHardwarePayload({
+      frontElements: [{ type: 'animation', path: 'C:\\anims\\lunch.anim', width: 72, height: 16 }]
+    });
+    const element = (formatted.elements as Array<Record<string, unknown>>)[0];
+
+    expect(element.path).toBe('lunch.anim');
+    expect(element).not.toHaveProperty('width');
+    expect(element).not.toHaveProperty('height');
+  });
+
+  it('FormatHardwarePayload_Defaults_HoldTheDisplayUnderTheAppsName', () => {
+    const formatted = mock().formatHardwarePayload({ frontElements: [], ledColorHex: '#FF0000FF' });
+
+    expect(formatted.application_name).toBe(DEVICE_APPLICATION_NAME);
+    expect(formatted.priority).toBeGreaterThanOrEqual(95);
+    expect(formatted.led_notification_color).toBe('#FF0000FF');
+  });
+
+  describe('against a live bar', () => {
+    const frame = Buffer.from('png');
+    const draws = (calls: string[]) => calls.filter(c => c.startsWith('POST') && c.includes('/api/display/draw')).length;
+
+    it('SendPixelFrame_DeviceBusyOnce_AsksAgainAndDraws', async () => {
+      // 503 means "ask again" -- the one status where a retry is correct.
+      let answeredBusy = false;
+      await withLiveDriver(
+        url => {
+          if (!url.includes('/api/display/draw') || answeredBusy) return status(200);
+          answeredBusy = true;
+          return status(503);
+        },
+        async (driver, calls) => {
+          await expect(driver.sendPixelFrame(frame)).resolves.toBe('sent');
+          expect(draws(calls)).toBe(2);
+        }
+      );
+    });
+
+    it('SendPixelFrame_DeviceStaysBusy_GivesUpAfterOneRetry', async () => {
+      // The next frame is along in a moment; retrying this one harder is not
+      // worth delaying it.
+      await withLiveDriver(
+        url => (url.includes('/api/display/draw') ? status(503) : status(200)),
+        async (driver, calls) => {
+          await expect(driver.sendPixelFrame(frame)).rejects.toMatchObject({ kind: 'busy' });
+          expect(draws(calls)).toBe(2);
+        }
+      );
+    });
+
+    it('UpdateAccessSettings_DeviceAccepts_UsesTheNewKeyFromThenOn', async () => {
+      await withLiveDriver(
+        () => status(200),
+        async driver => {
+          await driver.updateAccessSettings('key', 'n3w');
+
+          expect(driver.getApiToken()).toBe('n3w');
+        },
+        { apiToken: 'old' }
+      );
+    });
+
+    it('UpdateAccessSettings_DeviceRefuses_KeepsTheKeyItStillHas', async () => {
+      // Adopting a key the bar never accepted would lock the app out of a bar
+      // that still wants the old one.
+      await withLiveDriver(
+        url => (url.includes('/api/access') ? status(400) : status(200)),
+        async driver => {
+          await expect(driver.updateAccessSettings('key', 'n3w')).rejects.toMatchObject({ kind: 'rejected' });
+
+          expect(driver.getApiToken()).toBe('old');
+        },
+        { apiToken: 'old' }
+      );
+    });
+
+    it.each([
+      ['an error status', () => status(500)],
+      ['no answer', () => { throw new TypeError('fetch failed'); }]
+    ])('GetAccessSettings_%s_IsUnknownNotAnError', async (_label, answer) => {
+      await withLiveDriver(
+        url => (url.includes('/api/access') ? answer() : status(200)),
+        async driver => {
+          await expect(driver.getAccessSettings()).resolves.toBeNull();
+        }
+      );
+    });
+
+    it('GetAccessSettings_Answered_ReturnsWhatTheBarSaid', async () => {
+      await withLiveDriver(
+        () => ({ ok: true, status: 200, json: async () => ({ mode: 'key', has_key: true }) }) as Response,
+        async driver => {
+          await expect(driver.getAccessSettings()).resolves.toEqual({ mode: 'key', has_key: true });
+        }
+      );
+    });
+  });
+});

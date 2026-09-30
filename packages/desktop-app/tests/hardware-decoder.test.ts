@@ -911,4 +911,126 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     ).not.toThrow();
     expect(errors).toHaveBeenCalled();
   });
+
+  /**
+   * The paths a button takes when something other than the session is on the
+   * screen, or when the press means "take me to the app" rather than an
+   * action on the bar.
+   */
+  describe('presses that defer to something else', () => {
+    const at = () => new Date().toISOString();
+    let dismissed: boolean[];
+    let showing: string | undefined;
+    let notificationUp: boolean;
+
+    beforeEach(() => {
+      dismissed = [];
+      showing = undefined;
+      notificationUp = false;
+      decoder.setPriorityEngine({
+        getActiveLockEventName: () => showing,
+        releaseActiveLock: () => undefined,
+        dismissNotification: (explicit: boolean) => {
+          dismissed.push(explicit);
+          return notificationUp;
+        }
+      } as never);
+    });
+
+    it('HandleHardwareInput_StartWhileANotificationIsShown_DismissesItAndLeavesTheSessionRunning', () => {
+      // START on a notification means "seen", not "pause my work": the press
+      // is spent on the notification and the stopwatch keeps going.
+      engine.startTask('T-9', false, 'Running');
+      notificationUp = true;
+
+      decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: at() });
+
+      expect(dismissed).toEqual([false]);
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+
+    it('HandleHardwareInput_BackShortPress_DismissesTheNotificationExplicitly', () => {
+      const action = decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: at() });
+
+      expect(action).toBe('DISMISS_NOTIFICATION_ALERT');
+      expect(dismissed).toEqual([true]);
+    });
+
+    it('HandleHardwareInput_WheelClickWhileTracking_FocusesTheAppInsteadOfOpeningThePicker', () => {
+      // The picker starts a task; with one already running it would have to
+      // stop it first, which is not something a stray click should do.
+      engine.startTask('T-9', false, 'Running');
+      const focus = vi.fn();
+      decoder.setWindowFocusCallback(focus);
+      const picker = vi.spyOn(renderer, 'renderTaskSelection');
+
+      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: at() });
+
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(picker).not.toHaveBeenCalled();
+    });
+
+    it('HandleHardwareInput_StandupConfirmed_BringsTheAppForward', () => {
+      // Confirming the stand-up is the cue to go and write it.
+      showing = 'standupPromptPriority';
+      const focus = vi.fn();
+      decoder.setWindowFocusCallback(focus);
+
+      decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: at() });
+
+      expect(focus).toHaveBeenCalledTimes(1);
+    });
+
+    it('HandleHardwareInput_EodPromptGoneAndBack_StartsTheConfirmationOver', () => {
+      // The wrap-up takes two presses. A first press left armed while the
+      // prompt was away would let a single press run the wrap-up next time.
+      showing = 'eodWrapUpPriority';
+      decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: at() });
+      showing = undefined;
+      decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: at() });
+      showing = 'eodWrapUpPriority';
+
+      const action = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: at() });
+
+      expect(action).toBe('CONFIRM_EOD_WRAP_UP_STEP_1');
+    });
+
+    it.each(['apps', 'settings', 'off'])('HandleHardwareInput_%sKey_IsReportedAsTheSystemMode', key => {
+      // The firmware's own keys: reported so the app can follow the bar, never
+      // bound to an action of ours.
+      const seen: string[] = [];
+      decoder.registerActionHandler(action => seen.push(action));
+
+      decoder.handleHardwareInput({ key, type: 'press', timestamp: at() });
+
+      expect(seen).toEqual([`SYSTEM_MODE_${key.toUpperCase()}`]);
+    });
+
+    it('RegisterActionHandler_Unsubscribed_HearsNothingMore', () => {
+      const seen: string[] = [];
+      const unsubscribe = decoder.registerActionHandler(action => seen.push(action));
+      unsubscribe();
+
+      decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: at() });
+
+      expect(seen).toEqual([]);
+    });
+
+    it('HandleHardwareInput_RotatingBackUpTheTaskList_ShowsThePreviousTask', () => {
+      new ProjectRepository(dbConn).saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'First', status: 'todo' });
+      taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Second', status: 'todo' });
+      const shown: string[] = [];
+      renderer.renderTaskSelection = ((_stage: string, label: string) => {
+        shown.push(label);
+      }) as never;
+      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: at() }); // open
+      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: at() }); // into Alpha
+      decoder.handleHardwareInput({ key: 'rotate_right', type: 'press', timestamp: at() });
+
+      decoder.handleHardwareInput({ key: 'rotate_left', type: 'press', timestamp: at() });
+
+      expect(shown.slice(-2)).toEqual(['Second', 'First']);
+    });
+  });
 });
