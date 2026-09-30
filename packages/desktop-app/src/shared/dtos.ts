@@ -28,6 +28,11 @@ export interface TaskDTO {
    * see `priorityRankFromName`. Sorts the hardware task picker within a status.
    */
   priorityRank?: number;
+  /**
+   * The start of the provider's description, as plain text on one line and at
+   * most `TASK_DESCRIPTION_MAX_CHARS` long. Absent for a task with none.
+   */
+  description?: string;
 }
 
 export interface OpStatusDTO {

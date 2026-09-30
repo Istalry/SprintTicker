@@ -44,6 +44,15 @@ describe('SQLite Repositories Unit Tests', () => {
     expect(tasks[0].title).toBe('Fix Audio Artifacts');
   });
 
+  it('TaskRepository_SaveTaskWithADescription_ReadsItBackAndClearsIt', () => {
+    // Overwritten like everything else: a description removed upstream clears here.
+    taskRepo.saveTask({ id: 'T-D', projectId: 'P1', key: 'D-1', title: 'Described', status: 'todo', description: 'What it is' });
+    expect(taskRepo.getTasksByProjectId('P1')[0].description).toBe('What it is');
+
+    taskRepo.saveTask({ id: 'T-D', projectId: 'P1', key: 'D-1', title: 'Described', status: 'todo' });
+    expect(taskRepo.getTaskById('T-D')).not.toHaveProperty('description');
+  });
+
   it('TaskRepository_SaveTaskWithAPriority_ReadsItBack', () => {
     taskRepo.saveTask({ id: 'T-P', projectId: 'P1', key: 'P-1', title: 'Urgent', status: 'todo', priorityRank: 0 });
 

@@ -149,13 +149,13 @@ describe('JiraProvider against a live Jira-shaped server', () => {
 
     it('GetTasks_AnyScope_RequestsOnlyTheFieldsItMaps', async () => {
       // The default is every field on every issue, which for a busy project is
-      // megabytes of description and changelog the adapter then discards.
+      // megabytes of changelog and custom fields the adapter then discards.
       const provider = await configured();
 
       await provider.getTasks('10000');
 
       const search = requests.find(r => r.pathname === '/rest/api/3/search/jql');
-      expect(search?.fields).toBe('summary,status,project,priority');
+      expect(search?.fields).toBe('summary,status,project,priority,description');
     });
 
     it('GetTasks_AssignedToMeScope_SendsCurrentUserClause', async () => {

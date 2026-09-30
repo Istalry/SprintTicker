@@ -848,7 +848,7 @@ export class IPCHandlerRegistry {
           return true;
         case 'TASK_SELECTION':
           this.renderer.renderTaskSelection('TASK', 'Implement dash', {
-            description: 'PROJ-142',
+            description: 'PROJ-142 Dash that cancels into a slide',
             position: { index: 2, count: 12 },
             status: 'in_progress'
           });

@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.14 statements / 86.11 branches / 91.18 functions / 94.79 lines across 1381
-tests in 70 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**93.19 statements / 86.13 branches / 91.23 functions / 94.82 lines across 1404
+tests in 71 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1130,7 +1130,7 @@ nobody got to.
 | Partial unique index on `active_sessions` | Done | Migration 6 (2026-09-30). The repair path: every open session behind the newest is closed where the next one began, and its time kept as a local worklog marked as recovered, not sent to the provider. |
 | Foreign keys on `worklogs` → `tasks` | Done | Migration 5 (2026-09-30). The orphan decision: an archived tombstone per orphaned task, named from the session that logged it, and from then on a task with worklogs is archived rather than deleted. `tasks.project_id` and `worklog_sync_queue.task_id` stay unconstrained on purpose: an archived task outlives its project, and a queued worklog outlives its task until the provider answers 404. |
 | Sync idempotency | Documented limitation | `reclaimStaleSyncItems` can re-POST if the app died after OpenProject accepted but before the row was marked `SYNCED`. The v3 API has no idempotency key; the sync id is embedded in the comment so duplicates are greppable. |
-| Task description field | Feature, not a fix | `input-decoder` renders the task **key** where a non-existent `TaskDTO.description` was read. A real description field is a schema change plus provider mapping. |
+| Task description field | Done | Migration 7 (2026-09-30). Jira's ADF and OpenProject's Markdown become one line of plain text, capped at 500 characters. The bar's picker shows the key, then as much description as fits -- the key first, so it is never the part cut off; the app shows it under the title and searches it. |
 | Code signing | Not planned | Deliberate, as of 2026-09-09, not a gap. A SmartScreen-satisfying certificate costs money annually and requires identity verification, which is out of proportion to a personal project whose manual install works. Builds stay unsigned and the first-run warning is documented where a user meets it. Note that the old "adding one is two repository secrets" claim no longer holds: new code-signing keys must sit on a hardware token or in a cloud HSM, so CI signing needs a signing service, not a `.pfx` in a secret. |
 | macOS / Linux | Out of scope | The notification listener is PowerShell against the Windows Action Center. Porting means a second listener, not a build target. |
 

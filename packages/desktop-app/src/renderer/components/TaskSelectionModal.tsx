@@ -78,9 +78,11 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   const projectTasks = tasksAreForSelection ? loadedTasks.tasks : [];
   const loadingTasks = wantsTasks && !tasksAreForSelection;
 
+  const query = searchQuery.toLowerCase();
   const filteredTasks = projectTasks.filter(t =>
-    t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.title.toLowerCase().includes(searchQuery.toLowerCase())
+    t.key.toLowerCase().includes(query) ||
+    t.title.toLowerCase().includes(query) ||
+    (t.description ?? '').toLowerCase().includes(query)
   );
 
   // Handle keyboard events (Esc to close, Enter to confirm, Arrow keys)
@@ -237,7 +239,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                     setSearchQuery(e.target.value);
                     setSelectedIndex(0);
                   }}
-                  placeholder="Search task key or title..."
+                  placeholder="Search task key, title or description..."
                   autoFocus
                   className="w-full bg-dark-900 border border-border-dark rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent-blue font-sans"
                 />
@@ -265,9 +267,12 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                             : 'bg-dark-700/40 border border-transparent text-text-primary hover:bg-dark-700'
                         }`}
                       >
-                        <div>
+                        <div className="min-w-0">
                           <div className="font-mono text-accent-blue font-bold">{t.key}</div>
                           <div className="text-xs text-text-secondary">{t.title}</div>
+                          {t.description && (
+                            <div className="text-[11px] text-text-secondary/70 truncate">{t.description}</div>
+                          )}
                         </div>
                         <div className={`flex items-center space-x-1 text-xs ${conf.color}`}>
                           <StatusIcon className="w-3.5 h-3.5" />

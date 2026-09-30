@@ -69,7 +69,8 @@ export class TaskRepository {
         title: string;
         status: 'todo' | 'in_progress' | 'done';
         priorityRank: number | null;
-      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank FROM tasks WHERE project_id = ? AND archived_at_utc IS NULL');
+        description: string | null;
+      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank, description FROM tasks WHERE project_id = ? AND archived_at_utc IS NULL');
 
       const rows = stmt.all(projectId);
       return rows.map(r => TaskRepository.toDto(r));
@@ -97,7 +98,8 @@ export class TaskRepository {
         title: string;
         status: 'todo' | 'in_progress' | 'done';
         priorityRank: number | null;
-      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank FROM tasks WHERE id = ?');
+        description: string | null;
+      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank, description FROM tasks WHERE id = ?');
 
       const row = stmt.get(taskId);
       if (!row) return null;
@@ -109,8 +111,10 @@ export class TaskRepository {
     }
   }
 
-  /** A row as a DTO; a NULL priority is left off rather than carried as null. */
-  private static toDto(row: Omit<TaskDTO, 'priorityRank'> & { priorityRank: number | null }): TaskDTO {
+  /** A row as a DTO; a NULL priority or description is left off rather than carried as null. */
+  private static toDto(
+    row: Omit<TaskDTO, 'priorityRank' | 'description'> & { priorityRank: number | null; description: string | null }
+  ): TaskDTO {
     const task: TaskDTO = {
       id: row.id,
       projectId: row.projectId,
@@ -119,6 +123,7 @@ export class TaskRepository {
       status: row.status
     };
     if (row.priorityRank !== null && row.priorityRank !== undefined) task.priorityRank = row.priorityRank;
+    if (row.description) task.description = row.description;
     return task;
   }
 
@@ -126,7 +131,8 @@ export class TaskRepository {
    * Upserts a task record into SQLite.
    *
    * The priority is overwritten along with everything else, so a priority the
-   * provider no longer reports clears rather than lingering. So is the archive
+   * provider no longer reports clears rather than lingering, and so does a
+   * description. So is the archive
    * mark: a task the provider lists again -- reassigned back, reopened --
    * returns to the lists with its history attached.
    */
@@ -140,20 +146,21 @@ export class TaskRepository {
       if (!db || !db.open) return;
 
       const stmt = db.prepare(`
-        INSERT INTO tasks (id, project_id, key, title, status, priority_rank, created_at_utc)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (id, project_id, key, title, status, priority_rank, description, created_at_utc)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           project_id = excluded.project_id,
           key = excluded.key,
           title = excluded.title,
           status = excluded.status,
           priority_rank = excluded.priority_rank,
+          description = excluded.description,
           archived_at_utc = NULL
       `);
 
       stmt.run(
         task.id, task.projectId, task.key, task.title, task.status,
-        task.priorityRank ?? null, new Date().toISOString()
+        task.priorityRank ?? null, task.description ?? null, new Date().toISOString()
       );
     } catch (err) {
       console.warn('[TaskRepository] Failed to save task:', err);

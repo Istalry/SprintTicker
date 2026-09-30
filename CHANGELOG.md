@@ -9,6 +9,11 @@ reported something other than the truth, in three different ways.
 
 ### Added
 
+- **Tasks have descriptions.** The start of a Jira or OpenProject description
+  appears under the task's title in Projects & Tasks and in the task picker,
+  which searches it too. On the bar, the picker's second row shows the task
+  key followed by as much of the description as fits. Existing tasks gain
+  theirs at the next sync.
 - **The renderer has tests.** A second Vitest project runs in jsdom with
   Testing Library: every tab mounts, a session update from main reaches the
   screen, and the session card's finish paths are pinned. Its

@@ -744,6 +744,22 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(taskRow?.[2]).toBe('ALPHA-1');
     });
 
+    it('HandleHardwareInput_TaskWithADescription_ShowsTheKeyThenTheDescription', () => {
+      // The key first: it is what identifies the task in the provider, so it
+      // is never the part the width cuts off.
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo', description: 'All of it' });
+      const rendered: Array<[string, string, string | undefined]> = [];
+      renderer.renderTaskSelection = ((stage: string, label: string, options?: { description?: string }) => {
+        rendered.push([stage, label, options?.description]);
+      }) as never;
+      openPicker();
+
+      press('ok');
+
+      expect(rendered.find(([stage]) => stage === 'TASK')?.[2]).toBe('ALPHA-1 All of it');
+    });
+
     it('HandleHardwareInput_RotatingPastEitherEnd_ClampsInsteadOfLeavingTheList', () => {
       projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
       projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });

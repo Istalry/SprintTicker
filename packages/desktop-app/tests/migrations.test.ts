@@ -142,6 +142,18 @@ describe('Schema Migrations', () => {
     expect(row).toEqual({ title: 'Kept', priority_rank: null });
   });
 
+  it('Migration007_TasksFromBefore_HaveNoDescriptionUntilTheNextSync', () => {
+    for (const migration of MIGRATIONS.filter(m => m.version <= 6)) migration.up(db);
+    db.pragma('user_version = 6');
+    db.prepare(
+      "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('t1', 'p1', 'A-1', 'Kept', 'todo', '2026-01-01T00:00:00.000Z')"
+    ).run();
+
+    runMigrations(db);
+
+    expect(db.prepare("SELECT title, description FROM tasks WHERE id = 't1'").get()).toEqual({ title: 'Kept', description: null });
+  });
+
   it('Migration002_RequeuesStrandedFailedRows_AndResetsTheirRetryCount', () => {
     // This is the recovery the migration exists for: the old dispatcher marked a
     // row FAILED on its first network error with no path back, stranding

@@ -210,6 +210,32 @@ describe('JiraProvider', () => {
       expect(task).not.toHaveProperty('priorityRank');
     });
 
+    it('GetTasks_IssueWithADescription_KeepsItsTextOnOneLine', async () => {
+      // Jira sends the description as an ADF tree, not text.
+      const description = {
+        type: 'doc',
+        version: 1,
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Login fails' }, { type: 'hardBreak' }, { type: 'text', text: 'for ' }, { type: 'mention', attrs: { text: '@Ana' } }] },
+          { type: 'paragraph', content: [{ type: 'text', text: 'on Safari.' }] }
+        ]
+      };
+      record(ok({ issues: [{ id: 10, key: 'A-1', fields: { summary: 'Fix login', description } }], isLast: true }));
+
+      const [task] = await (await configured()).getTasks('1');
+
+      expect(task.description).toBe('Login fails for @Ana on Safari.');
+    });
+
+    it('GetTasks_IssueWithoutADescription_HasNone', async () => {
+      // Jira sends `description: null` for an empty one.
+      record(ok({ issues: [{ id: 10, key: 'A-1', fields: { summary: 'Bare', description: null } }], isLast: true }));
+
+      const [task] = await (await configured()).getTasks('1');
+
+      expect(task).not.toHaveProperty('description');
+    });
+
     it('GetTasks_LastPageWithoutAToken_StopsWalking', async () => {
       const { urls } = record(ok({ issues: [{ id: 10, key: 'A-1', fields: {} }] }));
 
@@ -220,12 +246,12 @@ describe('JiraProvider', () => {
 
     it('GetTasks_AnyRequest_AsksOnlyForTheFieldsItUses', async () => {
       // The default is every field on every issue, which for a busy project is
-      // megabytes of description and changelog this would discard.
+      // megabytes of changelog and custom fields this would discard.
       const { urls } = record(ok({ issues: [], isLast: true }));
 
       await (await configured()).getTasks('1');
 
-      expect(new URL(urls[0]).searchParams.get('fields')).toBe('summary,status,project,priority');
+      expect(new URL(urls[0]).searchParams.get('fields')).toBe('summary,status,project,priority,description');
     });
 
     it('GetTasks_NoProjectId_ThrowsArgumentException', async () => {

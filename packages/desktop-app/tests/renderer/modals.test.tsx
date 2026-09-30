@@ -88,6 +88,26 @@ describe('TaskSelectionModal', () => {
     expect(screen.queryByText('SPR-1')).toBeNull();
   });
 
+  it('Search_MatchingOnlyTheDescription_FindsTheTask', async () => {
+    // The description is shown under the title, so it is searched too.
+    installElectronApi({
+      getProjects: vi.fn().mockResolvedValue(PROJECTS),
+      getTasks: vi.fn().mockResolvedValue([
+        { ...task('P-1', 'SPR-1'), description: 'Login fails on Safari' },
+        task('P-1', 'SPR-2')
+      ])
+    });
+    render(modal(true));
+    fireEvent.click(await screen.findByText('Sprint'));
+    await screen.findByText('SPR-2');
+
+    fireEvent.change(screen.getByPlaceholderText(/Search task key/), { target: { value: 'safari' } });
+
+    expect(screen.getByText('SPR-1')).toBeTruthy();
+    expect(screen.getByText('Login fails on Safari')).toBeTruthy();
+    expect(screen.queryByText('SPR-2')).toBeNull();
+  });
+
   it('ChooseProject_TasksReadFails_SaysThereAreNone', async () => {
     installElectronApi({
       getProjects: vi.fn().mockResolvedValue(PROJECTS),

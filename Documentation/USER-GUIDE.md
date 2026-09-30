@@ -61,6 +61,10 @@ instead: the time is kept and the task stays open.
 Your cached projects and their tasks, refreshed from the provider. Create local
 ad-hoc tasks here for work that has no ticket.
 
+A task from Jira or OpenProject shows the start of its description under its
+title, on one line. The task picker searches it too, so you can find a task by
+what it is about.
+
 The cache is what the app and the bar read. If it looks stale, **Sync Now** in
 Task Providers refetches it.
 
@@ -274,7 +278,8 @@ checklist also gives the task's status: grey for to do, amber for in progress,
 green for done, and a done task's name is dimmed. Tasks come in that order of
 use: in progress first, then to do, then done, and within each the most urgent
 first, by the priority set in Jira or OpenProject. The second
-row shows the task key, and on its right where you are in the list -- `3/12` --
+row shows the task key, followed by as much of its description as fits, and on
+its right where you are in the list -- `3/12` --
 with a thin line along the bottom whose bright segment slides from left to
 right as you scroll: at the far left there is nothing before, at the far right
 nothing after.

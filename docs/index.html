@@ -537,6 +537,9 @@
       <h4>Projects &amp; Tasks</h4>
       <p>Your cached projects and their tasks, refreshed from the provider. Create local
       ad-hoc tasks here for work that has no ticket.</p>
+      <p>A task from Jira or OpenProject shows the start of its description under its
+      title, on one line. The task picker searches it too, so you can find a task by
+      what it is about.</p>
       <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
       Task Providers refetches it.</p>
       <h4>Work History</h4>
@@ -808,7 +811,8 @@
       green for done, and a done task&#39;s name is dimmed. Tasks come in that order of
       use: in progress first, then to do, then done, and within each the most urgent
       first, by the priority set in Jira or OpenProject. The second
-      row shows the task key, and on its right where you are in the list -- <code>3/12</code> --
+      row shows the task key, followed by as much of its description as fits, and on
+      its right where you are in the list -- <code>3/12</code> --
       with a thin line along the bottom whose bright segment slides from left to
       right as you scroll: at the far left there is nothing before, at the far right
       nothing after.</p>
@@ -1349,7 +1353,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
-      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs</td>
+      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs; <code>description</code> is the start of the provider&#39;s, as plain text</td>
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
@@ -1394,6 +1398,8 @@
       the next session began, the latest it can have run, and its time written as
       a local worklog marked as recovered. It is not queued for the provider: the
       end is inferred, and sending it is the user&#39;s call.</li>
+      <li><code>task-description</code> — a nullable <code>description</code> on <code>tasks</code>, filled by the next
+      sync.</li>
       </ol>
       <p><strong>Tasks with history are archived, never deleted.</strong> The sync prune, deleting a
       project and deleting a task all go through <code>retireTasks</code>, which deletes a task
@@ -1488,7 +1494,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1381 tests across 70 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1404 tests across 71 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -1813,6 +1819,13 @@
         updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;): Promise&lt;boolean&gt;;
       }
       </code></pre>
+      <p><code>TaskDTO.description</code> is optional: plain text on one line, at most
+      <code>TASK_DESCRIPTION_MAX_CHARS</code> (500), cut with an ellipsis. Convert with
+      <code>task-description.ts</code> -- <code>adfToPlainText</code> for Jira&#39;s document tree,
+      <code>markdownToPlainText</code> for OpenProject&#39;s <code>description.raw</code> -- then
+      <code>clampDescription</code>. Omit the field when there is nothing left; do not send an
+      empty string. Jira asks for <code>description</code> in its <code>fields</code> list, the one heavy
+      field it requests.</p>
       <h4>The contract, in rules</h4>
       <p><strong>Report failure by throwing a <code>ProviderRequestError</code>. Never return <code>[]</code>.</strong>
       An empty array is indistinguishable from &quot;this user has no tasks&quot;, and

@@ -164,6 +164,14 @@ interface ITaskProvider {
 }
 ```
 
+`TaskDTO.description` is optional: plain text on one line, at most
+`TASK_DESCRIPTION_MAX_CHARS` (500), cut with an ellipsis. Convert with
+`task-description.ts` -- `adfToPlainText` for Jira's document tree,
+`markdownToPlainText` for OpenProject's `description.raw` -- then
+`clampDescription`. Omit the field when there is nothing left; do not send an
+empty string. Jira asks for `description` in its `fields` list, the one heavy
+field it requests.
+
 ### The contract, in rules
 
 **Report failure by throwing a `ProviderRequestError`. Never return `[]`.**

@@ -345,6 +345,16 @@ function m006OneOpenSession(db: Database.Database): void {
   `);
 }
 
+/**
+ * Migration 7 gives a task its description, as plain text.
+ *
+ * Nullable, like the priority in migration 4: existing rows have none until the
+ * next sync brings one, and a local task never has one.
+ */
+const M007_TASK_DESCRIPTION = `
+  ALTER TABLE tasks ADD COLUMN description TEXT;
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -352,7 +362,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 3, name: 'query-indexes', up: db => db.exec(M003_INDEXES) },
   { version: 4, name: 'task-priority-rank', up: db => db.exec(M004_TASK_PRIORITY) },
   { version: 5, name: 'worklog-task-foreign-key', up: m005WorklogTaskForeignKey },
-  { version: 6, name: 'one-open-session', up: m006OneOpenSession }
+  { version: 6, name: 'one-open-session', up: m006OneOpenSession },
+  { version: 7, name: 'task-description', up: db => db.exec(M007_TASK_DESCRIPTION) }
 ];
 
 /** Schema version a fully migrated database reports. */

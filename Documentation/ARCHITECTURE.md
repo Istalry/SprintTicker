@@ -328,7 +328,7 @@ testing runs against your actual worklogs.
 | Table | Holds |
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id` |
-| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs |
+| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text |
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
@@ -357,6 +357,8 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
    the next session began, the latest it can have run, and its time written as
    a local worklog marked as recovered. It is not queued for the provider: the
    end is inferred, and sending it is the user's call.
+7. `task-description` — a nullable `description` on `tasks`, filled by the next
+   sync.
 
 **Tasks with history are archived, never deleted.** The sync prune, deleting a
 project and deleting a task all go through `retireTasks`, which deletes a task
@@ -466,7 +468,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1381 tests across 70 files, in two projects: `main` in Node for
+Vitest, 1404 tests across 71 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

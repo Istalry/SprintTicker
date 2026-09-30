@@ -300,6 +300,23 @@ describe('OpenProject collection pagination', () => {
       expect(tasks.map(t => t.priorityRank)).toEqual([0, 2, undefined, undefined]);
     });
 
+    it('GetTasks_WorkPackageDescription_IsItsProseOnOneLine', async () => {
+      // OpenProject stores Markdown; the raw form comes in every element.
+      const wp = (id: number, raw?: string) => ({
+        id,
+        subject: `Task ${id}`,
+        ...(raw === undefined ? {} : { description: { format: 'markdown', raw, html: '<p>ignored</p>' } }),
+        _links: { status: { href: '/api/v3/statuses/7' }, type: { title: 'Task' } }
+      });
+      global.fetch = vi.fn().mockResolvedValueOnce(
+        page([wp(1, '## Goal\n\nMake the **dash** cancel into a [slide](https://x/y).'), wp(2, ''), wp(3)])
+      );
+
+      const tasks = await provider.getTasks('1');
+
+      expect(tasks.map(t => t.description)).toEqual(['Goal Make the dash cancel into a slide.', undefined, undefined]);
+    });
+
     it('FetchStatuses_TwoPages_ReturnsEveryStatusSoTheSettingsListIsComplete', async () => {
       global.fetch = vi
         .fn()

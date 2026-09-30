@@ -76,7 +76,7 @@ Vite/esbuild strips types without checking them, there is no `typecheck` npm scr
 | `unity-telemetry-service.ts:5` — `Cannot find module './time-tracking-engine'` | Broken import path (the file is at `../engine/`). Bundler resolves nothing; the type is silently `any`. |
 | `display-renderer.ts:254,256` — `'neon_night'` / `'default'` not comparable to `ColorThemeId` | `ColorThemeId` is `emerald \| cyberpunk \| retro_arcade \| nordic_cyan`. `getThemeColors()` switches on `neon_night` and `default` — **two dead branches**, and **`nordic_cyan` silently falls through to emerald**. One of four advertised themes does nothing. |
 | `display-renderer.ts:527` — `'STATIC'` not assignable to `LedAnimationMode` | Invalid LED mode leaks into the emulator state. |
-| `input-decoder.ts:233` — `'description' does not exist on TaskDTO` | Hardware task-picker second line is always `'No description'`. |
+| `input-decoder.ts:233` — `'description' does not exist on TaskDTO` | Hardware task-picker second line is always `'No description'`. *(Fixed: it showed the task key, and from migration 7 the key followed by the description.)* |
 | `priority-preemption-engine.ts:266,268` — `Cannot find name 'DisplayRenderer'` | Missing import; the field is untyped. |
 | `display-renderer.ts:67,383,384,806`, `ipc-handler-registry.ts:562,567`, `preload/index.ts:81,197-202` — `Cannot find name ...` | 9 missing type imports across the IPC boundary. |
 | `busybar-driver.ts:225,233` — `Property 'battery_charge' does not exist on '{}'` | `parseTelemetryData` indexes into `unknown`; no compile-time guarantee the parse shape is right. |

@@ -1,6 +1,7 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, ArgumentException } from '../../shared/dtos';
 import { priorityRankFromName } from './task-priority';
+import { adfToPlainText, clampDescription } from './task-description';
 import { ProviderRequestError } from './provider-errors';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { COLLECTION_PAGE_SIZE, MAX_COLLECTION_PAGES } from './provider-constants';
@@ -21,6 +22,8 @@ interface JiraIssuePage {
     key?: string;
     fields?: {
       summary?: string;
+      /** Atlassian Document Format; null when the issue has none. */
+      description?: unknown;
       project?: { id?: string | number };
       status?: { name?: string; statusCategory?: { key?: string } };
       priority?: { name?: string } | null;
@@ -209,9 +212,11 @@ export class JiraProvider implements ITaskProvider {
       url.searchParams.set('jql', jql);
       url.searchParams.set('maxResults', String(COLLECTION_PAGE_SIZE));
       // Only the fields that become a TaskDTO. The default is every field on
-      // every issue, which for a busy project is megabytes of description and
-      // changelog that this then discards.
-      url.searchParams.set('fields', 'summary,status,project,priority');
+      // every issue, which for a busy project is megabytes of changelog and
+      // custom fields that this then discards. The description is the one
+      // heavy field asked for, and only its start is kept -- see
+      // TASK_DESCRIPTION_MAX_CHARS.
+      url.searchParams.set('fields', 'summary,status,project,priority,description');
       if (pageToken) url.searchParams.set('nextPageToken', pageToken);
 
       const context = `Fetching Jira issues for project ${projectId}`;
@@ -247,6 +252,8 @@ export class JiraProvider implements ITaskProvider {
         };
         const priorityRank = priorityRankFromName(issue.fields?.priority?.name);
         if (priorityRank !== undefined) task.priorityRank = priorityRank;
+        const description = clampDescription(adfToPlainText(issue.fields?.description));
+        if (description) task.description = description;
         collected.push(task);
       }
 

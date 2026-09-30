@@ -356,13 +356,18 @@ export const ProjectTaskManagerView: React.FC = () => {
                   key={task.id}
                   className="flex items-center justify-between p-3.5 bg-dark-900/60 border border-border-dark rounded-lg hover:border-dark-600 transition-colors"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <div className="flex items-center space-x-2">
                       <span className="px-2 py-0.5 bg-dark-700 border border-border-dark text-accent-blue text-[10px] font-bold rounded">
                         {task.key}
                       </span>
                       <span className="text-xs font-bold text-white">{task.title}</span>
                     </div>
+                    {task.description && (
+                      <div className="text-[11px] text-text-secondary truncate" title={task.description}>
+                        {task.description}
+                      </div>
+                    )}
                     <div className="text-[10px] text-text-secondary">Project: {task.projectId}</div>
                   </div>
 
