@@ -788,7 +788,8 @@
       A blue folder means you are choosing a project, a checklist a task. The
       checklist also gives the task&#39;s status: grey for to do, amber for in progress,
       green for done, and a done task&#39;s name is dimmed. Tasks come in that order of
-      use: in progress first, then to do, then done. The second
+      use: in progress first, then to do, then done, and within each the most urgent
+      first, by the priority set in Jira or OpenProject. The second
       row shows the task key, and on its right where you are in the list -- <code>3/12</code> --
       with a thin line along the bottom whose bright segment slides from left to
       right as you scroll: at the far left there is nothing before, at the far right
@@ -1325,7 +1326,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
-      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code></td>
+      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL</td>
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
@@ -1355,6 +1356,9 @@
       <li><code>sync-queue-claim-and-backoff</code> — rebuilds the queue table, because SQLite
       cannot <code>ALTER</code> a <code>CHECK</code> constraint and the queue needed a fourth state.</li>
       <li><code>query-indexes</code>.</li>
+      <li><code>task-priority-rank</code> — a nullable <code>priority_rank</code> on <code>tasks</code>. Adding a
+      nullable column rewrites nothing; existing rows stay NULL until the next
+      sync brings a priority.</li>
       </ol>
       <p>Credentials are encrypted at rest through Electron&#39;s <code>safeStorage</code>
       (<code>db/secret-store.ts</code>). Every failure mode degrades rather than losing the key:
@@ -1433,7 +1437,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1032 tests across 57 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1064 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>
@@ -1768,6 +1772,11 @@
       <code>pnpm probe:jira-worklog</code>: 59s is refused and 60s accepted. Guessing high is not
       the safe direction — it silently discards time the remote would have stored, and
       nothing anywhere reports that it happened.</p>
+      <p><strong>A task&#39;s priority is a rank, <code>priorityRank</code>: 0 most urgent, 4 least.</strong> Map
+      your provider&#39;s priority name with <code>priorityRankFromName</code>, which knows Jira&#39;s
+      two shipped schemes and OpenProject&#39;s. Leave the field off for a priority it
+      does not know rather than guessing: an unranked task sorts after the ranked
+      ones in the hardware picker, while a wrong rank puts it where nobody expects.</p>
       <p><strong><code>reconcileRemoteState</code> may answer <code>null</code>.</strong> <code>remoteLoggedTimeToday: null</code>
       means &quot;this provider cannot find out&quot;. Jira has no single endpoint for &quot;time I
       logged today&quot;, and AdHoc has no remote at all; both return <code>null</code> rather than a

@@ -156,11 +156,23 @@ const M003_INDEXES = `
   CREATE INDEX IF NOT EXISTS idx_active_sessions_status   ON active_sessions(status);
 `;
 
+/**
+ * Migration 4 gives a task the provider's priority, as a rank (0 most urgent).
+ *
+ * Nullable with no default: existing rows have no priority until the next sync
+ * brings one, and a local task never has one. Adding a nullable column rewrites
+ * nothing, so this is safe on a database with history in it.
+ */
+const M004_TASK_PRIORITY = `
+  ALTER TABLE tasks ADD COLUMN priority_rank INTEGER;
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
   { version: 2, name: 'sync-queue-claim-and-backoff', up: m002RebuildSyncQueue },
-  { version: 3, name: 'query-indexes', up: db => db.exec(M003_INDEXES) }
+  { version: 3, name: 'query-indexes', up: db => db.exec(M003_INDEXES) },
+  { version: 4, name: 'task-priority-rank', up: db => db.exec(M004_TASK_PRIORITY) }
 ];
 
 /** Schema version a fully migrated database reports. */

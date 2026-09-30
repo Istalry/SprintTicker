@@ -183,6 +183,33 @@ describe('JiraProvider', () => {
       expect(new URL(urls[1]).searchParams.get('nextPageToken')).toBe('tok-2');
     });
 
+    it('GetTasks_IssueWithAKnownPriority_CarriesItsRank', async () => {
+      record(ok({
+        issues: [
+          { id: 10, key: 'A-1', fields: { summary: 'Urgent', priority: { name: 'Highest' } } },
+          { id: 11, key: 'A-2', fields: { summary: 'Classic', priority: { name: 'Minor' } } }
+        ],
+        isLast: true
+      }));
+
+      const tasks = await (await configured()).getTasks('1');
+
+      expect(tasks.map(t => t.priorityRank)).toEqual([0, 3]);
+    });
+
+    it.each([
+      ['a custom priority', { name: 'P1 - Drop everything' }],
+      ['no priority field', undefined],
+      ['a null priority', null]
+    ])('GetTasks_IssueWith%s_HasNoRank', async (_case, priority) => {
+      // Jira sends `priority: null` when the field is hidden on the project.
+      record(ok({ issues: [{ id: 10, key: 'A-1', fields: { summary: 'One', priority } }], isLast: true }));
+
+      const [task] = await (await configured()).getTasks('1');
+
+      expect(task).not.toHaveProperty('priorityRank');
+    });
+
     it('GetTasks_LastPageWithoutAToken_StopsWalking', async () => {
       const { urls } = record(ok({ issues: [{ id: 10, key: 'A-1', fields: {} }] }));
 
@@ -198,7 +225,7 @@ describe('JiraProvider', () => {
 
       await (await configured()).getTasks('1');
 
-      expect(new URL(urls[0]).searchParams.get('fields')).toBe('summary,status,project');
+      expect(new URL(urls[0]).searchParams.get('fields')).toBe('summary,status,project,priority');
     });
 
     it('GetTasks_NoProjectId_ThrowsArgumentException', async () => {

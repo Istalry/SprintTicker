@@ -59,8 +59,12 @@ const TASK_STATUS_ICONS: Readonly<Record<TaskDTO['status'], BitmapIconId>> = {
   in_progress: 'task_in_progress',
   done: 'task_done'
 };
-/** A finished task's name is dimmed, so the eye skips it. */
-const SELECTION_DONE_TITLE_COLOR = '#9CA3AF';
+/**
+ * A finished task's name is dimmed, so the eye skips it -- but only so far.
+ * It is still the item on screen and has to be read on the LEDs; the row-1
+ * grey (#9CA3AF) is too dark for the one line that names the task.
+ */
+const SELECTION_DONE_TITLE_COLOR = '#CBD5E1';
 
 /** Behaviour switches for {@link DisplayRenderer.requestRender}. */
 export interface RequestRenderOptions {

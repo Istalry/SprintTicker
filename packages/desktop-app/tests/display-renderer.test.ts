@@ -737,7 +737,7 @@ describe('DisplayRenderer Unit Tests', () => {
     });
 
     it.each([
-      ['done', '#9CA3AF'],
+      ['done', '#CBD5E1'],
       ['todo', '#FFFFFF'],
       ['in_progress', '#FFFFFF']
     ] as const)('RenderTaskSelection_TaskThatIs_%s_DrawsTheNameIn_%s', (status, color) => {

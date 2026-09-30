@@ -283,6 +283,23 @@ describe('OpenProject collection pagination', () => {
       expect(tasks.map(t => t.key)).toEqual(['OP-11', 'OP-12', 'OP-13']);
     });
 
+    it('GetTasks_WorkPackagePriority_CarriesItsRank', async () => {
+      const wp = (id: number, priority?: string) => ({
+        id,
+        subject: `Task ${id}`,
+        _links: {
+          status: { href: '/api/v3/statuses/7' },
+          type: { title: 'Task' },
+          ...(priority ? { priority: { href: '/api/v3/priorities/9', title: priority } } : {})
+        }
+      });
+      global.fetch = vi.fn().mockResolvedValueOnce(page([wp(1, 'Immediate'), wp(2, 'Normal'), wp(3, 'Whenever'), wp(4)]));
+
+      const tasks = await provider.getTasks('1');
+
+      expect(tasks.map(t => t.priorityRank)).toEqual([0, 2, undefined, undefined]);
+    });
+
     it('FetchStatuses_TwoPages_ReturnsEveryStatusSoTheSettingsListIsComplete', async () => {
       global.fetch = vi
         .fn()

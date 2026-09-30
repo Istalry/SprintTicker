@@ -180,6 +180,12 @@ documentation. Jira's 60 was verified against a live site with
 the safe direction — it silently discards time the remote would have stored, and
 nothing anywhere reports that it happened.
 
+**A task's priority is a rank, `priorityRank`: 0 most urgent, 4 least.** Map
+your provider's priority name with `priorityRankFromName`, which knows Jira's
+two shipped schemes and OpenProject's. Leave the field off for a priority it
+does not know rather than guessing: an unranked task sorts after the ranked
+ones in the hardware picker, while a wrong rank puts it where nobody expects.
+
 **`reconcileRemoteState` may answer `null`.** `remoteLoggedTimeToday: null`
 means "this provider cannot find out". Jira has no single endpoint for "time I
 logged today", and AdHoc has no remote at all; both return `null` rather than a

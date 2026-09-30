@@ -251,7 +251,8 @@ into it, turn to choose a task, click to start. **BACK** leaves at any point.
 A blue folder means you are choosing a project, a checklist a task. The
 checklist also gives the task's status: grey for to do, amber for in progress,
 green for done, and a done task's name is dimmed. Tasks come in that order of
-use: in progress first, then to do, then done. The second
+use: in progress first, then to do, then done, and within each the most urgent
+first, by the priority set in Jira or OpenProject. The second
 row shows the task key, and on its right where you are in the list -- `3/12` --
 with a thin line along the bottom whose bright segment slides from left to
 right as you scroll: at the far left there is nothing before, at the far right

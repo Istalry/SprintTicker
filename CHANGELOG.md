@@ -33,7 +33,9 @@ reported something other than the truth, in three different ways.
   or after. A project with no tasks shows no position, rather than a "1/1"
   that would suggest something to pick.
 - **Tasks in the picker are sorted and show their status.** In progress
-  first, then to do, then done, keeping the provider's order within each; the
+  first, then to do, then done; within each, by the priority Jira or
+  OpenProject gives (Highest/Blocker/Immediate first; a priority the app does
+  not know comes after the known ones), then in the provider's order. The
   checklist icon is grey, amber or green to match, and a done task's name is
   dimmed. The list used to come in whatever order the store returned.
 - **STOP and FINISH follow the wheel.** Left picks STOP, right picks FINISH,

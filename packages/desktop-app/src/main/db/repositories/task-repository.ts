@@ -41,16 +41,11 @@ export class TaskRepository {
         key: string;
         title: string;
         status: 'todo' | 'in_progress' | 'done';
-      }>('SELECT id, project_id as projectId, key, title, status FROM tasks WHERE project_id = ?');
+        priorityRank: number | null;
+      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank FROM tasks WHERE project_id = ?');
 
       const rows = stmt.all(projectId);
-      return rows.map(r => ({
-        id: r.id,
-        projectId: r.projectId,
-        key: r.key,
-        title: r.title,
-        status: r.status
-      }));
+      return rows.map(r => TaskRepository.toDto(r));
     } catch (err) {
       console.warn('[TaskRepository] Failed to fetch tasks:', err);
       return [];
@@ -73,26 +68,37 @@ export class TaskRepository {
         key: string;
         title: string;
         status: 'todo' | 'in_progress' | 'done';
-      }>('SELECT id, project_id as projectId, key, title, status FROM tasks WHERE id = ?');
+        priorityRank: number | null;
+      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank FROM tasks WHERE id = ?');
 
       const row = stmt.get(taskId);
       if (!row) return null;
 
-      return {
-        id: row.id,
-        projectId: row.projectId,
-        key: row.key,
-        title: row.title,
-        status: row.status
-      };
+      return TaskRepository.toDto(row);
     } catch (err) {
       console.warn('[TaskRepository] Failed to fetch task by id:', err);
       return null;
     }
   }
 
+  /** A row as a DTO; a NULL priority is left off rather than carried as null. */
+  private static toDto(row: Omit<TaskDTO, 'priorityRank'> & { priorityRank: number | null }): TaskDTO {
+    const task: TaskDTO = {
+      id: row.id,
+      projectId: row.projectId,
+      key: row.key,
+      title: row.title,
+      status: row.status
+    };
+    if (row.priorityRank !== null && row.priorityRank !== undefined) task.priorityRank = row.priorityRank;
+    return task;
+  }
+
   /**
    * Upserts a task record into SQLite.
+   *
+   * The priority is overwritten along with everything else, so a priority the
+   * provider no longer reports clears rather than lingering.
    */
   public saveTask(task: TaskDTO): void {
     if (!task.id || !task.projectId || !task.key || !task.title) {
@@ -104,16 +110,20 @@ export class TaskRepository {
       if (!db || !db.open) return;
 
       const stmt = db.prepare(`
-        INSERT INTO tasks (id, project_id, key, title, status, created_at_utc)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (id, project_id, key, title, status, priority_rank, created_at_utc)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           project_id = excluded.project_id,
           key = excluded.key,
           title = excluded.title,
-          status = excluded.status
+          status = excluded.status,
+          priority_rank = excluded.priority_rank
       `);
 
-      stmt.run(task.id, task.projectId, task.key, task.title, task.status, new Date().toISOString());
+      stmt.run(
+        task.id, task.projectId, task.key, task.title, task.status,
+        task.priorityRank ?? null, new Date().toISOString()
+      );
     } catch (err) {
       console.warn('[TaskRepository] Failed to save task:', err);
     }

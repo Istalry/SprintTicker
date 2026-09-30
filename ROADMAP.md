@@ -671,6 +671,10 @@ looping idle animations.
        two steps, the position as `3/12`, and a one-pixel scroll bar under
        the rows. Arrows beside the number were tried first and dropped: they
        cut a four-digit key such as `SPR-1428` beside `12/12`.
+     - [x] **The picker, from use** (2026-09-30): each task's status on its
+       card, the list sorted in progress -> to do -> done and then by the
+       provider's priority (a new `priority_rank`, schema v4), and STOP /
+       FINISH that stop at either end of the wheel.
      - [ ] 9c, one-shot scenes: GO! on starting a task from the bar, LOGGED
        on STOP, and the end-of-day scene.
 5. The rear OLED, below.
@@ -857,8 +861,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**85.93 statements / 77.53 branches / 86.59 functions / 88.14 lines across 1032
-tests in 57 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**85.98 statements / 77.66 branches / 86.65 functions / 88.17 lines across 1064
+tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

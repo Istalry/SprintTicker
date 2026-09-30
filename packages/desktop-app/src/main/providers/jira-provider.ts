@@ -1,5 +1,6 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, ArgumentException } from '../../shared/dtos';
+import { priorityRankFromName } from './task-priority';
 import { ProviderRequestError } from './provider-errors';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { COLLECTION_PAGE_SIZE, MAX_COLLECTION_PAGES } from './provider-constants';
@@ -22,6 +23,7 @@ interface JiraIssuePage {
       summary?: string;
       project?: { id?: string | number };
       status?: { name?: string; statusCategory?: { key?: string } };
+      priority?: { name?: string } | null;
     };
   }>;
   nextPageToken?: string;
@@ -206,10 +208,10 @@ export class JiraProvider implements ITaskProvider {
       const url = new URL(`${this.getBaseUrl()}/rest/api/3/search/jql`);
       url.searchParams.set('jql', jql);
       url.searchParams.set('maxResults', String(COLLECTION_PAGE_SIZE));
-      // Only the three fields that become a TaskDTO. The default is every
-      // field on every issue, which for a busy project is megabytes of
-      // description and changelog that this then discards.
-      url.searchParams.set('fields', 'summary,status,project');
+      // Only the fields that become a TaskDTO. The default is every field on
+      // every issue, which for a busy project is megabytes of description and
+      // changelog that this then discards.
+      url.searchParams.set('fields', 'summary,status,project,priority');
       if (pageToken) url.searchParams.set('nextPageToken', pageToken);
 
       const context = `Fetching Jira issues for project ${projectId}`;
@@ -233,7 +235,7 @@ export class JiraProvider implements ITaskProvider {
 
       for (const issue of issues) {
         if (issue.id === undefined || issue.id === null) continue;
-        collected.push({
+        const task: TaskDTO = {
           id: String(issue.id),
           projectId,
           key: issue.key || String(issue.id),
@@ -242,7 +244,10 @@ export class JiraProvider implements ITaskProvider {
             issue.fields?.status?.name,
             issue.fields?.status?.statusCategory?.key
           )
-        });
+        };
+        const priorityRank = priorityRankFromName(issue.fields?.priority?.name);
+        if (priorityRank !== undefined) task.priorityRank = priorityRank;
+        collected.push(task);
       }
 
       pageToken = body.nextPageToken;

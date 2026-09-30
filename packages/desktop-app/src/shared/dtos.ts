@@ -22,6 +22,12 @@ export interface TaskDTO {
   key: string;
   title: string;
   status: 'todo' | 'in_progress' | 'done';
+  /**
+   * How urgent the provider says the task is: 0 most urgent, 4 least.
+   * Absent for a local task, or a provider priority this app does not know --
+   * see `priorityRankFromName`. Sorts the hardware task picker within a status.
+   */
+  priorityRank?: number;
 }
 
 export interface OpStatusDTO {

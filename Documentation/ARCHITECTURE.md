@@ -324,7 +324,7 @@ testing runs against your actual worklogs.
 | Table | Holds |
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id` |
-| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done` |
+| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL |
 | `active_sessions` | The live session — `TRACKING` / `PAUSED` / `COMPLETED` |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it |
@@ -338,6 +338,9 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
 2. `sync-queue-claim-and-backoff` — rebuilds the queue table, because SQLite
    cannot `ALTER` a `CHECK` constraint and the queue needed a fourth state.
 3. `query-indexes`.
+4. `task-priority-rank` — a nullable `priority_rank` on `tasks`. Adding a
+   nullable column rewrites nothing; existing rows stay NULL until the next
+   sync brings a priority.
 
 Credentials are encrypted at rest through Electron's `safeStorage`
 (`db/secret-store.ts`). Every failure mode degrades rather than losing the key:
@@ -430,7 +433,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1032 tests across 57 files. `coverage.include` is `src/main/**` and
+Vitest, 1064 tests across 58 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

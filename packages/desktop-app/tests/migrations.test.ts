@@ -126,6 +126,22 @@ describe('Schema Migrations', () => {
     expect(project?.name).toBe('Project');
   });
 
+  it('Migration004_TasksFromBefore_KeepTheirDataWithNoPriority', () => {
+    // Stop at version 3, write a task as that build would, then upgrade.
+    for (const migration of MIGRATIONS.filter(m => m.version <= 3)) migration.up(db);
+    db.pragma('user_version = 3');
+    db.prepare(
+      "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('t1', 'p1', 'A-1', 'Kept', 'todo', '2026-01-01T00:00:00.000Z')"
+    ).run();
+
+    runMigrations(db);
+
+    const row = db.prepare<[], { title: string; priority_rank: number | null }>(
+      "SELECT title, priority_rank FROM tasks WHERE id = 't1'"
+    ).get();
+    expect(row).toEqual({ title: 'Kept', priority_rank: null });
+  });
+
   it('Migration002_RequeuesStrandedFailedRows_AndResetsTheirRetryCount', () => {
     // This is the recovery the migration exists for: the old dispatcher marked a
     // row FAILED on its first network error with no path back, stranding

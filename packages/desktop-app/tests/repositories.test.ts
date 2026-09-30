@@ -44,6 +44,29 @@ describe('SQLite Repositories Unit Tests', () => {
     expect(tasks[0].title).toBe('Fix Audio Artifacts');
   });
 
+  it('TaskRepository_SaveTaskWithAPriority_ReadsItBack', () => {
+    taskRepo.saveTask({ id: 'T-P', projectId: 'P1', key: 'P-1', title: 'Urgent', status: 'todo', priorityRank: 0 });
+
+    expect(taskRepo.getTaskById('T-P')?.priorityRank).toBe(0);
+    expect(taskRepo.getTasksByProjectId('P1').find(t => t.id === 'T-P')?.priorityRank).toBe(0);
+  });
+
+  it('TaskRepository_SaveTaskWithoutAPriority_LeavesTheFieldOff', () => {
+    // Off, not null: a DTO compared field by field must not grow a null.
+    taskRepo.saveTask({ id: 'T-N', projectId: 'P1', key: 'P-2', title: 'Local', status: 'todo' });
+
+    expect(taskRepo.getTaskById('T-N')).not.toHaveProperty('priorityRank');
+  });
+
+  it('TaskRepository_PriorityDroppedByTheProvider_IsCleared', () => {
+    // An upsert that kept the old value would sort the task by a priority it
+    // no longer has.
+    taskRepo.saveTask({ id: 'T-D', projectId: 'P1', key: 'P-3', title: 'Was urgent', status: 'todo', priorityRank: 0 });
+    taskRepo.saveTask({ id: 'T-D', projectId: 'P1', key: 'P-3', title: 'Was urgent', status: 'todo' });
+
+    expect(taskRepo.getTaskById('T-D')).not.toHaveProperty('priorityRank');
+  });
+
   it('TaskRepository_CreateAdHocTask_GeneratesAdHocTaskWithFallbackKey', () => {
     // Act
     const adHoc = taskRepo.createAdHocTask('Emergency Code Review', 'MISC-1');

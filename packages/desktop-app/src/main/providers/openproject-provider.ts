@@ -1,5 +1,6 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO, ArgumentException } from '../../shared/dtos';
+import { priorityRankFromName } from './task-priority';
 import { ProviderRequestError } from './provider-errors';
 import { fetchOpenProjectCollection } from './openproject-collection';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
@@ -161,12 +162,14 @@ export class OpenProjectProvider implements ITaskProvider {
           }
 
           const rawId = (t.id as number | string).toString();
+          const priorityRank = priorityRankFromName(links.priority?.title);
           return {
             id: rawId,
             projectId,
             key: `OP-${rawId}`,
             title: (t.subject as string) || 'Untitled Work Package',
             status: localStatus,
+            ...(priorityRank !== undefined ? { priorityRank } : {}),
             _opType: typeName // Temporary prop for filtering
           };
       })
