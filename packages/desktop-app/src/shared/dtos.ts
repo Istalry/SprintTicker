@@ -357,7 +357,6 @@ export type BitmapIconId =
   | 'hammer' | 'bulb' | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
   | 'folder' | 'task' | 'task_in_progress' | 'task_done';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
-export type RearOledMode = 'DIAGNOSTICS' | 'PERFORMANCE_MONITOR' | 'STEALTH_CLOCK';
 
 export interface DisplayElementDTO {
   /**
@@ -388,13 +387,19 @@ export interface DisplayElementDTO {
   scroll_rate?: number;
 }
 
+/**
+ * What the app is showing, for the on-screen emulator.
+ *
+ * Front only. The rear 160x80 display is left to the firmware, which mirrors
+ * the front there at twice the size and shows its own clock when the front is
+ * empty -- the user chose that over anything the app would draw (2026-09-30).
+ * An app draw on the rear would replace the mirror.
+ */
 export interface HardwareDisplayStateDTO {
   frontElements: DisplayElementDTO[];
-  backElements: DisplayElementDTO[];
   ledColorHex: string;
   ledMode: LedAnimationMode;
   colorTheme: ColorThemeId;
-  rearOledMode: RearOledMode;
 }
 
 // OpenAPI v25 System Status & Power Telemetry DTOs

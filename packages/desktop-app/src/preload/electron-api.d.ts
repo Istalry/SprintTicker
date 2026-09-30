@@ -144,7 +144,6 @@ export interface IElectronAPI {
   // Hardware Display Animation & Screen Emulator
   getDisplayState: () => Promise<HardwareDisplayStateDTO>;
   onDisplayStateUpdated: (callback: (state: HardwareDisplayStateDTO) => void) => () => void;
-  setRearOledMode: (mode: string) => Promise<boolean>;
   setColorTheme: (theme: string) => Promise<boolean>;
   triggerConfettiBurst: () => Promise<boolean>;
   /** Draws one real screen through the actual renderer, for the debug panel. */

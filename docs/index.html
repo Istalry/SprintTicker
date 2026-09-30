@@ -736,6 +736,9 @@
       fourteen.
       Text that does not fit ends in <code>…</code>. Accented letters are shown without their
       accents, since the display draws plain ASCII only.</p>
+      <p>The small screen on the back belongs to the bar itself: it shows a copy of the
+      front at twice the size, and its own clock and date when the front is empty.
+      SprintTicker draws nothing there.</p>
       <p>The session screen&#39;s icon is a stopwatch whose colour says where you are: green
       while a task runs, its hand ticking round once a second; amber with blinking
       pause bars while it is paused; dim grey when nothing runs (the screen then
@@ -1217,8 +1220,12 @@
       <code>shared/fonts/sprint-*.ts</code>, and <code>pnpm fonts:check</code> fails CI if the two drift. The
       generator refuses a sheet that is missing any printable ASCII character, draws
       two characters identically, or leaves a blank column at a glyph&#39;s edge.</p>
-      <p>The rear 160×80 OLED is <strong>preview only</strong>: <code>buildRearElements</code> feeds the on-screen
-      emulator, and <code>transmitFrame</code> sends the front matrix and nothing else.</p>
+      <p>The rear 160×80 display is left to the firmware, which mirrors the front there
+      at twice the size and shows its own clock when the front is empty.
+      <code>transmitFrame</code> sends the front matrix and nothing else, and
+      <code>HardwareDisplayStateDTO</code> carries the front only. The rear preview, its three
+      modes and the setting that chose between them were removed once the rear was
+      measured: they drew diagnostics the bar never showed.</p>
       <div class="note trap"><span class="label">The front matrix has one owner at a time</span>
       <p></p>
       <p><code>transmitFrame</code> draws element <code>px_matrix_img</code>, opaque across the whole panel,
@@ -1451,7 +1458,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1105 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1104 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>
@@ -1628,8 +1635,8 @@
       <td align="left"><strong>Event</strong></td>
       </tr>
       <tr>
-      <td align="left"><code>display:set-rear-oled-mode</code>, <code>display:set-color-theme</code>, <code>display:trigger-confetti-burst</code></td>
-      <td align="left">Display options</td>
+      <td align="left"><code>display:set-color-theme</code>, <code>display:trigger-confetti-burst</code></td>
+      <td align="left">Display options. <code>display:trigger-confetti-burst</code> plays DONE! alone, for the debug panel</td>
       </tr>
       <tr>
       <td align="left"><code>display:preview-screen</code></td>
@@ -2097,7 +2104,13 @@
       the skew in the first place. Nothing surfaces this error on its own: the bar
       simply shows a confidently wrong time.</p>
       </div>
-      <p>The rear 160×80 OLED is <strong>preview only</strong> in this build.</p>
+      <p>The app draws nothing on the rear 160×80 display: the firmware mirrors the
+      front there, and shows its own clock when the front is empty. What the rear
+      accepts, measured on 1.2.4 with <code>pnpm probe:busybar --rear</code>: <code>image</code> and <code>text</code>
+      elements with <code>display: &#39;back&#39;</code>; a status column the firmware draws over
+      x 148-159; 16 levels of grey, with colour converted to luminance; and
+      <code>GET /api/screen?display=1</code> answering 6400 bytes of 4-bit grey, base64,
+      high nibble first.</p>
       <h4>Checking the contract after a firmware release</h4>
       <p><code>pnpm probe:busybar</code> runs the calls above against a real bar and reports the
       firmware version alongside the result. The test suite mocks the driver, so it

@@ -214,6 +214,10 @@ fourteen.
 Text that does not fit ends in `…`. Accented letters are shown without their
 accents, since the display draws plain ASCII only.
 
+The small screen on the back belongs to the bar itself: it shows a copy of the
+front at twice the size, and its own clock and date when the front is empty.
+SprintTicker draws nothing there.
+
 The session screen's icon is a stopwatch whose colour says where you are: green
 while a task runs, its hand ticking round once a second; amber with blinking
 pause bars while it is paused; dim grey when nothing runs (the screen then

@@ -148,7 +148,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(driver.getIsMockMode()).toBe(true);
   });
 
-  it('RenderActiveSession_ValidSession_Generates72x16FrontAndOledRearPayload', () => {
+  it('RenderActiveSession_ValidSession_Generates72x16FrontPayload', () => {
     // Arrange
     const session = engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
 
@@ -160,9 +160,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(frontEls.length).toBeGreaterThan(0);
     // All front elements should be rectangles (pixel strips)
     expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
-    // Rear display still uses legacy element format
-    const rearEls = payload.backElements as Record<string, unknown>[];
-    expect((rearEls[0].text as string)).toContain('BUSY BAR DIAGNOSTICS');
     expect(payload.ledColorHex).toBe('#10B981FF'); // Green LED for TRACKING
   });
 

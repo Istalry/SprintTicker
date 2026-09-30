@@ -78,7 +78,7 @@ Everything else is a request/response `invoke`.
 | `priority:on-user-mode-updated` | **Event** |
 | `display:get-state` | Current frame, for the emulator |
 | `display:on-state-updated` | **Event** |
-| `display:set-rear-oled-mode`, `display:set-color-theme`, `display:trigger-confetti-burst` | Display options |
+| `display:set-color-theme`, `display:trigger-confetti-burst` | Display options. `display:trigger-confetti-burst` plays DONE! alone, for the debug panel |
 | `display:preview-screen` | Draws one **real** screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting |
 
 ### Device, ceremonies, Unity, notifications, diagnostics, updates
@@ -415,7 +415,13 @@ Measured on 1.2.3: **17×5px** for `01:06`, which fits beside a 16px icon with
 > the skew in the first place. Nothing surfaces this error on its own: the bar
 > simply shows a confidently wrong time.
 
-The rear 160×80 OLED is **preview only** in this build.
+The app draws nothing on the rear 160×80 display: the firmware mirrors the
+front there, and shows its own clock when the front is empty. What the rear
+accepts, measured on 1.2.4 with `pnpm probe:busybar --rear`: `image` and `text`
+elements with `display: 'back'`; a status column the firmware draws over
+x 148-159; 16 levels of grey, with colour converted to luminance; and
+`GET /api/screen?display=1` answering 6400 bytes of 4-bit grey, base64,
+high nibble first.
 
 ### Checking the contract after a firmware release
 

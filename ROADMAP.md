@@ -695,7 +695,7 @@ looping idle animations.
        Complete's checkmark and two rows. The wrap-up's lock release now uses
        the scene's own duration. The animated check has no screen left; it
        stays until it is either given one or removed on its own.
-5. The rear OLED, below.
+5. [x] The rear display, measured and left to the firmware (2026-09-30).
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
 countdown, the `coding` and `on_call` animations, and with the countdown the
@@ -773,19 +773,15 @@ the device a timestamp.
 - ~~**Countdown display for lunch and breaks**~~ — dropped (2026-09-29). Not
   wanted; the measurements above stay as a record of how the element behaves,
   and the clock-skew work they describe is dropped with it.
-- **Wire up the rear 160×80 OLED.** `buildRearElements` already produces valid
-  8-digit `#RRGGBBAA` elements and feeds the on-screen emulator;
-  `transmitFrame` sends the front matrix and nothing else. The re-entry path is
-  therefore small — but it is a *feature*, not a wire-up, because the panel is
-  greyscale and the current element set is written for colour. The reason this
-  was not merged into the front payload in Phase 1: the elements previously
-  carried 10-digit colours, and per the hardware contract one malformed colour
-  fails the **entire** draw call, which would have taken the working front
-  display down with it.
-- **Real CPU load on the performance monitor.** It currently reports memory and
-  uptime and omits CPU rather than inventing it; deriving load needs two
-  `os.cpus()` samples over an interval, which is a service, not a display
-  concern.
+- ~~**Wire up the rear 160×80 OLED**~~ — dropped (2026-09-30), and with it
+  the **real CPU load on the performance monitor**, which only fed it.
+  `pnpm probe:busybar --rear` read the rear for the first time and found it
+  already useful: firmware 1.2.4 mirrors the front there at twice the size and
+  shows its own clock when the front is empty. An app draw would replace
+  that, and the firmware's own fonts there are small. Chosen with the user:
+  keep the mirror. The preview-only rear modes (diagnostics, performance,
+  stealth clock), their setting and the emulator's rear canvas are removed.
+  The measurements are in CLAUDE.md §4 for whoever revisits it.
 - Richer transitions and more `.anim` sets.
 - [x] **The notification banner shows the message** (2026-09-07). It drew one
   centred row of eleven characters, and spent ten of them on a bracketed channel
@@ -879,7 +875,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.09 statements / 77.87 branches / 86.81 functions / 88.26 lines across 1105
+**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1104
 tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

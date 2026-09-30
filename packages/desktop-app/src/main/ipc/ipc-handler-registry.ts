@@ -19,7 +19,7 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, RearOledMode, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
@@ -822,11 +822,6 @@ export class IPCHandlerRegistry {
     // 12. Hardware Display Animation & Screen Emulator IPC Handlers
     ipcMain.handle(IPCChannel.GET_DISPLAY_STATE, async () => {
       return this.renderer.getDisplayState();
-    });
-
-    ipcMain.handle(IPCChannel.SET_REAR_OLED_MODE, async (_event, mode: RearOledMode) => {
-      this.renderer.setRearOledMode(mode);
-      return true;
     });
 
     ipcMain.handle(IPCChannel.SET_COLOR_THEME, async (_event, theme: ColorThemeId) => {

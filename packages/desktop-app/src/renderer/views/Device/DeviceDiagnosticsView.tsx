@@ -190,22 +190,6 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Rear 160×80 OLED Display Strategy:</span>
-            <select
-              onChange={(e) => {
-                if (window.electronAPI?.setRearOledMode) {
-                  window.electronAPI.setRearOledMode(e.target.value);
-                }
-              }}
-              className="bg-dark-800 text-accent-green font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
-            >
-              <option value="DIAGNOSTICS">Mode A: Diagnostics & IP Metrics</option>
-              <option value="PERFORMANCE_MONITOR">Mode B: System Performance Graph</option>
-              <option value="STEALTH_CLOCK">Mode C: Power-Saving Stealth Clock</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary">Front 72×16 LED Matrix Color Theme:</span>
             <select
               onChange={(e) => {

@@ -6,13 +6,16 @@ import { useElementWidth } from '../hooks/useElementWidth';
 
 /**
  * Physical Hardware Display Emulator Component.
- * Simulates physical 72x16 RGB LED front matrix display and 160x80 rear OLED screen
- * with 1:1 pixel-perfect diode rendering, realistic emissive LED bloom, and marquee scrolling.
+ * Simulates the physical 72x16 RGB LED front matrix with 1:1 pixel-perfect
+ * diode rendering, emissive LED bloom and marquee scrolling.
+ *
+ * Front only. The rear 160x80 display is the firmware's, which mirrors the
+ * front there; a preview of the rear used to sit here, drawing diagnostics the
+ * app never sent to the bar.
  */
 export const HardwareDisplayEmulator: React.FC = () => {
   const [displayState, setDisplayState] = useState<HardwareDisplayStateDTO | null>(null);
   const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
@@ -182,31 +185,6 @@ export const HardwareDisplayEmulator: React.FC = () => {
     // resize has to tear the render loop down and set it up again.
   }, [displayState, dotSize]);
 
-  // Render Rear 160x80 OLED Screen Canvas
-  useEffect(() => {
-    const canvas = backCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const scale = 1.2;
-    canvas.width = DISPLAY_CONSTANTS.REAR_OLED_WIDTH * scale;
-    canvas.height = DISPLAY_CONSTANTS.REAR_OLED_HEIGHT * scale;
-
-    ctx.fillStyle = '#040608';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    if (!displayState) return;
-
-    displayState.backElements.forEach((el: DisplayElementDTO) => {
-      if (el.type === 'text' && el.text) {
-        ctx.fillStyle = el.color || '#CCCCCC';
-        ctx.font = el.font === 'bold' ? 'bold 11px sans-serif' : '9px monospace';
-        ctx.fillText(el.text, el.x * scale + 4, (el.y + 12) * scale);
-      }
-    });
-  }, [displayState]);
-
   const ledColor = displayState?.ledColorHex || '#10B981';
   const isAlert = displayState?.ledMode === 'PULSE_ALERT' || displayState?.ledMode === 'BREATHING';
 
@@ -254,17 +232,6 @@ export const HardwareDisplayEmulator: React.FC = () => {
           </div>
           <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono hidden hdr-md:block whitespace-nowrap">72×16 RGB LED Matrix</span>
         </div>
-      </div>
-
-      {/* Rear 160x80 OLED Diagnostics Screen Preview.
-          First to go: it is preview-only in this build -- transmitFrame sends
-          the front matrix and nothing else -- so it carries the least real
-          information of anything in the header. */}
-      <div className="hidden hdr-xl:flex flex-col items-center border-l border-border-dark pl-4 shrink-0">
-        <div className="border border-dark-700 rounded p-1.5 bg-black shadow-lg">
-          <canvas ref={backCanvasRef} className="block rounded" title="Physical Rear 160x80 OLED Screen" />
-        </div>
-        <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono">160×80 Rear OLED</span>
       </div>
 
       {/* Interactive Physical Remote Control Pad.

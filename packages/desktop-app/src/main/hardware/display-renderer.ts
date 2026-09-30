@@ -1,7 +1,6 @@
 import { BusyBarDriver } from './busybar-driver';
 import { createHash } from 'crypto';
-import * as os from 'os';
-import { ActiveSessionDTO, ColorThemeId, RearOledMode, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, ColorThemeId, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
@@ -123,7 +122,6 @@ export interface NotificationBannerOptions {
 
 export interface DisplayPayload {
   frontElements: Array<Record<string, unknown>>;
-  backElements: Array<Record<string, unknown>>;
   ledColorHex?: string;
 }
 
@@ -161,16 +159,13 @@ export class DisplayRenderer {
   private lastTransmittedSignature: string | null = null;
   private priorityEngine?: IPriorityPreemptionEngine;
   private colorTheme: ColorThemeId = 'emerald';
-  private rearOledMode: RearOledMode = 'DIAGNOSTICS';
   private ledMode: LedAnimationMode = 'SOLID';
 
   private lastState: HardwareDisplayStateDTO = {
     frontElements: [],
-    backElements: [],
     ledColorHex: '#10B981FF',
     ledMode: 'SOLID',
     colorTheme: 'emerald',
-    rearOledMode: 'DIAGNOSTICS'
   };
 
   private stateChangeCallbacks: Set<(state: HardwareDisplayStateDTO) => void> = new Set();
@@ -293,7 +288,6 @@ export class DisplayRenderer {
         // either path, so there is nothing to release here.
         return {
           frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
-          backElements: this.lastState.backElements as unknown as Array<Record<string, unknown>>,
           ledColorHex: this.lastState.ledColorHex
         };
       }
@@ -346,13 +340,6 @@ export class DisplayRenderer {
   /// </summary>
   public setColorTheme(themeId: ColorThemeId): void {
     this.colorTheme = themeId;
-  }
-
-  /// <summary>
-  /// Sets active view mode for rear 160x80 OLED display.
-  /// </summary>
-  public setRearOledMode(mode: RearOledMode): void {
-    this.rearOledMode = mode;
   }
 
   /// <summary>
@@ -522,70 +509,6 @@ export class DisplayRenderer {
     return `${hh}:${mm}:${secs.toString().padStart(2, '0')}`;
   }
 
-  private lastInputKey: string = 'NONE';
-  private lastInputTime: string = 'N/A';
-
-  public logLastInputKey(key: string): void {
-    this.lastInputKey = key.toUpperCase();
-    this.lastInputTime = new Date().toLocaleTimeString();
-    // Force a re-render of the active session to update the diagnostics panel immediately
-    if (this.lastSessionCache) {
-      this.renderActiveSession(this.lastSessionCache);
-    }
-  }
-
-  /**
-   * Builds the 160x80 rear-panel content.
-   *
-   * PREVIEW ONLY. `transmitFrame` sends the front matrix PNG to the device and
-   * nothing else, so these elements never reach the hardware -- they are
-   * published in the display state and drawn by the on-screen emulator, and
-   * that is currently their only destination.
-   *
-   * Colours are still written as 8-digit #RRGGBBAA because the hardware
-   * contract requires exactly 8 and rejects the whole draw otherwise. Keeping
-   * them valid means wiring this to the device later cannot take the working
-   * front display down with it.
-   */
-  private buildRearElements(session: ActiveSessionDTO | null): Array<Record<string, unknown>> {
-    if (this.rearOledMode === 'STEALTH_CLOCK') {
-      return [
-        { id: 'rear_clock_0', type: 'text', font: 'bold', x: 20, y: 15, color: '#FFFFFFFF', text: new Date().toLocaleTimeString(), align: 'top_left' },
-        { id: 'rear_clock_1', type: 'text', font: 'tiny', x: 25, y: 45, color: '#888888FF', text: 'BUSY BAR STEALTH MODE', align: 'top_left' }
-      ];
-    }
-
-    if (this.rearOledMode === 'PERFORMANCE_MONITOR') {
-      // Previously this printed "CPU Load : 14%" and "RAM Usage : 42% (6.8 /
-      // 16 GB)" as string literals -- invented numbers that never changed.
-      // These are read from the OS. CPU load is omitted rather than faked:
-      // deriving it needs two os.cpus() samples over an interval, which is a
-      // feature rather than a display concern.
-      const totalBytes = os.totalmem();
-      const usedBytes = totalBytes - os.freemem();
-      const usedPct = Math.round((usedBytes / totalBytes) * 100);
-      const toGb = (bytes: number): string => (bytes / 1024 ** 3).toFixed(1);
-      const uptimeMins = Math.floor(os.uptime() / 60);
-
-      return [
-        { id: 'rear_perf_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'SYSTEM PERFORMANCE MONITOR', align: 'top_left' },
-        { id: 'rear_perf_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: `RAM Usage : ${usedPct}% (${toGb(usedBytes)} / ${toGb(totalBytes)} GB)`, align: 'top_left' },
-        { id: 'rear_perf_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCFF', text: `Uptime    : ${Math.floor(uptimeMins / 60)}h ${uptimeMins % 60}m`, align: 'top_left' },
-        { id: 'rear_perf_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCFF', text: `Active    : ${session ? session.taskKey : 'IDLE'}`, align: 'top_left' }
-      ];
-    }
-
-    // Default DIAGNOSTICS Mode
-    const status = this._driver.getDeviceStatus();
-    return [
-      { id: 'rear_diag_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'BUSY BAR DIAGNOSTICS [USB/WiFi]', align: 'top_left' },
-      { id: 'rear_diag_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: `IP: ${status.ipAddress} | Ping: ${status.webSocketPingMs}ms`, align: 'top_left' },
-      { id: 'rear_diag_2', type: 'text', font: 'tiny', x: 0, y: 32, color: '#CCCCCCFF', text: `Frames: ${status.framesSent} OK, ${status.framesFailed} FAIL`, align: 'top_left' },
-      { id: 'rear_diag_3', type: 'text', font: 'tiny', x: 0, y: 48, color: '#CCCCCCFF', text: `Last Input: ${this.lastInputKey} @ ${this.lastInputTime}`, align: 'top_left' },
-      { id: 'rear_diag_4', type: 'text', font: 'tiny', x: 0, y: 64, color: '#CCCCCCFF', text: `Task: ${session ? session.taskKey : 'NONE'} (${session ? session.status : 'IDLE'})`, align: 'top_left' }
-    ];
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   // Pixel Canvas Rendering Helpers
   // ─────────────────────────────────────────────────────────────────────────
@@ -670,7 +593,6 @@ export class DisplayRenderer {
    */
   private async transmitFrame(
     ledColorHex: string,
-    backElements: Array<Record<string, unknown>>,
     frontElementsForEmulator: Array<Record<string, unknown>>
   ): Promise<void> {
     const pngBuffer = encodeMatrixToPng(
@@ -724,11 +646,9 @@ export class DisplayRenderer {
 
     this.lastState = {
       frontElements: frontElementsForEmulator as unknown as DisplayElementDTO[],
-      backElements: backElements as unknown as DisplayElementDTO[],
       ledColorHex,
       ledMode: this.ledMode,
       colorTheme: this.colorTheme,
-      rearOledMode: this.rearOledMode
     };
 
     for (const callback of this.stateChangeCallbacks) {
@@ -803,19 +723,13 @@ export class DisplayRenderer {
       void this.animationPlayer.play(FRONT_ANIMATIONS.LUNCH, { loop: true, onFrame: this.onAnimationFrame })
         .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
-      const backElements = [
-        { id: 'rear_lunch_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#F59E0BFF', text: 'LUNCH BREAK IN PROGRESS', align: 'top_left' },
-        { id: 'rear_lunch_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'Notifications Muted | Session Paused', align: 'top_left' }
-      ];
-
       this.ledMode = 'BREATHING';
       const payload: DisplayPayload = {
         frontElements,
-        backElements,
         ledColorHex: '#F59E0BFF'
       };
 
-      void this.transmitFrame('#F59E0BFF', backElements, frontElements)
+      void this.transmitFrame('#F59E0BFF', frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -831,19 +745,13 @@ export class DisplayRenderer {
       void this.animationPlayer.play(FRONT_ANIMATIONS.AWAY, { loop: true, onFrame: this.onAnimationFrame })
         .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
-      const backElements = [
-        { id: 'rear_away_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#A855F7FF', text: 'SYSTEM LOCKED / AWAY', align: 'top_left' },
-        { id: 'rear_away_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#888888FF', text: 'Stealth Display Active', align: 'top_left' }
-      ];
-
       this.ledMode = 'SOLID';
       const payload: DisplayPayload = {
         frontElements,
-        backElements,
         ledColorHex: '#A855F7FF'
       };
 
-      void this.transmitFrame('#A855F7FF', backElements, frontElements)
+      void this.transmitFrame('#A855F7FF', frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -876,18 +784,12 @@ export class DisplayRenderer {
         );
       }
 
-      const backElements = [
-        { id: 'rear_ceremony_0', type: 'text', font: 'tiny', x: 0, y: 0, color: `${accentColor}FF`, text: `CEREMONY PROMPT: ${type}`, align: 'top_left' },
-        { id: 'rear_ceremony_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'Press Scroll Wheel or START', align: 'top_left' }
-      ];
-
       this.ledMode = 'PULSE_ALERT';
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
-        backElements,
         ledColorHex: `${accentColor}FF`
       };
-      void this.transmitFrame(`${accentColor}FF`, backElements, payload.frontElements)
+      void this.transmitFrame(`${accentColor}FF`, payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -905,7 +807,7 @@ export class DisplayRenderer {
   public renderEodCompleted(durationSeconds: number = EOD_COMPLETE_DISPLAY_SECONDS): DisplayPayload {
     return this.requestRender('eodWrapUpPriority', () =>
       this.playOneShotScene(
-        FRONT_ANIMATIONS.EOD_COMPLETE, durationSeconds, '#6366F1FF', 'SOLID', 'END-OF-DAY WRAP-UP COMPLETE'
+        FRONT_ANIMATIONS.EOD_COMPLETE, durationSeconds, '#6366F1FF', 'SOLID'
       )
     );
   }
@@ -930,7 +832,6 @@ export class DisplayRenderer {
     if (this.isCelebrating || this._contextMode === 'LUNCH' || this._contextMode === 'AWAY') {
       return {
         frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
-        backElements: this.lastState.backElements as unknown as Array<Record<string, unknown>>,
         ledColorHex: this.lastState.ledColorHex
       };
     }
@@ -942,17 +843,14 @@ export class DisplayRenderer {
       
       const payload: DisplayPayload = {
         frontElements: [],
-        backElements: [],
         ledColorHex: '#00000000'
       };
 
       this.lastState = {
         frontElements: [],
-        backElements: [],
         ledColorHex: '#00000000',
         ledMode: 'SOLID',
         colorTheme: this.colorTheme,
-        rearOledMode: this.rearOledMode
       };
 
       for (const callback of this.stateChangeCallbacks) {
@@ -1037,16 +935,14 @@ export class DisplayRenderer {
         }
       }
 
-      const backElements = this.buildRearElements(session);
       const frontEls = this.canvasToEmulatorElements();
 
       const payload: DisplayPayload = {
         frontElements: frontEls,
-        backElements,
         ledColorHex: ledColor
       };
 
-      void this.transmitFrame(ledColor, backElements, frontEls)
+      void this.transmitFrame(ledColor, frontEls)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
         },
@@ -1105,20 +1001,14 @@ export class DisplayRenderer {
         : layout.TEXT_FIELD_WIDTH;
       this.canvas.drawSmallText(label, layout.TEXT_X, layout.ROW1_Y, SELECTION_LABEL_COLOR, labelWidth);
 
-      const backElements = [
-        { id: 'rear_menu_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#3B82F6FF', text: `SELECTION: ${stage}`, align: 'top_left' },
-        { id: 'rear_menu_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'Scroll to pick, click to select', align: 'top_left' }
-      ];
-
       this.ledMode = 'SOLID';
       const frontEls = this.canvasToEmulatorElements();
       const payload: DisplayPayload = {
         frontElements: frontEls,
-        backElements,
         ledColorHex: '#3B82F6FF'
       };
 
-      void this.transmitFrame('#3B82F6FF', backElements, frontEls)
+      void this.transmitFrame('#3B82F6FF', frontEls)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -1178,7 +1068,6 @@ export class DisplayRenderer {
     } = options;
 
     const isHighPriority = eventName === 'highNotificationPriority';
-    const priority = this.priorityEngine?.getEventPriority(eventName) ?? 0;
 
     // Composed outside the render callback because it is pure and cheap, and
     // because the callback only runs if the priority engine grants the lock.
@@ -1214,21 +1103,13 @@ export class DisplayRenderer {
         customIconData ? undefined : iconId
       );
 
-      const backElements = [
-        { id: 'rear_notif_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `NOTIFICATION (Priority ${priority})`, align: 'top_left' },
-        // Untruncated: the rear panel is 160x80 and has room for what the
-        // front had to cut.
-        { id: 'rear_notif_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: text.fullText, align: 'top_left' }
-      ];
-
       const ledColorHex = `${accentColor}FF`;
       this.ledMode = isHighPriority ? 'FLASH_BURST' : 'PULSE_ALERT';
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
-        backElements,
         ledColorHex
       };
-      void this.transmitFrame(ledColorHex, backElements, payload.frontElements)
+      void this.transmitFrame(ledColorHex, payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
 
       // Cleared here, inside the callback, and never at method entry: a request
@@ -1293,7 +1174,7 @@ export class DisplayRenderer {
    */
   public renderTaskCompletionConfetti(durationSeconds: number = TASK_DONE_DISPLAY_SECONDS): DisplayPayload {
     return this.playOneShotScene(
-      FRONT_ANIMATIONS.TASK_DONE, durationSeconds, '#10B981FF', 'CONFETTI_EXPLOSION', 'TASK COMPLETED SUCCESSFULLY!'
+      FRONT_ANIMATIONS.TASK_DONE, durationSeconds, '#10B981FF', 'CONFETTI_EXPLOSION'
     );
   }
 
@@ -1306,7 +1187,7 @@ export class DisplayRenderer {
    * screen's colour, where finishing is green.
    */
   public renderTaskLogged(durationSeconds: number = TASK_LOGGED_DISPLAY_SECONDS): DisplayPayload {
-    return this.playOneShotScene(FRONT_ANIMATIONS.TASK_LOGGED, durationSeconds, '#F59E0BFF', 'SOLID', 'TIME LOGGED');
+    return this.playOneShotScene(FRONT_ANIMATIONS.TASK_LOGGED, durationSeconds, '#F59E0BFF', 'SOLID');
   }
 
   /**
@@ -1324,7 +1205,7 @@ export class DisplayRenderer {
     if (!session) throw new ArgumentNullException('session');
     this.lastSessionCache = session;
     return this.playOneShotScene(
-      FRONT_ANIMATIONS.TASK_STARTED, durationSeconds, '#10B981FF', 'SOLID', 'GO!', session.sessionId
+      FRONT_ANIMATIONS.TASK_STARTED, durationSeconds, '#10B981FF', 'SOLID', session.sessionId
     );
   }
 
@@ -1338,7 +1219,7 @@ export class DisplayRenderer {
    * whose own updates are held too.
    */
   private playOneShotScene(
-    scene: string, durationSeconds: number, ledColorHex: string, ledMode: LedAnimationMode, rearText: string,
+    scene: string, durationSeconds: number, ledColorHex: string, ledMode: LedAnimationMode,
     sessionId: string | null = null
   ): DisplayPayload {
     this.isCelebrating = true;
@@ -1346,21 +1227,16 @@ export class DisplayRenderer {
     this.clearCelebrationTimer();
     this.ledMode = ledMode;
 
-    const backElements = [
-      { id: 'rear_scene_0', type: 'text', font: 'tiny', x: 0, y: 0, color: ledColorHex, text: rearText, align: 'top_left' }
-    ];
-
     this.canvas.clear();
     void this.animationPlayer.play(scene, { loop: false, onFrame: this.onAnimationFrame })
       .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
-    void this.transmitFrame(ledColorHex, backElements, [])
+    void this.transmitFrame(ledColorHex, [])
       .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
 
     this.celebrationTimeout = setTimeout(() => this.endCelebration(), durationSeconds * 1000);
 
     return {
       frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
-      backElements,
       ledColorHex
     };
   }
@@ -1395,17 +1271,12 @@ export class DisplayRenderer {
         'playmode'
       );
 
-      const backElements = [
-        { id: 'rear_play_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: 'UNITY PLAY MODE ACTIVE', align: 'top_left' }
-      ];
-
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
-        backElements,
         ledColorHex: '#FF0000FF'
       };
       this.ledMode = 'PULSE_ALERT';
-      void this.transmitFrame('#FF0000FF', backElements, payload.frontElements)
+      void this.transmitFrame('#FF0000FF', payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -1426,17 +1297,12 @@ export class DisplayRenderer {
         'compiling'
       );
 
-      const backElements = [
-        { id: 'rear_compile_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `Compiling ${projectName}`, align: 'top_left' }
-      ];
-
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
-        backElements,
         ledColorHex: colors.keyColor
       };
       this.ledMode = 'SOLID';
-      void this.transmitFrame(colors.keyColor, backElements, payload.frontElements)
+      void this.transmitFrame(colors.keyColor, payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -1460,10 +1326,6 @@ export class DisplayRenderer {
         'hammer'
       );
 
-      const backElements = [
-        { id: 'rear_build_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `Building ${projectName} (${progress}%)`, align: 'top_left' }
-      ];
-
       // Build test-queryable elements alongside the canvas pixels for the emulator
       const canvasEls = this.canvasToEmulatorElements();
       const testEls: Array<Record<string, unknown>> = [
@@ -1478,11 +1340,10 @@ export class DisplayRenderer {
 
       const payload: DisplayPayload = {
         frontElements: testEls,
-        backElements,
         ledColorHex: progressColorHex
       };
       this.ledMode = 'FLASH_BURST';
-      void this.transmitFrame(progressColorHex, backElements, canvasEls)
+      void this.transmitFrame(progressColorHex, canvasEls)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -1505,17 +1366,12 @@ export class DisplayRenderer {
         'bulb'
       );
 
-      const backElements = [
-        { id: 'rear_bake_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#FFFFFFFF', text: `Baking ${projectName} (${progress}%)`, align: 'top_left' }
-      ];
-
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
-        backElements,
         ledColorHex: '#FBBF24FF'
       };
       this.ledMode = 'FLASH_BURST';
-      void this.transmitFrame('#FBBF24FF', backElements, payload.frontElements)
+      void this.transmitFrame('#FBBF24FF', payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });
@@ -1523,8 +1379,11 @@ export class DisplayRenderer {
 
   /**
    * Renders Unity Exception / Error Alert View with Orange Error Icon.
+   *
+   * The project is accepted and not drawn: row 1 carries the exception's
+   * message instead, and the project only ever reached the rear preview.
    */
-  public renderException(projectName: string, message: string): DisplayPayload {
+  public renderException(_projectName: string, message: string): DisplayPayload {
     return this.requestRender('unityBuildFailurePriority', () => {
       this.paintIconAndTwoRows(
         getBitmapById('error'),
@@ -1535,18 +1394,12 @@ export class DisplayRenderer {
         'error'
       );
 
-      const backElements = [
-        { id: 'rear_err_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#EF4444FF', text: `EXCEPTION: ${projectName}`, align: 'top_left' },
-        { id: 'rear_err_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: message, align: 'top_left' }
-      ];
-
       const payload: DisplayPayload = {
         frontElements: this.canvasToEmulatorElements(),
-        backElements,
         ledColorHex: '#EF4444FF'
       };
       this.ledMode = 'PULSE_ALERT';
-      void this.transmitFrame('#EF4444FF', backElements, payload.frontElements)
+      void this.transmitFrame('#EF4444FF', payload.frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
     });

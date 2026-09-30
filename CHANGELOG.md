@@ -347,6 +347,12 @@ reported something other than the truth, in three different ways.
 
 ### Removed
 
+- **The rear display modes.** Diagnostics, Performance and Stealth Clock, the
+  setting that chose between them, and the emulator's rear screen. None of it
+  ever reached the bar: the rear shows the firmware's own mirror of the front,
+  twice the size, and its clock when the front is empty. Measured with the new
+  `pnpm probe:busybar --rear`, and kept that way by choice.
+
 - **The `provider:reconcile` IPC channel.** It was declared on the preload bridge
   with no handler in main, so calling it rejected — the same shape as the updater
   stub deleted in 1.0.0 (audit F-18). Nothing called it. The provider methods

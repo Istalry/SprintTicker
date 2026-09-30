@@ -302,7 +302,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1105 tests across 58 files for the app, covering the main and
+`pnpm test` runs 1104 tests across 58 files for the app, covering the main and
 shared process code (the renderer is not covered), then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
 threshold floor of 84% statements / 86.5% lines / 85% functions / 75%
@@ -460,7 +460,8 @@ without modifying your scenes or project code.
   test suite mocks the driver and so proves what we *send*, never what the
   device does with it. Close the app first, or its priority-95 claim shows up as
   409s. `--compositing` measures whether an animated icon plays beside a text
-  image; that check draws above the app, so it runs with the app open.
+  image, and `--rear` what the rear display accepts and shows; both draw above
+  the app, so they run with it open.
 
 Windows batch shortcuts for the common commands sit in the repository root:
 `install.bat`, `run_editor.bat`, `package-win.bat`, `verify-unity.bat`,
@@ -528,8 +529,9 @@ you want a copy.
 - **Windows only.** Nothing here has been run on macOS or Linux.
 - **One device, one user.** The address defaults to `10.0.4.20` over USB and is
   configurable, but the app drives a single bar.
-- **The rear 160×80 OLED is preview-only.** The emulator draws it; nothing is
-  transmitted to the physical panel.
+- **The rear 160×80 display is the firmware's.** It mirrors the front at twice
+  the size, and shows its own clock when the front is empty; the app draws
+  nothing there.
 - **Two remote task providers**: OpenProject and Jira Cloud. Anything else means
   writing an adapter against `ITaskProvider`.
 - **Builds are unsigned**, so SmartScreen warns on first run and in-app updates

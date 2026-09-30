@@ -44,6 +44,10 @@ const { createDeviceClient, encodePng } = require('./lib/busybar-device');
  * swaps a full-panel scene in and out -- see `probeCompositing`. It draws above
  * the app, so it runs with the app open.
  *
+ * `--rear` measures the rear 160x80 display before the app draws on it: the
+ * readback format, whether an image draws there, how colour comes out, and
+ * what each firmware font measures -- see `probeRear`. It draws above the app.
+ *
  * `--teardown-soak` repeats the one screen close the app still makes -- see
  * `probeTeardownSoak`. **It can hang the bar.** Run it on purpose, alone, with
  * someone at hand to power-cycle the device.
@@ -1276,6 +1280,254 @@ async function probeTeardownSoak() {
   }
 }
 
+const REAR_WIDTH = 160;
+const REAR_HEIGHT = 80;
+/**
+ * Where the firmware's status column starts: volume, Wi-Fi, USB and battery,
+ * drawn over anything an application puts on the rear, at x 148-159 (measured
+ * on 1.2.4). Ink there is the firmware's, so measurements stop short of it.
+ */
+const REAR_SIDEBAR_X = 148;
+
+/** `inkBounds` over the part of the rear an application actually owns. */
+function rearInk(frame) {
+  const rgba = Buffer.alloc(REAR_SIDEBAR_X * frame.height * 4);
+  for (let y = 0; y < frame.height; y++) {
+    frame.rgba.copy(rgba, y * REAR_SIDEBAR_X * 4, y * frame.width * 4, (y * frame.width + REAR_SIDEBAR_X) * 4);
+  }
+  return inkBounds({ width: REAR_SIDEBAR_X, height: frame.height, rgba });
+}
+
+/**
+ * Decodes a readback of the rear display, whose format nobody has measured.
+ *
+ * The front's readback turned out to be raw BGR with no header, despite its
+ * content type (see `decodeFrame`). The rear may well be different -- it is a
+ * greyscale OLED -- so this goes by byte count through every layout a 160x80
+ * panel plausibly comes back in, and says which one it took. A byte count that
+ * matches none is refused, with the count, rather than guessed at.
+ */
+function decodeRear(res) {
+  if (res.buffer[0] === 0x42 && res.buffer[1] === 0x4d) {
+    return { ...decodeBmp(res.buffer), format: 'bmp', bytes: res.buffer.length };
+  }
+  const bytes = Buffer.from(res.body.trim(), 'base64');
+  const n = REAR_WIDTH * REAR_HEIGHT;
+  const rgba = Buffer.alloc(n * 4);
+  const put = (i, r, g, b) => {
+    rgba[i * 4] = r;
+    rgba[i * 4 + 1] = g;
+    rgba[i * 4 + 2] = b;
+    rgba[i * 4 + 3] = 0xff;
+  };
+  let format;
+  if (bytes.length === n * 3) {
+    format = 'bgr24 (as the front)';
+    for (let i = 0; i < n; i++) put(i, bytes[i * 3 + 2], bytes[i * 3 + 1], bytes[i * 3]);
+  } else if (bytes.length === n * 2) {
+    format = 'rgb565le';
+    for (let i = 0; i < n; i++) {
+      const v = bytes.readUInt16LE(i * 2);
+      put(i, ((v >> 11) & 0x1f) * 255 / 31, ((v >> 5) & 0x3f) * 255 / 63, (v & 0x1f) * 255 / 31);
+    }
+  } else if (bytes.length === n) {
+    format = 'gray8';
+    for (let i = 0; i < n; i++) put(i, bytes[i], bytes[i], bytes[i]);
+  } else if (bytes.length === n / 2) {
+    format = 'gray4, high nibble first';
+    for (let i = 0; i < n; i++) {
+      const v = (i % 2 === 0 ? bytes[i >> 1] >> 4 : bytes[i >> 1] & 0x0f) * 17;
+      put(i, v, v, v);
+    }
+  } else if (bytes.length === n / 8) {
+    format = 'mono1, msb first';
+    for (let i = 0; i < n; i++) {
+      const v = (bytes[i >> 3] >> (7 - (i % 8))) & 1 ? 255 : 0;
+      put(i, v, v, v);
+    }
+  } else {
+    const error = new Error(`unrecognised rear screen format: ${bytes.length} bytes for ${REAR_WIDTH}x${REAR_HEIGHT}`);
+    error.raw = bytes;
+    throw error;
+  }
+  return { width: REAR_WIDTH, height: REAR_HEIGHT, rgba, format, bytes: bytes.length };
+}
+
+/** Reads the rear display back and writes it out as a PNG, or the raw bytes when they do not decode. */
+async function captureRear(label) {
+  const res = await request('GET', '/api/screen?display=1');
+  if (res.status !== 200) throw new Error(`GET /api/screen?display=1 returned ${res.status} ${res.body.slice(0, 80)}`);
+  try {
+    const frame = decodeRear(res);
+    const file = path.join(OUT_DIR, `${label}.png`);
+    fs.writeFileSync(file, encodePng(frame.width, frame.height, frame.rgba));
+    frame.file = file;
+    return frame;
+  } catch (err) {
+    if (err.raw) fs.writeFileSync(path.join(OUT_DIR, `${label}.raw`), err.raw);
+    throw err;
+  }
+}
+
+/** The mean colour of a rectangle of a readback, as `r,g,b`. */
+function meanColour({ width, rgba }, x0, y0, x1, y1) {
+  let r = 0, g = 0, b = 0, count = 0;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const p = (y * width + x) * 4;
+      r += rgba[p];
+      g += rgba[p + 1];
+      b += rgba[p + 2];
+      count++;
+    }
+  }
+  return [r, g, b].map(v => Math.round(v / count));
+}
+
+/**
+ * The colours the rear bands are drawn in, left to right, 20px each.
+ *
+ * Primaries to learn whether the panel shows colour at all and in which
+ * channel order the readback comes; greys to learn how many levels survive.
+ */
+const REAR_BANDS = [
+  ['red', [255, 0, 0]],
+  ['green', [0, 255, 0]],
+  ['blue', [0, 0, 255]],
+  ['white', [255, 255, 255]],
+  ['grey 75%', [192, 192, 192]],
+  ['grey 50%', [128, 128, 128]],
+  ['grey 25%', [64, 64, 64]],
+  ['grey 12%', [32, 32, 32]]
+];
+
+/** Every font the draw API names, in its own order (`assets.yaml`, TextElement). */
+const FIRMWARE_FONTS = ['tiny', 'small', 'normal', 'condensed', 'bold', 'large', 'extra_large', 'global'];
+const REAR_TEXT_ID = 'probe_rear_txt';
+const REAR_IMAGE_ID = 'probe_rear_img';
+
+async function drawRear(element) {
+  const res = await drawAbove([{ display: 'back', x: 0, y: 0, timeout: 30, ...element }]);
+  await sleep(500);
+  return res;
+}
+
+/**
+ * What the rear 160x80 display is, measured, before the app draws anything on
+ * it (ROADMAP stage 5).
+ *
+ * Four questions, each answered from pixels read back with
+ * `GET /api/screen?display=1`:
+ *
+ * - **What the readback format is.** The front's was not what its content type
+ *   said; this one has never been read at all.
+ * - **Whether an image draws on the rear.** If it does, the app can rasterise
+ *   the rear itself in its own fonts, exactly as it does the front, instead of
+ *   depending on the firmware's.
+ * - **How colour comes out**: bands of primaries and greys, each band's mean
+ *   read back.
+ * - **What each firmware font measures**: ten `M`s and ten `i`s give the
+ *   widest and narrowest advance, and a sample line gives the height with
+ *   descenders. Each sample is saved as a PNG for a person to judge.
+ *
+ * Opt-in (`--rear`). Images and text only -- no animation, so no removal here
+ * closes a screen an animation shared, and no `rectangle`. It draws at
+ * `COMPOSITING_PRIORITY` with element timeouts, so it runs with the app open.
+ */
+async function probeRear() {
+  let baseline;
+  try {
+    baseline = await captureRear('rear-0-baseline');
+    const ink = rearInk(baseline);
+    record('Rear readback format', 'pass', `${baseline.format}, ${baseline.bytes} bytes. ${baseline.file}`);
+    record(
+      'Rear before drawing',
+      'info',
+      ink
+        ? `${ink.lit} px lit in ${ink.width}x${ink.height} at ${ink.x},${ink.y}: the firmware's own screen -- on 1.2.4 a` +
+          ` copy of the front at twice the size, or its clock when the front is empty. ${baseline.file}`
+        : 'dark'
+    );
+  } catch (err) {
+    record('Rear readback format', 'fail', `${err.message} -- raw bytes saved beside the other captures`);
+    return;
+  }
+
+  try {
+    // --- an image, in bands of colour -------------------------------------
+    const rgba = Buffer.alloc(REAR_WIDTH * REAR_HEIGHT * 4);
+    const bandWidth = REAR_WIDTH / REAR_BANDS.length;
+    for (let y = 0; y < REAR_HEIGHT; y++) {
+      for (let x = 0; x < REAR_WIDTH; x++) {
+        const [, [r, g, b]] = REAR_BANDS[Math.floor(x / bandWidth)];
+        const p = (y * REAR_WIDTH + x) * 4;
+        rgba[p] = r;
+        rgba[p + 1] = g;
+        rgba[p + 2] = b;
+        rgba[p + 3] = 0xff;
+      }
+    }
+    const png = encodePng(REAR_WIDTH, REAR_HEIGHT, rgba);
+    fs.writeFileSync(path.join(OUT_DIR, 'rear-1-bands-sent.png'), png);
+    const upload = await request('POST', `/api/assets/upload?application_name=${APP}&file=rear_bands.png`, {
+      body: png,
+      contentType: 'image/png'
+    });
+    const drawn = await drawRear({ id: REAR_IMAGE_ID, type: 'image', path: 'rear_bands.png' });
+    const bands = await captureRear('rear-1-bands-readback');
+    const means = REAR_BANDS.map(([name], i) => {
+      const x0 = Math.round(i * bandWidth) + 3;
+      return `${name} ${meanColour(bands, x0, 10, x0 + bandWidth - 7, REAR_HEIGHT - 10).join(',')}`;
+    });
+    const white = meanColour(bands, 3 * bandWidth + 3, 10, 4 * bandWidth - 4, REAR_HEIGHT - 10);
+    const imageShows = white.every(v => v > 128);
+    record(
+      'Rear image draw',
+      imageShows ? 'pass' : 'fail',
+      `upload ${upload.status}, draw ${drawn.status}; ${imageShows ? 'the bands show' : 'nothing like the bands came back'}. ${bands.file}`
+    );
+    record('Rear colour, read back per band', 'info', means.join('; '));
+    await removeIds([REAR_IMAGE_ID]);
+
+    // --- every firmware font ----------------------------------------------
+    for (const font of FIRMWARE_FONTS) {
+      const wide = await drawRear({ id: REAR_TEXT_ID, type: 'text', font, text: 'MMMMMMMMMM', color: '#FFFFFFFF' });
+      if (wide.status < 200 || wide.status >= 300) {
+        record(`Rear font ${font}`, 'fail', `draw returned ${wide.status} ${wide.body.slice(0, 80)}`);
+        continue;
+      }
+      const m = rearInk(await captureRear(`rear-font-${font}-M`));
+      await drawRear({ id: REAR_TEXT_ID, type: 'text', font, text: 'iiiiiiiiii', color: '#FFFFFFFF' });
+      const i = rearInk(await captureRear(`rear-font-${font}-i`));
+      await drawRear({ id: REAR_TEXT_ID, type: 'text', font, text: 'Tg|Hy 0123 ok', color: '#FFFFFFFF' });
+      const sample = await captureRear(`rear-font-${font}-sample`);
+      const s = rearInk(sample);
+      // Ten glyphs span ten advances less one trailing gap; the +1 puts it back
+      // for a one-pixel gap, which is close enough to compare fonts by.
+      const advance = b => (b ? ((b.width + 1) / 10).toFixed(1) : '-');
+      record(
+        `Rear font ${font}`,
+        'info',
+        `M advance ~${advance(m)}px, i ~${advance(i)}px, line ${s ? s.height : '-'}px tall` +
+          ` (${m ? Math.floor(REAR_SIDEBAR_X / ((m.width + 1) / 10)) : '-'} M per row). ${sample.file}`
+      );
+    }
+    await removeIds([REAR_TEXT_ID]);
+
+    // --- and after --------------------------------------------------------
+    await sleep(1000);
+    const after = await captureRear('rear-9-after');
+    const restored = !framesDiffer(baseline, after);
+    record(
+      'Rear after removing',
+      'info',
+      restored ? 'back to what it showed before' : `differs from before: see ${after.file}`
+    );
+  } finally {
+    await removeIds([REAR_IMAGE_ID, REAR_TEXT_ID]);
+  }
+}
+
 async function main() {
   console.log(`\nBUSY Bar probe -- ${IP}\n`);
   console.log('Close SprintTicker before running this, or expect 409s that only');
@@ -1430,6 +1682,11 @@ async function main() {
     } else {
       record('Teardown soak', 'skip', 'display owned; re-run with the app closed');
     }
+  }
+
+  // Runs whether or not the app holds the display: it draws above it.
+  if (process.argv.includes('--rear')) {
+    await probeRear();
   }
 
   if (process.argv.includes('--font-sheet')) {

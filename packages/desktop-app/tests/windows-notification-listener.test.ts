@@ -33,7 +33,7 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
       renderNotificationBanner: vi.fn((options: NotificationBannerOptions) => {
         bannerCalls.push(options);
         priorityEngine.evaluateRequest(options.eventName ?? 'messagingPriority', undefined, () => undefined);
-        return { frontElements: [], backElements: [] };
+        return { frontElements: [], ledColorHex: '#000000FF' };
       })
     } as unknown as DisplayRenderer;
   }

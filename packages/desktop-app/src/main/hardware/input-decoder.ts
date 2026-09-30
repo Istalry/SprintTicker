@@ -148,10 +148,6 @@ export class InputDecoder {
   public handleHardwareInput(event: HardwareEvent): string {
     const bindings = this.getBindings();
     const normalizedKey = (event.key || '').toLowerCase();
-    
-    if (this._renderer) {
-      this._renderer.logLastInputKey(normalizedKey);
-    }
 
     const activeLock = this._priorityEngine?.getActiveLockEventName();
 

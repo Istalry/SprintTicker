@@ -161,7 +161,6 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.on(IPCChannel.ON_DISPLAY_STATE_UPDATED, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_DISPLAY_STATE_UPDATED, handler);
   },
-  setRearOledMode: (mode: string) => ipcRenderer.invoke(IPCChannel.SET_REAR_OLED_MODE, mode),
   setColorTheme: (theme: string) => ipcRenderer.invoke(IPCChannel.SET_COLOR_THEME, theme),
   triggerConfettiBurst: () => ipcRenderer.invoke(IPCChannel.TRIGGER_CONFETTI_BURST),
   previewDisplayScreen: (screen: PreviewScreenId) => ipcRenderer.invoke(IPCChannel.PREVIEW_DISPLAY_SCREEN, screen),

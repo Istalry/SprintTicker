@@ -192,7 +192,6 @@ describe('DisplayRenderer Unit Tests', () => {
 
       expect(play).toHaveBeenCalledWith(FRONT_ANIMATIONS.EOD_COMPLETE, expect.objectContaining({ loop: false }));
       expect(payload.ledColorHex).toBe('#6366F1FF');
-      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('END-OF-DAY WRAP-UP COMPLETE'))).toBe(true);
       renderer.dispose();
     });
 
@@ -586,21 +585,18 @@ describe('DisplayRenderer Unit Tests', () => {
       const payload = renderer.renderBuilding('ProjectX', 45);
       expect(payload.ledColorHex).toBe('#3B82F6FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
-      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('Building ProjectX (45%)'))).toBe(true);
     });
 
     it('RenderBaking_ValidProject_DispatchesBakingPayload', () => {
       const payload = renderer.renderBaking('ProjectX', 45);
       expect(payload.ledColorHex).toBe('#FBBF24FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
-      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('Baking ProjectX (45%)'))).toBe(true);
     });
 
     it('RenderException_ValidError_DispatchesExceptionPayload', () => {
       const payload = renderer.renderException('ProjectY', 'Syntax Error');
       expect(payload.ledColorHex).toBe('#EF4444FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
-      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('EXCEPTION: ProjectY'))).toBe(true);
     });
   });
 
@@ -848,17 +844,26 @@ describe('DisplayRenderer Unit Tests', () => {
     });
   });
 
-  describe('rear OLED modes', () => {
-    it('SetRearOledMode_PerformanceMonitor_RendersPerformanceElements', () => {
-      renderer.setRearOledMode('PERFORMANCE_MONITOR');
-      const payload = renderer.renderActiveSession(null);
-      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('SYSTEM PERFORMANCE MONITOR'))).toBe(true);
-    });
+  describe('the rear display', () => {
+    it('Render_AnyScreen_LeavesTheRearToTheFirmware', () => {
+      // The firmware mirrors the front on the rear at twice the size and shows
+      // its own clock when the front is empty; an element drawn there would
+      // replace both. The user chose the mirror (2026-09-30).
+      renderer.renderActiveSession({
+        taskId: 'T-1', taskKey: 'T-1', taskTitle: 'Write', status: 'TRACKING',
+        elapsedSeconds: 60, startedAtUtc: new Date().toISOString()
+      } as never);
+      renderer.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' });
+      renderer.renderBuilding('P', 40);
+      renderer.renderLunchMode();
 
-    it('SetRearOledMode_StealthClock_RendersClockElements', () => {
-      renderer.setRearOledMode('STEALTH_CLOCK');
-      const payload = renderer.renderActiveSession(null);
-      expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('STEALTH'))).toBe(true);
+      const sent = JSON.stringify([
+        vi.mocked(mockDriver.sendDisplayPayload).mock.calls,
+        vi.mocked(mockDriver.drawOverlay).mock.calls
+      ]);
+      expect(sent).not.toMatch(/"display":"back"|backElements/);
+      expect(renderer.getDisplayState()).not.toHaveProperty('backElements');
+      renderer.dispose();
     });
   });
 

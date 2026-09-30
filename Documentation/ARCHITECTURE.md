@@ -222,8 +222,12 @@ block per character. `tools/glyphs-to-ts.js` compiles them into
 generator refuses a sheet that is missing any printable ASCII character, draws
 two characters identically, or leaves a blank column at a glyph's edge.
 
-The rear 160×80 OLED is **preview only**: `buildRearElements` feeds the on-screen
-emulator, and `transmitFrame` sends the front matrix and nothing else.
+The rear 160×80 display is left to the firmware, which mirrors the front there
+at twice the size and shows its own clock when the front is empty.
+`transmitFrame` sends the front matrix and nothing else, and
+`HardwareDisplayStateDTO` carries the front only. The rear preview, its three
+modes and the setting that chose between them were removed once the rear was
+measured: they drew diagnostics the bar never showed.
 
 > [!WARNING]
 > **The front matrix has one owner at a time**
@@ -440,7 +444,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1105 tests across 58 files. `coverage.include` is `src/main/**` and
+Vitest, 1104 tests across 58 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

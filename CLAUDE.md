@@ -358,8 +358,21 @@ The seconds are the tracking stopwatch's hand: an animated icon the device
 plays, which costs nothing per frame and keeps its own time. Do not "sync" it
 to the session by redrawing; that is the per-second traffic this avoids.
 
-The rear 160×80 OLED is **preview only** in this build. `buildRearElements` feeds
-the on-screen emulator; `transmitFrame` sends the front matrix and nothing else.
+**The rear 160×80 display is the firmware's, by choice.** Left alone, firmware
+1.2.4 shows there a copy of the front at twice the size under a header, and its
+own clock and date when the front is empty. The user chose that over anything
+the app would draw (2026-09-30), and the app sends nothing with `display:
+'back'` -- a test pins it. An element drawn there *replaces* the mirror, so
+anything that draws on the rear is a product decision first. Measured with
+`pnpm probe:busybar --rear`, for whoever revisits it:
+- **An image draws on the rear**, so the app could rasterise it in its own
+  fonts as it does the front. The firmware's text fonts are small there --
+  capitals 4 to 10px tall -- which is what the user noticed first.
+- **A status column is always drawn over it at x 148-159** (volume, Wi-Fi,
+  USB, battery). An application owns 148×80, not 160×80.
+- **Colour becomes luminance, 16 greys.** The readback is 4-bit grey, 6400
+  bytes, high nibble first: pure red reads 68, green 153, blue 17. The greys
+  are distinct on the physical panel.
 
 **Both text rows are proportional, so neither has a character capacity.** Row 0
 is set in Sprint 5, row 1 in the condensed Sprint Small. Both are our own fonts,

@@ -114,15 +114,6 @@ export const DISPLAY_CONSTANTS = {
   FRONT_GRID_HEIGHT: 16,
 
   /**
-   * Rear greyscale OLED.
-   *
-   * Preview only for now: DisplayRenderer.transmitFrame sends the front matrix
-   * and nothing else, so these dimensions describe what the emulator draws.
-   */
-  REAR_OLED_WIDTH: 160,
-  REAR_OLED_HEIGHT: 80,
-
-  /**
    * Standard "16px icon, two text rows" front layout.
    *
    * The icon occupies x=0..15, leaving x=17..71 for text after a one-pixel
