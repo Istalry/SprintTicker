@@ -221,7 +221,9 @@ pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
 row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
 1 offers **STOP** and **FINISH** side by side; turn the wheel left for STOP,
-right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open, and the bar shows
+right for FINISH -- turning further stays put -- and click to confirm. Picking
+a task from the bar's own picker shows **GO!** for two seconds, the stopwatch
+setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
 **LOGGED** for three seconds, the stopwatch's hand sweeping back to twelve;
 FINISH also marks it done, and shows **DONE!**.
 

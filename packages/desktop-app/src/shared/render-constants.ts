@@ -20,9 +20,9 @@ import type { BitmapIconId } from './dtos';
  * log and an empty panel -- so `animation-assets.test.ts` checks every entry
  * here against the repository.
  *
- * All five are our own, drawn in `packages/anim-studio/scenes/`. Each has its
- * own plate colour -- teal, purple, blue, green, amber -- so the mode reads at
- * a glance.
+ * All six are our own, drawn in `packages/anim-studio/scenes/`. Each has its
+ * own plate colour -- teal, purple, blue, green, amber, emerald -- so the mode
+ * reads at a glance.
  */
 export const FRONT_ANIMATIONS = {
   LUNCH: 'lunch_sandwich_72x16',
@@ -32,6 +32,8 @@ export const FRONT_ANIMATIONS = {
   TASK_DONE: 'task_done_72x16',
   /** STOP without finishing. Played once: see TASK_LOGGED_DISPLAY_SECONDS. */
   TASK_LOGGED: 'task_logged_72x16',
+  /** A task started from the bar. Played once: see TASK_STARTED_DISPLAY_SECONDS. */
+  TASK_STARTED: 'task_started_72x16',
 } as const;
 
 /**
@@ -51,6 +53,14 @@ export const TASK_DONE_DISPLAY_SECONDS = 4;
  * half second rests on that, for the same reason as TASK_DONE_DISPLAY_SECONDS.
  */
 export const TASK_LOGGED_DISPLAY_SECONDS = 3;
+
+/**
+ * How long GO! holds the display before the tracking screen.
+ *
+ * The shortest of the three: the scene (1.5 s) ends on the tracking screen's
+ * own icon, and what the user wants next is to see which task is running.
+ */
+export const TASK_STARTED_DISPLAY_SECONDS = 2;
 
 /**
  * Icons that animate on the device, by the static bitmap they stand over.

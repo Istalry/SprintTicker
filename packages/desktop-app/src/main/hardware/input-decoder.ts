@@ -1,7 +1,7 @@
 import { BusyBarDriver, HardwareEvent } from './busybar-driver';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { HardwareBindingConfig, TaskDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, HardwareBindingConfig, TaskDTO } from '../../shared/dtos';
 import { orderTasksForSelection } from '../../shared/task-order';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
@@ -278,10 +278,17 @@ export class InputDecoder {
         
         if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
           const task = this._tasksList[this._selectedTaskIndex];
+          let started: ActiveSessionDTO | null = null;
           if (task && task.id !== NO_TASKS_ID) {
-             this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
+             started = this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
           }
           this._isSelectingTask = false;
+          // GO! before the menu lets go of the display: releasing it redraws
+          // the session, and the scene is what should be drawn. Only for a
+          // real start -- "No Tasks" starts nothing, and saying GO! would lie.
+          if (started && this._renderer) {
+            this._renderer.renderTaskStarted(started);
+          }
           this.releaseSelectionLock();
           return 'START_TASK_FROM_SELECTION';
         }

@@ -743,7 +743,9 @@
       reads <strong>Ready / No task running</strong>). While a task runs, row 0 shows the task and
       row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
       1 offers <strong>STOP</strong> and <strong>FINISH</strong> side by side; turn the wheel left for STOP,
-      right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open, and the bar shows
+      right for FINISH -- turning further stays put -- and click to confirm. Picking
+      a task from the bar&#39;s own picker shows <strong>GO!</strong> for two seconds, the stopwatch
+      setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
       <strong>LOGGED</strong> for three seconds, the stopwatch&#39;s hand sweeping back to twelve;
       FINISH also marks it done, and shows <strong>DONE!</strong>.</p>
       <p>Unity screens all read the same way: what is happening on row 0 (with the
@@ -1427,13 +1429,16 @@
       Which folder each mode plays is <code>FRONT_ANIMATIONS</code> in
       <code>shared/render-constants.ts</code>. A name with no folder behind it fails only as a
       log warning and an empty panel, so <code>animation-assets.test.ts</code> checks every
-      entry against the repository. All five are studio scenes. Task done and
-      task logged are played once (<code>loop: false</code>): the device holds a one-shot&#39;s
-      last frame, and <code>DisplayRenderer</code> returns to the session after
-      <code>TASK_DONE_DISPLAY_SECONDS</code> or <code>TASK_LOGGED_DISPLAY_SECONDS</code>, a little
-      longer than the scene. A session update meanwhile is held behind it, which
-      is why the STOP and FINISH paths start the scene <em>before</em> stopping the
-      session; a task starting ends it at once. While the
+      entry against the repository. All six are studio scenes. Task done, task
+      logged and task started are played once (<code>loop: false</code>): the device holds a
+      one-shot&#39;s last frame, and <code>DisplayRenderer</code> returns to the session after
+      each one&#39;s <code>TASK_*_DISPLAY_SECONDS</code>, a little longer than the scene. A
+      session update meanwhile is held behind it, which is why the STOP and
+      FINISH paths start the scene <em>before</em> stopping the session, and the picker
+      plays GO! before releasing its lock. Another task starting ends a scene at
+      once; the session GO! announces does not, or its per-second updates would
+      cut it off. A lock released during a scene restores the work screen
+      without stopping it. While the
       device plays a scene, <code>AnimationPlayer</code>&#39;s preview ticks at 15 fps and skips
       frames to keep time with it.</li>
       <li><strong>The server half</strong> (<code>server/api.ts</code>) runs inside the Vite dev server. It
@@ -1445,7 +1450,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1089 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1100 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

@@ -5,14 +5,15 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import {
-  ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS
+  ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS,
+  TASK_STARTED_DISPLAY_SECONDS
 } from '../src/shared/render-constants';
 import {
   FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
 } from '../src/shared/pixel-bitmaps';
 import { measureText } from '../src/shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../src/shared/fonts/pixel-font';
-import { ArgumentException } from '../src/shared/dtos';
+import { ArgumentException, ArgumentNullException } from '../src/shared/dtos';
 import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -356,6 +357,86 @@ describe('DisplayRenderer Unit Tests', () => {
       const payload = renderer.renderTaskCompletionConfetti();
       expect(payload.ledColorHex).toBe('#10B981FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    describe('task started scene', () => {
+      const player = (): AnimationPlayer =>
+        (renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer;
+      const session = (sessionId: string, elapsedSeconds = 0) => ({
+        sessionId, projectId: 'P', taskId: 'T-1', taskKey: 'SPR-9', taskTitle: 'Tests', isAdHoc: false,
+        status: 'TRACKING' as const, startTimeUtc: new Date().toISOString(), totalPausedSeconds: 0, elapsedSeconds
+      });
+
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        renderer.dispose();
+        vi.useRealTimers();
+      });
+
+      it('RenderTaskStarted_Triggered_PlaysOurSceneOnce', () => {
+        const play = vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+
+        renderer.renderTaskStarted(session('s1'));
+
+        expect(play).toHaveBeenCalledWith(FRONT_ANIMATIONS.TASK_STARTED, expect.objectContaining({ loop: false }));
+      });
+
+      it('RenderTaskStarted_TheSessionTicks_KeepsTheSceneUntilItsTimeIsUp', () => {
+        // The session it announces updates every second; each update ending
+        // the scene would leave GO! on screen for under a second.
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        renderer.renderTaskStarted(session('s1'));
+
+        renderer.renderActiveSession(session('s1', 1));
+        expect(stop).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(TASK_STARTED_DISPLAY_SECONDS * 1000);
+        expect(stop).toHaveBeenCalled();
+      });
+
+      it('RenderTaskStarted_AnotherTaskStarts_EndsTheScene', () => {
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        renderer.renderTaskStarted(session('s1'));
+
+        renderer.renderActiveSession(session('s2'));
+
+        expect(stop).toHaveBeenCalled();
+      });
+
+      it('RenderTaskStarted_SceneEnds_ShowsTheRunningTaskAsItNowStands', () => {
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const drawn = vi.spyOn(
+          (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas,
+          'drawTextClipped'
+        );
+        renderer.renderTaskStarted(session('s1'));
+        renderer.renderActiveSession(session('s1', 125));
+
+        vi.advanceTimersByTime(TASK_STARTED_DISPLAY_SECONDS * 1000);
+
+        expect(drawn.mock.calls.some(([text]) => text === '00:02')).toBe(true);
+      });
+
+      it('SetContextMode_LockReleasedDuringTheScene_LetsTheScenePlayOn', () => {
+        // The picker releases its lock right after GO!, and the release
+        // restores WORK -- which used to stop whatever was playing.
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        renderer.renderTaskStarted(session('s1'));
+
+        renderer.setContextMode('WORK');
+
+        expect(stop).not.toHaveBeenCalled();
+      });
+
+      it('RenderTaskStarted_NullSession_ThrowsArgumentNullException', () => {
+        expect(() => renderer.renderTaskStarted(null as never)).toThrow(ArgumentNullException);
+      });
     });
 
     describe('task logged scene', () => {

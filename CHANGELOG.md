@@ -77,6 +77,15 @@ reported something other than the truth, in three different ways.
   task from the app no longer flashes LOGGED before the new one: the start
   logs the running session itself. The debug panel's **Stop Task** button,
   which fired the confetti, now previews LOGGED.
+- **Starting a task from the bar says GO!** Confirm a task in the picker and
+  the green stopwatch's crown clicks, its hand runs a lap and a quarter, and
+  it lands at three with a quarter filled -- the tracking screen's own icon,
+  which follows two seconds later. The menu used to vanish into the tracking
+  screen with nothing to say the click had landed.
+- **A scene is no longer cut off when a lock is released under it.** Every
+  release restores the work screen, and that stopped whatever was playing:
+  GO! would have lasted a frame, and a banner ending during DONE! cut it
+  short.
 - **The build and bake screens have their own icons**: a hammer that strikes,
   and a light bulb that glows. Both replace the Unity logo, which is Unity's
   mark and not ours to animate.

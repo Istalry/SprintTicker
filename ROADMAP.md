@@ -686,8 +686,11 @@ looping idle animations.
        its hand sweeps back to twelve, from the bar's paused screen or the
        app's stop. The bar used to drop straight to idle, which read as the
        stop not having worked.
-     - [ ] 9c, the rest: GO! on starting a task from the bar, and the
-       end-of-day scene.
+     - [x] 9c, GO! on starting a task from the bar (2026-09-30): LOGGED in
+       reverse, landing on the tracking screen's icon. Found on the way: every
+       lock release stopped the scene playing, so GO! would have lasted a
+       frame.
+     - [ ] 9c, the rest: the end-of-day scene.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
@@ -872,7 +875,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.09 statements / 77.76 branches / 86.94 functions / 88.24 lines across 1089
+**86.12 statements / 77.84 branches / 86.95 functions / 88.27 lines across 1100
 tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

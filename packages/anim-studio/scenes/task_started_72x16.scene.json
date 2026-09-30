@@ -1,0 +1,676 @@
+{
+  "version": 1,
+  "id": "task_started_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 90,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#123D2A",
+      "colorB": "#0B2A1C",
+      "direction": "vertical",
+      "outline": "#10B981",
+      "outlineBottom": "#0B4A33",
+      "highlight": "#1A5A3D",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "glow",
+      "name": "Start glow",
+      "visible": true,
+      "type": "glow",
+      "x": 11,
+      "y": 9,
+      "radiusX": 11,
+      "radiusY": 9,
+      "color": "#A7F3D0",
+      "strength": 0.35,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 12,
+            "value": 0.0,
+            "ease": "out"
+          },
+          {
+            "frame": 18,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 68,
+            "value": 0.25,
+            "ease": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 0.25,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "watch",
+      "name": "Stopwatch",
+      "visible": true,
+      "type": "sprite",
+      "x": 5,
+      "y": 1,
+      "loopFrom": 28,
+      "anchorX": 6.5,
+      "anchorY": 14,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 13,
+        "height": 14,
+        "palette": {
+          "L": "#6EE7B7",
+          "R": "#10B981",
+          "d": "#047857",
+          "F": "#F0FDF4",
+          "g": "#A7F3D0",
+          "H": "#064E3B",
+          "t": "#34D399",
+          "K": "#D1D5DB",
+          "k": "#9CA3AF"
+        },
+        "frames": [
+          {
+            "duration": 4,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFHFFR...",
+              "..LFFFHFFFR..",
+              ".LFFFFHFFFFd.",
+              ".LFFFFHFFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".............",
+              ".....KKK.....",
+              "......k......",
+              "....LLLLL....",
+              "...LFFHFFR...",
+              "..LFFFHFFFR..",
+              ".LFFFFHFFFFd.",
+              ".LFFFFHFFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFHFFR...",
+              "..LFFFHFFFR..",
+              ".LFFFFHFFFFd.",
+              ".LFFFFHFFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgHFR..",
+              ".LFFFFFHHFFd.",
+              ".LFFFFFHFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFgHHFd.",
+              ".LtFFFHHFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHHHgtd.",
+              ".LFFFFFFFHFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHgggtd.",
+              ".LFFFFFHgggd.",
+              ".LFFFFFFHggd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHgggtd.",
+              ".LFFFFHggggd.",
+              ".LFFFFFHgggd.",
+              "..RFFFFHggd..",
+              "...RFFtFgd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHgggtd.",
+              ".LFFFFHggggd.",
+              ".LFFFFHggggd.",
+              "..RFFHHgggd..",
+              "...RFFtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHgggtd.",
+              ".LFFFHgggggd.",
+              ".LFFFHgggggd.",
+              "..RFHgggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHgggtd.",
+              ".LFFHHgggggd.",
+              ".LFHgggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFHHHgggtd.",
+              ".LgHgggggggd.",
+              ".Lgggggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFHFFFggggd.",
+              ".LtgHHHgggtd.",
+              ".Lgggggggggd.",
+              ".Lgggggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LgHFFFggggd.",
+              ".LggHHFggggd.",
+              ".LtggHHgggtd.",
+              ".Lgggggggggd.",
+              ".Lgggggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LgFFFgggR..",
+              ".LggHFFggggd.",
+              ".LgggHFggggd.",
+              ".LtgggHgggtd.",
+              ".Lgggggggggd.",
+              ".Lgggggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LgHHFgggR..",
+              ".LgggHFggggd.",
+              ".LgggHHggggd.",
+              ".LtgggHgggtd.",
+              ".Lgggggggggd.",
+              ".Lgggggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LggtggR...",
+              "..LggHFgggR..",
+              ".LggggHggggd.",
+              ".LggggHggggd.",
+              ".LtgggHgggtd.",
+              ".Lgggggggggd.",
+              ".Lgggggggggd.",
+              "..Rgggggggd..",
+              "...Rggtggd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFHFFR...",
+              "..LFFFHFFFR..",
+              ".LFFFFHFFFFd.",
+              ".LFFFFHFFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtFFR...",
+              "..LFFFFHFFR..",
+              ".LFFFFHFFFFd.",
+              ".LFFFFHFFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtgFR...",
+              "..LFFFFHFFR..",
+              ".LFFFFFHFFFd.",
+              ".LFFFFHFFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgHFR..",
+              ".LFFFFFHFFFd.",
+              ".LFFFFFHFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFggFR..",
+              ".LFFFFFgHFFd.",
+              ".LFFFFFHFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFgHHFd.",
+              ".LFFFFFHFFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggHFd.",
+              ".LFFFFFHHFFd.",
+              ".LtFFFHFFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggHgd.",
+              ".LFFFFFHHHFd.",
+              ".LtFFFHHFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 2,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFgHHFd.",
+              ".LtFFFHHFFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 2,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggHgd.",
+              ".LtFFFHHHFtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 2,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHHHHtd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          },
+          {
+            "duration": 49,
+            "rows": [
+              ".....KKK.....",
+              "......k......",
+              "......k......",
+              "....LLLLL....",
+              "...LFFtggR...",
+              "..LFFFFgggR..",
+              ".LFFFFFggggd.",
+              ".LFFFFFggggd.",
+              ".LtFFFHHHHHd.",
+              ".LFFFFFFFFFd.",
+              ".LFFFFFFFFFd.",
+              "..RFFFFFFFd..",
+              "...RFFtFFd...",
+              "....ddddd...."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "GO!",
+      "font": "bold-9",
+      "color": "#EAFBF2",
+      "x": 24,
+      "y": 4,
+      "width": 46,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#04130C",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

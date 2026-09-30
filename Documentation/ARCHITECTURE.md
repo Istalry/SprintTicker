@@ -415,13 +415,16 @@ scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.jso
   Which folder each mode plays is `FRONT_ANIMATIONS` in
   `shared/render-constants.ts`. A name with no folder behind it fails only as a
   log warning and an empty panel, so `animation-assets.test.ts` checks every
-  entry against the repository. All five are studio scenes. Task done and
-  task logged are played once (`loop: false`): the device holds a one-shot's
-  last frame, and `DisplayRenderer` returns to the session after
-  `TASK_DONE_DISPLAY_SECONDS` or `TASK_LOGGED_DISPLAY_SECONDS`, a little
-  longer than the scene. A session update meanwhile is held behind it, which
-  is why the STOP and FINISH paths start the scene *before* stopping the
-  session; a task starting ends it at once. While the
+  entry against the repository. All six are studio scenes. Task done, task
+  logged and task started are played once (`loop: false`): the device holds a
+  one-shot's last frame, and `DisplayRenderer` returns to the session after
+  each one's `TASK_*_DISPLAY_SECONDS`, a little longer than the scene. A
+  session update meanwhile is held behind it, which is why the STOP and
+  FINISH paths start the scene *before* stopping the session, and the picker
+  plays GO! before releasing its lock. Another task starting ends a scene at
+  once; the session GO! announces does not, or its per-second updates would
+  cut it off. A lock released during a scene restores the work screen
+  without stopping it. While the
   device plays a scene, `AnimationPlayer`'s preview ticks at 15 fps and skips
   frames to keep time with it.
 - **The server half** (`server/api.ts`) runs inside the Vite dev server. It
@@ -436,7 +439,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1089 tests across 58 files. `coverage.include` is `src/main/**` and
+Vitest, 1100 tests across 58 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

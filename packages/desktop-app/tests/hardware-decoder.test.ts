@@ -707,6 +707,27 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(session?.taskId).toBe('T1');
     });
 
+    it('HandleHardwareInput_ConfirmingATask_ShowsGoBeforeTheMenuLetsGo', () => {
+      // The menu used to vanish into the tracking screen with nothing to say
+      // the click had landed. GO! goes first: releasing the lock redraws the
+      // session, and the scene is what should be on the panel then.
+      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
+      let lockHeldAtGo: boolean | null = null;
+      const started = vi.spyOn(renderer, 'renderTaskStarted').mockImplementation(() => {
+        lockHeldAtGo = !released.includes('menuPriority');
+        return undefined as never;
+      });
+      openPicker();
+
+      press('ok');
+      press('ok');
+
+      expect(started).toHaveBeenCalledTimes(1);
+      expect(started.mock.calls[0][0].taskId).toBe('T1');
+      expect(lockHeldAtGo).toBe(true);
+    });
+
     it('HandleHardwareInput_DescendingIntoAProject_ShowsTheTaskKeyOnTheSecondRow', () => {
       // TaskDTO carries no description. The second row used to read
       // `t.description`, which was always undefined, so every row said
@@ -853,6 +874,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       renderer.renderTaskSelection = ((stage: string, label: string) => {
         rendered.push([stage, label]);
       }) as never;
+      const started = vi.spyOn(renderer, 'renderTaskStarted');
       openPicker();
 
       press('ok'); // descend into the empty project
@@ -864,6 +886,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(action).toBe('START_TASK_FROM_SELECTION');
       expect(engine.getCurrentSession()).toBeNull();
       expect(released).toContain('menuPriority');
+      // Nor may it say GO!: nothing is running.
+      expect(started).not.toHaveBeenCalled();
     });
   });
 

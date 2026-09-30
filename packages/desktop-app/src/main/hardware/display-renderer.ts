@@ -7,7 +7,8 @@ import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
 import {
-  ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS
+  ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS,
+  TASK_STARTED_DISPLAY_SECONDS
 } from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
@@ -175,6 +176,12 @@ export class DisplayRenderer {
   private stateChangeCallbacks: Set<(state: HardwareDisplayStateDTO) => void> = new Set();
   private isCelebrating: boolean = false;
   private celebrationTimeout: NodeJS.Timeout | null = null;
+  /**
+   * The session a playing scene announces, if any. Its own updates -- one a
+   * second while it runs -- are held behind the scene; any other session
+   * starting ends it.
+   */
+  private sceneSessionId: string | null = null;
   private lastSessionCache: ActiveSessionDTO | null = null;
   private animationPlayer: AnimationPlayer;
   /** Tracked so a second banner cannot be cut short by the first one's timer. */
@@ -325,7 +332,11 @@ export class DisplayRenderer {
     } else if (mode === 'AWAY') {
       this.renderAwayMode();
     } else if (mode === 'WORK') {
-      this.animationPlayer.stop();
+      // A one-shot scene keeps the panel until its own timer ends. Every lock
+      // release lands here -- the picker handing the display back right after
+      // GO!, a banner ending during DONE! -- and stopping unconditionally cut
+      // the scene off the moment it started.
+      if (!this.isCelebrating) this.animationPlayer.stop();
       this.renderActiveSession(this.lastSessionCache);
     }
   }
@@ -924,8 +935,9 @@ export class DisplayRenderer {
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
 
-    if (session && session.status === 'TRACKING' && this.isCelebrating) {
+    if (session && session.status === 'TRACKING' && this.isCelebrating && session.sessionId !== this.sceneSessionId) {
       this.isCelebrating = false;
+      this.sceneSessionId = null;
       this.clearCelebrationTimer();
     }
 
@@ -1312,16 +1324,39 @@ export class DisplayRenderer {
   }
 
   /**
+   * Acknowledges a task started from the bar, then shows it running.
+   *
+   * Clicking a task in the picker used to drop straight to the tracking
+   * screen, so the menu vanished with nothing to say the click had landed.
+   * The scene ends on the tracking screen's own icon, so the hand-over is
+   * seamless. The session's per-second updates do not end it; another task
+   * starting does.
+   */
+  public renderTaskStarted(
+    session: ActiveSessionDTO, durationSeconds: number = TASK_STARTED_DISPLAY_SECONDS
+  ): DisplayPayload {
+    if (!session) throw new ArgumentNullException('session');
+    this.lastSessionCache = session;
+    return this.playOneShotScene(
+      FRONT_ANIMATIONS.TASK_STARTED, durationSeconds, '#10B981FF', 'SOLID', 'GO!', session.sessionId
+    );
+  }
+
+  /**
    * Plays a full-panel scene once and holds the display for `durationSeconds`,
    * then renders the session as it then stands.
    *
    * A session update that arrives meanwhile is held rather than drawn over the
-   * scene, except a task starting, which ends it (see `renderActiveSession`).
+   * scene, except another task starting, which ends it (see
+   * `renderActiveSession`). `sessionId` names the session the scene announces,
+   * whose own updates are held too.
    */
   private playOneShotScene(
-    scene: string, durationSeconds: number, ledColorHex: string, ledMode: LedAnimationMode, rearText: string
+    scene: string, durationSeconds: number, ledColorHex: string, ledMode: LedAnimationMode, rearText: string,
+    sessionId: string | null = null
   ): DisplayPayload {
     this.isCelebrating = true;
+    this.sceneSessionId = sessionId;
     this.clearCelebrationTimer();
     this.ledMode = ledMode;
 
@@ -1348,6 +1383,7 @@ export class DisplayRenderer {
     this.celebrationTimeout = null;
     if (!this.isCelebrating) return;
     this.isCelebrating = false;
+    this.sceneSessionId = null;
     this.animationPlayer.stop();
     this.renderActiveSession(this.lastSessionCache);
   }
