@@ -223,7 +223,13 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       this._activeLockEventName = null;
       this._activeLockPriority = 0;
       this.drainQueue();
-      if (this._notificationQueue.length === 0 && this._renderer) {
+      // Hand the display back to the mode only if no queued alert took it.
+      // This used to test the queue's length, but drainQueue removes the alert
+      // it replays: with one alert waiting, the queue was empty by the time of
+      // the test, so the alert drew and the mode was restored over it in the
+      // same call. Idle with the firmware clock enabled, that restore is a
+      // clearDisplay, which wiped the replayed alert the instant it appeared.
+      if (this._activeLockEventName === null && this._renderer) {
         this._renderer.setContextMode(this._userMode);
       }
     }

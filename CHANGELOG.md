@@ -212,6 +212,11 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **A notification that waited its turn is no longer wiped the moment it
+  shows.** When two arrived together, the second was queued behind the first
+  -- and when the first ended, the second was drawn and then immediately
+  replaced by the screen underneath. With no task running and the bar's own
+  clock enabled for idle, it vanished outright.
 - **The end-of-day dialog offers the wrap-up again when reopened.** Once a
   wrap-up had completed, every later opening -- the next evening's prompt, or
   the header button -- showed "Day Complete!" until the app restarted.

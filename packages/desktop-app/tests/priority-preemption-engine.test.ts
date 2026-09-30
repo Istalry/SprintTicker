@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { PriorityRule } from '../src/shared/dtos';
@@ -139,5 +139,307 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
 
   it('GetEventPriority_UnknownEvent_FallsBackToTheDefault', () => {
     expect(engine.getEventPriority('menuPriority')).toBe(50);
+  });
+});
+
+/**
+ * The engine's rules as behaviour. Each test states what the display must do,
+ * with the matrix spelled out in the test rather than borrowed from the
+ * shipped defaults -- the ranking is the user's configuration (CLAUDE.md §5),
+ * so a test that leaned on today's defaults would pin a choice, not a rule.
+ */
+describe('PriorityPreemptionEngine behaviour', () => {
+  type Actions = Pick<PriorityRule, 'actionOnWork' | 'actionOnLunch' | 'actionOnAway'>;
+  const rule = (eventName: string, priority: number, actions: Partial<Actions> = {}): PriorityRule => ({
+    id: eventName,
+    eventName,
+    priority,
+    actionOnWork: 'DISPLAY',
+    actionOnLunch: 'SUPPRESS',
+    actionOnAway: 'SUPPRESS',
+    ...actions
+  });
+
+  const engineWith = (stored: unknown) => {
+    const repo = { getSetting: vi.fn().mockReturnValue(stored), setSetting: vi.fn() };
+    return new PriorityPreemptionEngine(repo as unknown as SettingsRepository);
+  };
+
+  const MATRIX = {
+    rules: [
+      rule('lunchModePriority', 90, { actionOnLunch: 'DISPLAY' }),
+      rule('highNotificationPriority', 70, { actionOnLunch: 'QUEUE' }),
+      rule('messagingPriority', 65),
+      rule('unityCompilingPriority', 60)
+    ]
+  };
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('user mode', () => {
+    it('SetUserMode_Empty_Throws', () => {
+      expect(() => engineWith(MATRIX).setUserMode('' as never)).toThrow('mode');
+    });
+
+    it('SetUserMode_BackToWork_ReleasesTheBreakAndReplaysWhatWaited', () => {
+      // Lunch holds the display; an alert the matrix queues during lunch must
+      // come out when work resumes, not be lost with the lunch screen.
+      const engine = engineWith(MATRIX);
+      engine.setUserMode('LUNCH');
+      engine.evaluateRequest('lunchModePriority');
+      const replay = vi.fn();
+      const queued = engine.evaluateRequest('highNotificationPriority', undefined, replay);
+
+      engine.setUserMode('WORK');
+
+      expect(queued.action).toBe('QUEUE');
+      expect(replay).toHaveBeenCalledTimes(1);
+      expect(engine.getActiveLockEventName()).toBe('highNotificationPriority');
+    });
+
+    it('SetUserMode_BackToWork_LeavesANonBreakLockAlone', () => {
+      const engine = engineWith(MATRIX);
+      engine.evaluateRequest('unityCompilingPriority');
+
+      engine.setUserMode('WORK');
+
+      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+    });
+
+    it('OnUserModeChanged_RealChangeOnly_NotifiesOnce', () => {
+      const engine = engineWith(MATRIX);
+      const listener = vi.fn();
+      engine.onUserModeChanged(listener);
+
+      engine.setUserMode('AWAY');
+      engine.setUserMode('AWAY');
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith('AWAY');
+    });
+
+    it('OnUserModeChanged_Unsubscribed_HearsNothingMore', () => {
+      const engine = engineWith(MATRIX);
+      const listener = vi.fn();
+      const unsubscribe = engine.onUserModeChanged(listener);
+
+      unsubscribe();
+      engine.setUserMode('LUNCH');
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('OnUserModeChanged_NotAFunction_IsIgnored', () => {
+      const engine = engineWith(MATRIX);
+      engine.onUserModeChanged('nope' as never);
+
+      expect(() => engine.setUserMode('LUNCH')).not.toThrow();
+    });
+  });
+
+  describe('stored rules', () => {
+    it('GetRules_LegacyFlatScores_AppliesThemToTheDefaults', () => {
+      // Before the matrix, only numbers were stored, keyed by event name.
+      const rules = engineWith({ messagingPriority: 42, highNotificationPriority: 'high' }).getRules();
+
+      expect(rules.find(r => r.eventName === 'messagingPriority')?.priority).toBe(42);
+      expect(rules.find(r => r.eventName === 'highNotificationPriority')?.priority).toBe(70);
+    });
+
+    it('GetRules_StoredBeforeAnEventExisted_GainsItsDefaultRule', () => {
+      const rules = engineWith({ rules: [rule('messagingPriority', 10)] }).getRules();
+
+      expect(rules.find(r => r.eventName === 'messagingPriority')?.priority).toBe(10);
+      expect(rules.some(r => r.eventName === 'activeTrackerPriority')).toBe(true);
+    });
+
+    it('GetRules_ObsoleteBreakPrompt_IsDropped', () => {
+      const rules = engineWith({ rules: [rule('breakPromptPriority', 80)] }).getRules();
+
+      expect(rules.some(r => r.eventName === 'breakPromptPriority')).toBe(false);
+    });
+
+    it('SaveRules_NotAnArray_Throws', () => {
+      expect(() => engineWith(null).saveRules(null as never)).toThrow('rules must be a valid array');
+    });
+
+    it('EvaluateRequest_RuleStoredWithoutModeActions_DisplaysAtWorkAndSuppressesOnBreaks', () => {
+      // Rules written before the per-mode actions existed have none of them.
+      const legacy = { rules: [{ id: 'messagingPriority', eventName: 'messagingPriority', priority: 65 }] };
+      const engine = engineWith(legacy);
+
+      expect(engine.evaluateRequest('messagingPriority').action).toBe('DISPLAY');
+      engine.releaseActiveLock('messagingPriority');
+      engine.setUserMode('LUNCH');
+      expect(engine.evaluateRequest('messagingPriority').action).toBe('SUPPRESS');
+      engine.setUserMode('AWAY');
+      expect(engine.evaluateRequest('messagingPriority').action).toBe('SUPPRESS');
+    });
+  });
+
+  describe('evaluation', () => {
+    it('EvaluateRequest_EmptyEventName_Throws', () => {
+      expect(() => engineWith(MATRIX).evaluateRequest('')).toThrow('eventName');
+    });
+
+    it('GetEventPriority_EmptyEventName_Throws', () => {
+      expect(() => engineWith(MATRIX).getEventPriority('')).toThrow('eventName');
+    });
+
+    it('EvaluateRequest_UnknownEvent_DisplaysAtTheDefaultPriority', () => {
+      const result = engineWith(MATRIX).evaluateRequest('somethingNew');
+
+      expect(result).toEqual({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 50 });
+    });
+
+    it('EvaluateRequest_ExplicitPriority_OverridesTheRule', () => {
+      expect(engineWith(MATRIX).evaluateRequest('messagingPriority', 99).evaluatedPriority).toBe(99);
+    });
+
+    it('EvaluateRequest_QueuedWithoutCallback_LeavesNothingToReplay', () => {
+      // A caller that repeats itself -- the session tracker -- passes no
+      // callback so it is not replayed; it must not take the display either.
+      const engine = engineWith(MATRIX);
+      engine.setUserMode('LUNCH');
+
+      const result = engine.evaluateRequest('highNotificationPriority');
+      engine.setUserMode('WORK');
+
+      expect(result.shouldRender).toBe(false);
+      expect(engine.getActiveLockEventName()).toBeNull();
+    });
+
+    it('EvaluateRequest_OutrankedWithoutCallback_IsNotReplayed', () => {
+      const engine = engineWith(MATRIX);
+      engine.evaluateRequest('highNotificationPriority');
+
+      const result = engine.evaluateRequest('unityCompilingPriority');
+      engine.releaseActiveLock('highNotificationPriority');
+
+      expect(result.shouldRender).toBe(false);
+      expect(engine.getActiveLockEventName()).toBeNull();
+    });
+
+    it('EvaluateRequest_EqualPriority_TakesTheDisplay', () => {
+      const engine = engineWith(MATRIX);
+      engine.evaluateRequest('messagingPriority');
+
+      expect(engine.evaluateRequest('unityCompilingPriority', 65).shouldRender).toBe(true);
+    });
+  });
+
+  describe('lock release', () => {
+    it('ReleaseActiveLock_SomeoneElsesName_KeepsTheLock', () => {
+      const engine = engineWith(MATRIX);
+      engine.evaluateRequest('highNotificationPriority');
+
+      engine.releaseActiveLock('messagingPriority');
+
+      expect(engine.getActiveLockEventName()).toBe('highNotificationPriority');
+    });
+
+    it('ReleaseActiveLock_NothingWaiting_HandsTheDisplayBackToTheMode', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = { setContextMode: vi.fn() };
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.setUserMode('AWAY');
+
+      engine.releaseActiveLock('unityCompilingPriority');
+
+      expect(renderer.setContextMode).toHaveBeenCalledWith('AWAY');
+    });
+
+    it('ReleaseActiveLock_SomethingWaiting_ReplaysItInsteadOfTheMode', () => {
+      // With exactly one alert waiting, the mode used to be restored straight
+      // over the replay -- idle, that restore is a clearDisplay.
+      const engine = engineWith(MATRIX);
+      const renderer = { setContextMode: vi.fn() };
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('highNotificationPriority');
+      const replay = vi.fn();
+      engine.evaluateRequest('messagingPriority', undefined, replay);
+
+      engine.releaseActiveLock('highNotificationPriority');
+
+      expect(replay).toHaveBeenCalledTimes(1);
+      expect(renderer.setContextMode).not.toHaveBeenCalled();
+    });
+
+    it('DismissNotification_Ceremony_StaysUnlessForced', () => {
+      // A stand-up prompt waits for an answer; a stray dismiss must not eat it.
+      const engine = engineWith(null);
+      engine.evaluateRequest('standupPromptPriority');
+
+      expect(engine.dismissNotification()).toBe(false);
+      expect(engine.getActiveLockEventName()).toBe('standupPromptPriority');
+      expect(engine.dismissNotification(true)).toBe(true);
+      expect(engine.getActiveLockEventName()).toBeNull();
+    });
+
+    it('DismissNotification_NothingShowing_ReturnsFalse', () => {
+      const engine = engineWith(MATRIX);
+      engine.evaluateRequest('unityCompilingPriority');
+
+      expect(engine.dismissNotification()).toBe(false);
+      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+    });
+  });
+
+  describe('replay queue', () => {
+    const queueBehindLunch = (engine: PriorityPreemptionEngine, order: string[], name: string, priority: number) =>
+      engine.evaluateRequest(name, priority, () => order.push(name));
+
+    it('DrainQueue_SeveralWaiting_ReplaysTheHighestFirstThenTheOldest', () => {
+      vi.useFakeTimers();
+      const engine = engineWith(MATRIX);
+      const order: string[] = [];
+      engine.evaluateRequest('lunchModePriority', 100);
+      queueBehindLunch(engine, order, 'olderLow', 40);
+      vi.advanceTimersByTime(10);
+      queueBehindLunch(engine, order, 'high', 80);
+      vi.advanceTimersByTime(10);
+      queueBehindLunch(engine, order, 'newerLow', 40);
+
+      engine.releaseActiveLock('lunchModePriority');
+      engine.releaseActiveLock('high');
+      engine.releaseActiveLock('olderLow');
+
+      expect(order).toEqual(['high', 'olderLow', 'newerLow']);
+    });
+
+    it('DrainQueue_AlertOlderThanAMinute_IsDropped', () => {
+      // A notification replayed long after it arrived is noise, not news.
+      vi.useFakeTimers();
+      const engine = engineWith(MATRIX);
+      const order: string[] = [];
+      engine.evaluateRequest('lunchModePriority', 100);
+      queueBehindLunch(engine, order, 'stale', 60);
+
+      vi.advanceTimersByTime(60_000);
+      engine.releaseActiveLock('lunchModePriority');
+
+      expect(order).toEqual([]);
+      expect(engine.getActiveLockEventName()).toBeNull();
+    });
+
+    it('DrainQueue_MoreThanTwentyWaiting_DropsTheOldest', () => {
+      vi.useFakeTimers();
+      const engine = engineWith(MATRIX);
+      const order: string[] = [];
+      engine.evaluateRequest('lunchModePriority', 100);
+      for (let i = 0; i < 21; i++) {
+        queueBehindLunch(engine, order, `alert${i}`, 40);
+        vi.advanceTimersByTime(1);
+      }
+
+      engine.releaseActiveLock('lunchModePriority');
+      for (let i = 0; i < 21; i++) engine.releaseActiveLock(`alert${i}`);
+
+      expect(order).toHaveLength(20);
+      expect(order[0]).toBe('alert1');
+    });
   });
 });

@@ -875,7 +875,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1133
+**86.43 statements / 78.55 branches / 87.23 functions / 88.53 lines across 1160
 tests in 64 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
@@ -894,10 +894,19 @@ problem; each is a specific untested path:
 | Area | Statements | Note |
 | :--- | ---: | :--- |
 | `main/diagnostics` | 98.5% | Was 66%. Closed below. |
-| `main/services` | 78% | Depth, not absence — every service has a test file. `priority-preemption-engine.ts` is the best value per unit of effort: 341 lines of pure logic behind an interface, constructor-injected. |
-| `main/hardware` | 79% | Was 74%. `input-decoder.ts` is now 94%. |
+| `main/services` | 79.7% | Depth, not absence — every service has a test file. `priority-preemption-engine.ts` is now 100% (below); `windows-notification-listener-service.ts` (63%) and `system-automation-service.ts` (61%) are what is left. |
+| `main/hardware` | 87% | Was 74%. `input-decoder.ts` is now 94%. |
 | `main/tray` | 92% | Was 69%. Closed below. |
 
+- **`priority-preemption-engine.ts` 83% → 100%** (2026-09-30), and this one
+  found a defect too. Releasing a lock replays the next queued alert, then
+  restores the context mode "if nothing was replayed" -- tested as the queue
+  being empty, which it is right after the last waiting alert is taken out to
+  be replayed. So a lone queued alert drew and the mode was restored over it in
+  the same call; idle with the firmware clock on, that restore is a
+  `clearDisplay`, and the alert vanished the instant it appeared. It now tests
+  whether a replay took the lock. The new tests spell the matrix out rather
+  than borrowing the shipped defaults, since the ranking is configuration.
 - **`main/diagnostics` 66% → 98.5%**, and this one found defects rather than
   just covering lines. `logger-interceptor.ts` had **no test file at all**;
   writing one meant giving it a `restore()`, because `intercept()` was an

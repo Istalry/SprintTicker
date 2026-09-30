@@ -332,6 +332,37 @@ describe('DisplayRenderer Unit Tests', () => {
       }
     });
 
+    it('RenderNotificationBanner_QueuedBehindAnotherWhileIdle_SurvivesItsReplay', () => {
+      // When the first banner released, the engine replayed the one queued
+      // behind it and then -- the queue now being empty -- restored the idle
+      // mode over it. Idle with the firmware clock on, that restore is a
+      // clearDisplay: the second banner was drawn and wiped in the same call.
+      vi.useFakeTimers();
+      try {
+        const settingsRepo = { getSetting: vi.fn().mockReturnValue(null), setSetting: vi.fn() };
+        const engine = new PriorityPreemptionEngine(settingsRepo as unknown as SettingsRepository);
+        renderer.setPriorityEngine(engine);
+        engine.setRenderer(renderer);
+        renderer.setShowIdleClockFallback(true);
+
+        renderer.renderNotificationBanner({ title: 'first', eventName: 'highNotificationPriority', timeoutMs: 10000 });
+        renderer.renderNotificationBanner({ title: 'second', eventName: 'messagingPriority', timeoutMs: 10000 });
+        vi.mocked(mockDriver.clearDisplay).mockClear();
+
+        vi.advanceTimersByTime(10100);
+
+        expect(engine.getActiveLockEventName()).toBe('messagingPriority');
+        expect(mockDriver.clearDisplay).not.toHaveBeenCalled();
+
+        // It still hands back to the idle clock on its own deadline.
+        vi.advanceTimersByTime(10100);
+        expect(engine.getActiveLockEventName()).toBeNull();
+        expect(mockDriver.clearDisplay).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('Dispose_WithABannerPending_ClearsItsTimer', () => {
       vi.useFakeTimers();
       try {
