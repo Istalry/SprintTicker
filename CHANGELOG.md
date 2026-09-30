@@ -69,6 +69,14 @@ reported something other than the truth, in three different ways.
   falls behind **DONE!**. The bar plays it once and rests on the finished
   badge, where the old confetti was drawn here and streamed: about 80 requests
   over four seconds, now one upload and one draw.
+- **Stopping a task says so.** STOP, from the bar's paused screen or from the
+  app, plays **LOGGED**: the amber stopwatch clicks, its hand sweeps back to
+  twelve taking the elapsed time with it, and a glow settles -- then the idle
+  screen. The bar used to go straight to idle, which looked the same as the
+  stop not having worked. Finishing still plays DONE!, and starting another
+  task from the app no longer flashes LOGGED before the new one: the start
+  logs the running session itself. The debug panel's **Stop Task** button,
+  which fired the confetti, now previews LOGGED.
 - **The build and bake screens have their own icons**: a hammer that strikes,
   and a light bulb that glows. Both replace the Unity logo, which is Unity's
   mark and not ours to animate.

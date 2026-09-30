@@ -53,7 +53,8 @@ celebrates on the bar -- a green badge drops in, ticks itself, and throws
 confetti beside **DONE!** -- then returns to the session. It also fires your
 configured completion transition — which in Jira usually means "To
 Review", not "Closed", because you send work for review rather than closing it
-yourself.
+yourself. Stopping without marking it done shows **LOGGED** on the bar
+instead: the time is kept and the task stays open.
 
 ### Projects & Tasks
 
@@ -220,8 +221,9 @@ pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
 row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
 1 offers **STOP** and **FINISH** side by side; turn the wheel left for STOP,
-right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open; FINISH also marks it
-done.
+right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open, and the bar shows
+**LOGGED** for three seconds, the stopwatch's hand sweeping back to twelve;
+FINISH also marks it done, and shows **DONE!**.
 
 Unity screens all read the same way: what is happening on row 0 (with the
 percentage for a build or a lightmap bake), the project on row 1, and for a

@@ -31,7 +31,7 @@ Everything else is a request/response `invoke`.
 | `session:get-current` | The live session, or `null` |
 | `session:start-task` | Start tracking a task |
 | `session:pause` / `session:resume` | Pause and resume |
-| `session:complete` | Stop, write a worklog, optionally mark the task done |
+| `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
 | `session:discard` | Stop without recording |
 | `session:on-updated` | **Event** — the session changed |
 

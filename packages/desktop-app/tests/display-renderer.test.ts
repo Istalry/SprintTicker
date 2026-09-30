@@ -4,7 +4,9 @@ import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
-import { ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../src/shared/render-constants';
+import {
+  ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS
+} from '../src/shared/render-constants';
 import {
   FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
 } from '../src/shared/pixel-bitmaps';
@@ -354,6 +356,60 @@ describe('DisplayRenderer Unit Tests', () => {
       const payload = renderer.renderTaskCompletionConfetti();
       expect(payload.ledColorHex).toBe('#10B981FF');
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    });
+
+    describe('task logged scene', () => {
+      const player = (): AnimationPlayer =>
+        (renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer;
+
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        renderer.dispose();
+        vi.useRealTimers();
+      });
+
+      it('RenderTaskLogged_Triggered_PlaysOurSceneOnceInAmber', () => {
+        const play = vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+
+        const payload = renderer.renderTaskLogged();
+
+        expect(play).toHaveBeenCalledWith(FRONT_ANIMATIONS.TASK_LOGGED, expect.objectContaining({ loop: false }));
+        expect(payload.ledColorHex).toBe('#F59E0BFF');
+      });
+
+      it('RenderTaskLogged_SessionEndsDuringTheScene_HoldsItUntilTheSceneIsOver', () => {
+        // The stop's own session update arrives while the scene plays; drawn
+        // at once, the idle screen would cut LOGGED off before it was seen.
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        renderer.renderTaskLogged();
+
+        expect(renderer.renderActiveSession(null).ledColorHex).toBe('#F59E0BFF');
+        expect(stop).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(TASK_LOGGED_DISPLAY_SECONDS * 1000);
+
+        expect(stop).toHaveBeenCalled();
+        expect(renderer.renderActiveSession(null).ledColorHex).not.toBe('#F59E0BFF');
+      });
+
+      it('RenderTaskLogged_AfterTheDoneScene_TakesOverRatherThanStacking', () => {
+        // One scene timer at a time: the first one's end must not cut the
+        // second short.
+        vi.spyOn(player(), 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player(), 'stop');
+        renderer.renderTaskCompletionConfetti(1);
+        renderer.renderTaskLogged(3);
+
+        vi.advanceTimersByTime(1000);
+        expect(stop).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(2000);
+        expect(stop).toHaveBeenCalled();
+      });
     });
 
     describe('task done scene', () => {

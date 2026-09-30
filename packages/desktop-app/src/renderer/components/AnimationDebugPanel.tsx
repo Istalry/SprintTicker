@@ -144,6 +144,7 @@ export const AnimationDebugPanel: React.FC = () => {
   const triggerUnityError = () => preview('UNITY_EXCEPTION', 'Rendered Unity exception');
   const triggerPlayMode = () => preview('UNITY_PLAY_MODE', 'Rendered Unity play mode');
   const triggerTaskSelection = () => preview('TASK_SELECTION', 'Rendered task selection');
+  const triggerTaskLogged = () => preview('TASK_LOGGED', 'Rendered LOGGED scene');
 
   // 4. Task Session States & Confetti
   const triggerConfetti = () => {
@@ -230,9 +231,9 @@ export const AnimationDebugPanel: React.FC = () => {
               <CheckCircle2 className="w-3.5 h-3.5 text-accent-green" />
               <span>Confetti Burst 🎉</span>
             </button>
-            <button onClick={triggerConfetti} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
+            <button onClick={triggerTaskLogged} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Square className="w-3.5 h-3.5 text-accent-red" />
-              <span>Stop Task</span>
+              <span>Stop Task (LOGGED)</span>
             </button>
           </div>
         </div>

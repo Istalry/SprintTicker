@@ -539,7 +539,8 @@ export type PreviewScreenId =
   | 'UNITY_BUILDING'
   | 'UNITY_BAKING'
   | 'UNITY_EXCEPTION'
-  | 'TASK_SELECTION';
+  | 'TASK_SELECTION'
+  | 'TASK_LOGGED';
 
 export class ArgumentNullException extends Error {
   constructor(paramName: string) {

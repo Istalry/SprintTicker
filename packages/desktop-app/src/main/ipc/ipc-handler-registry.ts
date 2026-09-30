@@ -168,8 +168,14 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string; markDone?: boolean }) => {
       const res = this.engine.stopSession(payload.comment, payload.markDone);
-      if (payload.markDone) {
-        this.renderer.renderTaskCompletionConfetti();
+      // Only when something was stopped: with no session there is nothing to
+      // celebrate or log, and the scene would take the display for nothing.
+      if (res.success) {
+        if (payload.markDone) {
+          this.renderer.renderTaskCompletionConfetti();
+        } else {
+          this.renderer.renderTaskLogged();
+        }
       }
       return res;
     });
@@ -869,6 +875,10 @@ export class IPCHandlerRegistry {
             position: { index: 2, count: 12 },
             status: 'in_progress'
           });
+          return true;
+        case 'TASK_LOGGED':
+          // The scene alone: stopping a real session to see it would log time.
+          this.renderer.renderTaskLogged();
           return true;
         default:
           throw new ArgumentException(`Unknown preview screen: ${String(screen)}`);

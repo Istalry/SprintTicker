@@ -256,6 +256,50 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     }
   });
 
+  describe('stopping a session from the app', () => {
+    function completeHandler(): (...args: unknown[]) => unknown {
+      registry.registerAllHandlers();
+      const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const found = calls.find(call => call[0] === 'session:complete');
+      expect(found).toBeDefined();
+      return found![1] as (...args: unknown[]) => unknown;
+    }
+
+    it('CompleteSession_StopWithoutFinishing_ShowsLoggedOnTheBar', async () => {
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+      engine.startTask('T-1', true, 'Ad hoc');
+
+      await completeHandler()({}, { markDone: false });
+
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(done).not.toHaveBeenCalled();
+    });
+
+    it('CompleteSession_Finish_ShowsDoneNotLogged', async () => {
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+      engine.startTask('T-1', true, 'Ad hoc');
+
+      await completeHandler()({}, { markDone: true });
+
+      expect(done).toHaveBeenCalledTimes(1);
+      expect(logged).not.toHaveBeenCalled();
+    });
+
+    it('CompleteSession_NothingRunning_ShowsNoScene', async () => {
+      // Nothing was stopped, so there is nothing to log or celebrate.
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+
+      const res = await completeHandler()({}, { markDone: false }) as { success: boolean };
+
+      expect(res.success).toBe(false);
+      expect(logged).not.toHaveBeenCalled();
+      expect(done).not.toHaveBeenCalled();
+    });
+  });
+
   describe('display screen previews', () => {
     // The debug panel used to hand-build display payloads and inject them into
     // the emulator, so its previews were a second implementation of every
@@ -283,6 +327,16 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       await previewHandler()({}, 'CEREMONY_EOD');
 
       expect(spy).toHaveBeenCalledWith('EOD', expect.any(String));
+    });
+
+    it('PreviewDisplayScreen_TaskLogged_PlaysTheSceneWithoutStoppingAnything', async () => {
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      engine.startTask('T-1', true, 'Ad hoc');
+
+      await previewHandler()({}, 'TASK_LOGGED');
+
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(engine.getCurrentSession()).not.toBeNull();
     });
 
     it('PreviewDisplayScreen_UnknownScreenId_ThrowsRatherThanRenderingNothing', async () => {

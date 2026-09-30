@@ -6,7 +6,9 @@ import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
-import { ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS } from '../../shared/render-constants';
+import {
+  ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS
+} from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
@@ -913,11 +915,11 @@ export class DisplayRenderer {
 
   /**
    * Renders Active Task Tracker View on Front Display:
-   *  - Left (x=0..15): Icon (checkmark)
+   *  - Left (x=0..15): the stopwatch, ticking while tracking
    *  - Row 0 (y=0): Task title (TASK-KEY: Title)
-   *  - Row 1 (y=8): Task timer (HH:MM:SS)
-   *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), and right side (x=47..71) displays
-   *    interactive STOP vs FINISH controls selectable via scroll wheel.
+   *  - Row 1 (y=8): Task timer (HH:MM, in TIMER_FONT)
+   *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), the time moves to row 0
+   *    and row 1 offers STOP and FINISH, chosen with the wheel.
    */
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
@@ -1292,18 +1294,45 @@ export class DisplayRenderer {
    * If the device refuses the `.anim`, `AnimationPlayer` streams its frames.
    */
   public renderTaskCompletionConfetti(durationSeconds: number = TASK_DONE_DISPLAY_SECONDS): DisplayPayload {
+    return this.playOneShotScene(
+      FRONT_ANIMATIONS.TASK_DONE, durationSeconds, '#10B981FF', 'CONFETTI_EXPLOSION', 'TASK COMPLETED SUCCESSFULLY!'
+    );
+  }
+
+  /**
+   * Acknowledges STOP, then returns to the session -- which is now none.
+   *
+   * Stopping used to go straight to the idle screen, which on the bar looked
+   * the same as the stop not having worked, or as the display dropping out.
+   * LOGGED says the time was kept and the task left open; amber, the paused
+   * screen's colour, where finishing is green.
+   */
+  public renderTaskLogged(durationSeconds: number = TASK_LOGGED_DISPLAY_SECONDS): DisplayPayload {
+    return this.playOneShotScene(FRONT_ANIMATIONS.TASK_LOGGED, durationSeconds, '#F59E0BFF', 'SOLID', 'TIME LOGGED');
+  }
+
+  /**
+   * Plays a full-panel scene once and holds the display for `durationSeconds`,
+   * then renders the session as it then stands.
+   *
+   * A session update that arrives meanwhile is held rather than drawn over the
+   * scene, except a task starting, which ends it (see `renderActiveSession`).
+   */
+  private playOneShotScene(
+    scene: string, durationSeconds: number, ledColorHex: string, ledMode: LedAnimationMode, rearText: string
+  ): DisplayPayload {
     this.isCelebrating = true;
     this.clearCelebrationTimer();
-    this.ledMode = 'CONFETTI_EXPLOSION';
+    this.ledMode = ledMode;
 
     const backElements = [
-      { id: 'rear_confetti_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'TASK COMPLETED SUCCESSFULLY!', align: 'top_left' }
+      { id: 'rear_scene_0', type: 'text', font: 'tiny', x: 0, y: 0, color: ledColorHex, text: rearText, align: 'top_left' }
     ];
 
     this.canvas.clear();
-    void this.animationPlayer.play(FRONT_ANIMATIONS.TASK_DONE, { loop: false, onFrame: this.onAnimationFrame })
+    void this.animationPlayer.play(scene, { loop: false, onFrame: this.onAnimationFrame })
       .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
-    void this.transmitFrame('#10B981FF', backElements, [])
+    void this.transmitFrame(ledColorHex, backElements, [])
       .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
 
     this.celebrationTimeout = setTimeout(() => this.endCelebration(), durationSeconds * 1000);
@@ -1311,7 +1340,7 @@ export class DisplayRenderer {
     return {
       frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
       backElements,
-      ledColorHex: '#10B981FF'
+      ledColorHex
     };
   }
 

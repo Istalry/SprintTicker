@@ -313,6 +313,10 @@ export class InputDecoder {
         const choice = this._renderer.getPausedSelection();
         if (choice === 'STOP') {
           // Stop means stop: the time is logged and the task stays open.
+          // LOGGED says so; the idle screen alone looked like nothing had
+          // happened. Before the stop, so the session's end is held behind
+          // the scene rather than drawn first.
+          this._renderer.renderTaskLogged();
           this._engine.stopSession('Stopped via BUSY Bar Paused Menu');
         } else {
           if (this._renderer.renderTaskCompletionConfetti) {

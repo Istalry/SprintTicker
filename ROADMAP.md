@@ -682,8 +682,12 @@ looping idle animations.
        icon stays still": still, it read as nothing happening. Bold 7 moved
        from the studio to the app's fonts, since the app cannot import from
        the studio.
-     - [ ] 9c, one-shot scenes: GO! on starting a task from the bar, LOGGED
-       on STOP, and the end-of-day scene.
+     - [x] 9c, LOGGED on STOP (2026-09-30): the amber stopwatch clicks and
+       its hand sweeps back to twelve, from the bar's paused screen or the
+       app's stop. The bar used to drop straight to idle, which read as the
+       stop not having worked.
+     - [ ] 9c, the rest: GO! on starting a task from the bar, and the
+       end-of-day scene.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
@@ -868,7 +872,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.05 statements / 77.7 branches / 86.9 functions / 88.2 lines across 1076
+**86.09 statements / 77.76 branches / 86.94 functions / 88.24 lines across 1089
 tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

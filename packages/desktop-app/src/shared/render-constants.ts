@@ -20,9 +20,9 @@ import type { BitmapIconId } from './dtos';
  * log and an empty panel -- so `animation-assets.test.ts` checks every entry
  * here against the repository.
  *
- * All four are our own, drawn in `packages/anim-studio/scenes/`. Each has its
- * own plate colour -- teal, purple, blue, green -- so the mode reads at a
- * glance.
+ * All five are our own, drawn in `packages/anim-studio/scenes/`. Each has its
+ * own plate colour -- teal, purple, blue, green, amber -- so the mode reads at
+ * a glance.
  */
 export const FRONT_ANIMATIONS = {
   LUNCH: 'lunch_sandwich_72x16',
@@ -30,6 +30,8 @@ export const FRONT_ANIMATIONS = {
   MEETING: 'meeting_table_72x16',
   /** Played once, not looped: see TASK_DONE_DISPLAY_SECONDS. */
   TASK_DONE: 'task_done_72x16',
+  /** STOP without finishing. Played once: see TASK_LOGGED_DISPLAY_SECONDS. */
+  TASK_LOGGED: 'task_logged_72x16',
 } as const;
 
 /**
@@ -40,6 +42,15 @@ export const FRONT_ANIMATIONS = {
  * shows the finished badge at rest rather than cutting away mid-fall.
  */
 export const TASK_DONE_DISPLAY_SECONDS = 4;
+
+/**
+ * How long the LOGGED scene holds the display before the idle screen.
+ *
+ * Shorter than DONE!: stopping is routine, not a celebration, and the scene
+ * (2.5 s) says what it has to say once the hand is back at twelve. The extra
+ * half second rests on that, for the same reason as TASK_DONE_DISPLAY_SECONDS.
+ */
+export const TASK_LOGGED_DISPLAY_SECONDS = 3;
 
 /**
  * Icons that animate on the device, by the static bitmap they stand over.

@@ -390,10 +390,9 @@ export const ProjectTaskManagerView: React.FC = () => {
                           title="Start working on this task"
                           onClick={async () => {
                             if (!window.electronAPI) return;
-                            if (activeSession) {
-                              // If there is already an active session, stop it without finishing the task
-                              await window.electronAPI.completeSession(undefined, false);
-                            }
+                            // No stop first: startTask logs a running session
+                            // itself. Stopping it here as well played the bar's
+                            // LOGGED scene only for the new task to cut it off.
                             await window.electronAPI.startTask(task.id, false);
                             await fetchTasks(selectedProjectId);
                           }}

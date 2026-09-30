@@ -104,6 +104,29 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(taskRepo.getTaskById('T-1')?.status).toBe('in_progress');
     });
 
+    it('HandleHardwareInput_StopFromThePausedMenu_ShowsLogged', () => {
+      // The screen used to go straight to idle, which looked like nothing had
+      // happened.
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
+
+      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
+
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(done).not.toHaveBeenCalled();
+    });
+
+    it('HandleHardwareInput_FinishFromThePausedMenu_ShowsDoneNotLogged', () => {
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+
+      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
+
+      expect(done).toHaveBeenCalledTimes(1);
+      expect(logged).not.toHaveBeenCalled();
+    });
+
     it('HandleHardwareInput_EitherChoice_StillLogsTheTime', () => {
       // Whatever else changed, the time must survive: that half was never
       // broken and is the one that cannot be recovered by hand.
