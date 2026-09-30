@@ -71,9 +71,9 @@ export class TrayManager {
 
     const session = this.engine.getCurrentSession();
     if (session && session.status === 'TRACKING') {
-      this.tray.setToolTip(`BUSY Bar: TRACKING [${session.taskKey}] - ${session.taskTitle}`);
+      this.tray.setToolTip(`SprintTicker: TRACKING [${session.taskKey}] - ${session.taskTitle}`);
     } else if (session && session.status === 'PAUSED') {
-      this.tray.setToolTip(`BUSY Bar: PAUSED [${session.taskKey}]`);
+      this.tray.setToolTip(`SprintTicker: PAUSED [${session.taskKey}]`);
     } else {
       this.tray.setToolTip('SprintTicker (Idle)');
     }
@@ -84,7 +84,7 @@ export class TrayManager {
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Open BUSY Bar Dashboard',
+        label: 'Open SprintTicker',
         click: () => this.restoreWindow()
       },
       { type: 'separator' },

@@ -137,8 +137,9 @@ describe('TrayManager Unit Tests', () => {
 
     engine.startTask('PROJ-202', false, 'Tracking Tooltip Test');
 
+    // Names the app, as the idle tooltip does -- not the device it drives.
     const hasTrackingTooltip = (trayInstance.setToolTip.mock.calls as string[][]).some(
-      args => args[0].includes('TRACKING')
+      args => args[0].startsWith('SprintTicker: TRACKING')
     );
     expect(hasTrackingTooltip).toBe(true);
     manager.destroy();
@@ -217,7 +218,7 @@ describe('TrayManager Unit Tests', () => {
       const manager = new TrayManager(mockWindow, engine);
       manager.initialize();
 
-      click('Open BUSY Bar Dashboard');
+      click('Open SprintTicker');
 
       expect(mockWindow.show).toHaveBeenCalled();
       expect(mockWindow.focus).toHaveBeenCalled();

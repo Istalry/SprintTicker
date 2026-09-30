@@ -80,8 +80,8 @@ export class UnityInjectorService {
 
       if (!hasEntry || !hasSlashEntry) {
         const linesToAppend: string[] = [];
-        if (!existingContent.includes('# BUSY Bar Local Companion Plugin')) {
-          linesToAppend.push('# BUSY Bar Local Companion Plugin');
+        if (!existingContent.includes('# SprintTicker Unity plugin')) {
+          linesToAppend.push('# SprintTicker Unity plugin');
         }
         if (!hasEntry) {
           linesToAppend.push(entryMarker);

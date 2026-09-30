@@ -381,7 +381,7 @@ export const UnityEngineView: React.FC = () => {
       <div className="bg-dark-800 p-6 rounded-xl border border-border-dark space-y-4 shadow-xl">
         <div>
           <h3 className="text-sm font-bold text-white">Unity Projects Auto-Scan & Directory Junction Injector</h3>
-          <p className="text-xs text-text-secondary mb-3">Scan local directories and inject the BUSY Bar C# plugin into target projects via Directory Junctions without modifying Packages/manifest.json.</p>
+          <p className="text-xs text-text-secondary mb-3">Scan local directories and inject the SprintTicker C# plugin into target projects via Directory Junctions without modifying Packages/manifest.json.</p>
         </div>
 
         <div className="space-y-2">

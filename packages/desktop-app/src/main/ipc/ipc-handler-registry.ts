@@ -492,7 +492,8 @@ export class IPCHandlerRegistry {
       // 5. Trigger Shutdown if requested
       if (options?.shouldShutdown) {
         try {
-          await this.systemAutomationService.scheduleShutdown(30, 'BUSY Bar End-of-Day Wrap-Up');
+          // The service's own delay and reason; this used to repeat both.
+          await this.systemAutomationService.scheduleShutdown();
         } catch (e) {
           console.error('[EOD] Failed to execute shutdown command:', e);
         }

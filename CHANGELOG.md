@@ -219,6 +219,10 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **SprintTicker names itself.** Windows' shutdown notice after an end-of-day
+  wrap-up read "BUSY Bar End-of-Day Wrap-Up", and the tray said "BUSY Bar:
+  TRACKING" and offered "Open BUSY Bar Dashboard" -- the device's name where the
+  app's belonged. They now say SprintTicker, as the idle tooltip already did.
 - **A session left running behind another one is recovered.** If the app ever
   stopped with two sessions open, only the newer one showed; the older one was
   never stopped and its time never logged. Upgrading closes it where the next

@@ -235,6 +235,16 @@ describe('SystemAutomationService across platforms', () => {
       expect(execFn.mock.calls[0][0]).toBe('shutdown /s /f /t 30 /c "Done & del C:\\x & "');
     });
 
+    it('ScheduleShutdown_Defaults_GiveAGracePeriodAndNameTheApp', async () => {
+      // Windows shows the reason in its sign-out notice: it names the app that
+      // asked for the shutdown, not the device the app drives.
+      onPlatform('win32');
+
+      await service().scheduleShutdown();
+
+      expect(execFn.mock.calls[0][0]).toBe('shutdown /s /f /t 30 /c "SprintTicker End-of-Day Wrap-Up"');
+    });
+
     it.each([
       [0, 1],
       [45, 1],

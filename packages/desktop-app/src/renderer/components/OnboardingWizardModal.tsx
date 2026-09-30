@@ -332,7 +332,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                 3. Unity Editor Plugin Setup (<code>io.github.istalry.sprintticker</code>)
               </h4>
               <p className="text-xs text-text-secondary">
-                Import the Unity C# Package into your game project to send automatic compilation & playmode webhooks to the BUSY Bar:
+                Import the Unity C# Package into your game project to send automatic compilation & playmode webhooks to SprintTicker, which shows them on the BUSY Bar:
               </p>
 
               <div className="bg-dark-900 p-4 rounded-lg border border-border-dark space-y-2 text-xs font-mono text-text-primary">

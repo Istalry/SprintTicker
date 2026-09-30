@@ -21,7 +21,9 @@ export type CommandExecFn = (command: string) => Promise<{ stdout: string; stder
  */
 export class SystemAutomationService implements ISystemAutomationService {
   private static readonly DEFAULT_SHUTDOWN_TIMEOUT_SECONDS = 30;
-  private static readonly DEFAULT_SHUTDOWN_REASON = 'BUSY Bar End-of-Day Wrap-Up';
+  // Shown by Windows in its "you're about to be signed out" notice, so it names
+  // the app that asked -- SprintTicker -- not the device it drives.
+  private static readonly DEFAULT_SHUTDOWN_REASON = 'SprintTicker End-of-Day Wrap-Up';
   private static readonly EDITOR_PROCESS_NAMES = ['Code', 'Code - Insiders', 'Cursor', 'Antigravity'];
 
   private readonly _execFn: CommandExecFn;

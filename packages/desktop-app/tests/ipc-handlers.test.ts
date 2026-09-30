@@ -159,7 +159,8 @@ describe('IPC handlers', () => {
     it('WrapUp_WithShutdown_SchedulesItWithAGracePeriod', async () => {
       await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, { shouldShutdown: true });
 
-      expect(automation.scheduleShutdown).toHaveBeenCalledWith(30, expect.any(String));
+      // The service's defaults: a grace period, and a reason naming SprintTicker.
+      expect(automation.scheduleShutdown).toHaveBeenCalledTimes(1);
     });
 
     it('WrapUp_WithoutShutdown_SchedulesNothing', async () => {
