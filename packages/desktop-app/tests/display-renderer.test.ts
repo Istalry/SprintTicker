@@ -6,7 +6,7 @@ import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import {
   ANIMATED_ICONS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS,
-  TASK_STARTED_DISPLAY_SECONDS
+  TASK_STARTED_DISPLAY_SECONDS, EOD_COMPLETE_DISPLAY_SECONDS
 } from '../src/shared/render-constants';
 import {
   FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
@@ -181,11 +181,38 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
     });
 
-    it('RenderEodCompleted_ValidMessage_DispatchesCompletionPayload', () => {
-      const payload = renderer.renderEodCompleted('Day Complete!');
-      expect(payload.ledColorHex).toBe('#10B981FF');
-      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
+    it('RenderEodCompleted_Triggered_PlaysSeeYouOnce', () => {
+      // Day Complete was a checkmark and two rows: one more event, not the
+      // end of the day.
+      const play = vi.spyOn(
+        (renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer, 'play'
+      ).mockResolvedValue(undefined);
+
+      const payload = renderer.renderEodCompleted();
+
+      expect(play).toHaveBeenCalledWith(FRONT_ANIMATIONS.EOD_COMPLETE, expect.objectContaining({ loop: false }));
+      expect(payload.ledColorHex).toBe('#6366F1FF');
       expect(payload.backElements.some((e: Record<string, unknown>) => (e.text as string)?.includes('END-OF-DAY WRAP-UP COMPLETE'))).toBe(true);
+      renderer.dispose();
+    });
+
+    it('RenderEodCompleted_SceneEnds_ReturnsToTheSession', () => {
+      vi.useFakeTimers();
+      try {
+        const player = (renderer as unknown as { animationPlayer: AnimationPlayer }).animationPlayer;
+        vi.spyOn(player, 'play').mockResolvedValue(undefined);
+        const stop = vi.spyOn(player, 'stop');
+        renderer.renderEodCompleted();
+        expect(renderer.renderActiveSession(null).ledColorHex).toBe('#6366F1FF');
+
+        vi.advanceTimersByTime(EOD_COMPLETE_DISPLAY_SECONDS * 1000);
+
+        expect(stop).toHaveBeenCalled();
+        expect(renderer.renderActiveSession(null).ledColorHex).not.toBe('#6366F1FF');
+      } finally {
+        renderer.dispose();
+        vi.useRealTimers();
+      }
     });
   });
 
@@ -614,13 +641,22 @@ describe('DisplayRenderer Unit Tests', () => {
       ['Unity bake', (r: DisplayRenderer) => r.renderBaking('P', 40), 'icon_bulb_16x16'],
       ['end-of-day prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('EOD', 'Wrap up'), 'icon_clock_16x16'],
       ['lunch prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('LUNCH', 'Lunch'), 'icon_burger_16x16'],
-      ['Day Complete', (r: DisplayRenderer) => r.renderEodCompleted(), 'icon_check_16x16'],
       ['notification without an app icon', (r: DisplayRenderer) => r.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' }), 'icon_bell_16x16'],
       ['OpenProject notification', (r: DisplayRenderer) => r.renderNotificationBanner({ appName: 'OpenProject', title: 'T', body: 'B', iconId: 'openproject' }), 'icon_openproject_16x16']
     ])('Render_%s_AsksForItsAnimatedIcon', (_screen, render, expected) => {
       render(renderer);
 
       expect(lastShown()).toBe(expected);
+    });
+
+    it('RenderEodCompleted_AfterAnAnimatedIcon_TakesTheIconDown', () => {
+      // The scene owns the whole panel; an icon left at z 2 would play on top
+      // of the moon.
+      renderer.renderCompilation('P');
+      renderer.renderEodCompleted();
+
+      expect(lastShown()).toBeNull();
+      renderer.dispose();
     });
 
     it('RenderNotificationBanner_ResolvedAppIcon_KeepsTheAppsMarkStill', () => {

@@ -581,8 +581,7 @@
       pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
       bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
       a notification without an app logo rings its bell, the end-of-day prompt&#39;s
-      alarm clock rings, the lunch prompt&#39;s burger hops, and Day Complete&#39;s tick is
-      retraced. An OpenProject notification passes a shine across the OpenProject logo;
+      alarm clock rings, and the lunch prompt&#39;s burger hops. An OpenProject notification passes a shine across the OpenProject logo;
       other apps&#39; logos stay still. The bar animates them itself. If one ever shows still, the log&#39;s
       <code>[IconAnimator]</code> lines say why, and the screen is otherwise unaffected.</p>
       <h4>Ceremonies</h4>
@@ -803,7 +802,8 @@
       nothing after.</p>
       <p><strong>During a ceremony prompt</strong>, START confirms and BACK dismisses. The end-of-day
       wrap-up asks twice — the first START is &quot;yes&quot;, the second confirms — because it
-      can shut your machine down.</p>
+      can shut your machine down. Once it is done, the bar says <strong>SEE YOU!</strong> for five
+      seconds, a moon rising and the stars coming out, and then goes idle.</p>
       <hr>
       <h3 id="guide-troubleshooting">Troubleshooting</h3>
       <p><strong>The task list is empty.</strong> Check Task Providers for a saved domain and key.
@@ -1429,10 +1429,11 @@
       Which folder each mode plays is <code>FRONT_ANIMATIONS</code> in
       <code>shared/render-constants.ts</code>. A name with no folder behind it fails only as a
       log warning and an empty panel, so <code>animation-assets.test.ts</code> checks every
-      entry against the repository. All six are studio scenes. Task done, task
-      logged and task started are played once (<code>loop: false</code>): the device holds a
-      one-shot&#39;s last frame, and <code>DisplayRenderer</code> returns to the session after
-      each one&#39;s <code>TASK_*_DISPLAY_SECONDS</code>, a little longer than the scene. A
+      entry against the repository. All seven are studio scenes. Task done, task
+      logged, task started and end of day are played once (<code>loop: false</code>): the
+      device holds a one-shot&#39;s last frame, and <code>DisplayRenderer</code> returns to the
+      session after each one&#39;s <code>*_DISPLAY_SECONDS</code>, a little longer than the
+      scene. A
       session update meanwhile is held behind it, which is why the STOP and
       FINISH paths start the scene <em>before</em> stopping the session, and the picker
       plays GO! before releasing its lock. Another task starting ends a scene at
@@ -1450,7 +1451,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1100 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1105 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

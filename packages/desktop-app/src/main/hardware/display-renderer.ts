@@ -8,7 +8,7 @@ import { IPriorityPreemptionEngine, NotificationEventName } from '../services/pr
 import { PixelCanvas } from './pixel-canvas';
 import {
   ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS,
-  TASK_STARTED_DISPLAY_SECONDS
+  TASK_STARTED_DISPLAY_SECONDS, EOD_COMPLETE_DISPLAY_SECONDS
 } from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
@@ -894,34 +894,20 @@ export class DisplayRenderer {
   }
 
   /**
-   * Renders End-of-Day completion screen on Front Display with green checkmark and emerald LED.
+   * Closes the day once the end-of-day wrap-up is done: SEE YOU!, a moon
+   * rising and stars coming out, then the session as it then stands.
+   *
+   * This was the Day Complete screen: a checkmark and two rows, the same
+   * checkmark the tracking, paused and idle screens once shared, and it read
+   * as one more event rather than the end of the day. Still under the
+   * wrap-up's display lock, so a higher-priority screen keeps precedence.
    */
-  public renderEodCompleted(message: string = 'Day Complete!'): DisplayPayload {
-    return this.requestRender('eodWrapUpPriority', () => {
-      this.paintIconAndTwoRows(
-        getBitmapById('checkmark'),
-        'EOD COMPLETE',
-        message,
-        '#10B981',
-        '#FFFFFF',
-        'checkmark'
-      );
-
-      const backElements = [
-        { id: 'rear_eod_done_0', type: 'text', font: 'tiny', x: 0, y: 0, color: '#10B981FF', text: 'END-OF-DAY WRAP-UP COMPLETE', align: 'top_left' },
-        { id: 'rear_eod_done_1', type: 'text', font: 'tiny', x: 0, y: 16, color: '#CCCCCCFF', text: 'All tasks logged & scenes saved.', align: 'top_left' }
-      ];
-
-      this.ledMode = 'SOLID';
-      const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
-        backElements,
-        ledColorHex: '#10B981FF'
-      };
-      void this.transmitFrame('#10B981FF', backElements, payload.frontElements)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      return payload;
-    });
+  public renderEodCompleted(durationSeconds: number = EOD_COMPLETE_DISPLAY_SECONDS): DisplayPayload {
+    return this.requestRender('eodWrapUpPriority', () =>
+      this.playOneShotScene(
+        FRONT_ANIMATIONS.EOD_COMPLETE, durationSeconds, '#6366F1FF', 'SOLID', 'END-OF-DAY WRAP-UP COMPLETE'
+      )
+    );
   }
 
   /**

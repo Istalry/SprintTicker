@@ -641,7 +641,7 @@ looping idle animations.
      copyright and the docs footer. All three replacements had run in the app
      on the bar first. `Animations/` is now entirely ours; the old sets remain
      in history. The `seq2anim` toolchain stays, by choice.
-   - [ ] **Every screen, redone** (from 2026-09-30). An inventory of all
+   - [x] **Every screen, redone** (2026-09-30). An inventory of all
      twenty screens, rendered through the real renderer, found the checkmark
      shared by the tracking, paused, idle and Day Complete screens, the
      paused title cut to "SPR-...", and the Unity screens laying out the same
@@ -690,7 +690,11 @@ looping idle animations.
        reverse, landing on the tracking screen's icon. Found on the way: every
        lock release stopped the scene playing, so GO! would have lasted a
        frame.
-     - [ ] 9c, the rest: the end-of-day scene.
+     - [x] 9c, SEE YOU! at the end of the day (2026-09-30): a moon rising
+       over a dusk plate and three stars coming out, in place of Day
+       Complete's checkmark and two rows. The wrap-up's lock release now uses
+       the scene's own duration. The animated check has no screen left; it
+       stays until it is either given one or removed on its own.
 5. The rear OLED, below.
 
 Dropped on the same date, by choice rather than blocker: the lunch and break
@@ -875,7 +879,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.12 statements / 77.84 branches / 86.95 functions / 88.27 lines across 1100
+**86.09 statements / 77.87 branches / 86.81 functions / 88.26 lines across 1105
 tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

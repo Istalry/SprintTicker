@@ -1,0 +1,294 @@
+{
+  "version": 1,
+  "id": "eod_moon_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 240,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#1E1B4B",
+      "colorB": "#4A2338",
+      "direction": "vertical",
+      "outline": "#6366F1",
+      "outlineBottom": "#3B2E5A",
+      "highlight": "#2E2A6B",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "moon",
+      "name": "Moon",
+      "visible": true,
+      "type": "sprite",
+      "x": 5,
+      "y": 2,
+      "loopFrom": 0,
+      "anchorX": 5.5,
+      "anchorY": 11,
+      "shutter": 0.5,
+      "sprite": {
+        "width": 11,
+        "height": 11,
+        "palette": {
+          "m": "#FCD34D",
+          "M": "#FEF3C7"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "....M......",
+              "..MM.......",
+              ".MMm.......",
+              ".Mmm.......",
+              "Mmmm.......",
+              "Mmmm.......",
+              "Mmmmm......",
+              ".Mmmmmm....",
+              ".MMmmmmmmm.",
+              "..MMmmmmm..",
+              "....Mmm...."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "y": [
+          {
+            "frame": 0,
+            "value": 17.0,
+            "ease": "out"
+          },
+          {
+            "frame": 44,
+            "value": 2.0,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "star-0",
+      "name": "Star 0",
+      "visible": true,
+      "type": "sprite",
+      "x": 16,
+      "y": 2,
+      "loopFrom": 4,
+      "anchorX": 1.5,
+      "anchorY": 1.5,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 3,
+        "height": 3,
+        "palette": {
+          "S": "#FFFFFF",
+          "s": "#A5B4FC"
+        },
+        "frames": [
+          {
+            "duration": 50,
+            "rows": [
+              "...",
+              "...",
+              "..."
+            ]
+          },
+          {
+            "duration": 4,
+            "rows": [
+              "...",
+              ".S.",
+              "..."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".s.",
+              "sSs",
+              ".s."
+            ]
+          },
+          {
+            "duration": 6,
+            "rows": [
+              "...",
+              ".S.",
+              "..."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".s.",
+              "sSs",
+              ".s."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "star-1",
+      "name": "Star 1",
+      "visible": true,
+      "type": "sprite",
+      "x": 2,
+      "y": 1,
+      "loopFrom": 4,
+      "anchorX": 1.5,
+      "anchorY": 1.5,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 3,
+        "height": 3,
+        "palette": {
+          "S": "#FFFFFF",
+          "s": "#A5B4FC"
+        },
+        "frames": [
+          {
+            "duration": 64,
+            "rows": [
+              "...",
+              "...",
+              "..."
+            ]
+          },
+          {
+            "duration": 4,
+            "rows": [
+              "...",
+              ".S.",
+              "..."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".s.",
+              "sSs",
+              ".s."
+            ]
+          },
+          {
+            "duration": 6,
+            "rows": [
+              "...",
+              ".S.",
+              "..."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".s.",
+              "sSs",
+              ".s."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "star-2",
+      "name": "Star 2",
+      "visible": true,
+      "type": "sprite",
+      "x": 15,
+      "y": 10,
+      "loopFrom": 4,
+      "anchorX": 1.5,
+      "anchorY": 1.5,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 3,
+        "height": 3,
+        "palette": {
+          "S": "#FFFFFF",
+          "s": "#A5B4FC"
+        },
+        "frames": [
+          {
+            "duration": 78,
+            "rows": [
+              "...",
+              "...",
+              "..."
+            ]
+          },
+          {
+            "duration": 4,
+            "rows": [
+              "...",
+              ".S.",
+              "..."
+            ]
+          },
+          {
+            "duration": 8,
+            "rows": [
+              ".s.",
+              "sSs",
+              ".s."
+            ]
+          },
+          {
+            "duration": 6,
+            "rows": [
+              "...",
+              ".S.",
+              "..."
+            ]
+          },
+          {
+            "duration": 1,
+            "rows": [
+              ".s.",
+              "sSs",
+              ".s."
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "SEE YOU!",
+      "font": "bold-9",
+      "color": "#EEF2FF",
+      "x": 22,
+      "y": 4,
+      "width": 48,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#0B0A24",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

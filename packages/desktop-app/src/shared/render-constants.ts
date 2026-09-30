@@ -20,9 +20,9 @@ import type { BitmapIconId } from './dtos';
  * log and an empty panel -- so `animation-assets.test.ts` checks every entry
  * here against the repository.
  *
- * All six are our own, drawn in `packages/anim-studio/scenes/`. Each has its
- * own plate colour -- teal, purple, blue, green, amber, emerald -- so the mode
- * reads at a glance.
+ * All seven are our own, drawn in `packages/anim-studio/scenes/`. Each has its
+ * own plate colour -- teal, purple, blue, green, amber, emerald, and a dusk
+ * gradient for the end of the day -- so the mode reads at a glance.
  */
 export const FRONT_ANIMATIONS = {
   LUNCH: 'lunch_sandwich_72x16',
@@ -34,6 +34,8 @@ export const FRONT_ANIMATIONS = {
   TASK_LOGGED: 'task_logged_72x16',
   /** A task started from the bar. Played once: see TASK_STARTED_DISPLAY_SECONDS. */
   TASK_STARTED: 'task_started_72x16',
+  /** The wrap-up done. Played once: see EOD_COMPLETE_DISPLAY_SECONDS. */
+  EOD_COMPLETE: 'eod_moon_72x16',
 } as const;
 
 /**
@@ -61,6 +63,15 @@ export const TASK_LOGGED_DISPLAY_SECONDS = 3;
  * own icon, and what the user wants next is to see which task is running.
  */
 export const TASK_STARTED_DISPLAY_SECONDS = 2;
+
+/**
+ * How long SEE YOU! holds the display once the end-of-day wrap-up is done.
+ *
+ * Also when the wrap-up releases its display lock, so the scene and the lock
+ * end together: the release used to be a separate `5000` in the IPC handler.
+ * A second longer than the scene (4 s), resting on the last star.
+ */
+export const EOD_COMPLETE_DISPLAY_SECONDS = 5;
 
 /**
  * Icons that animate on the device, by the static bitmap they stand over.

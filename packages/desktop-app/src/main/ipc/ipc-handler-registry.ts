@@ -29,6 +29,7 @@ import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue 
 import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
+import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -483,13 +484,14 @@ export class IPCHandlerRegistry {
       }
 
       // 3. Render EOD completion screen on hardware display
-      this.renderer.renderEodCompleted('Day Complete!');
+      this.renderer.renderEodCompleted();
 
-      // 4. Release display lock after 5 seconds to return to background active/idle display
+      // 4. Release display lock once the scene is over, to return to the
+      // background active/idle display
       //
       // The test branch releases at once instead. Audit F-35 flagged this shape
       // as test logic in production code, and it is -- kept because the
-      // alternative is worse: a 5s timer either leaves a handle open past the
+      // alternative is worse: a timer of seconds either leaves a handle open past the
       // end of the run, or makes every EOD test wait out five real seconds.
       // What differs between the branches is only *when* the lock is released,
       // never whether, so no assertion here depends on the branch it took.
@@ -502,7 +504,7 @@ export class IPCHandlerRegistry {
           } catch {
             // Ignore if app closed
           }
-        }, 5000);
+        }, EOD_COMPLETE_DISPLAY_SECONDS * 1000);
       } else {
         this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
       }

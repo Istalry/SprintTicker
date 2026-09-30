@@ -103,8 +103,7 @@ The icons move. While scripts compile the gear turns; during Play Mode the
 pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
 bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
 a notification without an app logo rings its bell, the end-of-day prompt's
-alarm clock rings, the lunch prompt's burger hops, and Day Complete's tick is
-retraced. An OpenProject notification passes a shine across the OpenProject logo;
+alarm clock rings, and the lunch prompt's burger hops. An OpenProject notification passes a shine across the OpenProject logo;
 other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
 `[IconAnimator]` lines say why, and the screen is otherwise unaffected.
 
@@ -267,7 +266,8 @@ nothing after.
 
 **During a ceremony prompt**, START confirms and BACK dismisses. The end-of-day
 wrap-up asks twice — the first START is "yes", the second confirms — because it
-can shut your machine down.
+can shut your machine down. Once it is done, the bar says **SEE YOU!** for five
+seconds, a moon rising and the stars coming out, and then goes idle.
 
 ---
 

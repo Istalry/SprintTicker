@@ -415,10 +415,11 @@ scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.jso
   Which folder each mode plays is `FRONT_ANIMATIONS` in
   `shared/render-constants.ts`. A name with no folder behind it fails only as a
   log warning and an empty panel, so `animation-assets.test.ts` checks every
-  entry against the repository. All six are studio scenes. Task done, task
-  logged and task started are played once (`loop: false`): the device holds a
-  one-shot's last frame, and `DisplayRenderer` returns to the session after
-  each one's `TASK_*_DISPLAY_SECONDS`, a little longer than the scene. A
+  entry against the repository. All seven are studio scenes. Task done, task
+  logged, task started and end of day are played once (`loop: false`): the
+  device holds a one-shot's last frame, and `DisplayRenderer` returns to the
+  session after each one's `*_DISPLAY_SECONDS`, a little longer than the
+  scene. A
   session update meanwhile is held behind it, which is why the STOP and
   FINISH paths start the scene *before* stopping the session, and the picker
   plays GO! before releasing its lock. Another task starting ends a scene at
@@ -439,7 +440,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1100 tests across 58 files. `coverage.include` is `src/main/**` and
+Vitest, 1105 tests across 58 files. `coverage.include` is `src/main/**` and
 `src/shared/**` — **the renderer is not measured**, which is roughly 4,700 lines
 of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
 lowered.

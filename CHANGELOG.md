@@ -17,9 +17,8 @@ reported something other than the truth, in three different ways.
   animates it too.
 - **Every event icon of ours moves.** The Play Mode pad is played, the
   exception triangle shakes, the notification bell swings, the end-of-day
-  alarm clock rings, the lunch-prompt burger hops, and Day Complete's tick is
-  retraced. Work in progress moves steadily; an event acts, then
-  rests. App logos in notifications stay as they are.
+  alarm clock rings, and the lunch-prompt burger hops. Work in progress moves
+  steadily; an event acts, then rests. App logos in notifications stay as they are.
 - **The session screen shows where you are.** A stopwatch replaces the
   checkmark that the tracking, paused, idle and Day Complete screens all
   shared: green while a task runs, amber with blinking pause bars while
@@ -57,7 +56,7 @@ reported something other than the truth, in three different ways.
 - **The icons were reviewed, and five reworked.** The end-of-day prompt shows
   an alarm clock that rings, in place of a plain clock. The Play Mode pad is
   played: buttons go down, the pad dips, the stick is pushed. The lunch burger
-  hops layer by layer instead of squashing, and Day Complete's tick is
+  hops layer by layer instead of squashing, and the check's tick is
   retraced by a pen instead of scaled up. The exception triangle starts from
   its still.
 - **OpenProject notifications shine.** A light sweeps once across the
@@ -82,6 +81,12 @@ reported something other than the truth, in three different ways.
   it lands at three with a quarter filled -- the tracking screen's own icon,
   which follows two seconds later. The menu used to vanish into the tracking
   screen with nothing to say the click had landed.
+- **The day ends on SEE YOU!** Once the end-of-day wrap-up is done, a
+  crescent moon rises over a dusk sky and three stars come out, one twinkle
+  each, for five seconds. It replaces the Day Complete screen, a checkmark and
+  two rows that read as one more event rather than the end of the day. The
+  wrap-up's display lock now ends with the scene, where it was a separate
+  five seconds of its own.
 - **A scene is no longer cut off when a lock is released under it.** Every
   release restores the work screen, and that stopped whatever was playing:
   GO! would have lasted a frame, and a banner ending during DONE! cut it
