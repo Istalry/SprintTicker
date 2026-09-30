@@ -296,6 +296,11 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
+- **A much smaller installer.** The app inside it went from about 73 MB to
+  about 5 MB. It had been carrying React, the icon set and the fonts twice --
+  once bundled, once as the source they were bundled from -- plus SQLite's
+  source code, database binaries for macOS and Linux, a library the app never
+  used, and compiled files left over from July.
 - **React 19.** The renderer moved from React 18, and `lucide-react` from
   0.359 to 1.48 with it, since the old icons capped React at 18. Nothing
   should look different.

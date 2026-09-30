@@ -1,6 +1,7 @@
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { ELECTRON_CHROME_TARGET } from './build-targets';
 
 /**
  * The renderer's Content-Security-Policy, injected into the built HTML only.
@@ -60,6 +61,7 @@ export default defineConfig({
   plugins: [react(), cspPlugin()],
   publicDir: path.join(__dirname, 'public'),
   build: {
+    target: ELECTRON_CHROME_TARGET,
     outDir: path.join(__dirname, 'dist/renderer'),
     emptyOutDir: true,
     rollupOptions: {

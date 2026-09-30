@@ -10,19 +10,73 @@
  * Latin subset only, and only the weights tailwind.config.js references.
  * @fontsource ships every weight and italic across a dozen subsets: the
  * unqualified `400.css` imports pulled 83 files and 1.8 MB into the bundle for
- * a UI whose entire text is English. `latin-*` brings it to 7 files.
+ * a UI whose entire text is English.
  *
- * If the UI is ever localised, swap these for the unqualified imports rather
- * than adding subsets one at a time -- a missing subset renders as tofu, and
- * it will not be obvious which import was responsible.
+ * Declared here rather than through @fontsource's `latin-*.css`, because each
+ * of those lists a `.woff` fallback after the `.woff2`, and Vite emits every
+ * file a stylesheet names. Chromium always takes the woff2, so the seven
+ * `.woff` files -- 208 kB -- shipped in every installer and were never read.
+ * These are the same faces, pointing at the same files, woff2 only.
+ *
+ * If the UI is ever localised, go back to the unqualified @fontsource imports
+ * rather than adding subsets one at a time -- a missing subset renders as
+ * tofu, and it will not be obvious which declaration was responsible.
  */
-@import '@fontsource/inter/latin-400.css';
-@import '@fontsource/inter/latin-500.css';
-@import '@fontsource/inter/latin-600.css';
-@import '@fontsource/inter/latin-700.css';
-@import '@fontsource/jetbrains-mono/latin-400.css';
-@import '@fontsource/jetbrains-mono/latin-600.css';
-@import '@fontsource/jetbrains-mono/latin-700.css';
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/inter/files/inter-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/inter/files/inter-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('@fontsource/inter/files/inter-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/inter/files/inter-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2') format('woff2');
+}
 
 @tailwind base;
 @tailwind components;

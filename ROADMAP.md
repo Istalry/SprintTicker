@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1130
-tests in 62 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
+**86.04 statements / 77.85 branches / 86.73 functions / 88.2 lines across 1133
+tests in 64 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1033,8 +1033,37 @@ already measures.
   tests (no React warnings on stderr) and a production build all pass.
   lucide is 1.48 rather than 1.49 because 1.49 was younger than pnpm's
   minimum release age; see `CLAUDE.md` §2.
-- **Renderer bundle audit.** Electron 44 ships a much newer Chromium, so several
-  `@vitejs/plugin-react` and browserslist assumptions are now conservative.
+- [x] **Bundle audit** (2026-09-30). Measured on a packaged `--dir` build. The
+  app inside the installer went from a **45.7 MB app.asar plus 27 MB unpacked
+  to 1.4 MB plus 3.9 MB**. The build-target question it was opened for turned
+  out to be worth nothing; the packaging was worth nearly everything:
+  - **Runtime `dependencies` held what Vite had already bundled.**
+    electron-builder packs every `dependencies` entry, so lucide-react
+    (22.5 MB of source), react-dom, React and the fonts shipped beside the
+    bundle containing them -- 39 MB of a 42 MB asar. They are devDependencies
+    now; `dependencies` is exactly what main loads at runtime
+    (`better-sqlite3`, `ws`), held equal to the Vite externals by
+    `runtime-dependencies.test.ts`.
+  - **Three dependencies were dead.** `@busy-app/busy-lib` was never imported
+    (it and protobufjs came to 4.3 MB), and `bindings` / `file-uri-to-path`
+    were better-sqlite3 11's loader, unused since 13.
+  - **better-sqlite3 shipped its SQLite sources and every platform's binary.**
+    It loads one N-API prebuild; `deps/`, `src/`, the macOS and Linux prebuilds
+    and `node-addon-api` are excluded in electron-builder.json.
+  - **Stale compiled files shipped.** main and preload build with
+    `emptyOutDir: false` for the dev watchers, so 56 files from July --
+    including the deleted updater and a Notion provider -- sat in `dist/` and
+    went into every installer. `build` now deletes `dist/` first.
+  - Source maps (1 MB, loaded by nothing at runtime; main is unminified anyway)
+    are excluded from the package, `public/` is no longer copied into main and
+    preload, and the fonts ship woff2 only (-208 kB of `.woff` Chromium never
+    reads).
+  - **Targets:** `node18` -> `node24` for main and preload, `chrome152` for the
+    renderer, and `electron 44.0` for autoprefixer, all in `build-targets.ts`
+    and tied to the Electron major by a test. The JS output is byte-identical;
+    the CSS lost 1.2 kB of prefixes. Correct rather than smaller.
+  - The renderer's own JS was already healthy: 430 kB, react-dom most of it,
+    lucide tree-shaken to 41 kB for 57 icons.
 
 ## Deferred findings
 

@@ -109,6 +109,26 @@ appeared, revert it and ask for the newest version old enough instead (1.48.0
 there). An exclusion is a decision for the user, not something to keep
 because a tool wrote it.
 
+**`dependencies` is what ships, not what the code uses.** electron-builder
+packs every `dependencies` entry into app.asar, while Vite has already bundled
+everything main and the renderer import except the externals in
+`vite.config.electron.ts`. So a package the renderer uses belongs in
+**devDependencies**, and `dependencies` is exactly the non-builtin externals --
+today `better-sqlite3` and `ws`. `runtime-dependencies.test.ts` holds the two
+lists equal: React and lucide in `dependencies` were 39 MB of a 42 MB asar,
+and an external missing from `dependencies` would crash only the packaged app
+on its first `require`, never `pnpm dev`.
+
+**The build targets are a pair with the Electron version**, like
+better-sqlite3. `build-targets.ts` holds Electron's Node and Chromium versions,
+read off Electron itself; its test fails when the installed Electron major
+moves. Read the new ones with `ELECTRON_RUN_AS_NODE=1 npx electron -p
+"JSON.stringify(process.versions)"`.
+
+**Never name a script `clean`.** pnpm 11 has a built-in `pnpm clean`, which
+deletes `node_modules`, and a built-in shadows a script of the same name. The
+build's step is `clean:dist`, invoked as `pnpm run clean:dist`.
+
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and
 `package:win` will happily build an installer with a broken icon and no
