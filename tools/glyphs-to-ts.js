@@ -56,14 +56,16 @@ const STUDIO_FONTS = {
  * Every font there is. The sheet name is also the generated file's name.
  *
  * The first two draw the front display's text rows. The two display faces
- * exist for the animation studio's large scene text and are never drawn by
- * the app: Bold 9 for a one-line title, Bold 7 for two lines.
+ * are the animation studio's large scene text: Bold 9 for a one-line title,
+ * Bold 7 for two lines. Bold 7 lives with the app's fonts because the app
+ * also draws the running timer in it, and the app cannot import from the
+ * studio; Bold 9 is never drawn by the app and stays in the studio.
  */
 const FONTS = [
   { sheet: 'sprint-5', exportName: 'SPRINT_5', ...APP_FONTS },
   { sheet: 'sprint-small', exportName: 'SPRINT_SMALL', ...APP_FONTS },
-  { sheet: 'sprint-bold-9', exportName: 'SPRINT_BOLD_9', ...STUDIO_FONTS },
-  { sheet: 'sprint-bold-7', exportName: 'SPRINT_BOLD_7', ...STUDIO_FONTS }
+  { sheet: 'sprint-bold-7', exportName: 'SPRINT_BOLD_7', ...APP_FONTS },
+  { sheet: 'sprint-bold-9', exportName: 'SPRINT_BOLD_9', ...STUDIO_FONTS }
 ];
 
 /** Printable ASCII, plus the ellipsis that marks a truncated row. */

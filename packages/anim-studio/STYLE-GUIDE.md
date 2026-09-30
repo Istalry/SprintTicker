@@ -109,12 +109,14 @@ The icons so far, and which rhythm each follows:
 | Burger | Lunch prompt | event | crouches, then the layers hop top first and pack down on landing |
 | Check | Day Complete | event | a pen retraces the tick, which then hops a pixel |
 | OpenProject | OpenProject notification | event | a light sweeps across once; shape and blue untouched |
+| Stopwatch, tracking | Session running | steady | a seconds hand ticks round once a second, the elapsed wedge filling behind it; the crown clicks at each lap |
 | Stopwatch, paused | Paused session | steady | the pause bars dim for half a second in every one and a half |
 
-The stopwatch has two more states that stay still, since they are on screen
-for hours: green with a quarter filled while tracking, dim grey when idle. All
-three are one drawing, so the session screen reads as one object changing
-state.
+Idle, dim grey, stays still. Tracking used to as well, being on screen for
+hours, and read as nothing happening; a tick a second with a rest between is
+steady without being busy. Its rest pose is the hand at three with a quarter
+filled, so the loop starts on the fourth tick of twelve. All three states are
+one drawing, so the session screen reads as one object changing state.
 
 Brightness that pulses must change **in steps**, and a sprite palette keeps the
 **most frequent colours exact**. Otherwise each channel rounds differently

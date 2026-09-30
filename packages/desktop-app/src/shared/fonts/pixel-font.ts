@@ -8,6 +8,7 @@
  */
 
 import { SPRINT_5 } from './sprint-5';
+import { SPRINT_BOLD_7 } from './sprint-bold-7';
 import { SPRINT_SMALL } from './sprint-small';
 
 /** One character, drawn at the full height of its font. */
@@ -49,5 +50,16 @@ export function fontHeight(font: PixelFont): number {
  */
 export const ROW0_FONT: PixelFont = SPRINT_5;
 
-/** The font for row 1 -- the timer, a task title, a message body. */
+/** The font for row 1 -- a task title, a message body, a status line. */
 export const ROW1_FONT: PixelFont = SPRINT_SMALL;
+
+/**
+ * The font for the running timer, which has row 1 to itself while a task is
+ * tracked: 7px capitals with 2px strokes, readable across a room where the
+ * condensed row-1 face is not.
+ *
+ * Digits only in practice, and every digit is the same 6px wide, so HH:MM is
+ * 30px whatever the time and the colon never shifts as the minutes turn.
+ * The face has no lowercase; nothing but a time may be drawn in it.
+ */
+export const TIMER_FONT: PixelFont = SPRINT_BOLD_7;

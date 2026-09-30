@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "id": "icon_stopwatch_16x16",
+  "width": 16,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 720,
+  "layers": [
+    {
+      "id": "icon",
+      "name": "Icon",
+      "visible": true,
+      "type": "sprite",
+      "x": 0,
+      "y": 0,
+      "loopFrom": 0,
+      "anchorX": 8,
+      "anchorY": 8,
+      "shutter": 0,
+      "sprite": {
+        "width": 16,
+        "height": 16,
+        "palette": {
+          "a": "#D1D5DB",
+          "b": "#9CA3AF",
+          "c": "#6EE7B7",
+          "d": "#10B981",
+          "e": "#F0FDF4",
+          "f": "#34D399",
+          "g": "#A7F3D0",
+          "h": "#047857",
+          "i": "#064E3B"
+        },
+        "frames": [
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfeeeiiiifdh..",
+              ".ddeeeeeeeeehh..",
+              ".ddeeeeeeeeehh..",
+              ".ddeeeeeeeeehh..",
+              "..ddeeeeeeehh...",
+              "...dheefeehh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfeeeiiggfdh..",
+              ".ddeeeeeiigghh..",
+              ".ddeeeeeeeighh..",
+              ".ddeeeeeeeeehh..",
+              "..ddeeeeeeehh...",
+              "...dheefeehh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfeeeigggfdh..",
+              ".ddeeeeiiggghh..",
+              ".ddeeeeeiggghh..",
+              ".ddeeeeeeigghh..",
+              "..ddeeeeeeghh...",
+              "...dheefeehh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfeeeigggfdh..",
+              ".ddeeeeigggghh..",
+              ".ddeeeeigggghh..",
+              ".ddeeeeigggghh..",
+              "..ddeeeeggghh...",
+              "...dheefgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfeeeigggfdh..",
+              ".ddeeeiggggghh..",
+              ".ddeeeiggggghh..",
+              ".ddeeigggggghh..",
+              "..ddegggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfeeeigggfdh..",
+              ".ddeeiiggggghh..",
+              ".ddeiggggggghh..",
+              ".ddggggggggghh..",
+              "..ddggggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggggdd..",
+              ".cceeeeeggggdh..",
+              ".cdfiiiigggfdh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              "..ddggggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".ccgieeeggggdd..",
+              ".ccggiieggggdh..",
+              ".cdfgggigggfdh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              "..ddggggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..ccgieegggdd...",
+              ".ccgggieggggdd..",
+              ".ccgggieggggdh..",
+              ".cdfgggigggfdh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              "..ddggggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 12,
+            "rows": [
+              "................",
+              "......aaa..aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...ccggfggdd....",
+              "..ccgggigggdd...",
+              ".ccggggiggggdd..",
+              ".ccggggiggggdh..",
+              ".cdfgggigggfdh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              "..ddggggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 48,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...ccggfggdd....",
+              "..ccgggigggdd...",
+              ".ccggggiggggdd..",
+              ".ccggggiggggdh..",
+              ".cdfgggigggfdh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              ".ddggggggggghh..",
+              "..ddggggggghh...",
+              "...dhggfgghh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegiedd...",
+              ".cceeeeeieeedd..",
+              ".cceeeeiieeedh..",
+              ".cdfeeeieeefdh..",
+              ".ddeeeeeeeeehh..",
+              ".ddeeeeeeeeehh..",
+              ".ddeeeeeeeeehh..",
+              "..ddeeeeeeehh...",
+              "...dheefeehh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefggdd....",
+              "..cceeeegggdd...",
+              ".cceeeeeggiedd..",
+              ".cceeeeeiieedh..",
+              ".cdfeeeieeefdh..",
+              ".ddeeeeeeeeehh..",
+              ".ddeeeeeeeeehh..",
+              ".ddeeeeeeeeehh..",
+              "..ddeeeeeeehh...",
+              "...dheefeehh....",
+              "....hhhhhhh.....",
+              "................"
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    }
+  ]
+}

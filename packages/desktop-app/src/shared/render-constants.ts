@@ -67,8 +67,12 @@ export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   burger: 'icon_burger_16x16',
   checkmark: 'icon_check_16x16',
   openproject: 'icon_openproject_16x16',
-  // Waiting rather than working: the pause bars blink slowly. The tracking
-  // stopwatch stays still, since it is on screen all day.
+  // The session itself. Tracking ticks a seconds hand once a second round the
+  // face, the elapsed wedge filling behind it -- the device animates it, so
+  // the frame need only change once a minute for HH:MM. It used to stay still
+  // because it is on screen all day; still, it read as nothing happening.
+  stopwatch: 'icon_stopwatch_16x16',
+  // Waiting rather than working: the pause bars blink slowly.
   stopwatch_paused: 'icon_stopwatch_paused_16x16',
 };
 

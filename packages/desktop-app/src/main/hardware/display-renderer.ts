@@ -15,7 +15,7 @@ import { IconAnimator } from './icon-animator';
 import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { measureText } from '../../shared/proportional-text';
-import { ROW0_FONT, ROW1_FONT } from '../../shared/fonts/pixel-font';
+import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
 
 /** The paused screen's STOP/FINISH bars: row 1's capitals fit inside 7px. */
 const PAUSED_BAR_Y = 9;
@@ -1022,10 +1022,19 @@ export class DisplayRenderer {
       if (isPaused) {
         this.paintPausedRows(titleText, timerText, row0Color);
       } else {
-        // Row 0: Task Title
-        this.canvas.drawTextClipped(titleText, 17, 0, row0Color, 55);
-        // Row 1: Task Timer (HH:MM:SS)
-        this.canvas.drawSmallText(timerText, 17, 8, row1Color, 55);
+        const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+        this.canvas.drawTextClipped(titleText, layout.TEXT_X, layout.ROW0_Y, row0Color, layout.TEXT_FIELD_WIDTH);
+        if (session) {
+          // Large, because it is the one thing read from across the room.
+          // Still HH:MM: the seconds are the stopwatch's hand, animated by the
+          // device, so the frame changes once a minute rather than every
+          // second (two HTTP requests and a flash write each).
+          this.canvas.drawTextClipped(
+            timerText, layout.TEXT_X, layout.ROW1_Y, row1Color, layout.TEXT_FIELD_WIDTH, TIMER_FONT
+          );
+        } else {
+          this.canvas.drawSmallText(timerText, layout.TEXT_X, layout.ROW1_Y, row1Color, layout.TEXT_FIELD_WIDTH);
+        }
       }
 
       const backElements = this.buildRearElements(session);

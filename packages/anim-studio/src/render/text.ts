@@ -1,18 +1,18 @@
 import type { PixelFont, PixelGlyph } from '../../../desktop-app/src/shared/fonts/pixel-font';
 import { SPRINT_5 } from '../../../desktop-app/src/shared/fonts/sprint-5';
 import { SPRINT_SMALL } from '../../../desktop-app/src/shared/fonts/sprint-small';
-import { SPRINT_BOLD_7 } from '../fonts/sprint-bold-7';
+import { SPRINT_BOLD_7 } from '../../../desktop-app/src/shared/fonts/sprint-bold-7';
 import { SPRINT_BOLD_9 } from '../fonts/sprint-bold-9';
 import type { FontId } from '../model/scene';
 
 /**
  * The fonts a scene can use.
  *
- * The two row fonts are the app's own, imported in place rather than copied,
- * so a glyph retouched in the app's sheet shows up here on the next build. The
+ * The two row fonts and Bold 7 are the app's own, imported in place rather
+ * than copied, so a glyph retouched in the app's sheet shows up here on the
+ * next build. Bold 7 is there because the app draws its timer in it. The
  * paths are relative rather than aliased, so they resolve the same under tsc,
- * Vitest and the dev server's SSR loader. The two display faces exist only
- * for scenes.
+ * Vitest and the dev server's SSR loader. Bold 9 exists only for scenes.
  */
 export const SCENE_FONTS: Record<FontId, PixelFont> = {
   'bold-9': SPRINT_BOLD_9,

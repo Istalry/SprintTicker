@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fontHeight, PixelFont, ROW0_FONT, ROW1_FONT } from '../src/shared/fonts/pixel-font';
+import { fontHeight, PixelFont, ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../src/shared/fonts/pixel-font';
 import { SPRINT_5 } from '../src/shared/fonts/sprint-5';
 import { SPRINT_SMALL } from '../src/shared/fonts/sprint-small';
 import { advanceOf, glyphFor, measureText, fitToWidth, ELLIPSIS } from '../src/shared/proportional-text';
@@ -98,6 +98,31 @@ describe.each([
 
     expect(fitted.endsWith(ELLIPSIS)).toBe(true);
     expect(measureText(fitted, font)).toBeLessThanOrEqual(FIELD);
+  });
+});
+
+describe('the timer font', () => {
+  it('Glyphs_Digits_AreAllTheSameWidth', () => {
+    // A running timer must not shift left and right as it counts.
+    const widths = new Set('0123456789'.split('').map(d => glyphFor(d, TIMER_FONT).width));
+    expect(widths.size).toBe(1);
+  });
+
+  it('Glyphs_EveryCharacterOfATime_HasItsOwnGlyph', () => {
+    // A display face holds capitals and some punctuation, not all of ASCII;
+    // what the timer draws must all be there, or it draws `?`.
+    const question = shapeOf('?', TIMER_FONT).join('/');
+    for (const char of '0123456789:') {
+      expect(TIMER_FONT.glyphs[char], char).toBeDefined();
+      expect(shapeOf(char, TIMER_FONT).join('/'), char).not.toBe(question);
+    }
+  });
+
+  it('Metrics_HeightAndWidth_FitRowOneBesideTheIcon', () => {
+    // Row 1 is y=8 to 15, and the longest session a day holds is two digits
+    // of hours.
+    expect(fontHeight(TIMER_FONT)).toBeLessThanOrEqual(8);
+    expect(measureText('88:88', TIMER_FONT)).toBeLessThanOrEqual(FIELD);
   });
 });
 

@@ -737,9 +737,10 @@
       Text that does not fit ends in <code>…</code>. Accented letters are shown without their
       accents, since the display draws plain ASCII only.</p>
       <p>The session screen&#39;s icon is a stopwatch whose colour says where you are: green
-      with a quarter filled while a task runs, amber with blinking pause bars while
-      it is paused, dim grey when nothing runs (the screen then reads <strong>Ready / No
-      task running</strong>). While paused, row 0 shows the task key and its time, and row
+      while a task runs, its hand ticking round once a second; amber with blinking
+      pause bars while it is paused; dim grey when nothing runs (the screen then
+      reads <strong>Ready / No task running</strong>). While a task runs, row 0 shows the task and
+      row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
       1 offers <strong>STOP</strong> and <strong>FINISH</strong> side by side; turn the wheel left for STOP,
       right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open; FINISH also marks it
       done.</p>
@@ -751,7 +752,9 @@
       <p></p>
       <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
       redraw would mean an upload a second for a digit nobody reads, so the tracker
-      deliberately shows minutes.</p>
+      deliberately shows minutes. The stopwatch&#39;s ticking hand is the bar&#39;s own
+      animation: it shows that the clock is running, and is not the seconds of your
+      session.</p>
       </div>
       <h4>Controls</h4>
       <div class="table-wrap"><table>
@@ -1437,7 +1440,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1064 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
+      <p>Vitest, 1076 tests across 58 files. <code>coverage.include</code> is <code>src/main/**</code> and
       <code>src/shared/**</code> — <strong>the renderer is not measured</strong>, which is roughly 4,700 lines
       of TSX. The floor is a ratchet (84 / 75 / 85 / 86.5) and is raised, never
       lowered.</p>

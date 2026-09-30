@@ -354,6 +354,9 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,
 check what actually changes: `transmitFrame` deduplicates by hashing the frame,
 and the timer deliberately shows `HH:MM` rather than seconds for this reason.
+The seconds are the tracking stopwatch's hand: an animated icon the device
+plays, which costs nothing per frame and keeps its own time. Do not "sync" it
+to the session by redrawing; that is the per-second traffic this avoids.
 
 The rear 160×80 OLED is **preview only** in this build. `buildRearElements` feeds
 the on-screen emulator; `transmitFrame` sends the front matrix and nothing else.
@@ -369,6 +372,13 @@ drawn as ASCII art in `packages/desktop-app/fonts/*.glyphs`. The generator
   Those rules are the fixes for what the previous row-1 font got wrong: 55
   missing characters that drew as `?`, and `g` identical to `q`.
 
+The running timer is set in a third font, **Sprint Bold 7** (`TIMER_FONT`):
+7px, 2px strokes, capitals, digits and some punctuation, **no lowercase**, so
+draw nothing in it but a time. It is also the studio's two-line title face.
+Its sheet lives in the app's `fonts/` because the app cannot import from the
+studio; the studio reads the generated file from `shared/fonts/`, as it does
+the row fonts. Bold 9 is the studio's alone and stays there.
+
 `i` advances 2px and `M` advances 6, so anything asking "does this fit" must call
 `measureText` / `fitToWidth` in `shared/proportional-text.ts`, **with the font
 the text will be drawn in**. The font is a required argument for that reason.
@@ -377,7 +387,8 @@ The composer and `PixelCanvas` both take it from `ROW0_FONT` / `ROW1_FONT` in
 truncates every row twice, and the second cut lands mid-word with no marker.
 
 Constraints a new glyph must keep:
-- Digits share one width, so a running timer does not shift.
+- Digits share one width, in all three fonts, so a running timer does not
+  shift.
 - Row 1's capitals stay within the ascent: the paused screen draws STOP and
   FINISH inside 7px highlight bars.
 - Row 0's descenders end above y=8, where row 1 starts.

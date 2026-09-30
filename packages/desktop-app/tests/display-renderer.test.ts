@@ -9,7 +9,7 @@ import {
   FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
 } from '../src/shared/pixel-bitmaps';
 import { measureText } from '../src/shared/proportional-text';
-import { ROW0_FONT, ROW1_FONT } from '../src/shared/fonts/pixel-font';
+import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../src/shared/fonts/pixel-font';
 import { ArgumentException } from '../src/shared/dtos';
 import { HardwareDisplayStateDTO } from '../src/shared/dtos';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
@@ -499,8 +499,9 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(lastShown()).toBeNull();
     });
 
-    it('RenderActiveSession_Tracking_KeepsItsIconStill', () => {
-      // On screen all day: a moving icon there would be a distraction.
+    it('RenderActiveSession_Tracking_AsksForTheTickingStopwatch', () => {
+      // Still, it read as nothing happening. The hand ticking is the device's
+      // work, so the frame itself still changes once a minute.
       renderer.renderEodCompleted();
       renderer.renderActiveSession({
         taskId: 'T-1',
@@ -511,7 +512,7 @@ describe('DisplayRenderer Unit Tests', () => {
         startedAtUtc: new Date().toISOString()
       });
 
-      expect(lastShown()).toBeNull();
+      expect(lastShown()).toBe('icon_stopwatch_16x16');
     });
 
     it('RenderActiveSession_Paused_AsksForTheBlinkingPauseStopwatch', () => {
@@ -537,6 +538,66 @@ describe('DisplayRenderer Unit Tests', () => {
       const pixels = (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();
 
       expect(pixels.slice(0, 16).map(row => row.slice(0, 16))).toEqual(expected.map(row => [...row]));
+    });
+
+    describe('the running timer', () => {
+      const tracking = (elapsedSeconds: number) => ({
+        taskId: 'T-1', taskKey: 'SPR-9', taskTitle: 'Tests', status: 'TRACKING' as const,
+        elapsedSeconds, startedAtUtc: new Date().toISOString()
+      });
+      const pixels = (): (string | null)[][] =>
+        (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();
+      /** The rows and columns holding ink right of the icon, below row 0. */
+      const timerInk = (): { rows: number[]; columns: number[] } => {
+        const rows = new Set<number>();
+        const columns = new Set<number>();
+        pixels().forEach((row, y) => row.forEach((c, x) => {
+          if (y >= 8 && x >= 17 && c) { rows.add(y); columns.add(x); }
+        }));
+        return { rows: [...rows].sort((a, b) => a - b), columns: [...columns].sort((a, b) => a - b) };
+      };
+
+      it('RenderActiveSession_Tracking_DrawsTheTimerSevenPixelsTall', () => {
+        // The condensed row-1 face was 5px; the timer is read from across a room.
+        renderer.renderActiveSession(tracking(5025));
+
+        expect(timerInk().rows).toEqual([8, 9, 10, 11, 12, 13, 14]);
+      });
+
+      it('RenderActiveSession_Tracking_DrawsHoursAndMinutesInTheTimerFont', () => {
+        const drawn = vi.spyOn(
+          (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas,
+          'drawTextClipped'
+        );
+        renderer.renderActiveSession(tracking(5025));
+
+        const timer = drawn.mock.calls.find(([text]) => text === '01:23');
+        expect(timer?.[5]).toBe(TIMER_FONT);
+        // Four 6px digits, a 2px colon and four 1px gaps: the ink is 30px.
+        const { columns } = timerInk();
+        expect(columns[columns.length - 1] - columns[0] + 1).toBe(30);
+      });
+
+      it('RenderActiveSession_TimeChanges_KeepsTheTimerInPlace', () => {
+        // Digits share one width, so the colon does not walk as minutes turn.
+        renderer.renderActiveSession(tracking(60));
+        const narrow = timerInk().columns;
+        renderer.renderActiveSession(tracking(8 * 3600 + 48 * 60));
+        const wide = timerInk().columns;
+
+        expect([narrow[0], narrow[narrow.length - 1]]).toEqual([wide[0], wide[wide.length - 1]]);
+      });
+
+      it('RenderActiveSession_Idle_KeepsTheStatusLineInTheRowFont', () => {
+        // Bold 7 has no lowercase; "No task running" belongs in row 1's face.
+        const drawn = vi.spyOn(
+          (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas,
+          'drawTextClipped'
+        );
+        renderer.renderActiveSession(null);
+
+        expect(drawn.mock.calls.find(([text]) => text === 'No task running')?.[5]).toBe(ROW1_FONT);
+      });
     });
 
     it('RenderActiveSession_Paused_ShowsTheWholeTaskKey', () => {

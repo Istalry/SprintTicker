@@ -215,9 +215,10 @@ Text that does not fit ends in `…`. Accented letters are shown without their
 accents, since the display draws plain ASCII only.
 
 The session screen's icon is a stopwatch whose colour says where you are: green
-with a quarter filled while a task runs, amber with blinking pause bars while
-it is paused, dim grey when nothing runs (the screen then reads **Ready / No
-task running**). While paused, row 0 shows the task key and its time, and row
+while a task runs, its hand ticking round once a second; amber with blinking
+pause bars while it is paused; dim grey when nothing runs (the screen then
+reads **Ready / No task running**). While a task runs, row 0 shows the task and
+row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
 1 offers **STOP** and **FINISH** side by side; turn the wheel left for STOP,
 right for FINISH -- turning further stays put -- and click to confirm. STOP logs the time and leaves the task open; FINISH also marks it
 done.
@@ -232,7 +233,9 @@ message on row 1 instead of the project.
 >
 > Every frame is an asset upload plus a draw — two HTTP requests. A per-second
 > redraw would mean an upload a second for a digit nobody reads, so the tracker
-> deliberately shows minutes.
+> deliberately shows minutes. The stopwatch's ticking hand is the bar's own
+> animation: it shows that the clock is running, and is not the seconds of your
+> session.
 
 ### Controls
 

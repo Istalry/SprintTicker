@@ -675,6 +675,13 @@ looping idle animations.
        card, the list sorted in progress -> to do -> done and then by the
        provider's priority (a new `priority_rank`, schema v4), and STOP /
        FINISH that stop at either end of the wheel.
+     - [x] **The tracking screen, from use** (2026-09-30): the time in Sprint
+       Bold 7, 7px digits where the 5px row face was, and the stopwatch
+       ticking a seconds hand round its face -- a `.anim` the bar plays, so
+       the frame still changes once a minute. This reverses "the tracking
+       icon stays still": still, it read as nothing happening. Bold 7 moved
+       from the studio to the app's fonts, since the app cannot import from
+       the studio.
      - [ ] 9c, one-shot scenes: GO! on starting a task from the bar, LOGGED
        on STOP, and the end-of-day scene.
 5. The rear OLED, below.
@@ -861,7 +868,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**85.98 statements / 77.66 branches / 86.65 functions / 88.17 lines across 1064
+**86.05 statements / 77.7 branches / 86.9 functions / 88.2 lines across 1076
 tests in 58 files**, and the floor is ratcheted to 84 / 75 / 85 / 86.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

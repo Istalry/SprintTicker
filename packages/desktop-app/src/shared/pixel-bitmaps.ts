@@ -417,8 +417,8 @@ export const BULB_16X16_BITMAP: (string | null)[][] = [
 // quarter elapsed while tracking, amber with pause bars, dim grey with the
 // hand at twelve when nothing runs. These replace the checkmark, which the
 // tracking, paused, idle and Day Complete screens all shared, so the bar could
-// not say whether work was running, stopped or finished. Paused is the rest
-// pose of `icon_stopwatch_paused_16x16`.
+// not say whether work was running, stopped or finished. Tracking is the rest
+// pose of `icon_stopwatch_16x16` and paused of `icon_stopwatch_paused_16x16`.
 export const STOPWATCH_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, null, '#D1D5DB', '#D1D5DB', '#D1D5DB', null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, '#9CA3AF', null, null, null, '#D1D5DB', '#D1D5DB', null, null, null],
