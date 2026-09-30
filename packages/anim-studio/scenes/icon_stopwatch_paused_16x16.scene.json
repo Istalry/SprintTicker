@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "id": "icon_stopwatch_paused_16x16",
+  "width": 16,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 90,
+  "layers": [
+    {
+      "id": "icon",
+      "name": "Icon",
+      "visible": true,
+      "type": "sprite",
+      "x": 0,
+      "y": 0,
+      "loopFrom": 0,
+      "anchorX": 8,
+      "anchorY": 8,
+      "shutter": 0,
+      "sprite": {
+        "width": 16,
+        "height": 16,
+        "palette": {
+          "a": "#D1D5DB",
+          "b": "#9CA3AF",
+          "c": "#FCD34D",
+          "d": "#F59E0B",
+          "e": "#FFFBEB",
+          "f": "#FBBF24",
+          "g": "#B45309"
+        },
+        "frames": [
+          {
+            "duration": 60,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefeedd....",
+              "..cceeeeeeedd...",
+              ".cceeggeggeedd..",
+              ".cceeggeggeedg..",
+              ".cdfeggeggefdg..",
+              ".ddeeggeggeegg..",
+              ".ddeeggeggeegg..",
+              ".ddeeggeggeegg..",
+              "..ddeeeeeeegg...",
+              "...dgeefeegg....",
+              "....ggggggg.....",
+              "................"
+            ]
+          },
+          {
+            "duration": 30,
+            "rows": [
+              "......aaa.......",
+              ".......b...aa...",
+              ".......b..bb....",
+              "....ccddddd.....",
+              "...cceefeedd....",
+              "..cceeeeeeedd...",
+              ".cceeccecceedd..",
+              ".cceeccecceedg..",
+              ".cdfecceccefdg..",
+              ".ddeeccecceegg..",
+              ".ddeeccecceegg..",
+              ".ddeeccecceegg..",
+              "..ddeeeeeeegg...",
+              "...dgeefeegg....",
+              "....ggggggg.....",
+              "................"
+            ]
+          }
+        ]
+      },
+      "tracks": {}
+    }
+  ]
+}
