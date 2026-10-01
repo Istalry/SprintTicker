@@ -10,6 +10,7 @@
     "package:win": "pnpm --filter @sprintticker/desktop-app package:win",
     "verify:packed": "node scripts/verify-packed-app.js",
     "preflight": "node scripts/preflight-check.js",
+    "db:check-migration": "node scripts/db-check-migration.mjs",
     "test": "pnpm --filter @sprintticker/desktop-app test && pnpm --filter @sprintticker/anim-studio test",
     "test:studio": "pnpm --filter @sprintticker/anim-studio test",
     "test:coverage": "pnpm --filter @sprintticker/desktop-app test:coverage",

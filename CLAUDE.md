@@ -37,6 +37,7 @@ pnpm studio           # animation studio on http://127.0.0.1:5180
 pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/fonts/
 pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
 pnpm fonts:preview "text"   # print text in every font, in the terminal
+pnpm db:check-migration [db]  # migrate a COPY of the real database, report losses
 ```
 
 **better-sqlite3 needs no rebuild, for either runtime.** Version 13 is an
@@ -608,6 +609,17 @@ The consequence to be aware of: **development shares the real database.** A
 migration you are testing runs against your actual worklogs. Use
 `new DatabaseConnection(':memory:')` in tests -- never the singleton -- and copy
 the file before trying anything destructive.
+
+**A build that adds a migration is checked on real data before it ships.**
+`pnpm db:check-migration` copies the database (with its `-wal`), migrates the
+copy, and compares the two sides: no worklog lost except to a recovered
+session, no second of tracked time lost, every orphaned task id named, at most
+one open session, no foreign key broken. The rules are
+`src/main/db/migration-check.ts`, tested, and hold any future migration to the
+same standard; the script only copies and prints. Migrations 5 and 6 were
+checked this way. Ask the user to run it from an ordinary terminal and paste
+the output -- for the reason below, its answer from an agent's shell describes
+a file that may not be theirs.
 
 **A shell inside a packaged app does not see that path directly.** The Claude
 desktop app ships as an MSIX package, and processes launched from its integrated

@@ -360,6 +360,14 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
 7. `task-description` — a nullable `description` on `tasks`, filled by the next
    sync.
 
+**A migration is checked on a copy of real data before it ships.**
+`pnpm db:check-migration` copies the database, migrates the copy and compares
+counts either side (`db/migration-check.ts`): every worklog and every second
+kept, apart from worklogs written for recovered sessions; every orphaned task id
+given a task; at most one open session; no foreign key violation. The rules
+name no migration, so a new one is held to them unchanged. The tests prove the
+migrations on invented data; this proves them on data nobody invented.
+
 **Tasks with history are archived, never deleted.** The sync prune, deleting a
 project and deleting a task all go through `retireTasks`, which deletes a task
 nobody logged time against and archives the rest: gone from every list, still
@@ -468,7 +476,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1422 tests across 72 files, in two projects: `main` in Node for
+Vitest, 1431 tests across 73 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

@@ -1406,6 +1406,13 @@
       <li><code>task-description</code> — a nullable <code>description</code> on <code>tasks</code>, filled by the next
       sync.</li>
       </ol>
+      <p><strong>A migration is checked on a copy of real data before it ships.</strong>
+      <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
+      counts either side (<code>db/migration-check.ts</code>): every worklog and every second
+      kept, apart from worklogs written for recovered sessions; every orphaned task id
+      given a task; at most one open session; no foreign key violation. The rules
+      name no migration, so a new one is held to them unchanged. The tests prove the
+      migrations on invented data; this proves them on data nobody invented.</p>
       <p><strong>Tasks with history are archived, never deleted.</strong> The sync prune, deleting a
       project and deleting a task all go through <code>retireTasks</code>, which deletes a task
       nobody logged time against and archives the rest: gone from every list, still
@@ -1499,7 +1506,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1422 tests across 72 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1431 tests across 73 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

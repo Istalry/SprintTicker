@@ -20,6 +20,10 @@ reported something other than the truth, in three different ways.
   `window.electronAPI` mock is typed as the whole bridge and type-checked by
   `pnpm typecheck`, so a bridge change that the renderer's tests do not follow
   fails the build.
+- **`pnpm db:check-migration`.** Migrates a copy of your database and reports
+  whether anything was lost: worklogs, tracked time, task references, or the
+  one-open-session rule. The original is never opened. It is how migrations 5
+  and 6 were checked against real history before this release.
 
 - **Animated icons.** While Unity compiles, the gear on the bar turns,
   steadily, for as long as the compile lasts. The bar plays the icon itself, laid

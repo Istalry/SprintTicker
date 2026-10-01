@@ -301,7 +301,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1422 tests across 72 files for the app -- the main and shared
+`pnpm test` runs 1431 tests across 73 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
@@ -320,9 +320,17 @@ line as covered when any part of it ran; the same unchanged suite then measured
 which is why statements and lines no longer report an identical figure.
 
 `pnpm preflight` runs the release pre-flight check: it verifies that the three
-`package.json` versions agree and that the Unity Editor scripts are present. It
+`package.json` versions agree, that the Windows SQLite binary the installer
+carries is present, and that the Unity Editor scripts are present. It
 also runs in CI, so a version drift is caught when it is introduced rather than
 when someone tries to cut a release.
+
+`pnpm db:check-migration [path]` is for a release that adds a database
+migration. It copies your database -- `%APPDATA%\SprintTicker\sprintticker.db`
+unless you name another -- migrates the copy, and prints what changed: archived
+tasks kept for history, sessions it closed, and a verdict. It exits 1 if a
+worklog, a second of tracked time or a task reference went missing. The
+original is never opened.
 
 ### Conventions
 
