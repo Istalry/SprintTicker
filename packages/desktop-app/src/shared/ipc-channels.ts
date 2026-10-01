@@ -126,6 +126,12 @@ export enum IPCChannel {
    * regardless; only the UI translations were dropped.
    */
   GET_SYSTEM_LOCALE = 'app:get-system-locale',
+  /** Opens or closes the always-on-top mini timer; answers whether it is open. */
+  MINI_TOGGLE = 'mini:toggle',
+  MINI_IS_OPEN = 'mini:is-open',
+  ON_MINI_VISIBILITY = 'mini:on-visibility',
+  /** Brings the dashboard forward with its task picker open. */
+  OPEN_TASK_PICKER = 'mini:open-task-picker',
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',

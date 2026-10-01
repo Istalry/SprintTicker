@@ -9,7 +9,8 @@ import {
   Settings,
   Moon,
   Sparkles,
-  Bell
+  Bell,
+  PictureInPicture2
 } from 'lucide-react';
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
@@ -55,6 +56,17 @@ export const App: React.FC = () => {
   // No-bar mode: what only describes the bar steps aside -- the emulator, the
   // connection readout, and BAR_ONLY_TABS. Everything that keeps time stays.
   const hasBar = deviceStatus.enabled;
+  const [isMiniOpen, setIsMiniOpen] = useState<boolean>(false);
+
+  // Followed rather than toggled locally: the mini timer also closes from its
+  // own button and opens from the tray.
+  useEffect(() => {
+    if (!window.electronAPI?.onMiniWindowVisibility) return undefined;
+    window.electronAPI.isMiniWindowOpen()
+      .then(setIsMiniOpen)
+      .catch(err => console.warn('[App] Could not read the mini timer state:', err));
+    return window.electronAPI.onMiniWindowVisibility(setIsMiniOpen);
+  }, []);
   const { projects } = useTasks();
   const { worklogs } = useWorklogs();
 
@@ -233,6 +245,23 @@ export const App: React.FC = () => {
             breakpoint. Losing the word must not mean losing the meaning: at the
             narrowest size these are icons, and a tooltip is all that is left.
           */}
+          <button
+            onClick={() => {
+              window.electronAPI?.toggleMiniWindow?.()
+                .catch(err => console.warn('[App] Could not toggle the mini timer:', err));
+            }}
+            title={isMiniOpen ? 'Close the mini timer' : 'Open the mini timer: an always-on-top timer'}
+            aria-pressed={isMiniOpen}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border font-semibold text-xs transition-colors shrink-0 ${
+              isMiniOpen
+                ? 'bg-accent-blue/20 text-accent-blue border-accent-blue/40'
+                : 'bg-dark-700 hover:bg-dark-700/80 text-text-secondary border-border-dark'
+            }`}
+          >
+            <PictureInPicture2 className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden hdr-md:inline whitespace-nowrap">Mini Timer</span>
+          </button>
+
           <button
             onClick={() => setIsOnboardingOpen(true)}
             title="Setup Wizard"

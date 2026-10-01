@@ -87,6 +87,23 @@ on (`setEnabled(true)`) dials the configured address and sends the last queued
 frame, which the renderer's deduplication had already recorded as sent. A row
 saved before the field existed reads as `true`.
 
+**Two windows, one renderer bundle.** The dashboard and the **mini timer** load
+the same `index.html`; the mini timer loads it at `#mini`, and `main.tsx` mounts
+`MiniBar` instead of `App` for that hash. Both get the same web preferences and
+the same navigation lock (`secureAndLoad` in `index.ts`), so the second window
+cannot end up laxer than the first. `MiniWindowManager` owns the mini timer: it
+builds it through an injected factory, remembers its position and whether it
+was open under the `mini_window` setting, and checks a saved position against
+the displays that exist now -- a monitor unplugged since would leave an
+always-on-top window off-screen. It closes with the dashboard (`dispose`, which
+keeps `open` for the next launch), because Windows quits an app only when its
+last window is gone. Every broadcast -- the registry's and the engine tick's
+`session:on-updated` -- goes to all windows, or the mini timer would keep
+showing a session that has ended; targeted sends such as the ceremony prompt
+still reach the dashboard alone. Picking a task from the tray or the mini timer
+goes through `openTaskPickerInMainWindow`, which sends the picker's hardware
+action on `input:on-hardware-event`.
+
 ---
 
 ## 2. Process boundaries
@@ -492,7 +509,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1455 tests across 75 files, in two projects: `main` in Node for
+Vitest, 1489 tests across 77 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

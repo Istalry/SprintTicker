@@ -2,6 +2,8 @@ import { app, Menu, Tray, BrowserWindow, nativeImage } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
+import { MiniWindowController } from '../windows/mini-window-manager';
+import { openTaskPickerInMainWindow, revealMainWindow } from '../windows/main-window-actions';
 
 /**
  * System Tray Manager handling desktop tray lifecycle, status tooltip badges,
@@ -9,12 +11,15 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
  */
 export class TrayManager {
   private tray: Tray | null = null;
+  private readonly unsubscribeMiniWindow?: () => void;
   private mainWindow: BrowserWindow;
   private engine: TimeTrackingEngine;
 
-  constructor(mainWindow: BrowserWindow, engine: TimeTrackingEngine) {
+  constructor(mainWindow: BrowserWindow, engine: TimeTrackingEngine, private readonly miniWindow?: MiniWindowController) {
     this.mainWindow = mainWindow;
     this.engine = engine;
+    // The checkbox mirrors the window however it was opened or closed.
+    this.unsubscribeMiniWindow = this.miniWindow?.subscribe(() => this.updateContextMenu());
   }
 
   public initialize(): void {
@@ -50,11 +55,7 @@ export class TrayManager {
   }
 
   public restoreWindow(): void {
-    if (this.mainWindow.isMinimized()) {
-      this.mainWindow.restore();
-    }
-    this.mainWindow.show();
-    this.mainWindow.focus();
+    revealMainWindow(this.mainWindow);
   }
 
   public setAutoStart(enabled: boolean): void {
@@ -103,14 +104,16 @@ export class TrayManager {
       },
       {
         label: 'Trigger Task Selector Modal',
-        click: () => {
-          this.restoreWindow();
-          this.mainWindow.webContents.send('input:hardware-event', {
-            actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL',
-            rawKey: 'ok'
-          });
-        }
+        click: () => openTaskPickerInMainWindow(this.mainWindow)
       },
+      ...(this.miniWindow
+        ? [{
+            label: 'Show Mini Timer',
+            type: 'checkbox' as const,
+            checked: this.miniWindow.isOpen(),
+            click: () => { this.miniWindow?.toggle(); }
+          }]
+        : []),
       { type: 'separator' },
       {
         label: 'Start with Windows Startup',
@@ -132,6 +135,7 @@ export class TrayManager {
   }
 
   public destroy(): void {
+    this.unsubscribeMiniWindow?.();
     if (this.tray) {
       this.tray.destroy();
       this.tray = null;

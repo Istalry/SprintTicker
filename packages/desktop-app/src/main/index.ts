@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, screen } from 'electron';
 import path from 'path';
 import { LoggerInterceptor } from './diagnostics/logger-interceptor';
 
@@ -26,6 +26,8 @@ import { ProviderManager } from './providers/provider-manager';
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
 import { ContextScheduleService } from './services/context-schedule-service';
 import { TrayManager } from './tray/tray-manager';
+import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
+import { MINI_WINDOW_HASH } from '../shared/mini-window';
 import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
 import { DeviceConfigDTO } from '../shared/dtos';
@@ -46,6 +48,7 @@ let windowsNotificationService: WindowsNotificationListenerService | null = null
 let contextScheduleService: ContextScheduleService | null = null;
 let updateChecker: UpdateChecker | null = null;
 let updateCheckTimer: NodeJS.Timeout | null = null;
+let miniWindowManager: MiniWindowManager | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -59,6 +62,78 @@ if (!gotTheLock) {
   });
 }
 
+/**
+ * The web preferences every SprintTicker window gets: the preload bridge and
+ * nothing more. Shared so the mini timer cannot end up with a laxer copy.
+ */
+const WINDOW_WEB_PREFERENCES: Electron.WebPreferences = {
+  preload: path.join(__dirname, '../preload/index.js'),
+  nodeIntegration: false,
+  contextIsolation: true,
+  // The preload imports only contextBridge and ipcRenderer, both of which
+  // are available to a sandboxed preload, so this costs nothing here. It
+  // stops costing nothing the moment someone reaches for `fs` in preload,
+  // which is the point.
+  sandbox: true
+};
+
+/**
+ * Locks a window to the app's own bundle and loads it, at `hash` if given.
+ *
+ * This application never opens a second window of the renderer's choosing and
+ * never navigates away from its own bundle. Both are denied rather than
+ * filtered: there is no allowed destination to filter for, and a guard that
+ * lists exceptions invites one. If an outbound link is ever needed, route it
+ * through shell.openExternal deliberately -- letting the renderer navigate is
+ * how a compromised page gets to keep the preload bridge.
+ */
+function secureAndLoad(win: BrowserWindow, hash?: string): void {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    console.warn(`[Main] Blocked window.open to ${url}`);
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    const devServer = process.env.VITE_DEV_SERVER_URL;
+    if (devServer && url.startsWith(devServer)) return;
+    event.preventDefault();
+    console.warn(`[Main] Blocked navigation to ${url}`);
+  });
+
+  const devServer = process.env.VITE_DEV_SERVER_URL;
+  if (devServer) {
+    void win.loadURL(hash ? `${devServer}#${hash}` : devServer)
+      .catch(err => console.error('[Main] loadURL failed:', err));
+  } else {
+    void win.loadFile(path.join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
+      .catch(err => console.error('[Main] loadFile failed:', err));
+  }
+}
+
+/** Builds the mini timer: frameless, always on top, out of the taskbar. */
+function createMiniWindow(bounds: Rectangle): BrowserWindow {
+  const win = new BrowserWindow({
+    ...bounds,
+    frame: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    backgroundColor: '#0F172A',
+    webPreferences: WINDOW_WEB_PREFERENCES
+  });
+  // 'floating' rather than the default level, so it stays above ordinary
+  // windows without covering system UI such as the Start menu.
+  win.setAlwaysOnTop(true, 'floating');
+  win.setMenu(null);
+  win.once('ready-to-show', () => win.show());
+  secureAndLoad(win, MINI_WINDOW_HASH);
+  return win;
+}
+
 const createWindow = (): void => {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -66,49 +141,17 @@ const createWindow = (): void => {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0F172A',
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      // The preload imports only contextBridge and ipcRenderer, both of which
-      // are available to a sandboxed preload, so this costs nothing here. It
-      // stops costing nothing the moment someone reaches for `fs` in preload,
-      // which is the point.
-      sandbox: true
-    }
+    webPreferences: WINDOW_WEB_PREFERENCES
   });
 
   mainWindow.setMenu(null);
-
-  // This application never opens a second window and never navigates away from
-  // its own bundle. Both are denied rather than filtered: there is no allowed
-  // destination to filter for, and a guard that lists exceptions invites one.
-  //
-  // If an outbound link is ever needed, route it through shell.openExternal
-  // deliberately -- letting the renderer navigate is how a compromised page
-  // gets to keep the preload bridge.
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    console.warn(`[Main] Blocked window.open to ${url}`);
-    return { action: 'deny' };
-  });
-
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    const devServer = process.env.VITE_DEV_SERVER_URL;
-    if (devServer && url.startsWith(devServer)) return;
-    event.preventDefault();
-    console.warn(`[Main] Blocked navigation to ${url}`);
-  });
-
-  if (process.env.VITE_DEV_SERVER_URL) {
-    void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
-      .catch(err => console.error('[Main] mainWindow.loadURL failed:', err));
-  } else {
-    void mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
-      .catch(err => console.error('[Main] mainWindow.loadFile failed:', err));
-  }
+  secureAndLoad(mainWindow);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    // With the dashboard, or the always-on-top timer would keep the app
+    // running with no way back to it but the tray.
+    miniWindowManager?.dispose();
   });
 };
 
@@ -225,6 +268,8 @@ async function startApplication(): Promise<void> {
   // a dev run cannot disagree about what is installed.
   updateChecker = new UpdateChecker(app.getVersion(), settingsRepo);
 
+  miniWindowManager = new MiniWindowManager({ createWindow: createMiniWindow, screen, settings: settingsRepo });
+
   ipcRegistry = new IPCHandlerRegistry({
     engine,
     taskRepo,
@@ -233,6 +278,8 @@ async function startApplication(): Promise<void> {
     inputDecoder,
     renderer,
     getWindow: () => mainWindow,
+    getWindows: () => BrowserWindow.getAllWindows(),
+    miniWindow: miniWindowManager,
     unityInjectorService,
     worklogRepo,
     unityTelemetryService,
@@ -251,16 +298,18 @@ async function startApplication(): Promise<void> {
   // 6. Create Window & Render Initial State
   createWindow();
   if (mainWindow && engine) {
-    trayManager = new TrayManager(mainWindow, engine);
+    trayManager = new TrayManager(mainWindow, engine, miniWindowManager);
     trayManager.initialize();
   }
+  miniWindowManager.restore();
   renderer.renderActiveSession(engine.getCurrentSession());
 
   // Connect engine ticks to display renderer and IPC window broadcast for live matrix timer updates
   engine.on('tick', session => {
     renderer?.renderActiveSession(session);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPCChannel.ON_SESSION_UPDATED, session);
+    // Every window, the mini timer included.
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send(IPCChannel.ON_SESSION_UPDATED, session);
     }
   });
   console.log('[Main] Initialization completed successfully.');
@@ -269,6 +318,13 @@ async function startApplication(): Promise<void> {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 }
+
+// Before any window closes. app.quit() -- the tray's Quit -- closes windows in
+// no promised order, and a mini timer that went first would read as closed by
+// the user and stay closed at the next launch.
+app.on('before-quit', () => {
+  miniWindowManager?.dispose();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

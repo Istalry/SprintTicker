@@ -171,6 +171,16 @@ const electronAPI: IElectronAPI = {
   // Updates. Notification only -- nothing here downloads or installs.
   checkForUpdate: () => ipcRenderer.invoke(IPCChannel.CHECK_FOR_UPDATE),
   getSystemLocale: () => ipcRenderer.invoke(IPCChannel.GET_SYSTEM_LOCALE),
+
+  // Mini timer
+  toggleMiniWindow: () => ipcRenderer.invoke(IPCChannel.MINI_TOGGLE),
+  isMiniWindowOpen: () => ipcRenderer.invoke(IPCChannel.MINI_IS_OPEN),
+  onMiniWindowVisibility: (callback: (open: boolean) => void) => {
+    const handler = (_event: IpcRendererEvent, open: boolean) => callback(open);
+    ipcRenderer.on(IPCChannel.ON_MINI_VISIBILITY, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_MINI_VISIBILITY, handler);
+  },
+  openTaskPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PICKER),
   getUpdateCheckEnabled: () => ipcRenderer.invoke(IPCChannel.GET_UPDATE_CHECK_ENABLED),
   setUpdateCheckEnabled: (enabled: boolean) =>
     ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),

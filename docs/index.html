@@ -543,6 +543,23 @@
       and handed back to its own clock first. To add a bar later,
       press <strong>Add a BUSY Bar</strong> in Device &amp; Logs: the address and token you had set
       before are kept, and the bar&#39;s screens come back at once.</p>
+      <h4>The mini timer</h4>
+      <p>A small window that stays above every other one and shows what the bar would:
+      the task key and title, the elapsed time, and a coloured edge -- green while
+      tracking, amber while paused, grey with nothing running. Open it with <strong>Mini
+      Timer</strong> in the top bar or <strong>Show Mini Timer</strong> in the tray menu.</p>
+      <ul>
+      <li><strong>Pause</strong>, <strong>Resume</strong> and <strong>Stop</strong> act on the session as the dashboard does.
+      Stop logs the time without marking the task done.</li>
+      <li>The <strong>list</strong> button brings the dashboard forward with the task picker open:
+      that is how you start or switch a task from it.</li>
+      <li>Drag it by any part that is not a button. It reopens where you left it; if
+      that was on a monitor you have since unplugged, it comes back in the
+      bottom-right corner of the main one.</li>
+      <li>It reopens at the next launch if it was open when you quit, and stays closed
+      if you closed it.</li>
+      </ul>
+      <p>It counts seconds, which the bar does not: on screen a second costs nothing.</p>
       <hr>
       <h3 id="guide-the-panels">The panels</h3>
       <p>Nine tabs down the left.</p>
@@ -1060,6 +1077,22 @@
       on (<code>setEnabled(true)</code>) dials the configured address and sends the last queued
       frame, which the renderer&#39;s deduplication had already recorded as sent. A row
       saved before the field existed reads as <code>true</code>.</p>
+      <p><strong>Two windows, one renderer bundle.</strong> The dashboard and the <strong>mini timer</strong> load
+      the same <code>index.html</code>; the mini timer loads it at <code>#mini</code>, and <code>main.tsx</code> mounts
+      <code>MiniBar</code> instead of <code>App</code> for that hash. Both get the same web preferences and
+      the same navigation lock (<code>secureAndLoad</code> in <code>index.ts</code>), so the second window
+      cannot end up laxer than the first. <code>MiniWindowManager</code> owns the mini timer: it
+      builds it through an injected factory, remembers its position and whether it
+      was open under the <code>mini_window</code> setting, and checks a saved position against
+      the displays that exist now -- a monitor unplugged since would leave an
+      always-on-top window off-screen. It closes with the dashboard (<code>dispose</code>, which
+      keeps <code>open</code> for the next launch), because Windows quits an app only when its
+      last window is gone. Every broadcast -- the registry&#39;s and the engine tick&#39;s
+      <code>session:on-updated</code> -- goes to all windows, or the mini timer would keep
+      showing a session that has ended; targeted sends such as the ceremony prompt
+      still reach the dashboard alone. Picking a task from the tray or the mini timer
+      goes through <code>openTaskPickerInMainWindow</code>, which sends the picker&#39;s hardware
+      action on <code>input:on-hardware-event</code>.</p>
       <hr>
       <h3 id="architecture-process-boundaries">2. Process boundaries</h3>
       <p><code>contextIsolation: true</code>, <code>nodeIntegration: false</code>, <code>sandbox: true</code>. These are
@@ -1543,7 +1576,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1455 tests across 75 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1489 tests across 77 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -1770,6 +1803,10 @@
       <tr>
       <td align="left">App</td>
       <td align="left"><code>app:get-system-locale</code> -- Windows&#39; regional format (<code>en-BE</code>, <code>fr-FR</code>), read once by the renderer at startup to format times</td>
+      </tr>
+      <tr>
+      <td align="left">Mini timer</td>
+      <td align="left"><code>mini:toggle</code> (answers whether it is open afterwards), <code>mini:is-open</code>, <code>mini:on-visibility</code> (<strong>Event</strong>, to every window, however it was opened or closed), <code>mini:open-task-picker</code> (brings the dashboard forward with the picker open; <code>false</code> if there is no dashboard)</td>
       </tr>
       </tbody></table></div>
       <hr>

@@ -20,6 +20,8 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
+import { MiniWindowController } from '../windows/mini-window-manager';
+import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
@@ -53,6 +55,13 @@ export interface IPCHandlerRegistryDeps {
   inputDecoder: InputDecoder;
   renderer: DisplayRenderer;
   getWindow: () => BrowserWindow | null;
+  /**
+   * Every window a broadcast reaches -- the dashboard and the mini timer.
+   * Defaults to the dashboard alone; without it the mini timer would never
+   * hear a session change.
+   */
+  getWindows?: () => BrowserWindow[];
+  miniWindow?: MiniWindowController;
   unityInjectorService?: UnityInjectorService;
   worklogRepo?: WorklogRepository;
   unityTelemetryService?: UnityTelemetryService;
@@ -92,6 +101,8 @@ export class IPCHandlerRegistry {
   private diagnosticExporter: DiagnosticExporter;
   private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
+  private getWindows: () => BrowserWindow[];
+  private miniWindow?: MiniWindowController;
   private saveUnityScenes: UnitySceneSaver;
 
   constructor(deps: IPCHandlerRegistryDeps) {
@@ -103,6 +114,8 @@ export class IPCHandlerRegistry {
       inputDecoder,
       renderer,
       getWindow,
+      getWindows,
+      miniWindow,
       unityInjectorService,
       worklogRepo,
       unityTelemetryService,
@@ -132,6 +145,11 @@ export class IPCHandlerRegistry {
     this.inputDecoder = inputDecoder;
     this.renderer = renderer;
     this.getWindow = getWindow;
+    this.getWindows = getWindows ?? (() => {
+      const win = getWindow();
+      return win ? [win] : [];
+    });
+    this.miniWindow = miniWindow;
     this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
@@ -924,6 +942,13 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.GET_SYSTEM_LOCALE, async (): Promise<string> => app.getSystemLocale());
 
+    // Mini timer. Without a controller (tests, or a build that has none) it is
+    // simply never open.
+    ipcMain.handle(IPCChannel.MINI_TOGGLE, async (): Promise<boolean> => this.miniWindow?.toggle() ?? false);
+    ipcMain.handle(IPCChannel.MINI_IS_OPEN, async (): Promise<boolean> => this.miniWindow?.isOpen() ?? false);
+    ipcMain.handle(IPCChannel.OPEN_TASK_PICKER, async (): Promise<boolean> => openTaskPickerInMainWindow(this.getWindow()));
+    this.miniWindow?.subscribe(open => this.broadcast(IPCChannel.ON_MINI_VISIBILITY, open));
+
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {
       return this.updateChecker ? this.updateChecker.isEnabled() : false;
     });
@@ -1044,12 +1069,11 @@ export class IPCHandlerRegistry {
    * it only appears once the renderer is already gone, so it is noise at
    * teardown rather than a fault.
    */
+  /** Sends to every open window: the dashboard and, when open, the mini timer. */
   private broadcast(channel: string, payload: unknown): void {
-    const win = this.getWindow();
-    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
-      return;
+    for (const win of this.getWindows()) {
+      if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) continue;
+      win.webContents.send(channel, payload);
     }
-
-    win.webContents.send(channel, payload);
   }
 }

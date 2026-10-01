@@ -17,6 +17,13 @@ reported something other than the truth, in three different ways.
   both exist to put things on the bar. **Add a BUSY Bar** in Device & Logs brings it back, with the address
   and token you had set. The connection readout no longer opens on invented
   figures (connected, 98% battery) before the real status arrives.
+- **A mini timer.** A small window that stays above the others and shows what
+  the bar would: the task, the elapsed time with seconds, and whether it is
+  running or paused. Pause, resume and stop from it; its list button brings the
+  dashboard forward with the task picker open. Drag it anywhere; it comes back
+  where you left it, and opens at the next launch if it was open when you quit.
+  Open it from **Mini Timer** in the top bar or **Show Mini Timer** in the tray
+  menu. Useful without a bar, and with one that is out of sight.
 - **Tasks have descriptions.** The start of a Jira or OpenProject description
   appears under the task's title in Projects & Tasks and in the task picker,
   which searches it too. On the bar, the picker's second row shows the task
@@ -231,6 +238,9 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **The tray's "Trigger Task Selector Modal" opens the task picker.** It
+  brought the window forward and nothing else: it sent its request on a channel
+  the window does not listen on.
 - **START on the bar no longer wraps up the day by mistake.** With the
   end-of-day window open but the bar showing something else -- the window
   opened from the top bar, or a higher-ranked screen on the bar -- START both

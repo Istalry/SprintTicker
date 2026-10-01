@@ -8,6 +8,7 @@ import { ProjectRepository } from '../src/main/db/repositories/project-repositor
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { app, Menu, BrowserWindow, nativeImage } from 'electron';
 import fs from 'fs';
+import { IPCChannel } from '../src/shared/ipc-channels';
 
 // Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
 let lastMockTray: { setToolTip: ReturnType<typeof vi.fn>; setContextMenu: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> } | null = null;
@@ -60,6 +61,7 @@ describe('TrayManager Unit Tests', () => {
     engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn));
 
     mockWindow = {
+      isDestroyed: vi.fn().mockReturnValue(false),
       isMinimized: vi.fn().mockReturnValue(false),
       restore: vi.fn(),
       show: vi.fn(),
@@ -261,17 +263,52 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_TaskSelector_RestoresAndForwardsTheHardwareEvent', () => {
+    it('TrayManager_ContextMenu_TaskSelector_RestoresAndSendsOnTheChannelTheRendererHears', () => {
+      // It used to send on 'input:hardware-event', which nothing subscribes
+      // to: the window came up and the picker never opened. The channel is
+      // the preload's, compared by value so a rename cannot drift past it.
       const manager = new TrayManager(mockWindow, engine);
       manager.initialize();
 
       click('Trigger Task Selector Modal');
 
       expect(mockWindow.show).toHaveBeenCalled();
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith('input:hardware-event', {
-        actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL',
-        rawKey: 'ok'
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith(IPCChannel.ON_HARDWARE_INPUT_EVENT, {
+        inputKey: 'app',
+        actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL'
       });
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_NoMiniWindow_OffersNoMiniTimerEntry', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+
+      expect(template.some(i => i.label === 'Show Mini Timer')).toBe(false);
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_MiniTimer_TogglesAndFollowsTheWindow', () => {
+      let open = false;
+      const listeners: Array<(open: boolean) => void> = [];
+      const miniWindow = {
+        isOpen: () => open,
+        toggle: vi.fn(() => { open = !open; listeners.forEach(l => l(open)); return open; }),
+        subscribe: (l: (open: boolean) => void) => { listeners.push(l); return () => undefined; }
+      };
+      const manager = new TrayManager(mockWindow, engine, miniWindow);
+      manager.initialize();
+      expect(template.find(i => i.label === 'Show Mini Timer')?.checked).toBe(false);
+
+      click('Show Mini Timer');
+      expect(miniWindow.toggle).toHaveBeenCalledTimes(1);
+      // Rebuilt from the controller's notification, so a close from the
+      // window's own button reaches the checkbox too.
+      expect(template.find(i => i.label === 'Show Mini Timer')?.checked).toBe(true);
+
+      open = false;
+      listeners.forEach(l => l(false));
+      expect(template.find(i => i.label === 'Show Mini Timer')?.checked).toBe(false);
       manager.destroy();
     });
 

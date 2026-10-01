@@ -64,6 +64,25 @@ and handed back to its own clock first. To add a bar later,
 press **Add a BUSY Bar** in Device & Logs: the address and token you had set
 before are kept, and the bar's screens come back at once.
 
+### The mini timer
+
+A small window that stays above every other one and shows what the bar would:
+the task key and title, the elapsed time, and a coloured edge -- green while
+tracking, amber while paused, grey with nothing running. Open it with **Mini
+Timer** in the top bar or **Show Mini Timer** in the tray menu.
+
+- **Pause**, **Resume** and **Stop** act on the session as the dashboard does.
+  Stop logs the time without marking the task done.
+- The **list** button brings the dashboard forward with the task picker open:
+  that is how you start or switch a task from it.
+- Drag it by any part that is not a button. It reopens where you left it; if
+  that was on a monitor you have since unplugged, it comes back in the
+  bottom-right corner of the main one.
+- It reopens at the next launch if it was open when you quit, and stays closed
+  if you closed it.
+
+It counts seconds, which the bar does not: on screen a second costs nothing.
+
 ---
 
 ## The panels

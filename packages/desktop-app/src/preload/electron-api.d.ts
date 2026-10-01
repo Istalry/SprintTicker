@@ -159,6 +159,14 @@ export interface IElectronAPI {
   checkForUpdate: () => Promise<UpdateStatusDTO>;
   /** Windows' regional format (`en-BE`, `fr-FR`); times are formatted in it. */
   getSystemLocale: () => Promise<string>;
+
+  // Mini timer
+  /** Opens or closes the always-on-top mini timer; resolves whether it is open. */
+  toggleMiniWindow: () => Promise<boolean>;
+  isMiniWindowOpen: () => Promise<boolean>;
+  onMiniWindowVisibility: (callback: (open: boolean) => void) => () => void;
+  /** Brings the dashboard forward with its task picker open. */
+  openTaskPicker: () => Promise<boolean>;
   getUpdateCheckEnabled: () => Promise<boolean>;
   setUpdateCheckEnabled: (enabled: boolean) => Promise<boolean>;
   openReleasePage: (url: string) => Promise<boolean>;

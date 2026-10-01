@@ -46,7 +46,8 @@ with nothing plugged in.
 Timestamp-based sessions with start / pause / resume / finish, a live tracker on
 the bar, and a local worklog history with an end-of-day export. Persisted
 through `better-sqlite3` with versioned schema migrations, so upgrading never
-discards existing worklogs.
+discards existing worklogs. A **mini timer**, a small always-on-top window, shows
+the running task and its time on screen, with or without a bar.
 
 ### OpenProject integration
 
@@ -301,7 +302,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1455 tests across 75 files for the app -- the main and shared
+`pnpm test` runs 1489 tests across 77 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
