@@ -219,6 +219,10 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **Times follow Windows' regional format.** History, the sync queue, the
+  notification log and Device Diagnostics showed times in US style (`2:05:33
+  PM`) whatever the region set in Windows. They now use it: `14:05:33` for most
+  of Europe.
 - **SprintTicker names itself.** Windows' shutdown notice after an end-of-day
   wrap-up read "BUSY Bar End-of-Day Wrap-Up", and the tray said "BUSY Bar:
   TRACKING" and offered "Open BUSY Bar Dashboard" -- the device's name where the
@@ -344,6 +348,9 @@ reported something other than the truth, in three different ways.
   once bundled, once as the source they were bundled from -- plus SQLite's
   source code, database binaries for macOS and Linux, a library the app never
   used, and compiled files left over from July.
+  It also carries only Chromium's English UI translation rather than all 55,
+  which takes the installer from 103 MB to 95 MB. Nothing in the app was
+  translated, so nothing on screen changes.
 - **React 19.** The renderer moved from React 18, and `lucide-react` from
   0.359 to 1.48 with it, since the old icons capped React at 18. Nothing
   should look different.

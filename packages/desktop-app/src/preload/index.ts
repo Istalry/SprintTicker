@@ -170,6 +170,7 @@ const electronAPI: IElectronAPI = {
 
   // Updates. Notification only -- nothing here downloads or installs.
   checkForUpdate: () => ipcRenderer.invoke(IPCChannel.CHECK_FOR_UPDATE),
+  getSystemLocale: () => ipcRenderer.invoke(IPCChannel.GET_SYSTEM_LOCALE),
   getUpdateCheckEnabled: () => ipcRenderer.invoke(IPCChannel.GET_UPDATE_CHECK_ENABLED),
   setUpdateCheckEnabled: (enabled: boolean) =>
     ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),

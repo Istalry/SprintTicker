@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
-import { formatHoursAndMinutes as formatSeconds } from './utils/formatters';
+import { formatClockTime, formatHoursAndMinutes as formatSeconds } from './utils/formatters';
 import { useTasks } from './hooks/useTasks';
 import { useWorklogs } from './hooks/useWorklogs';
 import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
@@ -142,7 +142,7 @@ export const App: React.FC = () => {
                           {formatSeconds(log.durationSeconds)}
                         </td>
                         <td className="py-3 px-4 text-xs text-text-secondary font-mono">
-                          {new Date(log.startedAtUtc).toLocaleTimeString()}
+                          {formatClockTime(new Date(log.startedAtUtc))}
                         </td>
                       </tr>
                     ))}

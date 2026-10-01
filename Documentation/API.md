@@ -96,6 +96,7 @@ the task row, archived or not.
 | Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings`, `messaging:*` |
 | Diagnostics | `diagnostics:export-logs` |
 | Updates | `updates:check`, `updates:get-enabled`, `updates:set-enabled`, `updates:open-release-page`, `updates:on-status` |
+| App | `app:get-system-locale` -- Windows' regional format (`en-BE`, `fr-FR`), read once by the renderer at startup to format times |
 
 ---
 

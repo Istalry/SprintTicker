@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
+import { formatClockTime } from '../../utils/formatters';
 
 interface DaySummary {
   totalSeconds: number;
@@ -196,7 +197,7 @@ export const WorklogHistoryView: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-white">{log.taskKey ?? log.taskId}</span>
                     {log.taskTitle && <span className="text-text-secondary">{log.taskTitle}</span>}
-                    <span className="text-text-secondary">• {new Date(log.startedAtUtc).toLocaleTimeString()}</span>
+                    <span className="text-text-secondary">• {formatClockTime(new Date(log.startedAtUtc))}</span>
                   </div>
                   {log.comment && (
                     <div className="text-text-secondary italic text-[11px]">&quot;{log.comment}&quot;</div>

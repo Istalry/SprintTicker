@@ -7,7 +7,7 @@ const electron = vi.hoisted(() => ({
   ipcMain: { handle: vi.fn(), on: vi.fn(), emit: vi.fn() },
   dialog: { showOpenDialog: vi.fn(), showSaveDialog: vi.fn() },
   shell: { openExternal: vi.fn() },
-  app: { isPackaged: false, getVersion: () => '9.9.9' },
+  app: { isPackaged: false, getVersion: () => '9.9.9', getSystemLocale: () => 'fr-BE' },
   BrowserWindow: vi.fn(),
   powerMonitor: { on: vi.fn() },
   // A keystore that answers, so a secret stored in the clear shows up as one.
@@ -421,6 +421,11 @@ describe('IPC handlers', () => {
         currentVersion: '9.9.9',
         reason: 'rate limited'
       });
+    });
+
+    it('GetSystemLocale_AnswersWindowsRegionalFormat', async () => {
+      // Not the app's locale, which is en-US everywhere once only en-US ships.
+      await expect(invoke(IPCChannel.GET_SYSTEM_LOCALE)).resolves.toBe('fr-BE');
     });
 
     it('BroadcastUpdateStatus_ReachesTheRenderer', () => {

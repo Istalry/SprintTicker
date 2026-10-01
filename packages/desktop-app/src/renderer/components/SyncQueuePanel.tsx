@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, RotateCcw, AlertCircle, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { SyncQueueItemDTO, SyncQueueSnapshotDTO } from '../../shared/dtos';
-import { formatSeconds } from '../utils/formatters';
+import { formatClockTime, formatSeconds } from '../utils/formatters';
 
 /**
  * What the worklog sync queue holds, and why anything in it has not arrived.
@@ -223,7 +223,7 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
 
       {stillWaiting && waitingUntil && (
         <p className="text-xs font-mono text-text-secondary mt-1">
-          Next attempt at {waitingUntil.toLocaleTimeString()}
+          Next attempt at {formatClockTime(waitingUntil)}
         </p>
       )}
     </div>

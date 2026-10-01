@@ -205,6 +205,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     exportDiagnosticLogs: vi.fn().mockResolvedValue(true),
 
     checkForUpdate: vi.fn().mockResolvedValue({ status: 'up-to-date', currentVersion: '1.1.0' }),
+    getSystemLocale: vi.fn().mockResolvedValue('en-US'),
     getUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     setUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     openReleasePage: vi.fn().mockResolvedValue(true),

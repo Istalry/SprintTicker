@@ -5,6 +5,7 @@ import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
 import { DeviceConfigDTO } from '../../../shared/dtos';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
+import { formatClockTime } from '../../utils/formatters';
 
 export const DeviceDiagnosticsView: React.FC = () => {
   const deviceStatus = useDeviceStatus();
@@ -66,7 +67,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
     }
     if (window.electronAPI?.onHardwareInputEvent) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
-        const timeStr = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+        const timeStr = formatClockTime(new Date()) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
         setHardwareLogs((prev) => [...prev, { time: timeStr, key: event.inputKey, action: event.actionAssigned }].slice(-20));
       });
       return () => unsubscribe();

@@ -35,6 +35,7 @@
       "to": "LICENSE"
     }
   ],
+  "electronLanguages": ["en-US"],
   "npmRebuild": true,
   "asar": true,
   "publish": [

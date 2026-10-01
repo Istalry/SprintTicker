@@ -910,6 +910,8 @@ export class IPCHandlerRegistry {
       }
     });
 
+    ipcMain.handle(IPCChannel.GET_SYSTEM_LOCALE, async (): Promise<string> => app.getSystemLocale());
+
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {
       return this.updateChecker ? this.updateChecker.isEnabled() : false;
     });

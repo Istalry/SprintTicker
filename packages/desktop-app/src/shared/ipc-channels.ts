@@ -117,6 +117,15 @@ export enum IPCChannel {
 
   // Updates. A notification only -- nothing is downloaded or installed.
   CHECK_FOR_UPDATE = 'updates:check',
+  /**
+   * Windows' regional format, e.g. `en-BE` or `fr-FR`, for formatting times.
+   *
+   * Not the app's locale: only `en-US` ships, so Chromium's own locale -- what
+   * `toLocaleTimeString()` uses by default -- is en-US on every machine, and a
+   * French Windows would read `2:05:33 PM`. The formatting data is all there
+   * regardless; only the UI translations were dropped.
+   */
+  GET_SYSTEM_LOCALE = 'app:get-system-locale',
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',

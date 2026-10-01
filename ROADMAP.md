@@ -875,8 +875,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.19 statements / 86.13 branches / 91.23 functions / 94.82 lines across 1405
-tests in 71 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**93.2 statements / 86.13 branches / 91.24 functions / 94.83 lines across 1413
+tests in 72 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1115,6 +1115,16 @@ already measures.
     the CSS lost 1.2 kB of prefixes. Correct rather than smaller.
   - The renderer's own JS was already healthy: 430 kB, react-dom most of it,
     lucide tree-shaken to 41 kB for 57 icons.
+  - **Chromium's UI translations** (2026-10-01): 49 MB across 55 `.pak` files
+    for an app whose interface is English. Only `en-US` ships now
+    (`electronLanguages`), which took the installed app from 384 MB to 336 MB
+    and the installer from 103.2 MB to 95.2 MB. The catch, measured with a
+    probe under `--lang=fr`: Chromium's locale then falls back to en-US
+    everywhere, and `toLocaleTimeString()` follows it, so a French Windows
+    read `2:05:33 PM`. Times are formatted in Windows' regional format instead
+    (`app.getSystemLocale()`, `formatClockTime`); the formatting data is ICU's
+    and ships whole. That also fixed the maintainer's own machine, English
+    Windows with a Belgian regional format, which had shown 12-hour times.
 
 ## Deferred findings
 

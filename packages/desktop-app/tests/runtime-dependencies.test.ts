@@ -26,3 +26,18 @@ describe('runtime dependencies', () => {
     expect(Object.keys(pkg.dependencies).sort()).toEqual(externalPackages.sort());
   });
 });
+
+/**
+ * Chromium ships a UI translation per language, 49 MB of the installer, for an
+ * app whose own interface is English. Only en-US ships (decided 2026-09-30).
+ * What that changes is Chromium's locale, which falls back to en-US on every
+ * machine -- so times are formatted in Windows' regional format instead, read
+ * through `getSystemLocale`; see `formatClockTime`.
+ */
+describe('packaged locales', () => {
+  it('ElectronLanguages_Always_ShipEnUsOnly', () => {
+    const builder = JSON.parse(readFileSync(path.join(__dirname, '..', 'electron-builder.json'), 'utf8'));
+
+    expect(builder.electronLanguages).toEqual(['en-US']);
+  });
+});

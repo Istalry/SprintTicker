@@ -157,6 +157,8 @@ export interface IElectronAPI {
 
   // Updates
   checkForUpdate: () => Promise<UpdateStatusDTO>;
+  /** Windows' regional format (`en-BE`, `fr-FR`); times are formatted in it. */
+  getSystemLocale: () => Promise<string>;
   getUpdateCheckEnabled: () => Promise<boolean>;
   setUpdateCheckEnabled: (enabled: boolean) => Promise<boolean>;
   openReleasePage: (url: string) => Promise<boolean>;

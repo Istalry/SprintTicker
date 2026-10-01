@@ -23,6 +23,7 @@ import {
   BitmapIconId
 } from '../../../shared/dtos';
 import { createDefaultNotificationSettings } from '../../../shared/notification-defaults';
+import { formatClockTime } from '../../utils/formatters';
 
 export const NotificationSettingsView: React.FC = () => {
   // Seeded from the shared defaults rather than a local copy. The copy that
@@ -634,7 +635,7 @@ export const NotificationSettingsView: React.FC = () => {
             </div>
           ) : (
             filteredLogs.map((log, idx) => {
-              const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '';
+              const timeStr = log.timestamp ? formatClockTime(new Date(log.timestamp)) : '';
               let badgeColor = 'text-accent-blue bg-accent-blue/10 border-accent-blue/30';
               if (log.level === 'notification') badgeColor = 'text-accent-emerald bg-accent-emerald/10 border-accent-emerald/30';
               if (log.level === 'warn') badgeColor = 'text-accent-yellow bg-accent-yellow/10 border-accent-yellow/30';
