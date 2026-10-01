@@ -1,7 +1,11 @@
 packages:
   - 'packages/*'
 allowBuilds:
-  better-sqlite3: true
+  # Ships a binding.gyp, so pnpm would run node-gyp on it -- which compiles
+  # nothing, because the package already carries a prebuilt N-API binary that
+  # Node and Electron both load (CLAUDE.md section 2), but still wants Python
+  # and MSVC on a fresh machine. Refused, like electron-winstaller below.
+  better-sqlite3: false
   electron: true
   # Squirrel.Windows, pulled in by electron-builder 26. This project targets
   # NSIS and portable only, so its postinstall would fetch a toolchain that

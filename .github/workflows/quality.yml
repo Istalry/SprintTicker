@@ -41,8 +41,8 @@ jobs:
       # catches a version drift across the three package.json files at the
       # moment it is introduced rather than at the moment someone tries to cut a
       # release, which is when build-windows.yml would otherwise refuse the tag.
-      # Its better-sqlite3 binding check only warns, so --ignore-scripts above
-      # does not make this fail (audit F-33).
+      # Its better-sqlite3 check reads the prebuild in the package tarball,
+      # which --ignore-scripts above does not skip.
       - name: Pre-flight checks
         run: pnpm preflight
 
@@ -59,8 +59,8 @@ jobs:
         run: pnpm fonts:check
 
       # The animation studio's tests are pure TypeScript -- no native module,
-      # no Python, no bar -- so they run here rather than on the Windows
-      # runner, whose install rebuilds better-sqlite3 they do not need.
+      # no Python, no bar -- so they run here rather than on the slower
+      # Windows runner, which they do not need.
       - name: Animation studio tests
         run: pnpm test:studio
 
@@ -69,10 +69,9 @@ jobs:
   # process.platform === 'win32'. Running these on ubuntu would measure a
   # different program and quietly skip the branches most likely to break.
   #
-  # Separate runner from the packaging workflow on purpose. better-sqlite3 must
-  # be built for the Node ABI here (pretest does it) and for the Electron ABI
-  # there; on one machine those two rebuilds fight, and the loser fails with
-  # NODE_MODULE_VERSION.
+  # Separate from the packaging workflow, which needs LFS and this does not.
+  # (It once also kept two better-sqlite3 rebuilds, one per ABI, from fighting
+  # on one machine; since better-sqlite3 13 there is one N-API binary for both.)
   test:
     name: Test & coverage
     runs-on: windows-latest

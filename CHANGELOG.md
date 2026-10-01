@@ -350,6 +350,15 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
+- **Building from source no longer needs a C++ toolchain.** better-sqlite3 13
+  ships one prebuilt binary that Node and Electron both load, so the rebuilds
+  that ran before every `pnpm test` and `pnpm dev` did nothing, and are gone,
+  along with the Visual Studio Build Tools requirement. Python is still needed
+  to compile animations. Packaging skips electron-builder's native rebuild for
+  the same reason, which also drops the Visual Studio project files it left
+  behind from the installer. The pre-flight check, which looked for a compiled
+  binary that no longer exists and warned on every run, now checks the
+  prebuild that ships.
 - **A much smaller installer.** The app inside it went from about 73 MB to
   about 5 MB. It had been carrying React, the icon set and the fonts twice --
   once bundled, once as the source they were bundled from -- plus SQLite's

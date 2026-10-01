@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { builtinModules } from 'module';
 import path from 'path';
 import { ELECTRON_EXTERNALS } from '../vite.config.electron';
@@ -39,5 +39,41 @@ describe('packaged locales', () => {
     const builder = JSON.parse(readFileSync(path.join(__dirname, '..', 'electron-builder.json'), 'utf8'));
 
     expect(builder.electronLanguages).toEqual(['en-US']);
+  });
+});
+
+/**
+ * better-sqlite3 is loaded by two runtimes with different ABIs: Node for the
+ * tests, Electron for the app. It needs no rebuild for either only because it
+ * is an N-API addon shipping a prebuilt binary, which both load as it is. The
+ * `pretest` and `predev` rebuilds that used to bridge the ABIs were removed
+ * on that basis (2026-10-01); if a future version stops being N-API or stops
+ * shipping the Windows binary, the app would fail to open its database in one
+ * runtime or the other. CLAUDE.md section 2 has what to restore.
+ */
+describe('better-sqlite3 binary', () => {
+  const packageDir = path.dirname(require.resolve('better-sqlite3/package.json'));
+
+  it('BetterSqlite3_Always_IsAnNapiAddon', () => {
+    const gyp = readFileSync(path.join(packageDir, 'binding.gyp'), 'utf8');
+
+    expect(gyp).toMatch(/NAPI_VERSION=\d+/);
+  });
+
+  it('BetterSqlite3_OnWindowsX64_LoadsItsShippedPrebuild', () => {
+    const loader = readFileSync(path.join(packageDir, 'lib', 'win32-x64.js'), 'utf8');
+
+    expect(existsSync(path.join(packageDir, 'prebuilds', 'win32-x64.node'))).toBe(true);
+    expect(loader).toContain("require('../prebuilds/win32-x64.node')");
+  });
+
+  it('ElectronBuilder_Always_SkipsTheNativeRebuild', () => {
+    // electron-builder's rebuild ran node-gyp over binding.gyp at every
+    // package: it compiled nothing, wanted Python and MSVC, and left project
+    // files that shipped in app.asar.unpacked.
+    const builder = JSON.parse(readFileSync(path.join(__dirname, '..', 'electron-builder.json'), 'utf8'));
+
+    expect(builder.npmRebuild).toBe(false);
+    expect(builder.files).toContain('!**/node_modules/better-sqlite3/build/**');
   });
 });

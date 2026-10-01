@@ -908,6 +908,13 @@ this table — it is a summary, and summaries drift.
   runtime about to load it, and CLAUDE.md §2 explains why alternating
   `pnpm test` and `pnpm dev` rebuilds twice. The quality and packaging workflows
   are kept on separate runners for the same reason.
+  **Fixed, 2026-10-01.** The property had stopped holding: better-sqlite3 13,
+  adopted for Electron 44, is an N-API addon with one prebuilt binary that
+  Node and Electron both load, and both rebuilds had been no-ops since. They
+  are removed, along with electron-builder's `npmRebuild` and pnpm's build of
+  the package; `runtime-dependencies.test.ts` fails if it stops being N-API.
+  The same change points F-33's binding check at the prebuild, which it had
+  never found, and makes a missing one an error.
 - **F-35 — `NODE_ENV === 'test'` branches in production code. Closed as
   intentional, and made legible.** The three in `SystemAutomationService` are
   now one named getter, `wouldTouchThisMachine`, whose docblock says why they

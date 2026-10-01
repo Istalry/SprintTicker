@@ -25,13 +25,23 @@ function runPreflightChecks() {
     );
   }
 
-  // 2. Verify better-sqlite3 native bindings exist
-  const nativeBindingPath = path.join(__dirname, '../node_modules/better-sqlite3/build/Release/better_sqlite3.node');
-  if (!fs.existsSync(nativeBindingPath)) {
-    console.warn('[PreflightCheck] Warning: better-sqlite3 native binary not compiled yet. Run `pnpm approve-builds`.');
-  } else {
-    console.log('[PreflightCheck] ✓ better-sqlite3 native C++ bindings verified.');
+  // 2. Verify the better-sqlite3 binary the installer will carry.
+  //
+  // Not build/Release: since 13 nothing is compiled there. The package ships
+  // one N-API binary per platform in prebuilds/, loaded by Node and Electron
+  // alike, so this looked for a file that never exists and warned on every
+  // run. The one that ships is win32-x64, whatever this check runs on. It is
+  // in the package tarball, so --ignore-scripts no longer hides it, and a
+  // missing one is now an error: the packaged app would die opening its
+  // database.
+  const sqlitePkg = require.resolve('better-sqlite3/package.json', {
+    paths: [path.join(__dirname, '../packages/desktop-app')]
+  });
+  const shippedBinary = path.join(path.dirname(sqlitePkg), 'prebuilds', 'win32-x64.node');
+  if (!fs.existsSync(shippedBinary)) {
+    throw new Error(`better-sqlite3 has no Windows x64 prebuild at ${shippedBinary}. See CLAUDE.md section 2.`);
   }
+  console.log('[PreflightCheck] ✓ better-sqlite3 Windows x64 prebuild present.');
 
   // 3. Verify Unity C# Editor scripts
   const publisherCs = path.join(__dirname, '../packages/unity-plugin/Editor/BusyBarWebhookPublisher.cs');

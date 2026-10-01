@@ -39,25 +39,39 @@ pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
 pnpm fonts:preview "text"   # print text in every font, in the terminal
 ```
 
-**The better-sqlite3 ABI trap.** The native module must be built for whichever
-runtime is about to load it, and the two are not interchangeable:
+**better-sqlite3 needs no rebuild, for either runtime.** Version 13 is an
+N-API addon (`NAPI_VERSION=10`) and ships one binary per platform in
+`prebuilds/`; `lib/win32-x64.js` loads `prebuilds/win32-x64.node`
+unconditionally. Node 24 (ABI 137, for Vitest) and Electron 44 (ABI 149) load
+that same file -- measured on 2026-10-01, by loading it in both on `:memory:`.
+N-API is what makes the ABI number irrelevant.
 
-- `pretest` runs `pnpm rebuild better-sqlite3` — the **Node** ABI, for Vitest.
-- `predev` runs `electron-builder install-app-deps` — the **Electron** ABI.
+This used to be the worst trap in the repository: `pretest` rebuilt for Node,
+`predev` rebuilt for Electron, and a skipped one failed with
+`NODE_MODULE_VERSION`. With 13 both rebuilds had become no-ops -- nothing in
+the package had changed since the install a month before -- so they are gone.
+`runtime-dependencies.test.ts` fails if a future version stops being N-API or
+stops shipping the Windows prebuild, which is the day this paragraph needs its
+old content back.
 
-Running `pnpm test` then `pnpm dev` rebuilds twice; that is correct, not a bug.
-If either fails with `NODE_MODULE_VERSION` mismatch, run the other one's rebuild
-step.
+`pnpm-workspace.yaml` sets `better-sqlite3: false` under `allowBuilds`. The
+package carries a `binding.gyp`, so pnpm runs `node-gyp rebuild` on it when
+allowed -- a run that compiles nothing, because the gyp file detects the
+prebuild, but that still needed Python and MSVC on a fresh machine. Removing
+the entry instead does not work: pnpm then fails the install with
+`ERR_PNPM_IGNORED_BUILDS` and writes `set this to true or false` into the file.
+For the same reason `electron-builder.json` sets `npmRebuild: false`: its
+rebuild ran `node-gyp rebuild --runtime=electron` at every package, built
+nothing, and the project files it left in `build/` shipped in
+`app.asar.unpacked`. A packaged Electron 44 loads the prebuild as it is
+(measured on 2026-10-01 with the packaged exe under `ELECTRON_RUN_AS_NODE`).
 
-**better-sqlite3 and Electron are a version pair, not two independent
-dependencies.** Upgrading Electron 30 to 44 made better-sqlite3 11 fail to
-*compile* -- not a mismatched ABI number but hard C++ errors, because V8 had
-changed underneath it (`v8::External::Value()` gained an isolate parameter,
-`PropertyCallbackInfo::This` was removed). The fix was better-sqlite3 13. So an
-Electron major implies a better-sqlite3 review, which is why Dependabot ignores
-better-sqlite3 majors: that bump is driven by this pairing rather than chosen on
-its own. On a fresh install with no prebuild for your Node version, it compiles
-from source and needs Python and MSVC Build Tools.
+The history behind it, still worth knowing: upgrading Electron 30 to 44 made
+better-sqlite3 11 fail to *compile* -- hard C++ errors, because V8 had changed
+underneath it (`v8::External::Value()` gained an isolate parameter,
+`PropertyCallbackInfo::This` was removed). 11 was built against V8 directly;
+13 is not, which is why an Electron major no longer implies a better-sqlite3
+review, and why Dependabot no longer holds back its majors.
 
 **Lint config is flat config, in `eslint.config.mjs` at the repo root.** ESLint 8
 reached end of life; the repository is on ESLint 10 (9 is the `maintenance`

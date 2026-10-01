@@ -154,7 +154,7 @@ the hardware **START** button or dismissed with **BACK**.
 | **Node.js** | `>=22.12.0` (`.nvmrc` pins `24.18.0`). Vitest 5 sets this floor. |
 | **pnpm** | `>=11.0.0` (pinned to `pnpm@11.25.0` via `packageManager`) |
 | **Git LFS** | **Mandatory** — see below |
-| **Build tools** | Visual Studio Build Tools + Python, to compile `better-sqlite3` |
+| **Python** | Only to compile animations (`seq2anim.py`, with Pillow and colorlog). Nothing needs a C++ compiler: `better-sqlite3` ships prebuilt. |
 | **Hardware** | A BUSY Bar over USB — optional; `pnpm dev:mock` covers the rest |
 
 ### Git LFS is mandatory
@@ -217,17 +217,16 @@ cd SprintTicker
 pnpm install
 ```
 
-`pnpm install` compiles the native modules. `better-sqlite3` and `electron` are
-listed under `allowBuilds` in `pnpm-workspace.yaml`, so no separate build
-approval step is needed on pnpm 11.
+`pnpm install` runs Electron's install script, which downloads Electron
+itself. It is listed under `allowBuilds` in `pnpm-workspace.yaml`, so no
+separate build approval step is needed on pnpm 11.
 
-### The native module ABI trap
+### The native module
 
-`better-sqlite3` is a native addon, and Electron and Node.js use **different ABI
-versions**. The scripts handle it — `pretest` rebuilds for Node, `predev`
-rebuilds for Electron — but alternating `pnpm test` and `pnpm dev` rebuilds each
-time. That is expected. A `NODE_MODULE_VERSION` mismatch means you skipped one;
-re-running the script you actually want fixes it.
+`better-sqlite3` is a native addon, but there is nothing to build: since version
+13 it ships one prebuilt N-API binary per platform, which Node (for the tests)
+and Electron (for the app) both load as it is. Alternating `pnpm test` and
+`pnpm dev` needs no rebuild, and no compiler is involved on Windows x64.
 
 ---
 
@@ -302,7 +301,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1419 tests across 72 files for the app -- the main and shared
+`pnpm test` runs 1422 tests across 72 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
