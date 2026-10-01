@@ -34,7 +34,7 @@
     "better-sqlite3": "^13.0.3",
     "bindings": "^1.5.0",
     "file-uri-to-path": "^1.0.0",
-    "lucide-react": "^0.359.0",
+    "lucide-react": "^1.48.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "ws": "^8.21.3"
