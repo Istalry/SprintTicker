@@ -59,4 +59,16 @@ describe('App', () => {
 
     expect(await screen.findByText(/\(Active Session\)/)).toBeTruthy();
   });
+
+  it('EodWrapUpButton_Click_PutsThePromptOnTheBarToo', async () => {
+    // Opened in the window alone, the bar went on showing the session, and a
+    // START there paused it instead of confirming the wrap-up.
+    const bridge = installElectronApi();
+    render(<App />);
+
+    fireEvent.click(screen.getByTitle('EOD Wrap-Up'));
+
+    expect(await screen.findByText('End-of-Day Wrap-Up Wizard')).toBeTruthy();
+    expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);
+  });
 });

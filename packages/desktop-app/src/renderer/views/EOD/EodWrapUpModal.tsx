@@ -67,37 +67,37 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
     }
   }, [executing, completed, shouldShutdown, onConfirmEod]);
 
-  // Handle Hardware Buttons (START to confirm, BACK/CANCEL to dismiss)
+  // The bar's buttons, as main decoded them. Only the wrap-up's own actions
+  // count, never the raw key: those come only while the bar shows the wrap-up
+  // prompt. When it shows something else -- the dialog opened before the
+  // prompt was drawn, or a higher-priority screen holds the bar -- START has
+  // already paused the session or opened the task picker there, and reading
+  // the key here as well made two STARTs a wrap-up, with a shutdown behind it,
+  // that the user had pressed for something else.
   useEffect(() => {
     if (completed || executing) return;
 
     if (window.electronAPI?.onHardwareInputEvent) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
-        if (event.actionAssigned === 'DISMISS_EOD_WRAP_UP' || event.inputKey === 'cancel' || event.inputKey === 'back') {
+        if (event.actionAssigned === 'DISMISS_EOD_WRAP_UP') {
           onClose(); // This completely dismisses the EOD prompt for the day
         } else if (event.actionAssigned === 'CONFIRM_EOD_WRAP_UP_STEP_1') {
-          setConfirmStep(1);
+          // Main counts its own two presses. If a click has already armed the
+          // dialog, this START is the confirmation its button asks for.
+          if (confirmStep === 1) {
+            void handleExecuteEod();
+          } else {
+            setConfirmStep(1);
+          }
         } else if (event.actionAssigned === 'EXECUTE_EOD_WRAP_UP') {
-          handleExecuteEod();
-        } else if (event.inputKey === 'start' || event.inputKey === 'ok' || event.inputKey === 'click') {
-          setConfirmStep((prev) => {
-            if (prev === 0) {
-              if (window.electronAPI?.updateCeremonyPrompt) {
-                window.electronAPI.updateCeremonyPrompt('EOD', 'Press START to Confirm');
-              }
-              return 1;
-            } else {
-              handleExecuteEod();
-              return 2;
-            }
-          });
+          void handleExecuteEod();
         }
       });
       return () => unsubscribe();
     }
     // React accepts an undefined cleanup; state it explicitly for noImplicitReturns.
     return undefined;
-  }, [completed, executing, handleExecuteEod, onClose]);
+  }, [completed, executing, confirmStep, handleExecuteEod, onClose]);
 
   const formatDuration = (seconds: number): string => {
     const h = Math.floor(seconds / 3600);

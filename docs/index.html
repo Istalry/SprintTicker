@@ -820,6 +820,11 @@
       wrap-up asks twice — the first START is &quot;yes&quot;, the second confirms — because it
       can shut your machine down. Once it is done, the bar says <strong>SEE YOU!</strong> for five
       seconds, a moon rising and the stars coming out, and then goes idle.</p>
+      <p>The bar&#39;s buttons answer the wrap-up only while the bar shows its prompt. The
+      <strong>EOD Wrap-Up</strong> button in the top bar puts the prompt on the bar too. If
+      something ranked above the wrap-up holds the bar -- Lunch, in the shipped
+      ordering -- the buttons keep doing what that screen says, and the wrap-up is
+      confirmed in the window.</p>
       <hr>
       <h3 id="guide-troubleshooting">Troubleshooting</h3>
       <p><strong>The task list is empty.</strong> Check Task Providers for a saved domain and key.
@@ -1494,7 +1499,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1413 tests across 72 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1419 tests across 72 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

@@ -289,6 +289,12 @@ wrap-up asks twice — the first START is "yes", the second confirms — because
 can shut your machine down. Once it is done, the bar says **SEE YOU!** for five
 seconds, a moon rising and the stars coming out, and then goes idle.
 
+The bar's buttons answer the wrap-up only while the bar shows its prompt. The
+**EOD Wrap-Up** button in the top bar puts the prompt on the bar too. If
+something ranked above the wrap-up holds the bar -- Lunch, in the shipped
+ordering -- the buttons keep doing what that screen says, and the wrap-up is
+confirmed in the window.
+
 ---
 
 ## Troubleshooting

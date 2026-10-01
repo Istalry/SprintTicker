@@ -63,6 +63,15 @@ export const App: React.FC = () => {
     return undefined;
   }, []);
 
+  // The header button asks main for the prompt rather than only opening the
+  // dialog, so the bar shows the wrap-up too and its START confirms it. Opened
+  // here alone, the bar went on showing the session, and START there paused it.
+  const openEodWrapUp = () => {
+    setIsEodModalOpen(true);
+    window.electronAPI?.triggerEodPrompt?.()
+      .catch(err => console.warn('[App] Could not show the wrap-up prompt on the bar:', err));
+  };
+
   // Auto-open TaskSelectionModal on physical hardware wheel click IPC event
   useEffect(() => {
     if (window.electronAPI) {
@@ -247,7 +256,7 @@ export const App: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setIsEodModalOpen(true)}
+            onClick={openEodWrapUp}
             title="EOD Wrap-Up"
             className="flex items-center gap-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple px-3 py-1.5 rounded-md border border-accent-purple/30 font-semibold transition-colors shrink-0"
           >

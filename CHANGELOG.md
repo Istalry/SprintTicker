@@ -219,6 +219,13 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **START on the bar no longer wraps up the day by mistake.** With the
+  end-of-day window open but the bar showing something else -- the window
+  opened from the top bar, or a higher-ranked screen on the bar -- START both
+  paused the session there and armed the wrap-up in the window, and a second
+  START confirmed it, shutdown included. The window now follows the bar's
+  buttons only while the bar shows the wrap-up prompt, and the top-bar button
+  puts that prompt on the bar.
 - **Times follow Windows' regional format.** History, the sync queue, the
   notification log and Device Diagnostics showed times in US style (`2:05:33
   PM`) whatever the region set in Windows. They now use it: `14:05:33` for most
