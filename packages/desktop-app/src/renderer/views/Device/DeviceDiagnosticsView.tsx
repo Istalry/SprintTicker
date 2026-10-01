@@ -24,6 +24,25 @@ export const DeviceDiagnosticsView: React.FC = () => {
   const [applying, setApplying] = useState<boolean>(false);
   const [applyResult, setApplyResult] = useState<{ ok: boolean; message: string } | null>(null);
 
+  const hasBar = deviceStatus.enabled;
+  const [barToggleError, setBarToggleError] = useState<string>('');
+
+  /**
+   * Turns no-bar mode on or off. The address and token are kept either way,
+   * so a bar switched off and on again comes back where it was.
+   */
+  const setBarEnabled = async (enabled: boolean): Promise<void> => {
+    if (!window.electronAPI?.setDeviceConfig) return;
+    setBarToggleError('');
+    const next: DeviceConfigDTO = { ...deviceConfig, enabled };
+    try {
+      await window.electronAPI.setDeviceConfig(next);
+      setDeviceConfig(next);
+    } catch (err) {
+      setBarToggleError(err instanceof Error ? err.message : 'Could not save the setting.');
+    }
+  };
+
   const addressValid = isValidDeviceHost(addressDraft);
   const connectionDirty =
     addressDraft.trim() !== deviceConfig.ipAddress || tokenDraft !== deviceConfig.apiToken;
@@ -113,6 +132,29 @@ export const DeviceDiagnosticsView: React.FC = () => {
         </div>
       </div>
 
+      {!hasBar && (
+        <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-3">
+          <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
+            <Monitor className="w-4 h-4 text-accent-blue" />
+            <span>No BUSY Bar on this machine</span>
+          </h3>
+          <p className="text-xs text-text-secondary">
+            SprintTicker is keeping time, syncing worklogs and prompting as usual; the screens that only
+            describe the bar are hidden. If you get a BUSY Bar later, add it here: the address and token you
+            set before are kept.
+          </p>
+          <button
+            type="button"
+            onClick={() => { void setBarEnabled(true); }}
+            className="px-3 py-1.5 text-xs font-bold rounded bg-accent-blue text-white"
+          >
+            Add a BUSY Bar
+          </button>
+          {barToggleError && <p className="text-[10px] text-accent-red">{barToggleError}</p>}
+        </div>
+      )}
+
+      {hasBar && (<>
       {/* Grid Status Cards */}
       <div className="grid grid-cols-4 gap-4 font-mono">
         <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
@@ -317,6 +359,21 @@ export const DeviceDiagnosticsView: React.FC = () => {
               <div className="w-9 h-5 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-blue"></div>
             </label>
           </div>
+
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary flex flex-col">
+              <span>No BUSY Bar on this machine?</span>
+              <span className="text-[10px] text-dark-400">Stops dialling the bar and hides its screens. Reversible here at any time.</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => { void setBarEnabled(false); }}
+              className="px-3 py-1.5 text-xs font-semibold rounded border border-border-dark text-text-secondary hover:text-text-primary"
+            >
+              Use without a bar
+            </button>
+          </div>
+          {barToggleError && <p className="text-[10px] text-accent-red">{barToggleError}</p>}
         </div>
       </div>
 
@@ -461,6 +518,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
           )}
         </div>
       </div>
+
+      </>)}
 
       <UpdateSettingsCard />
 

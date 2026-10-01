@@ -34,6 +34,13 @@ import { ToastNotification, ToastMessage } from './components/ToastNotification'
 import { FolderGit2, History } from 'lucide-react';
 import { UpdateBanner } from './components/UpdateNotice';
 
+/**
+ * Tabs that exist only to configure what the bar shows: Priority Rules orders
+ * its screen, Unity Engine puts the editor's state on it, and Notifications
+ * mirrors Windows notifications onto it. Hidden in no-bar mode.
+ */
+const BAR_ONLY_TABS = ['priority', 'unity', 'notifications'];
+
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
@@ -45,6 +52,9 @@ export const App: React.FC = () => {
   // Custom Hooks
   const { session, pause, resume, complete, startTask } = useSession();
   const deviceStatus = useDeviceStatus();
+  // No-bar mode: what only describes the bar steps aside -- the emulator, the
+  // connection readout, and BAR_ONLY_TABS. Everything that keeps time stays.
+  const hasBar = deviceStatus.enabled;
   const { projects } = useTasks();
   const { worklogs } = useWorklogs();
 
@@ -90,15 +100,17 @@ export const App: React.FC = () => {
     { id: 'projects', label: 'Projects & Tasks', icon: FolderGit2 },
     { id: 'history', label: 'Work History', icon: History },
     { id: 'settings', label: 'Task Providers', icon: Settings },
-    { id: 'unity', label: 'Unity Engine', icon: Gamepad2 },
+    ...(hasBar ? [{ id: 'unity', label: 'Unity Engine', icon: Gamepad2 }] : []),
     { id: 'ceremonies', label: 'Ceremonies', icon: Calendar },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'priority', label: 'Priority Rules', icon: Zap },
-    { id: 'device', label: 'Device Diagnostics', icon: Monitor }
+    ...(hasBar ? [{ id: 'notifications', label: 'Notifications', icon: Bell }] : []),
+    ...(hasBar ? [{ id: 'priority', label: 'Priority Rules', icon: Zap }] : []),
+    { id: 'device', label: hasBar ? 'Device Diagnostics' : 'Device & Logs', icon: Monitor }
   ];
 
   const renderActiveView = () => {
-    switch (activeTab) {
+    // The bar turned off while one of its screens was open: fall back rather
+    // than keep showing a screen the navigation no longer offers.
+    switch (!hasBar && BAR_ONLY_TABS.includes(activeTab) ? 'session' : activeTab) {
       case 'session':
         return (
           <div className="space-y-6">
@@ -202,7 +214,9 @@ export const App: React.FC = () => {
       */}
       <header className="flex items-center gap-4 overflow-hidden px-6 py-2.5 bg-dark-800 border-b border-border-dark select-none">
         <div className="flex items-center space-x-3 shrink-0">
-          <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
+          {hasBar && (
+            <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
+          )}
           <h1 className="text-lg font-bold tracking-tight text-white font-mono">
             SPRINT<span className="text-accent-blue font-sans">TICKER</span>
           </h1>
@@ -210,7 +224,7 @@ export const App: React.FC = () => {
 
         {/* Live Hardware Canvas Emulator */}
         <div className="flex-1 min-w-0">
-          <HardwareDisplayEmulator />
+          {hasBar && <HardwareDisplayEmulator />}
         </div>
 
         <div className="flex items-center gap-3 text-sm font-mono shrink-0">
@@ -233,6 +247,7 @@ export const App: React.FC = () => {
             carries it, and the pulsing dot beside the logo repeats it. Only the
             wording and the address go.
           */}
+          {hasBar && (<>
           <div
             title={deviceStatus.connected ? `Connected to ${deviceStatus.ipAddress}` : 'Disconnected'}
             className="flex items-center gap-2 bg-dark-700 px-3 py-1.5 rounded-md border border-border-dark shrink-0"
@@ -254,6 +269,7 @@ export const App: React.FC = () => {
               {deviceStatus.connected ? `${deviceStatus.webSocketPingMs}ms` : '--'}
             </span>
           </div>
+          </>)}
 
           <button
             onClick={openEodWrapUp}

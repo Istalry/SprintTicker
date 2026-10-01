@@ -385,6 +385,9 @@ export class IPCHandlerRegistry {
       const next: DeviceConfigDTO = {
         ...DEFAULT_DEVICE_CONFIG,
         ...config,
+        // A boolean whatever arrived: anything but an explicit false keeps the
+        // bar, which is the safe reading of a malformed payload.
+        enabled: config.enabled !== false,
         ipAddress: host,
         apiToken: config.apiToken ?? ''
       };
@@ -400,10 +403,19 @@ export class IPCHandlerRegistry {
         (previous.ipAddress ?? DEFAULT_DEVICE_CONFIG.ipAddress) !== next.ipAddress ||
         (previous.apiToken ?? '') !== next.apiToken;
 
-      if (targetChanged) {
+      const enabledChanged = (previous.enabled !== false) !== next.enabled;
+      const retarget = async (): Promise<void> => {
+        if (!targetChanged) return;
         console.log(`[IPC] Device address changed to ${next.ipAddress}. Reconnecting.`);
         await this.driver.reconfigure({ ipAddress: next.ipAddress, apiToken: next.apiToken });
-      }
+      };
+
+      // Ordered so the driver never dials an address it is about to stop
+      // using: turning the bar off happens before a retarget, turning it on
+      // after one, so it comes up on the new address and nowhere else.
+      if (enabledChanged && !next.enabled) await this.driver.setEnabled(false);
+      await retarget();
+      if (enabledChanged && next.enabled) await this.driver.setEnabled(true);
 
       // Re-evaluate display state if needed
       const activeSession = this.engine.getCurrentSession();

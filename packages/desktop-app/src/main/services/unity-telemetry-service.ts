@@ -33,7 +33,15 @@ export class UnityTelemetryService {
     webhookServer?: WebhookServer,
     renderer?: DisplayRenderer,
     engine?: TimeTrackingEngine,
-    priorityEngine?: IPriorityPreemptionEngine
+    priorityEngine?: IPriorityPreemptionEngine,
+    /**
+     * Whether there is a bar to show Unity's state on. Without one the editor
+     * events are ignored: compile, Play Mode and exceptions exist here to be
+     * shown on the bar, and the display locks they take would only compete
+     * with the end-of-day prompt for a screen nobody has. Read per event, so
+     * adding a bar later takes effect at the next one.
+     */
+    isBarEnabled: () => boolean = () => true
   ) {
     if (!settingsRepo) {
       throw new ArgumentNullException('settingsRepo');
@@ -44,10 +52,10 @@ export class UnityTelemetryService {
     this.priorityEngine = priorityEngine;
 
     if (webhookServer) {
-      webhookServer.onHeartbeatEvent((payload) => this.handleHeartbeat(payload));
-      webhookServer.onCompileEvent((payload) => this.handleCompile(payload));
-      webhookServer.onPlayModeEvent((payload) => this.handlePlayMode(payload));
-      webhookServer.onConsoleEvent((payload) => this.handleConsole(payload));
+      webhookServer.onHeartbeatEvent((payload) => { if (isBarEnabled()) this.handleHeartbeat(payload); });
+      webhookServer.onCompileEvent((payload) => { if (isBarEnabled()) this.handleCompile(payload); });
+      webhookServer.onPlayModeEvent((payload) => { if (isBarEnabled()) this.handlePlayMode(payload); });
+      webhookServer.onConsoleEvent((payload) => { if (isBarEnabled()) this.handleConsole(payload); });
     }
 
     // Periodically prune stale Unity instances (every 10 seconds)

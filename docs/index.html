@@ -487,12 +487,16 @@
       </div>
       <h3 id="guide-first-run">First run</h3>
       <p>The onboarding wizard opens automatically. Three steps:</p>
-      <p><strong>1. Hardware.</strong> Plug the BUSY Bar in over USB. It presents a virtual Ethernet
-      adapter and always answers on <code>10.0.4.20</code>, so there is nothing to configure —
-      press <strong>Test Ping</strong> to confirm the link. A failure here is reported as a failure;
-      it never congratulates you on a connection it did not make.</p>
-      <p>No bar? Run <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen
-      emulator shows what the device would display.</p>
+      <p><strong>1. Hardware.</strong> First, whether you have a BUSY Bar. If you do, plug it in over
+      USB. It presents a virtual Ethernet adapter and answers on <code>10.0.4.20</code>, so there
+      is usually nothing to configure — press <strong>Test Ping</strong> to confirm the link. A
+      failure here is reported as a failure; it never congratulates you on a
+      connection it did not make.</p>
+      <p>If you do not, choose <strong>Not now</strong>: SprintTicker runs without one (see
+      <a href="#without-a-busy-bar">Without a BUSY Bar</a>), and you can add a bar later.</p>
+      <p>Developing without a bar but wanting to see what it would show? Run
+      <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen emulator
+      shows what the device would display.</p>
       <p><strong>2. Task provider.</strong> Choose OpenProject, Jira Cloud or ad-hoc, and enter the
       credentials for the one you picked:</p>
       <div class="table-wrap"><table>
@@ -521,6 +525,24 @@
       <p>The <strong>fallback overhead ticket</strong> (default <code>MISC-1</code>) is what ad-hoc time is
       logged against — meetings, admin, anything without a ticket.</p>
       <p><strong>3. Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
+      <h4>Without a BUSY Bar</h4>
+      <p>Everything that keeps time works without the hardware: the task picker, the
+      running timer, pausing, finishing, worklog sync, history, the ceremonies and
+      the end-of-day wrap-up. What steps aside is what only describes the bar — the
+      on-screen emulator and connection readout in the top bar, <strong>Priority Rules</strong>,
+      which orders the bar&#39;s screen and nothing else, <strong>Unity Engine</strong>, whose
+      compile, Play Mode and error states exist to be shown on the bar, and
+      <strong>Notifications</strong>, which mirrors Windows notifications onto it. Events from the
+      Unity plugin are ignored in this mode, the Windows notification listener does
+      not run, and the setup wizard skips its Unity step. The end-of-day wrap-up still saves open Unity scenes. <strong>Device Diagnostics</strong>
+      becomes <strong>Device &amp; Logs</strong>, keeping log export, the update setting and the
+      factory reset.</p>
+      <p>The app does not look for a bar in this mode, so it logs nothing about one being
+      unreachable.</p>
+      <p>To switch, use <strong>Use without a bar</strong> in Device Diagnostics; the bar is cleared
+      and handed back to its own clock first. To add a bar later,
+      press <strong>Add a BUSY Bar</strong> in Device &amp; Logs: the address and token you had set
+      before are kept, and the bar&#39;s screens come back at once.</p>
       <hr>
       <h3 id="guide-the-panels">The panels</h3>
       <p>Nine tabs down the left.</p>
@@ -1023,6 +1045,21 @@
       app. It has to be a setting: over Wi-Fi the bar holds a DHCP lease, and a host
       whose USB CDC-NCM driver will not start the interface is recovered by proxying
       the bar onto a different address entirely.</p>
+      <p><strong>No-bar mode</strong> is <code>DeviceConfigDTO.enabled: false</code>. The driver then never
+      dials: <code>connect()</code> declines without starting the ping loop, every command throws
+      <code>disconnected</code> without a request, and frames are queued as they are for an
+      unplugged bar. <code>AnimationPlayer</code> skips the upload and runs frames for the
+      preview; the renderer shows no animated icon and skips the idle clear;
+      <code>UnityTelemetryService</code> ignores the plugin&#39;s events, whose display locks would
+      only compete with the end-of-day prompt; and the Windows notification listener,
+      which polls Windows&#39; notification database every couple of seconds to mirror it
+      onto the bar, is started and stopped with the mode (<code>followBar</code>). Turning the bar off while it is
+      connected releases the display through <code>clearDisplay</code> first, or the last frame
+      would stay on it. <code>DeviceStatusDTO.enabled</code> carries
+      the mode to the renderer, which hides the bar-only screens live. Turning it back
+      on (<code>setEnabled(true)</code>) dials the configured address and sends the last queued
+      frame, which the renderer&#39;s deduplication had already recorded as sent. A row
+      saved before the field existed reads as <code>true</code>.</p>
       <hr>
       <h3 id="architecture-process-boundaries">2. Process boundaries</h3>
       <p><code>contextIsolation: true</code>, <code>nodeIntegration: false</code>, <code>sandbox: true</code>. These are
@@ -1506,7 +1543,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1431 tests across 73 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1455 tests across 75 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -1939,6 +1976,11 @@
       is to reach the bar through a proxy on a different address. Read
       <code>DeviceConfigDTO.ipAddress</code>, never <code>DEFAULT_USB_IP</code>.</p>
       </div>
+      <p><code>DeviceConfigDTO.enabled</code> is no-bar mode when false: the driver does not dial,
+      and <code>DeviceStatusDTO.enabled</code> reports the same so the renderer can hide the
+      bar&#39;s screens. A missing field reads as <code>true</code>. <code>SET_DEVICE_CONFIG</code> turns the
+      bar off before retargeting and on after, so it never dials an address it is
+      leaving; <code>BusyBarDriver.setEnabled()</code> does the switch in place.</p>
       <p>Changing either value calls <code>BusyBarDriver.reconfigure()</code>, which tears down the
       ping loop and StateStream socket, re-points the driver and reconnects, without
       restarting the app. A host is validated with <code>isValidDeviceHost</code> before it is

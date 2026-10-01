@@ -17,6 +17,7 @@ import { InputDecoder } from './hardware/input-decoder';
 import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { UnityInjectorService } from './services/unity-injector-service';
 import { UnityTelemetryService } from './services/unity-telemetry-service';
+import { followBar } from './services/follow-bar';
 import { MessagingIntegrationService } from './services/messaging-service';
 import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
 import { WebhookServer } from './api/webhook-server';
@@ -166,7 +167,10 @@ async function startApplication(): Promise<void> {
   driver = new BusyBarDriver({
     ipAddress: deviceConfig.ipAddress || DEFAULT_DEVICE_CONFIG.ipAddress,
     apiToken: deviceConfig.apiToken || '',
-    forceMock
+    forceMock,
+    // `!== false`, not truthiness: a row saved before no-bar mode existed has
+    // no `enabled`, and an upgrade must leave that bar on.
+    enabled: deviceConfig.enabled !== false
   });
   await driver.connect();
 
@@ -200,10 +204,14 @@ async function startApplication(): Promise<void> {
     }
   });
 
-  const unityTelemetryService = new UnityTelemetryService(settingsRepo, webhookServer, renderer, engine, priorityEngine);
+  const activeDriver = driver;
+  const unityTelemetryService = new UnityTelemetryService(
+    settingsRepo, webhookServer, renderer, engine, priorityEngine, () => activeDriver.isEnabled()
+  );
   const messagingService = new MessagingIntegrationService(settingsRepo, renderer, providerManager);
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
-  windowsNotificationService.startListening();
+  const listener = windowsNotificationService;
+  followBar(activeDriver, () => listener.startListening(), () => listener.stopListening(), 'Windows notification mirroring');
 
   contextScheduleService = new ContextScheduleService(
     priorityEngine,
@@ -356,15 +364,18 @@ app.on('will-quit', event => {
         // there, and a failed clear must not skip the asset cleanup, nor
         // either of them the disconnect. A bar that is unplugged at quit is
         // the ordinary case for both to fail, so they only warn.
-        try {
-          await driver.clearDisplay(DEVICE_APPLICATION_NAME);
-        } catch (err) {
-          console.warn('[Main] Could not clear the display on shutdown:', err);
-        }
-        try {
-          await driver.deleteAppAssets(DEVICE_APPLICATION_NAME);
-        } catch (err) {
-          console.warn('[Main] Could not delete uploaded assets on shutdown:', err);
+        // Nothing to clean up on a bar the user does not have.
+        if (driver.isEnabled()) {
+          try {
+            await driver.clearDisplay(DEVICE_APPLICATION_NAME);
+          } catch (err) {
+            console.warn('[Main] Could not clear the display on shutdown:', err);
+          }
+          try {
+            await driver.deleteAppAssets(DEVICE_APPLICATION_NAME);
+          } catch (err) {
+            console.warn('[Main] Could not delete uploaded assets on shutdown:', err);
+          }
         }
         driver.disconnect();
       }

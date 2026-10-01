@@ -1397,4 +1397,95 @@ describe('BusyBarDriver contract enforcement', () => {
       );
     });
   });
+
+  describe('no-bar mode', () => {
+    const fetchSpy = () => vi.spyOn(globalThis, 'fetch').mockResolvedValue(status(200));
+
+    beforeEach(() => {
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('Connect_NoBarMode_NeverDialsNorKeepsLooking', async () => {
+      vi.useFakeTimers();
+      const fetch = fetchSpy();
+      const noBar = new BusyBarDriver({ ipAddress: '10.0.4.20', enabled: false });
+
+      expect(await noBar.connect()).toBe(false);
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(fetch).not.toHaveBeenCalled();
+      expect(noBar.getDeviceStatus()).toMatchObject({ enabled: false, connected: false });
+    });
+
+    it('Connect_NoBarModeWithMockHardware_StillDoesNotPretend', async () => {
+      const noBar = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: true, enabled: false });
+
+      expect(await noBar.connect()).toBe(false);
+      expect(noBar.getDeviceStatus().connected).toBe(false);
+      // The mock must not answer commands for a bar that is turned off either.
+      await expect(noBar.clearDisplay()).rejects.toMatchObject({ kind: 'disconnected' });
+    });
+
+    it('SetEnabled_TurnedOff_StopsPinging', async () => {
+      vi.useFakeTimers();
+      const fetch = fetchSpy();
+      const bar = new BusyBarDriver({ ipAddress: '10.0.4.20', animationTeardownSettleMs: 0 });
+      bar.startStateStreamListener = () => undefined;
+      await bar.connect();
+
+      expect(await bar.setEnabled(false)).toBe(false);
+      // The release itself is a request; nothing may follow it.
+      fetch.mockClear();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(fetch).not.toHaveBeenCalled();
+      expect(bar.isEnabled()).toBe(false);
+    });
+
+    it('SetEnabled_TurnedOffWhileConnected_HandsTheDisplayBackFirst', async () => {
+      // Disconnecting alone left the last frame on the bar for good.
+      const bar = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: true, animationTeardownSettleMs: 0 });
+      await bar.connect();
+      const order: string[] = [];
+      vi.spyOn(bar, 'clearDisplay').mockImplementation(async () => { order.push('clear'); return 'cleared'; });
+      vi.spyOn(bar, 'disconnect').mockImplementation(() => { order.push('disconnect'); });
+
+      await bar.setEnabled(false);
+
+      expect(order).toEqual(['clear', 'disconnect']);
+    });
+
+    it('SetEnabled_ClearRefused_StillTurnsTheBarOff', async () => {
+      const bar = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: true });
+      await bar.connect();
+      vi.spyOn(bar, 'clearDisplay').mockRejectedValue(new DeviceRequestError('unreachable', 'clear display', null));
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      expect(await bar.setEnabled(false)).toBe(false);
+      expect(bar.isEnabled()).toBe(false);
+    });
+
+    it('SetEnabled_TurnedOn_DialsTheConfiguredAddressAndSendsTheWaitingFrame', async () => {
+      // The frame rendered while the bar was off was queued, and the renderer
+      // recorded it as sent; without this the bar would stay dark until the
+      // picture next changed.
+      const fetch = fetchSpy();
+      const bar = new BusyBarDriver({ ipAddress: '10.0.4.21', enabled: false });
+      bar.startStateStreamListener = () => undefined;
+      await bar.connect();
+      expect(await bar.sendPixelFrame(Buffer.from([1, 2, 3]))).toBe('queued');
+      const send = vi.spyOn(bar, 'sendPixelFrame');
+
+      expect(await bar.setEnabled(true)).toBe(true);
+      await vi.waitFor(() => expect(send).toHaveBeenCalled());
+
+      expect(fetch.mock.calls[0][0]).toBe('http://10.0.4.21/api/status');
+      bar.disconnect();
+    });
+  });
 });

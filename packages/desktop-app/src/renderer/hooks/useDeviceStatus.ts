@@ -1,21 +1,27 @@
 import { useState, useEffect } from 'react';
 import { DeviceStatusDTO } from '../../shared/dtos';
+import { DEFAULT_USB_IP } from '../../shared/device-constants';
 
 /**
  * Custom React hook subscribing to physical BUSY Bar connection status and telemetry updates.
  */
 export function useDeviceStatus() {
+  // Disconnected until main says otherwise. This used to open on a connected
+  // bar at 98% battery and 4 ms -- invented figures that every user saw for
+  // the first moment, including users with no bar at all. `enabled` starts
+  // true, the default for a config that predates no-bar mode.
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatusDTO>({
-    connected: true,
-    ipAddress: '10.0.4.20',
+    enabled: true,
+    connected: false,
+    ipAddress: DEFAULT_USB_IP,
     connectionType: 'usb',
     frontBrightness: null,
     backBrightness: null,
-    batteryPercent: 98,
-    firmwareVersion: '1.4.2',
+    batteryPercent: 0,
+    firmwareVersion: 'N/A',
     framesSent: 0,
     framesFailed: 0,
-    webSocketPingMs: 4
+    webSocketPingMs: 0
   });
 
   useEffect(() => {

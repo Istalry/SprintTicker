@@ -68,6 +68,18 @@ export interface HardwareBindingConfig {
 }
 
 export interface DeviceConfigDTO {
+  /**
+   * Whether this machine has a BUSY Bar at all.
+   *
+   * False is the no-bar mode: the driver never dials, the app keeps time,
+   * syncs and prompts exactly as before, and the screens that only describe the
+   * bar step aside. Reversible by design -- a user who buys a bar later turns
+   * it back on in Device Diagnostics and keeps everything else.
+   *
+   * Absent from rows written before it existed, which read as `true` through
+   * `DEFAULT_DEVICE_CONFIG`: an upgrade must not switch anyone's bar off.
+   */
+  enabled: boolean;
   showIdleClockFallback: boolean;
   /**
    * Host the driver dials -- IPv4 or hostname, no scheme, port or path.
@@ -92,6 +104,12 @@ export interface DeviceConfigDTO {
 }
 
 export interface DeviceStatusDTO {
+  /**
+   * False in no-bar mode. Carried on the status, not only the config, because
+   * the status is what the renderer is pushed live: turning the bar off or on
+   * re-lays out every screen without a reload.
+   */
+  enabled: boolean;
   connected: boolean;
   ipAddress: string;
   connectionType: 'usb' | 'wifi';

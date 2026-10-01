@@ -42,6 +42,7 @@ type SubscriptionPayload<K extends SubscriptionKey> =
   NonNullable<IElectronAPI[K]> extends (callback: (payload: infer P) => void) => () => void ? P : never;
 
 export const CONNECTED_DEVICE: DeviceStatusDTO = {
+  enabled: true,
   connected: true,
   ipAddress: DEFAULT_DEVICE_CONFIG.ipAddress,
   connectionType: 'usb',
@@ -52,6 +53,14 @@ export const CONNECTED_DEVICE: DeviceStatusDTO = {
   webSocketPingMs: 4,
   framesSent: 0,
   framesFailed: 0
+};
+
+/** No-bar mode, as the driver reports it: not dialling, so never connected. */
+export const NO_BAR_DEVICE: DeviceStatusDTO = {
+  ...CONNECTED_DEVICE,
+  enabled: false,
+  connected: false,
+  webSocketPingMs: 0
 };
 
 export const TRACKING_SESSION: ActiveSessionDTO = {

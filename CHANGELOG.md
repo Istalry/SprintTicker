@@ -9,6 +9,14 @@ reported something other than the truth, in three different ways.
 
 ### Added
 
+- **SprintTicker without a BUSY Bar.** The setup wizard now asks whether you
+  have one. Without it, the app keeps time, syncs and runs your ceremonies as
+  before, stops looking for a device, and hides the screens that only describe
+  the bar -- Priority Rules, Unity Engine and Notifications. The Unity plugin's
+  events are ignored and the Windows notification listener does not run, since
+  both exist to put things on the bar. **Add a BUSY Bar** in Device & Logs brings it back, with the address
+  and token you had set. The connection readout no longer opens on invented
+  figures (connected, 98% battery) before the real status arrives.
 - **Tasks have descriptions.** The start of a Jira or OpenProject description
   appears under the task's title in Projects & Tasks and in the task picker,
   which searches it too. On the bar, the picker's second row shows the task

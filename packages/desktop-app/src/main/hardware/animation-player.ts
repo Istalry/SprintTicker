@@ -235,6 +235,14 @@ export class AnimationPlayer {
     // display and must not be torn down by this one's fallback.
     const superseded = (): boolean => !this.isPlaying || this.currentAnimation !== animName;
 
+    // No bar, no upload: straight to the frames, which feed the on-screen
+    // preview, without the "device would not store" error a refused upload
+    // logs. Optional call, because the player's tests drive it with fakes.
+    if (this.driver.isEnabled?.() === false) {
+      this.fallBackToFrameStreaming(animData);
+      return;
+    }
+
     // Twice at most: skipping the upload of the scene already on the panel can
     // meet a device that rebooted and lost it, which gets one fresh upload.
     for (let attempt = 0; attempt < 2; attempt++) {

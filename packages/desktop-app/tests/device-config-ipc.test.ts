@@ -172,4 +172,49 @@ describe('device config IPC', () => {
 
     expect(reconfigure).toHaveBeenCalledWith({ ipAddress: DEFAULT_USB_IP, apiToken: 'wifi-token' });
   });
+
+  describe('no-bar mode', () => {
+    it('GetDeviceConfig_RowWrittenBeforeNoBarMode_KeepsTheBarOn', async () => {
+      // An upgrade must not switch anyone's bar off.
+      settingsRepo.setSetting(DEVICE_CONFIG_SETTING_KEY, { showIdleClockFallback: true, ipAddress: '10.0.4.21', apiToken: '' });
+
+      const config = (await handlerFor(IPCChannel.GET_DEVICE_CONFIG)({})) as DeviceConfigDTO;
+
+      expect(config.enabled).toBe(true);
+    });
+
+    it('SetDeviceConfig_BarTurnedOff_StopsTheDriverAndKeepsTheAddress', async () => {
+      const setEnabled = vi.spyOn(driver, 'setEnabled');
+
+      await handlerFor(IPCChannel.SET_DEVICE_CONFIG)({}, { ...DEFAULT_DEVICE_CONFIG, enabled: false, ipAddress: '10.0.4.21' });
+
+      expect(setEnabled).toHaveBeenCalledWith(false);
+      expect(driver.getDeviceStatus().enabled).toBe(false);
+      const stored = settingsRepo.getSetting<DeviceConfigDTO>(DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG);
+      expect(stored).toMatchObject({ enabled: false, ipAddress: '10.0.4.21' });
+    });
+
+    it('SetDeviceConfig_BarAddedWithANewAddress_RetargetsBeforeDialling', async () => {
+      // On before the retarget would dial the old address first.
+      await handlerFor(IPCChannel.SET_DEVICE_CONFIG)({}, { ...DEFAULT_DEVICE_CONFIG, enabled: false });
+      const order: string[] = [];
+      vi.spyOn(driver, 'reconfigure').mockImplementation(async () => { order.push('reconfigure'); return true; });
+      vi.spyOn(driver, 'setEnabled').mockImplementation(async (enabled: boolean) => { order.push(`enabled=${enabled}`); return true; });
+
+      await handlerFor(IPCChannel.SET_DEVICE_CONFIG)({}, { ...DEFAULT_DEVICE_CONFIG, enabled: true, ipAddress: '10.0.4.21' });
+
+      expect(order).toEqual(['reconfigure', 'enabled=true']);
+    });
+
+    it('SetDeviceConfig_EnabledMissingFromThePayload_KeepsTheBarOn', async () => {
+      const setEnabled = vi.spyOn(driver, 'setEnabled');
+      const withoutEnabled: Partial<DeviceConfigDTO> = { ...DEFAULT_DEVICE_CONFIG };
+      delete withoutEnabled.enabled;
+
+      await handlerFor(IPCChannel.SET_DEVICE_CONFIG)({}, withoutEnabled);
+
+      expect(setEnabled).not.toHaveBeenCalled();
+      expect(settingsRepo.getSetting<DeviceConfigDTO>(DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG).enabled).toBe(true);
+    });
+  });
 });

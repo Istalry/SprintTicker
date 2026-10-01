@@ -301,7 +301,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1431 tests across 73 files for the app -- the main and shared
+`pnpm test` runs 1455 tests across 75 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

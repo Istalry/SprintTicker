@@ -274,6 +274,12 @@ both the address and the token are configurable in Settings › Device.
 > is to reach the bar through a proxy on a different address. Read
 > `DeviceConfigDTO.ipAddress`, never `DEFAULT_USB_IP`.
 
+`DeviceConfigDTO.enabled` is no-bar mode when false: the driver does not dial,
+and `DeviceStatusDTO.enabled` reports the same so the renderer can hide the
+bar's screens. A missing field reads as `true`. `SET_DEVICE_CONFIG` turns the
+bar off before retargeting and on after, so it never dials an address it is
+leaving; `BusyBarDriver.setEnabled()` does the switch in place.
+
 Changing either value calls `BusyBarDriver.reconfigure()`, which tears down the
 ping loop and StateStream socket, re-points the driver and reconnects, without
 restarting the app. A host is validated with `isValidDeviceHost` before it is

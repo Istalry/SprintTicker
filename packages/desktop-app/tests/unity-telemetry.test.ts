@@ -305,6 +305,35 @@ describe('UnityTelemetryService display behaviour', () => {
     expect(renderer.renderPlayMode).toHaveBeenCalledWith('Game');
   });
 
+  it('WebhookEvents_NoBar_AreIgnoredUntilOneIsAdded', () => {
+    // Unity's states exist to be shown on the bar; without one they would
+    // only take display locks that compete with the end-of-day prompt.
+    const handlers: Record<string, (p: unknown) => void> = {};
+    const webhook = {
+      onHeartbeatEvent: (cb: (p: unknown) => void) => { handlers.heartbeat = cb; },
+      onCompileEvent: (cb: (p: unknown) => void) => { handlers.compile = cb; },
+      onPlayModeEvent: (cb: (p: unknown) => void) => { handlers.playMode = cb; },
+      onConsoleEvent: (cb: (p: unknown) => void) => { handlers.console = cb; }
+    };
+    let barEnabled = false;
+    telemetry.dispose();
+    telemetry = new UnityTelemetryService(
+      repo(), webhook as never, renderer as unknown as DisplayRenderer, undefined,
+      priority as unknown as IPriorityPreemptionEngine, () => barEnabled
+    );
+
+    handlers.heartbeat({ projectName: 'Game' });
+    handlers.compile({ projectName: 'Game', state: 'started' });
+
+    expect(telemetry.getTelemetry().isConnected).toBe(false);
+    expect(renderer.renderCompilation).not.toHaveBeenCalled();
+
+    barEnabled = true;
+    handlers.compile({ projectName: 'Game', state: 'started' });
+
+    expect(renderer.renderCompilation).toHaveBeenCalledWith('Game');
+  });
+
   it.each(['handleHeartbeat', 'handleCompile', 'handleConsole', 'handlePlayMode'] as const)(
     '%s_NoProjectName_IsIgnored',
     method => {

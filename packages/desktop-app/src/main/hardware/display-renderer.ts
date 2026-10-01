@@ -642,7 +642,10 @@ export class DisplayRenderer {
 
     // After the frame, though the order does not matter on the device: with
     // `z_index` the icon composites above the frame whichever lands first.
-    this.iconAnimator.show(animatedIcon);
+    // Without a bar there is nothing to animate the icon on, and every attempt
+    // would fail and write the icon off for the session -- including after the
+    // bar is turned back on.
+    this.iconAnimator.show(this._driver.isEnabled?.() === false ? null : animatedIcon);
 
     this.lastState = {
       frontElements: frontElementsForEmulator as unknown as DisplayElementDTO[],
@@ -838,8 +841,12 @@ export class DisplayRenderer {
 
     if (!session && this.showIdleClockFallback) {
       this.invalidateFrameCache();
-      void this._driver.clearDisplay(APP_NAME)
-        .catch(err => console.error('[DisplayRenderer] _driver.clearDisplay failed:', err));
+      // Without a bar there is no display to hand back, and the clear would
+      // only throw `disconnected` into the log on every idle transition.
+      if (this._driver.isEnabled?.() !== false) {
+        void this._driver.clearDisplay(APP_NAME)
+          .catch(err => console.error('[DisplayRenderer] _driver.clearDisplay failed:', err));
+      }
       
       const payload: DisplayPayload = {
         frontElements: [],

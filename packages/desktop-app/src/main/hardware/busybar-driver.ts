@@ -3,7 +3,7 @@ import WebSocket from 'ws';
 import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
 import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
-import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, isElementAbsent } from './device-errors';
+import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, describeError, isElementAbsent } from './device-errors';
 
 export { DeviceRequestError } from './device-errors';
 export type { ClearOutcome, DeviceFailureKind, DrawOutcome, FrameOutcome } from './device-errors';
@@ -18,6 +18,8 @@ export interface BusyBarDriverOptions {
   ipAddress?: string;
   apiToken?: string;
   forceMock?: boolean;
+  /** False for no-bar mode: the driver never dials. Defaults to true. */
+  enabled?: boolean;
   /** Overrides `ANIMATION_TEARDOWN_SETTLE_MS`; tests pass 0 or step fake timers. */
   animationTeardownSettleMs?: number;
 }
@@ -311,7 +313,19 @@ export function decodeProtobufInput(data: Uint8Array): { key: string; type: 'pre
  */
 export class BusyBarDriver extends EventEmitter {
   private static readonly NETWORK_THROTTLE_MS = 35;
-  private isMockMode: boolean = false;
+  private mockHardware: boolean = false;
+  /**
+   * Whether commands are answered by the mock rather than refused or sent.
+   *
+   * Not mocked in no-bar mode even under `--mock-hardware`: no bar means no
+   * device, real or pretend. Every command branches on this, so reading it
+   * here is what keeps a pretend bar from answering for one that was turned
+   * off -- found by running the packaged app, where the idle screen still
+   * "cleared" a mock bar the user had said they did not have.
+   */
+  private get isMockMode(): boolean {
+    return this.mockHardware && this.enabled;
+  }
   private isConnected: boolean = false;
   private ipAddress: string = DEFAULT_USB_IP;
   private apiToken: string = '';
@@ -364,6 +378,7 @@ export class BusyBarDriver extends EventEmitter {
    */
   private readonly shownElements = new Map<string, Map<string, string>>();
   private readonly animationTeardownSettleMs: number;
+  private enabled: boolean = true;
 
   constructor(ipAddressOrOptions: string | BusyBarDriverOptions = DEFAULT_USB_IP, forceMock: boolean = false) {
     super();
@@ -371,11 +386,12 @@ export class BusyBarDriver extends EventEmitter {
     if (typeof ipAddressOrOptions === 'object') {
       this.ipAddress = ipAddressOrOptions.ipAddress || DEFAULT_USB_IP;
       this.apiToken = ipAddressOrOptions.apiToken || '';
-      this.isMockMode = ipAddressOrOptions.forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
+      this.mockHardware = ipAddressOrOptions.forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
       this.animationTeardownSettleMs = ipAddressOrOptions.animationTeardownSettleMs ?? ANIMATION_TEARDOWN_SETTLE_MS;
+      this.enabled = ipAddressOrOptions.enabled ?? true;
     } else {
       this.ipAddress = ipAddressOrOptions;
-      this.isMockMode = forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
+      this.mockHardware = forceMock || process.argv.includes('--mock-hardware') || process.env.MOCK_HARDWARE === 'true';
       this.animationTeardownSettleMs = ANIMATION_TEARDOWN_SETTLE_MS;
     }
   }
@@ -441,6 +457,17 @@ export class BusyBarDriver extends EventEmitter {
    * `reconfigure` answers the same way for the same reason.
    */
   public async connect(): Promise<boolean> {
+    // Before mock mode too: no-bar mode means no device, real or pretend.
+    // No ping loop either -- a bar the user said they do not have is not one
+    // to keep looking for, and its "still cannot reach" reminders would fill
+    // the diagnostics bundle of everyone without the hardware.
+    if (!this.enabled) {
+      console.log('[BusyBarDriver] No BUSY Bar on this machine (no-bar mode); not connecting.');
+      this.isConnected = false;
+      this.emit('statusChanged', this.getDeviceStatus());
+      return false;
+    }
+
     if (this.isMockMode) {
       console.log('[BusyBarDriver] Initialized in MOCK HARDWARE mode (--mock-hardware)');
       this.isConnected = true;
@@ -678,8 +705,9 @@ export class BusyBarDriver extends EventEmitter {
     // USB. Reporting the address itself, which the UI does alongside this, is
     // the part that is always true.
     const isWifi = this.ipAddress !== DEFAULT_USB_IP;
-    if (!this.isConnected && !this.isMockMode) {
+    if (!this.enabled || (!this.isConnected && !this.isMockMode)) {
       return {
+        enabled: this.enabled,
         connected: false,
         ipAddress: this.ipAddress,
         connectionType: isWifi ? 'wifi' : 'usb',
@@ -694,6 +722,7 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     return {
+      enabled: true,
       connected: this.isConnected,
       ipAddress: this.ipAddress,
       connectionType: isWifi ? 'wifi' : 'usb',
@@ -1677,5 +1706,49 @@ export class BusyBarDriver extends EventEmitter {
 
   public getIsMockMode(): boolean {
     return this.isMockMode;
+  }
+
+  /** False in no-bar mode. */
+  public isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  /**
+   * Turns no-bar mode off or on, in place.
+   *
+   * Off hands the display back first, then disconnects -- ping loop, socket
+   * and all -- and `connect()` then declines to dial. Disconnecting alone left
+   * the last frame on the bar for good, with nothing left that would ever
+   * clear it. `clearDisplay` is the safe release: animations removed, the
+   * settle wait, then the clear. On dials the configured address, and sends the last frame
+   * rendered while the bar was off, so the bar shows the current screen rather
+   * than nothing until the picture next changes: the renderer's deduplication
+   * recorded that frame as sent the moment the driver queued it.
+   *
+   * Answers whether the bar is connected afterwards, like `connect()`.
+   */
+  public async setEnabled(enabled: boolean): Promise<boolean> {
+    if (enabled === this.enabled) return this.isConnected;
+
+    if (!enabled) {
+      if (this.isConnected || this.isMockMode) {
+        try {
+          await this.clearDisplay(DEVICE_APPLICATION_NAME);
+        } catch (err) {
+          // The bar may already be gone; turning it off must not depend on it.
+          console.warn(`[BusyBarDriver] Could not hand the display back before turning the bar off: ${describeError(err)}`);
+        }
+      }
+      this.enabled = false;
+      this.disconnect();
+      console.log('[BusyBarDriver] BUSY Bar turned off (no-bar mode).');
+      return false;
+    }
+
+    this.enabled = true;
+    console.log('[BusyBarDriver] BUSY Bar turned on.');
+    const connected = await this.connect();
+    if (connected) this.checkPendingFrame();
+    return connected;
   }
 }

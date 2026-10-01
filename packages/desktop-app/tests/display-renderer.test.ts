@@ -922,6 +922,17 @@ describe('DisplayRenderer Unit Tests', () => {
       }
     });
 
+    it('RenderActiveSession_IdleWithoutABar_LeavesTheDeviceAlone', () => {
+      // Found by running the app: every idle transition in no-bar mode threw
+      // `disconnected` from the clear into the log.
+      (mockDriver as unknown as { isEnabled: () => boolean }).isEnabled = () => false;
+      renderer.setShowIdleClockFallback(true);
+
+      renderer.renderActiveSession(null);
+
+      expect(mockDriver.clearDisplay).not.toHaveBeenCalled();
+    });
+
     it('SendDisplayPayload_AnyRenderPath_NeverCarriesAnEmptyElementsArray', () => {
       const session = {
         taskId: 'PROJ-1',

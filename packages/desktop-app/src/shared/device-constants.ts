@@ -140,6 +140,7 @@ export function redactTokenInUrl(url: string): string {
 export const DEVICE_CONFIG_SETTING_KEY = 'device_config';
 
 export const DEFAULT_DEVICE_CONFIG: DeviceConfigDTO = {
+  enabled: true,
   showIdleClockFallback: true,
   ipAddress: DEFAULT_USB_IP,
   apiToken: ''

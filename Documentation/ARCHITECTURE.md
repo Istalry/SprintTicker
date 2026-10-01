@@ -71,6 +71,22 @@ app. It has to be a setting: over Wi-Fi the bar holds a DHCP lease, and a host
 whose USB CDC-NCM driver will not start the interface is recovered by proxying
 the bar onto a different address entirely.
 
+**No-bar mode** is `DeviceConfigDTO.enabled: false`. The driver then never
+dials: `connect()` declines without starting the ping loop, every command throws
+`disconnected` without a request, and frames are queued as they are for an
+unplugged bar. `AnimationPlayer` skips the upload and runs frames for the
+preview; the renderer shows no animated icon and skips the idle clear;
+`UnityTelemetryService` ignores the plugin's events, whose display locks would
+only compete with the end-of-day prompt; and the Windows notification listener,
+which polls Windows' notification database every couple of seconds to mirror it
+onto the bar, is started and stopped with the mode (`followBar`). Turning the bar off while it is
+connected releases the display through `clearDisplay` first, or the last frame
+would stay on it. `DeviceStatusDTO.enabled` carries
+the mode to the renderer, which hides the bar-only screens live. Turning it back
+on (`setEnabled(true)`) dials the configured address and sends the last queued
+frame, which the renderer's deduplication had already recorded as sent. A row
+saved before the field existed reads as `true`.
+
 ---
 
 ## 2. Process boundaries
@@ -476,7 +492,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1431 tests across 73 files, in two projects: `main` in Node for
+Vitest, 1455 tests across 75 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

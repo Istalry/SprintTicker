@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { DEFAULT_USB_IP } from '../../shared/device-constants';
-import { ProviderSettingsUpdateDTO } from '../../shared/dtos';
+import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP } from '../../shared/device-constants';
+import { DeviceConfigDTO, ProviderSettingsUpdateDTO } from '../../shared/dtos';
 import { X, Wifi, Plug, Gamepad2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 
 interface OnboardingWizardModalProps {
@@ -18,12 +18,24 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   // Read from the saved config rather than assuming the default, so a user who
   // has already changed it does not get shown an address the app is not using.
   const [deviceAddress, setDeviceAddress] = useState<string>(DEFAULT_USB_IP);
+  // The saved config, so finishing the wizard changes `enabled` and nothing
+  // else -- not an address the user set in Device settings.
+  const [savedDevice, setSavedDevice] = useState<DeviceConfigDTO>(DEFAULT_DEVICE_CONFIG);
+  // Step 1's answer: a BUSY Bar on this machine, or not yet.
+  const [hasBar, setHasBar] = useState<boolean>(true);
+  // Without a bar the Unity step goes too: the plugin exists to show the
+  // editor's state on the bar.
+  const lastStep = hasBar ? 3 : 2;
 
   useEffect(() => {
     if (!isOpen || !window.electronAPI?.getDeviceConfig) return;
     void window.electronAPI.getDeviceConfig()
-      .then(config => setDeviceAddress(config.ipAddress || DEFAULT_USB_IP))
-      .catch(() => { /* keep the default: the wizard still works without it */ });
+      .then(config => {
+        setDeviceAddress(config.ipAddress || DEFAULT_USB_IP);
+        setSavedDevice(config);
+        setHasBar(config.enabled !== false);
+      })
+      .catch(() => { /* keep the defaults: the wizard still works without them */ });
   }, [isOpen]);
 
   const [pingSuccess, setPingSuccess] = useState<boolean | null>(null);
@@ -80,11 +92,24 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
       const saved = await window.electronAPI?.setActiveProvider?.(payload);
       if (!saved) {
         setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+        setIsSaving(false);
         return;
+      }
+    } catch {
+      setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+      setIsSaving(false);
+      return;
+    }
+
+    // Only when the answer changed: re-saving an unchanged config would
+    // re-dial the bar for nothing.
+    try {
+      if (hasBar !== (savedDevice.enabled !== false)) {
+        await window.electronAPI?.setDeviceConfig?.({ ...savedDevice, enabled: hasBar });
       }
       onClose();
     } catch {
-      setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+      setSaveError('Could not save the BUSY Bar choice. Change it in Device Diagnostics.');
     } finally {
       setIsSaving(false);
     }
@@ -161,7 +186,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             { num: 1, title: 'Hardware Setup', icon: Wifi },
             { num: 2, title: 'Task Provider', icon: Plug },
             { num: 3, title: 'Unity Plugin', icon: Gamepad2 }
-          ].map(s => {
+          ].filter(s => s.num <= lastStep).map(s => {
             const Icon = s.icon;
             const active = step === s.num;
             return (
@@ -185,6 +210,38 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
           {step === 1 && (
             <div className="space-y-4">
               <h4 className="text-sm font-bold font-mono text-white">1. Physical BUSY Bar Hardware Connection</h4>
+
+              {/* Asked first: SprintTicker keeps time without the bar, and a
+                  user who has none should not be walked through pinging one. */}
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                {[
+                  { value: true, label: 'I have a BUSY Bar' },
+                  { value: false, label: 'Not now -- use it without one' }
+                ].map(choice => (
+                  <button
+                    key={String(choice.value)}
+                    type="button"
+                    aria-pressed={hasBar === choice.value}
+                    onClick={() => setHasBar(choice.value)}
+                    className={`px-3 py-2 rounded-lg border transition-all ${
+                      hasBar === choice.value
+                        ? 'border-accent-blue text-accent-blue bg-accent-blue/10 font-bold'
+                        : 'border-border-dark text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+
+              {!hasBar && (
+                <p className="text-xs text-text-secondary">
+                  SprintTicker keeps time, syncs your worklogs and runs your ceremonies without the bar. If you
+                  get one later, add it in Device &amp; Logs.
+                </p>
+              )}
+
+              {hasBar && (<>
               <p className="text-xs text-text-secondary">
                 Connect your BUSY Bar over USB. It presents a virtual Ethernet adapter and answers on the
                 address below -- use Test Ping to confirm the link is up. If your bar is on Wi-Fi, or the
@@ -219,6 +276,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                   <span>{pingDetails || (pingSuccess ? 'Connection Verified!' : 'Connection Failed')}</span>
                 </div>
               )}
+              </>)}
             </div>
           )}
 
@@ -326,7 +384,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             </div>
           )}
 
-          {step === 3 && (
+          {step === 3 && hasBar && (
             <div className="space-y-4">
               <h4 className="text-sm font-bold font-mono text-white">
                 3. Unity Editor Plugin Setup (<code>io.github.istalry.sprintticker</code>)
@@ -374,7 +432,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             <div />
           )}
 
-          {step < 3 ? (
+          {step < lastStep ? (
             <button
               onClick={() => setStep(s => (s + 1) as 1 | 2 | 3)}
               className="flex items-center space-x-1.5 px-5 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"

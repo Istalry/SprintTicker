@@ -246,6 +246,21 @@ describe('AnimationPlayer Unit Tests', () => {
       expect(logged).toHaveBeenCalledWith(expect.stringContaining('would not store hw_anim.anim'));
     });
 
+    it('Play_NoBarMode_UploadsNothingAndLogsNoRefusal', async () => {
+      // No bar is not a refusing bar: the frames still run for the preview,
+      // without an upload or a "would not store" error per scene.
+      withAnimFile();
+      (driver as unknown as { isEnabled: () => boolean }).isEnabled = () => false;
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await player.play('hw_anim');
+      await settle();
+
+      expect(driver.uploadAsset).not.toHaveBeenCalled();
+      expect(driver.sendPixelFrame).toHaveBeenCalled();
+      expect(logged).not.toHaveBeenCalled();
+    });
+
     it('Play_DeviceStoresTheFileButRefusesToDrawIt_FallsBackToStreamingFrames', async () => {
       withAnimFile();
       (driver.sendDisplayPayload as ReturnType<typeof vi.fn>).mockRejectedValue(refused('display payload'));

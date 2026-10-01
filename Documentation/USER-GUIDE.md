@@ -11,13 +11,18 @@ first launch.
 
 The onboarding wizard opens automatically. Three steps:
 
-**1. Hardware.** Plug the BUSY Bar in over USB. It presents a virtual Ethernet
-adapter and always answers on `10.0.4.20`, so there is nothing to configure —
-press **Test Ping** to confirm the link. A failure here is reported as a failure;
-it never congratulates you on a connection it did not make.
+**1. Hardware.** First, whether you have a BUSY Bar. If you do, plug it in over
+USB. It presents a virtual Ethernet adapter and answers on `10.0.4.20`, so there
+is usually nothing to configure — press **Test Ping** to confirm the link. A
+failure here is reported as a failure; it never congratulates you on a
+connection it did not make.
 
-No bar? Run `pnpm dev:mock` (or launch with `--mock-hardware`) and the on-screen
-emulator shows what the device would display.
+If you do not, choose **Not now**: SprintTicker runs without one (see
+[Without a BUSY Bar](#without-a-busy-bar)), and you can add a bar later.
+
+Developing without a bar but wanting to see what it would show? Run
+`pnpm dev:mock` (or launch with `--mock-hardware`) and the on-screen emulator
+shows what the device would display.
 
 **2. Task provider.** Choose OpenProject, Jira Cloud or ad-hoc, and enter the
 credentials for the one you picked:
@@ -36,6 +41,28 @@ The **fallback overhead ticket** (default `MISC-1`) is what ad-hoc time is
 logged against — meetings, admin, anything without a ticket.
 
 **3. Unity plugin.** Optional. Skip it if you do not use Unity.
+
+### Without a BUSY Bar
+
+Everything that keeps time works without the hardware: the task picker, the
+running timer, pausing, finishing, worklog sync, history, the ceremonies and
+the end-of-day wrap-up. What steps aside is what only describes the bar — the
+on-screen emulator and connection readout in the top bar, **Priority Rules**,
+which orders the bar's screen and nothing else, **Unity Engine**, whose
+compile, Play Mode and error states exist to be shown on the bar, and
+**Notifications**, which mirrors Windows notifications onto it. Events from the
+Unity plugin are ignored in this mode, the Windows notification listener does
+not run, and the setup wizard skips its Unity step. The end-of-day wrap-up still saves open Unity scenes. **Device Diagnostics**
+becomes **Device & Logs**, keeping log export, the update setting and the
+factory reset.
+
+The app does not look for a bar in this mode, so it logs nothing about one being
+unreachable.
+
+To switch, use **Use without a bar** in Device Diagnostics; the bar is cleared
+and handed back to its own clock first. To add a bar later,
+press **Add a BUSY Bar** in Device & Logs: the address and token you had set
+before are kept, and the bar's screens come back at once.
 
 ---
 
