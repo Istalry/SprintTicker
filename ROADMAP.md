@@ -519,6 +519,16 @@ Also worth doing while this area is open:
   that came with it -- token redaction in logged URLs, the `wsGeneration`
   guard against a superseded socket orphaning the live one -- are in
   `CLAUDE.md` §4, and the troubleshooting path is in the user guide.
+- [ ] **Find what removes the animated icon behind `IconAnimator`'s back.**
+  Seen on 2026-10-02 with Unity compiling: the log alternated
+  `remove icon_anim: device returned 400` and `Device is animating
+  icon_gear_16x16`, once after each Windows notification the listener
+  suppressed (screenshots, here). The animator handles it -- a 400 on a removal
+  is "already gone" -- so nothing shows on the panel, but each round costs a
+  removal and a redraw, and the driver logs the 400 as a warning before the
+  animator files it as expected. Two questions: why a suppressed notification
+  leads to a render at all, and what took the icon off the panel first.
+  Reproduce with the real bar and a compile running; not a release blocker.
 
 ---
 

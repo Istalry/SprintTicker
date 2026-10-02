@@ -2,10 +2,18 @@
 
 ## Unreleased
 
-Housekeeping after 1.1.0: regression cover for the Jira adapter, the last four
-open audit findings triaged, and several surfaces made honest about what they
-do -- the diagnostics bundle, the device connection, and the top bar all
-reported something other than the truth, in three different ways.
+## 1.2.0 — 2026-10-02
+
+SprintTicker without a bar, and a bar that is ours. Without one, the app now
+stands on its own: a setup that does not require the device, a mini timer that
+stays on top, and Windows notifications for what happens on your OpenProject
+and Jira tasks. With one, the front display is set in our own fonts and every
+screen we draw -- icons, Lunch, Away, the stand-up, GO!, DONE!, SEE YOU! -- is
+our own animation, made in a new studio. Under both, the bar no longer hangs
+when screens change, an expired Jira token no longer empties the project list,
+and the device address is a setting rather than an assumption. As in 1.1.0,
+most of the fixes came out of daily use; the entries below say so where it
+matters.
 
 ### Added
 
