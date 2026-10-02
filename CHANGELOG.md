@@ -400,8 +400,11 @@ reported something other than the truth, in three different ways.
   them on, honour the per-kind choices, and arrive as one banner per check
   rather than one per notification. An upgrade keeps the old on/off switch and
   interval.
+- **`ws` 8.22**, the WebSocket client behind the bar's live status, and one
+  of the two packages the installed app carries.
 - **Development tools updated, and `pnpm audit` is clean again.** ESLint
-  10.11, Vite 8.3 and Vitest 5.0.3. Twenty-five advisories had built up in
+  10.11, typescript-eslint 8.71, Vite 8.3, Vitest 5.0.3, wait-on 9.5 and
+  marked 18.0.14; `@types/node` 24.19 and `@types/ws` 8.18.2. Twenty-five advisories had built up in
   tools several levels down -- axios and joi under `wait-on`, brace-expansion
   under ESLint and electron-builder, fast-uri under electron-builder -- none
   of them in the installed app. A lockfile refresh cleared most; the overrides
