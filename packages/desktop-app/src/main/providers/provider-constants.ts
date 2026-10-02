@@ -62,3 +62,14 @@ export const COLLECTION_PAGE_SIZE = 100;
  * until the process ran out of memory.
  */
 export const MAX_COLLECTION_PAGES = 100;
+
+/**
+ * Minutes added to the window a Jira event poll searches.
+ *
+ * The search is relative (`updated >= -Nm`) and N is worked out on this
+ * machine's clock, which is not Jira's: a few minutes of slack keeps a skewed
+ * clock from opening a gap between two polls. Events are then filtered on
+ * Jira's own timestamps, so the overlap costs a larger answer, never a
+ * repeated notification.
+ */
+export const JIRA_EVENT_WINDOW_MARGIN_MINUTES = 5;

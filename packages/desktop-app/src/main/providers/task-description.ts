@@ -20,11 +20,14 @@ export const TASK_DESCRIPTION_MAX_CHARS = 500;
 const ELLIPSIS = '…';
 
 /** Collapses whitespace and cuts to the limit; undefined when nothing is left. */
-export function clampDescription(text: string | null | undefined): string | undefined {
+export function clampDescription(
+  text: string | null | undefined,
+  maxChars: number = TASK_DESCRIPTION_MAX_CHARS
+): string | undefined {
   const flat = (text ?? '').replace(/\s+/g, ' ').trim();
   if (!flat) return undefined;
-  return flat.length > TASK_DESCRIPTION_MAX_CHARS
-    ? flat.slice(0, TASK_DESCRIPTION_MAX_CHARS - 1).trimEnd() + ELLIPSIS
+  return flat.length > maxChars
+    ? flat.slice(0, maxChars - 1).trimEnd() + ELLIPSIS
     : flat;
 }
 
@@ -32,7 +35,7 @@ export function clampDescription(text: string | null | undefined): string | unde
 interface AdfNode {
   type?: string;
   text?: string;
-  attrs?: { text?: string; shortName?: string; url?: string };
+  attrs?: { id?: string; text?: string; shortName?: string; url?: string };
   content?: unknown;
 }
 
@@ -74,6 +77,24 @@ export function adfToPlainText(doc: unknown): string {
   };
   walk(doc);
   return parts.join('');
+}
+
+/**
+ * Whether an Atlassian Document Format tree mentions an account.
+ *
+ * By `attrs.id`, the account id, never by the visible `@Name`: display names
+ * are neither unique nor stable, and the text is whatever the name was when
+ * the comment was written.
+ */
+export function adfMentionsAccount(doc: unknown, accountId: string): boolean {
+  if (!accountId) return false;
+  const visit = (node: unknown): boolean => {
+    if (!node || typeof node !== 'object') return false;
+    const n = node as AdfNode;
+    if (n.type === 'mention' && n.attrs?.id === accountId) return true;
+    return Array.isArray(n.content) && n.content.some(visit);
+  };
+  return visit(doc);
 }
 
 /**

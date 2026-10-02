@@ -31,6 +31,13 @@ reported something other than the truth, in three different ways.
   whether they also go to the bar, under **Notifications from OpenProject** in
   Task Providers. A burst of more than three arrives as one summary. Only what
   arrives after you turn it on is shown, not the unread history.
+- **The same notifications from Jira.** An issue assigned to you, a status
+  change, a comment, a mention in a comment -- on the issues you are assigned,
+  reported or watch -- each switchable under **Notifications from Jira**, with
+  its own animated icon on the bar. Jira Cloud has no notification feed, so
+  the app reads the changes off a search every minute. Your own changes never
+  notify you. A mention on an issue you do not follow is not seen, and Jira has
+  no date alerts.
 - **Tasks have descriptions.** The start of a Jira or OpenProject description
   appears under the task's title in Projects & Tasks and in the task picker,
   which searches it too. On the bar, the picker's second row shows the task

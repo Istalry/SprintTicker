@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import type { AddressInfo } from 'net';
-import { createFakeJira } from '../../../scripts/fake-jira.js';
+import { createFakeJira, FAKE_ACCOUNT } from '../../../scripts/fake-jira.js';
 import { JiraProvider } from '../src/main/providers/jira-provider';
 import { isProviderRequestError } from '../src/main/providers/provider-errors';
 
@@ -36,6 +36,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
 
   let server: ReturnType<typeof createFakeJira>['server'];
   let requests: ReturnType<typeof createFakeJira>['requests'];
+  let activity: ReturnType<typeof createFakeJira>['activity'];
   let origin: string;
 
   beforeAll(async () => {
@@ -47,6 +48,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
     });
     server = fake.server;
     requests = fake.requests;
+    activity = fake.activity;
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -57,6 +59,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
 
   beforeEach(() => {
     requests.length = 0;
+    activity.length = 0;
   });
 
   /**
@@ -323,6 +326,55 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       await expect(provider.getProjects()).rejects.toSatisfy(
         (err: unknown) => isProviderRequestError(err) && err.isPermanent === true
       );
+    });
+  });
+  describe('events', () => {
+    it('GetEventsSince_ActivityOnAFollowedIssue_ComesBackAsEventsWithoutMyOwn', async () => {
+      const alice = { accountId: 'acc-alice', displayName: 'Alice Martin' };
+      const at = new Date(Date.now() - 30_000).toISOString();
+      activity.push({
+        id: '30001',
+        key: 'FAKE1-7',
+        fields: {
+          summary: 'Fix the lobby',
+          created: '2026-01-01T09:00:00.000+0000',
+          creator: alice,
+          assignee: FAKE_ACCOUNT,
+          comment: {
+            total: 1,
+            comments: [{
+              id: '700',
+              author: alice,
+              created: at,
+              body: {
+                type: 'doc',
+                version: 1,
+                content: [{ type: 'paragraph', content: [{ type: 'mention', attrs: { id: FAKE_ACCOUNT.accountId, text: '@Fake Me' } }] }]
+              }
+            }]
+          }
+        },
+        changelog: {
+          total: 2,
+          histories: [
+            { id: '80', author: alice, created: at, items: [{ field: 'status', fieldId: 'status', fromString: 'To Do', toString: 'In Progress' }] },
+            { id: '81', author: FAKE_ACCOUNT, created: at, items: [{ field: 'status', fieldId: 'status', toString: 'Done' }] }
+          ]
+        }
+      });
+      const provider = await configured();
+
+      const events = await provider.getEventsSince(new Date(Date.now() - 60_000).toISOString());
+
+      expect(events.map(e => [e.kind, e.actorName, e.taskKey])).toEqual([
+        ['status_changed', 'Alice Martin', 'FAKE1-7'],
+        ['mentioned', 'Alice Martin', 'FAKE1-7']
+      ]);
+      // The event poll's search, not a task walk: it is the only one that
+      // expands the changelog, and the fake answers it from `activity`.
+      const search = requests.find(r => r.pathname === '/rest/api/3/search/jql');
+      expect(search?.expand).toBe('changelog');
+      expect(search?.jql).toMatch(/updated >= -\d+m/);
     });
   });
 });

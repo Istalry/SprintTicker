@@ -56,7 +56,20 @@ export interface ProviderEventSettingsDTO {
 }
 
 /** Providers that can report events. A test holds it to the adapters. */
-export const PROVIDERS_WITH_EVENTS: readonly string[] = ['openproject'];
+export const PROVIDERS_WITH_EVENTS: readonly string[] = ['openproject', 'jira'];
+
+/**
+ * The kinds a provider can produce, where that is not all of them. Jira has
+ * no date alerts, and a checkbox for one would be a setting that does nothing.
+ */
+const PROVIDER_EVENT_KINDS_BY_PROVIDER: Readonly<Record<string, readonly ProviderEventKind[]>> = {
+  jira: ['assigned', 'mentioned', 'commented', 'status_changed']
+};
+
+/** The kinds the settings panel offers for a provider, in panel order. */
+export function providerEventKindsFor(providerId: string): readonly ProviderEventKind[] {
+  return PROVIDER_EVENT_KINDS_BY_PROVIDER[providerId] ?? PROVIDER_EVENT_KINDS;
+}
 
 export const PROVIDER_EVENT_SETTINGS_KEY = 'provider_event_settings';
 /** Per provider: the newest event time seen, on the provider's clock. */
@@ -73,6 +86,8 @@ export const PROVIDER_EVENT_FIRST_POLL_DELAY_MS = 5000;
 export const MAX_INDIVIDUAL_PROVIDER_TOASTS = 3;
 /** Event ids remembered for deduplication before the oldest are forgotten. */
 export const PROVIDER_EVENT_SEEN_LIMIT = 500;
+/** A comment excerpt in a toast: two lines, not the comment. */
+export const PROVIDER_EVENT_SUMMARY_MAX_CHARS = 140;
 
 export const DEFAULT_PROVIDER_EVENT_SETTINGS: ProviderEventSettingsDTO = {
   enabled: true,

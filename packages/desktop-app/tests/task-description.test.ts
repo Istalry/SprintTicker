@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  adfMentionsAccount,
   adfToPlainText,
   clampDescription,
   markdownToPlainText,
@@ -82,6 +83,27 @@ describe('task descriptions', () => {
     it('MarkdownToPlainText_UnderscoreInsideAWord_IsKept', () => {
       // Identifiers are common in task descriptions; `user_id` is not emphasis.
       expect(markdownToPlainText('Rename user_id to account_id, _really_.')).toBe('Rename user_id to account_id, really.');
+    });
+  });
+  describe('adfMentionsAccount', () => {
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [
+        { type: 'mention', attrs: { id: 'acc-1', text: '@Somebody Else Now' } }
+      ] }] }] }]
+    };
+
+    it('AdfMentionsAccount_NestedMention_MatchesOnTheAccountIdNotTheName', () => {
+      expect(adfMentionsAccount(doc, 'acc-1')).toBe(true);
+      expect(adfMentionsAccount(doc, 'acc-2')).toBe(false);
+    });
+
+    it.each([[null], ['text'], [{ type: 'doc' }]])('AdfMentionsAccount_%j_IsFalse', input => {
+      expect(adfMentionsAccount(input, 'acc-1')).toBe(false);
+    });
+
+    it('AdfMentionsAccount_NoAccount_IsFalse', () => {
+      expect(adfMentionsAccount(doc, '')).toBe(false);
     });
   });
 });

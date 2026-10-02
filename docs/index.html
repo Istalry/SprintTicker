@@ -612,6 +612,18 @@
       replayed -- and one you have read in OpenProject before the next check is not
       shown either. <strong>Send a test notification</strong> shows what one looks like, and
       says where it went.</p>
+      <p><strong>Notifications from Jira</strong> does the same for Jira issues: assigned to you, a
+      status change, a comment, a mention in a comment. Clicking one opens the issue,
+      or the comment. Jira Cloud has no notification feed for apps to read, so
+      SprintTicker looks at the issues you are assigned, reported or watch at each
+      check, and works out what changed. That has edges worth knowing:</p>
+      <ul>
+      <li><strong>Your own changes never notify you</strong>, including the status changes
+      SprintTicker makes for you when you start or finish a task.</li>
+      <li><strong>A mention on an issue you do not follow is not seen</strong>, and neither is a
+      mention in a description rather than a comment.</li>
+      <li><strong>Jira has no date alerts</strong>, so that box is not offered.</li>
+      </ul>
       <p>Below the credentials is the <strong>sync queue</strong>: every worklog that has not reached
       the provider, with the server&#39;s own message, the attempt count against the
       ceiling, and when the next attempt is due.</p>
@@ -977,17 +989,20 @@
       anyway</em>. There is no way around it short of a code-signing certificate.</p>
       <p><strong>Accented characters.</strong> These are transliterated to ASCII (<code>é</code> → <code>e</code>), because
       the device accepts printable ASCII only. Emoji do not render.</p>
-      <h4>No notification from OpenProject</h4>
+      <h4>No notification from OpenProject or Jira</h4>
       <ul>
       <li><strong>Is it switched on, for that kind?</strong> Task Providers › Notifications from
-      OpenProject. <strong>Send a test notification</strong>: if it says it was sent and nothing
+      OpenProject (or Jira). <strong>Send a test notification</strong>: if it says it was sent and nothing
       appeared, the cause is on the Windows side.</li>
       <li><strong>Windows may be holding it.</strong> Do Not Disturb, Focus, or SprintTicker turned
       off in Windows Settings › System › Notifications all hide toasts without
       telling the app. They still land in the notification centre.</li>
-      <li><strong>It may have been read already.</strong> Only unread notifications are shown; one
-      read in OpenProject between two checks is not news.</li>
-      <li><strong>The log says why a check failed</strong> -- <code>[ProviderEvents] OpenProject events unavailable: ...</code> -- and a refused toast as <code>[Toasts] Windows did not show a notification</code>.</li>
+      <li><strong>It may have been read already.</strong> Only unread OpenProject notifications are
+      shown; one read in OpenProject between two checks is not news.</li>
+      <li><strong>On Jira, is it an issue you follow?</strong> Only issues you are assigned,
+      reported or watch are read, and nothing you changed yourself is reported.</li>
+      <li><strong>The log says why a check failed</strong> -- <code>[ProviderEvents] OpenProject events unavailable: ...</code>, or <code>Jira Cloud events</code> -- and a refused toast as
+      <code>[Toasts] Windows did not show a notification</code>.</li>
       </ul>
       <hr>
       <h3 id="guide-your-data">Your data</h3>
@@ -1449,6 +1464,11 @@
       because Windows attributes a toast to the shortcut carrying that ID.</p>
       <p>A toast&#39;s link is opened only if it is <code>http:</code> or <code>https:</code>: it comes from a
       remote server, and <code>shell.openExternal</code> would as readily run a <code>file:</code> URL.</p>
+      <p>OpenProject has a notification feed and the adapter reads it. Jira Cloud has
+      none, so <code>JiraProvider.getEventsSince</code> rebuilds one from a search over the
+      issues the user is involved in, their changelog and their comments, and drops
+      everything the user did themselves (<code>Documentation/API.md</code> has the rules).
+      The service cannot tell the two apart, and does not need to.</p>
       <h4><code>WebhookServer</code> — <code>src/main/api/</code></h4>
       <p>An HTTP server on <code>127.0.0.1:39123</code> for the Unity Editor plugin. See the
       <a href="API.md#local-http-api">API reference</a> for routes and the screening rules.</p>
@@ -1620,7 +1640,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1544 tests across 82 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1573 tests across 83 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2007,6 +2027,28 @@
       method. OpenProject reads unread <code>/api/v3/notifications</code> -- the API has no
       time filter -- and maps <code>assigned</code>/<code>responsible</code>, <code>mentioned</code>, <code>commented</code>,
       <code>processed</code> and <code>dateAlert</code>.</p>
+      <p>Jira Cloud has no notifications API, so its adapter approximates one:
+      <code>GET /rest/api/3/myself</code> once per configuration for the account id, then
+      <code>/search/jql</code> over <code>(assignee = currentUser() OR reporter = currentUser() OR watcher = currentUser()) AND updated &gt;= -Nm</code> with <code>expand=changelog</code> and the
+      <code>comment</code> field. A changelog <code>assignee</code> set to the user is <code>assigned</code>, as is an
+      issue someone else created already assigned to them; a <code>status</code> item is
+      <code>status_changed</code>, with <code>From → To</code> as its summary; a comment is <code>mentioned</code>
+      when its ADF has a <code>mention</code> node carrying the user&#39;s account id, <code>commented</code>
+      otherwise. Anything whose author is the user is dropped. Two traps:</p>
+      <ul>
+      <li><strong>The window is relative, never a date.</strong> JQL reads <code>&quot;2026-10-01 10:05&quot;</code> in
+      the timezone of the user&#39;s Jira profile, so an absolute bound shifts by the
+      difference. N is the minutes since the cursor plus
+      <code>JIRA_EVENT_WINDOW_MARGIN_MINUTES</code>, and the timestamps cut it exactly.</li>
+      <li><strong>Never read <code>item.toString</code> off a changelog item.</strong> It is a field -- the new
+      value&#39;s display text -- and where it is missing the expression is
+      <code>Object.prototype.toString</code>. <code>historyItemField</code> reads own properties only.</li>
+      </ul>
+      <p>A changelog or comment list the search truncated (<code>total</code> above what came back)
+      is completed from <code>/issue/{id}/changelog</code> (its last page: it lists oldest
+      first) or <code>/issue/{id}/comment?orderBy=-created</code>. <code>providerEventKindsFor</code>
+      limits the settings panel to the kinds a provider produces; Jira has no
+      <code>date_alert</code>.</p>
       <p><strong>Use <code>providerFetch</code>.</strong> <code>src/main/providers/provider-http.ts</code> is the one place
       a provider talks to the network: per-attempt timeout, <code>Retry-After</code>-aware
       backoff, bounded retries, and classification into <code>ProviderRequestError</code>. Do not

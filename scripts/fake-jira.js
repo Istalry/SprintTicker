@@ -35,6 +35,12 @@ const { URL } = require('url');
  * Any credentials are accepted, but the `Authorization` header must be present:
  * its absence is a 401, because that is a path the adapter classifies.
  *
+ * **Activity, for the event poll.** `/myself` answers `FAKE_ACCOUNT`, and a
+ * search with `expand=changelog` -- which only the event poll sends -- is
+ * answered from `activity`, an array of issues with their changelog and
+ * comments that a test fills. Kept apart from the project issues so the task
+ * walks above see exactly what they always did.
+ *
  * Dev-only -- never imported by the app itself.
  *
  * One caveat worth knowing before pointing the running app at this:
@@ -109,6 +115,9 @@ function buildIssues(count) {
  * destination status name, and a fixture where all three agree cannot tell
  * those three lookups apart.
  */
+/** The account the credentials belong to, whatever they are. */
+const FAKE_ACCOUNT = { accountId: 'fake-account-me', displayName: 'Fake Me' };
+
 const TRANSITIONS = [
   { id: '11', name: 'Start work', to: { name: 'In Progress' } },
   { id: '21', name: 'To Review', to: { name: 'To Review' } },
@@ -147,6 +156,7 @@ function createFakeJira(overrides = {}) {
   const options = { ...DEFAULT_OPTIONS, ...overrides };
   const projects = buildProjects(options.projects);
   const issues = buildIssues(options.issues);
+  const activity = [];
   const requests = [];
 
   const server = http.createServer((req, res) => {
@@ -188,6 +198,7 @@ function createFakeJira(overrides = {}) {
         pageToken,
         jql: url.searchParams.get('jql') || undefined,
         fields: url.searchParams.get('fields') || undefined,
+        expand: url.searchParams.get('expand') || undefined,
         authorization: req.headers.authorization,
         body
       };
@@ -228,14 +239,20 @@ function createFakeJira(overrides = {}) {
         return;
       }
 
+      if (url.pathname === '/rest/api/3/myself') {
+        send(200, FAKE_ACCOUNT);
+        return;
+      }
+
       // `/search/jql` pages on an opaque token. The deprecated `startAt`
       // endpoint is not served: the adapter does not call it, and offering it
       // would let a regression onto the old scheme pass unnoticed.
       if (url.pathname === '/rest/api/3/search/jql') {
+        const source = url.searchParams.get('expand') === 'changelog' ? activity : issues;
         const from = decodeToken(pageToken);
-        const slice = issues.slice(from, from + maxResults);
+        const slice = source.slice(from, from + maxResults);
         const nextIndex = from + slice.length;
-        const isLast = nextIndex >= issues.length;
+        const isLast = nextIndex >= source.length;
         send(200, {
           issues: slice,
           isLast,
@@ -273,10 +290,10 @@ function createFakeJira(overrides = {}) {
     });
   });
 
-  return { server, options, projects, issues, transitions: TRANSITIONS, requests };
+  return { server, options, projects, issues, activity, transitions: TRANSITIONS, requests };
 }
 
-module.exports = { createFakeJira, DEFAULT_OPTIONS, TRANSITIONS };
+module.exports = { createFakeJira, DEFAULT_OPTIONS, TRANSITIONS, FAKE_ACCOUNT };
 
 if (require.main === module) {
   const options = parseArgs(process.argv.slice(2), DEFAULT_OPTIONS);

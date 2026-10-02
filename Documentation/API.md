@@ -225,6 +225,30 @@ method. OpenProject reads unread `/api/v3/notifications` -- the API has no
 time filter -- and maps `assigned`/`responsible`, `mentioned`, `commented`,
 `processed` and `dateAlert`.
 
+Jira Cloud has no notifications API, so its adapter approximates one:
+`GET /rest/api/3/myself` once per configuration for the account id, then
+`/search/jql` over `(assignee = currentUser() OR reporter = currentUser() OR
+watcher = currentUser()) AND updated >= -Nm` with `expand=changelog` and the
+`comment` field. A changelog `assignee` set to the user is `assigned`, as is an
+issue someone else created already assigned to them; a `status` item is
+`status_changed`, with `From → To` as its summary; a comment is `mentioned`
+when its ADF has a `mention` node carrying the user's account id, `commented`
+otherwise. Anything whose author is the user is dropped. Two traps:
+
+- **The window is relative, never a date.** JQL reads `"2026-10-01 10:05"` in
+  the timezone of the user's Jira profile, so an absolute bound shifts by the
+  difference. N is the minutes since the cursor plus
+  `JIRA_EVENT_WINDOW_MARGIN_MINUTES`, and the timestamps cut it exactly.
+- **Never read `item.toString` off a changelog item.** It is a field -- the new
+  value's display text -- and where it is missing the expression is
+  `Object.prototype.toString`. `historyItemField` reads own properties only.
+
+A changelog or comment list the search truncated (`total` above what came back)
+is completed from `/issue/{id}/changelog` (its last page: it lists oldest
+first) or `/issue/{id}/comment?orderBy=-created`. `providerEventKindsFor`
+limits the settings panel to the kinds a provider produces; Jira has no
+`date_alert`.
+
 **Use `providerFetch`.** `src/main/providers/provider-http.ts` is the one place
 a provider talks to the network: per-attempt timeout, `Retry-After`-aware
 backoff, bounded retries, and classification into `ProviderRequestError`. Do not

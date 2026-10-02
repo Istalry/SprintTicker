@@ -495,6 +495,11 @@ them are traps:
   listener.** The listener skips every ID in `OWN_APP_USER_MODEL_IDS`, on the
   database path *and* the WinRT path; the latter used to skip nothing. Let it
   mirror them and each event lands on the bar twice, under two locks.
+- **Jira's events are a search, not a feed**, and two things keep it honest.
+  The window is relative JQL (`updated >= -Nm`), never a date: JQL reads a
+  date in the Jira profile's timezone. And every change authored by the
+  user's own account id is dropped -- the app moves statuses for them, and
+  each move would otherwise come back as a notification a minute later.
 
 ## 6. Code standards
 

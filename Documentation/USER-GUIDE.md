@@ -153,6 +153,18 @@ replayed -- and one you have read in OpenProject before the next check is not
 shown either. **Send a test notification** shows what one looks like, and
 says where it went.
 
+**Notifications from Jira** does the same for Jira issues: assigned to you, a
+status change, a comment, a mention in a comment. Clicking one opens the issue,
+or the comment. Jira Cloud has no notification feed for apps to read, so
+SprintTicker looks at the issues you are assigned, reported or watch at each
+check, and works out what changed. That has edges worth knowing:
+
+- **Your own changes never notify you**, including the status changes
+  SprintTicker makes for you when you start or finish a task.
+- **A mention on an issue you do not follow is not seen**, and neither is a
+  mention in a description rather than a comment.
+- **Jira has no date alerts**, so that box is not offered.
+
 Below the credentials is the **sync queue**: every worklog that has not reached
 the provider, with the server's own message, the attempt count against the
 ceiling, and when the next attempt is due.
@@ -468,19 +480,21 @@ anyway*. There is no way around it short of a code-signing certificate.
 **Accented characters.** These are transliterated to ASCII (`é` → `e`), because
 the device accepts printable ASCII only. Emoji do not render.
 
-### No notification from OpenProject
+### No notification from OpenProject or Jira
 
 - **Is it switched on, for that kind?** Task Providers › Notifications from
-  OpenProject. **Send a test notification**: if it says it was sent and nothing
+  OpenProject (or Jira). **Send a test notification**: if it says it was sent and nothing
   appeared, the cause is on the Windows side.
 - **Windows may be holding it.** Do Not Disturb, Focus, or SprintTicker turned
   off in Windows Settings › System › Notifications all hide toasts without
   telling the app. They still land in the notification centre.
-- **It may have been read already.** Only unread notifications are shown; one
-  read in OpenProject between two checks is not news.
+- **It may have been read already.** Only unread OpenProject notifications are
+  shown; one read in OpenProject between two checks is not news.
+- **On Jira, is it an issue you follow?** Only issues you are assigned,
+  reported or watch are read, and nothing you changed yourself is reported.
 - **The log says why a check failed** -- `[ProviderEvents] OpenProject events
-  unavailable: ...` -- and a refused toast as `[Toasts] Windows did not show a
-  notification`.
+  unavailable: ...`, or `Jira Cloud events` -- and a refused toast as
+  `[Toasts] Windows did not show a notification`.
 
 ---
 

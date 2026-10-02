@@ -1,10 +1,11 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO, ArgumentException } from '../../shared/dtos';
+import { ProviderEventDTO, PROVIDER_EVENT_SUMMARY_MAX_CHARS } from '../../shared/provider-events';
 import { priorityRankFromName } from './task-priority';
-import { adfToPlainText, clampDescription } from './task-description';
+import { adfMentionsAccount, adfToPlainText, clampDescription } from './task-description';
 import { ProviderRequestError } from './provider-errors';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
-import { COLLECTION_PAGE_SIZE, MAX_COLLECTION_PAGES } from './provider-constants';
+import { COLLECTION_PAGE_SIZE, JIRA_EVENT_WINDOW_MARGIN_MINUTES, MAX_COLLECTION_PAGES } from './provider-constants';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
 import { isJiraConfigured } from '../../shared/provider-settings';
 
@@ -31,6 +32,66 @@ interface JiraIssuePage {
   }>;
   nextPageToken?: string;
   isLast?: boolean;
+}
+
+/** A Jira user, as far as events care. */
+interface JiraUser {
+  accountId?: string;
+  displayName?: string;
+}
+
+/** One changelog entry: who changed which fields, and when. */
+interface JiraHistory {
+  id?: string;
+  author?: JiraUser;
+  created?: string;
+  /** Read through {@link historyItemField}; see there why. */
+  items?: Array<Record<string, unknown>>;
+}
+
+interface JiraComment {
+  id?: string;
+  author?: JiraUser;
+  created?: string;
+  /** Atlassian Document Format. */
+  body?: unknown;
+}
+
+/** `/search/jql` with `expand=changelog` and the fields events read. */
+interface JiraEventIssuePage {
+  issues?: Array<{
+    id?: string | number;
+    key?: string;
+    fields?: {
+      summary?: string;
+      created?: string;
+      creator?: JiraUser | null;
+      reporter?: JiraUser | null;
+      assignee?: JiraUser | null;
+      comment?: { comments?: JiraComment[]; total?: number };
+    };
+    changelog?: { histories?: JiraHistory[]; total?: number };
+  }>;
+  nextPageToken?: string;
+  isLast?: boolean;
+}
+
+type JiraEventIssue = NonNullable<JiraEventIssuePage['issues']>[number];
+
+/**
+ * A string field of a changelog item.
+ *
+ * Never `item.toString`: an item carries a `toString` field -- the new value's
+ * display text -- and on an item without one that expression is
+ * Object.prototype's function, which would land in a toast as source code.
+ */
+function historyItemField(item: Record<string, unknown>, name: string): string | undefined {
+  const value = Object.prototype.hasOwnProperty.call(item, name) ? item[name] : undefined;
+  return typeof value === 'string' && value ? value : undefined;
+}
+
+function actorOf(user: JiraUser | null | undefined): { actorName?: string } {
+  return user?.displayName ? { actorName: user.displayName } : {};
 }
 
 /**
@@ -74,6 +135,8 @@ export class JiraProvider implements ITaskProvider {
   private _transitionToTest: string = '';
   private _transitionToReview: string = '';
   private _defaultCompletionAction: string = 'to_test';
+  /** Whose changes are the user's own; read from `/myself` on first use. */
+  private _accountId: string | null = null;
 
   /** Injected, for the reasons given on OpenProjectProvider's constructor. */
   private readonly _http: ProviderFetchOptions;
@@ -92,6 +155,8 @@ export class JiraProvider implements ITaskProvider {
     this._transitionToTest = credentials.jiraTransitionToTest || '';
     this._transitionToReview = credentials.jiraTransitionToReview || '';
     this._defaultCompletionAction = credentials.jiraCompletionAction || 'to_test';
+    // New credentials may be another account.
+    this._accountId = null;
     return true;
   }
 
@@ -576,6 +641,225 @@ export class JiraProvider implements ITaskProvider {
    */
   public async reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }> {
     return { remoteLoggedTimeToday: null };
+  }
+
+  /**
+   * What happened on the user's issues after `sinceUtc`, as provider events.
+   *
+   * Jira Cloud has no public notifications API, so this is an approximation
+   * built from a search: the issues the user is assignee, reporter or watcher
+   * of that changed in the window, read with their changelog and comments.
+   * From those:
+   * - the assignee changed to the user, or an issue created already assigned
+   *   to them -> `assigned`;
+   * - a status change -> `status_changed`;
+   * - a new comment -> `mentioned` when it mentions the user, `commented`
+   *   otherwise.
+   *
+   * Anything the user did themselves is dropped, or every status this app
+   * moves for them would come back as a notification. What it cannot see, and
+   * the user guide says so: a mention on an issue they are not involved in, a
+   * mention in a description, and date reminders, which Jira does not have.
+   *
+   * Throws when the site cannot be read; see ITaskProvider.
+   */
+  public async getEventsSince(sinceUtc: string): Promise<ProviderEventDTO[]> {
+    this.requireConfigured();
+    const since = Date.parse(sinceUtc);
+    if (Number.isNaN(since)) {
+      throw new ArgumentException(`sinceUtc is not a timestamp: ${sinceUtc}`);
+    }
+
+    const me = await this.getMyAccountId();
+    const events: ProviderEventDTO[] = [];
+    for (const issue of await this.searchRecentlyUpdated(since)) {
+      events.push(...(await this.eventsOfIssue(issue, since, me)));
+    }
+    return events;
+  }
+
+  /** Jira's "Your work" page: the closest thing it has to an inbox. */
+  public getEventsInboxUrl(): string | null {
+    return isJiraConfigured(this._site, this._email, this._apiToken)
+      ? `${this.getBaseUrl()}/jira/your-work`
+      : null;
+  }
+
+  /** The account the credentials belong to; asked once per configuration. */
+  private async getMyAccountId(): Promise<string> {
+    if (this._accountId) return this._accountId;
+
+    const context = 'Reading the Jira account';
+    const res = await providerFetch(
+      this.providerId,
+      `${this.getBaseUrl()}/rest/api/3/myself`,
+      { headers: this.headers() },
+      context,
+      this._http
+    );
+    const body = await this.readJson<JiraUser>(res, context);
+    if (!body.accountId) {
+      // Without it nothing can tell the user's own changes from anyone
+      // else's, and every one of them would become a notification.
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no accountId`);
+    }
+    this._accountId = body.accountId;
+    return body.accountId;
+  }
+
+  /**
+   * The issues the user is involved in that changed since `since`.
+   *
+   * Relative JQL rather than a date: JQL reads `"2026-10-01 10:05"` in the
+   * timezone of the user's Jira profile, which is neither this machine's nor
+   * UTC, so an absolute bound would shift the window by the difference. The
+   * window is therefore whole minutes plus a margin, wider than needed, and
+   * {@link eventsOfIssue} cuts it exactly on Jira's own timestamps.
+   */
+  private async searchRecentlyUpdated(since: number): Promise<JiraEventIssue[]> {
+    const minutes = Math.max(0, Math.ceil((Date.now() - since) / 60_000)) + JIRA_EVENT_WINDOW_MARGIN_MINUTES;
+    const jql =
+      '(assignee = currentUser() OR reporter = currentUser() OR watcher = currentUser())' +
+      ` AND updated >= -${minutes}m ORDER BY updated DESC`;
+    const context = 'Fetching recent Jira activity';
+    const collected: JiraEventIssue[] = [];
+    let pageToken: string | undefined;
+
+    for (let page = 1; page <= MAX_COLLECTION_PAGES; page++) {
+      const url = new URL(`${this.getBaseUrl()}/rest/api/3/search/jql`);
+      url.searchParams.set('jql', jql);
+      url.searchParams.set('maxResults', String(COLLECTION_PAGE_SIZE));
+      url.searchParams.set('fields', 'summary,created,creator,reporter,assignee,comment');
+      url.searchParams.set('expand', 'changelog');
+      if (pageToken) url.searchParams.set('nextPageToken', pageToken);
+
+      const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
+      const body = await this.readJson<JiraEventIssuePage>(res, context);
+      const issues = body.issues;
+      if (!Array.isArray(issues)) {
+        throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no \`issues\` array`);
+      }
+      collected.push(...issues);
+
+      pageToken = body.nextPageToken;
+      if (body.isLast === true || !pageToken || issues.length === 0) return collected;
+    }
+
+    throw new ProviderRequestError(
+      this.providerId,
+      'protocol',
+      `${context} failed: did not finish within ${MAX_COLLECTION_PAGES} pages`
+    );
+  }
+
+  /** One issue's events after `since`, by anyone but `me`. */
+  private async eventsOfIssue(issue: JiraEventIssue, since: number, me: string): Promise<ProviderEventDTO[]> {
+    if (issue.id === undefined || issue.id === null) return [];
+    const issueId = String(issue.id);
+    const key = issue.key || issueId;
+    const fields = issue.fields;
+    const browse = `${this.getBaseUrl()}/browse/${encodeURIComponent(key)}`;
+    const base = { providerId: this.providerId, taskKey: key, taskTitle: fields?.summary || 'Untitled issue' };
+    const after = (stamp: string | undefined): number | null => {
+      const at = Date.parse(stamp ?? '');
+      return Number.isNaN(at) || at <= since ? null : at;
+    };
+    const events: ProviderEventDTO[] = [];
+
+    // An assignee set when the issue is created leaves no changelog entry, so
+    // an issue someone else created for the user is read off its fields.
+    const createdAt = after(fields?.created);
+    const creator = fields?.creator ?? fields?.reporter;
+    if (createdAt !== null && fields?.assignee?.accountId === me && creator?.accountId !== me) {
+      events.push({
+        ...base,
+        id: `jira:${issueId}:created`,
+        kind: 'assigned',
+        ...actorOf(creator),
+        url: browse,
+        occurredAtUtc: new Date(createdAt).toISOString()
+      });
+    }
+
+    for (const history of await this.recentHistories(issue, issueId)) {
+      const at = after(history.created);
+      if (at === null || !history.id || history.author?.accountId === me) continue;
+      const common = { ...base, ...actorOf(history.author), url: browse, occurredAtUtc: new Date(at).toISOString() };
+      for (const item of history.items ?? []) {
+        const field = historyItemField(item, 'fieldId') ?? historyItemField(item, 'field');
+        if (field === 'assignee' && historyItemField(item, 'to') === me) {
+          events.push({ ...common, id: `jira:${issueId}:history:${history.id}:assignee`, kind: 'assigned' });
+        } else if (field === 'status') {
+          const from = historyItemField(item, 'fromString');
+          const to = historyItemField(item, 'toString');
+          events.push({
+            ...common,
+            id: `jira:${issueId}:history:${history.id}:status`,
+            kind: 'status_changed',
+            ...(to ? { summary: from ? `${from} → ${to}` : to } : {})
+          });
+        }
+      }
+    }
+
+    for (const comment of await this.recentComments(issue, issueId)) {
+      const at = after(comment.created);
+      if (at === null || !comment.id || comment.author?.accountId === me) continue;
+      const summary = clampDescription(adfToPlainText(comment.body), PROVIDER_EVENT_SUMMARY_MAX_CHARS);
+      events.push({
+        ...base,
+        id: `jira:comment:${comment.id}`,
+        kind: adfMentionsAccount(comment.body, me) ? 'mentioned' : 'commented',
+        ...actorOf(comment.author),
+        ...(summary ? { summary } : {}),
+        url: `${browse}?focusedCommentId=${encodeURIComponent(comment.id)}`,
+        occurredAtUtc: new Date(at).toISOString()
+      });
+    }
+
+    return events;
+  }
+
+  /**
+   * The issue's changelog, complete at its recent end.
+   *
+   * The search embeds a page of it at most, and for an issue with a long
+   * history the entries left out would be exactly the ones that matter. The
+   * changelog endpoint lists oldest first, so its last page is what is read.
+   */
+  private async recentHistories(issue: JiraEventIssue, issueId: string): Promise<JiraHistory[]> {
+    const embedded = issue.changelog?.histories ?? [];
+    const total = issue.changelog?.total ?? embedded.length;
+    if (total <= embedded.length) return embedded;
+
+    const url = new URL(`${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(issueId)}/changelog`);
+    url.searchParams.set('startAt', String(Math.max(0, total - COLLECTION_PAGE_SIZE)));
+    url.searchParams.set('maxResults', String(COLLECTION_PAGE_SIZE));
+    const context = `Fetching the changelog of ${issue.key || issueId}`;
+    const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
+    const body = await this.readJson<{ values?: JiraHistory[] }>(res, context);
+    if (!Array.isArray(body.values)) {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no \`values\` array`);
+    }
+    return body.values;
+  }
+
+  /** The issue's comments; the newest page when the search embedded fewer than all. */
+  private async recentComments(issue: JiraEventIssue, issueId: string): Promise<JiraComment[]> {
+    const embedded = issue.fields?.comment?.comments ?? [];
+    const total = issue.fields?.comment?.total ?? embedded.length;
+    if (total <= embedded.length) return embedded;
+
+    const url = new URL(`${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(issueId)}/comment`);
+    url.searchParams.set('orderBy', '-created');
+    url.searchParams.set('maxResults', String(COLLECTION_PAGE_SIZE));
+    const context = `Fetching the comments of ${issue.key || issueId}`;
+    const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
+    const body = await this.readJson<{ comments?: JiraComment[] }>(res, context);
+    if (!Array.isArray(body.comments)) {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no \`comments\` array`);
+    }
+    return body.comments;
   }
 
   /**

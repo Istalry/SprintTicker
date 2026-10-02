@@ -86,6 +86,11 @@ Which issues to fetch is a setting: assigned to me, everything open, or your own
 JQL. The same vocabulary drives the OpenProject adapter, each rendering it in its
 own dialect.
 
+Its activity **becomes Windows toasts** too -- assigned, status changed,
+commented, mentioned -- and optionally banners on the bar. Jira Cloud has no
+notification feed, so the app reads the changes on the issues you follow off a
+search, leaving out your own.
+
 One limit worth knowing: **Jira records time to the minute**, so a session
 shorter than 60 seconds cannot be stored there. The app keeps it in local
 history rather than queueing something the API will refuse.
@@ -306,7 +311,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1544 tests across 82 files for the app -- the main and shared
+`pnpm test` runs 1573 tests across 83 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

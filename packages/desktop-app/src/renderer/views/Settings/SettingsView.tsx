@@ -6,7 +6,7 @@ import { OpStatusDTO } from '../../../shared/dtos';
 import { TaskScope, TaskScopeValue, TASK_SCOPE_LABELS } from '../../../shared/task-scope';
 import { SyncQueuePanel } from '../../components/SyncQueuePanel';
 import { ProviderEventsSection } from '../../components/ProviderEventsSection';
-import { PROVIDERS_WITH_EVENTS } from '../../../shared/provider-events';
+import { PROVIDERS_WITH_EVENTS, providerEventKindsFor } from '../../../shared/provider-events';
 
 export interface SettingsViewProps {
   initialTab?: string;
@@ -18,6 +18,13 @@ export interface SettingsViewProps {
 const PROVIDER_NAMES: Record<string, string> = {
   openproject: 'OpenProject',
   jira: 'Jira'
+};
+
+/** Jira's notifications are read off a search, and the search has edges. */
+const PROVIDER_EVENT_NOTES: Record<string, string> = {
+  jira:
+    'Jira has no notification feed, so SprintTicker reads the issues you are assigned, ' +
+    'reported or watch. A mention on any other issue is not seen, and your own changes never notify you.'
 };
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => {
@@ -457,7 +464,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
       </div>
 
       {PROVIDERS_WITH_EVENTS.includes(providerId) && (
-        <ProviderEventsSection providerName={PROVIDER_NAMES[providerId] ?? providerId} hasBar={hasBar} />
+        <ProviderEventsSection
+          providerName={PROVIDER_NAMES[providerId] ?? providerId}
+          hasBar={hasBar}
+          kinds={providerEventKindsFor(providerId)}
+          note={PROVIDER_EVENT_NOTES[providerId]}
+        />
       )}
 
       {/* Below the credentials deliberately: the queue is the consequence of

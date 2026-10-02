@@ -18,6 +18,19 @@ describe('provider notifications', () => {
     expect(await screen.findByText('Notifications from OpenProject')).toBeTruthy();
   });
 
+  it('SettingsView_Jira_OffersOnlyWhatJiraCanReport', async () => {
+    installElectronApi({
+      getProviders: vi.fn().mockResolvedValue({ activeProviderId: 'jira', fallbackTicketKey: 'MISC-1' })
+    });
+    render(<SettingsView />);
+
+    expect(await screen.findByText('Notifications from Jira')).toBeTruthy();
+    expect(screen.getByText('Mentions')).toBeTruthy();
+    // Jira has no date alerts; a checkbox for one would do nothing.
+    expect(screen.queryByText('Date alerts')).toBeNull();
+    expect(screen.getByText(/Jira has no notification feed/)).toBeTruthy();
+  });
+
   it('SettingsView_ProviderWithoutEvents_OffersNothing', async () => {
     const bridge = installElectronApi({
       getProviders: vi.fn().mockResolvedValue({ activeProviderId: 'adhoc', fallbackTicketKey: 'MISC-1' })

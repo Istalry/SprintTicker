@@ -17,6 +17,10 @@ export interface ProviderEventsSectionProps {
   providerName: string;
   /** Without a bar the bar option is not offered. */
   hasBar: boolean;
+  /** The kinds this provider can produce; all of them by default. */
+  kinds?: readonly ProviderEventKind[];
+  /** What this provider's notifications cannot see, when that needs saying. */
+  note?: string;
 }
 
 /**
@@ -27,7 +31,7 @@ export interface ProviderEventsSectionProps {
  * provider's credentials and live under their own key, so it owns its load
  * and its save rather than threading through the provider form.
  */
-export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ providerName, hasBar }) => {
+export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ providerName, hasBar, kinds = PROVIDER_EVENT_KINDS, note }) => {
   const [settings, setSettings] = useState<ProviderEventSettingsDTO>(DEFAULT_PROVIDER_EVENT_SETTINGS);
   // Nothing to wait for without the bridge.
   const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getProviderEventSettings);
@@ -99,7 +103,7 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
         <div>
           <p className="text-xs text-text-secondary mb-2">About</p>
           <div className="grid grid-cols-2 gap-2">
-            {PROVIDER_EVENT_KINDS.map(kind => (
+            {kinds.map(kind => (
               <label key={kind} className="flex items-center space-x-2 text-xs text-white cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -166,8 +170,9 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
       </fieldset>
 
       <p className="text-xs text-text-secondary">
-        Only what arrives after you turn this on. Unread items {providerName} already had are not replayed.
+        Only what happens after you turn this on. Nothing {providerName} already had is replayed.
       </p>
+      {note && <p className="text-xs text-text-secondary">{note}</p>}
     </div>
   );
 };

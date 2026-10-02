@@ -365,6 +365,12 @@ because Windows attributes a toast to the shortcut carrying that ID.
 A toast's link is opened only if it is `http:` or `https:`: it comes from a
 remote server, and `shell.openExternal` would as readily run a `file:` URL.
 
+OpenProject has a notification feed and the adapter reads it. Jira Cloud has
+none, so `JiraProvider.getEventsSince` rebuilds one from a search over the
+issues the user is involved in, their changelog and their comments, and drops
+everything the user did themselves (`Documentation/API.md` has the rules).
+The service cannot tell the two apart, and does not need to.
+
 ### `WebhookServer` — `src/main/api/`
 
 An HTTP server on `127.0.0.1:39123` for the Unity Editor plugin. See the
@@ -532,7 +538,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1544 tests across 82 files, in two projects: `main` in Node for
+Vitest, 1573 tests across 83 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
