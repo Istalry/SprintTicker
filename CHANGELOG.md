@@ -400,6 +400,14 @@ reported something other than the truth, in three different ways.
   them on, honour the per-kind choices, and arrive as one banner per check
   rather than one per notification. An upgrade keeps the old on/off switch and
   interval.
+- **Development tools updated, and `pnpm audit` is clean again.** ESLint
+  10.11, Vite 8.3 and Vitest 5.0.3. Twenty-five advisories had built up in
+  tools several levels down -- axios and joi under `wait-on`, brace-expansion
+  under ESLint and electron-builder, fast-uri under electron-builder -- none
+  of them in the installed app. A lockfile refresh cleared most; the overrides
+  in `pnpm-workspace.yaml` were raised for the rest. Dependabot no longer
+  proposes `@types/node` majors: the types follow the Node 24 that Electron
+  ships, and move with it.
 - **Building from source no longer needs a C++ toolchain.** better-sqlite3 13
   ships one prebuilt binary that Node and Electron both load, so the rebuilds
   that ran before every `pnpm test` and `pnpm dev` did nothing, and are gone,

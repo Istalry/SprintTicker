@@ -30,13 +30,19 @@ overrides:
   nanoid@3: '^3.3.18'
 
   # <1.1.17: unbounded expansion length, OOM crash. The 1.x line arrives via
-  # minimatch@3, which @electron/asar and eslint 8 both still depend on.
-  # 2.1.2 and 5.0.9 are also installed and are already past their advisories.
-  brace-expansion@1: '^1.1.17'
+  # minimatch@3, which @electron/asar and eslint-plugin-react still depend on.
+  # <1.1.21: then three more in the same family -- uncontrolled recursion on
+  # nested groups and in parseCommaParts, and quadratic `{a},b}` rewriting.
+  brace-expansion@1: '^1.1.21'
 
   # <2.1.4: the same unbounded-expansion family, separately advised against the
-  # 2.x line. Reaches us through minimatch@9 under @typescript-eslint.
-  brace-expansion@2: '^2.1.4'
+  # 2.x line. <2.1.7: the three advisories above, again for 2.x. Reaches us
+  # through minimatch under electron-builder's @electron/universal.
+  brace-expansion@2: '^2.1.7'
+
+  # <3.1.8: inconsistent host case normalisation through percent-encoding.
+  # Via ajv, inside electron-builder's config validation.
+  fast-uri@3: '^3.1.8'
 
   # <4.3.1: quadratic CPU in !!omap resolution, CVE-2026-59870. Via
   # @eslint/eslintrc, so it leaves with the ESLint 9 migration.

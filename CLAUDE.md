@@ -138,7 +138,9 @@ on its first `require`, never `pnpm dev`.
 better-sqlite3. `build-targets.ts` holds Electron's Node and Chromium versions,
 read off Electron itself; its test fails when the installed Electron major
 moves. Read the new ones with `ELECTRON_RUN_AS_NODE=1 npx electron -p
-"JSON.stringify(process.versions)"`.
+"JSON.stringify(process.versions)"`. `@types/node` belongs to the same pair:
+its major is Electron's Node major, Dependabot is told to ignore its majors,
+and raising it is part of the Electron upgrade, never a PR of its own.
 
 **Never name a script `clean`.** pnpm 11 has a built-in `pnpm clean`, which
 deletes `node_modules`, and a built-in shadows a script of the same name. The

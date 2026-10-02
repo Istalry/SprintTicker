@@ -17,7 +17,15 @@ updates:
         patterns: ['react', 'react-dom', '@vitejs/plugin-react']
       vite:
         patterns: ['vite', 'vitest', '@vitest/*']
-    # Nothing is ignored. better-sqlite3 majors were, while it compiled
+    ignore:
+      # @types/node follows the Node the code runs on, not npm's latest: Node 24
+      # inside Electron 44 and under Vitest. Types for a newer major compile
+      # calls that crash at runtime. Minors and patches still come. Move it
+      # with Electron's Node -- build-targets.test.ts fails when the Electron
+      # major changes, which is the moment to raise this too (#10 was 24 -> 26).
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    # Nothing else is ignored. better-sqlite3 majors were, while it compiled
     # against V8 and every Electron major forced a matching bump; since 13 it
     # is N-API, and a major is an ordinary update (CLAUDE.md section 2).
     #
