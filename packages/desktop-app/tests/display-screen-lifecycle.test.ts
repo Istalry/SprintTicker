@@ -279,11 +279,22 @@ describe('Front display screen lifecycle', () => {
     await sceneShowing();
     renderer.setShowIdleClockFallback(true);
 
+    const release = vi.spyOn(driver, 'clearDisplay');
     renderer.setContextMode('WORK');
     renderer.renderActiveSession(null);
     await waitFor(() => canvas.closes.length >= 1, 'the release');
+    // Removing the scene empties the panel before the release's own DELETE,
+    // which is still in its settle wait. Left running, it lands on the next
+    // test's fake device, through the shared fetch, and wipes that test's
+    // screen.
+    await release.mock.results[0].value;
+    await new Promise(resolve => setTimeout(resolve, SETTLE_MS * 3));
 
     expect(canvas.closes.every(close => !close.types.includes('animation'))).toBe(true);
+    // The icon animator still wanted the paused stopwatch: nothing had told it
+    // the idle clock was not a frame. It drew the icon back, alone, over the
+    // panel the release had just emptied.
+    expect(shown()).toEqual([]);
   });
 
   it('IdleClock_TaskStartedDuringTheRelease_KeepsTheNewScreen', async () => {

@@ -208,7 +208,7 @@ export const App: React.FC = () => {
         return <DeviceDiagnosticsView />;
       case 'settings':
       default:
-        return <SettingsView initialTab="providers" />;
+        return <SettingsView initialTab="providers" hasBar={hasBar} />;
     }
   };
 

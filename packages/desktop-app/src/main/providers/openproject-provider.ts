@@ -1,5 +1,6 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
-import { ProjectDTO, TaskDTO, OpStatusDTO, OpenProjectNotificationDTO, ArgumentException } from '../../shared/dtos';
+import { ProjectDTO, TaskDTO, OpStatusDTO, ArgumentException } from '../../shared/dtos';
+import { ProviderEventDTO, ProviderEventKind } from '../../shared/provider-events';
 import { priorityRankFromName } from './task-priority';
 import { clampDescription, markdownToPlainText } from './task-description';
 import { ProviderRequestError } from './provider-errors';
@@ -8,6 +9,20 @@ import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
 import { localDateKey } from '../../shared/local-date';
+
+/**
+ * OpenProject's notification reasons, as provider event kinds.
+ * `responsible` is the accountable person, which reads as an assignment.
+ * `processed` is OpenProject's name for a status change.
+ */
+const OPENPROJECT_REASON_KINDS: Record<string, ProviderEventKind | undefined> = {
+  assigned: 'assigned',
+  responsible: 'assigned',
+  mentioned: 'mentioned',
+  commented: 'commented',
+  processed: 'status_changed',
+  dateAlert: 'date_alert'
+};
 
 /**
  * Concrete task provider adapter for OpenProject API v3.
@@ -255,46 +270,57 @@ export class OpenProjectProvider implements ITaskProvider {
     return JSON.stringify(parsed);
   }
 
-  /// <summary>
-  /// Fetches unread notifications for the current user from OpenProject API v3 (/api/v3/notifications).
-  /// </summary>
-  public async fetchUnreadNotifications(): Promise<OpenProjectNotificationDTO[]> {
-    if (!this._domain || !this._apiKey) return [];
-
-    try {
-      const filter = `[{"readIAN":{"operator":"=","values":["f"]}}]`;
-      const elements = await this.fetchCollection(
-        '/api/v3/notifications',
-        'Fetching unread notifications',
-        { filters: filter }
-      );
-
-      return elements.map(n => {
-        const links = (n._links || {}) as Record<string, { title?: string }>;
-        return {
-          id: (n.id as number | string).toString(),
-          subject: (n.subject as string) || 'Notification',
-          action: (n.action as string) || '',
-          actorName: links.actor?.title || 'OpenProject',
-          readIAN: !!n.readIAN,
-          reason: (n.reason as string) || '',
-          createdAt: (n.createdAt as string) || new Date().toISOString()
-        };
-      });
-    } catch (err) {
-      // Unlike getProjects/getTasks this is not a prune input -- nothing is
-      // deleted on the strength of it -- so an unreachable server degrades to
-      // "no notifications" rather than failing the caller.
-      //
-      // The message, not the error object. This runs on a poll timer, so a
-      // server that is simply not there wrote a full stack trace every
-      // interval -- which is what buried the two worklog failures that
-      // actually needed reading during a live debugging session. A path that
-      // degrades on purpose should say so in one line.
-      const detail = err instanceof Error ? err.message : String(err);
-      console.warn(`[OpenProjectProvider] Unread notifications unavailable: ${detail}`);
-      return [];
+  /**
+   * Unread notifications created after `sinceUtc`, as provider events.
+   *
+   * Unread only: the API offers no filter or sort on time, and one the user has
+   * already read in OpenProject is not news. Reasons that are not about the
+   * user's attention -- `watched`, `subscribed`, `created`, `prioritized`,
+   * `scheduled` -- are dropped here rather than offered as kinds nobody asked
+   * for.
+   *
+   * Throws when the instance cannot be read; see ITaskProvider.
+   */
+  public async getEventsSince(sinceUtc: string): Promise<ProviderEventDTO[]> {
+    if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
+      throw ProviderRequestError.notConfigured(this.providerId);
     }
+    const since = Date.parse(sinceUtc);
+    if (Number.isNaN(since)) {
+      throw new ArgumentException(`sinceUtc is not a timestamp: ${sinceUtc}`);
+    }
+
+    const elements = await this.fetchCollection(
+      '/api/v3/notifications',
+      'Fetching notifications',
+      { filters: JSON.stringify([{ readIAN: { operator: '=', values: ['f'] } }]) }
+    );
+
+    const base = this.getBaseUrl();
+    const events: ProviderEventDTO[] = [];
+    for (const n of elements) {
+      const kind = OPENPROJECT_REASON_KINDS[(n.reason as string) || ''];
+      const occurredAt = Date.parse((n.createdAt as string) || '');
+      if (!kind || Number.isNaN(occurredAt) || occurredAt <= since) continue;
+
+      const links = (n._links || {}) as Record<string, { href?: string | null; title?: string } | null>;
+      const workPackageId = /\/api\/v3\/work_packages\/(\d+)$/.exec(links.resource?.href ?? '')?.[1];
+      events.push({
+        id: `openproject:${String(n.id)}`,
+        providerId: this.providerId,
+        kind,
+        taskKey: workPackageId ? `OP-${workPackageId}` : '',
+        taskTitle: links.resource?.title || (n.subject as string) || 'Work package',
+        ...(links.actor?.title ? { actorName: links.actor.title } : {}),
+        ...(workPackageId ? { url: `${base}/work_packages/${workPackageId}` } : {}),
+        occurredAtUtc: new Date(occurredAt).toISOString()
+      });
+    }
+    return events;
+  }
+
+  public getEventsInboxUrl(): string | null {
+    return isOpenProjectConfigured(this._domain, this._apiKey) ? `${this.getBaseUrl()}/notifications` : null;
   }
 
   /// <summary>

@@ -342,6 +342,29 @@ silent — a listener that never starts looks exactly like an app that never
 notifies you. Notification text is redacted from logs and from the diagnostics
 export unless you launch with `--debug-notifications`.
 
+### `ProviderEventService` — `src/main/services/`
+
+Polls the active provider's `getEventsSince` and tells the user what happened
+on their tasks: a Windows toast through `ElectronToastPresenter`, and a banner
+on the bar when there is one. It keeps a cursor per provider under
+`provider_event_cursors`: the newest event time seen, **on the provider's
+clock**. The first poll for a provider records "now" and shows nothing, so a
+first launch does not replay the unread history; a failed poll leaves the
+cursor where it was, so the next one picks up what it missed. Turning the
+feature off forgets the cursors. More than three events in one poll become a
+single summary toast pointing at the provider's inbox, and the bar gets one
+banner per poll whatever the count.
+
+The bar is reached from here, once, through `renderNotificationBanner` --
+never by letting the Windows listener mirror the toast. The listener skips
+the app's own AppUserModelIDs on both of its paths, and must: mirroring would
+put each event on the bar twice and take the display lock twice. The
+AppUserModelID itself (`app-identity.ts`) equals electron-builder's `appId`,
+because Windows attributes a toast to the shortcut carrying that ID.
+
+A toast's link is opened only if it is `http:` or `https:`: it comes from a
+remote server, and `shell.openExternal` would as readily run a `file:` URL.
+
 ### `WebhookServer` — `src/main/api/`
 
 An HTTP server on `127.0.0.1:39123` for the Unity Editor plugin. See the
@@ -509,7 +532,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1489 tests across 77 files, in two projects: `main` in Node for
+Vitest, 1544 tests across 82 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

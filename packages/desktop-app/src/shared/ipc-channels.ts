@@ -84,10 +84,13 @@ export enum IPCChannel {
   GET_UNITY_TELEMETRY = 'unity:get-telemetry',
   ON_UNITY_TELEMETRY_UPDATED = 'unity:on-telemetry-updated',
 
-  // Messaging Integration & Windows Notification Listener
-  GET_MESSAGING_SETTINGS = 'messaging:get-settings',
-  SAVE_MESSAGING_SETTINGS = 'messaging:save-settings',
-  TEST_MESSAGING_INTEGRATION = 'messaging:test-integration',
+  // Provider events: toasts (and bar banners) for Jira / OpenProject activity
+  GET_PROVIDER_EVENT_SETTINGS = 'provider-events:get-settings',
+  /** Answers the settings as stored, normalised. */
+  SAVE_PROVIDER_EVENT_SETTINGS = 'provider-events:save-settings',
+  TEST_PROVIDER_EVENTS = 'provider-events:test',
+
+  // Windows Notification Listener
   GET_NOTIFICATION_SETTINGS = 'notifications:get-settings',
   SAVE_NOTIFICATION_SETTINGS = 'notifications:save-settings',
   SIMULATE_NOTIFICATION = 'notifications:simulate',

@@ -19,6 +19,12 @@ const { URL } = require('url');
  * One implementation, so the automated check and the manual one cannot drift.
  *
  *   node scripts/fake-openproject.js [--port 8099] [--projects 25] [--page-size 20]
+ *                                    [--notify-every 30]
+ *
+ * `--notify-every N` posts a new unread notification every N seconds,
+ * cycling through the reasons, so the app's toasts can be watched arriving.
+ * The app starts from "now" on its first poll, so only those posted after it
+ * show; the cycle includes reasons the app drops (`watched`), on purpose.
  *
  * Any API key is accepted; the point is the shape of the traffic, not auth.
  * Dev-only -- never imported by the app itself.
@@ -30,8 +36,29 @@ const DEFAULT_OPTIONS = {
   workPackages: 47,
   statuses: 23,
   pageSize: 20,
+  notifyEvery: 0,
   quiet: false
 };
+
+/** The order `--notify-every` cycles through. `watched` is one the app drops. */
+const NOTIFICATION_REASONS = ['mentioned', 'assigned', 'commented', 'processed', 'watched', 'dateAlert'];
+
+/** One unread notification about a work package, as /api/v3/notifications returns it. */
+function buildNotification(id, reason, workPackageId) {
+  return {
+    _type: 'Notification',
+    id,
+    reason,
+    readIAN: false,
+    subject: `Fake notification ${id}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    _links: {
+      actor: reason === 'dateAlert' ? { href: null } : { href: '/api/v3/users/2', title: 'Alice Martin' },
+      resource: { href: `/api/v3/work_packages/${workPackageId}`, title: `WP ${id} that needs you` }
+    }
+  };
+}
 
 /** Parses `--flag value` pairs, falling back to the given defaults. */
 function parseArgs(argv, defaults) {
@@ -159,6 +186,8 @@ function createFakeOpenProject(overrides = {}) {
   const projects = buildProjects(options.projects);
   const statuses = buildStatuses(options.statuses);
   const requests = [];
+  /** Unread notifications, newest last. Push to it to post one. */
+  const notifications = [];
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -217,7 +246,7 @@ function createFakeOpenProject(overrides = {}) {
     }
 
     if (url.pathname === '/api/v3/notifications') {
-      send(200, collection(url, [], offset, pageSize));
+      send(200, collection(url, notifications, offset, pageSize));
       return;
     }
 
@@ -230,14 +259,22 @@ function createFakeOpenProject(overrides = {}) {
     send(404, { message: `No fake route for ${url.pathname}` });
   });
 
-  return { server, options, projects, statuses, requests };
+  return { server, options, projects, statuses, requests, notifications };
 }
 
-module.exports = { createFakeOpenProject, DEFAULT_OPTIONS };
+module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS };
 
 if (require.main === module) {
   const options = parseArgs(process.argv.slice(2), DEFAULT_OPTIONS);
-  const { server } = createFakeOpenProject(options);
+  const { server, notifications } = createFakeOpenProject(options);
+  if (options.notifyEvery > 0) {
+    setInterval(() => {
+      const id = notifications.length + 1;
+      const reason = NOTIFICATION_REASONS[(id - 1) % NOTIFICATION_REASONS.length];
+      notifications.push(buildNotification(id, reason, 1000 + id));
+      console.log(`[FakeOpenProject] Posted notification ${id} (${reason}).`);
+    }, options.notifyEvery * 1000);
+  }
   server.listen(options.port, '127.0.0.1', () => {
     const pages = n => Math.ceil(n / options.pageSize);
     console.log(`[FakeOpenProject] Listening on http://127.0.0.1:${options.port}`);

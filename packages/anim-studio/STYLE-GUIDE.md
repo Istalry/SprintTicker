@@ -109,6 +109,7 @@ The icons so far, and which rhythm each follows:
 | Burger | Lunch prompt | event | crouches, then the layers hop top first and pack down on landing |
 | Check | none since SEE YOU! replaced Day Complete | event | a pen retraces the tick, which then hops a pixel |
 | OpenProject | OpenProject notification | event | a light sweeps across once; shape and blue untouched |
+| Jira | Jira notification | event | a light climbs the three chevrons once, bottom-left to top-right; shape and blue untouched |
 | Stopwatch, tracking | Session running | steady | a seconds hand ticks round once a second, the elapsed wedge filling behind it; the crown clicks at each lap |
 | Stopwatch, paused | Paused session | steady | the pause bars dim for half a second in every one and a half |
 

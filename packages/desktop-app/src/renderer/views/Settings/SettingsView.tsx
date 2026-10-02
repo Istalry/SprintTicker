@@ -5,12 +5,22 @@ import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { OpStatusDTO } from '../../../shared/dtos';
 import { TaskScope, TaskScopeValue, TASK_SCOPE_LABELS } from '../../../shared/task-scope';
 import { SyncQueuePanel } from '../../components/SyncQueuePanel';
+import { ProviderEventsSection } from '../../components/ProviderEventsSection';
+import { PROVIDERS_WITH_EVENTS } from '../../../shared/provider-events';
 
 export interface SettingsViewProps {
   initialTab?: string;
+  /** Offers the bar as a destination for provider notifications. */
+  hasBar?: boolean;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = () => {
+/** As the provider picker below names them. */
+const PROVIDER_NAMES: Record<string, string> = {
+  openproject: 'OpenProject',
+  jira: 'Jira'
+};
+
+export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => {
   const [loaded, setLoaded] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -37,11 +47,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
 
   const [availableStatuses, setAvailableStatuses] = useState<OpStatusDTO[]>([]);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState<boolean>(false);
-
-  // Notification Settings
-  const [enableOpenProjectNotifications, setEnableOpenProjectNotifications] = useState<boolean>(true);
-  const [openProjectPollingIntervalSeconds, setOpenProjectPollingIntervalSeconds] = useState<number>(60);
-  const [isTestLoading, setIsTestLoading] = useState<boolean>(false);
 
   useEffect(() => {
     // Auto-save stays disabled until both reads settle. Enabling it earlier
@@ -80,14 +85,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       }).catch(err => console.error('[SettingsView] Error loading providers:', err)));
     }
     
-    if (window.electronAPI?.getMessagingSettings) {
-      loads.push(window.electronAPI.getMessagingSettings().then(s => {
-        if (s) {
-          setEnableOpenProjectNotifications(s.enableOpenProjectNotifications ?? true);
-          setOpenProjectPollingIntervalSeconds(s.openProjectPollingIntervalSeconds ?? 60);
-        }
-      }).catch(err => console.error('[SettingsView] Error loading messaging settings:', err)));
-    }
 
     void Promise.allSettled(loads).then(() => setLoaded(true));
   }, []);
@@ -117,14 +114,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       });
     }
 
-    if (window.electronAPI?.getMessagingSettings && window.electronAPI?.saveMessagingSettings) {
-      const currentMessagingSettings = await window.electronAPI.getMessagingSettings();
-      await window.electronAPI.saveMessagingSettings({
-        ...(currentMessagingSettings || {}),
-        enableOpenProjectNotifications,
-        openProjectPollingIntervalSeconds
-      });
-    }
 
   };
 
@@ -149,9 +138,7 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
       jiraTransitionInProgress,
       jiraTransitionToTest,
       jiraTransitionToReview,
-      jiraCompletionAction,
-      enableOpenProjectNotifications,
-      openProjectPollingIntervalSeconds
+      jiraCompletionAction
     ],
     loaded
   );
@@ -176,18 +163,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
     setIsLoadingStatuses(false);
   };
 
-  const handleTestAlert = async () => {
-    if (window.electronAPI?.testMessagingIntegration) {
-      setIsTestLoading(true);
-      try {
-        await window.electronAPI.testMessagingIntegration('OpenProject');
-      } catch (err) {
-        console.error('[SettingsView] Failed to test messaging integration', err);
-      } finally {
-        setTimeout(() => setIsTestLoading(false), 1000);
-      }
-    }
-  };
 
   return (
     <div className="space-y-6 max-w-4xl font-mono">
@@ -341,44 +316,6 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
                 </div>
               )}
             </div>
-
-            {/* Notification Configuration */}
-            <div className="mt-6 border-t border-border-dark pt-4">
-              <div className="flex justify-between items-center mb-4">
-                <label className="block text-xs font-bold font-mono text-white">API Polling Notifications</label>
-                <button
-                  onClick={handleTestAlert}
-                  disabled={isTestLoading}
-                  className="px-3 py-1.5 bg-dark-700 text-accent-purple text-xs font-bold rounded hover:bg-dark-600 disabled:opacity-50 transition-colors flex items-center space-x-1"
-                >
-                  <span>{isTestLoading ? 'Sending...' : 'Test Banner Alert'}</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-mono text-text-secondary mb-1">Polling Interval (Seconds)</label>
-                  <input
-                    type="number"
-                    value={openProjectPollingIntervalSeconds}
-                    onChange={e => setOpenProjectPollingIntervalSeconds(Number(e.target.value))}
-                    min="10"
-                    max="3600"
-                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
-                  />
-                </div>
-                <div className="flex items-center mt-6">
-                  <label className="flex items-center space-x-3 text-xs text-white cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={enableOpenProjectNotifications}
-                      onChange={e => setEnableOpenProjectNotifications(e.target.checked)}
-                      className="rounded bg-dark-900 border-border-dark text-accent-blue focus:ring-0"
-                    />
-                    <span>Enable Notification Polling</span>
-                  </label>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -518,6 +455,10 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
           <p className="text-xs text-text-secondary mt-1">Non-sprint ad-hoc tasks will log hours against this issue key.</p>
         </div>
       </div>
+
+      {PROVIDERS_WITH_EVENTS.includes(providerId) && (
+        <ProviderEventsSection providerName={PROVIDER_NAMES[providerId] ?? providerId} hasBar={hasBar} />
+      )}
 
       {/* Below the credentials deliberately: the queue is the consequence of
           what is configured above, and saving credentials is what un-parks a

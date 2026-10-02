@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import type { ProviderEventSettingsDTO } from '../shared/provider-events';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -15,7 +16,6 @@ import type {
   WorklogDTO,
   UnitySettingsDTO,
   UnityTelemetryDTO,
-  MessagingSettingsDTO,
   WindowsNotificationSettingsDTO,
   NotificationLogEntryDTO,
   HardwareDisplayStateDTO,
@@ -135,12 +135,13 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, handler);
   },
 
-  // Messaging Integration & Windows Notification Listener
-  getMessagingSettings: () => ipcRenderer.invoke(IPCChannel.GET_MESSAGING_SETTINGS),
-  saveMessagingSettings: (settings: MessagingSettingsDTO) =>
-    ipcRenderer.invoke(IPCChannel.SAVE_MESSAGING_SETTINGS, settings),
-  testMessagingIntegration: (channelName: string) =>
-    ipcRenderer.invoke(IPCChannel.TEST_MESSAGING_INTEGRATION, channelName),
+  // Provider events
+  getProviderEventSettings: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDER_EVENT_SETTINGS),
+  saveProviderEventSettings: (settings: ProviderEventSettingsDTO) =>
+    ipcRenderer.invoke(IPCChannel.SAVE_PROVIDER_EVENT_SETTINGS, settings),
+  testProviderEvents: () => ipcRenderer.invoke(IPCChannel.TEST_PROVIDER_EVENTS),
+
+  // Windows Notification Listener
   getNotificationSettings: () => ipcRenderer.invoke(IPCChannel.GET_NOTIFICATION_SETTINGS),
   saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) =>
     ipcRenderer.invoke(IPCChannel.SAVE_NOTIFICATION_SETTINGS, settings),

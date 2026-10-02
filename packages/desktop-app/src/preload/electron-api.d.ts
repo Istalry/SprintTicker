@@ -10,6 +10,7 @@
  * `undefined is not a function` in the renderer, so keep it.
  */
 
+import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../shared/provider-events';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -26,8 +27,6 @@ import type {
   WorklogDTO,
   UnitySettingsDTO,
   UnityTelemetryDTO,
-  MessagingSettingsDTO,
-  MessagingTestResultDTO,
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
   NotificationLogEntryDTO,
@@ -130,10 +129,14 @@ export interface IElectronAPI {
   getUnityTelemetry: () => Promise<UnityTelemetryDTO>;
   onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => () => void;
 
-  // Messaging Integration & Windows Notification Listener
-  getMessagingSettings: () => Promise<MessagingSettingsDTO>;
-  saveMessagingSettings: (settings: MessagingSettingsDTO) => Promise<boolean>;
-  testMessagingIntegration: (channelName: string) => Promise<MessagingTestResultDTO>;
+  // Provider events: toasts and bar banners for Jira / OpenProject activity
+  getProviderEventSettings: () => Promise<ProviderEventSettingsDTO>;
+  /** Resolves the settings as stored, normalised -- an interval may be clamped. */
+  saveProviderEventSettings: (settings: ProviderEventSettingsDTO) => Promise<ProviderEventSettingsDTO>;
+  /** Sends a sample through the destinations switched on; resolves which. */
+  testProviderEvents: () => Promise<ProviderEventTestResultDTO>;
+
+  // Windows Notification Listener
   getNotificationSettings: () => Promise<WindowsNotificationSettingsDTO>;
   saveNotificationSettings: (settings: Partial<WindowsNotificationSettingsDTO>) => Promise<boolean>;
   simulateNotification: (payload: { appId: string; appName: string; title: string; body: string; iconId?: BitmapIconId; iconPath?: string }) => Promise<WindowsNotificationEventDTO>;

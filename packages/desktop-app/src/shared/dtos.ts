@@ -41,16 +41,6 @@ export interface OpStatusDTO {
   isClosed: boolean;
 }
 
-export interface OpenProjectNotificationDTO {
-  id: string;
-  subject: string;
-  action: string;
-  actorName: string;
-  readIAN: boolean;
-  reason: string;
-  createdAt: string;
-}
-
 export interface ProjectDTO {
   id: string;
   name: string;
@@ -286,12 +276,6 @@ export interface UnityTelemetryDTO {
   instances?: UnityInstanceDTO[];
 }
 
-export interface MessagingSettingsDTO {
-  enableOpenProjectNotifications?: boolean;
-  openProjectPollingIntervalSeconds?: number;
-  notificationTimeoutSeconds?: number; // Auto-dismiss notification banner duration in seconds (default: 10)
-}
-
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';
 
 export interface NotificationSourceRule {
@@ -363,12 +347,6 @@ export interface NotificationListenerStatusDTO {
 }
 
 
-export interface MessagingTestResultDTO {
-  success: boolean;
-  channel: string;
-  message: string;
-}
-
 export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BURST' | 'CONFETTI_EXPLOSION';
 /**
  * Ids accepted by `getBitmapById`.
@@ -380,7 +358,7 @@ export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BU
 export type BitmapIconId =
   | 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark'
   | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows'
-  | 'bell' | 'openproject' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
+  | 'bell' | 'openproject' | 'jira' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
   | 'hammer' | 'bulb' | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
   | 'folder' | 'task' | 'task_in_progress' | 'task_done';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';

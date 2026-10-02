@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { APP_USER_MODEL_ID } from '../src/main/app-identity';
 import { WindowsNotificationListenerService } from '../src/main/services/windows-notification-listener-service';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -315,6 +316,17 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
         service as unknown as { buildPowerShellScript(intervalMs: number): string }
       ).buildPowerShellScript(2000);
     }
+
+    it('BuildPowerShellScript_OwnToasts_SkippedOnBothPaths', () => {
+      // The app's own toasts reach the bar once, from ProviderEventService.
+      // Only the database path used to skip them; the WinRT path mirrored
+      // them, which would have put each one on the bar twice.
+      const script = generatedScript();
+
+      expect(script).toContain(`$selfAppIds = @('${APP_USER_MODEL_ID}', 'com.busybar.desktop')`);
+      expect(script).toContain('if ($selfAppIds -contains $aId) { continue }');
+      expect(script).toContain('foreach ($selfId in $selfAppIds)');
+    });
 
     it('BuildPowerShellScript_TempDatabaseCleanup_RemovesTheWalAndShmSidecars', () => {
       // `Remove-Item $tempDb` deleted only the base file, so every pass left a

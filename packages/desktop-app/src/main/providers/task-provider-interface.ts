@@ -1,4 +1,5 @@
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { ProviderEventDTO } from '../../shared/provider-events';
 
 export interface WorklogPayload {
   taskId: string;
@@ -53,4 +54,21 @@ export interface ITaskProvider {
   reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }>;
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
+
+  /**
+   * What happened to the user's tasks after `sinceUtc` (exclusive): assigned,
+   * mentioned, commented, status changed, date alert. Optional -- a provider
+   * without a remote has nothing to report -- and listed in
+   * `PROVIDERS_WITH_EVENTS` when present.
+   *
+   * **Throws on failure**, like getProjects. An empty array means "nothing
+   * happened", and a poll that read a failure that way would move its cursor
+   * past events it never saw.
+   *
+   * Timestamps are the provider's own; the caller's cursor advances on them.
+   */
+  getEventsSince?(sinceUtc: string): Promise<ProviderEventDTO[]>;
+
+  /** Where the provider lists every notification, for a summary toast. */
+  getEventsInboxUrl?(): string | null;
 }

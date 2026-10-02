@@ -93,7 +93,8 @@ the task row, archived or not.
 | Device | `device:get-status`, `device:get-config`, `device:set-config`, `device:on-status-changed` |
 | Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup`, `schedule:cancel-eod-wrapup`, `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:snooze-ceremony`, `schedule:on-ceremony-prompt`, `schedule:update-ceremony-prompt` |
 | Unity | `unity:get-settings`, `unity:save-settings`, `unity:get-telemetry`, `unity:on-telemetry-updated`, `unity-injector:*`, `dialog:open-folder-picker` |
-| Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings`, `messaging:*` |
+| Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings` |
+| Provider events | `provider-events:get-settings`, `provider-events:save-settings` (answers the settings as stored: an interval is clamped to 30-3600 s), `provider-events:test` (a sample through the destinations switched on; answers `{ toast, bar }`) |
 | Diagnostics | `diagnostics:export-logs` |
 | Updates | `updates:check`, `updates:get-enabled`, `updates:set-enabled`, `updates:open-release-page`, `updates:on-status` |
 | App | `app:get-system-locale` -- Windows' regional format (`en-BE`, `fr-FR`), read once by the renderer at startup to format times |
@@ -163,6 +164,10 @@ interface ITaskProvider {
   reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }>;
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
+
+  // Optional: activity on the user's tasks, for toasts and bar banners.
+  getEventsSince?(sinceUtc: string): Promise<ProviderEventDTO[]>;
+  getEventsInboxUrl?(): string | null;
 }
 ```
 
@@ -206,6 +211,19 @@ means "this provider cannot find out". Jira has no single endpoint for "time I
 logged today", and AdHoc has no remote at all; both return `null` rather than a
 `0` a caller would render as a measured "you logged nothing today".
 OpenProject returns a real total, and `null` when the fetch failed.
+
+**`getEventsSince` throws too, and works on the provider's clock.** It answers
+what happened after `sinceUtc`, exclusive: `assigned`, `mentioned`,
+`commented`, `status_changed` or `date_alert` (`ProviderEventDTO` in
+`src/shared/provider-events.ts`). An empty array means nothing happened, so a
+failure must throw, or the poller would move its cursor past events it never
+saw. `occurredAtUtc` is the server's own timestamp: the cursor advances on it,
+never on this machine's clock. Drop what is not about the user's attention
+rather than inventing a kind for it, and add the provider's id to
+`PROVIDERS_WITH_EVENTS`, which a test holds to the adapters that implement the
+method. OpenProject reads unread `/api/v3/notifications` -- the API has no
+time filter -- and maps `assigned`/`responsible`, `mentioned`, `commented`,
+`processed` and `dateAlert`.
 
 **Use `providerFetch`.** `src/main/providers/provider-http.ts` is the one place
 a provider talks to the network: per-attempt timeout, `Retry-After`-aware

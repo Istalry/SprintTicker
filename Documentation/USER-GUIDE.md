@@ -50,7 +50,9 @@ the end-of-day wrap-up. What steps aside is what only describes the bar — the
 on-screen emulator and connection readout in the top bar, **Priority Rules**,
 which orders the bar's screen and nothing else, **Unity Engine**, whose
 compile, Play Mode and error states exist to be shown on the bar, and
-**Notifications**, which mirrors Windows notifications onto it. Events from the
+**Notifications**, which mirrors Windows notifications onto it. Notifications
+*from* OpenProject still arrive, as Windows notifications; their settings are
+in Task Providers. Events from the
 Unity plugin are ignored in this mode, the Windows notification listener does
 not run, and the setup wizard skips its Unity step. The end-of-day wrap-up still saves open Unity scenes. **Device Diagnostics**
 becomes **Device & Logs**, keeping log export, the update setting and the
@@ -138,6 +140,18 @@ sent to your provider.
 Credentials, the completion transitions, and which tasks to fetch — assigned to
 me, everything open, or your own query (JQL for Jira, a v3 filter array for
 OpenProject).
+
+**Notifications from OpenProject** turns what happens on your work packages
+into Windows notifications: assigned to you, a mention, a comment, a status
+change, a date alert. Tick the ones you want. Clicking a notification opens the
+work package in your browser. With a bar, they can go there too, as a banner
+that competes for the display like any *Notification — Default*. The app
+checks every minute by default (30 seconds to an hour); more than three at
+once arrive as one summary. Only unread notifications that arrive after you
+turn this on are shown -- what was already waiting in OpenProject is not
+replayed -- and one you have read in OpenProject before the next check is not
+shown either. **Send a test notification** shows what one looks like, and
+says where it went.
 
 Below the credentials is the **sync queue**: every worklog that has not reached
 the provider, with the server's own message, the attempt count against the
@@ -453,6 +467,20 @@ anyway*. There is no way around it short of a code-signing certificate.
 
 **Accented characters.** These are transliterated to ASCII (`é` → `e`), because
 the device accepts printable ASCII only. Emoji do not render.
+
+### No notification from OpenProject
+
+- **Is it switched on, for that kind?** Task Providers › Notifications from
+  OpenProject. **Send a test notification**: if it says it was sent and nothing
+  appeared, the cause is on the Windows side.
+- **Windows may be holding it.** Do Not Disturb, Focus, or SprintTicker turned
+  off in Windows Settings › System › Notifications all hide toasts without
+  telling the app. They still land in the notification centre.
+- **It may have been read already.** Only unread notifications are shown; one
+  read in OpenProject between two checks is not news.
+- **The log says why a check failed** -- `[ProviderEvents] OpenProject events
+  unavailable: ...` -- and a refused toast as `[Toasts] Windows did not show a
+  notification`.
 
 ---
 

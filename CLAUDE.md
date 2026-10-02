@@ -482,6 +482,20 @@ changing it:
   the display lock twice under different names, and the release then never
   matches the lock actually held. This has already shipped once.
 
+The app posts toasts of its own (`ProviderEventService`), and two things about
+them are traps:
+
+- **The AppUserModelID must equal electron-builder's `appId`.** Windows shows a
+  toast for an ID it can tie to a Start-menu shortcut, and the installer writes
+  `appId` onto that shortcut. They differed (`com.busybar.desktop`), and a test
+  now holds `APP_USER_MODEL_ID` in `app-identity.ts` to the JSON. A packaged
+  build with no shortcut at all was measured showing toasts under the right
+  name and icon (2026-10-01), so the portable build is fine.
+- **Our own toasts reach the bar once, from the app -- never through the
+  listener.** The listener skips every ID in `OWN_APP_USER_MODEL_IDS`, on the
+  database path *and* the WinRT path; the latter used to skip nothing. Let it
+  mirror them and each event lands on the bar twice, under two locks.
+
 ## 6. Code standards
 
 - **SOLID, and DIP in particular.** Constructors take their dependencies; a

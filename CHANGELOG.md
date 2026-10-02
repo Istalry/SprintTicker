@@ -24,6 +24,13 @@ reported something other than the truth, in three different ways.
   where you left it, and opens at the next launch if it was open when you quit.
   Open it from **Mini Timer** in the top bar or **Show Mini Timer** in the tray
   menu. Useful without a bar, and with one that is out of sight.
+- **Windows notifications for what happens on your tasks.** When someone
+  assigns you a work package, mentions you, comments, changes a status, or a
+  date alert fires, OpenProject's notification becomes a Windows toast;
+  clicking it opens the work package. Choose which of the five you want, and
+  whether they also go to the bar, under **Notifications from OpenProject** in
+  Task Providers. A burst of more than three arrives as one summary. Only what
+  arrives after you turn it on is shown, not the unread history.
 - **Tasks have descriptions.** The start of a Jira or OpenProject description
   appears under the task's title in Projects & Tasks and in the task picker,
   which searches it too. On the bar, the picker's second row shows the task
@@ -238,6 +245,14 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **Toasts from an installed copy are attributed to SprintTicker.** The app
+  told Windows it was `com.busybar.desktop` while the installer's shortcut
+  says `io.github.istalry.sprintticker`, and Windows only shows a toast for an
+  ID it can tie to a shortcut. Both now use the latter.
+- **An animated icon no longer outlives its screen at the idle clock.** When a
+  screen with an animated icon -- a notification banner, the paused
+  stopwatch -- gave way to the idle clock, the icon stayed: alone in the
+  on-screen emulator, and drawn back onto the bar over the firmware's clock.
 - **The tray's "Trigger Task Selector Modal" opens the task picker.** It
   brought the window forward and nothing else: it sent its request on a channel
   the window does not listen on.
@@ -372,6 +387,12 @@ reported something other than the truth, in three different ways.
 
 ### Changed
 
+- **OpenProject notifications on the bar follow the new settings.** They used
+  to replay every unread notification on the bar at each launch, and could
+  only be switched off as a whole. They now start from the moment you turn
+  them on, honour the per-kind choices, and arrive as one banner per check
+  rather than one per notification. An upgrade keeps the old on/off switch and
+  interval.
 - **Building from source no longer needs a C++ toolchain.** better-sqlite3 13
   ships one prebuilt binary that Node and Electron both load, so the rebuilds
   that ran before every `pnpm test` and `pnpm dev` did nothing, and are gone,
@@ -459,6 +480,10 @@ reported something other than the truth, in three different ways.
 
 ### Removed
 
+- **The `messaging:*` IPC channels** and `MessagingIntegrationService`, whose
+  one live job -- polling OpenProject for the bar -- moved to the provider
+  events above. The rest was a test banner for Discord, Slack and Gmail that
+  no screen used any more.
 - **The rear display modes.** Diagnostics, Performance and Stealth Clock, the
   setting that chose between them, and the emulator's rear screen. None of it
   ever reached the bar: the rear shows the firmware's own mirror of the front,

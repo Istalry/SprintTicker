@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, Notification, screen, shell } from 'electron';
 import path from 'path';
 import { LoggerInterceptor } from './diagnostics/logger-interceptor';
 
@@ -18,7 +18,10 @@ import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { UnityInjectorService } from './services/unity-injector-service';
 import { UnityTelemetryService } from './services/unity-telemetry-service';
 import { followBar } from './services/follow-bar';
-import { MessagingIntegrationService } from './services/messaging-service';
+import { ProviderEventService } from './services/provider-event-service';
+import { ElectronToastPresenter } from './services/toast-presenter';
+import { APP_USER_MODEL_ID } from './app-identity';
+import { BitmapIconId } from '../shared/dtos';
 import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
 import { WebhookServer } from './api/webhook-server';
 import { ProviderManager } from './providers/provider-manager';
@@ -49,6 +52,7 @@ let contextScheduleService: ContextScheduleService | null = null;
 let updateChecker: UpdateChecker | null = null;
 let updateCheckTimer: NodeJS.Timeout | null = null;
 let miniWindowManager: MiniWindowManager | null = null;
+let providerEventService: ProviderEventService | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -134,6 +138,15 @@ function createMiniWindow(bounds: Rectangle): BrowserWindow {
   return win;
 }
 
+/**
+ * The bar icon for a provider's banners. Anything unlisted gets the bell,
+ * which makes the banner spend a row naming the app instead.
+ */
+const PROVIDER_BANNER_ICONS: Partial<Record<string, BitmapIconId>> = {
+  openproject: 'openproject',
+  jira: 'jira'
+};
+
 const createWindow = (): void => {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -178,7 +191,7 @@ async function bootstrap(): Promise<void> {
 
 async function startApplication(): Promise<void> {
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.busybar.desktop');
+    app.setAppUserModelId(APP_USER_MODEL_ID);
   }
   console.log('[Main] Starting SprintTicker Application...');
 
@@ -251,7 +264,23 @@ async function startApplication(): Promise<void> {
   const unityTelemetryService = new UnityTelemetryService(
     settingsRepo, webhookServer, renderer, engine, priorityEngine, () => activeDriver.isEnabled()
   );
-  const messagingService = new MessagingIntegrationService(settingsRepo, renderer, providerManager);
+  const bannerRenderer = renderer;
+  providerEventService = new ProviderEventService({
+    getActiveProvider: () => providerManager.getActiveProvider(),
+    settings: settingsRepo,
+    toasts: new ElectronToastPresenter({
+      isSupported: () => Notification.isSupported(),
+      create: options => new Notification(options),
+      openExternal: url => shell.openExternal(url)
+    }),
+    bar: {
+      isEnabled: () => activeDriver.isEnabled(),
+      show: (banner, providerId) => {
+        bannerRenderer.renderNotificationBanner({ ...banner, iconId: PROVIDER_BANNER_ICONS[providerId] ?? 'bell' });
+      }
+    }
+  });
+  providerEventService.start();
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   const listener = windowsNotificationService;
   followBar(activeDriver, () => listener.startListening(), () => listener.stopListening(), 'Windows notification mirroring');
@@ -283,7 +312,7 @@ async function startApplication(): Promise<void> {
     unityInjectorService,
     worklogRepo,
     unityTelemetryService,
-    messagingService,
+    providerEvents: providerEventService,
     priorityEngine,
     contextScheduleService,
     windowsNotificationService,
@@ -394,6 +423,7 @@ app.on('will-quit', event => {
       if (contextScheduleService) {
         contextScheduleService.dispose();
       }
+      providerEventService?.stop();
       if (windowsNotificationService) {
         windowsNotificationService.stopListening();
       }

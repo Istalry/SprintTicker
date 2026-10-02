@@ -841,6 +841,14 @@ export class DisplayRenderer {
 
     if (!session && this.showIdleClockFallback) {
       this.invalidateFrameCache();
+      // This screen replaces the last one without passing through
+      // transmitFrame, the one place that tells the icon animator what is
+      // wanted. Without saying so here it kept wanting the last icon: its
+      // preview laid that icon over the emulator's empty panel, and the reset
+      // above sent it back to the device to draw the icon again -- alone, on
+      // the panel this release had just emptied, over the firmware's clock.
+      // Free on the device: with nothing drawn, show(null) sends nothing.
+      this.iconAnimator.show(null);
       // Without a bar there is no display to hand back, and the clear would
       // only throw `disconnected` into the log on every idle transition.
       if (this._driver.isEnabled?.() !== false) {

@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
+import { OWN_APP_USER_MODEL_IDS } from '../app-identity';
 import * as readline from 'readline';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -729,7 +730,7 @@ if ($sqlite3Cmd -and (Test-Path $notifDbPath)) {
 $lastBatteryStatus = $null
 
 # ---- Self-identification: skip our own app's notifications ----
-$selfAppIds = @('com.busybar.desktop')
+$selfAppIds = @(${OWN_APP_USER_MODEL_IDS.map(id => `'${id}'`).join(', ')})
 
 # ---- Main Polling Loop ----
 Write-Status "Entering main polling loop (interval=${pollingIntervalMs}ms)"
@@ -746,6 +747,9 @@ while ($true) {
 
         $appInfo = $n.AppInfo
         $aId = if ($appInfo) { $appInfo.AppUserModelId } else { "System" }
+        # Our own toasts reach the bar once, from the app itself; mirroring
+        # them here as well would show each one twice. -contains ignores case.
+        if ($selfAppIds -contains $aId) { continue }
         $aName = if ($appInfo -and $appInfo.DisplayInfo) { $appInfo.DisplayInfo.Title } else { $aId }
 
         $binding = $n.Notification.Visual.GetBinding([Windows.UI.Notifications.KnownNotificationTemplateTypes]::ToastGeneric)

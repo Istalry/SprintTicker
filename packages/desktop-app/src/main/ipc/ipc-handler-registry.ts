@@ -13,13 +13,14 @@ import { DisplayRenderer } from '../hardware/display-renderer';
 import { UnityInjectorService } from '../services/unity-injector-service';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { UnityTelemetryService } from '../services/unity-telemetry-service';
-import { MessagingIntegrationService } from '../services/messaging-service';
+import { ProviderEventService } from '../services/provider-event-service';
+import { ProviderEventSettingsDTO } from '../../shared/provider-events';
 import { WindowsNotificationListenerService } from '../services/windows-notification-listener-service';
 import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, MessagingSettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
@@ -65,7 +66,7 @@ export interface IPCHandlerRegistryDeps {
   unityInjectorService?: UnityInjectorService;
   worklogRepo?: WorklogRepository;
   unityTelemetryService?: UnityTelemetryService;
-  messagingService?: MessagingIntegrationService;
+  providerEvents?: ProviderEventService;
   priorityEngine?: PriorityPreemptionEngine;
   contextScheduleService?: ContextScheduleService;
   windowsNotificationService?: WindowsNotificationListenerService;
@@ -94,7 +95,7 @@ export class IPCHandlerRegistry {
   private renderer: DisplayRenderer;
   private unityInjectorService: UnityInjectorService;
   private unityTelemetryService: UnityTelemetryService;
-  private messagingService: MessagingIntegrationService;
+  private providerEvents: ProviderEventService;
   private windowsNotificationService: WindowsNotificationListenerService;
   private priorityEngine: PriorityPreemptionEngine;
   private contextScheduleService: ContextScheduleService;
@@ -119,7 +120,7 @@ export class IPCHandlerRegistry {
       unityInjectorService,
       worklogRepo,
       unityTelemetryService,
-      messagingService,
+      providerEvents,
       priorityEngine,
       contextScheduleService,
       windowsNotificationService,
@@ -153,7 +154,13 @@ export class IPCHandlerRegistry {
     this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
-    this.messagingService = messagingService || new MessagingIntegrationService(settingsRepo, renderer);
+    // The default is never started and shows nothing: it serves the settings
+    // to a test, or a build that has no toasts.
+    this.providerEvents = providerEvents || new ProviderEventService({
+      getActiveProvider: () => this.providerManager?.getActiveProvider(),
+      settings: settingsRepo,
+      toasts: { show: () => false }
+    });
     this.priorityEngine = priorityEngine || new PriorityPreemptionEngine(settingsRepo);
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
@@ -772,19 +779,12 @@ export class IPCHandlerRegistry {
       return this.unityTelemetryService.getTelemetry();
     });
 
-    // 11. Third-Party Messaging & Windows Notification Listener IPC Handlers
-    ipcMain.handle(IPCChannel.GET_MESSAGING_SETTINGS, async () => {
-      return this.messagingService.getSettings();
-    });
-
-    ipcMain.handle(IPCChannel.SAVE_MESSAGING_SETTINGS, async (_event, settings: MessagingSettingsDTO) => {
-      this.messagingService.saveSettings(settings);
-      return true;
-    });
-
-    ipcMain.handle(IPCChannel.TEST_MESSAGING_INTEGRATION, async (_event, channelName: string) => {
-      return this.messagingService.testIntegration(channelName);
-    });
+    // 11. Provider events & Windows Notification Listener IPC Handlers
+    ipcMain.handle(IPCChannel.GET_PROVIDER_EVENT_SETTINGS, async () => this.providerEvents.getSettings());
+    ipcMain.handle(IPCChannel.SAVE_PROVIDER_EVENT_SETTINGS, async (_event, settings: ProviderEventSettingsDTO) =>
+      this.providerEvents.saveSettings(settings)
+    );
+    ipcMain.handle(IPCChannel.TEST_PROVIDER_EVENTS, async () => this.providerEvents.sendTest());
 
     ipcMain.handle(IPCChannel.GET_NOTIFICATION_SETTINGS, async () => {
       return this.windowsNotificationService.getSettings();

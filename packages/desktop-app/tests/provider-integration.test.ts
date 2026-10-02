@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import type { AddressInfo } from 'net';
-import { createFakeOpenProject } from '../../../scripts/fake-openproject.js';
+import { buildNotification, createFakeOpenProject } from '../../../scripts/fake-openproject.js';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
@@ -9,6 +9,8 @@ import { WorklogRepository } from '../src/main/db/repositories/worklog-repositor
 import { ProviderManager } from '../src/main/providers/provider-manager';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
+import { ProviderEventService } from '../src/main/services/provider-event-service';
+import { ToastRequest } from '../src/main/services/toast-presenter';
 
 /**
  * End-to-end coverage of the provider layer over a real socket.
@@ -157,5 +159,68 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
 
     expect(projectRepo.getAllProjects()).toHaveLength(1);
     expect(requests).toHaveLength(0);
+  });
+});
+
+/**
+ * Notifications over the same socket: the provider's request, the fake's
+ * answer, and the event service's cursor, all real. What the unit tests stub
+ * is exactly what this one does not.
+ */
+describe('Provider events against a live OpenProject-shaped server', () => {
+  let fake: ReturnType<typeof createFakeOpenProject>;
+  let baseUrl: string;
+  let dbConn: DatabaseConnection;
+
+  beforeAll(async () => {
+    fake = createFakeOpenProject({ quiet: true });
+    await new Promise<void>(resolve => fake.server.listen(0, '127.0.0.1', () => resolve()));
+    baseUrl = `http://127.0.0.1:${(fake.server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>(resolve => fake.server.close(() => resolve()));
+  });
+
+  beforeEach(() => {
+    dbConn = new DatabaseConnection(':memory:');
+    fake.notifications.length = 0;
+  });
+
+  afterEach(() => {
+    dbConn.close();
+    vi.restoreAllMocks();
+  });
+
+  it('PollAfterBaseline_NotificationPosted_BecomesAToastWithItsWorkPackageLink', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const settingsRepo = new SettingsRepository(dbConn);
+    settingsRepo.setSetting(ProviderSettingKey.OP_DOMAIN, baseUrl);
+    settingsRepo.setSetting(ProviderSettingKey.OP_API_KEY, 'any-key-works');
+    settingsRepo.setSetting(ProviderSettingKey.ACTIVE_PROVIDER_ID, 'openproject');
+    const manager = new ProviderManager(settingsRepo);
+    const toasts: ToastRequest[] = [];
+    const service = new ProviderEventService({
+      getActiveProvider: () => manager.getActiveProvider(),
+      settings: settingsRepo,
+      toasts: { show: toast => { toasts.push(toast); return true; } },
+      // Our clock a minute behind the server's, so the notification is newer.
+      now: () => new Date(Date.now() - 60_000)
+    });
+
+    // Unread before the app looked: not replayed.
+    fake.notifications.push(buildNotification(1, 'mentioned', 1001));
+    fake.notifications[0].createdAt = new Date(Date.now() - 3_600_000).toISOString();
+    expect(await service.poll()).toBe('baseline');
+
+    fake.notifications.push(buildNotification(2, 'mentioned', 1002), buildNotification(3, 'watched', 1003));
+    expect(await service.poll()).toBe('delivered');
+
+    expect(toasts).toEqual([{
+      title: 'Alice Martin mentioned you on OP-1002',
+      body: 'WP 2 that needs you',
+      url: `${baseUrl}/work_packages/1002`
+    }]);
+    expect(await service.poll()).toBe('nothing_new');
   });
 });

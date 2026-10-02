@@ -3,6 +3,7 @@ import type { IElectronAPI } from '../../src/preload/electron-api';
 import type { ActiveSessionDTO, DeviceStatusDTO, HardwareDisplayStateDTO } from '../../src/shared/dtos';
 import { DEFAULT_DEVICE_CONFIG } from '../../src/shared/device-constants';
 import { DEFAULT_PRIORITY_RULES } from '../../src/shared/priority-defaults';
+import { DEFAULT_PROVIDER_EVENT_SETTINGS, type ProviderEventSettingsDTO } from '../../src/shared/provider-events';
 import {
   DEFAULT_NOTIFICATION_POLLING_INTERVAL_SECONDS,
   DEFAULT_NOTIFICATION_SOURCE_RULES,
@@ -184,9 +185,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     }),
     onUnityTelemetryUpdated: subscribe('onUnityTelemetryUpdated'),
 
-    getMessagingSettings: vi.fn().mockResolvedValue({}),
-    saveMessagingSettings: vi.fn().mockResolvedValue(true),
-    testMessagingIntegration: vi.fn().mockResolvedValue({ success: true, channel: 'test', message: 'ok' }),
+    getProviderEventSettings: vi.fn().mockResolvedValue(DEFAULT_PROVIDER_EVENT_SETTINGS),
+    saveProviderEventSettings: vi.fn(async (settings: ProviderEventSettingsDTO) => settings),
+    testProviderEvents: vi.fn().mockResolvedValue({ toast: true, bar: false }),
     getNotificationSettings: vi.fn().mockResolvedValue({
       enableListener: true,
       sourceRules: DEFAULT_NOTIFICATION_SOURCE_RULES.map(rule => ({ ...rule })),

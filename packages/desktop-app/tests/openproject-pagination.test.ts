@@ -353,13 +353,5 @@ describe('OpenProject collection pagination', () => {
       expect(state.remoteLoggedTimeToday).toBeNull();
     });
 
-    it('FetchUnreadNotifications_RequestFails_ReturnsEmptyWithoutThrowing', async () => {
-      // Notifications are not a prune input, so this one degrades rather than
-      // failing its caller -- unlike getProjects/getTasks.
-      global.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      await expect(provider.fetchUnreadNotifications()).resolves.toEqual([]);
-    });
   });
 });

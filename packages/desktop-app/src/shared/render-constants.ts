@@ -99,6 +99,7 @@ export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   burger: 'icon_burger_16x16',
   checkmark: 'icon_check_16x16',
   openproject: 'icon_openproject_16x16',
+  jira: 'icon_jira_16x16',
   // The session itself. Tracking ticks a seconds hand once a second round the
   // face, the elapsed wedge filling behind it -- the device animates it, so
   // the frame need only change once a minute for HH:MM. It used to stay still

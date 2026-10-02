@@ -590,6 +590,8 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return BELL_16X16_BITMAP;
     case 'openproject':
       return OPENPROJECT_16X16_BITMAP;
+    case 'jira':
+      return JIRA_16X16_BITMAP;
     case 'burger':
       return BURGER_16X16_BITMAP;
     case 'clock':
@@ -650,4 +652,28 @@ export const OPENPROJECT_16X16_BITMAP: (string | null)[][] = [
   [null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null],
   [null, null, '#4285F4', '#4285F4', '#4285F4', '#4285F4', '#4285F4', null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+/**
+ * Jira's mark: three stacked chevrons, one pixel apart. The logo's own spacing
+ * is tighter, but at 16px it ran the three into one blob, and the logo's dark
+ * gradient reads as notches on the LEDs; flat and spaced, it stays three.
+ */
+export const JIRA_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', null],
+  [null, null, null, null, null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', null],
+  [null, null, null, null, null, null, null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', null],
+  [null, null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', null, '#2684FF', '#2684FF', '#2684FF', null],
+  [null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', null, null, '#2684FF', '#2684FF', null],
+  [null, null, null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', null, null, null, '#2684FF', null],
+  [null, null, null, null, null, null, null, null, '#2684FF', '#2684FF', '#2684FF', null, null, null, null, null],
+  ['#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', null, '#2684FF', '#2684FF', '#2684FF', null, null, null, null, null],
+  [null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', '#2684FF', null, null, '#2684FF', '#2684FF', null, null, null, null, null],
+  [null, null, null, '#2684FF', '#2684FF', '#2684FF', '#2684FF', null, null, null, '#2684FF', null, null, null, null, null],
+  [null, null, null, null, '#2684FF', '#2684FF', '#2684FF', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#2684FF', '#2684FF', '#2684FF', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, '#2684FF', '#2684FF', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#2684FF', null, null, null, null, null, null, null, null, null]
 ];

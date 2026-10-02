@@ -532,7 +532,9 @@
       on-screen emulator and connection readout in the top bar, <strong>Priority Rules</strong>,
       which orders the bar&#39;s screen and nothing else, <strong>Unity Engine</strong>, whose
       compile, Play Mode and error states exist to be shown on the bar, and
-      <strong>Notifications</strong>, which mirrors Windows notifications onto it. Events from the
+      <strong>Notifications</strong>, which mirrors Windows notifications onto it. Notifications
+      <em>from</em> OpenProject still arrive, as Windows notifications; their settings are
+      in Task Providers. Events from the
       Unity plugin are ignored in this mode, the Windows notification listener does
       not run, and the setup wizard skips its Unity step. The end-of-day wrap-up still saves open Unity scenes. <strong>Device Diagnostics</strong>
       becomes <strong>Device &amp; Logs</strong>, keeping log export, the update setting and the
@@ -599,6 +601,17 @@
       <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
       me, everything open, or your own query (JQL for Jira, a v3 filter array for
       OpenProject).</p>
+      <p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
+      into Windows notifications: assigned to you, a mention, a comment, a status
+      change, a date alert. Tick the ones you want. Clicking a notification opens the
+      work package in your browser. With a bar, they can go there too, as a banner
+      that competes for the display like any <em>Notification — Default</em>. The app
+      checks every minute by default (30 seconds to an hour); more than three at
+      once arrive as one summary. Only unread notifications that arrive after you
+      turn this on are shown -- what was already waiting in OpenProject is not
+      replayed -- and one you have read in OpenProject before the next check is not
+      shown either. <strong>Send a test notification</strong> shows what one looks like, and
+      says where it went.</p>
       <p>Below the credentials is the <strong>sync queue</strong>: every worklog that has not reached
       the provider, with the server&#39;s own message, the attempt count against the
       ceiling, and when the next attempt is due.</p>
@@ -964,6 +977,18 @@
       anyway</em>. There is no way around it short of a code-signing certificate.</p>
       <p><strong>Accented characters.</strong> These are transliterated to ASCII (<code>é</code> → <code>e</code>), because
       the device accepts printable ASCII only. Emoji do not render.</p>
+      <h4>No notification from OpenProject</h4>
+      <ul>
+      <li><strong>Is it switched on, for that kind?</strong> Task Providers › Notifications from
+      OpenProject. <strong>Send a test notification</strong>: if it says it was sent and nothing
+      appeared, the cause is on the Windows side.</li>
+      <li><strong>Windows may be holding it.</strong> Do Not Disturb, Focus, or SprintTicker turned
+      off in Windows Settings › System › Notifications all hide toasts without
+      telling the app. They still land in the notification centre.</li>
+      <li><strong>It may have been read already.</strong> Only unread notifications are shown; one
+      read in OpenProject between two checks is not news.</li>
+      <li><strong>The log says why a check failed</strong> -- <code>[ProviderEvents] OpenProject events unavailable: ...</code> -- and a refused toast as <code>[Toasts] Windows did not show a notification</code>.</li>
+      </ul>
       <hr>
       <h3 id="guide-your-data">Your data</h3>
       <p>One SQLite file: <code>%APPDATA%\SprintTicker\sprintticker.db</code>. Installing over a
@@ -1405,6 +1430,25 @@
       silent — a listener that never starts looks exactly like an app that never
       notifies you. Notification text is redacted from logs and from the diagnostics
       export unless you launch with <code>--debug-notifications</code>.</p>
+      <h4><code>ProviderEventService</code> — <code>src/main/services/</code></h4>
+      <p>Polls the active provider&#39;s <code>getEventsSince</code> and tells the user what happened
+      on their tasks: a Windows toast through <code>ElectronToastPresenter</code>, and a banner
+      on the bar when there is one. It keeps a cursor per provider under
+      <code>provider_event_cursors</code>: the newest event time seen, <strong>on the provider&#39;s
+      clock</strong>. The first poll for a provider records &quot;now&quot; and shows nothing, so a
+      first launch does not replay the unread history; a failed poll leaves the
+      cursor where it was, so the next one picks up what it missed. Turning the
+      feature off forgets the cursors. More than three events in one poll become a
+      single summary toast pointing at the provider&#39;s inbox, and the bar gets one
+      banner per poll whatever the count.</p>
+      <p>The bar is reached from here, once, through <code>renderNotificationBanner</code> --
+      never by letting the Windows listener mirror the toast. The listener skips
+      the app&#39;s own AppUserModelIDs on both of its paths, and must: mirroring would
+      put each event on the bar twice and take the display lock twice. The
+      AppUserModelID itself (<code>app-identity.ts</code>) equals electron-builder&#39;s <code>appId</code>,
+      because Windows attributes a toast to the shortcut carrying that ID.</p>
+      <p>A toast&#39;s link is opened only if it is <code>http:</code> or <code>https:</code>: it comes from a
+      remote server, and <code>shell.openExternal</code> would as readily run a <code>file:</code> URL.</p>
       <h4><code>WebhookServer</code> — <code>src/main/api/</code></h4>
       <p>An HTTP server on <code>127.0.0.1:39123</code> for the Unity Editor plugin. See the
       <a href="API.md#local-http-api">API reference</a> for routes and the screening rules.</p>
@@ -1576,7 +1620,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1489 tests across 77 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1544 tests across 82 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -1790,7 +1834,11 @@
       </tr>
       <tr>
       <td align="left">Notifications</td>
-      <td align="left"><code>notifications:get-settings</code>, <code>notifications:save-settings</code>, <code>notifications:simulate</code>, <code>notifications:get-listener-status</code>, <code>notifications:on-log</code>, <code>notifications:open-settings</code>, <code>messaging:*</code></td>
+      <td align="left"><code>notifications:get-settings</code>, <code>notifications:save-settings</code>, <code>notifications:simulate</code>, <code>notifications:get-listener-status</code>, <code>notifications:on-log</code>, <code>notifications:open-settings</code></td>
+      </tr>
+      <tr>
+      <td align="left">Provider events</td>
+      <td align="left"><code>provider-events:get-settings</code>, <code>provider-events:save-settings</code> (answers the settings as stored: an interval is clamped to 30-3600 s), <code>provider-events:test</code> (a sample through the destinations switched on; answers <code>{ toast, bar }</code>)</td>
       </tr>
       <tr>
       <td align="left">Diagnostics</td>
@@ -1907,6 +1955,10 @@
         reconcileRemoteState(): Promise&lt;{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }&gt;;
         logTime(payload: WorklogPayload): Promise&lt;{ success: boolean; remoteWorklogId?: string }&gt;;
         updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;): Promise&lt;boolean&gt;;
+      
+        // Optional: activity on the user&#39;s tasks, for toasts and bar banners.
+        getEventsSince?(sinceUtc: string): Promise&lt;ProviderEventDTO[]&gt;;
+        getEventsInboxUrl?(): string | null;
       }
       </code></pre>
       <p><code>TaskDTO.description</code> is optional: plain text on one line, at most
@@ -1943,6 +1995,18 @@
       logged today&quot;, and AdHoc has no remote at all; both return <code>null</code> rather than a
       <code>0</code> a caller would render as a measured &quot;you logged nothing today&quot;.
       OpenProject returns a real total, and <code>null</code> when the fetch failed.</p>
+      <p><strong><code>getEventsSince</code> throws too, and works on the provider&#39;s clock.</strong> It answers
+      what happened after <code>sinceUtc</code>, exclusive: <code>assigned</code>, <code>mentioned</code>,
+      <code>commented</code>, <code>status_changed</code> or <code>date_alert</code> (<code>ProviderEventDTO</code> in
+      <code>src/shared/provider-events.ts</code>). An empty array means nothing happened, so a
+      failure must throw, or the poller would move its cursor past events it never
+      saw. <code>occurredAtUtc</code> is the server&#39;s own timestamp: the cursor advances on it,
+      never on this machine&#39;s clock. Drop what is not about the user&#39;s attention
+      rather than inventing a kind for it, and add the provider&#39;s id to
+      <code>PROVIDERS_WITH_EVENTS</code>, which a test holds to the adapters that implement the
+      method. OpenProject reads unread <code>/api/v3/notifications</code> -- the API has no
+      time filter -- and maps <code>assigned</code>/<code>responsible</code>, <code>mentioned</code>, <code>commented</code>,
+      <code>processed</code> and <code>dateAlert</code>.</p>
       <p><strong>Use <code>providerFetch</code>.</strong> <code>src/main/providers/provider-http.ts</code> is the one place
       a provider talks to the network: per-attempt timeout, <code>Retry-After</code>-aware
       backoff, bounded retries, and classification into <code>ProviderRequestError</code>. Do not
