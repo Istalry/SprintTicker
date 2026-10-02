@@ -376,6 +376,13 @@ Press **Sync Now**; if it stays empty, the credentials are probably wrong — th
 app deliberately does not invent tasks. A provider error is shown rather than
 swallowed.
 
+**Jira says `Checking the Jira credentials failed: HTTP 401`.** Jira no longer
+accepts the API token. Atlassian tokens carry an expiry date chosen when they
+are created, so a token that worked last month can simply have run out. Create
+a new one at id.atlassian.com › Security › API tokens and paste it into Task
+Providers. Your projects and tasks stay as they were in the meantime, and the
+next sync brings them up to date.
+
 **A worklog never reached Jira or OpenProject.** Open the sync queue panel. The
 row carries the server's own message. Common causes:
 

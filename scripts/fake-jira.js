@@ -32,8 +32,14 @@ const { URL } = require('url');
  *
  *   node scripts/fake-jira.js [--port 8098] [--projects 25] [--page-size 20]
  *
- * Any credentials are accepted, but the `Authorization` header must be present:
- * its absence is a 401, because that is a path the adapter classifies.
+ * Any credentials are accepted. Without an `Authorization` header the fake
+ * answers the way Jira Cloud answers a caller it does not recognise, which is
+ * not a 401 across the board: the project and issue searches come back 200 and
+ * **empty**, as for an anonymous visitor, and only what needs a user --
+ * `/myself`, writes -- refuses with 401. Measured on 2026-10-02 against a real
+ * site, with no credentials and with wrong ones. This fake used to 401
+ * everything, which is why nothing noticed that a revoked token emptied the
+ * local project list.
  *
  * **Activity, for the event poll.** `/myself` answers `FAKE_ACCOUNT`, and a
  * search with `expand=changelog` -- which only the event poll sends -- is
@@ -216,9 +222,17 @@ function createFakeJira(overrides = {}) {
         }
       };
 
-      // Checked before routing, because the adapter classifies a 401 as a
-      // permanent failure and that path deserves cover.
+      // An unrecognised caller is anonymous, as on Jira Cloud: the searches
+      // answer, with nothing in them; everything else refuses.
       if (!req.headers.authorization) {
+        if (url.pathname === '/rest/api/3/project/search') {
+          send(200, { startAt, maxResults, total: 0, isLast: true, values: [] });
+          return;
+        }
+        if (url.pathname === '/rest/api/3/search/jql') {
+          send(200, { issues: [], isLast: true });
+          return;
+        }
         send(401, {
           errorMessages: ['Client must be authenticated to access this resource.'],
           errors: {}
@@ -301,7 +315,7 @@ if (require.main === module) {
   server.listen(options.port, '127.0.0.1', () => {
     const pages = n => Math.ceil(n / options.pageSize);
     console.log(`[FakeJira] Listening on http://127.0.0.1:${options.port}`);
-    console.log('[FakeJira] Any credentials are accepted; a missing Authorization header is a 401.');
+    console.log('[FakeJira] Any credentials are accepted; without them the searches answer empty, as on Jira Cloud.');
     console.log(
       `[FakeJira] ${options.projects} projects (${pages(options.projects)} pages of ${options.pageSize}, ` +
         `paged on startAt), ${options.issues} issues (${pages(options.issues)} pages, paged on nextPageToken).`

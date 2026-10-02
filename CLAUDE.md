@@ -514,6 +514,12 @@ them are traps:
 - **Providers report failure by throwing**, never by returning `[]`. An empty
   array is indistinguishable from "this user has no tasks", and treating one as
   the other deleted local data.
+  **And a 200 is not proof the credentials work.** Jira Cloud answers an
+  expired or revoked token as an anonymous caller -- searches come back 200
+  and empty, only `/myself` says 401 -- so an expired token emptied the
+  project list at every sync. `JiraProvider` checks `/myself` before the reads
+  the prune depends on. The fake used to 401 everything, which is why no test
+  saw it; it now answers like Jira. Found 2026-10-02 on the user's own site.
 - **`BusyBarDriver` commands throw too.** Every command (`uploadAsset`,
   `clearDisplay`, `sendDisplayPayload`, `sendPixelFrame`, `injectRemoteKey`,
   and the rest) throws a `DeviceRequestError` whose `kind` says why:

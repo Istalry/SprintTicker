@@ -5,7 +5,12 @@ import { priorityRankFromName } from './task-priority';
 import { adfMentionsAccount, adfToPlainText, clampDescription } from './task-description';
 import { ProviderRequestError } from './provider-errors';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
-import { COLLECTION_PAGE_SIZE, JIRA_EVENT_WINDOW_MARGIN_MINUTES, MAX_COLLECTION_PAGES } from './provider-constants';
+import {
+  COLLECTION_PAGE_SIZE,
+  JIRA_AUTH_CHECK_TTL_MS,
+  JIRA_EVENT_WINDOW_MARGIN_MINUTES,
+  MAX_COLLECTION_PAGES
+} from './provider-constants';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
 import { isJiraConfigured } from '../../shared/provider-settings';
 
@@ -135,8 +140,10 @@ export class JiraProvider implements ITaskProvider {
   private _transitionToTest: string = '';
   private _transitionToReview: string = '';
   private _defaultCompletionAction: string = 'to_test';
-  /** Whose changes are the user's own; read from `/myself` on first use. */
+  /** Whose changes are the user's own, from the last credential check. */
   private _accountId: string | null = null;
+  /** When `/myself` last accepted the credentials; see JIRA_AUTH_CHECK_TTL_MS. */
+  private _accountCheckedAt: number = 0;
 
   /** Injected, for the reasons given on OpenProjectProvider's constructor. */
   private readonly _http: ProviderFetchOptions;
@@ -155,8 +162,9 @@ export class JiraProvider implements ITaskProvider {
     this._transitionToTest = credentials.jiraTransitionToTest || '';
     this._transitionToReview = credentials.jiraTransitionToReview || '';
     this._defaultCompletionAction = credentials.jiraCompletionAction || 'to_test';
-    // New credentials may be another account.
+    // New credentials may be another account, or no account at all.
     this._accountId = null;
+    this._accountCheckedAt = 0;
     return true;
   }
 
@@ -206,6 +214,7 @@ export class JiraProvider implements ITaskProvider {
    */
   public async getProjects(): Promise<ProjectDTO[]> {
     this.requireConfigured();
+    await this.authenticatedAccountId();
 
     const collected: ProjectDTO[] = [];
     let startAt = 0;
@@ -269,6 +278,7 @@ export class JiraProvider implements ITaskProvider {
     if (!projectId) throw new ArgumentException('projectId is required to fetch tasks.');
 
     const jql = this.buildJql(projectId);
+    await this.authenticatedAccountId();
     const collected: TaskDTO[] = [];
     let pageToken: string | undefined;
 
@@ -670,7 +680,7 @@ export class JiraProvider implements ITaskProvider {
       throw new ArgumentException(`sinceUtc is not a timestamp: ${sinceUtc}`);
     }
 
-    const me = await this.getMyAccountId();
+    const me = await this.authenticatedAccountId();
     const events: ProviderEventDTO[] = [];
     for (const issue of await this.searchRecentlyUpdated(since)) {
       events.push(...(await this.eventsOfIssue(issue, since, me)));
@@ -685,11 +695,26 @@ export class JiraProvider implements ITaskProvider {
       : null;
   }
 
-  /** The account the credentials belong to; asked once per configuration. */
-  private async getMyAccountId(): Promise<string> {
-    if (this._accountId) return this._accountId;
+  /**
+   * The account the credentials belong to, confirming that Jira accepts them.
+   *
+   * **This is what makes a rejected token a failure.** Jira Cloud treats a
+   * revoked or expired token as an anonymous caller: `/project/search` and
+   * `/search/jql` answer 200 with nothing in them. Measured on 2026-10-02
+   * against a real site, with no credentials and with wrong ones alike. The
+   * sync worker prunes against what it receives, so a token that expired
+   * emptied the local project list on every pass, with nothing in the log.
+   * `/myself` needs a user and answers 401, which providerFetch classifies as
+   * a permanent `auth` failure. Every read the prune or the event cursor
+   * depends on calls this first; the answer is trusted for
+   * JIRA_AUTH_CHECK_TTL_MS so a sync pass does not ask once per project.
+   */
+  private async authenticatedAccountId(): Promise<string> {
+    if (this._accountId && Date.now() - this._accountCheckedAt < JIRA_AUTH_CHECK_TTL_MS) {
+      return this._accountId;
+    }
 
-    const context = 'Reading the Jira account';
+    const context = 'Checking the Jira credentials';
     const res = await providerFetch(
       this.providerId,
       `${this.getBaseUrl()}/rest/api/3/myself`,
@@ -704,6 +729,7 @@ export class JiraProvider implements ITaskProvider {
       throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no accountId`);
     }
     this._accountId = body.accountId;
+    this._accountCheckedAt = Date.now();
     return body.accountId;
   }
 

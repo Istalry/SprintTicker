@@ -252,6 +252,15 @@ reported something other than the truth, in three different ways.
 
 ### Fixed
 
+- **An expired Jira token no longer empties your project list.** Jira Cloud
+  does not refuse a token it no longer accepts: it answers as if to an
+  anonymous visitor, and an anonymous visitor sees no projects and no issues.
+  The app took that for the truth and cleared its local lists at every sync,
+  with nothing in the log. It now checks the credentials first, so a rejected
+  token fails the sync with a message and leaves your projects and tasks as
+  they were. Logged time was never lost -- tasks with history are archived,
+  not deleted -- and the first sync with a working token brings everything
+  back.
 - **Toasts from an installed copy are attributed to SprintTicker.** The app
   told Windows it was `com.busybar.desktop` while the installer's shortcut
   says `io.github.istalry.sprintticker`, and Windows only shows a toast for an

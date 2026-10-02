@@ -324,7 +324,9 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
           ok: true,
           status: 200,
           headers: { get: () => null },
-          json: async () => ({ values: [], isLast: true })
+          // `/myself` first: the provider confirms the credentials before
+          // trusting a list (see JiraProvider.authenticatedAccountId).
+          json: async () => (url.endsWith('/myself') ? { accountId: 'acc-me' } : { values: [], isLast: true })
         } as unknown as Response);
       });
 

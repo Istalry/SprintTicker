@@ -895,6 +895,12 @@
       Press <strong>Sync Now</strong>; if it stays empty, the credentials are probably wrong — the
       app deliberately does not invent tasks. A provider error is shown rather than
       swallowed.</p>
+      <p><strong>Jira says <code>Checking the Jira credentials failed: HTTP 401</code>.</strong> Jira no longer
+      accepts the API token. Atlassian tokens carry an expiry date chosen when they
+      are created, so a token that worked last month can simply have run out. Create
+      a new one at id.atlassian.com › Security › API tokens and paste it into Task
+      Providers. Your projects and tasks stay as they were in the meantime, and the
+      next sync brings them up to date.</p>
       <p><strong>A worklog never reached Jira or OpenProject.</strong> Open the sync queue panel. The
       row carries the server&#39;s own message. Common causes:</p>
       <ul>
@@ -1640,7 +1646,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1573 tests across 83 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1577 tests across 83 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -1995,6 +2001,16 @@
       an empty list on a network error is how the cache got deleted (F-01). A partial
       page is the same hazard: if pagination cannot finish, throw rather than return
       what you have.</p>
+      <p><strong>Check that the remote accepts the credentials; a 200 does not prove it.</strong>
+      Jira Cloud answers a revoked or expired token as an anonymous caller:
+      <code>/project/search</code> and <code>/search/jql</code> return 200 and empty, and only an endpoint
+      that needs a user, such as <code>/myself</code>, returns 401 (measured 2026-10-02, with
+      no credentials and with wrong ones alike). <code>JiraProvider</code> therefore calls
+      <code>/myself</code> before every read the prune or the event cursor depends on, trusting
+      the answer for <code>JIRA_AUTH_CHECK_TTL_MS</code> (one minute) so that a sync pass does
+      not ask once per project. A new adapter has to find out how its API treats a
+      bad credential, and <code>scripts/fake-jira.js</code> reproduces Jira&#39;s answer so the
+      check has cover.</p>
       <p><strong><code>minimumLoggableSeconds</code> is a fact about your API, not a policy.</strong> Jira&#39;s time
       tracking is minute-granular, so it declares 60; OpenProject and AdHoc record
       arbitrary durations and declare 1. The engine reads it before queueing, so a

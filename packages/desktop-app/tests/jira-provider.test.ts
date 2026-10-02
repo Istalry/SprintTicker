@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { JiraProvider } from '../src/main/providers/jira-provider';
 import { ProviderRequestError, isProviderRequestError } from '../src/main/providers/provider-errors';
 import { TaskScope } from '../src/shared/task-scope';
-import { MAX_COLLECTION_PAGES } from '../src/main/providers/provider-constants';
+import { JIRA_AUTH_CHECK_TTL_MS, MAX_COLLECTION_PAGES } from '../src/main/providers/provider-constants';
 import { isJiraConfigured } from '../src/shared/provider-settings';
 
 /**
@@ -45,6 +45,10 @@ describe('JiraProvider', () => {
     const inits: RequestInit[] = [];
     let call = 0;
     global.fetch = vi.fn().mockImplementation((url: string, init: RequestInit) => {
+      // The credential check every read starts with. Answered here and left
+      // out of `urls`, so each test still sees only the requests it is about;
+      // the check itself has tests of its own below.
+      if (url.endsWith('/rest/api/3/myself')) return Promise.resolve(ok({ accountId: 'acc-me' }));
       urls.push(url);
       inits.push(init);
       const res = responses[Math.min(call, responses.length - 1)];
@@ -60,6 +64,29 @@ describe('JiraProvider', () => {
   });
 
   describe('site and credentials', () => {
+    it('CredentialCheck_TrustedForAMinute_ThenAskedAgain', async () => {
+      // Once per read would double a sync pass, which reads every project's
+      // tasks; never again would let a token that expired mid-session go
+      // back to answering empty.
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        record(ok({ values: [], isLast: true }));
+        const myselfCalls = (): number =>
+          vi.mocked(global.fetch).mock.calls.filter(call => String(call[0]).endsWith('/rest/api/3/myself')).length;
+        const provider = await configured();
+
+        await provider.getProjects();
+        await provider.getProjects();
+        expect(myselfCalls()).toBe(1);
+
+        vi.setSystemTime(Date.now() + JIRA_AUTH_CHECK_TTL_MS);
+        await provider.getProjects();
+        expect(myselfCalls()).toBe(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('SanitizeSite_BareHost_AssumesHttps', () => {
       expect(JiraProvider.sanitizeSite('acme.atlassian.net')).toBe('https://acme.atlassian.net');
     });
@@ -146,10 +173,10 @@ describe('JiraProvider', () => {
     });
 
     it('GetProjects_NeverEndingPagination_ThrowsRatherThanReturningPartialData', async () => {
-      record(ok({ values: [{ id: 1, key: 'A', name: 'A' }], isLast: false }));
+      const { urls } = record(ok({ values: [{ id: 1, key: 'A', name: 'A' }], isLast: false }));
 
       await expect((await configured()).getProjects()).rejects.toThrow(ProviderRequestError);
-      expect(global.fetch).toHaveBeenCalledTimes(MAX_COLLECTION_PAGES);
+      expect(urls).toHaveLength(MAX_COLLECTION_PAGES);
     });
 
     it('GetProjects_ResponseWithoutValues_ThrowsProtocol', async () => {

@@ -327,7 +327,24 @@ describe('JiraProvider against a live Jira-shaped server', () => {
         (err: unknown) => isProviderRequestError(err) && err.isPermanent === true
       );
     });
+
+    it.each([
+      ['GetProjects', (p: JiraProvider) => p.getProjects()],
+      ['GetTasks', (p: JiraProvider) => p.getTasks('FAKE1')],
+      ['GetEventsSince', (p: JiraProvider) => p.getEventsSince(new Date(Date.now() - 60_000).toISOString())]
+    ])('%s_TokenJiraTreatsAsAnonymous_ThrowsAuthRatherThanAnsweringEmpty', async (_name, read) => {
+      // Jira answers the searches 200 and empty for a token it does not
+      // accept. Read as the truth, that emptied the local project list at
+      // every sync for as long as the token stayed expired.
+      const provider = await configured({}, true);
+
+      await expect(read(provider)).rejects.toSatisfy(
+        (err: unknown) => isProviderRequestError(err) && err.kind === 'auth'
+      );
+      expect(requests.map(r => r.pathname)).toEqual(['/rest/api/3/myself']);
+    });
   });
+
   describe('events', () => {
     it('GetEventsSince_ActivityOnAFollowedIssue_ComesBackAsEventsWithoutMyOwn', async () => {
       const alice = { accountId: 'acc-alice', displayName: 'Alice Martin' };

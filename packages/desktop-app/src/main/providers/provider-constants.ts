@@ -73,3 +73,15 @@ export const MAX_COLLECTION_PAGES = 100;
  * repeated notification.
  */
 export const JIRA_EVENT_WINDOW_MARGIN_MINUTES = 5;
+
+/**
+ * How long a Jira credential check (`/myself`) is trusted before it is asked
+ * again.
+ *
+ * Jira Cloud answers a revoked or expired token as an anonymous caller: the
+ * project and issue searches come back 200 and empty, never 401, and only an
+ * endpoint that needs a user refuses. So every read the sync prunes against
+ * is preceded by a check -- but one sync pass reads every project's tasks, and
+ * asking once a minute covers the pass without doubling its requests.
+ */
+export const JIRA_AUTH_CHECK_TTL_MS = 60_000;

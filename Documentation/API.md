@@ -188,6 +188,17 @@ an empty list on a network error is how the cache got deleted (F-01). A partial
 page is the same hazard: if pagination cannot finish, throw rather than return
 what you have.
 
+**Check that the remote accepts the credentials; a 200 does not prove it.**
+Jira Cloud answers a revoked or expired token as an anonymous caller:
+`/project/search` and `/search/jql` return 200 and empty, and only an endpoint
+that needs a user, such as `/myself`, returns 401 (measured 2026-10-02, with
+no credentials and with wrong ones alike). `JiraProvider` therefore calls
+`/myself` before every read the prune or the event cursor depends on, trusting
+the answer for `JIRA_AUTH_CHECK_TTL_MS` (one minute) so that a sync pass does
+not ask once per project. A new adapter has to find out how its API treats a
+bad credential, and `scripts/fake-jira.js` reproduces Jira's answer so the
+check has cover.
+
 **`minimumLoggableSeconds` is a fact about your API, not a policy.** Jira's time
 tracking is minute-granular, so it declares 60; OpenProject and AdHoc record
 arbitrary durations and declare 1. The engine reads it before queueing, so a
