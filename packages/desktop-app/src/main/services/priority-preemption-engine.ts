@@ -1,5 +1,5 @@
 import { PriorityRule, PriorityMatrixConfig, UserMode, PriorityAction, ArgumentNullException, ArgumentException } from '../../shared/dtos';
-import { DEFAULT_PRIORITY_RULES } from '../../shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, DEFAULT_PRIORITY_RULES } from '../../shared/priority-defaults';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import type { DisplayRenderer } from '../hardware/display-renderer';
 
@@ -39,6 +39,16 @@ export interface PreemptionEvaluationResult {
  */
 export type NotificationEventName = 'highNotificationPriority' | 'messagingPriority';
 
+export interface ReleaseOptions {
+  /**
+   * Whether freeing the lock hands the display back to the user's mode
+   * (`setContextMode`). True by default. False for a caller that is itself
+   * drawing what comes next -- the idle screen giving up the tracker's lock --
+   * where handing back would render it a second time.
+   */
+  handBack?: boolean;
+}
+
 /**
  * Abstraction for the Priority Preemption Engine service.
  */
@@ -48,12 +58,13 @@ export interface IPriorityPreemptionEngine {
   getRules(): PriorityRule[];
   saveRules(rules: PriorityRule[]): void;
   evaluateRequest(eventName: string, requestedPriority?: number, renderCallback?: () => void): PreemptionEvaluationResult;
-  releaseActiveLock(eventName: string): void;
+  releaseActiveLock(eventName: string, options?: ReleaseOptions): void;
   drainQueue(): void;
   hasActiveNotification(): boolean;
   dismissNotification(forceCeremonyDismissal?: boolean): boolean;
   getActiveLockEventName(): string | null;
   getEventPriority(eventName: string): number;
+  addBackgroundScreen(eventNames: readonly string[], reclaim: () => void): () => void;
 }
 
 /**
@@ -67,12 +78,36 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   private static readonly DEFAULT_EVENT_PRIORITY = 50;
   /** Ceiling on replayable alerts; the oldest are dropped past this. */
   private static readonly MAX_QUEUED_REQUESTS = 20;
+  /** Ceiling on screens set aside by a preemption; the oldest are dropped past this. */
+  private static readonly MAX_SUSPENDED = 10;
+  /**
+   * Locks never set aside: the user's own screens, which `setContextMode`
+   * draws whenever the display comes back to the mode.
+   */
+  private static readonly NOT_SUSPENDED = new Set([ACTIVE_TRACKER_EVENT, 'lunchModePriority', 'awayModePriority']);
+  /**
+   * Whoever owns a state that outlives any one event -- an editor compiling,
+   * in Play Mode -- and redraws it whenever the display is free. Their locks
+   * are not set aside on preemption: the screen to come back to is whatever
+   * that state is by then, not what it was when it was covered.
+   */
+  private _background: Array<{ eventNames: ReadonlySet<string>; reclaim: () => void }> = [];
 
   private readonly _settingsRepo: SettingsRepository;
   private _userMode: UserMode = 'WORK';
   private _activeLockEventName: string | null = null;
   private _activeLockPriority = 0;
   private _notificationQueue: QueuedNotificationRequest[] = [];
+  /**
+   * Screens a higher priority took the display from, still going on beneath
+   * it: a build under a banner, Play Mode under a stand-up prompt. The queue
+   * replays requests that were *refused*; nothing used to remember a screen
+   * that had been *preempted*, so when the banner ended the display went to
+   * the idle clock with the build still running and its lock gone. Released
+   * while hidden, a screen leaves this list; otherwise the release of what
+   * covered it brings it back.
+   */
+  private _suspended: Array<{ eventName: string; priority: number }> = [];
 
   private static readonly DEFAULT_RULES: PriorityRule[] = DEFAULT_PRIORITY_RULES.map(rule => ({
     ...rule
@@ -204,6 +239,7 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     }
 
     // High priority preemption granted
+    this.suspendActiveFor(eventName);
     this._activeLockEventName = eventName;
     this._activeLockPriority = priority;
     return { shouldRender: true, action, evaluatedPriority: priority };
@@ -218,20 +254,26 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   /// <summary>
   /// Releases the active display lock for the specified event name and attempts to replay any queued alerts.
   /// </summary>
-  public releaseActiveLock(eventName: string): void {
-    if (this._activeLockEventName === eventName) {
-      this._activeLockEventName = null;
-      this._activeLockPriority = 0;
-      this.drainQueue();
-      // Hand the display back to the mode only if no queued alert took it.
-      // This used to test the queue's length, but drainQueue removes the alert
-      // it replays: with one alert waiting, the queue was empty by the time of
-      // the test, so the alert drew and the mode was restored over it in the
-      // same call. Idle with the firmware clock enabled, that restore is a
-      // clearDisplay, which wiped the replayed alert the instant it appeared.
-      if (this._activeLockEventName === null && this._renderer) {
-        this._renderer.setContextMode(this._userMode);
-      }
+  public releaseActiveLock(eventName: string, options: ReleaseOptions = {}): void {
+    if (this._activeLockEventName !== eventName) {
+      // A screen that ended while something covered it: nothing to bring back.
+      this._suspended = this._suspended.filter(entry => entry.eventName !== eventName);
+      return;
+    }
+    this._activeLockEventName = null;
+    this._activeLockPriority = 0;
+    this.drainQueue();
+    if (this._activeLockEventName === null) this.resumeSuspended();
+    if (this._activeLockEventName === null) this.offerToBackground();
+    // Hand the display back to the mode only if no queued alert, set-aside
+    // screen or background state took it.
+    // This used to test the queue's length, but drainQueue removes the alert
+    // it replays: with one alert waiting, the queue was empty by the time of
+    // the test, so the alert drew and the mode was restored over it in the
+    // same call. Idle with the firmware clock enabled, that restore is a
+    // clearDisplay, which wiped the replayed alert the instant it appeared.
+    if (this._activeLockEventName === null && this._renderer && options.handBack !== false) {
+      this._renderer.setContextMode(this._userMode);
     }
   }
 
@@ -309,6 +351,58 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       this._activeLockEventName = nextItem.eventName;
       this._activeLockPriority = nextItem.priority;
       nextItem.renderCallback();
+    }
+  }
+
+  /// <summary>
+  /// Registers a state that reclaims the display whenever it frees, under the
+  /// given locks. `reclaim` takes it through `evaluateRequest` as any screen
+  /// does, or leaves it alone. Returns the unregistration.
+  /// </summary>
+  public addBackgroundScreen(eventNames: readonly string[], reclaim: () => void): () => void {
+    if (!eventNames || eventNames.length === 0) throw new ArgumentException('eventNames must name at least one lock.');
+    if (!reclaim) throw new ArgumentNullException('reclaim');
+    const entry = { eventNames: new Set(eventNames), reclaim };
+    this._background.push(entry);
+    return () => {
+      this._background = this._background.filter(other => other !== entry);
+    };
+  }
+
+  private offerToBackground(): void {
+    for (const entry of [...this._background]) {
+      entry.reclaim();
+      if (this._activeLockEventName !== null) return;
+    }
+  }
+
+  /** Sets the active holder aside when `eventName` takes the display from it. */
+  private suspendActiveFor(eventName: string): void {
+    const holder = this._activeLockEventName;
+    if (holder === null || holder === eventName || PriorityPreemptionEngine.NOT_SUSPENDED.has(holder)) return;
+    if (this._background.some(entry => entry.eventNames.has(holder))) return;
+    this._suspended = this._suspended.filter(entry => entry.eventName !== holder && entry.eventName !== eventName);
+    this._suspended.push({ eventName: holder, priority: this._activeLockPriority });
+    while (this._suspended.length > PriorityPreemptionEngine.MAX_SUSPENDED) this._suspended.shift();
+  }
+
+  /**
+   * Gives the free display back to the most important screen set aside, the
+   * latest first among equals. One the renderer cannot redraw -- it never
+   * drew one under that lock -- is dropped, and the next tried.
+   */
+  private resumeSuspended(): void {
+    while (this._suspended.length > 0 && this._activeLockEventName === null) {
+      let best = 0;
+      for (let i = 1; i < this._suspended.length; i++) {
+        if (this._suspended[i].priority >= this._suspended[best].priority) best = i;
+      }
+      const [entry] = this._suspended.splice(best, 1);
+      this._activeLockEventName = entry.eventName;
+      this._activeLockPriority = entry.priority;
+      if (this._renderer?.resumeScreen?.(entry.eventName)) return;
+      this._activeLockEventName = null;
+      this._activeLockPriority = 0;
     }
   }
 

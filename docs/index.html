@@ -1275,6 +1275,20 @@
       nothing, which leaves the screen that took it alone. Unity&#39;s compile end
       waits <code>UNITY_IDLE_RELEASE_GRACE_MS</code> (3 s) before releasing, so a compile that
       starts again straight away keeps its screen instead of passing through idle.</li>
+      <li><strong>The freed display goes, in order, to:</strong> a queued alert (a request that
+      was <em>refused</em> and left a callback); the most important screen a preemption
+      <em>set aside</em>, redrawn by <code>DisplayRenderer.resumeScreen</code> from the last screen
+      drawn under that lock; a <strong>background state</strong> registered with
+      <code>addBackgroundScreen</code>, which redraws what it is now; and only then the
+      user&#39;s mode. Releasing a lock that is set aside rather than held removes
+      it from that list. The tracker and the mode locks are never set aside:
+      <code>setContextMode</code> draws them as they are now.</li>
+      <li><strong>Unity is the background state.</strong> Its compile and Play Mode screens last
+      as long as an editor&#39;s state, so they are reclaimed rather than resumed:
+      after a banner, a scene, Lunch, or another editor&#39;s end, the display shows
+      what the editors are doing by then. Operations are tracked per editor
+      instance, a build or a bake shown before a compile; the compile screen
+      comes down only when no editor has one left.</li>
       </ul>
       <div class="table-wrap"><table>
       <thead>
@@ -1674,7 +1688,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1663 tests across 88 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1692 tests across 89 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

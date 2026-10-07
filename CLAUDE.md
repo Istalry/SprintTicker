@@ -522,6 +522,32 @@ changing it:
   `UnityTelemetryService` did exactly that on every compile, Play Mode exit
   and exception end, which also wiped any banner that had taken the display
   in the meantime. It is what hung the bar on 2026-10-05.
+- **Who gets the display back is the engine's decision, in one order.**
+  Freeing a lock replays a queued alert first; then resumes the most
+  important screen a preemption set aside (`_suspended`, redrawn through
+  `DisplayRenderer.resumeScreen`); then offers the display to the background
+  states (`addBackgroundScreen`); and only then hands it to the mode. Each
+  step exists because its absence shipped: a build under a banner came back
+  as the idle clock with the build still running; a compile refused under a
+  banner never drew at all. Releasing a lock that is not held removes it
+  from the set-aside list -- that screen ended while covered.
+- **Unity's screens are states, not alerts.** `UnityTelemetryService`
+  registers as a background screen and redraws whatever the editors are
+  doing *now* when the display frees; its locks are never set aside or
+  queued. Its operations are per editor instance: one global operation let
+  the first of two projects to finish take the other's gear down. A compile
+  inside a build belongs to the build and ends with it.
+- **Modes and the tracker are not claims to restore.** The idle clock is the
+  user's mode: the idle branch of `renderActiveSession` leaves alone any
+  holder but the tracker, and drops the tracker's lock with the session
+  (`handBack: false`, since it is itself what handing back draws). Lunch and
+  Away are never queued (`queueOnPreempt: false`): a Lunch refused during
+  Away replayed when Away ended, holding a Lunch lock back in WORK. A screen
+  granted over a mode's looping scene stops it (`endModeSceneFor`), or the
+  frame waits behind the sandwich for good.
+- **A one-shot scene ends on the holder's screen**, through
+  `grantedScreens`, not on the session: DONE! during Play Mode used to end
+  on the idle clock with Play Mode still holding the lock.
 
 The app posts toasts of its own (`ProviderEventService`), and two things about
 them are traps:
@@ -669,7 +695,13 @@ interfaces, `PascalCase` methods).
   the device trace, and `STRESS_RUNS=2000` runs a longer campaign (about 15 s).
   Animations are read from disk once before the runs, because under fake
   timers a real file read lands at an arbitrary point of simulated time and a
-  seed would not replay.
+  seed would not replay. Two editors are open, and every run ends by
+  checking the panel against the state (`expectSettledScreen`): an editor
+  still compiling has the gear, idle has an empty panel, and so on.
+- **A bug a seed finds becomes a scripted case** in
+  `display-handback.test.ts`, on the same `Desk` (`tests/support/desk.ts`).
+  A seed shows the bug; only a script keeps it shown once the generator's
+  weights change. Check the case fails on the code before the fix.
 
 ### Comments
 

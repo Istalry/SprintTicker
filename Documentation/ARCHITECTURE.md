@@ -207,6 +207,20 @@ Two rules, both scars:
   nothing, which leaves the screen that took it alone. Unity's compile end
   waits `UNITY_IDLE_RELEASE_GRACE_MS` (3 s) before releasing, so a compile that
   starts again straight away keeps its screen instead of passing through idle.
+- **The freed display goes, in order, to:** a queued alert (a request that
+  was *refused* and left a callback); the most important screen a preemption
+  *set aside*, redrawn by `DisplayRenderer.resumeScreen` from the last screen
+  drawn under that lock; a **background state** registered with
+  `addBackgroundScreen`, which redraws what it is now; and only then the
+  user's mode. Releasing a lock that is set aside rather than held removes
+  it from that list. The tracker and the mode locks are never set aside:
+  `setContextMode` draws them as they are now.
+- **Unity is the background state.** Its compile and Play Mode screens last
+  as long as an editor's state, so they are reclaimed rather than resumed:
+  after a banner, a scene, Lunch, or another editor's end, the display shows
+  what the editors are doing by then. Operations are tracked per editor
+  instance, a build or a bake shown before a compile; the compile screen
+  comes down only when no editor has one left.
 
 | Claim | Event name | Default score |
 | :--- | :--- | ---: |
@@ -560,7 +574,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1663 tests across 88 files, in two projects: `main` in Node for
+Vitest, 1692 tests across 89 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

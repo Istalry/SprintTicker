@@ -208,7 +208,8 @@ describe('UnityTelemetryService', () => {
       const mockRenderer = { renderPlayMode: vi.fn(), renderIdle: vi.fn() } as unknown as DisplayRenderer;
       const mockPriorityEngine = {
         evaluateRequest: vi.fn().mockReturnValue({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 90 }),
-        releaseActiveLock: vi.fn()
+        releaseActiveLock: vi.fn(),
+        addBackgroundScreen: vi.fn(() => () => undefined)
       };
       const s = new UnityTelemetryService(settingsRepo, undefined, mockRenderer, undefined, mockPriorityEngine as unknown as IPriorityPreemptionEngine);
 
@@ -256,9 +257,12 @@ describe('UnityTelemetryService display behaviour', () => {
     evaluateRequest: ReturnType<typeof vi.fn>;
     releaseActiveLock: ReturnType<typeof vi.fn>;
     getActiveLockEventName: ReturnType<typeof vi.fn>;
+    addBackgroundScreen: ReturnType<typeof vi.fn>;
   };
   /** Who holds the display, as the engine would say. */
   let lock: string | null;
+  /** The reclaims registered with the engine, offered the display whenever it frees. */
+  let background: Array<() => void>;
   let stored: Record<string, unknown>;
   let telemetry: UnityTelemetryService;
 
@@ -278,9 +282,11 @@ describe('UnityTelemetryService display behaviour', () => {
       renderException: vi.fn(), renderIdle: vi.fn(), renderActiveSession: vi.fn(), setContextMode: vi.fn()
     };
     lock = null;
+    background = [];
     // The engine's contract, as far as Unity sees it: a granted request takes
-    // the lock, and freeing the lock it holds hands the display back to the
-    // user's mode -- the one render an end needs.
+    // the lock, and freeing the lock it holds offers the display to the
+    // background states, then hands it back to the user's mode -- the one
+    // render an end needs.
     priority = {
       evaluateRequest: vi.fn((eventName: string) => {
         lock = eventName;
@@ -289,9 +295,17 @@ describe('UnityTelemetryService display behaviour', () => {
       releaseActiveLock: vi.fn((eventName: string) => {
         if (lock !== eventName) return;
         lock = null;
+        for (const reclaim of background) {
+          reclaim();
+          if (lock !== null) return;
+        }
         renderer.setContextMode('WORK');
       }),
-      getActiveLockEventName: vi.fn(() => lock)
+      getActiveLockEventName: vi.fn(() => lock),
+      addBackgroundScreen: vi.fn((_names: string[], reclaim: () => void) => {
+        background.push(reclaim);
+        return () => { background = background.filter(other => other !== reclaim); };
+      })
     };
     telemetry = make();
   });
@@ -316,6 +330,8 @@ describe('UnityTelemetryService display behaviour', () => {
     handlers.heartbeat({ projectName: 'Game' });
     handlers.compile({ projectName: 'Game', state: 'started' });
     handlers.console({ projectName: 'Game', type: 'error', message: 'boom' });
+    // Entered once the compile is over: during one, the gear keeps the display.
+    handlers.compile({ projectName: 'Game', state: 'finished' });
     handlers.playMode({ projectName: 'Game', state: 'entered' });
 
     expect(telemetry.getTelemetry().isConnected).toBe(true);
@@ -384,6 +400,51 @@ describe('UnityTelemetryService display behaviour', () => {
     expect(telemetry.getTelemetry().compilationState).toBe('Idle');
     expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityCompilingPriority');
     expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+  });
+
+  it('PruneTimer_OneOfTwoEditorsVanishesMidCompile_GearStaysForTheOther', () => {
+    telemetry.handleCompile({ projectName: 'Game', instanceId: 'g', state: 'started' });
+    vi.advanceTimersByTime(10_000);
+    telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'started' });
+    renderer.renderCompilation.mockClear();
+
+    // Game stops pinging; Tools has just spoken.
+    vi.advanceTimersByTime(10_000);
+
+    expect(priority.releaseActiveLock).not.toHaveBeenCalled();
+    expect(renderer.renderCompilation).toHaveBeenLastCalledWith('Tools');
+  });
+
+  it('PruneTimer_EditorVanishesInPlayMode_TakesOnAirDown', () => {
+    // A closed editor sends no exit: ON AIR would stay up for good.
+    stored.unity_settings = { enablePlayModeDnd: true };
+    telemetry.handlePlayMode({ projectName: 'Game', state: 'entered' });
+
+    vi.advanceTimersByTime(20_000);
+
+    expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityPlayModePriority');
+    expect(lock).toBeNull();
+  });
+
+  it('Reclaim_CompileRefusedUnderABanner_DrawsTheGearWhenTheDisplayFrees', () => {
+    lock = 'highNotificationPriority';
+    priority.evaluateRequest.mockImplementationOnce(() => ({ shouldRender: false, action: 'DISPLAY', evaluatedPriority: 55 }));
+    telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+    expect(renderer.renderCompilation).not.toHaveBeenCalled();
+
+    lock = null;
+    background.forEach(reclaim => reclaim());
+
+    expect(renderer.renderCompilation).toHaveBeenCalledWith('Game');
+    expect(lock).toBe('unityCompilingPriority');
+  });
+
+  it('Dispose_Always_StopsReclaimingTheDisplay', () => {
+    expect(background).toHaveLength(1);
+
+    telemetry.dispose();
+
+    expect(background).toHaveLength(0);
   });
 
   it('OnTelemetryUpdated_Unsubscribed_HearsNothingMore', () => {
@@ -469,7 +530,9 @@ describe('UnityTelemetryService display behaviour', () => {
       vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS * 2);
 
       expect(priority.releaseActiveLock).not.toHaveBeenCalled();
-      expect(renderer.renderCompilation).toHaveBeenCalledTimes(1);
+      // Drawn on each start, so a scene in between does not leave the lock
+      // without its screen; the second is the same frame, deduplicated.
+      expect(renderer.renderCompilation).toHaveBeenCalledTimes(2);
 
       telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
       vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
@@ -573,13 +636,18 @@ describe('UnityTelemetryService display behaviour', () => {
       // mode outranks the idle screen.
       telemetry.handlePlayMode({ projectName: 'Player', instanceId: 'p', state: 'entered' });
       renderer.renderPlayMode.mockClear();
+      // As the renderer does: Play Mode asks the engine at its own priority.
+      renderer.renderPlayMode.mockImplementation(() => priority.evaluateRequest('unityPlayModePriority'));
       telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'started' });
 
       telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'finished' });
       vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
 
       expect(renderer.renderPlayMode).toHaveBeenCalledWith('Player');
-      expect(priority.evaluateRequest).toHaveBeenLastCalledWith('unityPlayModePriority', 90);
+      // Never at a forced priority: that lock refused Play Mode's own request.
+      expect(priority.evaluateRequest).toHaveBeenLastCalledWith('unityPlayModePriority');
+      expect(lock).toBe('unityPlayModePriority');
+      expect(renderer.setContextMode).not.toHaveBeenCalled();
       expect(renderer.renderIdle).not.toHaveBeenCalled();
     });
 

@@ -14,6 +14,24 @@
 
 ### Fixed
 
+- **The bar now shows what is actually going on when something ends.** The
+  stress test learned to check the screen at the end of every generated day
+  against the state, with two Unity projects open, and found the display
+  wrong in about one day in seven:
+  - a build covered by a notification came back as the idle clock, the build
+    still running; a compile that started under a notification never showed;
+  - with two projects open, the first to finish compiling took the gear down
+    while the other still compiled, and one project's build end removed the
+    other's build screen; closing an editor in Play Mode left ON AIR up;
+  - leaving Lunch while a project compiled left the sandwich playing;
+  - finishing a task during Play Mode ended on the idle clock, and the end of
+    a session wiped a notification that was on screen;
+  - a Lunch that began during Away took the display back in Work mode, above
+    every notification.
+
+  Whatever ends now hands the display to what was underneath, or to what
+  Unity is doing by then, before the idle clock.
+
 - **Stopping a task with the idle clock on could close the screen on a
   picture and an animation together**, the close that hung the bar within a
   few rounds on firmware 1.2.4. The clear for the idle clock and the LOGGED

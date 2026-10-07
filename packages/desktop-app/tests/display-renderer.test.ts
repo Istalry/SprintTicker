@@ -332,6 +332,23 @@ describe('DisplayRenderer Unit Tests', () => {
       }
     });
 
+    it('ResumeScreen_LockThatDrewAScreen_DrawsItAgain', () => {
+      // A screen set aside by a preemption comes back as it was drawn: the
+      // frame cache would otherwise call the redraw already sent.
+      const settingsRepo = { getSetting: vi.fn().mockReturnValue(null), setSetting: vi.fn() };
+      renderer.setPriorityEngine(new PriorityPreemptionEngine(settingsRepo as unknown as SettingsRepository));
+      renderer.renderNotificationBanner({ title: 'stand-up', eventName: 'standupPromptPriority', timeoutMs: 0 });
+      vi.mocked(mockDriver.sendPixelFrame).mockClear();
+
+      expect(renderer.resumeScreen('standupPromptPriority')).toBe(true);
+      expect(mockDriver.sendPixelFrame).toHaveBeenCalledTimes(1);
+    });
+
+    it('ResumeScreen_LockThatNeverDrew_AnswersFalse', () => {
+      expect(renderer.resumeScreen('standupPromptPriority')).toBe(false);
+      expect(mockDriver.sendPixelFrame).not.toHaveBeenCalled();
+    });
+
     it('RenderNotificationBanner_QueuedBehindAnotherWhileIdle_SurvivesItsReplay', () => {
       // When the first banner released, the engine replayed the one queued
       // behind it and then -- the queue now being empty -- restored the idle

@@ -12,6 +12,13 @@ import { PriorityRule } from './dtos';
  * What each rule does during Lunch and Away is entirely their choice; nothing
  * in the code should assume a particular ranking.
  */
+/**
+ * The session tracker's event: the user's own screen, the lowest claim on the
+ * display. Named because the renderer and the Unity service both have to tell
+ * it from a screen that genuinely holds the display.
+ */
+export const ACTIVE_TRACKER_EVENT = 'activeTrackerPriority';
+
 export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
   {
     id: 'away_mode',
@@ -87,7 +94,7 @@ export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
   },
   {
     id: 'active_tracker',
-    eventName: 'activeTrackerPriority',
+    eventName: ACTIVE_TRACKER_EVENT,
     priority: 45,
     actionOnWork: 'DISPLAY',
     actionOnLunch: 'QUEUE',

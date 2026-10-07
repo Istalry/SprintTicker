@@ -18,6 +18,8 @@ import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequenc
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { measureText } from '../../shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
+import { ACTIVE_TRACKER_EVENT } from '../../shared/priority-defaults';
+
 
 /** The paused screen's STOP/FINISH bars: row 1's capitals fit inside 7px. */
 const PAUSED_BAR_Y = 9;
@@ -178,6 +180,17 @@ export class DisplayRenderer {
    */
   private sceneSessionId: string | null = null;
   private lastSessionCache: ActiveSessionDTO | null = null;
+  /**
+   * The last screen drawn under each lock, so the end of a one-shot scene can
+   * give the display back to whoever holds it. A scene plays over every lock
+   * -- DONE! during Play Mode, a banner arriving during LOGGED -- and ending
+   * it on the session used to drop the holder's screen for the idle clock,
+   * with the lock still held and nothing left to redraw it. Per lock, not one
+   * slot: a lock can be taken again without drawing (a compile inside a
+   * build keeps the build's screen), and a banner in between must not make
+   * the build's screen forgotten.
+   */
+  private readonly grantedScreens = new Map<string, () => DisplayPayload>();
   private animationPlayer: AnimationPlayer;
   /** Tracked so a second banner cannot be cut short by the first one's timer. */
   private _bannerReleaseTimer: NodeJS.Timeout | null = null;
@@ -295,6 +308,8 @@ export class DisplayRenderer {
       // The lock is held by this event from here on. If the render throws, no
       // other code path releases it, and the display stays frozen at this
       // priority until the user presses BACK.
+      this.grantedScreens.set(eventName, renderFn);
+      this.endModeSceneFor(eventName);
       try {
         return renderFn();
       } catch (err) {
@@ -304,6 +319,22 @@ export class DisplayRenderer {
     }
 
     return renderFn();
+  }
+
+  /**
+   * Stops Lunch's or Away's looping scene when another screen takes the
+   * display from it. Nothing else draws over a mode, so stopping it was left
+   * to `setContextMode` -- but leaving Lunch, the release of its lock hands
+   * the display to Unity's compile screen first, whose frame was held back
+   * behind the scene still playing, and the sandwich stayed up under a lock
+   * that said "compiling".
+   */
+  private endModeSceneFor(eventName: string): void {
+    if (eventName === 'lunchModePriority' || eventName === 'awayModePriority') return;
+    const playing = this.animationPlayer.getCurrentAnimation();
+    if (playing !== FRONT_ANIMATIONS.LUNCH && playing !== FRONT_ANIMATIONS.AWAY) return;
+    this.animationPlayer.stop();
+    this.invalidateFrameCache();
   }
 
   /// <summary>
@@ -720,6 +751,10 @@ export class DisplayRenderer {
    * Renders LUNCH MUTE animation screen on Front Display with warm amber LED.
    */
   public renderLunchMode(): DisplayPayload {
+    // A mode, not an alert: never queued for replay. Refused while Away, a
+    // queued Lunch replayed the moment Away ended -- back in WORK, holding a
+    // Lunch lock that outranked every notification. `setContextMode` draws
+    // the mode whenever it is the mode.
     return this.requestRender('lunchModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
@@ -735,13 +770,14 @@ export class DisplayRenderer {
       void this.transmitFrame('#F59E0BFF', frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
-    });
+    }, { queueOnPreempt: false });
   }
 
   /**
    * Renders AWAY / STEALTH animation screen on Front Display with dim purple LED.
    */
   public renderAwayMode(): DisplayPayload {
+    // A mode, not an alert; see renderLunchMode.
     return this.requestRender('awayModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
@@ -757,7 +793,7 @@ export class DisplayRenderer {
       void this.transmitFrame('#A855F7FF', frontElements)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
-    });
+    }, { queueOnPreempt: false });
   }
 
   /**
@@ -830,6 +866,10 @@ export class DisplayRenderer {
       this.isCelebrating = false;
       this.sceneSessionId = null;
       this.clearCelebrationTimer();
+      // Another task starting ends the scene early; it ends on the holder's
+      // screen like a scene that runs its course.
+      const handedBack = this.handBackAfterScene();
+      if (handedBack) return handedBack;
     }
 
     if (this.isCelebrating || this._contextMode === 'LUNCH' || this._contextMode === 'AWAY') {
@@ -840,6 +880,30 @@ export class DisplayRenderer {
     }
 
     if (!session && this.showIdleClockFallback) {
+      // The idle clock is the user's mode, not a claim on the display: it
+      // used to clear whatever held the display -- a banner, Unity's Play
+      // screen -- the moment a session ended under it. The holder's release
+      // hands back to the mode, which lands here again.
+      const holder = this.priorityEngine?.getActiveLockEventName() ?? null;
+      if (holder !== null && holder !== ACTIVE_TRACKER_EVENT) {
+        return {
+          frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
+          ledColorHex: this.lastState.ledColorHex
+        };
+      }
+      // The session's own lock goes with the session. Without handing back:
+      // this branch is what handing back would render.
+      if (holder === ACTIVE_TRACKER_EVENT) {
+        this.priorityEngine?.releaseActiveLock(ACTIVE_TRACKER_EVENT, { handBack: false });
+        // The release replays a queued alert or a screen set aside, if any;
+        // that screen is up now, and clearing would wipe it.
+        if (this.priorityEngine?.getActiveLockEventName()) {
+          return {
+            frontElements: this.lastState.frontElements as unknown as Array<Record<string, unknown>>,
+            ledColorHex: this.lastState.ledColorHex
+          };
+        }
+      }
       this.invalidateFrameCache();
       // This screen replaces the last one without passing through
       // transmitFrame, the one place that tells the icon animator what is
@@ -898,7 +962,7 @@ export class DisplayRenderer {
     // is stale by the time it would replay, and releasing the lock restores the
     // context mode, which redraws this anyway.
     return this.requestRender(
-      'activeTrackerPriority',
+      ACTIVE_TRACKER_EVENT,
       () => {
       const colors = this.getThemeColors();
       const isPaused = session?.status === 'PAUSED';
@@ -1261,8 +1325,41 @@ export class DisplayRenderer {
     if (!this.isCelebrating) return;
     this.isCelebrating = false;
     this.sceneSessionId = null;
+    if (this.handBackAfterScene()) return;
     this.animationPlayer.stop();
     this.renderActiveSession(this.lastSessionCache);
+  }
+
+  /**
+   * Draws again the last screen of a lock the engine is giving the display
+   * back to, after what had preempted it ended. Answers false when no screen
+   * was ever drawn under that lock, so the engine tries the next.
+   */
+  public resumeScreen(eventName: string): boolean {
+    const render = this.grantedScreens.get(eventName);
+    if (!render) return false;
+    // During a scene the holder's screen is drawn when the scene ends.
+    if (this.isCelebrating) return true;
+    this.animationPlayer.stop();
+    this.invalidateFrameCache();
+    render();
+    return true;
+  }
+
+  /**
+   * Ends a one-shot scene on the screen of whoever holds the display, if
+   * anyone but the tracker does. Its screen was drawn under the scene, or
+   * before it, and is not on the panel: it is drawn again, past the frame
+   * cache, which would call it already sent. Answers what it drew, or null
+   * when the session is what comes next.
+   */
+  private handBackAfterScene(): DisplayPayload | null {
+    const holder = this.priorityEngine?.getActiveLockEventName() ?? null;
+    const render = holder === null || holder === ACTIVE_TRACKER_EVENT ? undefined : this.grantedScreens.get(holder);
+    if (!render) return null;
+    this.animationPlayer.stop();
+    this.invalidateFrameCache();
+    return render();
   }
 
   private clearCelebrationTimer(): void {

@@ -7,6 +7,19 @@ import { IPriorityPreemptionEngine } from './priority-preemption-engine';
 import { ArgumentNullException } from '../../shared/dtos';
 import { UNITY_IDLE_RELEASE_GRACE_MS } from '../../shared/render-constants';
 
+/** Unity's two screens that last as long as the editor's state does. */
+const COMPILE_EVENT = 'unityCompilingPriority';
+const PLAY_MODE_EVENT = 'unityPlayModePriority';
+
+type UnityOperationType = 'compile' | 'build' | 'bake';
+
+/** What one editor is busy with, as its last compile event said. */
+interface UnityOperation {
+  type: UnityOperationType;
+  projectName: string;
+  progress: number;
+}
+
 /**
  * Service managing live Unity Editor telemetry status, compile states,
  * heartbeat pings, multi-instance connections, and companion application settings.
@@ -51,6 +64,11 @@ export class UnityTelemetryService {
     this.renderer = renderer;
     this.engine = engine;
     this.priorityEngine = priorityEngine;
+    // Unity's screens are states, not alerts: whatever covered them, the
+    // display comes back to what the editors are doing by then.
+    this.unregisterBackground = priorityEngine?.addBackgroundScreen([COMPILE_EVENT, PLAY_MODE_EVENT], () => {
+      this.reclaimDisplay();
+    }) ?? null;
 
     if (webhookServer) {
       webhookServer.onHeartbeatEvent((payload) => { if (isBarEnabled()) this.handleHeartbeat(payload); });
@@ -64,6 +82,7 @@ export class UnityTelemetryService {
   }
 
   private exceptionTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly unregisterBackground: (() => void) | null;
   /** A compile's end, held back by `UNITY_IDLE_RELEASE_GRACE_MS`. */
   private compileReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -144,7 +163,13 @@ export class UnityTelemetryService {
     this.recomputeTelemetryState();
   }
 
-  private activeOperation: 'none' | 'compile' | 'build' | 'bake' = 'none';
+  /**
+   * Each editor's operation, by instance. One global operation used to stand
+   * for every editor open: with two projects compiling, the first to finish
+   * took the gear down while the other still compiled, and a build ending in
+   * one editor removed the build screen of another.
+   */
+  private readonly operations = new Map<string, UnityOperation>();
 
   /// <summary>
   /// Updates compilation telemetry state based on compile events.
@@ -170,44 +195,69 @@ export class UnityTelemetryService {
     this.activeInstances.set(key, instance);
     this.recomputeTelemetryState();
 
+    const current = this.operations.get(key);
     if (isStarted) {
+      // A compile inside a build or a bake is part of it: the build's screen stays.
+      if (type !== 'compile' || !current || current.type === 'compile') {
+        this.operations.set(key, { type, projectName: payload.projectName, progress: payload.progress ?? 0 });
+      }
       // A compile ending a moment ago is still on the display: carry on with it.
       this.cancelCompileRelease();
-      const evalResult = this.priorityEngine?.evaluateRequest('unityCompilingPriority');
-      if (evalResult && !evalResult.shouldRender) {
-        return;
-      }
+      // Drawn again on every start, not only the first: a scene (DONE!,
+      // LOGGED) may have covered the gear since, and the lock just taken
+      // must come with its screen or the scene's end has nothing to return
+      // to. Free when the screen is still up -- the frame is deduplicated.
+      this.showOperation();
+      return;
+    }
 
-      if (type === 'build') {
-        this.activeOperation = 'build';
-        this.renderer?.renderBuilding(payload.projectName, payload.progress ?? 0);
-      } else if (type === 'bake') {
-        this.activeOperation = 'bake';
-        this.renderer?.renderBaking(payload.projectName, payload.progress ?? 0);
-      } else {
-        if (this.activeOperation === 'none') {
-          this.activeOperation = 'compile';
-          this.renderer?.renderCompilation(payload.projectName);
-        }
-      }
+    // Only the compile that put the gear up takes it down. One inside a
+    // build or a bake shares their lock, and releasing it here used to hand
+    // the display back from under the build's progress screen.
+    if (type === 'compile' && current?.type !== 'compile') return;
+    this.operations.delete(key);
+    if (this.operations.size > 0) {
+      // Another editor is still at it: its screen, not the idle clock.
+      if (this.priorityEngine?.getActiveLockEventName() === COMPILE_EVENT) this.drawOperation();
     } else if (type === 'compile') {
-      // Only the compile that put the gear up takes it down. One inside a
-      // build or a bake shares their lock, and releasing it here used to hand
-      // the display back from under the build's progress screen.
-      if (this.activeOperation === 'compile') this.scheduleCompileRelease();
+      this.scheduleCompileRelease();
     } else {
       this.cancelCompileRelease();
-      this.activeOperation = 'none';
-      this.releaseDisplay('unityCompilingPriority');
+      this.releaseDisplay(COMPILE_EVENT);
     }
+  }
+
+  /** The operation the compile screen shows: a build or a bake before a compile, the latest among equals. */
+  private dominantOperation(): UnityOperation | null {
+    let dominant: UnityOperation | null = null;
+    for (const operation of this.operations.values()) {
+      if (!dominant || dominant.type === 'compile' || operation.type !== 'compile') dominant = operation;
+    }
+    return dominant;
+  }
+
+  /** Takes the display for the editors' operations, if they have one and it is Unity's to take. */
+  private showOperation(): boolean {
+    if (!this.dominantOperation()) return false;
+    const evalResult = this.priorityEngine?.evaluateRequest(COMPILE_EVENT);
+    if (evalResult && !evalResult.shouldRender) return false;
+    this.drawOperation();
+    return true;
+  }
+
+  private drawOperation(): void {
+    const operation = this.dominantOperation();
+    if (!operation || !this.renderer) return;
+    if (operation.type === 'build') this.renderer.renderBuilding(operation.projectName, operation.progress);
+    else if (operation.type === 'bake') this.renderer.renderBaking(operation.projectName, operation.progress);
+    else this.renderer.renderCompilation(operation.projectName);
   }
 
   private scheduleCompileRelease(): void {
     this.cancelCompileRelease();
     this.compileReleaseTimer = setTimeout(() => {
       this.compileReleaseTimer = null;
-      this.activeOperation = 'none';
-      this.releaseDisplay('unityCompilingPriority');
+      this.releaseDisplay(COMPILE_EVENT);
     }, UNITY_IDLE_RELEASE_GRACE_MS);
   }
 
@@ -269,13 +319,18 @@ export class UnityTelemetryService {
 
     const settings = this.getSettings();
     if (isInPlayMode && settings.enablePlayModeDnd) {
-      const evalResult = this.priorityEngine?.evaluateRequest('unityPlayModePriority');
+      // While an editor compiles or builds, its screen outranks Play Mode;
+      // the compile's end comes back to Play Mode through the reclaim.
+      if (this.dominantOperation()) return;
+      const evalResult = this.priorityEngine?.evaluateRequest(PLAY_MODE_EVENT);
       if (evalResult && !evalResult.shouldRender) {
         return;
       }
       this.renderer?.renderPlayMode(payload.projectName);
     } else {
-      this.releaseDisplay('unityPlayModePriority');
+      // Another editor still in Play Mode takes the display straight back,
+      // through the reclaim.
+      this.releaseDisplay(PLAY_MODE_EVENT);
     }
   }
 
@@ -292,30 +347,36 @@ export class UnityTelemetryService {
    * wiping a banner that had taken the display in the meantime.
    */
   private releaseDisplay(eventName: string): void {
+    // The release offers the free display to the editors' state, through the
+    // reclaim this service registered: Play Mode in another editor, a compile
+    // still running in a second project.
     this.priorityEngine?.releaseActiveLock(eventName);
-    if (this.resumePlayModeIfActive()) return;
     // With no engine there is nobody to hand the display back; do it here.
-    if (!this.priorityEngine) this.renderUserContext();
+    if (!this.priorityEngine && !this.reclaimDisplay()) this.renderUserContext();
   }
 
   /**
-   * Returns to Play Mode when an editor is still in it, as long as nothing
-   * else has the display. Answers whether it did.
+   * Draws what the editors are doing now, if anything: an operation's screen,
+   * else Play Mode. The engine calls it whenever the display frees, which is
+   * how Unity's screen comes back after a banner, a scene, Lunch, or the end
+   * of another editor's compile. Answers whether it drew.
+   *
+   * It used to run only after Unity's own releases, and took the lock at a
+   * forced 90 first, so the render's own request -- at 50 -- was refused by
+   * Unity's own lock: Play Mode never came back after a compile, an
+   * exception or a banner, and a build a banner covered never came back at
+   * all.
    */
-  private resumePlayModeIfActive(): boolean {
+  private reclaimDisplay(): boolean {
+    if (this.showOperation()) return true;
     if (!this.renderer || !this.getSettings().enablePlayModeDnd) return false;
     const playModeInstance = Array.from(this.activeInstances.values()).find(
       i => i.playModeStatus === 'In Play Mode'
     );
     if (!playModeInstance) return false;
-    if (this.priorityEngine) {
-      // Held means a queued alert was replayed into the space, or something
-      // never let go: either way it is not Unity's to draw over.
-      if (this.priorityEngine.getActiveLockEventName() !== null) return false;
-      this.priorityEngine.evaluateRequest('unityPlayModePriority', 90);
-    }
+    // `renderPlayMode` asks the engine itself, at the configured priority.
     this.renderer.renderPlayMode(playModeInstance.projectName);
-    return true;
+    return !this.priorityEngine || this.priorityEngine.getActiveLockEventName() === PLAY_MODE_EVENT;
   }
 
   private renderUserContext(): void {
@@ -341,10 +402,15 @@ export class UnityTelemetryService {
     const now = Date.now();
     let hasChanges = false;
 
+    let lostOperation = false;
+    let lostPlayMode = false;
     for (const [key, instance] of this.activeInstances.entries()) {
       const age = now - new Date(instance.lastPingUtc).getTime();
       if (age >= maxAgeMs) {
         this.activeInstances.delete(key);
+        // The editor went away mid-operation and will send no end of its own.
+        lostOperation = this.operations.delete(key) || lostOperation;
+        lostPlayMode = lostPlayMode || instance.playModeStatus === 'In Play Mode';
         hasChanges = true;
       }
     }
@@ -352,12 +418,14 @@ export class UnityTelemetryService {
     if (hasChanges) {
       this.recomputeTelemetryState();
       
-      if (this.telemetryState.compilationState === 'Idle' && this.activeOperation !== 'none') {
-        // The editor went away mid-operation and will send no end of its own.
+      if (lostOperation && this.operations.size === 0) {
         this.cancelCompileRelease();
-        this.activeOperation = 'none';
-        this.releaseDisplay('unityCompilingPriority');
+        this.releaseDisplay(COMPILE_EVENT);
+      } else if (lostOperation && this.priorityEngine?.getActiveLockEventName() === COMPILE_EVENT) {
+        this.drawOperation();
       }
+      // An editor closed in Play Mode sends no exit: its ON AIR would stay up.
+      if (lostPlayMode) this.releaseDisplay(PLAY_MODE_EVENT);
     }
   }
 
@@ -418,6 +486,7 @@ export class UnityTelemetryService {
       this.exceptionTimer = null;
     }
     this.cancelCompileRelease();
+    this.unregisterBackground?.();
   }
 }
 

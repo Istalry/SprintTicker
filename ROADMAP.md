@@ -592,8 +592,15 @@ Also worth doing while this area is open:
   (median 35-48) from first to last, no request timed out or was refused, and
   each burst closed the screen once. Still open: read back the bundle of a
   real Unity day.
-- [ ] **Display state found inconsistent by the same stress run**, none of it a
-  risk to the device:
+- [x] **Display state found inconsistent by the same stress run**, none of it a
+  risk to the device. **Done** (2026-10-07): the stress test now checks the
+  panel against the state at the end of every run, with two Unity editors
+  open, and that check found more than the three below -- 41 runs in 300 at
+  first. The engine resumes a screen a preemption set aside, offers the free
+  display to Unity as a background state before the mode, and Unity tracks
+  one operation per editor. 4000 seeds run clean; each finding is a scripted
+  case in `display-handback.test.ts`, eleven of which fail on the code
+  before. Found, in order:
   - A one-shot scene (DONE!, LOGGED) ends by rendering the session without
     asking the engine who holds the display, so finishing a task during Unity
     Play Mode leaves the idle clock where the Play screen should be.
@@ -603,6 +610,16 @@ Also worth doing while this area is open:
     in real use: lunch time arriving while the PC is locked.
   - `activeTrackerPriority` stays held after the session ends. Harmless at
     45, the lowest rank, but the engine reports a lock nobody holds.
+  - The idle screen cleared whatever held the display when a session ended
+    under it, a banner included.
+  - A build preempted by a banner did not come back; a compile started under
+    a banner never drew.
+  - With two editors, the first compile to end took the gear down for both,
+    and one editor's build end removed the other's build screen.
+  - Leaving Lunch with an editor compiling: the gear's frame waited behind
+    the sandwich scene, which never stopped.
+  - Play Mode never came back after a compile: Unity took the lock at a
+    forced 90 and Play Mode's own request, at 50, was refused by it.
 
 ---
 
@@ -959,8 +976,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.98 statements / 87.32 branches / 92.84 functions / 95.51 lines across 1663
-tests in 88 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.01 statements / 87.53 branches / 92.96 functions / 95.57 lines across 1692
+tests in 89 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

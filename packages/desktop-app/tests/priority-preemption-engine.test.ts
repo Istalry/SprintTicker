@@ -388,6 +388,168 @@ describe('PriorityPreemptionEngine behaviour', () => {
     });
   });
 
+  describe('hand-back options', () => {
+    it('ReleaseActiveLock_HandBackFalse_LeavesTheModeToTheCaller', () => {
+      // The idle screen giving up the tracker's lock is itself what handing
+      // back would draw: a second render would be a second clear.
+      const engine = engineWith(MATRIX);
+      const renderer = { setContextMode: vi.fn() };
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('activeTrackerPriority', 45);
+
+      engine.releaseActiveLock('activeTrackerPriority', { handBack: false });
+
+      expect(engine.getActiveLockEventName()).toBeNull();
+      expect(renderer.setContextMode).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('preempted screens', () => {
+    const rendererThatResumes = (answer = true) => ({ setContextMode: vi.fn(), resumeScreen: vi.fn(() => answer) });
+
+    it('ReleaseActiveLock_PreemptedScreenStillGoing_ResumesItInsteadOfTheMode', () => {
+      // A build under a banner: the banner's end used to go to the idle
+      // clock with the build still running and its lock gone.
+      const engine = engineWith(MATRIX);
+      const renderer = rendererThatResumes();
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('highNotificationPriority');
+
+      engine.releaseActiveLock('highNotificationPriority');
+
+      expect(renderer.resumeScreen).toHaveBeenCalledWith('unityCompilingPriority');
+      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(renderer.setContextMode).not.toHaveBeenCalled();
+    });
+
+    it('ReleaseActiveLock_PreemptedScreenEndedWhileCovered_DoesNotComeBack', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = rendererThatResumes();
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('highNotificationPriority');
+
+      engine.releaseActiveLock('unityCompilingPriority');
+      engine.releaseActiveLock('highNotificationPriority');
+
+      expect(renderer.resumeScreen).not.toHaveBeenCalled();
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+      expect(engine.getActiveLockEventName()).toBeNull();
+    });
+
+    it('ReleaseActiveLock_RendererCannotRedrawIt_HandsBackToTheMode', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = rendererThatResumes(false);
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('highNotificationPriority');
+
+      engine.releaseActiveLock('highNotificationPriority');
+
+      expect(engine.getActiveLockEventName()).toBeNull();
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+    });
+
+    it('ReleaseActiveLock_SeveralSetAside_ResumesTheMostImportantFirst', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = rendererThatResumes();
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('messagingPriority');
+      engine.evaluateRequest('highNotificationPriority');
+
+      engine.releaseActiveLock('highNotificationPriority');
+      expect(engine.getActiveLockEventName()).toBe('messagingPriority');
+      engine.releaseActiveLock('messagingPriority');
+      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+    });
+
+    it('ReleaseActiveLock_TrackerWasCovered_LeavesItToTheMode', () => {
+      // The tracker is the mode's own screen: setContextMode draws it, with
+      // the session as it is now rather than as it was when covered.
+      const engine = engineWith(MATRIX);
+      const renderer = rendererThatResumes();
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('activeTrackerPriority', 45);
+      engine.evaluateRequest('messagingPriority');
+
+      engine.releaseActiveLock('messagingPriority');
+
+      expect(renderer.resumeScreen).not.toHaveBeenCalled();
+      expect(renderer.setContextMode).toHaveBeenCalledWith('WORK');
+    });
+
+    it('ReleaseActiveLock_AQueuedAlertWaits_ReplaysItBeforeAnyResume', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = rendererThatResumes();
+      engine.setRenderer(renderer as never);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('highNotificationPriority');
+      const replay = vi.fn();
+      engine.evaluateRequest('messagingPriority', undefined, replay);
+
+      engine.releaseActiveLock('highNotificationPriority');
+
+      expect(replay).toHaveBeenCalledTimes(1);
+      expect(renderer.resumeScreen).not.toHaveBeenCalled();
+      engine.releaseActiveLock('messagingPriority');
+      expect(renderer.resumeScreen).toHaveBeenCalledWith('unityCompilingPriority');
+    });
+  });
+
+  describe('background screens', () => {
+    it('ReleaseActiveLock_BackgroundStateRegistered_OffersItTheDisplayBeforeTheMode', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = { setContextMode: vi.fn(), resumeScreen: vi.fn(() => true) };
+      engine.setRenderer(renderer as never);
+      const reclaim = vi.fn(() => { engine.evaluateRequest('unityCompilingPriority'); });
+      engine.addBackgroundScreen(['unityCompilingPriority'], reclaim);
+      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('highNotificationPriority');
+
+      engine.releaseActiveLock('highNotificationPriority');
+
+      // Reclaimed as it is now, never resumed as it was: not set aside.
+      expect(renderer.resumeScreen).not.toHaveBeenCalled();
+      expect(reclaim).toHaveBeenCalledTimes(1);
+      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(renderer.setContextMode).not.toHaveBeenCalled();
+    });
+
+    it('ReleaseActiveLock_BackgroundHasNothingToShow_HandsBackToTheMode', () => {
+      const engine = engineWith(MATRIX);
+      const renderer = { setContextMode: vi.fn() };
+      engine.setRenderer(renderer as never);
+      const reclaim = vi.fn();
+      engine.addBackgroundScreen(['unityCompilingPriority'], reclaim);
+      engine.evaluateRequest('messagingPriority');
+
+      engine.releaseActiveLock('messagingPriority');
+
+      expect(reclaim).toHaveBeenCalledTimes(1);
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+    });
+
+    it('AddBackgroundScreen_Unregistered_IsNoLongerOffered', () => {
+      const engine = engineWith(MATRIX);
+      const reclaim = vi.fn();
+      const unregister = engine.addBackgroundScreen(['unityCompilingPriority'], reclaim);
+      unregister();
+      engine.evaluateRequest('messagingPriority');
+
+      engine.releaseActiveLock('messagingPriority');
+
+      expect(reclaim).not.toHaveBeenCalled();
+    });
+
+    it('AddBackgroundScreen_NoLocksOrNoReclaim_Throws', () => {
+      const engine = engineWith(MATRIX);
+      expect(() => engine.addBackgroundScreen([], vi.fn())).toThrow();
+      expect(() => engine.addBackgroundScreen(['x'], null as unknown as () => void)).toThrow();
+    });
+  });
+
   describe('replay queue', () => {
     const queueBehindLunch = (engine: PriorityPreemptionEngine, order: string[], name: string, priority: number) =>
       engine.evaluateRequest(name, priority, () => order.push(name));
