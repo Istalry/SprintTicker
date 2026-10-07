@@ -600,7 +600,14 @@ Also worth doing while this area is open:
   display to Unity as a background state before the mode, and Unity tracks
   one operation per editor. 4000 seeds run clean; each finding is a scripted
   case in `display-handback.test.ts`, eleven of which fail on the code
-  before. Found, in order:
+  before. **Checked on the real bar on 2026-10-07** (firmware 1.2.4,
+  packaged build on a database copy): eight scenarios -- two editors
+  compiling and in Play Mode, a build and a compile under a Slack banner,
+  DONE! during Play Mode, leaving Lunch mid-compile, a session discarded
+  under a banner -- each read back from the panel, all twenty showing the
+  expected screen. Nine screen closes, no error, upload median 36-67 ms (the
+  two outliers, 382 and 590 ms, were the LOGGED and LUNCH `.anim` uploads),
+  and the bar back on its clock afterwards. Found, in order:
   - A one-shot scene (DONE!, LOGGED) ends by rendering the session without
     asking the engine who holds the display, so finishing a task during Unity
     Play Mode leaves the idle clock where the Play screen should be.
