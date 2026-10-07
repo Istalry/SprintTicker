@@ -552,7 +552,7 @@ Also worth doing while this area is open:
   notification; one line of each kind for a Claude notification settles it.
   If it is the first, the cache could be warmed from the notification history
   at startup, or persisted.
-- [ ] **Make the driver the one guardian of the hardware rules** (started
+- [x] **Make the driver the one guardian of the hardware rules** (started
   2026-10-07, after the 10-05 hang). Four components talk to the display, each
   with its own concurrency discipline and none aware of the others: the frame
   gate, the clear chain, the animation player's scene lock and the icon
@@ -584,8 +584,14 @@ Also worth doing while this area is open:
   quarter of sixty. **Step 3 is done**: `DisplayHealthMonitor` records the
   last ten upload times, screen closes per hour and skipped requests, shown
   under Display Health in Device Diagnostics and carried in the diagnostics
-  bundle, and logs one warning when the median upload passes 250 ms. Still to
-  do: a session of compiles on the real bar, and reading a day's bundle back.
+  bundle, and logs one warning when the median upload passes 250 ms.
+  **Checked on the real bar on 2026-10-07** (firmware 1.2.4, packaged build
+  on a database copy): 38 compiles replayed through the webhook -- isolated,
+  in bursts inside the grace, and with two ends in one instant, plus Play
+  Mode -- for 26 screen closes and no hang. Uploads stayed at 24-69 ms
+  (median 35-48) from first to last, no request timed out or was refused, and
+  each burst closed the screen once. Still open: read back the bundle of a
+  real Unity day.
 - [ ] **Display state found inconsistent by the same stress run**, none of it a
   risk to the device:
   - A one-shot scene (DONE!, LOGGED) ends by rendering the session without
