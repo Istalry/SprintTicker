@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- **Stopping a task with the idle clock on could close the screen on a
+  picture and an animation together**, the close that hung the bar within a
+  few rounds on firmware 1.2.4. The clear for the idle clock and the LOGGED
+  scene went out in the same instant and crossed on the way to the device.
+  Found by a new stress test that plays generated mixes of Unity, banners,
+  tasks and breaks against a simulated bar; with it came four more ways the
+  app could break the device's rules -- closing too soon after an animation,
+  uploading over a playing scene and dropping to 60-frames-a-second
+  streaming, requests overlapping, requests that could only fail. The driver
+  now sends every display request one at a time and checks each rule itself
+  just before sending, whoever asked.
+
 - **The bar no longer hangs during Unity sessions.** On 2026-10-05 it froze
   twice in a day and needed restarting by hand. The end of each compile, of
   Play Mode and of an exception screen redrew the idle screen twice, and idle

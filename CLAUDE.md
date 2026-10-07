@@ -408,9 +408,23 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     -- the K case again. That hung the bar twice on 2026-10-05, from three
     clears one Unity compile end sent in the same millisecond. `clearDisplay`
     now queues behind the clear in progress, and one that finds the panel
-    already emptied with nothing drawn since sends nothing. "Emptied" is not
-    "`shownElements` is empty": a previous run may have left a screen this
-    driver never drew, so the first clear after start always sends.
+    known to be empty sends nothing. "Known" means a clear emptied it: a
+    previous run may have left a screen this driver never drew, so the first
+    clear after start always sends.
+  - **The driver is the one guardian of these rules; callers are not.** Every
+    display and asset request goes through one queue (`displayQueue`, a
+    `SerialQueue`), and each carries a guard that runs at the head of it,
+    after every earlier request has answered. A `DisplayLedger` records what
+    the panel holds, and from it the guards: skip a removal of an element
+    known to be absent, a clear of a panel known to be empty, an upload over
+    the `.anim` an element is playing; and make anything that could empty the
+    panel -- a clear *or* a removal -- wait out the settle after the last
+    animation left, whoever removed it. Four components draw (frames, the
+    animation player, the icon animator, the idle clock's clear) and none
+    sees the others, so a rule kept by callers was kept by luck: the stress
+    test found a clear and a scene crossing in flight and closing the screen
+    on both, on the stop-a-task path. **A new request that touches the panel
+    goes through `queued()`**, and records what it changed before it returns.
   - **An upload over an `.anim` the device is playing answers 508** ("Failed to
     open file for writing"). Restarting the scene that is still on the panel
     therefore draws it from the copy the device holds instead of uploading it
@@ -640,6 +654,15 @@ interfaces, `PascalCase` methods).
   **A rule measured on the bar goes into the simulator**, so every display test
   starts checking it. `formatTrace()` prints the requests with their status
   and the panel after each, which is how a failure is read.
+- **`display-stress.test.ts` plays generated days against the simulator**:
+  seeded mixes of Unity, banners, the session and Lunch/Away, some in one
+  tick, over a device with latency, through the whole real stack. It is what
+  catches the bugs no single source causes -- the 10-05 hang was one. A
+  failure prints its seed and script; `STRESS_SEED=<seed>` replays it with
+  the device trace, and `STRESS_RUNS=2000` runs a longer campaign (about 15 s).
+  Animations are read from disk once before the runs, because under fake
+  timers a real file read lands at an arbitrary point of simulated time and a
+  seed would not replay.
 
 ### Comments
 

@@ -4,6 +4,21 @@ import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException, A
 import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
 import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, describeError, isElementAbsent } from './device-errors';
+import { DisplayLedger } from './display-ledger';
+import { SerialQueue } from './serial-queue';
+
+/**
+ * What a display request's guard decides at the head of the display queue,
+ * just before the request would go out: send it, answer without sending, or
+ * wait and ask again.
+ */
+type DisplayGate<T> = { send: true } | { skip: T } | { waitMs: number };
+const SEND = { send: true } as const;
+
+/** No answer at all, so a draw or a clear may or may not have been carried out. */
+function gotNoAnswer(err: unknown): boolean {
+  return err instanceof DeviceRequestError && err.kind === 'unreachable';
+}
 
 export { DeviceRequestError } from './device-errors';
 export type { ClearOutcome, DeviceFailureKind, DrawOutcome, FrameOutcome } from './device-errors';
@@ -313,6 +328,8 @@ export function decodeProtobufInput(data: Uint8Array): { key: string; type: 'pre
  */
 export class BusyBarDriver extends EventEmitter {
   private static readonly NETWORK_THROTTLE_MS = 35;
+  /** How many times a clear takes animations down before giving up on closing; see `runClear`. */
+  private static readonly CLEAR_ROUNDS = 3;
   private mockHardware: boolean = false;
   /**
    * Whether commands are answered by the mock rather than refused or sent.
@@ -366,30 +383,28 @@ export class BusyBarDriver extends EventEmitter {
    * began, which must.
    */
   private latestDrawVersion: number = -1;
+  /** What each application is believed to have on the display; see `DisplayLedger`. */
+  private readonly ledger = new DisplayLedger();
   /**
-   * What each application is believed to have on the display: element id to
-   * element type.
+   * Every display and asset request, one at a time.
    *
-   * Written from our own successful draws and removals, so it can be stale in
-   * one direction only -- an element the device dropped by itself (a reboot, a
-   * higher-priority application taking the screen) still listed here. A
-   * removal of such an element answers 400, which is read as "already gone",
-   * so the staleness costs a request and nothing else.
+   * Four components draw on the panel -- frames, the animation player, the
+   * icon animator, the idle clock's clear -- each with its own ordering and
+   * none aware of the others. Requests from all four used to be in flight
+   * together, so a guard that read the panel's state could be stale by the
+   * time its request landed: a clear checked "nothing drawn since", a scene's
+   * draw answered a millisecond later, and the clear's DELETE closed the
+   * screen on an image and an animation -- the close that hung the bar on
+   * rounds 3 and 4 (found by `display-stress.test.ts`, 2026-10-07). In this
+   * queue a guard runs at the head, after every earlier request has answered,
+   * so a check and the request it guards are one step.
+   *
+   * Status, brightness, audio, keys and time stay outside: they do not touch
+   * the panel.
    */
-  private readonly shownElements = new Map<string, Map<string, string>>();
-  /**
-   * Settles when the clear in progress, if any, has finished. Clears run one
-   * at a time; see `clearDisplay`.
-   */
-  private clearChain: Promise<void> = Promise.resolve();
-  /**
-   * Applications whose panel a clear has emptied, with no draw sent since.
-   * Not the same as "`shownElements` holds nothing": a previous run of the app
-   * may have left a screen this driver never drew, and its first clear must
-   * still send. Forgotten when a draw is *sent*, not when it succeeds, since a
-   * draw that timed out may still have landed.
-   */
-  private readonly emptiedApplications = new Set<string>();
+  private readonly displayQueue = new SerialQueue();
+  /** Clears, one at a time; see `clearDisplay`. */
+  private readonly clearQueue = new SerialQueue();
   private readonly animationTeardownSettleMs: number;
   private enabled: boolean = true;
 
@@ -898,6 +913,22 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}&file=${encodeURIComponent(cleanFilename)}`;
+    await this.queued(
+      () => {
+        if (!this.ledger.isPlaying(applicationName, cleanFilename)) return SEND;
+        // The device answers 508 to an upload over an `.anim` an element is
+        // playing, and holds the file already. Two starts of one scene in a
+        // tick did this, and the second fell back to streaming frames.
+        console.log(`[BusyBarDriver] ${operation}: already on the device and playing; not uploading over it.`);
+        return { skip: undefined };
+      },
+      async () => {
+        await this.uploadRequest(operation, url, binaryData);
+      }
+    );
+  }
+
+  private async uploadRequest(operation: string, url: string, binaryData: Buffer | Uint8Array): Promise<void> {
     await this.deviceRequest(
       operation,
       url,
@@ -935,7 +966,12 @@ export class BusyBarDriver extends EventEmitter {
     }
 
     const url = `http://${this.ipAddress}/api/assets/upload?application_name=${encodeURIComponent(applicationName)}`;
-    await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
+    await this.queued(
+      () => SEND,
+      async () => {
+        await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
+      }
+    );
   }
 
   /**
@@ -961,8 +997,12 @@ export class BusyBarDriver extends EventEmitter {
    * remove-then-close-immediately sequence measured hanging the bar. That is
    * what hung it twice on 2026-10-05, three clears sent in one millisecond by
    * a single Unity compile end. A clear asked for while another runs waits
-   * for it, and one that finds the panel already emptied by it, with nothing
-   * drawn since, sends nothing.
+   * for it, and one that finds the panel known to be empty sends nothing.
+   *
+   * **The DELETE's guards run at the head of the display queue**: nothing
+   * drawn since the clear began, no animation listed, and the settle elapsed
+   * since the last animation left -- whoever removed it, since a scene retired
+   * during this wait counts as much as this clear's own removals.
    *
    * @returns `'superseded'` when something was drawn during the teardown, in
    *   which case the display is left to the newer screen and not released.
@@ -979,56 +1019,56 @@ export class BusyBarDriver extends EventEmitter {
     const clearVersion = ++this.displayVersion;
     this.pendingFrameArgs = null;
 
-    const previous = this.clearChain;
-    let finished!: () => void;
-    this.clearChain = new Promise<void>(resolve => {
-      finished = resolve;
-    });
-    try {
-      await previous;
-      return await this.runClear(applicationName, clearVersion, operation);
-    } finally {
-      finished();
-    }
+    return this.clearQueue.run(() => this.runClear(applicationName, clearVersion, operation));
   }
 
   /** The body of {@link clearDisplay}, run once the clears before it are done. */
   private async runClear(applicationName: string, clearVersion: number, operation: string): Promise<ClearOutcome> {
-    if (this.latestDrawVersion >= clearVersion) {
-      console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while it waited its turn.');
-      return 'superseded';
-    }
-    if (this.emptiedApplications.has(applicationName)) {
-      // An earlier clear emptied the panel and nothing has been drawn since.
-      // Closing an empty screen again buys nothing and is one more close.
-      return 'cleared';
-    }
+    // Rounds, because an animation could in principle be listed again between
+    // the removals and the DELETE; it never closes with one up. Three is far
+    // more than a draw under this clear's version, which supersedes it, leaves.
+    for (let round = 0; round < BusyBarDriver.CLEAR_ROUNDS; round++) {
+      if (this.latestDrawVersion >= clearVersion) {
+        console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while it waited its turn.');
+        return 'superseded';
+      }
+      if (this.ledger.isKnownEmpty(applicationName)) return 'cleared';
 
-    const animations = this.shownElementIds(applicationName, 'animation');
-    if (animations.length > 0) {
-      for (const id of animations) {
+      for (const id of this.ledger.ids(applicationName, 'animation')) {
         await this.removeElementIfPresent(applicationName, id);
       }
-      await delay(this.animationTeardownSettleMs);
-    }
 
-    if (this.latestDrawVersion >= clearVersion) {
-      console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while its animations came down.');
-      return 'superseded';
+      const outcome = await this.queued<ClearOutcome | 'animation listed'>(
+        () => {
+          if (this.latestDrawVersion >= clearVersion) return { skip: 'superseded' };
+          if (this.ledger.isKnownEmpty(applicationName)) return { skip: 'cleared' };
+          if (this.ledger.ids(applicationName, 'animation').length > 0) return { skip: 'animation listed' };
+          const waitMs = this.ledger.settleRemainingMs(this.animationTeardownSettleMs);
+          return waitMs > 0 ? { waitMs } : SEND;
+        },
+        async () => {
+          if (this.isMockMode) {
+            console.log(`[BusyBarDriver] [MOCK CLEAR] app=${applicationName}`);
+          } else {
+            const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
+            try {
+              await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
+            } catch (err) {
+              if (gotNoAnswer(err)) this.ledger.noteClearUncertain(applicationName);
+              throw err;
+            }
+          }
+          this.ledger.noteCleared(applicationName);
+          return 'cleared';
+        }
+      );
+      if (outcome === 'superseded') {
+        console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while its animations came down.');
+      }
+      if (outcome !== 'animation listed') return outcome;
     }
-
-    if (this.isMockMode) {
-      console.log(`[BusyBarDriver] [MOCK CLEAR] app=${applicationName}`);
-      this.shownElements.delete(applicationName);
-      this.emptiedApplications.add(applicationName);
-      return 'cleared';
-    }
-
-    const url = `http://${this.ipAddress}/api/display/draw?application_name=${encodeURIComponent(applicationName)}`;
-    await this.deviceRequest(operation, url, { method: 'DELETE', headers: this.getHeaders() });
-    this.shownElements.delete(applicationName);
-    this.emptiedApplications.add(applicationName);
-    return 'cleared';
+    console.warn('[BusyBarDriver] Clear abandoned: an animation kept reappearing, and the screen must not close on one.');
+    return 'superseded';
   }
 
   /**
@@ -1054,31 +1094,36 @@ export class BusyBarDriver extends EventEmitter {
    * reports: there is no endpoint that lists the elements on the display.
    */
   public shownElementIds(applicationName: string, type?: string): string[] {
-    const shown = this.shownElements.get(applicationName);
-    if (!shown) return [];
-    return [...shown].filter(([, elementType]) => type === undefined || elementType === type).map(([id]) => id);
+    return this.ledger.ids(applicationName, type);
   }
 
   /** Records the elements a draw put on the display, and the version it was sent under. */
   private noteDrawn(applicationName: string, elements: unknown, version: number): void {
     this.latestDrawVersion = Math.max(this.latestDrawVersion, version);
-    this.emptiedApplications.delete(applicationName);
-    if (!Array.isArray(elements)) return;
-    let shown = this.shownElements.get(applicationName);
-    if (!shown) {
-      shown = new Map();
-      this.shownElements.set(applicationName, shown);
-    }
-    for (const element of elements as Array<Record<string, unknown>>) {
-      if (typeof element?.id === 'string') shown.set(element.id, String(element.type ?? 'unknown'));
-    }
+    this.ledger.noteDrawn(applicationName, elements);
   }
 
-  private noteRemoved(applicationName: string, elementIds: string[]): void {
-    const shown = this.shownElements.get(applicationName);
-    if (!shown) return;
-    for (const id of elementIds) shown.delete(id);
-    if (shown.size === 0) this.shownElements.delete(applicationName);
+  /**
+   * Sends one display or asset request through the display queue.
+   *
+   * `gate` runs at the head of the queue, after every earlier request has
+   * answered, and decides from the state as it then is. Waiting happens
+   * outside the queue, so a settle does not hold up the frames behind it, and
+   * the gate is asked again afterwards: the state may have moved meanwhile.
+   * `send` must record what its request changed before it returns, so the
+   * next gate sees it.
+   */
+  private async queued<T>(gate: () => DisplayGate<T>, send: () => Promise<T>): Promise<T> {
+    for (;;) {
+      const decision = await this.displayQueue.run(async (): Promise<{ value: T } | { waitMs: number }> => {
+        const verdict = gate();
+        if ('send' in verdict) return { value: await send() };
+        if ('skip' in verdict) return { value: verdict.skip };
+        return verdict;
+      });
+      if ('value' in decision) return decision.value;
+      await delay(decision.waitMs);
+    }
   }
 
   /**
@@ -1130,7 +1175,8 @@ export class BusyBarDriver extends EventEmitter {
         throw err;
       }
 
-      // If a clearDisplay or sendDisplayPayload was called during the asset upload, abort the draw
+      // If a clearDisplay or sendDisplayPayload was called during the asset
+      // upload, abort the draw. Checked again at the head of the queue.
       if (this.displayVersion !== currentVersion) {
         return 'superseded';
       }
@@ -1160,22 +1206,29 @@ export class BusyBarDriver extends EventEmitter {
         body: JSON.stringify(drawPayload)
       };
 
-      this.emptiedApplications.delete(applicationName);
-      let drawResponse = await this.deviceFetch(drawUrl, drawInit);
-      let kind = this.reportDeviceResponse('draw', drawResponse);
-
-      // 503 means "ask again", and it is the one status where a retry is both
-      // correct and cheap. Once only: a device that is still busy after a
-      // throttle interval will be sent the next frame anyway.
-      if (kind === 'busy') {
-        await delay(BusyBarDriver.NETWORK_THROTTLE_MS);
-        drawResponse = await this.deviceFetch(drawUrl, drawInit);
-        kind = this.reportDeviceResponse('draw retry', drawResponse);
-      }
+      const drawn = await this.queued<{ kind: DeviceResponseKind; response: Response | null } | 'superseded'>(
+        () => (this.displayVersion !== currentVersion ? { skip: 'superseded' } : SEND),
+        async () => {
+          let response = await this.deviceFetch(drawUrl, drawInit);
+          let kind = this.reportDeviceResponse('draw', response);
+          // 503 means "ask again", and it is the one status where a retry is
+          // both correct and cheap. Once only: a device that is still busy
+          // after a throttle interval will be sent the next frame anyway.
+          if (kind === 'busy') {
+            await delay(BusyBarDriver.NETWORK_THROTTLE_MS);
+            response = await this.deviceFetch(drawUrl, drawInit);
+            kind = this.reportDeviceResponse('draw retry', response);
+          }
+          if (kind === 'ok') this.noteDrawn(applicationName, drawPayload.elements, currentVersion);
+          else if (response === null) this.ledger.noteDrawUncertain(applicationName, drawPayload.elements);
+          return { kind, response };
+        }
+      );
+      if (drawn === 'superseded') return 'superseded';
+      const { kind, response: drawResponse } = drawn;
 
       if (kind === 'ok') {
         this.framesSent++;
-        this.noteDrawn(applicationName, drawPayload.elements, currentVersion);
         return 'sent';
       }
       if (kind === 'conflict') {
@@ -1298,20 +1351,40 @@ export class BusyBarDriver extends EventEmitter {
       return 'drawn';
     }
 
-    this.emptiedApplications.delete(applicationName);
-    const result = await this.deviceRequest(
-      operation,
-      `http://${this.ipAddress}/api/display/draw`,
-      {
-        method: 'POST',
-        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(formattedPayload)
-      },
-      { allowConflict: true }
+    return this.queuedDraw(operation, applicationName, formattedPayload, version);
+  }
+
+  /** The request half of `sendDisplayPayload` and `drawOverlay`. */
+  private async queuedDraw(
+    operation: string,
+    applicationName: string,
+    formattedPayload: Record<string, unknown>,
+    version: number
+  ): Promise<DrawOutcome> {
+    return this.queued<DrawOutcome>(
+      () => SEND,
+      async () => {
+        let result: 'ok' | 'conflict';
+        try {
+          result = await this.deviceRequest(
+            operation,
+            `http://${this.ipAddress}/api/display/draw`,
+            {
+              method: 'POST',
+              headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(formattedPayload)
+            },
+            { allowConflict: true }
+          );
+        } catch (err) {
+          if (gotNoAnswer(err)) this.ledger.noteDrawUncertain(applicationName, formattedPayload.elements);
+          throw err;
+        }
+        if (result === 'conflict') return 'conflict';
+        this.noteDrawn(applicationName, formattedPayload.elements, version);
+        return 'drawn';
+      }
     );
-    if (result === 'conflict') return 'conflict';
-    this.noteDrawn(applicationName, formattedPayload.elements, version);
-    return 'drawn';
   }
 
   /**
@@ -1345,20 +1418,7 @@ export class BusyBarDriver extends EventEmitter {
       return 'drawn';
     }
 
-    this.emptiedApplications.delete(applicationName);
-    const result = await this.deviceRequest(
-      operation,
-      `http://${this.ipAddress}/api/display/draw`,
-      {
-        method: 'POST',
-        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(formattedPayload)
-      },
-      { allowConflict: true }
-    );
-    if (result === 'conflict') return 'conflict';
-    this.noteDrawn(applicationName, formattedPayload.elements, version);
-    return 'drawn';
+    return this.queuedDraw(operation, applicationName, formattedPayload, version);
   }
 
   /**
@@ -1377,7 +1437,13 @@ export class BusyBarDriver extends EventEmitter {
    * per call wherever an id may already be gone.
    *
    * Removing the last element closes the device's screen exactly as
-   * `clearDisplay` does; see there for why that matters.
+   * `clearDisplay` does; see there for why that matters. So a removal that
+   * could empty the panel waits, like the clear, for the settle after the
+   * last animation left.
+   *
+   * **A single id known to be absent resolves without a request** -- the
+   * driver has seen the panel emptied and the element not drawn since. Every
+   * caller read the device's 400 for it as "already gone" anyway.
    *
    * @throws DeviceRequestError when the device did not remove them.
    */
@@ -1388,33 +1454,44 @@ export class BusyBarDriver extends EventEmitter {
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK REMOVE] app=${applicationName}, ids=${elementIds.join(',')}`);
-      this.noteRemoved(applicationName, elementIds);
+      this.ledger.noteRemoved(applicationName, elementIds);
       return;
     }
 
-    try {
-      await this.deviceRequest(
-        operation,
-        `http://${this.ipAddress}/api/display/draw`,
-        {
-          method: 'DELETE',
-          headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ application_name: applicationName, element_ids: elementIds })
-        },
-        // Only for one id: on several, a 400 means one of them was missing and
-        // none were removed, which is not "already gone".
-        { absentIsExpected: elementIds.length === 1 }
-      );
-    } catch (err) {
-      // A 400 on a single id is the device saying it does not hold it. On
-      // several ids it says only that one of them is missing, and that nothing
-      // was removed, so the others stay listed.
-      if (elementIds.length === 1 && isElementAbsent(err)) {
-        this.noteRemoved(applicationName, elementIds);
+    await this.queued<void>(
+      () => {
+        if (elementIds.length === 1 && this.ledger.isKnownAbsent(applicationName, elementIds[0])) return { skip: undefined };
+        const waitMs = this.ledger.couldEmpty(applicationName, elementIds)
+          ? this.ledger.settleRemainingMs(this.animationTeardownSettleMs)
+          : 0;
+        return waitMs > 0 ? { waitMs } : SEND;
+      },
+      async () => {
+        try {
+          await this.deviceRequest(
+            operation,
+            `http://${this.ipAddress}/api/display/draw`,
+            {
+              method: 'DELETE',
+              headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify({ application_name: applicationName, element_ids: elementIds })
+            },
+            // Only for one id: on several, a 400 means one of them was missing
+            // and none were removed, which is not "already gone".
+            { absentIsExpected: elementIds.length === 1 }
+          );
+        } catch (err) {
+          // A 400 on a single id is the device saying it does not hold it. On
+          // several ids it says only that one of them is missing, and that
+          // nothing was removed, so the others stay listed.
+          if (elementIds.length === 1 && isElementAbsent(err)) {
+            this.ledger.noteRemoved(applicationName, elementIds);
+          }
+          throw err;
+        }
+        this.ledger.noteRemoved(applicationName, elementIds);
       }
-      throw err;
-    }
-    this.noteRemoved(applicationName, elementIds);
+    );
   }
 
   /**
@@ -1774,8 +1851,8 @@ export class BusyBarDriver extends EventEmitter {
     // the previous host would be reported against the new one.
     this.lastTransportError = null;
     this.consecutivePingFailures = 0;
-    // Another address may be another bar, with a screen of its own to clear.
-    this.emptiedApplications.clear();
+    // Another address may be another bar, with a screen of its own.
+    this.ledger.forgetAll();
 
     return this.connect();
   }

@@ -45,6 +45,11 @@ async function withLiveDriver(
 }
 
 const status = (code: number): Response => ({ ok: code >= 200 && code < 300, status: code, json: async () => ({}) }) as Response;
+/**
+ * Lets a queued upload reach `fetch`. Display requests go through the driver's
+ * queue, so the request starts a few turns after the call that asks for it.
+ */
+const uploadStarted = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
 
 describe('BusyBarDriver Unit Tests', () => {
   let driver: BusyBarDriver;
@@ -765,10 +770,14 @@ describe('BusyBarDriver failure reporting', () => {
             : status(200),
         async (driver, calls) => {
           const pending = driver.sendPixelFrame(frame);
-          await driver.clearDisplay();
+          // Display requests are queued, so the clear waits for the upload;
+          // it supersedes the frame the moment it is asked for.
+          const clearing = driver.clearDisplay();
+          await uploadStarted();
           releaseUpload();
 
           await expect(pending).resolves.toBe('superseded');
+          await expect(clearing).resolves.toBe('cleared');
           expect(calls.some(c => c.startsWith('POST') && c.includes('/api/display/draw'))).toBe(false);
         }
       );
@@ -816,8 +825,11 @@ describe('BusyBarDriver failure reporting', () => {
             : status(200),
         async driver => {
           const pending = driver.sendPixelFrame(Buffer.from('png'));
-          await expect(driver.drawOverlay('sprintticker', icon)).resolves.toBe('drawn');
+          // Queued behind the upload, and drawn before the frame's draw.
+          const overlay = driver.drawOverlay('sprintticker', icon);
+          await uploadStarted();
           releaseUpload();
+          await expect(overlay).resolves.toBe('drawn');
 
           // The icon belongs to the frame under it; abandoning that frame's draw
           // would leave the icon over the previous screen's text.
@@ -1003,7 +1015,7 @@ describe('BusyBarDriver display teardown', () => {
   });
 
   it('ClearDisplay_WithAnimations_WaitsForTheDeviceToSettleBeforeReleasing', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
       const { requests, respond } = recorder();
       await withLiveDriver(respond, async driver => {
@@ -1023,7 +1035,7 @@ describe('BusyBarDriver display teardown', () => {
   });
 
   it('ClearDisplay_NothingAnimated_DoesNotWait', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
       const { requests, respond } = recorder();
       await withLiveDriver(respond, async driver => {
@@ -1240,9 +1252,11 @@ describe('BusyBarDriver display teardown', () => {
             : status(200),
         async driver => {
           const pending = driver.sendPixelFrame(Buffer.from('png'));
-          await driver.clearDisplay();
+          const clearing = driver.clearDisplay();
+          await uploadStarted();
           releaseUpload();
           await expect(pending).resolves.toBe('superseded');
+          await clearing;
           expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([]);
         },
         noSettle

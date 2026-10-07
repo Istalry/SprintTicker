@@ -30,9 +30,9 @@ export type RuleId =
   | 'close-with-image-and-animation'
   /** Two display or asset requests in flight at once. Nothing on the firmware is known to need it, and races between them are what the clears had. */
   | 'overlapping-display-requests'
-  /** A full clear of a screen already closed, after something has been drawn: a request with nothing to do. */
+  /** A full clear of a screen already closed, once a clear has made the panel knowable: a request with nothing to do. */
   | 'redundant-clear'
-  /** A removal naming an element the device does not hold: answered 400. */
+  /** A removal naming an element the device does not hold, once a clear has made the panel knowable: answered 400. */
   | 'absent-element-removal'
   /** An upload over the `.anim` an element is playing: answered 508. */
   | 'upload-over-playing-anim'
@@ -106,8 +106,12 @@ export class FirmwareSimulator {
   private readonly startedAt = Date.now();
   private lastAnimationRemovedAt: number | null = null;
   private inFlight = 0;
-  /** A clear before anything is drawn is not redundant: the driver cannot know a previous run left nothing. */
-  private everDrawn = false;
+  /**
+   * Whether a full clear has been carried out. Until then the driver cannot
+   * know what a previous run left on the panel, so a clear of a closed screen
+   * or a removal of an absent element is not one it could have avoided.
+   */
+  private everCleared = false;
   private restoreFetch: (() => void) | null = null;
 
   constructor(options: FirmwareSimulatorOptions) {
@@ -217,7 +221,6 @@ export class FirmwareSimulator {
     this.checkDrawContract(label, payload);
     const elements = (payload.elements as Array<{ id: string; type: string; path?: string }>) ?? [];
     this.screenOpen = true;
-    this.everDrawn = true;
     for (const el of elements) this.elements.set(el.id, { type: el.type, path: el.path });
     this.snapshot();
     return this.answer(200);
@@ -226,7 +229,9 @@ export class FirmwareSimulator {
   private remove(label: string, ids: string[]): Response {
     const missing = ids.filter(id => !this.elements.has(id));
     if (!this.screenOpen || missing.length > 0) {
-      this.violate('absent-element-removal', label, `not on the panel: ${(this.screenOpen ? missing : ids).join(', ')}`);
+      if (this.everCleared) {
+        this.violate('absent-element-removal', label, `not on the panel: ${(this.screenOpen ? missing : ids).join(', ')}`);
+      }
       return this.answer(400);
     }
     // The settle is measured from the animations that left *before* this
@@ -247,8 +252,10 @@ export class FirmwareSimulator {
   }
 
   private clear(label: string): Response {
+    const knowable = this.everCleared;
+    this.everCleared = true;
     if (!this.screenOpen) {
-      if (this.everDrawn) this.violate('redundant-clear', label, 'the screen is already closed');
+      if (knowable) this.violate('redundant-clear', label, 'the screen is already closed');
       return this.answer(200);
     }
     const types = [...this.elements.values()].map(el => el.type);

@@ -3,6 +3,7 @@ import { BusyBarDriver, DEFAULT_DRAW_PRIORITY } from './busybar-driver';
 import { describeError, DrawOutcome, isElementAbsent } from './device-errors';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
 import { AnimationData, defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
+import { SerialQueue } from './serial-queue';
 
 /**
  * Service to stream a sequence of PNG frames to the physical BUSY Bar display.
@@ -62,7 +63,7 @@ export class AnimationPlayer {
    */
   private sceneOnDevice: string | null = null;
   /** Orders scene draws and removals; see `withSceneLock`. */
-  private sceneLock: Promise<void> = Promise.resolve();
+  private readonly sceneLock = new SerialQueue();
 
   constructor(driver: BusyBarDriver, animationsDir?: string) {
     this.driver = driver;
@@ -398,19 +399,8 @@ export class AnimationPlayer {
    * interleaved, a late removal takes down the scene that was just drawn, and
    * with the frame already removed that empties the screen.
    */
-  private async withSceneLock<T>(operation: () => Promise<T>): Promise<T> {
-    const previous = this.sceneLock;
-    let release: () => void = () => undefined;
-    this.sceneLock = new Promise<void>(resolve => {
-      release = resolve;
-    });
-    try {
-      // Never rejects: every link is resolved by a `finally` like this one.
-      await previous;
-      return await operation();
-    } finally {
-      release();
-    }
+  private withSceneLock<T>(operation: () => Promise<T>): Promise<T> {
+    return this.sceneLock.run(operation);
   }
 
   /**

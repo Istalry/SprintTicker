@@ -187,13 +187,6 @@ describe('Front display screen lifecycle', () => {
     renderer.setContextMode('LUNCH');
     await sceneShowing();
     renderer.setShowIdleClockFallback(true);
-    // Known findings, both for the driver's display queue to fix (ROADMAP,
-    // "Make the driver the one guardian"). The scene's retirement removes an
-    // animation during the release's settle, and the release closes counting
-    // only its own removal -- too soon after the scene's. And when the
-    // retirement empties the panel, the driver does not count that as
-    // emptied, so the release's DELETE lands on a closed screen.
-    allowed = ['close-too-soon-after-animation', 'redundant-clear'];
 
     const release = vi.spyOn(driver, 'clearDisplay');
     renderer.setContextMode('WORK');
@@ -324,6 +317,86 @@ describe('Front display screen lifecycle', () => {
       await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON, 'absent'])).rejects.toThrow();
 
       expect(warn.mock.calls.flat().join(' ')).toContain('returned 400');
+    });
+  });
+
+  /**
+   * The driver's display queue and ledger: the rules hold whoever asks for
+   * what, and in whatever order.
+   */
+  describe('display queue', () => {
+    /** A device that takes its time, so requests could overlap if anything let them. */
+    function slowDevice(): void {
+      canvas.uninstall();
+      canvas = new FirmwareSimulator({ settleMs: SETTLE_MS, latencyMs: 5 }).install();
+      requests = canvas.requests;
+    }
+
+    const iconElement = {
+      id: FRONT_ELEMENT_IDS.ICON, type: 'animation', path: 'icon_gear_16x16.anim',
+      x: 0, y: 0, display: 'front', loop: true, z_index: 2
+    };
+
+    it('DisplayRequests_FrameOverlayAndClearAtOnce_NeverOverlap', async () => {
+      slowDevice();
+
+      await Promise.all([
+        driver.sendPixelFrame(Buffer.from('frame')),
+        driver.drawOverlay(DEVICE_APPLICATION_NAME, [iconElement]),
+        driver.clearDisplay()
+      ]);
+
+      expect(canvas.maxInFlight).toBe(1);
+    });
+
+    it('StopWithTheIdleClock_ClearAndSceneInOneTick_NeverCloseOnTheScene', async () => {
+      // Found by the stress test (seed 1025): the clear checked "nothing drawn
+      // since" before the LOGGED scene's draw had answered, then closed the
+      // screen on the frame and the scene together.
+      slowDevice();
+      renderer.setShowIdleClockFallback(true);
+      renderer.renderActiveSession(tracking);
+      await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME), 'the tracker');
+
+      renderer.renderActiveSession(null);
+      renderer.renderTaskLogged(1);
+      await waitFor(() => has(FRONT_ELEMENT_IDS.SCENE), 'the LOGGED scene');
+      await new Promise(resolve => setTimeout(resolve, SETTLE_MS * 3));
+
+      expect(canvas.violationsOf('close-with-image-and-animation')).toEqual([]);
+    });
+
+    it('RemoveDisplayElements_KnownAbsentAfterAClear_SendsNothing', async () => {
+      await showPausedTask();
+      await driver.clearDisplay();
+      const sent = requests.length;
+
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]);
+
+      expect(requests).toHaveLength(sent);
+    });
+
+    it('UploadAsset_OverTheAnimationPlaying_IsNotSent', async () => {
+      // The device answers 508 and holds the file already.
+      await showPausedTask();
+      const playing = String(canvas.elements.get(FRONT_ELEMENT_IDS.ICON)?.path);
+      const sent = requests.length;
+
+      await driver.uploadAsset(DEVICE_APPLICATION_NAME, playing, Buffer.from('anim'));
+
+      expect(requests).toHaveLength(sent);
+    });
+
+    it('RemoveDisplayElements_LastElementSoonAfterAnAnimationLeft_WaitsForTheSettle', async () => {
+      // Emptying the panel closes the screen, whichever call does it: the
+      // settle is not only the clear's.
+      await showPausedTask();
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]);
+
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]);
+
+      expect(canvas.closes).toHaveLength(1);
+      expect(canvas.closes[0].sinceLastAnimationRemovedMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
     });
   });
 });

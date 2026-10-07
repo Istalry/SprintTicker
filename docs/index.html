@@ -1399,8 +1399,19 @@
       idle clock, quit); the driver tracks what it has drawn (<code>shownElementIds</code>) and
       takes every animation down by id, with a pause, before that clear. Clears are
       serialised: a second one running alongside would find the animation already
-      gone, skip the pause and close at once. One that finds the panel already
-      emptied, with nothing drawn since, sends nothing.</p>
+      gone, skip the pause and close at once. One that finds the panel known to be
+      empty sends nothing.</p>
+      <p><strong>The driver enforces the device&#39;s rules for everyone.</strong> Frames, the animation
+      player, the icon animator and the idle clock&#39;s clear each order their own
+      requests and none sees the others, so the driver puts every display and asset
+      request through one <code>SerialQueue</code>. Each request&#39;s guard runs at the head of
+      the queue, after every earlier request has answered, against a
+      <code>DisplayLedger</code> of what the panel holds: a removal of an element known to be
+      absent, a clear of a panel known to be empty and an upload over a playing
+      <code>.anim</code> are answered without a request, and anything that could empty the
+      panel waits for the settle after the last animation left. The panel is
+      &quot;known&quot; once a clear has emptied it; before that, or after a request that got
+      no answer, nothing is skipped.</p>
       <p><strong>Animated icons are a second layer, not a second owner.</strong> The screen is still
       one PNG with the icon&#39;s static pixels in it. <code>IconAnimator</code> lays the icon&#39;s
       16×16 <code>.anim</code> over them as element <code>icon_anim</code>, and <code>z_index</code> keeps it on top
@@ -1659,7 +1670,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1594 tests across 83 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1649 tests across 86 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2291,14 +2302,27 @@
       else. An id the device does not hold answers <strong>400</strong>, so it throws <code>rejected</code>;
       a caller removing something that may already be gone has to read that as
       success -- <code>isElementAbsent(err)</code> says so, for a 400 and nothing else. The
-      driver logs that 400 on a single id as &quot;already gone&quot;, not as a warning. <strong>Several
+      driver logs that 400 on a single id as &quot;already gone&quot;, not as a warning. A
+      single id the driver <em>knows</em> is absent -- the panel was cleared and the element
+      not drawn since -- resolves without a request. <strong>Several
       ids in one call are all or nothing</strong>: one missing id fails the request and
-      removes none of the others, so remove one id per call when any may be gone.</p>
+      removes none of the others, so remove one id per call when any may be gone.
+      A removal that could empty the panel waits, like a clear, for the settle after
+      the last animation left.</p>
+      <p><code>uploadAsset</code> over the <code>.anim</code> an element is playing resolves without a
+      request: the device would answer 508, and holds the file already.</p>
+      <p><strong>Every display and asset request is queued.</strong> Draws, frames, overlays,
+      removals, clears and uploads go out one at a time, whoever asks, and each
+      one&#39;s guard -- superseded, already absent, already empty, still settling --
+      is decided when its turn comes, after every earlier request has answered.
+      Status, brightness, audio, keys and time are not queued.</p>
       <p><code>shownElementIds(app, type?)</code> lists what the driver has drawn for an
       application and not yet removed -- id and element type, from its own
       successful draws and removals, since the device has no endpoint that lists
       them. It can only be stale in one direction (an element the device dropped by
-      itself), and a removal of such an element answers 400, which reads as gone.</p>
+      itself), and a removal of such an element answers 400, which reads as gone. A
+      draw or a clear that got no answer may or may not have landed, so the panel
+      is no longer vouched for, and nothing is skipped on it until the next clear.</p>
       <h4>Emptying the panel closes the device&#39;s screen</h4>
       <p>When an application&#39;s element set becomes empty -- a full <code>DELETE /api/display/draw</code>, or removing its last element by id -- the firmware closes
       its screen, and reopens it on the next draw.</p>

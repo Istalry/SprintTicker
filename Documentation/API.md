@@ -398,15 +398,30 @@ Draws return a value instead of throwing for the answers that are not failures:
 else. An id the device does not hold answers **400**, so it throws `rejected`;
 a caller removing something that may already be gone has to read that as
 success -- `isElementAbsent(err)` says so, for a 400 and nothing else. The
-driver logs that 400 on a single id as "already gone", not as a warning. **Several
+driver logs that 400 on a single id as "already gone", not as a warning. A
+single id the driver *knows* is absent -- the panel was cleared and the element
+not drawn since -- resolves without a request. **Several
 ids in one call are all or nothing**: one missing id fails the request and
 removes none of the others, so remove one id per call when any may be gone.
+A removal that could empty the panel waits, like a clear, for the settle after
+the last animation left.
+
+`uploadAsset` over the `.anim` an element is playing resolves without a
+request: the device would answer 508, and holds the file already.
+
+**Every display and asset request is queued.** Draws, frames, overlays,
+removals, clears and uploads go out one at a time, whoever asks, and each
+one's guard -- superseded, already absent, already empty, still settling --
+is decided when its turn comes, after every earlier request has answered.
+Status, brightness, audio, keys and time are not queued.
 
 `shownElementIds(app, type?)` lists what the driver has drawn for an
 application and not yet removed -- id and element type, from its own
 successful draws and removals, since the device has no endpoint that lists
 them. It can only be stale in one direction (an element the device dropped by
-itself), and a removal of such an element answers 400, which reads as gone.
+itself), and a removal of such an element answers 400, which reads as gone. A
+draw or a clear that got no answer may or may not have landed, so the panel
+is no longer vouched for, and nothing is skipped on it until the next clear.
 
 ### Emptying the panel closes the device's screen
 

@@ -299,8 +299,20 @@ Steps 1-2 and 4 address the same element id, so they run under one lock in
 idle clock, quit); the driver tracks what it has drawn (`shownElementIds`) and
 takes every animation down by id, with a pause, before that clear. Clears are
 serialised: a second one running alongside would find the animation already
-gone, skip the pause and close at once. One that finds the panel already
-emptied, with nothing drawn since, sends nothing.
+gone, skip the pause and close at once. One that finds the panel known to be
+empty sends nothing.
+
+**The driver enforces the device's rules for everyone.** Frames, the animation
+player, the icon animator and the idle clock's clear each order their own
+requests and none sees the others, so the driver puts every display and asset
+request through one `SerialQueue`. Each request's guard runs at the head of
+the queue, after every earlier request has answered, against a
+`DisplayLedger` of what the panel holds: a removal of an element known to be
+absent, a clear of a panel known to be empty and an upload over a playing
+`.anim` are answered without a request, and anything that could empty the
+panel waits for the settle after the last animation left. The panel is
+"known" once a clear has emptied it; before that, or after a request that got
+no answer, nothing is skipped.
 
 **Animated icons are a second layer, not a second owner.** The screen is still
 one PNG with the icon's static pixels in it. `IconAnimator` lays the icon's
@@ -548,7 +560,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1594 tests across 83 files, in two projects: `main` in Node for
+Vitest, 1649 tests across 86 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

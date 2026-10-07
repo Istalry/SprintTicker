@@ -574,13 +574,16 @@ Also worth doing while this area is open:
   - **Requests overlapping** all the time (about a thousand in sixty runs), and
     removals and clears the driver could have known were no-ops.
 
-  Step 2 fixes those: one queue for every display and asset request, so a
-  check and the request it guards are atomic; a ledger of what the panel
-  holds, which skips removals of absent elements, clears of an empty screen
-  and uploads over a playing `.anim`; the settle enforced before anything
-  that empties the panel, not only in `clearDisplay`. The stress test lands
-  with it. Step 3 records upload latency and screen closes, and warns when
-  latency climbs the way it did before every measured hang.
+  **Step 2 is done** and fixes those: one queue for every display and asset
+  request, so a check and the request it guards are atomic; a ledger of what
+  the panel holds, which skips removals of absent elements, clears of an
+  empty screen and uploads over a playing `.anim`; the settle enforced before
+  anything that empties the panel, not only in `clearDisplay`. The stress
+  test runs 30 generated days in CI with every rule enforced; 2000 ran clean
+  locally, where the code before the 10-05 fix broke the close rules in a
+  quarter of sixty. Still to do, step 3: record upload latency and screen
+  closes, and warn when latency climbs the way it did before every measured
+  hang. Then a session of compiles on the real bar.
 - [ ] **Display state found inconsistent by the same stress run**, none of it a
   risk to the device:
   - A one-shot scene (DONE!, LOGGED) ends by rendering the session without
@@ -948,8 +951,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.79 statements / 86.95 branches / 92.35 functions / 95.34 lines across 1594
-tests in 83 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**93.92 statements / 87.24 branches / 92.75 functions / 95.47 lines across 1649
+tests in 86 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
