@@ -398,5 +398,19 @@ describe('Front display screen lifecycle', () => {
       expect(canvas.closes).toHaveLength(1);
       expect(canvas.closes[0].sinceLastAnimationRemovedMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
     });
+
+    it('DisplayHealth_UploadsClosesAndSkips_AreWhatTheDeviceSaw', async () => {
+      await showPausedTask();
+      await driver.clearDisplay();
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]);
+
+      const health = driver.getDeviceStatus().displayHealth;
+      const uploads = requests.filter(r => r.startsWith('POST /api/assets/upload')).length;
+      expect(health.recentUploadMs).toHaveLength(Math.min(uploads, 10));
+      expect(health.uploadMedianMs).not.toBeNull();
+      expect(health.screenClosesLastHour).toBe(canvas.closes.length);
+      expect(health.requestsSkipped).toBeGreaterThanOrEqual(1);
+      expect(health.latencyWarning).toBe(false);
+    });
   });
 });

@@ -581,9 +581,11 @@ Also worth doing while this area is open:
   anything that empties the panel, not only in `clearDisplay`. The stress
   test runs 30 generated days in CI with every rule enforced; 2000 ran clean
   locally, where the code before the 10-05 fix broke the close rules in a
-  quarter of sixty. Still to do, step 3: record upload latency and screen
-  closes, and warn when latency climbs the way it did before every measured
-  hang. Then a session of compiles on the real bar.
+  quarter of sixty. **Step 3 is done**: `DisplayHealthMonitor` records the
+  last ten upload times, screen closes per hour and skipped requests, shown
+  under Display Health in Device Diagnostics and carried in the diagnostics
+  bundle, and logs one warning when the median upload passes 250 ms. Still to
+  do: a session of compiles on the real bar, and reading a day's bundle back.
 - [ ] **Display state found inconsistent by the same stress run**, none of it a
   risk to the device:
   - A one-shot scene (DONE!, LOGGED) ends by rendering the session without
@@ -951,8 +953,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.92 statements / 87.24 branches / 92.75 functions / 95.47 lines across 1649
-tests in 86 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**93.98 statements / 87.32 branches / 92.84 functions / 95.51 lines across 1663
+tests in 88 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

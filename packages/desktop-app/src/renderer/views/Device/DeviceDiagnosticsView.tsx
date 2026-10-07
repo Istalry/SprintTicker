@@ -202,6 +202,40 @@ export const DeviceDiagnosticsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Display health: what came before every measured hang of the bar. */}
+      <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
+        <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
+          <Activity className={`w-4 h-4 ${deviceStatus.displayHealth.latencyWarning ? 'text-accent-red' : 'text-accent-green'}`} />
+          <span>Display Health</span>
+        </h3>
+        {deviceStatus.displayHealth.latencyWarning && (
+          <p className="text-xs text-accent-red">
+            Uploads to the bar are slow. On firmware 1.2.4 they slowed like this before every freeze that was
+            measured. If the bar stops answering, export the logs below before restarting it.
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary">Upload time (median):</span>
+            <span className={`font-bold ${deviceStatus.displayHealth.latencyWarning ? 'text-accent-red' : 'text-white'}`}>
+              {deviceStatus.displayHealth.uploadMedianMs === null ? 'No uploads yet' : `${deviceStatus.displayHealth.uploadMedianMs} ms`}
+            </span>
+          </div>
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary">Screen closes, last hour:</span>
+            <span className="font-bold text-white">{deviceStatus.displayHealth.screenClosesLastHour}</span>
+          </div>
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary">Requests not needed (skipped):</span>
+            <span className="font-bold text-white">{deviceStatus.displayHealth.requestsSkipped}</span>
+          </div>
+          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
+            <span className="text-text-secondary">Longest request queue:</span>
+            <span className="font-bold text-white">{deviceStatus.displayHealth.maxQueueLength}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Hardware Telemetry Detail Panel */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
         <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">

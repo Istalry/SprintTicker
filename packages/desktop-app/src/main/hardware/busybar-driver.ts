@@ -5,6 +5,7 @@ import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
 import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, describeError, isElementAbsent } from './device-errors';
 import { DisplayLedger } from './display-ledger';
+import { DisplayHealthMonitor } from './display-health';
 import { SerialQueue } from './serial-queue';
 
 /**
@@ -405,6 +406,8 @@ export class BusyBarDriver extends EventEmitter {
   private readonly displayQueue = new SerialQueue();
   /** Clears, one at a time; see `clearDisplay`. */
   private readonly clearQueue = new SerialQueue();
+  /** Upload times, screen closes and skipped requests, for the diagnostics bundle; see `DisplayHealthMonitor`. */
+  private readonly health = new DisplayHealthMonitor();
   private readonly animationTeardownSettleMs: number;
   private enabled: boolean = true;
 
@@ -745,7 +748,8 @@ export class BusyBarDriver extends EventEmitter {
         firmwareVersion: 'N/A',
         webSocketPingMs: 0,
         framesSent: this.framesSent,
-        framesFailed: this.framesFailed
+        framesFailed: this.framesFailed,
+        displayHealth: this.health.snapshot()
       };
     }
 
@@ -762,7 +766,8 @@ export class BusyBarDriver extends EventEmitter {
       firmwareVersion: this.isMockMode ? `${this.firmwareVersion}-mock` : this.firmwareVersion,
       webSocketPingMs: this.pingMs,
       framesSent: this.framesSent,
-      framesFailed: this.framesFailed
+      framesFailed: this.framesFailed,
+      displayHealth: this.health.snapshot()
     };
   }
 
@@ -929,6 +934,16 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   private async uploadRequest(operation: string, url: string, binaryData: Buffer | Uint8Array): Promise<void> {
+    const started = Date.now();
+    try {
+      await this.uploadRequestUntimed(operation, url, binaryData);
+    } finally {
+      // Answered or not: a timeout is the slowest upload of all.
+      this.health.recordUpload(Date.now() - started);
+    }
+  }
+
+  private async uploadRequestUntimed(operation: string, url: string, binaryData: Buffer | Uint8Array): Promise<void> {
     await this.deviceRequest(
       operation,
       url,
@@ -1059,6 +1074,7 @@ export class BusyBarDriver extends EventEmitter {
             }
           }
           this.ledger.noteCleared(applicationName);
+          this.health.recordScreenClose();
           return 'cleared';
         }
       );
@@ -1115,10 +1131,14 @@ export class BusyBarDriver extends EventEmitter {
    */
   private async queued<T>(gate: () => DisplayGate<T>, send: () => Promise<T>): Promise<T> {
     for (;;) {
+      this.health.recordQueueLength(this.displayQueue.length + 1);
       const decision = await this.displayQueue.run(async (): Promise<{ value: T } | { waitMs: number }> => {
         const verdict = gate();
         if ('send' in verdict) return { value: await send() };
-        if ('skip' in verdict) return { value: verdict.skip };
+        if ('skip' in verdict) {
+          this.health.recordSkipped();
+          return { value: verdict.skip };
+        }
         return verdict;
       });
       if ('value' in decision) return decision.value;
@@ -1308,6 +1328,7 @@ export class BusyBarDriver extends EventEmitter {
           // which every caller of a single-id removal reads as success. As a
           // warning it filled the log on every idle transition.
           console.log(`[BusyBarDriver] ${operation}: not on the display (400), already gone.`);
+          this.health.recordAlreadyGone();
           break;
         }
         console.warn(`[BusyBarDriver] ${operation}: device returned ${response?.status}.`);
@@ -1458,12 +1479,12 @@ export class BusyBarDriver extends EventEmitter {
       return;
     }
 
+    let couldEmpty = false;
     await this.queued<void>(
       () => {
         if (elementIds.length === 1 && this.ledger.isKnownAbsent(applicationName, elementIds[0])) return { skip: undefined };
-        const waitMs = this.ledger.couldEmpty(applicationName, elementIds)
-          ? this.ledger.settleRemainingMs(this.animationTeardownSettleMs)
-          : 0;
+        couldEmpty = this.ledger.couldEmpty(applicationName, elementIds);
+        const waitMs = couldEmpty ? this.ledger.settleRemainingMs(this.animationTeardownSettleMs) : 0;
         return waitMs > 0 ? { waitMs } : SEND;
       },
       async () => {
@@ -1490,6 +1511,10 @@ export class BusyBarDriver extends EventEmitter {
           throw err;
         }
         this.ledger.noteRemoved(applicationName, elementIds);
+        // Counted when nothing listed is left. On a panel the ledger cannot
+        // vouch for the screen may have stayed open; a close counted that did
+        // not happen is the safer error in a figure read for hang risk.
+        if (couldEmpty) this.health.recordScreenClose();
       }
     );
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DeviceStatusDTO } from '../../shared/dtos';
-import { DEFAULT_USB_IP } from '../../shared/device-constants';
+import { DEFAULT_USB_IP, EMPTY_DISPLAY_HEALTH } from '../../shared/device-constants';
 
 /**
  * Custom React hook subscribing to physical BUSY Bar connection status and telemetry updates.
@@ -21,7 +21,8 @@ export function useDeviceStatus() {
     firmwareVersion: 'N/A',
     framesSent: 0,
     framesFailed: 0,
-    webSocketPingMs: 0
+    webSocketPingMs: 0,
+    displayHealth: EMPTY_DISPLAY_HEALTH
   });
 
   useEffect(() => {

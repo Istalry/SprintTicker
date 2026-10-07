@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import { followBar } from '../src/main/services/follow-bar';
 import { DeviceStatusDTO, ArgumentNullException } from '../src/shared/dtos';
+import { EMPTY_DISPLAY_HEALTH } from '../src/shared/device-constants';
 
 /**
  * The Windows notification listener polls every couple of seconds to mirror
@@ -10,7 +11,8 @@ import { DeviceStatusDTO, ArgumentNullException } from '../src/shared/dtos';
 describe('followBar', () => {
   const status = (enabled: boolean, connected = false): DeviceStatusDTO => ({
     enabled, connected, ipAddress: '10.0.4.20', connectionType: 'usb', frontBrightness: null,
-    backBrightness: null, batteryPercent: 0, firmwareVersion: 'N/A', webSocketPingMs: 0, framesSent: 0, framesFailed: 0
+    backBrightness: null, batteryPercent: 0, firmwareVersion: 'N/A', webSocketPingMs: 0, framesSent: 0, framesFailed: 0,
+    displayHealth: EMPTY_DISPLAY_HEALTH
   });
 
   const driverWith = (enabled: boolean) => Object.assign(new EventEmitter(), { isEnabled: () => enabled });

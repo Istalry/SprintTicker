@@ -1,4 +1,4 @@
-import { DeviceConfigDTO } from './dtos';
+import { DeviceConfigDTO, DisplayHealthDTO } from './dtos';
 
 /**
  * Address the BUSY Bar answers on over its USB Ethernet link.
@@ -144,4 +144,15 @@ export const DEFAULT_DEVICE_CONFIG: DeviceConfigDTO = {
   showIdleClockFallback: true,
   ipAddress: DEFAULT_USB_IP,
   apiToken: ''
+};
+
+/** Display health before anything has been measured. */
+export const EMPTY_DISPLAY_HEALTH: DisplayHealthDTO = {
+  uploadMedianMs: null,
+  recentUploadMs: [],
+  latencyWarning: false,
+  screenClosesLastHour: 0,
+  requestsSkipped: 0,
+  removalsAlreadyGone: 0,
+  maxQueueLength: 0
 };

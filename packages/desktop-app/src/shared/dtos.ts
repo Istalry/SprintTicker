@@ -123,6 +123,33 @@ export interface DeviceStatusDTO {
   webSocketPingMs: number;
   framesSent: number;
   framesFailed: number;
+  /** How the display side of the device is holding up; see `DisplayHealthDTO`. */
+  displayHealth: DisplayHealthDTO;
+}
+
+/**
+ * The figures that came before every measured hang of the bar, kept so the
+ * next one shows its run-up in the diagnostics bundle.
+ *
+ * On firmware 1.2.4 (2026-09-30), uploads slowed from about 50 ms to 300-600
+ * ms before the bar stopped answering, every time; and what hung it was
+ * closing its screen. A status code says none of that.
+ */
+export interface DisplayHealthDTO {
+  /** Median time of the recent asset uploads, in ms; null before the first. */
+  uploadMedianMs: number | null;
+  /** The recent upload times, oldest first, in ms. */
+  recentUploadMs: number[];
+  /** True while the median is at the level measured before hangs. */
+  latencyWarning: boolean;
+  /** The device's screen closed in the last hour: clears sent, and removals that emptied the panel. */
+  screenClosesLastHour: number;
+  /** Requests the driver answered without sending, since start: superseded, already absent, already empty, already playing. */
+  requestsSkipped: number;
+  /** Removals the device answered "not there" (400), since start. */
+  removalsAlreadyGone: number;
+  /** The most display requests ever waiting their turn at once, since start. */
+  maxQueueLength: number;
 }
 
 export interface ScheduleSettingsDTO {

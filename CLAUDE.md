@@ -425,6 +425,13 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     test found a clear and a scene crossing in flight and closing the screen
     on both, on the stop-a-task path. **A new request that touches the panel
     goes through `queued()`**, and records what it changed before it returns.
+  - **The run-up to a hang is recorded, not acted on.** `DisplayHealthMonitor`
+    keeps the last ten upload times, the screen closes of the last hour and
+    the requests the ledger skipped, in `DeviceStatusDTO.displayHealth` and so
+    in every diagnostics bundle; a median above `DEVICE_LATENCY_WARNING_MS`
+    (250 ms) logs one warning per episode. Doing something on that signal --
+    fewer redraws, no closes -- has not been measured on a bar, and is a
+    decision of its own.
   - **An upload over an `.anim` the device is playing answers 508** ("Failed to
     open file for writing"). Restarting the scene that is still on the panel
     therefore draws it from the copy the device holds instead of uploading it

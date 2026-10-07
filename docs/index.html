@@ -991,7 +991,11 @@
       does happen, unplug and replug the bar, then
       export the logs from Device Diagnostics: the lines just before the freeze say
       what the app was drawing. Uploads taking several hundred milliseconds, rather
-      than about fifty, are the warning sign.</p>
+      than about fifty, are the warning sign, and Device Diagnostics shows them
+      under <strong>Display Health</strong>: the median upload time, turning red with a warning
+      when it reaches that level, and how many times the screen closed in the last
+      hour. If you see the warning, export the logs before restarting the bar; the
+      bundle then holds the run-up to the freeze.</p>
       <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
       higher priority. Check Priority Rules and your current mode.</p>
       <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
@@ -1670,7 +1674,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1649 tests across 86 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1663 tests across 88 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2316,6 +2320,12 @@
       one&#39;s guard -- superseded, already absent, already empty, still settling --
       is decided when its turn comes, after every earlier request has answered.
       Status, brightness, audio, keys and time are not queued.</p>
+      <p><code>getDeviceStatus().displayHealth</code> reports what came before every measured
+      hang: the median and the last ten asset upload times, <code>latencyWarning</code> while
+      that median is above 250 ms (withdrawn below 125), the screen closes of the
+      last hour, and since start the requests answered without sending, the
+      removals the device answered 400, and the longest queue. Observation only:
+      nothing the driver sends depends on it.</p>
       <p><code>shownElementIds(app, type?)</code> lists what the driver has drawn for an
       application and not yet removed -- id and element type, from its own
       successful draws and removals, since the device has no endpoint that lists

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import type { IElectronAPI } from '../../src/preload/electron-api';
 import type { ActiveSessionDTO, DeviceStatusDTO, HardwareDisplayStateDTO } from '../../src/shared/dtos';
-import { DEFAULT_DEVICE_CONFIG } from '../../src/shared/device-constants';
+import { DEFAULT_DEVICE_CONFIG, EMPTY_DISPLAY_HEALTH } from '../../src/shared/device-constants';
 import { DEFAULT_PRIORITY_RULES } from '../../src/shared/priority-defaults';
 import { DEFAULT_PROVIDER_EVENT_SETTINGS, type ProviderEventSettingsDTO } from '../../src/shared/provider-events';
 import {
@@ -53,7 +53,8 @@ export const CONNECTED_DEVICE: DeviceStatusDTO = {
   firmwareVersion: '1.2.4',
   webSocketPingMs: 4,
   framesSent: 0,
-  framesFailed: 0
+  framesFailed: 0,
+  displayHealth: EMPTY_DISPLAY_HEALTH
 };
 
 /** No-bar mode, as the driver reports it: not dialling, so never connected. */

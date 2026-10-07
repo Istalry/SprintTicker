@@ -479,7 +479,11 @@ now keeps the compiling screen up instead of clearing between each one. If it
 does happen, unplug and replug the bar, then
 export the logs from Device Diagnostics: the lines just before the freeze say
 what the app was drawing. Uploads taking several hundred milliseconds, rather
-than about fifty, are the warning sign.
+than about fifty, are the warning sign, and Device Diagnostics shows them
+under **Display Health**: the median upload time, turning red with a warning
+when it reaches that level, and how many times the screen closed in the last
+hour. If you see the warning, export the logs before restarting the bar; the
+bundle then holds the run-up to the freeze.
 
 **The bar shows something stale.** Something is holding the display lock at a
 higher priority. Check Priority Rules and your current mode.

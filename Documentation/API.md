@@ -415,6 +415,13 @@ one's guard -- superseded, already absent, already empty, still settling --
 is decided when its turn comes, after every earlier request has answered.
 Status, brightness, audio, keys and time are not queued.
 
+`getDeviceStatus().displayHealth` reports what came before every measured
+hang: the median and the last ten asset upload times, `latencyWarning` while
+that median is above 250 ms (withdrawn below 125), the screen closes of the
+last hour, and since start the requests answered without sending, the
+removals the device answered 400, and the longest queue. Observation only:
+nothing the driver sends depends on it.
+
 `shownElementIds(app, type?)` lists what the driver has drawn for an
 application and not yet removed -- id and element type, from its own
 successful draws and removals, since the device has no endpoint that lists

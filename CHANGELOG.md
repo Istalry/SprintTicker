@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- **Display Health in Device Diagnostics.** Before every freeze measured on
+  firmware 1.2.4, uploads to the bar slowed from about 50 ms to several
+  hundred. The panel now shows the median upload time, the screen closes of
+  the last hour, and the requests the app decided it did not need to send;
+  it turns red with a warning when uploads slow like that, and the log says
+  so once. The figures go into the diagnostics bundle, so a freeze reported
+  after the fact comes with its run-up.
+
 ### Fixed
 
 - **Stopping a task with the idle clock on could close the screen on a
