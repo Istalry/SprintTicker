@@ -392,12 +392,13 @@ Draws return a value instead of throwing for the answers that are not failures:
 | `sendDisplayPayload` | `'drawn'`, or `'conflict'` when another application owns the display |
 | `drawOverlay` | The same, for elements laid **over** the screen. Unlike `sendDisplayPayload` it does not supersede a frame whose upload is in flight |
 | `sendPixelFrame` | `'sent'`; `'queued'` (disconnected or another frame in flight, so it is sent next); `'superseded'` (a clear landed mid-upload, **the device is not showing it**); `'conflict'` |
-| `clearDisplay` | `'cleared'`; or `'superseded'` when a draw landed while it was taking animations down, in which case the display is **not** released |
+| `clearDisplay` | `'cleared'`; or `'superseded'` when a draw landed while it waited its turn or took animations down, in which case the display is **not** released. Clears run one at a time; one that finds the panel already emptied, with nothing drawn since, sends nothing and answers `'cleared'` |
 
 `removeDisplayElements(app, ids)` removes the named elements and nothing
 else. An id the device does not hold answers **400**, so it throws `rejected`;
 a caller removing something that may already be gone has to read that as
-success -- `isElementAbsent(err)` says so, for a 400 and nothing else. **Several
+success -- `isElementAbsent(err)` says so, for a 400 and nothing else. The
+driver logs that 400 on a single id as "already gone", not as a warning. **Several
 ids in one call are all or nothing**: one missing id fails the request and
 removes none of the others, so remove one id per call when any may be gone.
 
@@ -428,7 +429,7 @@ So the app never empties the panel to change screens:
 | Into a full-panel scene | Draw `hardware_anim` at `z_index` 0, under the frame; then remove `px_matrix_img` |
 | Out of it | The next frame lands at `z_index` 1 over the scene; once it is `sent`, remove `hardware_anim` |
 | Scene to scene | Same element id, so the draw replaces it in place |
-| Release for the idle clock, and quit | `clearDisplay`: every tracked animation removed by id, `ANIMATION_TEARDOWN_SETTLE_MS`, then the full DELETE |
+| Release for the idle clock, and quit | `clearDisplay`, one at a time: every tracked animation removed by id, `ANIMATION_TEARDOWN_SETTLE_MS`, then the full DELETE |
 
 That last row is the only close left, and the pause is what makes it safe:
 the same release without it hung the bar on round 6, and with the 500 ms pause

@@ -5,6 +5,7 @@ import { DisplayRenderer } from '../hardware/display-renderer';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { IPriorityPreemptionEngine } from './priority-preemption-engine';
 import { ArgumentNullException } from '../../shared/dtos';
+import { UNITY_IDLE_RELEASE_GRACE_MS } from '../../shared/render-constants';
 
 /**
  * Service managing live Unity Editor telemetry status, compile states,
@@ -63,6 +64,8 @@ export class UnityTelemetryService {
   }
 
   private exceptionTimer: ReturnType<typeof setTimeout> | null = null;
+  /** A compile's end, held back by `UNITY_IDLE_RELEASE_GRACE_MS`. */
+  private compileReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 
   /// <summary>
   /// Retrieves current audio chime and play mode alert settings.
@@ -168,6 +171,8 @@ export class UnityTelemetryService {
     this.recomputeTelemetryState();
 
     if (isStarted) {
+      // A compile ending a moment ago is still on the display: carry on with it.
+      this.cancelCompileRelease();
       const evalResult = this.priorityEngine?.evaluateRequest('unityCompilingPriority');
       if (evalResult && !evalResult.shouldRender) {
         return;
@@ -185,17 +190,31 @@ export class UnityTelemetryService {
           this.renderer?.renderCompilation(payload.projectName);
         }
       }
+    } else if (type === 'compile') {
+      // Only the compile that put the gear up takes it down. One inside a
+      // build or a bake shares their lock, and releasing it here used to hand
+      // the display back from under the build's progress screen.
+      if (this.activeOperation === 'compile') this.scheduleCompileRelease();
     } else {
-      this.priorityEngine?.releaseActiveLock('unityCompilingPriority');
-      if (type === 'compile') {
-        if (this.activeOperation === 'compile') {
-          this.activeOperation = 'none';
-          this.restoreDisplayState();
-        }
-      } else {
-        this.activeOperation = 'none';
-        this.restoreDisplayState();
-      }
+      this.cancelCompileRelease();
+      this.activeOperation = 'none';
+      this.releaseDisplay('unityCompilingPriority');
+    }
+  }
+
+  private scheduleCompileRelease(): void {
+    this.cancelCompileRelease();
+    this.compileReleaseTimer = setTimeout(() => {
+      this.compileReleaseTimer = null;
+      this.activeOperation = 'none';
+      this.releaseDisplay('unityCompilingPriority');
+    }, UNITY_IDLE_RELEASE_GRACE_MS);
+  }
+
+  private cancelCompileRelease(): void {
+    if (this.compileReleaseTimer) {
+      clearTimeout(this.compileReleaseTimer);
+      this.compileReleaseTimer = null;
     }
   }
 
@@ -219,8 +238,8 @@ export class UnityTelemetryService {
       }
       const durationSeconds = settings.errorDurationSeconds ?? 5;
       this.exceptionTimer = setTimeout(() => {
-        this.priorityEngine?.releaseActiveLock('unityBuildFailurePriority');
-        this.restoreDisplayState();
+        this.exceptionTimer = null;
+        this.releaseDisplay('unityBuildFailurePriority');
       }, durationSeconds * 1000);
     }
   }
@@ -256,27 +275,51 @@ export class UnityTelemetryService {
       }
       this.renderer?.renderPlayMode(payload.projectName);
     } else {
-      this.priorityEngine?.releaseActiveLock('unityPlayModePriority');
-      this.restoreDisplayState();
+      this.releaseDisplay('unityPlayModePriority');
     }
   }
 
-  private restoreDisplayState(): void {
-    if (!this.renderer) return;
+  /**
+   * Ends a Unity screen: one render, and only if that screen still holds the
+   * display.
+   *
+   * The priority engine hands the display back to the user's mode itself when
+   * it frees the lock (`setContextMode`). This used to render the idle or
+   * session screen again straight after, so every compile, Play Mode exit and
+   * exception end rendered twice -- and idle, twice is two clears of the
+   * device's screen in the same millisecond, which is how the bar hung on
+   * 2026-10-05. It also rendered when the lock was not Unity's to give back,
+   * wiping a banner that had taken the display in the meantime.
+   */
+  private releaseDisplay(eventName: string): void {
+    this.priorityEngine?.releaseActiveLock(eventName);
+    if (this.resumePlayModeIfActive()) return;
+    // With no engine there is nobody to hand the display back; do it here.
+    if (!this.priorityEngine) this.renderUserContext();
+  }
 
-    // Check if any connected Unity instance is currently in Play Mode
-    const settings = this.getSettings();
-    if (settings.enablePlayModeDnd) {
-      const playModeInstance = Array.from(this.activeInstances.values()).find(
-        i => i.playModeStatus === 'In Play Mode'
-      );
-      if (playModeInstance) {
-        this.priorityEngine?.evaluateRequest('unityPlayModePriority', 90);
-        this.renderer.renderPlayMode(playModeInstance.projectName);
-        return;
-      }
+  /**
+   * Returns to Play Mode when an editor is still in it, as long as nothing
+   * else has the display. Answers whether it did.
+   */
+  private resumePlayModeIfActive(): boolean {
+    if (!this.renderer || !this.getSettings().enablePlayModeDnd) return false;
+    const playModeInstance = Array.from(this.activeInstances.values()).find(
+      i => i.playModeStatus === 'In Play Mode'
+    );
+    if (!playModeInstance) return false;
+    if (this.priorityEngine) {
+      // Held means a queued alert was replayed into the space, or something
+      // never let go: either way it is not Unity's to draw over.
+      if (this.priorityEngine.getActiveLockEventName() !== null) return false;
+      this.priorityEngine.evaluateRequest('unityPlayModePriority', 90);
     }
+    this.renderer.renderPlayMode(playModeInstance.projectName);
+    return true;
+  }
 
+  private renderUserContext(): void {
+    if (!this.renderer) return;
     if (this.engine) {
       const session = this.engine.getCurrentSession();
       if (session && (session.status === 'TRACKING' || session.status === 'PAUSED')) {
@@ -310,8 +353,10 @@ export class UnityTelemetryService {
       this.recomputeTelemetryState();
       
       if (this.telemetryState.compilationState === 'Idle' && this.activeOperation !== 'none') {
+        // The editor went away mid-operation and will send no end of its own.
+        this.cancelCompileRelease();
         this.activeOperation = 'none';
-        this.restoreDisplayState();
+        this.releaseDisplay('unityCompilingPriority');
       }
     }
   }
@@ -372,6 +417,7 @@ export class UnityTelemetryService {
       clearTimeout(this.exceptionTimer);
       this.exceptionTimer = null;
     }
+    this.cancelCompileRelease();
   }
 }
 

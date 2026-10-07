@@ -402,6 +402,15 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     deliberately, alone, since a wait that is too short hangs the bar.
     A draw that lands during the wait makes the clear `superseded` instead of
     wiping the screen that replaced the one being released.
+  - **Clears run one at a time, and the wait is per clear.** Two concurrent
+    clears defeat it: the second finds the animation the first already
+    removed, so it has nothing to remove, skips the wait and closes at once
+    -- the K case again. That hung the bar twice on 2026-10-05, from three
+    clears one Unity compile end sent in the same millisecond. `clearDisplay`
+    now queues behind the clear in progress, and one that finds the panel
+    already emptied with nothing drawn since sends nothing. "Emptied" is not
+    "`shownElements` is empty": a previous run may have left a screen this
+    driver never drew, so the first clear after start always sends.
   - **An upload over an `.anim` the device is playing answers 508** ("Failed to
     open file for writing"). Restarting the scene that is still on the panel
     therefore draws it from the copy the device holds instead of uploading it
@@ -483,6 +492,15 @@ changing it:
 - **One event produces exactly one `evaluateRequest`.** Evaluating twice takes
   the display lock twice under different names, and the release then never
   matches the lock actually held. This has already shipped once.
+- **And its end produces exactly one render, the engine's.**
+  `releaseActiveLock` hands the display back to the user's mode itself
+  (`setContextMode`) when it frees the lock it names, and does nothing when
+  that lock is not the one held. So a service ending its screen releases and
+  stops there: rendering the idle or session screen after the release draws
+  twice, and idle, twice is two clears of the device's screen at once (§4).
+  `UnityTelemetryService` did exactly that on every compile, Play Mode exit
+  and exception end, which also wiped any banner that had taken the display
+  in the meantime. It is what hung the bar on 2026-10-05.
 
 The app posts toasts of its own (`ProviderEventService`), and two things about
 them are traps:

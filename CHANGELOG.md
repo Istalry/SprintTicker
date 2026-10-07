@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The bar no longer hangs during Unity sessions.** On 2026-10-05 it froze
+  twice in a day and needed restarting by hand. The end of each compile, of
+  Play Mode and of an exception screen redrew the idle screen twice, and idle
+  each redraw clears the display; two clears side by side skipped the pause
+  the device needs between taking an animation down and closing its screen,
+  the sequence measured hanging firmware 1.2.4. Clears now run one at a time,
+  a clear with nothing left to clear sends nothing, and each Unity end redraws
+  once.
+- **A compile burst keeps the compiling screen up.** Unity often compiles,
+  reloads and compiles again a second later; the bar used to return to idle
+  and clear between each. A compile that starts again within three seconds of
+  the last one ending now carries on with the same screen.
+- **A Unity end no longer wipes a notification.** A banner that took the
+  display while Unity was compiling or in Play Mode was replaced by the idle
+  screen the moment Unity finished. It now stays for its full time.
+- **A script compile inside a build no longer takes the build screen down.**
+  The compile's end gave back the display lock the build was holding.
+- **"remove icon_anim: device returned 400" is no longer a warning.** It is the
+  device saying the icon was already gone, which is what was asked for; the
+  log now says that.
+
 ## 1.2.0 — 2026-10-02
 
 SprintTicker without a bar, and a bar that is ours. Without one, the app now

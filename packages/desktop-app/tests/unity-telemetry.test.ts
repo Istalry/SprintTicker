@@ -3,7 +3,8 @@ import { UnityTelemetryService } from '../src/main/services/unity-telemetry-serv
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { UnitySettingsDTO } from '../src/shared/dtos';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
-import { IPriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
+import { IPriorityPreemptionEngine, PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
+import { UNITY_IDLE_RELEASE_GRACE_MS } from '../src/shared/render-constants';
 
 describe('UnityTelemetryService', () => {
   let settingsRepo: SettingsRepository;
@@ -249,9 +250,15 @@ describe('UnityTelemetryService', () => {
  * bar either showing the right thing or stuck on a stale Unity screen.
  */
 describe('UnityTelemetryService display behaviour', () => {
-  type Renderer = Record<'renderCompilation' | 'renderBuilding' | 'renderBaking' | 'renderPlayMode' | 'renderException' | 'renderIdle' | 'renderActiveSession', ReturnType<typeof vi.fn>>;
+  type Renderer = Record<'renderCompilation' | 'renderBuilding' | 'renderBaking' | 'renderPlayMode' | 'renderException' | 'renderIdle' | 'renderActiveSession' | 'setContextMode', ReturnType<typeof vi.fn>>;
   let renderer: Renderer;
-  let priority: { evaluateRequest: ReturnType<typeof vi.fn>; releaseActiveLock: ReturnType<typeof vi.fn> };
+  let priority: {
+    evaluateRequest: ReturnType<typeof vi.fn>;
+    releaseActiveLock: ReturnType<typeof vi.fn>;
+    getActiveLockEventName: ReturnType<typeof vi.fn>;
+  };
+  /** Who holds the display, as the engine would say. */
+  let lock: string | null;
   let stored: Record<string, unknown>;
   let telemetry: UnityTelemetryService;
 
@@ -268,11 +275,23 @@ describe('UnityTelemetryService display behaviour', () => {
     stored = {};
     renderer = {
       renderCompilation: vi.fn(), renderBuilding: vi.fn(), renderBaking: vi.fn(), renderPlayMode: vi.fn(),
-      renderException: vi.fn(), renderIdle: vi.fn(), renderActiveSession: vi.fn()
+      renderException: vi.fn(), renderIdle: vi.fn(), renderActiveSession: vi.fn(), setContextMode: vi.fn()
     };
+    lock = null;
+    // The engine's contract, as far as Unity sees it: a granted request takes
+    // the lock, and freeing the lock it holds hands the display back to the
+    // user's mode -- the one render an end needs.
     priority = {
-      evaluateRequest: vi.fn().mockReturnValue({ shouldRender: true, action: 'DISPLAY', evaluatedPriority: 55 }),
-      releaseActiveLock: vi.fn()
+      evaluateRequest: vi.fn((eventName: string) => {
+        lock = eventName;
+        return { shouldRender: true, action: 'DISPLAY', evaluatedPriority: 55 };
+      }),
+      releaseActiveLock: vi.fn((eventName: string) => {
+        if (lock !== eventName) return;
+        lock = null;
+        renderer.setContextMode('WORK');
+      }),
+      getActiveLockEventName: vi.fn(() => lock)
     };
     telemetry = make();
   });
@@ -363,7 +382,8 @@ describe('UnityTelemetryService display behaviour', () => {
     vi.advanceTimersByTime(20_000);
 
     expect(telemetry.getTelemetry().compilationState).toBe('Idle');
-    expect(renderer.renderIdle).toHaveBeenCalled();
+    expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityCompilingPriority');
+    expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
   });
 
   it('OnTelemetryUpdated_Unsubscribed_HearsNothingMore', () => {
@@ -413,7 +433,79 @@ describe('UnityTelemetryService display behaviour', () => {
       telemetry.handleCompile({ projectName: 'Game', state: 'finished', type: 'build' });
 
       expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityCompilingPriority');
-      expect(renderer.renderIdle).toHaveBeenCalled();
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+    });
+
+    it('HandleCompile_Finished_HandsTheDisplayBackOnce', () => {
+      // 2026-10-05: each end rendered twice -- the engine's hand-back, then
+      // the idle screen again -- and idle, twice is two clears of the device's
+      // screen in one millisecond. The bar hung on exactly that.
+      telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
+
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+      expect(renderer.renderIdle).not.toHaveBeenCalled();
+      expect(renderer.renderActiveSession).not.toHaveBeenCalled();
+    });
+
+    it('HandleCompile_Finished_WaitsOutTheGraceBeforeHandingBack', () => {
+      telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS - 1);
+      expect(priority.releaseActiveLock).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+
+      expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityCompilingPriority');
+    });
+
+    it('HandleCompile_StartsAgainWithinTheGrace_KeepsTheGearUp', () => {
+      // Scripts, domain reload, compile again: one gear, no close between.
+      telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS - 1000);
+      telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS * 2);
+
+      expect(priority.releaseActiveLock).not.toHaveBeenCalled();
+      expect(renderer.renderCompilation).toHaveBeenCalledTimes(1);
+
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+    });
+
+    it('HandleCompile_FinishedWhileABannerHoldsTheDisplay_LeavesTheBanner', () => {
+      telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+      lock = 'highNotificationPriority';
+
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
+
+      expect(renderer.setContextMode).not.toHaveBeenCalled();
+      expect(renderer.renderIdle).not.toHaveBeenCalled();
+      expect(renderer.renderActiveSession).not.toHaveBeenCalled();
+    });
+
+    it('HandleCompile_CompileInsideABuildFinishes_KeepsTheBuildsLock', () => {
+      // They share a lock; giving it back here took the build's screen down.
+      telemetry.handleCompile({ projectName: 'Game', state: 'started', type: 'build' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'started', type: 'compile' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished', type: 'compile' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS * 2);
+
+      expect(priority.releaseActiveLock).not.toHaveBeenCalled();
+    });
+
+    it('Dispose_CompileEndStillInItsGrace_HandsNothingBack', () => {
+      telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+      telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+
+      telemetry.dispose();
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
+
+      expect(priority.releaseActiveLock).not.toHaveBeenCalled();
     });
 
     it('HandleCompile_Outranked_DrawsNothing', () => {
@@ -443,7 +535,8 @@ describe('UnityTelemetryService display behaviour', () => {
       vi.advanceTimersByTime(1);
 
       expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityBuildFailurePriority');
-      expect(renderer.renderIdle).toHaveBeenCalled();
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+      expect(renderer.renderIdle).not.toHaveBeenCalled();
     });
 
     it('HandleConsole_SecondExceptionWhileShowing_RestartsTheClock', () => {
@@ -483,9 +576,33 @@ describe('UnityTelemetryService display behaviour', () => {
       telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'started' });
 
       telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'finished' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
 
       expect(renderer.renderPlayMode).toHaveBeenCalledWith('Player');
+      expect(priority.evaluateRequest).toHaveBeenLastCalledWith('unityPlayModePriority', 90);
       expect(renderer.renderIdle).not.toHaveBeenCalled();
+    });
+
+    it('HandlePlayMode_Exited_HandsTheDisplayBackOnce', () => {
+      telemetry.handlePlayMode({ projectName: 'Game', state: 'entered' });
+
+      telemetry.handlePlayMode({ projectName: 'Game', state: 'exited' });
+
+      expect(priority.releaseActiveLock).toHaveBeenCalledWith('unityPlayModePriority');
+      expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+      expect(renderer.renderIdle).not.toHaveBeenCalled();
+    });
+
+    it('HandleCompile_FinishedWhileABannerHoldsTheDisplayAndAnEditorPlays_LeavesTheBanner', () => {
+      telemetry.handlePlayMode({ projectName: 'Player', instanceId: 'p', state: 'entered' });
+      telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'started' });
+      renderer.renderPlayMode.mockClear();
+      lock = 'highNotificationPriority';
+
+      telemetry.handleCompile({ projectName: 'Tools', instanceId: 't', state: 'finished' });
+      vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
+
+      expect(renderer.renderPlayMode).not.toHaveBeenCalled();
     });
 
     it('HandlePlayMode_DndDisabled_DoesNotTakeTheDisplay', () => {
@@ -496,5 +613,38 @@ describe('UnityTelemetryService display behaviour', () => {
       expect(renderer.renderPlayMode).not.toHaveBeenCalled();
       expect(telemetry.getTelemetry().playModeStatus).toBe('In Play Mode');
     });
+  });
+});
+
+/**
+ * The same end with the real priority engine, which is what renders on a
+ * release: Unity must leave the rendering to it.
+ */
+describe('UnityTelemetryService with the priority engine', () => {
+  it('HandleCompile_Finished_RendersTheIdleScreenOnce', () => {
+    vi.useFakeTimers();
+    const settings = {
+      getSetting: vi.fn((_key: string, defaultValue: unknown) => defaultValue),
+      setSetting: vi.fn()
+    } as unknown as SettingsRepository;
+    const engine = new PriorityPreemptionEngine(settings);
+    const renderer = {
+      renderCompilation: vi.fn(), renderIdle: vi.fn(), renderActiveSession: vi.fn(), setContextMode: vi.fn()
+    };
+    engine.setRenderer(renderer as unknown as DisplayRenderer);
+    const telemetry = new UnityTelemetryService(settings, undefined, renderer as unknown as DisplayRenderer, undefined, engine);
+
+    telemetry.handleCompile({ projectName: 'Game', state: 'started' });
+    telemetry.handleCompile({ projectName: 'Game', state: 'finished' });
+    vi.advanceTimersByTime(UNITY_IDLE_RELEASE_GRACE_MS);
+
+    expect(renderer.renderCompilation).toHaveBeenCalledTimes(1);
+    expect(renderer.setContextMode).toHaveBeenCalledTimes(1);
+    expect(renderer.renderIdle).not.toHaveBeenCalled();
+    expect(renderer.renderActiveSession).not.toHaveBeenCalled();
+    expect(engine.getActiveLockEventName()).toBeNull();
+
+    telemetry.dispose();
+    vi.useRealTimers();
   });
 });

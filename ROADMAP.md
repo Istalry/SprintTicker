@@ -519,7 +519,7 @@ Also worth doing while this area is open:
   that came with it -- token redaction in logged URLs, the `wsGeneration`
   guard against a superseded socket orphaning the live one -- are in
   `CLAUDE.md` §4, and the troubleshooting path is in the user guide.
-- [ ] **Find what removes the animated icon behind `IconAnimator`'s back.**
+- [x] **Find what removes the animated icon behind `IconAnimator`'s back.**
   Seen on 2026-10-02 with Unity compiling: the log alternated
   `remove icon_anim: device returned 400` and `Device is animating
   icon_gear_16x16`, once after each Windows notification the listener
@@ -529,6 +529,29 @@ Also worth doing while this area is open:
   animator files it as expected. Two questions: why a suppressed notification
   leads to a render at all, and what took the icon off the panel first.
   Reproduce with the real bar and a compile running; not a release blocker.
+  **Answered on 2026-10-05, by the bar hanging twice.** Not the animator, and
+  not the notifications, which only coincided with compiles: every Unity end
+  rendered twice -- the engine's hand-back on the release, then the service's
+  own idle render -- and each sent a clear. The clears ran side by side, so
+  each removed `icon_anim` (the second got the 400), and a clear that came in
+  after the removal skipped the settle and closed the screen at once, the
+  sequence `CLAUDE.md` §4 records as hanging the bar. Clears are now
+  serialised, a Unity end renders once and only when it still holds the
+  display, a compile burst keeps the gear up for `UNITY_IDLE_RELEASE_GRACE_MS`
+  instead of closing between compiles, and the 400 on a single-id removal is
+  logged as "already gone". Still to see: a day of Unity on the real bar with
+  no hang, and its diagnostics read back.
+- [ ] **Claude Code notifications show the Claude icon only some of the time**
+  (reported 2026-10-02, after 1.2.0); the others draw the bell. Two
+  candidates, not yet told apart. First, by design: `AppIconResolver` resolves
+  off the notification path and caches in memory, so the first alert from an
+  app after each launch draws the fallback -- which would read as "sometimes".
+  Second, more than one sender: Claude Desktop (MSIX), VS Code and a terminal
+  each post under their own AUMID, and not every one may resolve. The listener
+  logs `appId=... | icon=resolved` or `icon=fallback:<id>` for every
+  notification; one line of each kind for a Claude notification settles it.
+  If it is the first, the cache could be warmed from the notification history
+  at startup, or persisted.
 
 ---
 
@@ -885,7 +908,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.76 statements / 86.93 branches / 92.29 functions / 95.3 lines across 1577
+**93.79 statements / 86.95 branches / 92.35 functions / 95.34 lines across 1594
 tests in 83 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

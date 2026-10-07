@@ -3,7 +3,7 @@ import path from 'path';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { ActiveSessionDTO } from '../src/shared/dtos';
-import { FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
+import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
 
 vi.mock('electron', () => ({
   app: { isPackaged: false },
@@ -124,6 +124,8 @@ describe('Front display screen lifecycle', () => {
   let canvas: FirmwareCanvas;
   let driver: BusyBarDriver;
   let renderer: DisplayRenderer;
+  /** Every request the device was sent, as `METHOD /path body`. */
+  let requests: string[];
   const originalFetch = globalThis.fetch;
 
   const paused: ActiveSessionDTO = {
@@ -138,7 +140,11 @@ describe('Front display screen lifecycle', () => {
 
   beforeEach(async () => {
     canvas = new FirmwareCanvas();
-    globalThis.fetch = (async (url: string, init?: RequestInit) => canvas.handle(url, init)) as typeof fetch;
+    requests = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      requests.push(`${init?.method ?? 'GET'} ${new URL(url).pathname}${init?.body ? ' ' + String(init.body) : ''}`);
+      return canvas.handle(url, init);
+    }) as typeof fetch;
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -306,5 +312,104 @@ describe('Front display screen lifecycle', () => {
     await new Promise(resolve => setTimeout(resolve, SETTLE_MS * 5));
 
     expect(has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+  });
+
+  describe('clears', () => {
+    const clears = (): string[] => requests.filter(r => r === 'DELETE /api/display/draw');
+
+    it('ClearDisplay_SecondAskedWhileTheFirstSettles_WaitsAndDoesNotCloseEarly', async () => {
+      // 2026-10-05: one Unity compile end asked for three clears at once. A
+      // clear arriving after the first had removed the animation found none
+      // left, skipped the settle and closed the screen straight away -- the
+      // remove-then-close sequence that hangs the bar. It hung twice that day.
+      await showPausedTask();
+
+      const first = driver.clearDisplay();
+      await waitFor(() => !has(FRONT_ELEMENT_IDS.ICON), 'the animation removed');
+      const second = driver.clearDisplay();
+
+      expect(await Promise.all([first, second])).toEqual(['cleared', 'cleared']);
+      expect(canvas.closes).toHaveLength(1);
+      expect(canvas.closes[0].sinceLastAnimationRemovedMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
+      expect(clears()).toHaveLength(1);
+    });
+
+    it('ClearDisplay_ManyAtOnce_RemoveTheAnimationOnceAndCloseOnce', async () => {
+      await showPausedTask();
+
+      await Promise.all([driver.clearDisplay(), driver.clearDisplay(), driver.clearDisplay()]);
+
+      expect(requests.filter(r => r.startsWith('DELETE /api/display/draw {'))).toHaveLength(1);
+      expect(clears()).toHaveLength(1);
+      expect(canvas.closes).toHaveLength(1);
+    });
+
+    it('ClearDisplay_PanelAlreadyEmptied_SendsNothing', async () => {
+      await showPausedTask();
+      await driver.clearDisplay();
+      const sent = requests.length;
+
+      expect(await driver.clearDisplay()).toBe('cleared');
+
+      expect(requests).toHaveLength(sent);
+    });
+
+    it('ClearDisplay_DrawnSinceTheLastClear_ClearsAgain', async () => {
+      await showPausedTask();
+      await driver.clearDisplay();
+      // The clear went round the renderer, which still believes its frame is up.
+      renderer.invalidateFrameCache();
+      await showPausedTask();
+
+      await driver.clearDisplay();
+
+      expect(clears()).toHaveLength(2);
+      expect(canvas.closes).toHaveLength(2);
+      expect(canvas.closes.every(close => !close.types.includes('animation'))).toBe(true);
+    });
+
+    it('ClearDisplay_FirstSinceStart_SendsEvenWithNothingDrawn', async () => {
+      // A previous run of the app may have left a screen this one never drew.
+      expect(await driver.clearDisplay()).toBe('cleared');
+
+      expect(clears()).toHaveLength(1);
+    });
+
+    it('ClearDisplay_DrawWhileWaitingItsTurn_IsAbandoned', async () => {
+      await showPausedTask();
+      const first = driver.clearDisplay();
+      const second = driver.clearDisplay();
+
+      // Lands while the first clear settles, after both took their version.
+      expect(await driver.sendPixelFrame(Buffer.from('next screen'))).toBe('sent');
+
+      expect(await Promise.all([first, second])).toEqual(['superseded', 'superseded']);
+      expect(has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+      expect(canvas.closes).toEqual([]);
+      expect(clears()).toEqual([]);
+    });
+
+    it('RemoveDisplayElements_OneAbsentId_IsLoggedAsAlreadyGone', async () => {
+      await showPausedTask();
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]).catch(() => undefined);
+      const warn = vi.mocked(console.warn);
+      warn.mockClear();
+
+      await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON])).rejects.toThrow();
+
+      expect(warn.mock.calls.flat().join(' ')).not.toContain('returned 400');
+      expect(vi.mocked(console.log).mock.calls.flat().join(' ')).toContain('already gone');
+    });
+
+    it('RemoveDisplayElements_SeveralIdsOneAbsent_StillWarns', async () => {
+      // On several ids a 400 means none were removed: not "already gone".
+      await showPausedTask();
+      const warn = vi.mocked(console.warn);
+      warn.mockClear();
+
+      await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON, 'absent'])).rejects.toThrow();
+
+      expect(warn.mock.calls.flat().join(' ')).toContain('returned 400');
+    });
   });
 });

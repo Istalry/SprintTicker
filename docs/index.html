@@ -984,8 +984,11 @@
       45 seconds later. On firmware 1.2.4 this is what happens when the display is
       cleared a few times while a picture and an animation are both on it. Earlier
       builds did exactly that each time Lunch, Away or a meeting began from a screen
-      with an animated icon. This release switches scenes without clearing, so it
-      should not happen in normal use. If it does, unplug and replug the bar, then
+      with an animated icon. 1.2.0 switched scenes without clearing; it still hung
+      the bar during long Unity sessions, because the end of a compile cleared the
+      display two or three times at once. That is fixed too, and a burst of compiles
+      now keeps the compiling screen up instead of clearing between each one. If it
+      does happen, unplug and replug the bar, then
       export the logs from Device Diagnostics: the lines just before the freeze say
       what the app was drawing. Uploads taking several hundred milliseconds, rather
       than about fifty, are the warning sign.</p>
@@ -1261,6 +1264,13 @@
       <li><strong>One event produces exactly one <code>evaluateRequest</code>.</strong> Evaluating twice takes
       the lock twice under different names, and the release then never matches the
       lock actually held.</li>
+      <li><strong>Releasing is the whole of ending a screen.</strong> <code>releaseActiveLock</code> frees the
+      lock it names, replays a queued alert if one is waiting, and otherwise hands
+      the display back to the user&#39;s mode (<code>setContextMode</code>). A caller that renders
+      again afterwards draws twice; one releasing a lock it does not hold renders
+      nothing, which leaves the screen that took it alone. Unity&#39;s compile end
+      waits <code>UNITY_IDLE_RELEASE_GRACE_MS</code> (3 s) before releasing, so a compile that
+      starts again straight away keeps its screen instead of passing through idle.</li>
       </ul>
       <div class="table-wrap"><table>
       <thead>
@@ -1387,7 +1397,10 @@
       <p>Steps 1-2 and 4 address the same element id, so they run under one lock in
       <code>AnimationPlayer</code>. <code>clearDisplay</code> remains for handing the display back (the
       idle clock, quit); the driver tracks what it has drawn (<code>shownElementIds</code>) and
-      takes every animation down by id, with a pause, before that clear.</p>
+      takes every animation down by id, with a pause, before that clear. Clears are
+      serialised: a second one running alongside would find the animation already
+      gone, skip the pause and close at once. One that finds the panel already
+      emptied, with nothing drawn since, sends nothing.</p>
       <p><strong>Animated icons are a second layer, not a second owner.</strong> The screen is still
       one PNG with the icon&#39;s static pixels in it. <code>IconAnimator</code> lays the icon&#39;s
       16×16 <code>.anim</code> over them as element <code>icon_anim</code>, and <code>z_index</code> keeps it on top
@@ -1646,7 +1659,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1577 tests across 83 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1594 tests across 83 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2271,13 +2284,14 @@
       </tr>
       <tr>
       <td align="left"><code>clearDisplay</code></td>
-      <td align="left"><code>&#39;cleared&#39;</code>; or <code>&#39;superseded&#39;</code> when a draw landed while it was taking animations down, in which case the display is <strong>not</strong> released</td>
+      <td align="left"><code>&#39;cleared&#39;</code>; or <code>&#39;superseded&#39;</code> when a draw landed while it waited its turn or took animations down, in which case the display is <strong>not</strong> released. Clears run one at a time; one that finds the panel already emptied, with nothing drawn since, sends nothing and answers <code>&#39;cleared&#39;</code></td>
       </tr>
       </tbody></table></div>
       <p><code>removeDisplayElements(app, ids)</code> removes the named elements and nothing
       else. An id the device does not hold answers <strong>400</strong>, so it throws <code>rejected</code>;
       a caller removing something that may already be gone has to read that as
-      success -- <code>isElementAbsent(err)</code> says so, for a 400 and nothing else. <strong>Several
+      success -- <code>isElementAbsent(err)</code> says so, for a 400 and nothing else. The
+      driver logs that 400 on a single id as &quot;already gone&quot;, not as a warning. <strong>Several
       ids in one call are all or nothing</strong>: one missing id fails the request and
       removes none of the others, so remove one id per call when any may be gone.</p>
       <p><code>shownElementIds(app, type?)</code> lists what the driver has drawn for an
@@ -2318,7 +2332,7 @@
       </tr>
       <tr>
       <td align="left">Release for the idle clock, and quit</td>
-      <td align="left"><code>clearDisplay</code>: every tracked animation removed by id, <code>ANIMATION_TEARDOWN_SETTLE_MS</code>, then the full DELETE</td>
+      <td align="left"><code>clearDisplay</code>, one at a time: every tracked animation removed by id, <code>ANIMATION_TEARDOWN_SETTLE_MS</code>, then the full DELETE</td>
       </tr>
       </tbody></table></div>
       <p>That last row is the only close left, and the pause is what makes it safe:

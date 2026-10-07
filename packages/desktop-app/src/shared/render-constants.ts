@@ -139,3 +139,15 @@ export const DISPLAY_CONSTANTS = {
   // share: the fonts and their per-glyph widths are in `fonts/`, and the
   // arithmetic is in `proportional-text.ts`.
 } as const;
+
+/**
+ * How long the compiling screen outlives the end of a compile.
+ *
+ * Unity compiles in bursts: scripts, a domain reload, often a second compile a
+ * second or two later. Each end used to hand the display straight back, and
+ * idle with the firmware clock that is a full clear -- the one deliberate
+ * close of the device's screen, of which a Unity day made dozens. Closes are
+ * what hang the bar (CLAUDE.md, section 4), so a compile that starts again
+ * within this keeps the gear up and costs nothing.
+ */
+export const UNITY_IDLE_RELEASE_GRACE_MS = 3000;

@@ -472,8 +472,11 @@ reports the bar disconnected, and sometimes the bar restarts on its own about
 45 seconds later. On firmware 1.2.4 this is what happens when the display is
 cleared a few times while a picture and an animation are both on it. Earlier
 builds did exactly that each time Lunch, Away or a meeting began from a screen
-with an animated icon. This release switches scenes without clearing, so it
-should not happen in normal use. If it does, unplug and replug the bar, then
+with an animated icon. 1.2.0 switched scenes without clearing; it still hung
+the bar during long Unity sessions, because the end of a compile cleared the
+display two or three times at once. That is fixed too, and a burst of compiles
+now keeps the compiling screen up instead of clearing between each one. If it
+does happen, unplug and replug the bar, then
 export the logs from Device Diagnostics: the lines just before the freeze say
 what the app was drawing. Uploads taking several hundred milliseconds, rather
 than about fifty, are the warning sign.

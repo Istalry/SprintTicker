@@ -200,6 +200,13 @@ Two rules, both scars:
 - **One event produces exactly one `evaluateRequest`.** Evaluating twice takes
   the lock twice under different names, and the release then never matches the
   lock actually held.
+- **Releasing is the whole of ending a screen.** `releaseActiveLock` frees the
+  lock it names, replays a queued alert if one is waiting, and otherwise hands
+  the display back to the user's mode (`setContextMode`). A caller that renders
+  again afterwards draws twice; one releasing a lock it does not hold renders
+  nothing, which leaves the screen that took it alone. Unity's compile end
+  waits `UNITY_IDLE_RELEASE_GRACE_MS` (3 s) before releasing, so a compile that
+  starts again straight away keeps its screen instead of passing through idle.
 
 | Claim | Event name | Default score |
 | :--- | :--- | ---: |
@@ -290,7 +297,10 @@ before break, with `z_index` doing the work:
 Steps 1-2 and 4 address the same element id, so they run under one lock in
 `AnimationPlayer`. `clearDisplay` remains for handing the display back (the
 idle clock, quit); the driver tracks what it has drawn (`shownElementIds`) and
-takes every animation down by id, with a pause, before that clear.
+takes every animation down by id, with a pause, before that clear. Clears are
+serialised: a second one running alongside would find the animation already
+gone, skip the pause and close at once. One that finds the panel already
+emptied, with nothing drawn since, sends nothing.
 
 **Animated icons are a second layer, not a second owner.** The screen is still
 one PNG with the icon's static pixels in it. `IconAnimator` lays the icon's
@@ -538,7 +548,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1577 tests across 83 files, in two projects: `main` in Node for
+Vitest, 1594 tests across 83 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
