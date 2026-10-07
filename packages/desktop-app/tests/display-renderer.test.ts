@@ -1,7 +1,7 @@
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
-import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
 import {
@@ -927,6 +927,34 @@ describe('DisplayRenderer Unit Tests', () => {
    * to deliver was empty anyway.
    */
   describe('draw payload validity', () => {
+    it.each([['disconnected'], ['unreachable']] as const)(
+      'RenderActiveSession_IdleClearFails%s_WarnsInOneLine',
+      async kind => {
+        // Unplugged during a build (2026-10-07): the clear failed and logged an
+        // error with a full stack, for an outage the reconnect redraw handles.
+        vi.mocked(mockDriver.clearDisplay).mockRejectedValue(new DeviceRequestError(kind, 'clear display'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        renderer.setShowIdleClockFallback(true);
+
+        renderer.renderActiveSession(null);
+        await vi.waitFor(() => expect(warn).toHaveBeenCalled());
+
+        expect(String(warn.mock.calls[0][0])).toContain('redrawn when the bar answers again');
+        expect(error).not.toHaveBeenCalled();
+      }
+    );
+
+    it('RenderActiveSession_IdleClearRefused_StillLogsAnError', async () => {
+      vi.mocked(mockDriver.clearDisplay).mockRejectedValue(new DeviceRequestError('rejected', 'clear display', 500));
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      renderer.setShowIdleClockFallback(true);
+
+      renderer.renderActiveSession(null);
+
+      await vi.waitFor(() => expect(error).toHaveBeenCalled());
+    });
+
     it('RenderActiveSession_IdleWithClockFallback_ClearsViaDeleteWithoutAnEmptyDraw', () => {
       renderer.setShowIdleClockFallback(true);
 

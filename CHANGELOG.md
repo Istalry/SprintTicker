@@ -51,7 +51,8 @@ before release.
   answers again -- after a restart, a cable or Wi-Fi blip too short for the
   connection status to notice, or turning no-bar mode off. A Lunch or Away
   break that started during such a blip no longer streams its animation
-  picture by picture for the whole break.
+  picture by picture for the whole break, and an unplugged bar no longer
+  fills the log with errors each time the clock should come back.
 - **The bar now shows what is actually going on when something ends.** The
   stress test learned to check the screen at the end of every generated day
   against the state, with two Unity projects open, and found the display

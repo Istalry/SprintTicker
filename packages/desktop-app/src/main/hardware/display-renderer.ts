@@ -12,7 +12,7 @@ import {
 import { composeNotificationBanner } from '../../shared/notification-text';
 import { encodeMatrixToPng } from './pixel-matrix-to-png';
 import { AnimationPlayer } from './animation-player';
-import { FrameOutcome } from './device-errors';
+import { DeviceRequestError, FrameOutcome, describeError } from './device-errors';
 import { IconAnimator } from './icon-animator';
 import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
@@ -941,8 +941,17 @@ export class DisplayRenderer {
       // Without a bar there is no display to hand back, and the clear would
       // only throw `disconnected` into the log on every idle transition.
       if (this._driver.isEnabled?.() !== false) {
-        void this._driver.clearDisplay(APP_NAME)
-          .catch(err => console.error('[DisplayRenderer] _driver.clearDisplay failed:', err));
+        void this._driver.clearDisplay(APP_NAME).catch(err => {
+          // A bar that is unplugged or out of reach is not a fault: the driver
+          // says `reconnected` when it answers again, and the current screen --
+          // this clock, if it still is -- is redrawn then. It used to log as an
+          // error with a full stack on every idle transition during an outage.
+          if (err instanceof DeviceRequestError && (err.kind === 'disconnected' || err.kind === 'unreachable')) {
+            console.warn(`[DisplayRenderer] Could not hand the display back (${describeError(err)}); redrawn when the bar answers again.`);
+            return;
+          }
+          console.error('[DisplayRenderer] _driver.clearDisplay failed:', err);
+        });
       }
       
       const payload: DisplayPayload = {

@@ -654,11 +654,11 @@ Also worth doing while this area is open:
   covered by a real Claude notification that outranks compiling. The same
   day, the bar's USB cable pulled during a build: a build that ended while
   it was away came back on the clock, not on the stale BUILDING screen, and
-  one still running came back on BUILDING with its hammer animating. Left
-  over: a clear that fails because the bar is unplugged logs as an error
-  with a stack trace, where a one-line warning would do. **Still to
-  do:** the firmware report to Flipper, and `--compositing` in the probe,
-  which still removes animations by id.
+  one still running came back on BUILDING with its hammer animating. A
+  clear that fails because the bar is unplugged logged an error with a full
+  stack; it is now one warning line. **Still to do:** the firmware report
+  to Flipper, and `--compositing` in the probe, which still removes
+  animations by id.
 
 ---
 
@@ -1015,7 +1015,7 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.15 statements / 87.64 branches / 93.21 functions / 95.69 lines across 1720
+**94.15 statements / 87.66 branches / 93.21 functions / 95.69 lines across 1723
 tests in 90 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
