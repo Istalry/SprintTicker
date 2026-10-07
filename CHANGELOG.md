@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 1.2.1 — 2026-10-07
+
+A bar that stays up, and shows what is going on. On 2026-10-05, 1.2.0 hung
+the bar twice in one day of Unity work, each time needing a restart by hand:
+the end of a compile redrew the idle screen twice, and the two clears skipped
+the pause the device needs before closing its screen. That is fixed, and the
+whole class with it -- the app now sends the bar one display request at a
+time and checks every rule the firmware is known to hang on just before
+sending, whoever asked. A new stress test plays generated days of Unity,
+notifications, tasks and breaks against a simulated bar; it found the hang
+again, four more ways to break the device's rules, and a dozen ways the
+screen could end up showing the wrong thing, two Unity projects open
+included. Device Diagnostics now shows the slowdown that came before every
+freeze measured. Every fix here was checked on a real bar (firmware 1.2.4)
+before release.
+
 ### Added
 
 - **Display Health in Device Diagnostics.** Before every freeze measured on
