@@ -50,7 +50,21 @@ const { createDeviceClient, encodePng } = require('./lib/busybar-device');
  *
  * `--teardown-soak` repeats the one screen close the app still makes -- see
  * `probeTeardownSoak`. **It can hang the bar.** Run it on purpose, alone, with
- * someone at hand to power-cycle the device.
+ * someone at hand to power-cycle the device. `--rounds <n>` sets how many
+ * (10 by default): a bar that survives ten may not survive seventy, and only
+ * a long run on a freshly restarted bar says how many closes it takes.
+ * `--reupload` soaks what the app's animated icon actually does: the gear's
+ * `.anim`, uploaded again before every draw, as `IconAnimator` does after a
+ * close. The plain soak uploads its icon once.
+ * `--close-with-anim` never removes the animation by id: it removes the frame
+ * image, then closes the screen with the animation alone on it.
+ * `--park` is the release the app is to make: the icon is replaced under its
+ * id by an empty animation (`Animations/blank_16x16`, one transparent frame),
+ * the frame image is removed, and the screen closes with only the empty
+ * animation on it. The next round draws the icon back over it, by id.
+ * `--swap-in-place` never removes or closes anything: the gear and the Play
+ * Mode pad take turns under one element id, the way the app's icon changes
+ * from one screen to the next -- a merge by id, not a removal.
  */
 
 const IP = process.env.BUSYBAR_IP || '10.0.4.20';
@@ -1196,7 +1210,8 @@ async function probeSceneSwap(anim, image) {
  * Uses the app's own animated icon and draws the way the app does, under the
  * probe's `application_name`.
  */
-const SOAK_ROUNDS = 10;
+const roundsFlag = process.argv.indexOf('--rounds');
+const SOAK_ROUNDS = roundsFlag >= 0 ? Math.max(1, Number.parseInt(process.argv[roundsFlag + 1], 10) || 10) : 10;
 
 /** Whether a file is a Git LFS pointer rather than the object it stands for. */
 function isLfsPointer(file) {
@@ -1210,9 +1225,81 @@ function isLfsPointer(file) {
   return head.toString('latin1').startsWith('version https://git-lfs');
 }
 
+/** Animated icons swapped under one id, as a merge by id: no removal, no close. */
+async function probeSwapInPlaceSoak() {
+  const names = ['icon_gear_16x16', 'icon_playmode_16x16'];
+  const files = names.map(name => path.join(__dirname, '..', 'Animations', name, name, `${name}.anim`));
+  if (files.some(file => !fs.existsSync(file) || isLfsPointer(file))) {
+    record('Swap-in-place soak', 'skip', 'an icon is missing or an LFS pointer');
+    return;
+  }
+  console.log(`\n  Swap-in-place soak: ${SOAK_ROUNDS} swaps of ${names.join(' / ')} under one id. This can hang the bar.\n`);
+  const soakStarted = Date.now();
+  try {
+    await clearProbeElements();
+    for (let i = 0; i < files.length; i++) {
+      const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=swap_${i}.anim`, {
+        body: fs.readFileSync(files[i]),
+        contentType: 'application/octet-stream',
+        timeoutMs: 30000
+      });
+      if (up.status < 200 || up.status >= 300) throw new Error(`icon upload returned ${up.status}`);
+    }
+    const frameUp = await request('POST', `/api/assets/upload?application_name=${APP}&file=swap_frame.png`, {
+      body: makeGreenPng(FRONT_WIDTH, 0),
+      contentType: 'image/png'
+    });
+    if (frameUp.status < 200 || frameUp.status >= 300) throw new Error(`frame upload returned ${frameUp.status}`);
+    await drawElements([
+      { id: 'swap_frame', type: 'image', path: 'swap_frame.png', x: 0, y: 0, display: 'front', z_index: 1 }
+    ]);
+    for (let round = 1; round <= SOAK_ROUNDS; round++) {
+      console.log(`    swap ${round}: drawing ${names[round % 2]} over the other...`);
+      const drawn = await drawElements([
+        {
+          id: 'swap_icon',
+          type: 'animation',
+          path: `swap_${round % 2}.anim`,
+          x: 0,
+          y: 0,
+          display: 'front',
+          loop: true,
+          section: 'default',
+          z_index: 2
+        }
+      ]);
+      // A refused swap would make the soak measure nothing: say so.
+      if (drawn.status < 200 || drawn.status >= 300) throw new Error(`swap draw returned ${drawn.status} ${drawn.body.slice(0, 80)}`);
+      await sleep(2000);
+      const alive = await request('GET', '/api/version');
+      const elapsed = ((Date.now() - soakStarted) / 1000).toFixed(0);
+      console.log(`    swap ${round}: bar answered ${alive.status} (${elapsed} s)`);
+    }
+    // The end, the safe way: the image first, then a close with the animation alone.
+    await removeIds(['swap_frame']);
+    await sleep(teardownSettleMs());
+    await request('DELETE', `/api/display/draw?application_name=${APP}`);
+    record('Swap-in-place soak', 'pass', `${SOAK_ROUNDS} swaps under one id survived`);
+  } catch (err) {
+    record('Swap-in-place soak', 'fail', `${err.message} -- the bar stopped answering. Power-cycle it.`);
+  }
+}
+
 async function probeTeardownSoak() {
-  const iconDir = path.join(__dirname, '..', 'Animations', 'icon_stopwatch_paused_16x16', 'icon_stopwatch_paused_16x16');
-  const iconFile = path.join(iconDir, 'icon_stopwatch_paused_16x16.anim');
+  const reupload = process.argv.includes('--reupload');
+  const closeWithAnim = process.argv.includes('--close-with-anim');
+  const park = process.argv.includes('--park');
+  const blankFile = path.join(__dirname, '..', 'Animations', 'blank_16x16', 'blank_16x16', 'blank_16x16.anim');
+  // `--icon gear` soaks another icon without re-uploading it, which separates
+  // the two things `--reupload` changes at once.
+  const iconFlag = process.argv.indexOf('--icon');
+  const iconName =
+    iconFlag >= 0 && process.argv[iconFlag + 1]
+      ? `icon_${process.argv[iconFlag + 1]}_16x16`
+      : reupload
+        ? 'icon_gear_16x16'
+        : 'icon_stopwatch_paused_16x16';
+  const iconFile = path.join(__dirname, '..', 'Animations', iconName, iconName, `${iconName}.anim`);
   // By content, not size: this icon is a real 1.2 KB file -- pause bars
   // blinking compress to almost nothing -- which a "< 4 KB is a pointer" rule
   // skipped as if Git LFS had not been run.
@@ -1221,7 +1308,12 @@ async function probeTeardownSoak() {
     return;
   }
   const settle = teardownSettleMs();
-  console.log(`\n  Teardown soak: ${SOAK_ROUNDS} rounds, ${settle} ms settle. This can hang the bar.\n`);
+  console.log(
+    `\n  Teardown soak: ${SOAK_ROUNDS} rounds, ${settle} ms settle, ${iconName}` +
+      `${reupload ? ', uploaded again every round' : ''}` +
+      `${closeWithAnim ? ', screen closed with the animation alone on it' : ''}` +
+      `${park ? ', icon parked on an empty animation before the close' : ''}. This can hang the bar.\n`
+  );
 
   try {
     await clearProbeElements();
@@ -1234,7 +1326,18 @@ async function probeTeardownSoak() {
       record('Teardown soak', 'fail', `icon upload returned ${up.status}`);
       return;
     }
+    if (park) {
+      const blankUp = await request('POST', `/api/assets/upload?application_name=${APP}&file=soak_blank.anim`, {
+        body: fs.readFileSync(blankFile),
+        contentType: 'application/octet-stream'
+      });
+      if (blankUp.status < 200 || blankUp.status >= 300) {
+        record('Teardown soak', 'fail', `empty animation upload returned ${blankUp.status}`);
+        return;
+      }
+    }
 
+    const soakStarted = Date.now();
     for (let round = 1; round <= SOAK_ROUNDS; round++) {
       // The frame, uploaded under one of two names as `sendPixelFrame` does.
       const started = Date.now();
@@ -1244,6 +1347,17 @@ async function probeTeardownSoak() {
       });
       const uploadMs = Date.now() - started;
       if (frameUp.status < 200 || frameUp.status >= 300) throw new Error(`frame upload returned ${frameUp.status}`);
+      let iconMs = null;
+      if (reupload && round > 1) {
+        const iconStarted = Date.now();
+        const again = await request('POST', `/api/assets/upload?application_name=${APP}&file=soak_icon.anim`, {
+          body: fs.readFileSync(iconFile),
+          contentType: 'application/octet-stream',
+          timeoutMs: 30000
+        });
+        iconMs = Date.now() - iconStarted;
+        if (again.status < 200 || again.status >= 300) throw new Error(`icon upload returned ${again.status}`);
+      }
       await drawElements([
         { id: 'soak_frame', type: 'image', path: `soak_${round % 2}.png`, x: 0, y: 0, display: 'front', z_index: 1 }
       ]);
@@ -1262,13 +1376,50 @@ async function probeTeardownSoak() {
       ]);
       await sleep(2000);
 
-      // The release, exactly as `clearDisplay` makes it.
-      await removeIds(['soak_icon']);
-      await sleep(settle);
-      await request('DELETE', `/api/display/draw?application_name=${APP}`);
+      if (park) {
+        // The release to come: the icon is never removed, only replaced.
+        console.log(`    round ${round}: parking the icon on the empty animation...`);
+        const parked = await drawElements([
+          {
+            id: 'soak_icon',
+            type: 'animation',
+            path: 'soak_blank.anim',
+            x: 0,
+            y: 0,
+            display: 'front',
+            loop: true,
+            section: 'default',
+            z_index: 2
+          }
+        ]);
+        if (parked.status < 200 || parked.status >= 300) throw new Error(`parking draw returned ${parked.status}`);
+        await sleep(1000);
+        console.log(`    round ${round}: removing the frame image...`);
+        await removeIds(['soak_frame']);
+        await sleep(settle);
+        console.log(`    round ${round}: closing with the empty animation alone...`);
+        await request('DELETE', `/api/display/draw?application_name=${APP}`);
+      } else if (closeWithAnim) {
+        // The alternative release: the image goes, the animation never does
+        // by id -- the screen closes with it alone on the panel.
+        console.log(`    round ${round}: removing the frame image...`);
+        await removeIds(['soak_frame']);
+        await sleep(settle);
+        console.log(`    round ${round}: closing with the animation alone...`);
+        await request('DELETE', `/api/display/draw?application_name=${APP}`);
+      } else {
+        // The release, exactly as `clearDisplay` makes it.
+        console.log(`    round ${round}: removing the icon...`);
+        await removeIds(['soak_icon']);
+        await sleep(settle);
+        console.log(`    round ${round}: closing the screen...`);
+        await request('DELETE', `/api/display/draw?application_name=${APP}`);
+      }
       await sleep(1500);
       const alive = await request('GET', '/api/version');
-      console.log(`    round ${round}: frame upload ${uploadMs} ms, bar answered ${alive.status}`);
+      const elapsed = ((Date.now() - soakStarted) / 1000).toFixed(0);
+      const icon = iconMs === null ? '' : `, icon upload ${iconMs} ms`;
+      console.log(`    round ${round}: frame upload ${uploadMs} ms${icon}, bar answered ${alive.status} (${elapsed} s)`);
     }
     record('Teardown soak', 'pass', `${SOAK_ROUNDS} releases survived with a ${settle} ms settle`);
   } catch (err) {
@@ -1674,6 +1825,14 @@ async function main() {
   // Runs whether or not the app holds the display: it draws above it.
   if (process.argv.includes('--compositing')) {
     await probeCompositing();
+  }
+
+  if (process.argv.includes('--swap-in-place')) {
+    if (!displayOwned) {
+      await probeSwapInPlaceSoak();
+    } else {
+      record('Swap-in-place soak', 'skip', 'display owned; re-run with the app closed');
+    }
   }
 
   if (process.argv.includes('--teardown-soak')) {

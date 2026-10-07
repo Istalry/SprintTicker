@@ -627,6 +627,33 @@ Also worth doing while this area is open:
     the sandwich scene, which never stopped.
   - Play Mode never came back after a compile: Unity took the lock at a
     forced 90 and Play Mode's own request, at 50, was refused by it.
+- [ ] **Never remove a playing animation by id** (2026-10-07, before 1.2.1).
+  Replaying every Unity scenario on the real bar for the release froze it on
+  BUILDING 40%. The probe then reproduced it without the app: removing the
+  playing gear icon by id hung firmware 1.2.4 on the 30th and the 59th round,
+  the app on about the 13th and 36th, with uploads flat at ~23 ms to the end;
+  the 1.2 KB pause icon survived 100. The 09-30 soak that called the old
+  teardown safe ran ten rounds. Measured safe instead, 100 to 200 rounds
+  each: closing the screen on animations alone, drawing another animation
+  under the same id, and putting an animation to rest under an empty one
+  before closing. **Done in code**: the driver parks animations under
+  `blank_16x16.anim` and never sends their id in a removal; `clearDisplay`
+  removes the images, waits the settle and closes on the animations; the
+  simulator reports `animation-removed-by-id`. The same run found the bar
+  coming back from its restart on the stale BUILDING screen -- the driver
+  replayed its last pending frame -- so the driver now emits `reconnected`
+  after any outage, a request with no answer included, and the renderer
+  redraws the current screen. The stress test learned outages and reboots;
+  3000 seeds run clean. **Checked on the real bar on 2026-10-07** (firmware
+  1.2.4, packaged build on a database copy, no restart between runs): the 38
+  replayed compiles, then the eight hand-back scenarios twice -- 47 screen
+  closes, 90 frames and none failed, upload median 39-70 ms (the outliers,
+  423-712 ms, the LOGGED and LUNCH `.anim` uploads), no error, no hang. The
+  first hand-back run was spoiled by a real Unity editor posting to the test
+  instance; the second, with it closed, showed every expected screen but one,
+  covered by a real Claude notification that outranks compiling. **Still to
+  do:** the firmware report to Flipper, and `--compositing` in the probe,
+  which still removes animations by id.
 
 ---
 
@@ -983,8 +1010,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.01 statements / 87.53 branches / 92.96 functions / 95.57 lines across 1692
-tests in 89 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.15 statements / 87.64 branches / 93.21 functions / 95.69 lines across 1720
+tests in 90 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

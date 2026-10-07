@@ -357,15 +357,17 @@ export class AnimationPlayer {
   }
 
   /**
-   * Removes a scene that has finished and been covered by a frame.
+   * Retires a scene that has finished and been covered by a frame.
    *
    * The other half of make before break: `DisplayRenderer` calls this once a
    * frame has landed after the animation stopped, so the frame is already
-   * above the scene when the scene goes and the screen is never empty.
+   * above the scene when it goes. The driver does not remove it -- removing a
+   * playing animation by id hangs the bar now and then -- but puts it to rest
+   * under the same id, and the next scene is drawn over that.
    *
    * Does nothing while a scene is playing, when none is left on the device, or
-   * when the driver does not believe anything else is on the panel -- removing
-   * the scene then would empty the screen, the one thing this exists to avoid.
+   * when the driver does not believe anything else is on the panel: the scene
+   * is then what the bar shows, and putting it to rest would leave it dark.
    */
   public async retireScene(): Promise<void> {
     if (this.sceneOnDevice === null) return;
@@ -390,6 +392,15 @@ export class AnimationPlayer {
         console.warn(`[AnimationPlayer] Could not remove the finished scene: ${describeError(err)}`);
       }
     });
+  }
+
+  /**
+   * Forgets the scene believed on the device, after an outage that may have
+   * been a reboot. The next scene is uploaded again rather than drawn from a
+   * copy the device may no longer hold.
+   */
+  public forgetDevice(): void {
+    this.sceneOnDevice = null;
   }
 
   /**

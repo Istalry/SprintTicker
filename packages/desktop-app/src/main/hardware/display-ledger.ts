@@ -1,8 +1,14 @@
 import { ArgumentNullException } from '../../shared/dtos';
 
-interface LedgerElement {
+export interface LedgerElement {
   type: string;
   path?: string;
+  zIndex?: number;
+  /**
+   * Files the element may still be playing instead of `path`: a draw over it
+   * got no answer, so the device holds one or the other.
+   */
+  maybePaths?: string[];
 }
 
 interface ApplicationPanel {
@@ -26,8 +32,10 @@ interface ApplicationPanel {
  * - removing an element known to be absent (the device answers 400);
  * - clearing a panel known to be empty (one more close, for nothing);
  * - uploading over the `.anim` an element is playing (the device answers 508);
- * - emptying the panel less than the settle after an animation left it (the
- *   sequence that hung the bar).
+ * - closing the screen less than the settle after something left the panel;
+ * - removing an animation by id at all, which hangs the bar now and then: the
+ *   driver replaces it with an empty one instead, and the ledger tells the
+ *   two apart.
  *
  * It can be wrong in one direction only: an element the device dropped by
  * itself -- a reboot, another application taking the display -- is still
@@ -37,8 +45,13 @@ interface ApplicationPanel {
  */
 export class DisplayLedger {
   private readonly panels = new Map<string, ApplicationPanel>();
-  /** When an animation last left any panel; the device's screen is one, whoever drew on it. */
-  private lastAnimationRemovedAt: number | null = null;
+  /**
+   * When an element last left any panel, or an animation was put to rest:
+   * the device's screen is one, whoever drew on it. The close that follows
+   * waits the settle from here -- the release measured safe 100 times in a
+   * row removed the frame, waited 500 ms, then closed.
+   */
+  private lastRemovalAt: number | null = null;
 
   constructor(private readonly now: () => number = () => Date.now()) {}
 
@@ -50,7 +63,8 @@ export class DisplayLedger {
       if (typeof element?.id !== 'string') continue;
       panel.elements.set(element.id, {
         type: String(element.type ?? 'unknown'),
-        path: typeof element.path === 'string' ? element.path : undefined
+        path: typeof element.path === 'string' ? element.path : undefined,
+        zIndex: typeof element.z_index === 'number' ? element.z_index : undefined
       });
     }
   }
@@ -58,26 +72,51 @@ export class DisplayLedger {
   /**
    * A draw that got no answer. It may have landed, so its elements are
    * listed -- an animation among them must still be taken down before a
-   * close -- and the panel is no longer vouched for.
+   * close -- and the panel is no longer vouched for. What each replaced may
+   * still be there: an upload over a file it was playing answers 508.
    */
   public noteDrawUncertain(applicationName: string, elements: unknown): void {
+    const panel = this.panel(applicationName);
+    const before = new Map(panel.elements);
     this.noteDrawn(applicationName, elements);
-    this.panel(applicationName).known = false;
+    for (const [id, element] of panel.elements) {
+      const previous = before.get(id);
+      if (!previous || previous === element) continue;
+      const maybe = new Set([...(previous.maybePaths ?? []), ...(previous.path ? [previous.path] : [])]);
+      if (element.path) maybe.delete(element.path);
+      if (maybe.size > 0) element.maybePaths = [...maybe];
+    }
+    panel.known = false;
   }
 
-  public noteRemoved(applicationName: string, elementIds: string[]): void {
+  /**
+   * @param confirmed The device answered that it removed them: a removal for
+   *   the settle even when this ledger never listed them, as on a panel left
+   *   by a previous run.
+   */
+  public noteRemoved(applicationName: string, elementIds: string[], confirmed = false): void {
+    if (confirmed) this.lastRemovalAt = this.now();
     const panel = this.panels.get(applicationName);
     if (!panel) return;
     for (const id of elementIds) {
-      if (panel.elements.get(id)?.type === 'animation') this.lastAnimationRemovedAt = this.now();
-      panel.elements.delete(id);
+      if (panel.elements.delete(id)) this.lastRemovalAt = this.now();
     }
+  }
+
+  /**
+   * An animation replaced by the empty one: still on the panel, showing
+   * nothing. It counts as a removal for the settle before a close.
+   */
+  public noteParked(applicationName: string, elementId: string, blankPath: string): void {
+    const panel = this.panel(applicationName);
+    const zIndex = panel.elements.get(elementId)?.zIndex;
+    panel.elements.set(elementId, { type: 'animation', path: blankPath, zIndex });
+    this.lastRemovalAt = this.now();
   }
 
   /** A clear the device carried out: the panel is empty, and now known to be. */
   public noteCleared(applicationName: string): void {
     const panel = this.panel(applicationName);
-    if ([...panel.elements.values()].some(el => el.type === 'animation')) this.lastAnimationRemovedAt = this.now();
     panel.elements.clear();
     panel.known = true;
   }
@@ -96,6 +135,16 @@ export class DisplayLedger {
     const panel = this.panels.get(applicationName);
     if (!panel) return [];
     return [...panel.elements].filter(([, el]) => type === undefined || el.type === type).map(([id]) => id);
+  }
+
+  /** The element as last drawn, or undefined when it is not listed. */
+  public element(applicationName: string, elementId: string): Readonly<LedgerElement> | undefined {
+    return this.panels.get(applicationName)?.elements.get(elementId);
+  }
+
+  /** Whether the panel's contents are vouched for: emptied by a clear, and only this run's draws since. */
+  public isKnown(applicationName: string): boolean {
+    return this.panels.get(applicationName)?.known ?? false;
   }
 
   public isKnownAbsent(applicationName: string, elementId: string): boolean {
@@ -125,13 +174,15 @@ export class DisplayLedger {
   public isPlaying(applicationName: string, path: string): boolean {
     const panel = this.panels.get(applicationName);
     if (!panel) return false;
-    return [...panel.elements.values()].some(el => el.type === 'animation' && el.path === path);
+    return [...panel.elements.values()].some(
+      el => el.type === 'animation' && (el.path === path || (el.maybePaths?.includes(path) ?? false))
+    );
   }
 
-  /** How long a close must still wait for the device to settle after the last animation left. */
+  /** How long a close must still wait for the device to settle after the last removal. */
   public settleRemainingMs(settleMs: number): number {
-    if (this.lastAnimationRemovedAt === null) return 0;
-    return Math.max(0, settleMs - (this.now() - this.lastAnimationRemovedAt));
+    if (this.lastRemovalAt === null) return 0;
+    return Math.max(0, settleMs - (this.now() - this.lastRemovalAt));
   }
 
   private panel(applicationName: string): ApplicationPanel {

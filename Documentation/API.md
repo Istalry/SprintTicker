@@ -392,10 +392,18 @@ Draws return a value instead of throwing for the answers that are not failures:
 | `sendDisplayPayload` | `'drawn'`, or `'conflict'` when another application owns the display |
 | `drawOverlay` | The same, for elements laid **over** the screen. Unlike `sendDisplayPayload` it does not supersede a frame whose upload is in flight |
 | `sendPixelFrame` | `'sent'`; `'queued'` (disconnected or another frame in flight, so it is sent next); `'superseded'` (a clear landed mid-upload, **the device is not showing it**); `'conflict'` |
-| `clearDisplay` | `'cleared'`; or `'superseded'` when a draw landed while it waited its turn or took animations down, in which case the display is **not** released. Clears run one at a time; one that finds the panel already emptied, with nothing drawn since, sends nothing and answers `'cleared'` |
+| `clearDisplay` | `'cleared'`; or `'superseded'` when a draw landed while it waited its turn or took the images down, in which case the display is **not** released. Clears run one at a time; one that finds the panel already emptied, with nothing drawn since, sends nothing and answers `'cleared'` |
 
-`removeDisplayElements(app, ids)` removes the named elements and nothing
-else. An id the device does not hold answers **400**, so it throws `rejected`;
+`removeDisplayElements(app, ids)` takes the named elements off the screen and
+nothing else. **An animation is put to rest, not removed**: the driver draws
+the empty animation (`blank_16x16.anim`, one transparent frame) under its id
+and layer, because removing a playing animation by id hangs firmware 1.2.4 now
+and then. The element stays listed in `shownElementIds`, showing nothing, until
+the screen closes; the next icon or scene is drawn over it. An animation
+already at rest resolves without a request, and a park held off by a 409 is
+left as it was. Everything below is about the other elements.
+
+An id the device does not hold answers **400**, so it throws `rejected`;
 a caller removing something that may already be gone has to read that as
 success -- `isElementAbsent(err)` says so, for a 400 and nothing else. The
 driver logs that 400 on a single id as "already gone", not as a warning. A
@@ -404,10 +412,18 @@ not drawn since -- resolves without a request. **Several
 ids in one call are all or nothing**: one missing id fails the request and
 removes none of the others, so remove one id per call when any may be gone.
 A removal that could empty the panel waits, like a clear, for the settle after
-the last animation left.
+the last removal.
 
 `uploadAsset` over the `.anim` an element is playing resolves without a
-request: the device would answer 508, and holds the file already.
+request: the device would answer 508, and holds the file already. That
+includes a file an element *may* be playing, after a draw over it got no
+answer.
+
+**The driver emits `reconnected` when the bar answers again after an outage**
+-- a failed ping, or any request that got no answer between two good pings --
+and when no-bar mode is turned off. It has forgotten what the panel holds and
+dropped the frame left pending; `DisplayRenderer` redraws the current screen.
+The pending frame is never replayed: it was a screen from before the outage.
 
 **Every display and asset request is queued.** Draws, frames, overlays,
 removals, clears and uploads go out one at a time, whoever asks, and each
@@ -444,20 +460,27 @@ its screen, and reopens it on the next draw.
 > from ~50 ms to several hundred came first. An animation alone, and every
 > sequence that never emptied the panel, ran ten rounds clean.
 
+> [!CAUTION]
+> **Removing a playing animation by id hangs firmware 1.2.4 now and then, with
+> no warning.** Measured 2026-10-07 without the app: the gear icon froze the
+> bar on its 30th removal, and on its 59th when uploaded again each round; the
+> app froze it after about 13 and 36. Uploads stayed flat at ~23 ms up to the
+> hang. Drawing another animation under the same id survived 200 swaps, and
+> closing the screen with only animations on it survived 100 rounds.
+
 So the app never empties the panel to change screens:
 
 | Transition | How |
 | :--- | :--- |
 | Into a full-panel scene | Draw `hardware_anim` at `z_index` 0, under the frame; then remove `px_matrix_img` |
-| Out of it | The next frame lands at `z_index` 1 over the scene; once it is `sent`, remove `hardware_anim` |
-| Scene to scene | Same element id, so the draw replaces it in place |
-| Release for the idle clock, and quit | `clearDisplay`, one at a time: every tracked animation removed by id, `ANIMATION_TEARDOWN_SETTLE_MS`, then the full DELETE |
+| Out of it | The next frame lands at `z_index` 1 over the scene; once it is `sent`, put `hardware_anim` to rest |
+| Scene to scene, icon to icon | Same element id, so the draw replaces it in place |
+| Release for the idle clock, and quit | `clearDisplay`, one at a time: the images beside any animation removed by id, `ANIMATION_TEARDOWN_SETTLE_MS` after the last removal, then the full DELETE on the animations alone |
 
-That last row is the only close left, and the pause is what makes it safe:
-the same release without it hung the bar on round 6, and with the 500 ms pause
-`pnpm probe:busybar --teardown-soak` ran ten rounds clean on firmware 1.2.4
-(2026-09-30), uploads flat at 24-53 ms. Re-run that soak before changing the
-pause -- a pause too short hangs the bar.
+That last row is the only close left. `pnpm probe:busybar --teardown-soak
+--park` ran it 100 times in a row on firmware 1.2.4 (2026-10-07). A close
+without the 500 ms pause after a removal has not been measured: re-run that
+soak before changing the pause.
 
 Uploading over an `.anim` the device is playing answers **508**, so a scene
 still on the panel is redrawn from the copy the device holds rather than

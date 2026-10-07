@@ -83,9 +83,11 @@ onto the bar, is started and stopped with the mode (`followBar`). Turning the ba
 connected releases the display through `clearDisplay` first, or the last frame
 would stay on it. `DeviceStatusDTO.enabled` carries
 the mode to the renderer, which hides the bar-only screens live. Turning it back
-on (`setEnabled(true)`) dials the configured address and sends the last queued
-frame, which the renderer's deduplication had already recorded as sent. A row
-saved before the field existed reads as `true`.
+on (`setEnabled(true)`) dials the configured address and emits `reconnected`,
+and the renderer draws the current screen past its deduplication, which had
+recorded the last frame as sent. The queued frame is not replayed: a clear
+asked for meanwhile would have ended it. A row saved before the field existed
+reads as `true`.
 
 **Two windows, one renderer bundle.** The dashboard and the **mini timer** load
 the same `index.html`; the mini timer loads it at `#mini`, and `main.tsx` mounts
@@ -305,16 +307,38 @@ before break, with `z_index` doing the work:
    removed means a scene nobody can see, so that falls back to streaming.
 3. When the scene stops, the renderer's next frame lands at z 1 over it.
 4. Once that frame comes back `sent`, the renderer calls `retireScene`, which
-   removes `hardware_anim` -- unless the driver believes nothing else is on
-   the panel, since removing it then would empty the panel after all.
+   puts `hardware_anim` to rest -- unless the driver believes nothing else is
+   on the panel, since the scene is then what the bar shows.
 
 Steps 1-2 and 4 address the same element id, so they run under one lock in
-`AnimationPlayer`. `clearDisplay` remains for handing the display back (the
-idle clock, quit); the driver tracks what it has drawn (`shownElementIds`) and
-takes every animation down by id, with a pause, before that clear. Clears are
-serialised: a second one running alongside would find the animation already
-gone, skip the pause and close at once. One that finds the panel known to be
-empty sends nothing.
+`AnimationPlayer`.
+
+**No animation is ever removed by id.** On firmware 1.2.4 removing a playing
+animation that way hangs the bar now and then (2026-10-07), while drawing
+another animation under the same id never did. So `removeDisplayElements`
+puts an animation to rest instead: it draws the empty animation
+(`blank-animation.ts`, one transparent frame, 80 bytes, uploaded once per
+connection) under the same id and layer, and the ledger keeps listing it.
+Icons and scenes change by merging the next one over it. It leaves the panel
+only when the screen closes.
+
+`clearDisplay` remains for handing the display back (the idle clock, quit). It
+removes the images beside any animation, one id per request, waits
+`ANIMATION_TEARDOWN_SETTLE_MS` after the last removal, and closes the screen on
+the animations alone -- the release measured safe 100 times in a row. On a
+panel it cannot vouch for, it removes the frame whatever it lists. A draw that
+lands meanwhile makes the clear `superseded` and stops its removals. Clears
+are serialised: a second one running alongside closed at once and hung the
+bar on 2026-10-05. One that finds the panel known to be empty sends nothing.
+
+**After an outage the renderer redraws; the driver never replays.** A failed
+ping, or a request that got no answer between two good pings, means the panel
+may hold anything: an earlier screen, the firmware's own after a reboot, or a
+screen whose clear failed while the bar was away. When the bar answers again
+the driver forgets the ledger and the pending frame and emits `reconnected`;
+`DisplayRenderer` then draws the screen of whoever holds the display
+(`resumeScreen`), or the user's mode, with its animation restarted. Replaying
+the pending frame put BUILDING 40% back on a bar whose build had long ended.
 
 **The driver enforces the device's rules for everyone.** Frames, the animation
 player, the icon animator and the idle clock's clear each order their own
@@ -323,10 +347,11 @@ request through one `SerialQueue`. Each request's guard runs at the head of
 the queue, after every earlier request has answered, against a
 `DisplayLedger` of what the panel holds: a removal of an element known to be
 absent, a clear of a panel known to be empty and an upload over a playing
-`.anim` are answered without a request, and anything that could empty the
-panel waits for the settle after the last animation left. The panel is
-"known" once a clear has emptied it; before that, or after a request that got
-no answer, nothing is skipped.
+`.anim` -- or one it may be playing, after a draw over it got no answer --
+are answered without a request, and anything that could empty the panel waits
+for the settle after the last removal. The panel is "known" once a clear has
+emptied it; before that, or after a request that got no answer, nothing is
+skipped.
 
 **Animated icons are a second layer, not a second owner.** The screen is still
 one PNG with the icon's static pixels in it. `IconAnimator` lays the icon's
@@ -574,7 +599,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1692 tests across 89 files, in two projects: `main` in Node for
+Vitest, 1720 tests across 90 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

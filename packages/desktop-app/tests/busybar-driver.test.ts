@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BusyBarDriver, BusyBarDriverOptions, ANIMATION_TEARDOWN_SETTLE_MS, DeviceRequestError, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput, describeTransportError, isUnreachableReminderDue, DEVICE_UNREACHABLE_REMINDER_PINGS, DEVICE_PING_INTERVAL_MS } from '../src/main/hardware/busybar-driver';
 import { ArgumentException, ArgumentNullException } from '../src/shared/dtos';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../src/shared/device-constants';
+import { BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
 
 /**
  * A live (non-mock) driver, connected, whose every request past the status
@@ -542,29 +543,34 @@ describe('BusyBarDriver Unit Tests', () => {
     vi.useRealTimers();
   });
 
-  it('BusyBarDriver_Reconnect_RestartsStateStreamAndSendsPendingFrame', async () => {
+  it('BusyBarDriver_Reconnect_ForgetsThePanelDropsTheStaleFrameAndSaysSo', async () => {
+    // The pending frame is a screen from before the outage. Replaying it left
+    // BUILDING 40% on the bar long after the build ended (2026-10-07); the
+    // renderer redraws what is current when told `reconnected`.
     vi.useFakeTimers();
     const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
-    
+
     let fetchOk = false;
+    const draws: string[] = [];
     const originalFetch = globalThis.fetch;
-    
-    globalThis.fetch = (async (url: string) => {
+
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
       if (!fetchOk && url.includes('/api/status')) {
         throw new Error('Network offline');
       }
       if (url.includes('/api/status')) {
         return { ok: fetchOk, json: async () => ({ power: { battery_charge: 100 } }) } as Response;
       }
+      if (url.includes('/api/display/draw') && init?.method === 'POST') draws.push(String(init.body));
       if (url.includes('/api/assets/upload') || url.includes('/api/display/draw')) {
-        return { ok: true } as Response;
+        return { ok: true, status: 200 } as Response;
       }
       return { ok: false } as Response;
     }) as typeof fetch;
 
     try {
       await liveDriver.connect();
-      
+
       // Let ping loop run once while network is "offline"
       await vi.advanceTimersByTimeAsync(3500);
       expect(liveDriver.getDeviceStatus().connected).toBe(false);
@@ -574,13 +580,95 @@ describe('BusyBarDriver Unit Tests', () => {
 
       fetchOk = true;
       let stateStreamRestarted = false;
+      let reconnected = 0;
       liveDriver.startStateStreamListener = () => { stateStreamRestarted = true; };
+      liveDriver.on('reconnected', () => { reconnected++; });
 
       await vi.advanceTimersByTimeAsync(3500);
 
       expect(liveDriver.getDeviceStatus().connected).toBe(true);
       expect(stateStreamRestarted).toBe(true);
+      expect(reconnected).toBe(1);
       expect((liveDriver as unknown as { pendingFrameArgs: unknown }).pendingFrameArgs).toBeNull();
+      expect(draws).toEqual([]);
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+  });
+
+  it('BusyBarDriver_RequestUnansweredBetweenPings_AsksForARedrawOnTheNextPing', async () => {
+    // An outage shorter than the ping interval: no ping fails, but a draw or
+    // a clear did. Found by the stress test, where a Lunch scene's upload
+    // fell back to streaming frames for the whole break.
+    vi.useFakeTimers();
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+    let dropDisplayRequests = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => {
+      if (dropDisplayRequests && !url.includes('/api/status')) throw new TypeError('fetch failed');
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
+    }) as typeof fetch;
+    liveDriver.startStateStreamListener = () => undefined;
+    const reconnected = vi.fn();
+    liveDriver.on('reconnected', reconnected);
+    try {
+      await liveDriver.connect();
+      await vi.advanceTimersByTimeAsync(3500);
+      expect(reconnected).not.toHaveBeenCalled();
+
+      dropDisplayRequests = true;
+      await expect(liveDriver.uploadAsset(DEVICE_APPLICATION_NAME, 'a.png', Buffer.from('x'))).rejects.toMatchObject({
+        kind: 'unreachable'
+      });
+      dropDisplayRequests = false;
+      await vi.advanceTimersByTimeAsync(3000);
+
+      expect(liveDriver.getDeviceStatus().connected).toBe(true);
+      expect(reconnected).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(reconnected).toHaveBeenCalledTimes(1);
+    } finally {
+      liveDriver.disconnect();
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+  });
+
+  it('BusyBarDriver_Reconnect_NoLongerVouchesForThePanel', async () => {
+    // A bar that rebooted shows its own screen, or one left by the outage: a
+    // clear must not be skipped because a ledger from before it says empty.
+    vi.useFakeTimers();
+    const liveDriver = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false });
+    let online = true;
+    let clears = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      if (url.includes('/api/status')) {
+        if (!online) throw new Error('Network offline');
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      }
+      if (init?.method === 'DELETE' && !init.body) clears++;
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
+    }) as typeof fetch;
+    liveDriver.startStateStreamListener = () => undefined;
+    try {
+      await liveDriver.connect();
+      const first = liveDriver.clearDisplay();
+      await vi.advanceTimersByTimeAsync(ANIMATION_TEARDOWN_SETTLE_MS);
+      await first;
+
+      online = false;
+      await vi.advanceTimersByTimeAsync(3500);
+      online = true;
+      await vi.advanceTimersByTimeAsync(3500);
+      expect(liveDriver.getDeviceStatus().connected).toBe(true);
+
+      const second = liveDriver.clearDisplay();
+      await vi.advanceTimersByTimeAsync(ANIMATION_TEARDOWN_SETTLE_MS);
+      await expect(second).resolves.toBe('cleared');
+      expect(clears).toBe(2);
     } finally {
       liveDriver.disconnect();
       globalThis.fetch = originalFetch;
@@ -882,19 +970,163 @@ describe('BusyBarDriver failure reporting', () => {
           return status(200);
         },
         async driver => {
-          await driver.removeDisplayElements('sprintticker', ['icon_anim']);
+          await driver.removeDisplayElements('sprintticker', ['px_matrix_img']);
         }
       );
 
       expect(requests).toEqual([
-        { method: 'DELETE', body: { application_name: 'sprintticker', element_ids: ['icon_anim'] } }
+        { method: 'DELETE', body: { application_name: 'sprintticker', element_ids: ['px_matrix_img'] } }
       ]);
+    });
+
+    it('RemoveDisplayElements_AnAnimation_DrawsTheEmptyOneUnderItsIdOnItsLayer', async () => {
+      // Removing a playing animation by id hangs firmware 1.2.4 now and then.
+      const requests: Array<{ method?: string; url: string; body?: string }> = [];
+      await withLiveDriver(
+        (url, init) => {
+          requests.push({ method: init?.method, url, body: typeof init?.body === 'string' ? init.body : undefined });
+          return status(200);
+        },
+        async driver => {
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0, z_index: 2 }]);
+          requests.length = 0;
+
+          await driver.removeDisplayElements('sprintticker', ['icon_anim']);
+
+          expect(driver.shownElementIds('sprintticker', 'animation')).toEqual(['icon_anim']);
+        }
+      );
+
+      expect(requests.map(r => r.method)).toEqual(['POST', 'POST']);
+      expect(requests[0].url).toContain(`file=${BLANK_ANIMATION_FILE}`);
+      const [element] = JSON.parse(String(requests[1].body)).elements;
+      expect(element).toMatchObject({ id: 'icon_anim', type: 'animation', path: BLANK_ANIMATION_FILE, z_index: 2 });
+    });
+
+    it('RemoveDisplayElements_AnimationAlreadyAtRest_SendsNothing', async () => {
+      const calls: string[] = [];
+      await withLiveDriver(
+        (url, init) => {
+          calls.push(`${init?.method} ${url}`);
+          return status(200);
+        },
+        async driver => {
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0 }]);
+          await driver.removeDisplayElements('sprintticker', ['icon_anim']);
+          calls.length = 0;
+
+          await driver.removeDisplayElements('sprintticker', ['icon_anim']);
+        }
+      );
+
+      expect(calls).toEqual([]);
+    });
+
+    it('RemoveDisplayElements_EmptyAnimationRefused_ThrowsAndUploadsAgainNextTime', async () => {
+      let uploads = 0;
+      await withLiveDriver(
+        url => {
+          if (url.includes('/api/assets/upload')) {
+            uploads++;
+            return status(500);
+          }
+          return status(200);
+        },
+        async driver => {
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0 }]);
+
+          await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).rejects.toMatchObject({ kind: 'rejected' });
+          await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).rejects.toMatchObject({ kind: 'rejected' });
+
+          expect(driver.shownElementIds('sprintticker', 'animation')).toEqual(['icon_anim']);
+        }
+      );
+
+      expect(uploads).toBe(2);
+    });
+
+    it('RemoveDisplayElements_AnimationHeldElsewhere_LeavesItAsItWas', async () => {
+      // A 409 on the empty animation's draw: another application holds the
+      // display, and the element goes when that screen closes.
+      await withLiveDriver(
+        (url, init) => (url.includes('/api/display/draw') && String(init?.body).includes(BLANK_ANIMATION_FILE) ? status(409) : status(200)),
+        async driver => {
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0 }]);
+
+          await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).resolves.toBeUndefined();
+
+          await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).resolves.toBeUndefined();
+        }
+      );
+    });
+
+    it('RemoveDisplayElements_EmptyAnimationDrawGotNoAnswer_ThrowsAndStopsVouchingForThePanel', async () => {
+      let parkDraws = 0;
+      await withLiveDriver(
+        (url, init) => {
+          if (url.includes('/api/display/draw') && String(init?.body).includes(BLANK_ANIMATION_FILE)) {
+            parkDraws++;
+            throw new TypeError('fetch failed');
+          }
+          return status(200);
+        },
+        async driver => {
+          await driver.clearDisplay();
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0 }]);
+
+          await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).rejects.toMatchObject({ kind: 'unreachable' });
+          // It may have landed: a second removal is not skipped as already at rest.
+          await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).rejects.toMatchObject({ kind: 'unreachable' });
+        },
+        { animationTeardownSettleMs: 0 }
+      );
+
+      expect(parkDraws).toBe(2);
+    });
+
+    it('RemoveDisplayElements_MockModeAnimation_IsPutToRestToo', async () => {
+      const mockDriver = new BusyBarDriver({ forceMock: true });
+      const logged = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      try {
+        await mockDriver.connect();
+        await mockDriver.drawOverlay(DEVICE_APPLICATION_NAME, [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0 }]);
+
+        await mockDriver.removeDisplayElements(DEVICE_APPLICATION_NAME, ['icon_anim']);
+
+        const lines = logged.mock.calls.map(call => String(call[0]));
+        expect(lines.some(line => line.includes('[MOCK PARK]'))).toBe(true);
+        expect(lines.some(line => line.includes('[MOCK REMOVE]'))).toBe(false);
+        expect(mockDriver.shownElementIds(DEVICE_APPLICATION_NAME, 'animation')).toEqual(['icon_anim']);
+      } finally {
+        mockDriver.disconnect();
+        logged.mockRestore();
+      }
+    });
+
+    it('RemoveDisplayElements_AnimationAndImage_PutsOneToRestAndRemovesTheOther', async () => {
+      const deletes: string[] = [];
+      await withLiveDriver(
+        (_url, init) => {
+          if (init?.method === 'DELETE') deletes.push(String(init.body));
+          return status(200);
+        },
+        async driver => {
+          await driver.sendPixelFrame(Buffer.from('png'));
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0 }]);
+
+          await driver.removeDisplayElements('sprintticker', ['icon_anim', 'px_matrix_img']);
+
+          expect(driver.shownElementIds('sprintticker')).toEqual(['icon_anim']);
+        }
+      );
+
+      expect(deletes).toEqual([JSON.stringify({ application_name: 'sprintticker', element_ids: ['px_matrix_img'] })]);
     });
 
     it('RemoveDisplayElements_ElementNotThere_ThrowsRejected', async () => {
       // What firmware 1.2.4 answers for an id it does not hold.
       await withLiveDriver(() => status(400), async driver => {
-        await expect(driver.removeDisplayElements('sprintticker', ['icon_anim'])).rejects.toMatchObject({
+        await expect(driver.removeDisplayElements('sprintticker', ['px_matrix_img'])).rejects.toMatchObject({
           kind: 'rejected',
           status: 400
         });
@@ -912,10 +1144,10 @@ describe('BusyBarDriver failure reporting', () => {
 /**
  * `clearDisplay` empties the device's element set, which closes its screen.
  * On firmware 1.2.4, closing it while an image and an animation share it hangs
- * the bar within three or four cycles (measured 2026-09-30). These pin the
- * guard: what the driver has drawn is tracked, and every animation among it is
- * removed by id -- one request each, since the device's multi-id removal is
- * all or nothing -- and allowed to settle before the release.
+ * the bar within three or four cycles (2026-09-30), and so, now and then, does
+ * removing an animation by id (2026-10-07). These pin the release measured
+ * safe 100 times in a row: the images come down one request each, the device
+ * gets the settle, and the screen closes on the animations alone.
  */
 describe('BusyBarDriver display teardown', () => {
   const icon = { id: FRONT_ELEMENT_IDS.ICON, type: 'animation', path: 'icon_gear_16x16.anim', x: 0, y: 0, z_index: 2 };
@@ -939,67 +1171,93 @@ describe('BusyBarDriver display teardown', () => {
     return { requests, respond };
   }
 
+  /**
+   * A first clear, so the driver vouches for the panel, then forgets its
+   * requests. Until then it removes the frame whatever it lists, in case a
+   * previous run left one.
+   */
+  async function knownPanel(driver: BusyBarDriver, requests: unknown[]): Promise<void> {
+    await driver.clearDisplay();
+    requests.length = 0;
+  }
+
   const isRemoval = (init?: RequestInit): boolean => init?.method === 'DELETE' && Boolean(init.body);
   const isFullDelete = (url: string, init?: RequestInit): boolean =>
     init?.method === 'DELETE' && !init.body && url.includes('/api/display/draw');
 
+  it('ClearDisplay_FirstSinceStart_TakesTheFrameDownWhateverItLists', async () => {
+    // A previous run may have left its frame beside an animation.
+    const { requests, respond } = recorder();
+    await withLiveDriver(respond, async driver => {
+      await expect(driver.clearDisplay()).resolves.toBe('cleared');
+    }, noSettle);
+
+    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.FRAME}`, 'full']);
+  });
+
   it('ClearDisplay_NothingAnimated_SendsASingleFullDelete', async () => {
     const { requests, respond } = recorder();
     await withLiveDriver(respond, async driver => {
+      await knownPanel(driver, requests);
       await driver.sendPixelFrame(Buffer.from('png'));
       await expect(driver.clearDisplay()).resolves.toBe('cleared');
     }, noSettle);
 
-    // The frame is an image, not an animation: nothing to take down first.
+    // An image alone closes safely: nothing to take down first.
     expect(deletes(requests)).toEqual(['full']);
   });
 
-  it('ClearDisplay_AnimatedIconOverAFrame_RemovesTheIconByIdBeforeReleasing', async () => {
+  it('ClearDisplay_AnimatedIconOverAFrame_TakesTheFrameDownAndClosesOnTheIcon', async () => {
     const { requests, respond } = recorder();
     await withLiveDriver(respond, async driver => {
+      await knownPanel(driver, requests);
       await driver.sendPixelFrame(Buffer.from('png'));
       await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
       await driver.clearDisplay();
     }, noSettle);
 
-    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.ICON}`, 'full']);
+    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.FRAME}`, 'full']);
   });
 
-  it('ClearDisplay_SeveralAnimations_RemovesEachInItsOwnRequest', async () => {
-    // One request naming both fails whole when either is already gone, and
-    // then removes neither.
+  it('ClearDisplay_OnlyAnimations_ClosesOnThemWithoutRemovingAny', async () => {
     const { requests, respond } = recorder();
     await withLiveDriver(respond, async driver => {
+      await knownPanel(driver, requests);
       await driver.sendDisplayPayload({ application_name: DEVICE_APPLICATION_NAME, elements: [scene] });
       await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
       await driver.clearDisplay();
     }, noSettle);
 
-    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.SCENE}`, `ids:${FRONT_ELEMENT_IDS.ICON}`, 'full']);
+    expect(deletes(requests)).toEqual(['full']);
   });
 
-  it('ClearDisplay_AnimationAlreadyGone_StillReleasesTheDisplay', async () => {
+  it('ClearDisplay_FrameAlreadyGone_StillReleasesTheDisplay', async () => {
     const { requests, respond } = recorder((_url, init) => (isRemoval(init) ? status(400) : undefined));
     await withLiveDriver(respond, async driver => {
+      await driver.sendPixelFrame(Buffer.from('png'));
       await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
       await expect(driver.clearDisplay()).resolves.toBe('cleared');
     }, noSettle);
 
-    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.ICON}`, 'full']);
+    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.FRAME}`, 'full']);
   });
 
   it.each([
     ['unreachable', (): Response => { throw new TypeError('fetch failed'); }],
     ['busy', (): Response => status(503)],
     ['rejected', (): Response => status(500)]
-  ])('ClearDisplay_AnimationRemoval%s_ThrowsWithoutReleasing', async (kind, fail) => {
-    // Releasing with the animation possibly still up is the pattern that
-    // hangs the bar. Only a 400 means the animation is not there.
-    const { requests, respond } = recorder((_url, init) => (isRemoval(init) ? fail() : undefined));
+  ])('ClearDisplay_FrameRemoval%s_ThrowsWithoutReleasing', async (kind, fail) => {
+    // Releasing with the frame possibly still beside the icon is the pattern
+    // that hangs the bar. Only a 400 means the frame is not there.
+    let failing = false;
+    const { requests, respond } = recorder((_url, init) => (failing && isRemoval(init) ? fail() : undefined));
     await withLiveDriver(respond, async driver => {
+      await knownPanel(driver, requests);
+      await driver.sendPixelFrame(Buffer.from('png'));
       await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
+      failing = true;
       await expect(driver.clearDisplay()).rejects.toMatchObject({ kind });
-      expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.ICON]);
+      expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.FRAME, FRONT_ELEMENT_IDS.ICON]);
     }, noSettle);
 
     expect(deletes(requests)).not.toContain('full');
@@ -1008,38 +1266,44 @@ describe('BusyBarDriver display teardown', () => {
   it('ClearDisplay_FullDeleteRefused_ThrowsAndKeepsTheElementsListed', async () => {
     const { respond } = recorder((url, init) => (isFullDelete(url, init) ? status(400) : undefined));
     await withLiveDriver(respond, async driver => {
-      await driver.sendPixelFrame(Buffer.from('png'));
+      await driver.sendDisplayPayload({ application_name: DEVICE_APPLICATION_NAME, elements: [scene] });
       await expect(driver.clearDisplay()).rejects.toMatchObject({ kind: 'rejected' });
-      expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.FRAME]);
+      expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.SCENE]);
     }, noSettle);
   });
 
-  it('ClearDisplay_WithAnimations_WaitsForTheDeviceToSettleBeforeReleasing', async () => {
+  it('ClearDisplay_FrameBesideAnAnimation_WaitsTheSettleAfterRemovingIt', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
       const { requests, respond } = recorder();
       await withLiveDriver(respond, async driver => {
+        await driver.sendPixelFrame(Buffer.from('png'));
         await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
         const clearing = driver.clearDisplay();
 
         await vi.advanceTimersByTimeAsync(ANIMATION_TEARDOWN_SETTLE_MS - 1);
-        expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.ICON}`]);
+        expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.FRAME}`]);
 
         await vi.advanceTimersByTimeAsync(1);
         await expect(clearing).resolves.toBe('cleared');
-        expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.ICON}`, 'full']);
+        expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.FRAME}`, 'full']);
       });
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('ClearDisplay_NothingAnimated_DoesNotWait', async () => {
+  it('ClearDisplay_NothingRemovedLately_DoesNotWait', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
       const { requests, respond } = recorder();
       await withLiveDriver(respond, async driver => {
-        await driver.sendPixelFrame(Buffer.from('png'));
+        const first = driver.clearDisplay();
+        await vi.advanceTimersByTimeAsync(ANIMATION_TEARDOWN_SETTLE_MS);
+        await first;
+        requests.length = 0;
+        await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
+
         const clearing = driver.clearDisplay();
         await vi.advanceTimersByTimeAsync(0);
         await expect(clearing).resolves.toBe('cleared');
@@ -1060,7 +1324,7 @@ describe('BusyBarDriver display teardown', () => {
       await expect(driver.sendPixelFrame(Buffer.from('png'))).resolves.toBe('sent');
 
       await expect(clearing).resolves.toBe('superseded');
-      expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.FRAME]);
+      expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.ICON, FRONT_ELEMENT_IDS.FRAME]);
     }, { animationTeardownSettleMs: 40 });
 
     expect(deletes(requests)).not.toContain('full');
@@ -1105,7 +1369,7 @@ describe('BusyBarDriver display teardown', () => {
       expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([]);
     }, { animationTeardownSettleMs: 20 });
 
-    expect(deletes(requests)).toContain('full');
+    expect(deletes(requests)).toEqual([`ids:${FRONT_ELEMENT_IDS.FRAME}`, 'full']);
   });
 
   it('ClearDisplay_OnlyTouchesItsOwnApplication', async () => {
@@ -1123,7 +1387,7 @@ describe('BusyBarDriver display teardown', () => {
     expect(bodies).toEqual([DEVICE_APPLICATION_NAME]);
   });
 
-  it('ClearDisplay_MockMode_TakesTheAnimationsDownFirstToo', async () => {
+  it('ClearDisplay_MockMode_TakesTheFrameDownFirstToo', async () => {
     const mockDriver = new BusyBarDriver({ forceMock: true, ...noSettle });
     const logged = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
@@ -1134,10 +1398,11 @@ describe('BusyBarDriver display teardown', () => {
       await expect(mockDriver.clearDisplay()).resolves.toBe('cleared');
 
       const lines = logged.mock.calls.map(call => String(call[0]));
-      const removedAt = lines.findIndex(line => line.includes('[MOCK REMOVE]') && line.includes(FRONT_ELEMENT_IDS.ICON));
+      const removedAt = lines.findIndex(line => line.includes('[MOCK REMOVE]') && line.includes(FRONT_ELEMENT_IDS.FRAME));
       const clearedAt = lines.findIndex(line => line.includes('[MOCK CLEAR]'));
       expect(removedAt).toBeGreaterThanOrEqual(0);
       expect(removedAt).toBeLessThan(clearedAt);
+      expect(lines.some(line => line.includes('[MOCK REMOVE]') && line.includes(FRONT_ELEMENT_IDS.ICON))).toBe(false);
       expect(mockDriver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([]);
     } finally {
       mockDriver.disconnect();
@@ -1195,16 +1460,16 @@ describe('BusyBarDriver display teardown', () => {
       await withLiveDriver(() => status(200), async driver => {
         await driver.sendPixelFrame(Buffer.from('png'));
         await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
-        await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]);
-        expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.FRAME]);
+        await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]);
+        expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.ICON]);
       });
     });
 
     it('ShownElementIds_SingleIdTheDeviceDoesNotHold_ForgetsIt', async () => {
       const { respond } = recorder((_url, init) => (isRemoval(init) ? status(400) : undefined));
       await withLiveDriver(respond, async driver => {
-        await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
-        await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]).catch(() => undefined);
+        await driver.sendPixelFrame(Buffer.from('png'));
+        await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]).catch(() => undefined);
         expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([]);
       });
     });
@@ -1216,7 +1481,7 @@ describe('BusyBarDriver display teardown', () => {
         await driver.sendPixelFrame(Buffer.from('png'));
         await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
         await driver
-          .removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME, FRONT_ELEMENT_IDS.ICON])
+          .removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME, 'never_drawn'])
           .catch(() => undefined);
         expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.FRAME, FRONT_ELEMENT_IDS.ICON]);
       });
@@ -1228,9 +1493,9 @@ describe('BusyBarDriver display teardown', () => {
     ])('ShownElementIds_RemovalFailedWith%s_KeepsTheElement', async (_case, fail) => {
       const { respond } = recorder((_url, init) => (isRemoval(init) ? fail() : undefined));
       await withLiveDriver(respond, async driver => {
-        await driver.drawOverlay(DEVICE_APPLICATION_NAME, [icon]);
-        await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]).catch(() => undefined);
-        expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.ICON]);
+        await driver.sendPixelFrame(Buffer.from('png'));
+        await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]).catch(() => undefined);
+        expect(driver.shownElementIds(DEVICE_APPLICATION_NAME)).toEqual([FRONT_ELEMENT_IDS.FRAME]);
       });
     });
 
@@ -1484,20 +1749,23 @@ describe('BusyBarDriver contract enforcement', () => {
       expect(bar.isEnabled()).toBe(false);
     });
 
-    it('SetEnabled_TurnedOn_DialsTheConfiguredAddressAndSendsTheWaitingFrame', async () => {
-      // The frame rendered while the bar was off was queued, and the renderer
-      // recorded it as sent; without this the bar would stay dark until the
-      // picture next changed.
+    it('SetEnabled_TurnedOn_DialsTheConfiguredAddressAndAsksForTheCurrentScreen', async () => {
+      // The renderer recorded the frame rendered while the bar was off as
+      // sent; told `reconnected`, it draws what is current. The queued frame
+      // is not replayed: a clear asked for meanwhile would have ended it.
       const fetch = fetchSpy();
       const bar = new BusyBarDriver({ ipAddress: '10.0.4.21', enabled: false });
       bar.startStateStreamListener = () => undefined;
       await bar.connect();
       expect(await bar.sendPixelFrame(Buffer.from([1, 2, 3]))).toBe('queued');
       const send = vi.spyOn(bar, 'sendPixelFrame');
+      const reconnected = vi.fn();
+      bar.on('reconnected', reconnected);
 
       expect(await bar.setEnabled(true)).toBe(true);
-      await vi.waitFor(() => expect(send).toHaveBeenCalled());
 
+      expect(reconnected).toHaveBeenCalledTimes(1);
+      expect(send).not.toHaveBeenCalled();
       expect(fetch.mock.calls[0][0]).toBe('http://10.0.4.21/api/status');
       bar.disconnect();
     });

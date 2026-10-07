@@ -14,8 +14,11 @@ sending, whoever asked. A new stress test plays generated days of Unity,
 notifications, tasks and breaks against a simulated bar; it found the hang
 again, four more ways to break the device's rules, and a dozen ways the
 screen could end up showing the wrong thing, two Unity projects open
-included. Device Diagnostics now shows the slowdown that came before every
-freeze measured. Every fix here was checked on a real bar (firmware 1.2.4)
+included. Testing this release on a real bar then froze it a third way, from
+the app's own careful teardown: firmware 1.2.4 hangs, now and then and with
+no warning, when an animation is removed while it plays. The app no longer
+removes one. Device Diagnostics now shows the slowdown that came before the
+earlier freezes. Every fix here was checked on a real bar (firmware 1.2.4)
 before release.
 
 ### Added
@@ -30,6 +33,25 @@ before release.
 
 ### Fixed
 
+- **The bar no longer freezes when an animated icon or scene goes away.**
+  Replaying a day of Unity compiles on a real bar froze it on BUILDING 40%,
+  the HTTP API silent until it was restarted by hand. The cause, reproduced
+  without the app: firmware 1.2.4 hangs now and then when a playing
+  animation is removed -- the gear icon froze it on its 30th removal in one
+  run and its 59th in another, with nothing slowing down first. The app now
+  replaces an animation it is done with by an empty one under the same name,
+  which survived 200 swaps in a row, and hands the display back to the clock
+  by taking the picture down, waiting half a second and closing the screen
+  on the animations alone, which survived 100 rounds. You may notice that
+  half second of black before the clock.
+- **A bar that comes back after an outage shows what is current.** After that
+  freeze and a restart the bar came back on the old BUILDING screen: the
+  return to the clock had failed while it was away, and the app resent the
+  last picture it had. It now redraws whatever holds the display when the bar
+  answers again -- after a restart, a cable or Wi-Fi blip too short for the
+  connection status to notice, or turning no-bar mode off. A Lunch or Away
+  break that started during such a blip no longer streams its animation
+  picture by picture for the whole break.
 - **The bar now shows what is actually going on when something ends.** The
   stress test learned to check the screen at the end of every generated day
   against the state, with two Unity projects open, and found the display

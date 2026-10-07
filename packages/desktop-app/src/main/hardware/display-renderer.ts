@@ -227,6 +227,31 @@ export class DisplayRenderer {
       new IconAnimator(driver, name => loadAnimationSequence(animationsDir, name), {
         onPreviewFrame: frame => this.onIconPreviewFrame(frame)
       });
+    // Optional: test doubles of the driver are often not emitters.
+    if (typeof driver.on === 'function') driver.on('reconnected', () => this.redrawAfterReconnect());
+  }
+
+  /**
+   * Draws what is current on a bar that just came back from an outage.
+   *
+   * The device may have rebooted, and what it showed before is a screen from
+   * before the outage either way: the driver used to replay the last pending
+   * frame, which left BUILDING 40% on the bar long after the build ended,
+   * because the clear that followed failed while the bar was away
+   * (2026-10-07). The driver forgets the panel; this redraws past every cache
+   * that would call the screen already sent.
+   */
+  private redrawAfterReconnect(): void {
+    this.invalidateFrameCache();
+    this.animationPlayer.forgetDevice();
+    // The scene's own end draws the next screen.
+    if (this.isCelebrating) return;
+    const holder = this.priorityEngine?.getActiveLockEventName() ?? null;
+    if (holder !== null && holder !== ACTIVE_TRACKER_EVENT && this.resumeScreen(holder)) return;
+    // Stopped first, or Lunch and Away would find their animation already
+    // playing and leave the scene the device lost undrawn.
+    this.animationPlayer.stop();
+    this.setContextMode(this._contextMode);
   }
 
   /**

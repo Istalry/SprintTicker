@@ -181,6 +181,12 @@ export class IconAnimator {
     }
   }
 
+  /**
+   * Takes the icon off the screen. The driver puts the element to rest rather
+   * than removing it -- removing a playing animation by id hangs the bar now
+   * and then -- and the next icon is drawn over it under the same id, which is
+   * also how one icon replaces another without passing through here.
+   */
   private async remove(): Promise<void> {
     try {
       await this.driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [ICON_ELEMENT_ID]);

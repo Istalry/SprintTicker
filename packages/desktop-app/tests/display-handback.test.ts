@@ -96,7 +96,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await play('lunchStart', 500, 'compileStart', 500, 'lunchEnd', SETTLE_MS);
 
       expect(lock()).toBe('unityCompilingPriority');
-      expect(desk.device.has(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
       expect(icon()).toBe('icon_gear_16x16.anim');
     });
 
@@ -181,7 +181,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await play('startTask', 500, 'playEnter', 500, 'finish', SETTLE_MS);
 
       expect(lock()).toBe('unityPlayModePriority');
-      expect(desk.device.has(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
       expect(icon()).toBe('icon_playmode_16x16.anim');
     });
   });
@@ -204,6 +204,66 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await advance(SETTLE_MS);
 
       expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+  });
+
+  /**
+   * The bar going away and coming back. 2026-10-07: it froze on BUILDING 40%,
+   * was restarted, and came back showing it -- the clear for the build's end
+   * had failed while it was away, and the driver replayed the last frame on
+   * its return. It now redraws what is current.
+   */
+  describe('the bar drops out', () => {
+    /** Long enough for the ping loop to notice the outage, and the return. */
+    const PING_NOTICE_MS = 4000;
+
+    const outage = async (during: () => Promise<void>, options: { reboot?: boolean } = {}): Promise<void> => {
+      desk.device.offline = true;
+      if (options.reboot) desk.device.reboot();
+      await advance(PING_NOTICE_MS);
+      await during();
+      desk.device.offline = false;
+      await advance(PING_NOTICE_MS);
+    };
+
+    it('BuildEndsWhileTheBarIsAway_BackOnTheIdleClock', async () => {
+      await play('buildStart', 500);
+
+      await outage(() => play('buildEnd', SETTLE_MS));
+      await advance(SETTLE_MS);
+
+      expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('BarRebootsDuringASession_TheSessionComesBack', async () => {
+      await play('startTask', 500);
+
+      await outage(() => advance(1000), { reboot: true });
+      await advance(SETTLE_MS);
+
+      expectSettledScreen(desk);
+      expect(icon()).toBeDefined();
+    });
+
+    it('BarRebootsDuringLunch_TheSceneComesBack', async () => {
+      await play('lunchStart', 500);
+
+      await outage(() => advance(1000), { reboot: true });
+      await advance(SETTLE_MS);
+
+      expectSettledScreen(desk);
+    });
+
+    it('BarRebootsUnderABuild_TheBuildComesBack', async () => {
+      await play('buildStart', 500);
+
+      await outage(() => advance(1000), { reboot: true });
+      await advance(SETTLE_MS);
+
+      expect(lock()).toBe('unityCompilingPriority');
+      expect(icon()).toBe('icon_hammer_16x16.anim');
       expectSettledScreen(desk);
     });
   });

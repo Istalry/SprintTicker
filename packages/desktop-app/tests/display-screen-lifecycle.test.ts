@@ -4,6 +4,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { ActiveSessionDTO } from '../src/shared/dtos';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
+import { BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
 import { FirmwareSimulator, RuleId } from './support/firmware-simulator';
 
 vi.mock('electron', () => ({
@@ -26,10 +27,12 @@ async function waitFor(condition: () => boolean, what: string, timeoutMs = 4000)
  * The whole path -- renderer, animation player, icon animator, driver -- run
  * against the firmware's screen rules, with real `.anim` files.
  *
- * The rule under test: changing screens never empties the panel, so it never
- * closes the device's screen. Starting a full-panel scene used to clear the
+ * The rules under test: changing screens never empties the panel, so it never
+ * closes the device's screen -- starting a full-panel scene used to clear the
  * display first, from a frame that could carry an animated icon, which is the
- * sequence that hung the bar on 2026-09-30.
+ * sequence that hung the bar on 2026-09-30 -- and no animation is ever removed
+ * by id, which hung it on 2026-10-07. An animation that has to go is put to
+ * rest under the same id, and stays on the panel showing nothing.
  */
 describe('Front display screen lifecycle', () => {
   let canvas: FirmwareSimulator;
@@ -48,6 +51,10 @@ describe('Front display screen lifecycle', () => {
 
   const shown = (): string[] => [...canvas.elements.keys()].sort();
   const has = (id: string): boolean => canvas.elements.has(id);
+  /** Showing something: on the panel and not put to rest. */
+  const showing = (id: string): boolean => canvas.visible().includes(id);
+  /** Removals by id the device was sent. */
+  const removalsById = (): string[] => requests.filter(r => r.includes('element_ids'));
   const everEmptiedWhileOpen = (): boolean => canvas.history.slice(1).some(set => set.length === 0);
 
   beforeEach(async () => {
@@ -79,7 +86,7 @@ describe('Front display screen lifecycle', () => {
   }
 
   async function sceneShowing(): Promise<void> {
-    await waitFor(() => shown().join() === FRONT_ELEMENT_IDS.SCENE, 'the scene alone on the panel');
+    await waitFor(() => canvas.visible().join() === FRONT_ELEMENT_IDS.SCENE, 'the scene alone on the panel');
   }
 
   it('Scene_FromAScreenWithAnAnimatedIcon_NeverClosesTheScreen', async () => {
@@ -98,7 +105,7 @@ describe('Front display screen lifecycle', () => {
     await sceneShowing();
 
     renderer.setContextMode('WORK');
-    await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME) && !has(FRONT_ELEMENT_IDS.SCENE), 'the scene retired');
+    await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME) && !showing(FRONT_ELEMENT_IDS.SCENE), 'the scene retired');
 
     expect(canvas.closes).toEqual([]);
     expect(everEmptiedWhileOpen()).toBe(false);
@@ -110,7 +117,7 @@ describe('Front display screen lifecycle', () => {
     await sceneShowing();
 
     renderer.setContextMode('WORK');
-    await waitFor(() => shown().join() === [FRONT_ELEMENT_IDS.ICON, FRONT_ELEMENT_IDS.FRAME].sort().join(), 'frame and icon');
+    await waitFor(() => canvas.visible().join() === [FRONT_ELEMENT_IDS.ICON, FRONT_ELEMENT_IDS.FRAME].sort().join(), 'frame and icon');
 
     expect(canvas.closes).toEqual([]);
   });
@@ -123,7 +130,7 @@ describe('Front display screen lifecycle', () => {
     renderer.setContextMode('AWAY');
     await waitFor(() => canvas.elements.get(FRONT_ELEMENT_IDS.SCENE)?.path === 'away_coffee_72x16.anim', 'the away scene');
 
-    expect(shown()).toEqual([FRONT_ELEMENT_IDS.SCENE]);
+    expect(canvas.visible()).toEqual([FRONT_ELEMENT_IDS.SCENE]);
     expect(canvas.closes).toEqual([]);
     expect(everEmptiedWhileOpen()).toBe(false);
   });
@@ -135,7 +142,7 @@ describe('Front display screen lifecycle', () => {
       renderer.setContextMode(round % 2 === 0 ? 'LUNCH' : 'AWAY');
       await sceneShowing();
       renderer.setContextMode('WORK');
-      await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME) && !has(FRONT_ELEMENT_IDS.SCENE), `round ${round} back to work`);
+      await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME) && !showing(FRONT_ELEMENT_IDS.SCENE), `round ${round} back to work`);
     }
 
     expect(canvas.closes).toEqual([]);
@@ -148,7 +155,7 @@ describe('Front display screen lifecycle', () => {
 
     renderer.renderTaskCompletionConfetti(0.3);
     await sceneShowing();
-    await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME) && !has(FRONT_ELEMENT_IDS.SCENE), 'the celebration over');
+    await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME) && !showing(FRONT_ELEMENT_IDS.SCENE), 'the celebration over');
 
     expect(canvas.closes).toEqual([]);
   });
@@ -165,12 +172,13 @@ describe('Front display screen lifecycle', () => {
     await new Promise(resolve => setTimeout(resolve, 150));
 
     expect(canvas.violationsOf('upload-over-playing-anim')).toEqual([]);
-    expect(shown()).toEqual([FRONT_ELEMENT_IDS.SCENE]);
+    expect(canvas.visible()).toEqual([FRONT_ELEMENT_IDS.SCENE]);
   });
 
-  it('IdleClock_ReleasingTheDisplay_TakesTheAnimationDownFirstAndLetsItSettle', async () => {
-    // The one deliberate close. It must not find an animation on the panel,
-    // and the device gets time between the removal and the close.
+  it('IdleClock_ReleasingTheDisplay_TakesTheFrameDownAndClosesOnTheIconAlone', async () => {
+    // The one deliberate close, as measured safe 100 times on firmware 1.2.4:
+    // the frame goes, the device gets the settle, and the screen closes on the
+    // animation alone. The icon is not removed by id.
     await showPausedTask();
     renderer.setShowIdleClockFallback(true);
 
@@ -178,8 +186,8 @@ describe('Front display screen lifecycle', () => {
     await waitFor(() => canvas.closes.length === 1, 'the release');
 
     const [close] = canvas.closes;
-    expect(close.types).not.toContain('animation');
-    expect(close.sinceLastAnimationRemovedMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
+    expect(close.types).toEqual(['animation']);
+    expect(close.sinceLastRemovalMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
   });
 
   it('IdleClock_AfterAScene_TakesTheSceneDownFirst', async () => {
@@ -192,15 +200,14 @@ describe('Front display screen lifecycle', () => {
     renderer.setContextMode('WORK');
     renderer.renderActiveSession(null);
     await waitFor(() => canvas.closes.length >= 1, 'the release');
-    // Removing the scene empties the panel before the release's own DELETE,
-    // which is still in its settle wait. Left running, it lands on the next
-    // test's fake device, through the shared fetch, and wipes that test's
-    // screen.
+    // The release's own DELETE may still be in its settle wait. Left
+    // running, it lands on the next test's fake device, through the shared
+    // fetch, and wipes that test's screen.
     await release.mock.results[0].value;
     await new Promise(resolve => setTimeout(resolve, SETTLE_MS * 3));
 
-    // The scene alone closing the screen as it goes is the measured-safe case;
-    // an animation sharing the close with anything else is not.
+    // Animations alone closing the screen is the measured-safe case; an
+    // animation sharing the close with anything else is not.
     expect(canvas.violationsOf('close-with-image-and-animation')).toEqual([]);
     // The icon animator still wanted the paused stopwatch: nothing had told it
     // the idle clock was not a frame. It drew the icon back, alone, over the
@@ -235,7 +242,7 @@ describe('Front display screen lifecycle', () => {
 
       expect(await Promise.all([first, second])).toEqual(['cleared', 'cleared']);
       expect(canvas.closes).toHaveLength(1);
-      expect(canvas.closes[0].sinceLastAnimationRemovedMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
+      expect(canvas.closes[0].sinceLastRemovalMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
       expect(clears()).toHaveLength(1);
     });
 
@@ -269,8 +276,7 @@ describe('Front display screen lifecycle', () => {
       await driver.clearDisplay();
 
       expect(clears()).toHaveLength(2);
-      expect(canvas.closes).toHaveLength(2);
-      expect(canvas.closes.every(close => !close.types.includes('animation'))).toBe(true);
+      expect(canvas.closes.map(close => close.types)).toEqual([['animation'], ['animation']]);
     });
 
     it('ClearDisplay_FirstSinceStart_SendsEvenWithNothingDrawn', async () => {
@@ -297,11 +303,11 @@ describe('Front display screen lifecycle', () => {
     it('RemoveDisplayElements_OneAbsentId_IsLoggedAsAlreadyGone', async () => {
       allowed = ['absent-element-removal'];
       await showPausedTask();
-      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]).catch(() => undefined);
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]).catch(() => undefined);
       const warn = vi.mocked(console.warn);
       warn.mockClear();
 
-      await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON])).rejects.toThrow();
+      await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME])).rejects.toThrow();
 
       expect(warn.mock.calls.flat().join(' ')).not.toContain('returned 400');
       expect(vi.mocked(console.log).mock.calls.flat().join(' ')).toContain('already gone');
@@ -314,7 +320,7 @@ describe('Front display screen lifecycle', () => {
       const warn = vi.mocked(console.warn);
       warn.mockClear();
 
-      await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON, 'absent'])).rejects.toThrow();
+      await expect(driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME, 'absent'])).rejects.toThrow();
 
       expect(warn.mock.calls.flat().join(' ')).toContain('returned 400');
     });
@@ -387,16 +393,63 @@ describe('Front display screen lifecycle', () => {
       expect(requests).toHaveLength(sent);
     });
 
-    it('RemoveDisplayElements_LastElementSoonAfterAnAnimationLeft_WaitsForTheSettle', async () => {
-      // Emptying the panel closes the screen, whichever call does it: the
-      // settle is not only the clear's.
+    it('RemoveDisplayElements_AnAnimation_PutsItToRestUnderTheSameId', async () => {
+      // Removing a playing animation by id hung the bar on the 13th, 30th and
+      // 59th time (2026-10-07). Drawing another one under its id never did.
       await showPausedTask();
+
       await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]);
 
+      expect(canvas.elements.get(FRONT_ELEMENT_IDS.ICON)?.path).toBe(BLANK_ANIMATION_FILE);
+      expect(canvas.visible()).toEqual([FRONT_ELEMENT_IDS.FRAME]);
+      expect(removalsById()).toEqual([]);
+    });
+
+    it('RemoveDisplayElements_TwoAnimations_UploadTheEmptyOneOnce', async () => {
+      await showPausedTask();
+      await driver.drawOverlay(DEVICE_APPLICATION_NAME, [{ ...iconElement, id: 'second_anim' }]);
+
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON, 'second_anim']);
+      await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]);
+
+      const blankUploads = canvas.trace.filter(
+        t => t.request.startsWith('POST /api/assets/upload') && t.request.includes(BLANK_ANIMATION_FILE)
+      );
+      expect(blankUploads).toHaveLength(1);
+      expect(canvas.visible()).toEqual([FRONT_ELEMENT_IDS.FRAME]);
+      expect(removalsById()).toEqual([]);
+    });
+
+    it('ClearDisplay_RightAfterTheFrameWent_WaitsTheSettleBeforeClosingOnTheIcon', async () => {
+      // The release measured safe: frame removed, settle, close on the
+      // animations. The settle counts from any removal, whoever made it.
+      await showPausedTask();
       await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.FRAME]);
 
+      await driver.clearDisplay();
+
       expect(canvas.closes).toHaveLength(1);
-      expect(canvas.closes[0].sinceLastAnimationRemovedMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
+      expect(canvas.closes[0].types).toEqual(['animation']);
+      expect(canvas.closes[0].sinceLastRemovalMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
+    });
+
+    it('ClearDisplay_ScreenLeftByAPreviousRun_TakesItsFrameDownAndClosesOnItsIcon', async () => {
+      // A new driver cannot vouch for the panel and lists nothing on it: the
+      // close must still not find the app's frame beside its icon.
+      await showPausedTask();
+      const next = new BusyBarDriver({ ipAddress: '10.0.4.20', forceMock: false, animationTeardownSettleMs: SETTLE_MS });
+      next.startStateStreamListener = () => undefined;
+      await next.connect();
+
+      try {
+        expect(await next.clearDisplay()).toBe('cleared');
+      } finally {
+        next.disconnect();
+      }
+
+      expect(canvas.closes.map(close => close.types)).toEqual([['animation']]);
+      expect(canvas.closes[0].sinceLastRemovalMs).toBeGreaterThanOrEqual(SETTLE_MS - 2);
+      expect(removalsById()).toEqual([expect.stringContaining(FRONT_ELEMENT_IDS.FRAME)]);
     });
 
     it('DisplayHealth_UploadsClosesAndSkips_AreWhatTheDeviceSaw', async () => {

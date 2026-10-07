@@ -7,6 +7,7 @@ import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, describeEr
 import { DisplayLedger } from './display-ledger';
 import { DisplayHealthMonitor } from './display-health';
 import { SerialQueue } from './serial-queue';
+import { BLANK_ANIMATION_BYTES, BLANK_ANIMATION_FILE } from './blank-animation';
 
 /**
  * What a display request's guard decides at the head of the display queue,
@@ -61,24 +62,21 @@ export const DEVICE_REQUEST_TIMEOUT_MS = 2000;
 export const DEVICE_UPLOAD_TIMEOUT_MS = 5000;
 
 /**
- * Pause between removing this application's animations and releasing the
- * display, in `clearDisplay`.
+ * Pause between the last element leaving the panel and the screen closing, in
+ * `clearDisplay` and in any removal that could empty the panel.
  *
  * Releasing the display empties the device's element set, and an empty set
- * closes its screen. Measured on firmware 1.2.4 (2026-09-30): closing it while
- * an image and an animation are both on it hangs the bar within three or four
- * cycles, and removing the animation by id first and closing *at once* only
- * stretched that to six. An animation alone closes safely every time. So the
- * animations go first, and the device gets this long -- a few of its refresh
- * ticks -- to finish tearing their players down before the close.
+ * closes its screen. Closing on an image and an animation together hung the
+ * bar within three or four cycles (2026-09-30). The release that survived 100
+ * rounds in a row on firmware 1.2.4 (`pnpm probe:busybar --teardown-soak
+ * --park`, 2026-10-07) removes the images, waits this long, and closes on the
+ * animations alone. It has not been measured without the wait; re-run that
+ * soak before shortening it.
  *
- * Measured sufficient on firmware 1.2.4 (2026-09-30): `pnpm probe:busybar
- * --teardown-soak` ran this exact release ten times with no hang and upload
- * times flat at 24-53 ms, where the same release without the pause hung on
- * round 6. Re-run that soak before shortening it; too short hangs the bar.
- * Never emptying the screen stays the rule for changing screens, which is why
- * `AnimationPlayer` switches scenes without a clear at all and this path is
- * left to quit and the idle clock.
+ * What this pause used to follow -- removing the animations by id first -- is
+ * itself what hangs the bar, now and then: see `removeDisplayElements`. The
+ * 2026-09-30 soak that called this release safe ran ten rounds; the same
+ * removal froze the bar on the 30th and the 59th.
  */
 export const ANIMATION_TEARDOWN_SETTLE_MS = 500;
 
@@ -373,6 +371,19 @@ export class BusyBarDriver extends EventEmitter {
   private consecutivePingFailures: number = 0;
   private frameInFlight: boolean = false;
   private pendingFrameArgs: Parameters<BusyBarDriver['sendPixelFrame']> | null = null;
+  /**
+   * Whether the empty animation is believed stored on the device, so that an
+   * animation can be put to rest without uploading it again. Forgotten with
+   * the device: a reboot, an asset delete, another address.
+   */
+  private blankAnimationStored = false;
+  /**
+   * A request got no answer since the last ping that did. An outage shorter
+   * than the ping interval fails requests without any ping seeing it: a
+   * scene's upload then fell back to streaming frames for the whole of Lunch,
+   * and a clear that failed left its screen up. Found by the stress test.
+   */
+  private answerLost = false;
   private framesSent: number = 0;
   private framesFailed: number = 0;
   private displayVersion: number = 0;
@@ -974,6 +985,7 @@ export class BusyBarDriver extends EventEmitter {
   public async deleteAppAssets(applicationName: string): Promise<void> {
     const operation = `asset delete ${applicationName}`;
     this.requireConnected(operation);
+    this.blankAnimationStored = false;
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK ASSET DELETE] app=${applicationName}`);
@@ -993,14 +1005,15 @@ export class BusyBarDriver extends EventEmitter {
    * Removes everything this application drew and releases the display:
    * DELETE /api/display/draw?application_name={app}.
    *
-   * The DELETE itself is the dangerous part. It empties the device's element
-   * set, which closes its screen, and on firmware 1.2.4 closing the screen
-   * while an image and an animation share it hangs the bar after a few cycles
-   * (measured 2026-09-30; the bar stops answering and sometimes reboots itself
-   * about 45 s later). So any animation this application is known to show is
-   * removed by id first, one request per id, and the device gets
-   * `ANIMATION_TEARDOWN_SETTLE_MS` before the close. An id the device no longer
-   * holds answers 400 and counts as removed.
+   * The DELETE empties the device's element set, which closes its screen, and
+   * on firmware 1.2.4 two ways of doing that hang the bar: closing with an
+   * image and an animation both on it (2026-09-30), and removing an animation
+   * by id beforehand (2026-10-07, see `removeDisplayElements`). So when an
+   * animation is on the panel the images go first, one request per id, the
+   * device gets `ANIMATION_TEARDOWN_SETTLE_MS`, and the screen closes on the
+   * animations alone -- the release measured safe 100 times in a row. On a
+   * panel the driver cannot vouch for, the app's frame is removed whatever
+   * the ledger lists, in case a previous run left it beside an animation.
    *
    * Changing screens never needs this -- see `AnimationPlayer`, which switches
    * to and from full-panel scenes without emptying the screen. This is for
@@ -1015,15 +1028,15 @@ export class BusyBarDriver extends EventEmitter {
    * for it, and one that finds the panel known to be empty sends nothing.
    *
    * **The DELETE's guards run at the head of the display queue**: nothing
-   * drawn since the clear began, no animation listed, and the settle elapsed
-   * since the last animation left -- whoever removed it, since a scene retired
-   * during this wait counts as much as this clear's own removals.
+   * drawn since the clear began, no image listed beside an animation, and the
+   * settle elapsed since the last removal -- whoever made it, since a scene
+   * put to rest during this wait counts as much as this clear's own removals.
    *
    * @returns `'superseded'` when something was drawn during the teardown, in
    *   which case the display is left to the newer screen and not released.
-   * @throws DeviceRequestError when the device did not remove an animation or
-   *   did not clear. A failed animation removal stops the clear: releasing the
-   *   display with the animation still up is the pattern that hangs the bar.
+   * @throws DeviceRequestError when the device did not remove an image or did
+   *   not clear. A failed removal stops the clear: closing on an image and an
+   *   animation together is the pattern that hangs the bar.
    */
   public async clearDisplay(applicationName: string = DEVICE_APPLICATION_NAME): Promise<ClearOutcome> {
     const operation = 'clear display';
@@ -1039,9 +1052,10 @@ export class BusyBarDriver extends EventEmitter {
 
   /** The body of {@link clearDisplay}, run once the clears before it are done. */
   private async runClear(applicationName: string, clearVersion: number, operation: string): Promise<ClearOutcome> {
-    // Rounds, because an animation could in principle be listed again between
-    // the removals and the DELETE; it never closes with one up. Three is far
-    // more than a draw under this clear's version, which supersedes it, leaves.
+    // Rounds, because an image could in principle be drawn again between the
+    // removals and the DELETE; it never closes on an image and an animation.
+    // Three is far more than a draw under this clear's version, which
+    // supersedes it, leaves.
     for (let round = 0; round < BusyBarDriver.CLEAR_ROUNDS; round++) {
       if (this.latestDrawVersion >= clearVersion) {
         console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while it waited its turn.');
@@ -1049,15 +1063,24 @@ export class BusyBarDriver extends EventEmitter {
       }
       if (this.ledger.isKnownEmpty(applicationName)) return 'cleared';
 
-      for (const id of this.ledger.ids(applicationName, 'animation')) {
-        await this.removeElementIfPresent(applicationName, id);
+      // Each removal is abandoned once a newer screen has landed: it would
+      // take down that screen's frame or bury its icon.
+      const abandonIf = (): boolean => this.latestDrawVersion >= clearVersion;
+      if (!this.ledger.isKnown(applicationName)) {
+        // A previous run, a crash or an outage may have left the app's frame
+        // beside an icon or a scene this driver never listed. The frame goes
+        // either way, and the close finds animations alone at worst.
+        await this.removeElementIfPresent(applicationName, FRONT_ELEMENT_IDS.FRAME, abandonIf);
+      }
+      for (const id of this.imagesBesideAnimations(applicationName)) {
+        await this.removeElementIfPresent(applicationName, id, abandonIf);
       }
 
-      const outcome = await this.queued<ClearOutcome | 'animation listed'>(
+      const outcome = await this.queued<ClearOutcome | 'image listed'>(
         () => {
           if (this.latestDrawVersion >= clearVersion) return { skip: 'superseded' };
           if (this.ledger.isKnownEmpty(applicationName)) return { skip: 'cleared' };
-          if (this.ledger.ids(applicationName, 'animation').length > 0) return { skip: 'animation listed' };
+          if (this.imagesBesideAnimations(applicationName).length > 0) return { skip: 'image listed' };
           const waitMs = this.ledger.settleRemainingMs(this.animationTeardownSettleMs);
           return waitMs > 0 ? { waitMs } : SEND;
         },
@@ -1079,12 +1102,23 @@ export class BusyBarDriver extends EventEmitter {
         }
       );
       if (outcome === 'superseded') {
-        console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while its animations came down.');
+        console.log('[BusyBarDriver] Clear abandoned: a newer screen was drawn while its images came down.');
       }
-      if (outcome !== 'animation listed') return outcome;
+      if (outcome !== 'image listed') return outcome;
     }
-    console.warn('[BusyBarDriver] Clear abandoned: an animation kept reappearing, and the screen must not close on one.');
+    console.warn('[BusyBarDriver] Clear abandoned: an image kept reappearing beside an animation, and the screen must not close on both.');
     return 'superseded';
+  }
+
+  private hasAnimation(applicationName: string): boolean {
+    return this.ledger.ids(applicationName, 'animation').length > 0;
+  }
+
+  /** The elements that are not animations, when an animation is listed too: what a close must not take down with it. */
+  private imagesBesideAnimations(applicationName: string): string[] {
+    if (!this.hasAnimation(applicationName)) return [];
+    const animations = new Set(this.ledger.ids(applicationName, 'animation'));
+    return this.ledger.ids(applicationName).filter(id => !animations.has(id));
   }
 
   /**
@@ -1093,9 +1127,13 @@ export class BusyBarDriver extends EventEmitter {
    *
    * @throws DeviceRequestError for any other failure.
    */
-  private async removeElementIfPresent(applicationName: string, elementId: string): Promise<void> {
+  private async removeElementIfPresent(
+    applicationName: string,
+    elementId: string,
+    abandonIf: () => boolean = () => false
+  ): Promise<void> {
     try {
-      await this.removeDisplayElements(applicationName, [elementId]);
+      await this.removeElements(applicationName, [elementId], abandonIf);
     } catch (err) {
       if (isElementAbsent(err)) return;
       throw err;
@@ -1282,6 +1320,7 @@ export class BusyBarDriver extends EventEmitter {
       this.lastTransportError = null;
       return response;
     } catch (err) {
+      this.answerLost = true;
       // Timeout, abort, DNS, refused connection: from the caller's point of
       // view these are the same event -- no answer from the device -- so the
       // null return stays. What changed is that the *reason* is kept rather
@@ -1334,6 +1373,22 @@ export class BusyBarDriver extends EventEmitter {
         console.warn(`[BusyBarDriver] ${operation}: device returned ${response?.status}.`);
     }
     return kind;
+  }
+
+  /**
+   * After the bar comes back from an outage, which may have been a reboot:
+   * nothing this driver believed about the panel or the stored assets holds,
+   * and the frame left pending is a screen from before the outage. Replaying
+   * it put BUILDING 40% back on a bar whose build had long finished, the
+   * clear that followed having failed while the bar was away (2026-10-07).
+   * The renderer, told by `reconnected`, redraws what is current instead.
+   */
+  private forgetDevice(): void {
+    this.answerLost = false;
+    this.ledger.forgetAll();
+    this.blankAnimationStored = false;
+    this.pendingFrameArgs = null;
+    this.emit('reconnected');
   }
 
   private checkPendingFrame() {
@@ -1457,10 +1512,20 @@ export class BusyBarDriver extends EventEmitter {
    * with 400 and removes *nothing* -- the ids that were there stay. Pass one id
    * per call wherever an id may already be gone.
    *
+   * **An animation is never removed: it is put to rest.** On firmware 1.2.4,
+   * removing a playing animation by id hangs the bar now and then -- the probe
+   * froze it on the 30th and the 59th removal of the gear icon, the app on the
+   * 13th, with uploads flat at 23 ms right up to it, so nothing warns
+   * (2026-10-07). Drawing another animation under the same id survived 200
+   * swaps. So an id the ledger lists as an animation -- or the app's icon or
+   * scene id on a panel it cannot vouch for -- is redrawn with the empty
+   * animation (`blank-animation.ts`), which shows nothing and leaves only when
+   * the screen closes. The caller sees it gone either way.
+   *
    * Removing the last element closes the device's screen exactly as
    * `clearDisplay` does; see there for why that matters. So a removal that
    * could empty the panel waits, like the clear, for the settle after the
-   * last animation left.
+   * last removal.
    *
    * **A single id known to be absent resolves without a request** -- the
    * driver has seen the panel emptied and the element not drawn since. Every
@@ -1470,8 +1535,120 @@ export class BusyBarDriver extends EventEmitter {
    */
   public async removeDisplayElements(applicationName: string, elementIds: string[]): Promise<void> {
     if (!elementIds || elementIds.length === 0) throw new ArgumentNullException('elementIds');
+    this.requireConnected(`remove ${elementIds.join(', ')}`);
+
+    const animations = elementIds.filter(id => this.isAnimationElement(applicationName, id));
+    for (const id of animations) await this.parkAnimation(applicationName, id);
+    const others = elementIds.filter(id => !animations.includes(id));
+    if (others.length > 0) await this.removeElements(applicationName, others);
+  }
+
+  /**
+   * Whether `elementId` is, or may be, an animation. Listed as one; or, on a
+   * panel the driver cannot vouch for, the app's own icon or scene id.
+   */
+  private isAnimationElement(applicationName: string, elementId: string): boolean {
+    const listed = this.ledger.element(applicationName, elementId);
+    if (listed) return listed.type === 'animation';
+    return (
+      !this.ledger.isKnown(applicationName) &&
+      (elementId === FRONT_ELEMENT_IDS.ICON || elementId === FRONT_ELEMENT_IDS.SCENE)
+    );
+  }
+
+  /**
+   * Replaces an animation with the empty one, under the same id: the merge by
+   * id measured safe, where a removal hangs the bar now and then. Nothing to
+   * do for an element known to be absent, or already at rest.
+   *
+   * @throws DeviceRequestError when the device refused the empty animation's
+   *   upload or draw; the animation then stays as it was.
+   */
+  private async parkAnimation(
+    applicationName: string,
+    elementId: string,
+    abandonIf: () => boolean = () => false
+  ): Promise<void> {
+    const operation = `put ${elementId} to rest`;
+    // At rest only for certain: after a draw that got no answer the element
+    // may still be playing what it played before.
+    const atRest = (): boolean => {
+      if (this.ledger.isKnownAbsent(applicationName, elementId)) return true;
+      const element = this.ledger.element(applicationName, elementId);
+      return element?.path === BLANK_ANIMATION_FILE && !element.maybePaths?.length;
+    };
+    if (atRest()) return;
+
+    if (!this.blankAnimationStored) {
+      // Skipped by the upload's own guard when an element already plays it.
+      await this.uploadAsset(applicationName, BLANK_ANIMATION_FILE, BLANK_ANIMATION_BYTES);
+      this.blankAnimationStored = true;
+    }
+    const zIndex = this.ledger.element(applicationName, elementId)?.zIndex ?? FRONT_LAYER_Z.ICON;
+    const payload = this.formatHardwarePayload({
+      application_name: applicationName,
+      priority: DEFAULT_DRAW_PRIORITY,
+      elements: [
+        {
+          id: elementId,
+          type: 'animation',
+          path: BLANK_ANIMATION_FILE,
+          x: 0,
+          y: 0,
+          display: 'front',
+          loop: true,
+          section: 'default',
+          z_index: zIndex
+        }
+      ]
+    });
+
+    if (this.isMockMode) {
+      console.log(`[BusyBarDriver] [MOCK PARK] app=${applicationName}, id=${elementId}`);
+      this.ledger.noteParked(applicationName, elementId, BLANK_ANIMATION_FILE);
+      return;
+    }
+
+    await this.queued<void>(
+      () => (atRest() || abandonIf() ? { skip: undefined } : SEND),
+      async () => {
+        let result: 'ok' | 'conflict';
+        try {
+          result = await this.deviceRequest(
+            operation,
+            `http://${this.ipAddress}/api/display/draw`,
+            {
+              method: 'POST',
+              headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(payload)
+            },
+            { allowConflict: true }
+          );
+        } catch (err) {
+          if (gotNoAnswer(err)) this.ledger.noteDrawUncertain(applicationName, payload.elements);
+          throw err;
+        }
+        if (result === 'conflict') {
+          // Another application holds the display, and so the panel this
+          // element is on. Left as it is: it goes when that screen closes.
+          console.log(`[BusyBarDriver] ${operation}: the display is held at a higher priority; left as it is.`);
+          return;
+        }
+        this.ledger.noteParked(applicationName, elementId, BLANK_ANIMATION_FILE);
+      }
+    );
+  }
+
+  /**
+   * The removal request proper, for elements that are not animations.
+   * `abandonIf` is asked at the head of the queue; true sends nothing.
+   */
+  private async removeElements(
+    applicationName: string,
+    elementIds: string[],
+    abandonIf: () => boolean = () => false
+  ): Promise<void> {
     const operation = `remove ${elementIds.join(', ')}`;
-    this.requireConnected(operation);
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK REMOVE] app=${applicationName}, ids=${elementIds.join(',')}`);
@@ -1482,6 +1659,7 @@ export class BusyBarDriver extends EventEmitter {
     let couldEmpty = false;
     await this.queued<void>(
       () => {
+        if (abandonIf()) return { skip: undefined };
         if (elementIds.length === 1 && this.ledger.isKnownAbsent(applicationName, elementIds[0])) return { skip: undefined };
         couldEmpty = this.ledger.couldEmpty(applicationName, elementIds);
         const waitMs = couldEmpty ? this.ledger.settleRemainingMs(this.animationTeardownSettleMs) : 0;
@@ -1510,7 +1688,7 @@ export class BusyBarDriver extends EventEmitter {
           }
           throw err;
         }
-        this.ledger.noteRemoved(applicationName, elementIds);
+        this.ledger.noteRemoved(applicationName, elementIds, true);
         // Counted when nothing listed is left. On a panel the ledger cannot
         // vouch for the screen may have stayed open; a close counted that did
         // not happen is the safer error in a figure read for hang risk.
@@ -1795,7 +1973,10 @@ export class BusyBarDriver extends EventEmitter {
                 `[BusyBarDriver] Connection to ${this.ipAddress} recovered after ${this.consecutivePingFailures} failed ping(s). Restarting StateStream...`
               );
               this.startStateStreamListener();
-              this.checkPendingFrame();
+              this.forgetDevice();
+            } else if (this.answerLost) {
+              console.log(`[BusyBarDriver] ${this.ipAddress} answers again after requests that got no answer; redrawing.`);
+              this.forgetDevice();
             }
             this.consecutivePingFailures = 0;
           } else {
@@ -1878,6 +2059,7 @@ export class BusyBarDriver extends EventEmitter {
     this.consecutivePingFailures = 0;
     // Another address may be another bar, with a screen of its own.
     this.ledger.forgetAll();
+    this.blankAnimationStored = false;
 
     return this.connect();
   }
@@ -1897,11 +2079,13 @@ export class BusyBarDriver extends EventEmitter {
    * Off hands the display back first, then disconnects -- ping loop, socket
    * and all -- and `connect()` then declines to dial. Disconnecting alone left
    * the last frame on the bar for good, with nothing left that would ever
-   * clear it. `clearDisplay` is the safe release: animations removed, the
-   * settle wait, then the clear. On dials the configured address, and sends the last frame
-   * rendered while the bar was off, so the bar shows the current screen rather
-   * than nothing until the picture next changes: the renderer's deduplication
-   * recorded that frame as sent the moment the driver queued it.
+   * clear it. `clearDisplay` is the safe release: the frame removed, the
+   * settle wait, then the close. On dials the configured address and says
+   * `reconnected`, so the renderer draws the current screen rather than
+   * nothing until the picture next changes -- its deduplication recorded the
+   * last frame as sent the moment the driver queued it. The queued frame is
+   * not replayed: a clear asked for while the bar was off is lost, and the
+   * frame would put back a screen that clear had ended.
    *
    * Answers whether the bar is connected afterwards, like `connect()`.
    */
@@ -1926,7 +2110,7 @@ export class BusyBarDriver extends EventEmitter {
     this.enabled = true;
     console.log('[BusyBarDriver] BUSY Bar turned on.');
     const connected = await this.connect();
-    if (connected) this.checkPendingFrame();
+    if (connected) this.forgetDevice();
     return connected;
   }
 }

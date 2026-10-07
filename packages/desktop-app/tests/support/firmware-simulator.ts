@@ -10,6 +10,8 @@
  *   missing id is a 400 and nothing goes. On a closed screen it is a 400.
  * - Whatever empties the element set closes the screen. A full DELETE on a
  *   closed screen does nothing and answers 200.
+ * - Removing a playing animation by id hangs the bar now and then; this one
+ *   answers, and reports it.
  * - An upload over an `.anim` an element is playing answers 508.
  *
  * Every rule a real bar was measured breaking on is a {@link RuleId}. A test
@@ -22,10 +24,22 @@
  * the display starts checking it.
  */
 
+import { BLANK_ANIMATION_FILE } from '../../src/main/hardware/blank-animation';
+
 /** The ways a request can break the hardware contract. */
 export type RuleId =
-  /** The screen closed less than the settle after an animation came off it: the sequence that hung the bar on round 6. */
-  | 'close-too-soon-after-animation'
+  /**
+   * An animation removed by `element_ids`. Hung the bar on the 30th and the
+   * 59th removal of the gear icon (probe) and the 13th (app), on firmware
+   * 1.2.4, 2026-10-07. The driver puts animations to rest instead.
+   */
+  | 'animation-removed-by-id'
+  /**
+   * The screen closed on animations less than the settle after an element was
+   * removed. The release measured safe 100 times removed the frame, waited
+   * the settle, then closed; nothing shorter has been measured.
+   */
+  | 'close-too-soon-after-removal'
   /** The screen closed with an image and an animation both on it: hung the bar on rounds 3 and 4. */
   | 'close-with-image-and-animation'
   /** Two display or asset requests in flight at once. Nothing on the firmware is known to need it, and races between them are what the clears had. */
@@ -51,12 +65,12 @@ export interface Violation {
 export interface ScreenClose {
   /** The element types on the panel at the moment its screen closed. */
   types: string[];
-  /** How long before the close the last animation left the panel, or null if none ever did. */
-  sinceLastAnimationRemovedMs: number | null;
+  /** How long before the close an element was last removed by id, or null if none ever was. */
+  sinceLastRemovalMs: number | null;
 }
 
 export interface FirmwareSimulatorOptions {
-  /** The pause the device needs between an animation leaving and the screen closing. */
+  /** The pause the device needs between an element leaving and the screen closing on animations. */
   settleMs: number;
   /**
    * How long each display or asset request takes to answer. Zero answers at
@@ -97,6 +111,8 @@ export class FirmwareSimulator {
    */
   public readonly trace: Array<{ atMs: number; request: string; status: number; panel: string[] }> = [];
   public screenOpen = false;
+  /** Unreachable: every request, the status probe included, fails as a dropped link does. */
+  public offline = false;
   /** The most display and asset requests ever in flight together. */
   public maxInFlight = 0;
 
@@ -104,7 +120,7 @@ export class FirmwareSimulator {
   private readonly latency: () => number;
   private readonly toleranceMs: number;
   private readonly startedAt = Date.now();
-  private lastAnimationRemovedAt: number | null = null;
+  private lastRemovalAt: number | null = null;
   private inFlight = 0;
   /**
    * Whether a full clear has been carried out. Until then the driver cannot
@@ -136,12 +152,29 @@ export class FirmwareSimulator {
     this.restoreFetch = null;
   }
 
+  /**
+   * What the panel shows: its elements less the animations put to rest, which
+   * stay on it showing nothing until the screen closes.
+   */
+  public visible(): string[] {
+    return [...this.elements.entries()]
+      .filter(([, el]) => el.path !== BLANK_ANIMATION_FILE)
+      .map(([id]) => id)
+      .sort();
+  }
+
   public shown(): string[] {
     return [...this.elements.keys()].sort();
   }
 
+  /** On the panel, put to rest or not; see {@link isShowing}. */
   public has(id: string): boolean {
     return this.elements.has(id);
+  }
+
+  /** On the panel and not put to rest. */
+  public isShowing(id: string): boolean {
+    return this.visible().includes(id);
   }
 
   /** Violations of one rule. */
@@ -161,7 +194,25 @@ export class FirmwareSimulator {
     throw new Error(`The firmware simulator saw ${found.length} contract violation(s):\n${lines.join('\n')}`);
   }
 
+  /**
+   * What a reboot leaves: the firmware's own screen, nothing of the app's,
+   * and a driver that cannot know it -- so its next clear or removal is not
+   * one it could have avoided.
+   */
+  public reboot(): void {
+    this.elements.clear();
+    this.screenOpen = false;
+    this.everCleared = false;
+    this.snapshot();
+  }
+
   public async fetch(url: string, init?: RequestInit): Promise<Response> {
+    if (this.offline) {
+      // A request that got no answer, the status probe included, leaves the
+      // driver unable to vouch for the panel, as a reboot does.
+      this.everCleared = false;
+      throw new TypeError('fetch failed');
+    }
     const method = init?.method ?? 'GET';
     const parsed = new URL(url);
     const label = `${method} ${parsed.pathname}`;
@@ -234,18 +285,17 @@ export class FirmwareSimulator {
       }
       return this.answer(400);
     }
-    // The settle is measured from the animations that left *before* this
-    // request. An animation that is the last thing on the panel closes the
-    // screen as it goes, and that alone closed safely every time it was
-    // measured; the hang needs something else left to close on afterwards.
-    const settleFrom = this.lastAnimationRemovedAt;
+    // The settle is measured from removals *before* this request: a removal
+    // that empties the panel closes the screen as it goes.
+    const settleFrom = this.lastRemovalAt;
     const removedTypes: string[] = [];
     for (const id of ids) {
       const type = this.elements.get(id)?.type ?? 'unknown';
       removedTypes.push(type);
-      if (type === 'animation') this.lastAnimationRemovedAt = Date.now();
+      if (type === 'animation') this.violate('animation-removed-by-id', label, `removed ${id}, a playing animation`);
       this.elements.delete(id);
     }
+    this.lastRemovalAt = Date.now();
     this.snapshot();
     if (this.elements.size === 0) this.close(label, removedTypes, settleFrom);
     return this.answer(200);
@@ -261,25 +311,22 @@ export class FirmwareSimulator {
     const types = [...this.elements.values()].map(el => el.type);
     this.elements.clear();
     this.snapshot();
-    this.close(label, types, this.lastAnimationRemovedAt);
+    this.close(label, types, this.lastRemovalAt);
     return this.answer(200);
   }
 
   /**
    * @param types What the close took off the panel.
-   * @param settleFrom When an animation last left before this close began.
+   * @param settleFrom When an element was last removed before this close began.
    */
   private close(label: string, types: string[], settleFrom: number | null): void {
     const since = settleFrom === null ? null : Date.now() - settleFrom;
-    this.closes.push({
-      types,
-      sinceLastAnimationRemovedMs: this.lastAnimationRemovedAt === null ? null : Date.now() - this.lastAnimationRemovedAt
-    });
+    this.closes.push({ types, sinceLastRemovalMs: since });
     if (types.includes('animation') && types.some(type => type !== 'animation')) {
       this.violate('close-with-image-and-animation', label, `closed on ${types.join(', ')}`);
     }
-    if (since !== null && since < this.settleMs - this.toleranceMs) {
-      this.violate('close-too-soon-after-animation', label, `closed ${since} ms after an animation left, settle is ${this.settleMs} ms`);
+    if (types.includes('animation') && since !== null && since < this.settleMs - this.toleranceMs) {
+      this.violate('close-too-soon-after-removal', label, `closed on an animation ${since} ms after a removal, settle is ${this.settleMs} ms`);
     }
     this.screenOpen = false;
   }

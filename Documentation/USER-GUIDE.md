@@ -475,18 +475,31 @@ builds did exactly that each time Lunch, Away or a meeting began from a screen
 with an animated icon. 1.2.0 switched scenes without clearing; it still hung
 the bar during long Unity sessions, because the end of a compile cleared the
 display two or three times at once. 1.2.1 fixes that, and a burst of compiles
-now keeps the compiling screen up instead of clearing between each one. If it
-does happen, unplug and replug the bar, then
+now keeps the compiling screen up instead of clearing between each one.
+
+Firmware 1.2.4 also freezes, now and then, when an animation is removed from
+the panel while it plays -- the animated icon at the end of a compile, for
+instance. The panel then stays on that icon, still moving, and the bar stops
+answering. Nothing warns of this one. 1.2.1 never removes a playing
+animation: it replaces it with an empty one, and returns to the clock by
+taking the picture down first, which is the half second of black you may see
+before the clock.
+
+If the bar does freeze, unplug and replug it, then
 export the logs from Device Diagnostics: the lines just before the freeze say
-what the app was drawing. Uploads taking several hundred milliseconds, rather
-than about fifty, are the warning sign, and Device Diagnostics shows them
-under **Display Health**: the median upload time, turning red with a warning
-when it reaches that level, and how many times the screen closed in the last
-hour. If you see the warning, export the logs before restarting the bar; the
-bundle then holds the run-up to the freeze.
+what the app was drawing. For the first kind of freeze, uploads taking several
+hundred milliseconds, rather than about fifty, are the warning sign, and
+Device Diagnostics shows them under **Display Health**: the median upload
+time, turning red with a warning when it reaches that level, and how many
+times the screen closed in the last hour. If you see the warning, export the
+logs before restarting the bar; the bundle then holds the run-up to the
+freeze. Once the bar is back, the app redraws the current screen by itself.
 
 **The bar shows something stale.** Something is holding the display lock at a
-higher priority. Check Priority Rules and your current mode.
+higher priority. Check Priority Rules and your current mode. After the bar
+restarts or its connection drops, the app redraws the current screen within a
+few seconds of the bar answering again; before 1.2.1 it could put back the
+screen from before the outage.
 
 **Windows warns on first launch.** The build is unsigned. *More info → Run
 anyway*. There is no way around it short of a code-signing certificate.

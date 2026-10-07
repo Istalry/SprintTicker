@@ -58,7 +58,9 @@ const WEIGHTS: Record<EventName, number> = {
   compileStartB: 3, compileEndB: 3, buildStartB: 1, buildEndB: 1, playEnterB: 1, playExitB: 1, exceptionB: 1,
   banner: 3, highBanner: 1,
   startTask: 2, startTaskFromBar: 1, pause: 2, resume: 2, tick: 6, stop: 1, finish: 1,
-  lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1
+  lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1,
+  // The bar dropping out and coming back, as a Wi-Fi blip or a restart does.
+  barDrop: 1, barBack: 2, barReboot: 1
 };
 
 /** Gaps between steps, in milliseconds. Zero is the same tick. */
@@ -139,6 +141,9 @@ describe('Display stress: generated event mixes against the firmware simulator',
       desk.note(step.events.join(' + '));
       await advance(step.gapMs);
     }
+    // Back for good, after any reboot under way, so the ping loop notices.
+    await advance(QUIESCENCE_MS);
+    desk.fire('barBack');
     await advance(QUIESCENCE_MS);
 
     try {

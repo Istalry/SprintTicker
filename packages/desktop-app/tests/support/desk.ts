@@ -43,7 +43,9 @@ export type EventName =
   | UnityEvent | `${UnityEvent}B`
   | 'banner' | 'highBanner'
   | 'startTask' | 'startTaskFromBar' | 'pause' | 'resume' | 'tick' | 'stop' | 'finish'
-  | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd';
+  | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd'
+  /** The bar unreachable, back, or rebooted while unreachable. */
+  | 'barDrop' | 'barBack' | 'barReboot';
 
 /** Lets real file reads land: the animation player and icon animator load `.anim` files from disk. */
 export async function realTurns(count = 8): Promise<void> {
@@ -70,6 +72,8 @@ export const EDITORS = {
 
 /** How often the simulated editor pings, well inside the service's 15 s prune. */
 const HEARTBEAT_MS = 5000;
+/** How long a rebooting bar stays unreachable: several pings, as on the real one. */
+const REBOOT_MS = 10_000;
 
 /** The whole display stack, wired as `index.ts` and the IPC registry wire it. */
 export class Desk {
@@ -88,6 +92,8 @@ export class Desk {
     Object.values(EDITORS).map(editor => [editor.instanceId, { compiling: false, building: false, playing: false }])
   );
   private sessionCount = 0;
+  /** Until when the bar is rebooting, and no `barBack` brings it back. */
+  private rebootingUntil = 0;
   private readonly next: () => number;
   private readonly heartbeat: ReturnType<typeof setInterval>;
 
@@ -200,6 +206,19 @@ export class Desk {
         else this.renderer.renderTaskCompletionConfetti();
         return;
       // As ContextScheduleService does them.
+      case 'barDrop':
+        this.device.offline = true;
+        return;
+      case 'barBack':
+        if (Date.now() >= this.rebootingUntil) this.device.offline = false;
+        return;
+      case 'barReboot':
+        // An outage first, the driver seeing a dropped link, and one that
+        // lasts: a bar back in the same tick would be a reboot no ping saw.
+        this.device.offline = true;
+        this.device.reboot();
+        this.rebootingUntil = Date.now() + REBOOT_MS;
+        return;
       case 'lunchStart': return this.enterMode('LUNCH');
       case 'awayStart': return this.enterMode('AWAY');
       case 'lunchEnd':
@@ -250,7 +269,7 @@ export function expectSettledScreen(desk: Desk): void {
   const lock = desk.priority.getActiveLockEventName();
   const context = `mode ${desk.mode}, lock ${String(lock)}, session ${desk.session?.status ?? 'none'}, panel [${shown.join(', ')}]`;
   if (desk.mode === 'LUNCH' || desk.mode === 'AWAY') {
-    if (!desk.device.has(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the ${desk.mode} scene: ${context}`);
+    if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the ${desk.mode} scene: ${context}`);
     return;
   }
   // Nothing outranks Unity once every banner and scene is over, so an editor

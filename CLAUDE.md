@@ -299,7 +299,12 @@ under its own `application_name`, sends no `rectangle` elements — a wrong colo
 count there reboots the device, and no probe is worth that — and removes what it
 drew. Close the app first, or its priority-95 claim turns into 409s that mean
 only that the app owns the display. Last run: **firmware 1.2.4, all checks
-passing** (2026-09-30).
+passing** (2026-09-30). **`--compositing` still removes animations by id**,
+the operation that hangs the bar now and then (below): run it knowing that,
+and expect to restart the bar. The teardown soak takes the flags that
+measured it -- `--rounds <n>`, `--icon <name>`, `--reupload`,
+`--close-with-anim`, `--park` and `--swap-in-place` -- and each is a
+deliberate risk of a hang too: ask before running one, one at a time.
 
 It also reads the panel back and writes every frame out as a PNG (`--out <dir>`,
 default a temp directory), because the questions worth asking of a *display* are
@@ -346,8 +351,10 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   traps.** `px_matrix_img` is drawn at `z_index` 1 with the icon's *static*
   pixels in it; `IconAnimator` draws `icon_anim`, the 16×16 `.anim`, at
   `z_index` 2 over them (`FRONT_LAYER_Z`). Measured on firmware 1.2.4: the icon
-  stays on top through any number of frame redraws, and `element_ids` removes
-  it alone, leaving the frame.
+  stays on top through any number of frame redraws, and drawing another icon
+  under the same id swaps it in place -- 200 swaps in a row (`pnpm
+  probe:busybar --teardown-soak --swap-in-place`, 2026-10-07). It is never
+  removed by id; see the next rule.
   - **Draw the icon with `drawOverlay`, never `sendDisplayPayload`.** The
     latter bumps `displayVersion`, so a frame whose upload is still in flight
     abandons its draw as `superseded` -- and the icon lands over the
@@ -370,6 +377,25 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     palette broke this for most icons while every document said "pixel for
     pixel"; `animation-assets.test.ts` now compares them. Change the bitmap
     and the scene together.
+- **Never remove a playing animation by id: put it to rest.** On firmware
+  1.2.4 a `DELETE /api/display/draw` naming an animation that is playing
+  hangs the bar now and then -- the HTTP API stops answering and the panel
+  freezes on the animation, until someone restarts it. Measured on
+  2026-10-07, without the app: the probe froze it on the 30th removal of the
+  gear icon and, with the icon uploaded again each round, on the 59th; the
+  app froze it after about 13 and 36. The 1.2 KB pause icon survived 100. No
+  warning comes first -- uploads stayed flat at ~23 ms right up to it,
+  unlike the 09-30 hangs below -- and ten rounds, the soak that once called
+  this safe, pass by luck. So `removeDisplayElements` never sends an
+  animation's id: it draws the empty animation (`blank-animation.ts`, one
+  transparent 16×16 frame, 80 bytes, compiled by `seq2anim.py` from
+  `Animations/blank_16x16/`) under the same id and layer, which is the swap
+  in place measured safe. The element stays listed, showing nothing, until
+  the screen closes. The simulator reports any removal of an animation by id
+  as `animation-removed-by-id`.
+  - **"At rest" must be certain.** After a park whose draw got no answer the
+    element may still be playing what it played before, so the next removal
+    parks it again rather than skipping it.
 - **Never empty the panel to change screens: emptying it closes the device's
   screen, and that can hang the bar.** When the application's element set
   becomes empty -- a full `DELETE /api/display/draw`, or removing the last
@@ -377,49 +403,67 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   and reopens it on the next draw. Measured on 2026-09-30 with ten-round
   loops: closing it while an image and an animation share it hung the bar on
   round 3 and round 4 of two runs; removing the animation by id and closing
-  *immediately* hung it on round 6. Uploads slowing from ~50 ms to 300-600 ms
-  came first every time; then nothing answered, and the bar sometimes
-  rebooted itself about 45 s later. An animation alone closed safely ten
-  times, and so did every loop that never emptied the panel. The app now
-  follows the second rule everywhere it changes screens:
+  *immediately* hung it on round 6 -- which the rule above now reads as the
+  removal, not the close. Uploads slowing from ~50 ms to 300-600 ms came
+  first every time; then nothing answered, and the bar sometimes rebooted
+  itself about 45 s later. An animation alone closed safely ten times then,
+  and 100 times in a row on 2026-10-07 (`--teardown-soak --close-with-anim`),
+  and so did every loop that never emptied the panel. The app follows the
+  second rule everywhere it changes screens:
   - **Scenes go in under the frame and come out under the next one** (make
     before break). `AnimationPlayer` draws `hardware_anim` at
     `FRONT_LAYER_Z.SCENE` (0), below the frame, then removes `px_matrix_img`
     to reveal it. When it ends, the renderer's next frame lands at z 1 over
     the still-playing scene, and only after that frame is `sent` does
-    `retireScene` remove the scene -- and not even then if the driver believes
-    nothing else is on the panel. Scene draws and removals share one id, so
-    they run under a lock: a late removal would take down the scene just
-    drawn, with the frame already gone.
+    `retireScene` put the scene to rest -- and not even then if the driver
+    believes nothing else is on the panel. The next scene is drawn over the
+    resting one, under the same id. Scene draws and retirements share that
+    id, so they run under a lock: a late retirement would blank the scene
+    just drawn, with the frame already gone.
   - **The one deliberate close is `clearDisplay`** -- the idle clock and quit,
-    which have to hand the display back. The driver tracks every element it
-    has drawn (`shownElementIds`), removes each animation by id first, waits
-    `ANIMATION_TEARDOWN_SETTLE_MS` (500 ms), and only then clears. **The wait
-    is what makes the difference**: without it this is the K case above,
-    which hung on round 6; with it, `pnpm probe:busybar --teardown-soak` ran
-    ten releases clean on firmware 1.2.4 (2026-09-30), uploads flat at
-    24-53 ms throughout. Do not shorten it without re-running that soak --
-    deliberately, alone, since a wait that is too short hangs the bar.
-    A draw that lands during the wait makes the clear `superseded` instead of
-    wiping the screen that replaced the one being released.
-  - **Clears run one at a time, and the wait is per clear.** Two concurrent
-    clears defeat it: the second finds the animation the first already
-    removed, so it has nothing to remove, skips the wait and closes at once
-    -- the K case again. That hung the bar twice on 2026-10-05, from three
-    clears one Unity compile end sent in the same millisecond. `clearDisplay`
-    now queues behind the clear in progress, and one that finds the panel
-    known to be empty sends nothing. "Known" means a clear emptied it: a
-    previous run may have left a screen this driver never drew, so the first
-    clear after start always sends.
+    which have to hand the display back. It removes the *images* beside any
+    animation, one id per request, waits `ANIMATION_TEARDOWN_SETTLE_MS`
+    (500 ms) after the last removal, and closes the screen on the animations
+    alone, which it never removes. That is the release `pnpm probe:busybar
+    --teardown-soak --park` ran 100 times in a row on firmware 1.2.4
+    (2026-10-07); it costs about half a second of black between the frame
+    leaving and the firmware's clock. A close with no wait after a removal
+    has not been measured, so do not shorten the wait without re-running
+    that soak -- deliberately, alone. On a panel the driver cannot vouch for
+    (the first clear after start, or after an outage) it removes the frame
+    whatever it lists, in case a previous run left one beside an icon. A
+    draw that lands during the clear makes it `superseded`, and stops its
+    removals too, instead of wiping the screen that replaced the one being
+    released.
+  - **Clears run one at a time.** Three clears one Unity compile end sent in
+    the same millisecond hung the bar twice on 2026-10-05: the second found
+    the animation the first had removed and closed at once. `clearDisplay`
+    queues behind the clear in progress, and one that finds the panel known
+    to be empty sends nothing. "Known" means a clear emptied it: a previous
+    run may have left a screen this driver never drew, so the first clear
+    after start always sends.
+  - **After an outage, redraw what is current; never replay.** The driver
+    used to resend the frame left pending when the bar came back. On
+    2026-10-07 the bar froze on BUILDING 40%, was restarted, and came back
+    showing it: the clear for the build's end had failed while it was away,
+    and clears are not pending frames. Now any outage -- a failed ping, or
+    just a request that got no answer between two good pings -- makes the
+    driver forget what the panel holds, drop the pending frame and emit
+    `reconnected`, and the renderer draws the screen of whoever holds the
+    display, or the user's mode. The same goes for turning no-bar mode off.
+    An outage shorter than the ping interval matters: a Lunch scene whose
+    upload failed in one streamed PNG frames for the whole break.
   - **The driver is the one guardian of these rules; callers are not.** Every
     display and asset request goes through one queue (`displayQueue`, a
     `SerialQueue`), and each carries a guard that runs at the head of it,
     after every earlier request has answered. A `DisplayLedger` records what
     the panel holds, and from it the guards: skip a removal of an element
     known to be absent, a clear of a panel known to be empty, an upload over
-    the `.anim` an element is playing; and make anything that could empty the
-    panel -- a clear *or* a removal -- wait out the settle after the last
-    animation left, whoever removed it. Four components draw (frames, the
+    the `.anim` an element is playing -- or may be playing, after a draw over
+    it got no answer; put animations to rest instead of removing them; and
+    make anything that could empty the panel -- a clear *or* a removal --
+    wait out the settle after the last removal, whoever made it. Four
+    components draw (frames, the
     animation player, the icon animator, the idle clock's clear) and none
     sees the others, so a rule kept by callers was kept by luck: the stress
     test found a clear and a scene crossing in flight and closing the screen
@@ -680,19 +724,23 @@ interfaces, `PascalCase` methods).
   `FirmwareSimulator`** (`tests/support/firmware-simulator.ts`) and ends with
   `expectClean()`. The simulator answers like firmware 1.2.4 -- merge by id,
   all-or-nothing removals, an empty element set closes the screen, 508 on an
-  upload over a playing `.anim` -- and checks every request against §4: the
-  close rules that hung the bar, colours, ASCII text, fill colour counts,
-  names, priority, the rear display. A test that breaks a rule on purpose
+  upload over a playing `.anim` -- and checks every request against §4: an
+  animation removed by id, the close rules that hung the bar, colours, ASCII
+  text, fill colour counts, names, priority, the rear display. `offline` and
+  `reboot()` take the bar away; `visible()` and `isShowing()` leave out the
+  animations put to rest, which stay on the panel showing nothing. A test that breaks a rule on purpose
   names it in `allow`; anything else fails with the requests that broke it.
   **A rule measured on the bar goes into the simulator**, so every display test
   starts checking it. `formatTrace()` prints the requests with their status
   and the panel after each, which is how a failure is read.
 - **`display-stress.test.ts` plays generated days against the simulator**:
-  seeded mixes of Unity, banners, the session and Lunch/Away, some in one
-  tick, over a device with latency, through the whole real stack. It is what
-  catches the bugs no single source causes -- the 10-05 hang was one. A
-  failure prints its seed and script; `STRESS_SEED=<seed>` replays it with
-  the device trace, and `STRESS_RUNS=2000` runs a longer campaign (about 15 s).
+  seeded mixes of Unity, banners, the session, Lunch/Away and the bar
+  dropping out or rebooting, some in one tick, over a device with latency,
+  through the whole real stack. It is what catches the bugs no single source
+  causes -- the 10-05 hang was one, and a Lunch scene streaming frames after
+  an outage shorter than a ping was another. A failure prints its seed and
+  script; `STRESS_SEED=<seed>` replays it with the device trace, and
+  `STRESS_RUNS=2000` runs a longer campaign (about 35 s).
   Animations are read from disk once before the runs, because under fake
   timers a real file read lands at an arbitrary point of simulated time and a
   seed would not replay. Two editors are open, and every run ends by

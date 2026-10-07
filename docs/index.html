@@ -987,17 +987,28 @@
       with an animated icon. 1.2.0 switched scenes without clearing; it still hung
       the bar during long Unity sessions, because the end of a compile cleared the
       display two or three times at once. 1.2.1 fixes that, and a burst of compiles
-      now keeps the compiling screen up instead of clearing between each one. If it
-      does happen, unplug and replug the bar, then
+      now keeps the compiling screen up instead of clearing between each one.</p>
+      <p>Firmware 1.2.4 also freezes, now and then, when an animation is removed from
+      the panel while it plays -- the animated icon at the end of a compile, for
+      instance. The panel then stays on that icon, still moving, and the bar stops
+      answering. Nothing warns of this one. 1.2.1 never removes a playing
+      animation: it replaces it with an empty one, and returns to the clock by
+      taking the picture down first, which is the half second of black you may see
+      before the clock.</p>
+      <p>If the bar does freeze, unplug and replug it, then
       export the logs from Device Diagnostics: the lines just before the freeze say
-      what the app was drawing. Uploads taking several hundred milliseconds, rather
-      than about fifty, are the warning sign, and Device Diagnostics shows them
-      under <strong>Display Health</strong>: the median upload time, turning red with a warning
-      when it reaches that level, and how many times the screen closed in the last
-      hour. If you see the warning, export the logs before restarting the bar; the
-      bundle then holds the run-up to the freeze.</p>
+      what the app was drawing. For the first kind of freeze, uploads taking several
+      hundred milliseconds, rather than about fifty, are the warning sign, and
+      Device Diagnostics shows them under <strong>Display Health</strong>: the median upload
+      time, turning red with a warning when it reaches that level, and how many
+      times the screen closed in the last hour. If you see the warning, export the
+      logs before restarting the bar; the bundle then holds the run-up to the
+      freeze. Once the bar is back, the app redraws the current screen by itself.</p>
       <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
-      higher priority. Check Priority Rules and your current mode.</p>
+      higher priority. Check Priority Rules and your current mode. After the bar
+      restarts or its connection drops, the app redraws the current screen within a
+      few seconds of the bar answering again; before 1.2.1 it could put back the
+      screen from before the outage.</p>
       <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
       anyway</em>. There is no way around it short of a code-signing certificate.</p>
       <p><strong>Accented characters.</strong> These are transliterated to ASCII (<code>é</code> → <code>e</code>), because
@@ -1127,9 +1138,11 @@
       connected releases the display through <code>clearDisplay</code> first, or the last frame
       would stay on it. <code>DeviceStatusDTO.enabled</code> carries
       the mode to the renderer, which hides the bar-only screens live. Turning it back
-      on (<code>setEnabled(true)</code>) dials the configured address and sends the last queued
-      frame, which the renderer&#39;s deduplication had already recorded as sent. A row
-      saved before the field existed reads as <code>true</code>.</p>
+      on (<code>setEnabled(true)</code>) dials the configured address and emits <code>reconnected</code>,
+      and the renderer draws the current screen past its deduplication, which had
+      recorded the last frame as sent. The queued frame is not replayed: a clear
+      asked for meanwhile would have ended it. A row saved before the field existed
+      reads as <code>true</code>.</p>
       <p><strong>Two windows, one renderer bundle.</strong> The dashboard and the <strong>mini timer</strong> load
       the same <code>index.html</code>; the mini timer loads it at <code>#mini</code>, and <code>main.tsx</code> mounts
       <code>MiniBar</code> instead of <code>App</code> for that hash. Both get the same web preferences and
@@ -1409,16 +1422,35 @@
       removed means a scene nobody can see, so that falls back to streaming.</li>
       <li>When the scene stops, the renderer&#39;s next frame lands at z 1 over it.</li>
       <li>Once that frame comes back <code>sent</code>, the renderer calls <code>retireScene</code>, which
-      removes <code>hardware_anim</code> -- unless the driver believes nothing else is on
-      the panel, since removing it then would empty the panel after all.</li>
+      puts <code>hardware_anim</code> to rest -- unless the driver believes nothing else is
+      on the panel, since the scene is then what the bar shows.</li>
       </ol>
       <p>Steps 1-2 and 4 address the same element id, so they run under one lock in
-      <code>AnimationPlayer</code>. <code>clearDisplay</code> remains for handing the display back (the
-      idle clock, quit); the driver tracks what it has drawn (<code>shownElementIds</code>) and
-      takes every animation down by id, with a pause, before that clear. Clears are
-      serialised: a second one running alongside would find the animation already
-      gone, skip the pause and close at once. One that finds the panel known to be
-      empty sends nothing.</p>
+      <code>AnimationPlayer</code>.</p>
+      <p><strong>No animation is ever removed by id.</strong> On firmware 1.2.4 removing a playing
+      animation that way hangs the bar now and then (2026-10-07), while drawing
+      another animation under the same id never did. So <code>removeDisplayElements</code>
+      puts an animation to rest instead: it draws the empty animation
+      (<code>blank-animation.ts</code>, one transparent frame, 80 bytes, uploaded once per
+      connection) under the same id and layer, and the ledger keeps listing it.
+      Icons and scenes change by merging the next one over it. It leaves the panel
+      only when the screen closes.</p>
+      <p><code>clearDisplay</code> remains for handing the display back (the idle clock, quit). It
+      removes the images beside any animation, one id per request, waits
+      <code>ANIMATION_TEARDOWN_SETTLE_MS</code> after the last removal, and closes the screen on
+      the animations alone -- the release measured safe 100 times in a row. On a
+      panel it cannot vouch for, it removes the frame whatever it lists. A draw that
+      lands meanwhile makes the clear <code>superseded</code> and stops its removals. Clears
+      are serialised: a second one running alongside closed at once and hung the
+      bar on 2026-10-05. One that finds the panel known to be empty sends nothing.</p>
+      <p><strong>After an outage the renderer redraws; the driver never replays.</strong> A failed
+      ping, or a request that got no answer between two good pings, means the panel
+      may hold anything: an earlier screen, the firmware&#39;s own after a reboot, or a
+      screen whose clear failed while the bar was away. When the bar answers again
+      the driver forgets the ledger and the pending frame and emits <code>reconnected</code>;
+      <code>DisplayRenderer</code> then draws the screen of whoever holds the display
+      (<code>resumeScreen</code>), or the user&#39;s mode, with its animation restarted. Replaying
+      the pending frame put BUILDING 40% back on a bar whose build had long ended.</p>
       <p><strong>The driver enforces the device&#39;s rules for everyone.</strong> Frames, the animation
       player, the icon animator and the idle clock&#39;s clear each order their own
       requests and none sees the others, so the driver puts every display and asset
@@ -1426,10 +1458,11 @@
       the queue, after every earlier request has answered, against a
       <code>DisplayLedger</code> of what the panel holds: a removal of an element known to be
       absent, a clear of a panel known to be empty and an upload over a playing
-      <code>.anim</code> are answered without a request, and anything that could empty the
-      panel waits for the settle after the last animation left. The panel is
-      &quot;known&quot; once a clear has emptied it; before that, or after a request that got
-      no answer, nothing is skipped.</p>
+      <code>.anim</code> -- or one it may be playing, after a draw over it got no answer --
+      are answered without a request, and anything that could empty the panel waits
+      for the settle after the last removal. The panel is &quot;known&quot; once a clear has
+      emptied it; before that, or after a request that got no answer, nothing is
+      skipped.</p>
       <p><strong>Animated icons are a second layer, not a second owner.</strong> The screen is still
       one PNG with the icon&#39;s static pixels in it. <code>IconAnimator</code> lays the icon&#39;s
       16×16 <code>.anim</code> over them as element <code>icon_anim</code>, and <code>z_index</code> keeps it on top
@@ -1688,7 +1721,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1692 tests across 89 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1720 tests across 90 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2313,11 +2346,18 @@
       </tr>
       <tr>
       <td align="left"><code>clearDisplay</code></td>
-      <td align="left"><code>&#39;cleared&#39;</code>; or <code>&#39;superseded&#39;</code> when a draw landed while it waited its turn or took animations down, in which case the display is <strong>not</strong> released. Clears run one at a time; one that finds the panel already emptied, with nothing drawn since, sends nothing and answers <code>&#39;cleared&#39;</code></td>
+      <td align="left"><code>&#39;cleared&#39;</code>; or <code>&#39;superseded&#39;</code> when a draw landed while it waited its turn or took the images down, in which case the display is <strong>not</strong> released. Clears run one at a time; one that finds the panel already emptied, with nothing drawn since, sends nothing and answers <code>&#39;cleared&#39;</code></td>
       </tr>
       </tbody></table></div>
-      <p><code>removeDisplayElements(app, ids)</code> removes the named elements and nothing
-      else. An id the device does not hold answers <strong>400</strong>, so it throws <code>rejected</code>;
+      <p><code>removeDisplayElements(app, ids)</code> takes the named elements off the screen and
+      nothing else. <strong>An animation is put to rest, not removed</strong>: the driver draws
+      the empty animation (<code>blank_16x16.anim</code>, one transparent frame) under its id
+      and layer, because removing a playing animation by id hangs firmware 1.2.4 now
+      and then. The element stays listed in <code>shownElementIds</code>, showing nothing, until
+      the screen closes; the next icon or scene is drawn over it. An animation
+      already at rest resolves without a request, and a park held off by a 409 is
+      left as it was. Everything below is about the other elements.</p>
+      <p>An id the device does not hold answers <strong>400</strong>, so it throws <code>rejected</code>;
       a caller removing something that may already be gone has to read that as
       success -- <code>isElementAbsent(err)</code> says so, for a 400 and nothing else. The
       driver logs that 400 on a single id as &quot;already gone&quot;, not as a warning. A
@@ -2326,9 +2366,16 @@
       ids in one call are all or nothing</strong>: one missing id fails the request and
       removes none of the others, so remove one id per call when any may be gone.
       A removal that could empty the panel waits, like a clear, for the settle after
-      the last animation left.</p>
+      the last removal.</p>
       <p><code>uploadAsset</code> over the <code>.anim</code> an element is playing resolves without a
-      request: the device would answer 508, and holds the file already.</p>
+      request: the device would answer 508, and holds the file already. That
+      includes a file an element <em>may</em> be playing, after a draw over it got no
+      answer.</p>
+      <p><strong>The driver emits <code>reconnected</code> when the bar answers again after an outage</strong>
+      -- a failed ping, or any request that got no answer between two good pings --
+      and when no-bar mode is turned off. It has forgotten what the panel holds and
+      dropped the frame left pending; <code>DisplayRenderer</code> redraws the current screen.
+      The pending frame is never replayed: it was a screen from before the outage.</p>
       <p><strong>Every display and asset request is queued.</strong> Draws, frames, overlays,
       removals, clears and uploads go out one at a time, whoever asks, and each
       one&#39;s guard -- superseded, already absent, already empty, still settling --
@@ -2358,6 +2405,14 @@
       from ~50 ms to several hundred came first. An animation alone, and every
       sequence that never emptied the panel, ran ten rounds clean.</p>
       </div>
+      <div class="note trap">
+      <p><strong>Removing a playing animation by id hangs firmware 1.2.4 now and then, with
+      no warning.</strong> Measured 2026-10-07 without the app: the gear icon froze the
+      bar on its 30th removal, and on its 59th when uploaded again each round; the
+      app froze it after about 13 and 36. Uploads stayed flat at ~23 ms up to the
+      hang. Drawing another animation under the same id survived 200 swaps, and
+      closing the screen with only animations on it survived 100 rounds.</p>
+      </div>
       <p>So the app never empties the panel to change screens:</p>
       <div class="table-wrap"><table>
       <thead>
@@ -2372,22 +2427,20 @@
       </tr>
       <tr>
       <td align="left">Out of it</td>
-      <td align="left">The next frame lands at <code>z_index</code> 1 over the scene; once it is <code>sent</code>, remove <code>hardware_anim</code></td>
+      <td align="left">The next frame lands at <code>z_index</code> 1 over the scene; once it is <code>sent</code>, put <code>hardware_anim</code> to rest</td>
       </tr>
       <tr>
-      <td align="left">Scene to scene</td>
+      <td align="left">Scene to scene, icon to icon</td>
       <td align="left">Same element id, so the draw replaces it in place</td>
       </tr>
       <tr>
       <td align="left">Release for the idle clock, and quit</td>
-      <td align="left"><code>clearDisplay</code>, one at a time: every tracked animation removed by id, <code>ANIMATION_TEARDOWN_SETTLE_MS</code>, then the full DELETE</td>
+      <td align="left"><code>clearDisplay</code>, one at a time: the images beside any animation removed by id, <code>ANIMATION_TEARDOWN_SETTLE_MS</code> after the last removal, then the full DELETE on the animations alone</td>
       </tr>
       </tbody></table></div>
-      <p>That last row is the only close left, and the pause is what makes it safe:
-      the same release without it hung the bar on round 6, and with the 500 ms pause
-      <code>pnpm probe:busybar --teardown-soak</code> ran ten rounds clean on firmware 1.2.4
-      (2026-09-30), uploads flat at 24-53 ms. Re-run that soak before changing the
-      pause -- a pause too short hangs the bar.</p>
+      <p>That last row is the only close left. <code>pnpm probe:busybar --teardown-soak --park</code> ran it 100 times in a row on firmware 1.2.4 (2026-10-07). A close
+      without the 500 ms pause after a removal has not been measured: re-run that
+      soak before changing the pause.</p>
       <p>Uploading over an <code>.anim</code> the device is playing answers <strong>508</strong>, so a scene
       still on the panel is redrawn from the copy the device holds rather than
       uploaded again.</p>
