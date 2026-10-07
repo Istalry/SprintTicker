@@ -651,7 +651,12 @@ Also worth doing while this area is open:
   423-712 ms, the LOGGED and LUNCH `.anim` uploads), no error, no hang. The
   first hand-back run was spoiled by a real Unity editor posting to the test
   instance; the second, with it closed, showed every expected screen but one,
-  covered by a real Claude notification that outranks compiling. **Still to
+  covered by a real Claude notification that outranks compiling. The same
+  day, the bar's USB cable pulled during a build: a build that ended while
+  it was away came back on the clock, not on the stale BUILDING screen, and
+  one still running came back on BUILDING with its hammer animating. Left
+  over: a clear that fails because the bar is unplugged logs as an error
+  with a stack trace, where a one-line warning would do. **Still to
   do:** the firmware report to Flipper, and `--compositing` in the probe,
   which still removes animations by id.
 
