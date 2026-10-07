@@ -552,6 +552,46 @@ Also worth doing while this area is open:
   notification; one line of each kind for a Claude notification settles it.
   If it is the first, the cache could be warmed from the notification history
   at startup, or persisted.
+- [ ] **Make the driver the one guardian of the hardware rules** (started
+  2026-10-07, after the 10-05 hang). Four components talk to the display, each
+  with its own concurrency discipline and none aware of the others: the frame
+  gate, the clear chain, the animation player's scene lock and the icon
+  animator's pump. Step 1 is done: `FirmwareSimulator` checks every request
+  against the §4 rules, and the screen lifecycle tests run on it. A first
+  generated stress run, mixing Unity, banners, the session and Lunch/Away over
+  a device with latency, found on the current code:
+  - **The screen closing with an image and an animation on it**, the pattern
+    that hung the bar on rounds 3 and 4. Stopping a task with the idle clock
+    on sends a clear (no session) and the LOGGED scene in one tick; the clear
+    checks "nothing drawn since" before the scene's draw has answered, then
+    sends its DELETE, and the two cross.
+  - **A close too soon after an animation left.** A clear waits the settle
+    after the animations *it* removed; a scene retired during that wait
+    removes another, and the clear closes counting only its own. With the
+    real 500 ms settle that is a close up to 500 ms early, the K case.
+  - **A 508 and 30 ms frame streaming** when the same scene starts twice in
+    one tick: the second uploads the `.anim` the first is already playing.
+  - **Requests overlapping** all the time (about a thousand in sixty runs), and
+    removals and clears the driver could have known were no-ops.
+
+  Step 2 fixes those: one queue for every display and asset request, so a
+  check and the request it guards are atomic; a ledger of what the panel
+  holds, which skips removals of absent elements, clears of an empty screen
+  and uploads over a playing `.anim`; the settle enforced before anything
+  that empties the panel, not only in `clearDisplay`. The stress test lands
+  with it. Step 3 records upload latency and screen closes, and warns when
+  latency climbs the way it did before every measured hang.
+- [ ] **Display state found inconsistent by the same stress run**, none of it a
+  risk to the device:
+  - A one-shot scene (DONE!, LOGGED) ends by rendering the session without
+    asking the engine who holds the display, so finishing a task during Unity
+    Play Mode leaves the idle clock where the Play screen should be.
+  - A Lunch render refused while Away is *queued*, and the engine replays it
+    when Away ends: the app is back in WORK holding a Lunch lock at 95, which
+    outranks every notification until something else releases it. Plausible
+    in real use: lunch time arriving while the PC is locked.
+  - `activeTrackerPriority` stays held after the session ends. Harmless at
+    45, the lowest rank, but the engine reports a lock nobody holds.
 
 ---
 

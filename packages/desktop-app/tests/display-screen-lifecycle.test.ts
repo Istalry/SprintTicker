@@ -4,6 +4,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { ActiveSessionDTO } from '../src/shared/dtos';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
+import { FirmwareSimulator, RuleId } from './support/firmware-simulator';
 
 vi.mock('electron', () => ({
   app: { isPackaged: false },
@@ -12,96 +13,6 @@ vi.mock('electron', () => ({
 
 const ANIMATIONS_DIR = path.resolve(__dirname, '../../../Animations');
 const SETTLE_MS = 20;
-
-interface Close {
-  /** The element types on the panel at the moment its screen closed. */
-  types: string[];
-  /** How long before the close the last animation left the panel, or null if none ever did. */
-  sinceLastAnimationRemovedMs: number | null;
-}
-
-/**
- * The part of firmware 1.2.4's canvas service (`canvas.c`) that decides when
- * the device's screen closes, answering HTTP the way the bar does.
- *
- * - A draw merges by element id and opens the screen if it was closed.
- * - A removal by `element_ids` checks every id before removing any: one
- *   missing id is a 400 and nothing goes. On a closed screen it is a 400.
- * - Whatever empties the element set closes the screen. A full DELETE on a
- *   closed screen does nothing and answers 200.
- * - An upload over an `.anim` an element is playing answers 508.
- *
- * On the real bar, closing the screen after an image and an animation have
- * shared it hangs the device within a few cycles. This records every close so
- * a test can say when, and on what, it happened.
- */
-class FirmwareCanvas {
-  public readonly elements = new Map<string, { type: string; path?: string }>();
-  public readonly closes: Close[] = [];
-  public screenOpen = false;
-  /** Every element set the panel has shown, for "was it ever empty" checks. */
-  public readonly history: string[][] = [];
-  private lastAnimationRemovedAt: number | null = null;
-
-  public handle(url: string, init?: RequestInit): Response {
-    const method = init?.method ?? 'GET';
-    if (url.includes('/api/assets/upload') && method === 'POST') {
-      const file = new URL(url).searchParams.get('file');
-      const playing = [...this.elements.values()].some(el => el.type === 'animation' && el.path === file);
-      return this.answer(playing ? 508 : 200);
-    }
-    if (url.includes('/api/display/draw')) {
-      if (method === 'POST') return this.draw(JSON.parse(String(init?.body)));
-      if (method === 'DELETE') {
-        return init?.body ? this.remove(JSON.parse(String(init.body)).element_ids as string[]) : this.clear();
-      }
-    }
-    return this.answer(200);
-  }
-
-  private draw(payload: { elements: Array<{ id: string; type: string; path?: string }> }): Response {
-    this.screenOpen = true;
-    for (const el of payload.elements) this.elements.set(el.id, { type: el.type, path: el.path });
-    this.snapshot();
-    return this.answer(200);
-  }
-
-  private remove(ids: string[]): Response {
-    if (!this.screenOpen || ids.some(id => !this.elements.has(id))) return this.answer(400);
-    for (const id of ids) {
-      if (this.elements.get(id)?.type === 'animation') this.lastAnimationRemovedAt = Date.now();
-      this.elements.delete(id);
-    }
-    this.snapshot();
-    if (this.elements.size === 0) this.close([]);
-    return this.answer(200);
-  }
-
-  private clear(): Response {
-    if (!this.screenOpen) return this.answer(200);
-    const types = [...this.elements.values()].map(el => el.type);
-    this.elements.clear();
-    this.snapshot();
-    this.close(types);
-    return this.answer(200);
-  }
-
-  private close(types: string[]): void {
-    this.closes.push({
-      types,
-      sinceLastAnimationRemovedMs: this.lastAnimationRemovedAt === null ? null : Date.now() - this.lastAnimationRemovedAt
-    });
-    this.screenOpen = false;
-  }
-
-  private snapshot(): void {
-    this.history.push([...this.elements.keys()].sort());
-  }
-
-  private answer(code: number): Response {
-    return { ok: code >= 200 && code < 300, status: code, json: async () => ({}) } as Response;
-  }
-}
 
 async function waitFor(condition: () => boolean, what: string, timeoutMs = 4000): Promise<void> {
   const started = Date.now();
@@ -121,12 +32,13 @@ async function waitFor(condition: () => boolean, what: string, timeoutMs = 4000)
  * sequence that hung the bar on 2026-09-30.
  */
 describe('Front display screen lifecycle', () => {
-  let canvas: FirmwareCanvas;
+  let canvas: FirmwareSimulator;
   let driver: BusyBarDriver;
   let renderer: DisplayRenderer;
   /** Every request the device was sent, as `METHOD /path body`. */
   let requests: string[];
-  const originalFetch = globalThis.fetch;
+  /** Rules a test breaks on purpose; every other one fails it. */
+  let allowed: RuleId[];
 
   const paused: ActiveSessionDTO = {
     taskId: 'SPR-1', taskKey: 'SPR-1', taskTitle: 'Pause menu', status: 'PAUSED', elapsedSeconds: 600,
@@ -139,12 +51,9 @@ describe('Front display screen lifecycle', () => {
   const everEmptiedWhileOpen = (): boolean => canvas.history.slice(1).some(set => set.length === 0);
 
   beforeEach(async () => {
-    canvas = new FirmwareCanvas();
-    requests = [];
-    globalThis.fetch = (async (url: string, init?: RequestInit) => {
-      requests.push(`${init?.method ?? 'GET'} ${new URL(url).pathname}${init?.body ? ' ' + String(init.body) : ''}`);
-      return canvas.handle(url, init);
-    }) as typeof fetch;
+    canvas = new FirmwareSimulator({ settleMs: SETTLE_MS }).install();
+    requests = canvas.requests;
+    allowed = [];
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -158,8 +67,9 @@ describe('Front display screen lifecycle', () => {
   afterEach(() => {
     renderer.dispose();
     driver.disconnect();
-    globalThis.fetch = originalFetch;
+    canvas.uninstall();
     vi.restoreAllMocks();
+    canvas.expectClean({ allow: allowed });
   });
 
   /** A paused task: a frame with the animated paused stopwatch over it. */
@@ -248,20 +158,13 @@ describe('Front display screen lifecycle', () => {
     // drop the second celebration to frame streaming.
     renderer.renderActiveSession(tracking);
     await waitFor(() => has(FRONT_ELEMENT_IDS.FRAME), 'the tracker');
-    const uploads = vi.fn();
-    const handle = canvas.handle.bind(canvas);
-    canvas.handle = (url, init) => {
-      const response = handle(url, init);
-      if (url.includes('task_done_72x16.anim')) uploads(response.status);
-      return response;
-    };
 
     renderer.renderTaskCompletionConfetti(5);
     await sceneShowing();
     renderer.renderTaskCompletionConfetti(5);
     await new Promise(resolve => setTimeout(resolve, 150));
 
-    expect(uploads.mock.calls.map(call => call[0])).not.toContain(508);
+    expect(canvas.violationsOf('upload-over-playing-anim')).toEqual([]);
     expect(shown()).toEqual([FRONT_ELEMENT_IDS.SCENE]);
   });
 
@@ -284,6 +187,13 @@ describe('Front display screen lifecycle', () => {
     renderer.setContextMode('LUNCH');
     await sceneShowing();
     renderer.setShowIdleClockFallback(true);
+    // Known findings, both for the driver's display queue to fix (ROADMAP,
+    // "Make the driver the one guardian"). The scene's retirement removes an
+    // animation during the release's settle, and the release closes counting
+    // only its own removal -- too soon after the scene's. And when the
+    // retirement empties the panel, the driver does not count that as
+    // emptied, so the release's DELETE lands on a closed screen.
+    allowed = ['close-too-soon-after-animation', 'redundant-clear'];
 
     const release = vi.spyOn(driver, 'clearDisplay');
     renderer.setContextMode('WORK');
@@ -296,7 +206,9 @@ describe('Front display screen lifecycle', () => {
     await release.mock.results[0].value;
     await new Promise(resolve => setTimeout(resolve, SETTLE_MS * 3));
 
-    expect(canvas.closes.every(close => !close.types.includes('animation'))).toBe(true);
+    // The scene alone closing the screen as it goes is the measured-safe case;
+    // an animation sharing the close with anything else is not.
+    expect(canvas.violationsOf('close-with-image-and-animation')).toEqual([]);
     // The icon animator still wanted the paused stopwatch: nothing had told it
     // the idle clock was not a frame. It drew the icon back, alone, over the
     // panel the release had just emptied.
@@ -390,6 +302,7 @@ describe('Front display screen lifecycle', () => {
     });
 
     it('RemoveDisplayElements_OneAbsentId_IsLoggedAsAlreadyGone', async () => {
+      allowed = ['absent-element-removal'];
       await showPausedTask();
       await driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.ICON]).catch(() => undefined);
       const warn = vi.mocked(console.warn);
@@ -403,6 +316,7 @@ describe('Front display screen lifecycle', () => {
 
     it('RemoveDisplayElements_SeveralIdsOneAbsent_StillWarns', async () => {
       // On several ids a 400 means none were removed: not "already gone".
+      allowed = ['absent-element-removal'];
       await showPausedTask();
       const warn = vi.mocked(console.warn);
       warn.mockClear();

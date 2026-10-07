@@ -629,6 +629,17 @@ interfaces, `PascalCase` methods).
   exactly like a working one. The `.anim` regression survived a full green run
   for that reason alone. When you add an `if (!ok)`, add the test that reaches
   it in the same change.
+- **A test that drives the display through the real driver runs on
+  `FirmwareSimulator`** (`tests/support/firmware-simulator.ts`) and ends with
+  `expectClean()`. The simulator answers like firmware 1.2.4 -- merge by id,
+  all-or-nothing removals, an empty element set closes the screen, 508 on an
+  upload over a playing `.anim` -- and checks every request against §4: the
+  close rules that hung the bar, colours, ASCII text, fill colour counts,
+  names, priority, the rear display. A test that breaks a rule on purpose
+  names it in `allow`; anything else fails with the requests that broke it.
+  **A rule measured on the bar goes into the simulator**, so every display test
+  starts checking it. `formatTrace()` prints the requests with their status
+  and the panel after each, which is how a failure is read.
 
 ### Comments
 
