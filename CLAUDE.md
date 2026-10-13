@@ -870,6 +870,31 @@ Two things the generator relies on, so edit the Markdown with them in mind:
   follows it for a drawn one. The ASCII block stays because that is what renders
   on GitHub, where there is no stylesheet to hang an SVG off.
 
+**The pictures live once, in `docs/images/`, and are generated.** The README
+reaches them as `docs/images/…`; `Documentation/*.md` as `../docs/images/…`,
+which GitHub resolves and `build-docs.js` rewrites to `images/…` for the page
+Pages serves from `docs/`. Never copy one beside the Markdown -- the
+duplicated-constant hazard again, in binary. Four things about them:
+
+- **`pnpm docs:images` makes them**, and a change to a screen remakes its
+  picture in the same commit, like any other document. `capture-app.js` runs
+  the built app on a throwaway profile under `--mock-hardware`, fills it with
+  invented projects, and records the frames the app sends its emulator;
+  `make-images.py` renders those, and every scene and icon in `Animations/`,
+  as the LED panel. Never capture the real profile: development shares the
+  real database (§7), so its pictures would publish the user's own task names.
+- **Close SprintTicker before running it.** The Unity events it replays go to
+  port 39123, and if the installed app owns that port they reach the real bar.
+  The script refuses to start while anything answers there.
+- **Not LFS, and on a budget.** `.gitattributes` keeps LFS to `Animations/`
+  on purpose. Animated clips are WebP rather than GIF -- the LED bloom made the
+  Away scene a megabyte as a GIF, 110 KB as WebP -- and screenshots are
+  paletted PNG. `make-images.py` fails on anything over 300 KB.
+- **An emoji in a heading moves its GitHub anchor**: `## 🚀 Installation` is
+  `#-installation` there. Grep for `](#` and `.md#` when you add or change
+  one. The page's own anchors ignore emoji, so `docs/index.html` links do not
+  move.
+
 The published Artifact is a third rendering and **cannot be the same file**: the
 Artifact runtime injects `<!doctype html><html><head>…<body>` at publish time,
 so an Artifact source must not carry those tags and a standalone page must.

@@ -48,6 +48,24 @@ describe('App', () => {
     expect(within(row as HTMLElement).getByText(TRACKING_SESSION.taskKey)).toBeTruthy();
   });
 
+  it('Render_TodaysWorklog_ShowsTheTaskKeyNotItsId', async () => {
+    // A local task's id is `<project>_<key>`, so the column headed Task Key
+    // showed `demo-pf_PF-33` for PF-33. Work History already read the key.
+    installElectronApi({
+      getTodaysWorklogs: async () => [{
+        id: 'w1', sessionId: 's1', taskId: 'proj-1_PF-33', taskKey: 'PF-33', taskTitle: 'Ore spawn tables',
+        durationSeconds: 4200, startedAtUtc: '2026-10-13T09:00:00.000Z', comment: 'Iron and copper',
+        createdAtUtc: '2026-10-13T10:10:00.000Z'
+      }]
+    });
+
+    render(<App />);
+
+    const row = (await screen.findByText('Iron and copper')).closest('tr') as HTMLElement;
+    expect(within(row).getByText('PF-33')).toBeTruthy();
+    expect(within(row).queryByText('proj-1_PF-33')).toBeNull();
+  });
+
   it('Render_SessionUpdateFromMain_ReachesTheScreen', async () => {
     // Main pushes session changes; the view has to follow them without a
     // reload -- a start from the bar shows up here this way.

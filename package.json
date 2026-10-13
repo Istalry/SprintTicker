@@ -28,6 +28,7 @@
     "verify:unity": "node scripts/verify-unity-plugin.js",
     "docs:build": "node scripts/build-docs.js",
     "docs:check": "node scripts/build-docs.js --check",
+    "docs:images": "pnpm build && node scripts/doc-images/capture-app.js && python -I scripts/doc-images/make-images.py --only scenes,icons",
     "fonts:build": "node tools/glyphs-to-ts.js",
     "fonts:check": "node tools/glyphs-to-ts.js --check",
     "fonts:preview": "node tools/glyphs-to-ts.js --preview"

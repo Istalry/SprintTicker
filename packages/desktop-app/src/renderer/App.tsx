@@ -169,7 +169,7 @@ export const App: React.FC = () => {
                     )}
                     {worklogs.map(log => (
                       <tr key={log.id} className="hover:bg-dark-700/50 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-text-primary">{log.taskId}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-text-primary">{log.taskKey ?? log.taskId}</td>
                         <td className="py-3 px-4 text-text-primary">{log.comment || 'No comment'}</td>
                         <td className="py-3 px-4 font-mono text-accent-blue font-bold">
                           {formatSeconds(log.durationSeconds)}

@@ -102,6 +102,19 @@ const ARCHITECTURE_SVG = `<div class="diagram">
 </svg>
 </div>`;
 
+/**
+ * Points the documents' pictures at the page's own copy of them.
+ *
+ * The pictures live once, in `docs/images/`. From `Documentation/` the
+ * Markdown reaches them as `../docs/images/x.png`, which is what GitHub
+ * resolves; this page is served from `docs/` itself, where the same picture is
+ * `images/x.png`. A second copy beside the Markdown would be the duplicated-
+ * constant hazard of CLAUDE.md section 3 again, in binary.
+ */
+function localImages(html) {
+  return html.replace(/(src|srcset)="\.\.\/docs\/images\//g, '$1="images/');
+}
+
 /** Turns heading text into a URL fragment, scoped to its document. */
 function slug(docId, text) {
   const base = text
@@ -254,8 +267,8 @@ function buildHtml() {
 
     const { title, intro, body } = splitDocument(md);
     const headings = [];
-    const bodyHtml = decorate(marked.parse(body), doc.id, headings);
-    const introHtml = marked.parse(intro);
+    const bodyHtml = localImages(decorate(marked.parse(body), doc.id, headings));
+    const introHtml = localImages(marked.parse(intro));
 
     rail.push({ id: doc.id, title, headings });
     sections.push(
@@ -659,6 +672,26 @@ const SHELL = `<!doctype html>
   .note p { margin: 0; max-width: none; }
   .note p + p { margin-top: 9px; }
   .note.trap { border-left-color: var(--danger); background: var(--danger-bg); }
+
+  /* Pictures from docs/images/. Screenshots of the app get a hairline frame;
+     the bar's clips carry their own bezel. */
+  section img { display: block; margin: 18px 0; border-radius: 4px; height: auto; }
+  section img[src*="/app-"], section img[src^="images/app-"] { border: 1px solid var(--border); }
+  [align="center"] img { margin-left: auto; margin-right: auto; }
+  td img { margin: 4px 0; }
+
+  /* A <details> block folds the long answer under its question: the
+     troubleshooting entries, mostly. Searching the page still opens one. */
+  details {
+    margin-top: 14px;
+    max-width: 68ch;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  summary { cursor: pointer; padding: 10px 16px; color: var(--ink); font-weight: 600; }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  details > :not(summary) { margin-left: 16px; margin-right: 16px; }
   .note .label {
     font-family: var(--f-mono);
     font-size: 10.5px;

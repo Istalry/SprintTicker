@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Today's table names each task by its key.** The Active Session panel's
+  list of the day's worklogs headed its first column Task Key and filled it
+  with the task's internal id -- `demo-pf_PF-33` for a local task `PF-33`.
+  Work History already showed the key.
+
 ## 1.2.1 — 2026-10-07
 
 A bar that stays up, and shows what is going on. On 2026-10-05, 1.2.0 hung
