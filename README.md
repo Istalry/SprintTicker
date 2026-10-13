@@ -1,9 +1,32 @@
-# SprintTicker
+<p align="center">
+  <img src="packages/desktop-app/public/icon.png" width="96" alt="SprintTicker icon">
+</p>
 
-[![Quality](https://github.com/Istalry/SprintTicker/actions/workflows/quality.yml/badge.svg)](https://github.com/Istalry/SprintTicker/actions/workflows/quality.yml)
+<h1 align="center">SprintTicker</h1>
 
-*A time tracker for the BUSY Bar.*
+<p align="center">
+  <em>A time tracker for the BUSY Bar — your task, your timer and your build, on the LED bar on your desk.</em>
+</p>
 
+<p align="center">
+  <a href="https://github.com/Istalry/SprintTicker/actions/workflows/quality.yml"><img src="https://github.com/Istalry/SprintTicker/actions/workflows/quality.yml/badge.svg" alt="Quality"></a>
+  <a href="https://github.com/Istalry/SprintTicker/releases/latest"><img src="https://img.shields.io/github/v/release/Istalry/SprintTicker?label=download" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D6" alt="Windows 10/11 x64">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
+</p>
+
+<p align="center">
+  <img src="docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task at 01:24, a Unity compile with a spinning gear, the Lunch scene and a Slack banner">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Istalry/SprintTicker/releases/latest"><b>⬇️ Download</b></a> ·
+  <a href="Documentation/USER-GUIDE.md"><b>📖 User guide</b></a> ·
+  <a href="https://istalry.github.io/SprintTicker/"><b>🌐 Docs site</b></a> ·
+  <a href="#-features"><b>✨ Features</b></a>
+</p>
+
+> [!NOTE]
 > Not affiliated with, endorsed by, or supported by Flipper FZCO. "BUSY Bar" is
 > their product; this is a third-party companion app for it.
 
@@ -17,39 +40,101 @@ It ships with a Unity Editor package that pushes compile, Play Mode and console
 events to the bar, and a canvas emulator so the whole thing can be developed
 with nothing plugged in.
 
-## What this is
+**No BUSY Bar? It still works.** Choose *Not now* on first launch and
+SprintTicker is a time tracker with a mini timer, OpenProject and Jira sync,
+and an end-of-day wrap-up; add a bar later and nothing is lost.
 
-- A **personal, single-user desktop app.** Everything lives in a local SQLite
+<table>
+  <tr>
+    <th width="50%">🟢 With a BUSY Bar</th>
+    <th width="50%">💻 Without one</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/app-session-tracking.png" alt="The Active Session panel with the bar emulator at the top, tracking MG-12 at 01:24"></td>
+    <td><img src="docs/images/app-nobar-session.png" alt="The same panel in no-bar mode: no emulator, the same session and worklogs"></td>
+  </tr>
+  <tr>
+    <td>The emulator at the top shows what the bar shows, frame for frame.</td>
+    <td>The bar's panels step aside; tracking, sync and ceremonies stay.</td>
+  </tr>
+</table>
+
+## 👀 At a glance
+
+| | |
+| :---: | :--- |
+| <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to STOP or FINISH, click to confirm. |
+| <img src="docs/images/bar-unity-compile.webp" width="304" alt="COMPILING with a spinning orange gear"> | 🛠️ **Unity compiling** — and **BUILDING 40%** with a progress line for a build. |
+| <img src="docs/images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game controller"> | 🎮 **Play Mode** — ON AIR, so nobody walks in on a playtest. |
+| <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
+| <img src="docs/images/bar-scene-lunch.webp" width="304" alt="The Lunch scene"> | 🥪 **Lunch, Away, meetings** — full-screen scenes while you are not at your desk. |
+| <img src="docs/images/bar-scene-task-done.webp" width="304" alt="DONE! with a green check"> | ✅ **Done** — a moment of celebration when a task is finished. |
+
+## 🧭 What this is
+
+- 👤 A **personal, single-user desktop app.** Everything lives in a local SQLite
   database and talks to one device over USB.
-- **Windows-only in practice.** The notification listener drives PowerShell
+- 🪟 **Windows-only in practice.** The notification listener drives PowerShell
   against the Windows Action Center database, and packaging targets `win-x64`.
-- **Unsigned.** There is no code-signing certificate, so Windows SmartScreen
-  warns on first launch. See [Packaging](#packaging).
+- ⚠️ **Unsigned.** There is no code-signing certificate, so Windows SmartScreen
+  warns on first launch. See [Packaging](#-packaging).
 
-## What this is not
+## 🚫 What this is not
 
 - Not a team or multi-user product. No server, no account, no telemetry. The one
   request it makes is an update check against GitHub, which sends nothing about
-  you and can be turned off — see [Updates](#updates).
+  you and can be turned off — see [Updates](#-updates).
 - Not a general BUSY Bar SDK. It speaks enough of the device's HTTP API to do
   its own job; the device's own documentation is the reference.
 - Not signed. Releases are built by CI and attached to a GitHub Release, but
   without a certificate SmartScreen warns on first run, so in-app updating
   stops at telling you a new version exists.
 
+## 🚀 Quick start
+
+1. ⬇️ **Download** the installer from the
+   [latest release](https://github.com/Istalry/SprintTicker/releases/latest) and
+   run it — SmartScreen will ask, see [Installation](#-installation).
+2. 🔌 **Plug in the bar** over USB, or choose *Not now* in the setup wizard.
+3. ▶️ **Pick a task and press Start.** Connect OpenProject or Jira whenever you
+   like; until then, local tasks work on their own.
+
+<p align="center">
+  <img src="docs/images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar">
+  <img src="docs/images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
+</p>
+
 ---
 
-## Features
+## ✨ Features
 
-### Time tracking
+### ⏱️ Time tracking
 
 Timestamp-based sessions with start / pause / resume / finish, a live tracker on
 the bar, and a local worklog history with an end-of-day export. Persisted
 through `better-sqlite3` with versioned schema migrations, so upgrading never
-discards existing worklogs. A **mini timer**, a small always-on-top window, shows
-the running task and its time on screen, with or without a bar.
+discards existing worklogs.
 
-### OpenProject integration
+A **mini timer**, a small always-on-top window, shows the running task and its
+time on screen, with or without a bar:
+
+<p align="center">
+  <img src="docs/images/app-mini-timer.png" alt="The mini timer: MG-12, 01:24:10, pause, stop and switch buttons">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/app-projects.png" alt="Projects and tasks: Moonlight Garden with four tasks"></td>
+    <td width="50%"><img src="docs/images/app-history.png" alt="Work History: 4h 10m over four tasks today"></td>
+  </tr>
+  <tr>
+    <td>📁 <b>Projects &amp; Tasks</b> — local, or synced from your tracker.</td>
+    <td>📊 <b>Work History</b> — any day, broken down by task.</td>
+  </tr>
+</table>
+
+### 🔷 OpenProject integration
 
 Fetches projects and work packages over the REST API v3, updates a work
 package's status when tracking starts or completes, and posts tracked durations
@@ -66,7 +151,11 @@ bar. A click opens the work package.
 
 Local **ad-hoc tasks** cover work that has no ticket.
 
-### Jira Cloud integration
+<p align="center">
+  <img src="docs/images/app-providers.png" width="70%" alt="Task Providers panel: OpenProject domain, API key and status mappings">
+</p>
+
+### 🟦 Jira Cloud integration
 
 Projects, issues, worklogs and status changes, against a site URL, an account
 email and an API token. Verified against a live Jira Cloud site.
@@ -91,11 +180,12 @@ commented, mentioned -- and optionally banners on the bar. Jira Cloud has no
 notification feed, so the app reads the changes on the issues you follow off a
 search, leaving out your own.
 
-One limit worth knowing: **Jira records time to the minute**, so a session
-shorter than 60 seconds cannot be stored there. The app keeps it in local
-history rather than queueing something the API will refuse.
+> [!NOTE]
+> **Jira records time to the minute**, so a session shorter than 60 seconds
+> cannot be stored there. The app keeps it in local history rather than
+> queueing something the API will refuse.
 
-### Front display rendering
+### 🖥️ Front display rendering
 
 Everything on the front matrix is rasterised in the main process to a 72×16 PNG
 and uploaded to the device: 16×16 app icons, scrolling task titles, notification
@@ -107,56 +197,92 @@ traffic on state change rather than on every tick.
 A **canvas emulator** in the dashboard mirrors the same render, and
 `pnpm dev:mock` runs the whole app with the hardware layer stubbed.
 
-### Physical input
+Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
+
+| | | | | | |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/images/bar-icon-stopwatch.webp" width="72" alt="Stopwatch"> | <img src="docs/images/bar-icon-gear.webp" width="72" alt="Gear"> | <img src="docs/images/bar-icon-hammer.webp" width="72" alt="Hammer"> | <img src="docs/images/bar-icon-playmode.webp" width="72" alt="Game controller"> | <img src="docs/images/bar-icon-warning.webp" width="72" alt="Warning"> | <img src="docs/images/bar-icon-bell.webp" width="72" alt="Bell"> |
+| tracking | compiling | building | Play Mode | exception | notification |
+
+<p align="center">
+  <img src="docs/images/bar-scene-away.webp" width="49%" alt="The Away scene: a steaming coffee cup">
+  <img src="docs/images/bar-scene-eod.webp" width="49%" alt="The end-of-day scene: a moon, SEE YOU!">
+</p>
+
+### 🎛️ Physical input
 
 The rotary encoder and buttons decode into application actions — turn to scroll,
 click to open the task selector, double-click to toggle play/pause, long press
 for the daily ceremonies menu.
 
-### Windows notifications with priority preemption
+### 🔔 Windows notifications with priority preemption
 
 The app watches the Windows Action Center and mirrors notifications from apps
 you allow onto the bar, with each app's **real icon** resolved from its MSIX
 manifest or its Start Menu shortcut and downscaled to 15×15.
 
+<p align="center">
+  <img src="docs/images/bar-banner.png" width="456" alt="A Slack banner on the bar">
+</p>
+
 Every claim on the display carries a score, and the highest score holds it:
 
 | Claim | Score |
 | :--- | ---: |
-| Away mode | 100 |
-| Lunch mode | 95 |
-| End-of-day wrap-up | 80 |
-| Standup prompt | 75 |
-| Notification — High Priority | 70 |
-| Notification — Default | 65 |
-| Unity build failure | 60 |
-| Unity compiling | 55 |
-| Unity Play Mode | 50 |
-| Active task tracker | 45 |
+| 🧳 Away mode | 100 |
+| 🥪 Lunch mode | 95 |
+| 🌙 End-of-day wrap-up | 80 |
+| 🗣️ Standup prompt | 75 |
+| 🔔 Notification — High Priority | 70 |
+| 💬 Notification — Default | 65 |
+| ⚠️ Unity build failure | 60 |
+| ⚙️ Unity compiling | 55 |
+| 🎮 Unity Play Mode | 50 |
+| ⏱️ Active task tracker | 45 |
 
 Per application you choose `Don't Show`, `Default` or `High Priority`; the table
 decides what that means in context. With the ordering above, notifications do
 not interrupt Lunch or Away — that is the scores working as configured, and
 every row is editable in the **Priority Rules** panel.
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/app-notifications.png" alt="Notifications panel: listener enabled, per-source rules"></td>
+    <td width="50%"><img src="docs/images/app-priority.png" alt="Priority Rules panel: Away 100, Lunch 95, editable per mode"></td>
+  </tr>
+</table>
+
 Notification text is **redacted from logs and from the diagnostics export** by
 default. Launch with `--debug-notifications` to see it while troubleshooting.
 
-### Unity Editor integration
+### 🎮 Unity Editor integration
 
 A UPM package (`io.github.istalry.sprintticker`) posts compile state, Play Mode
 transitions and console exceptions to the app's local HTTP server, and the app
 discovers installed Unity projects and manages plugin injection.
 
-### Ceremonies and schedules
+| | |
+| :---: | :---: |
+| <img src="docs/images/bar-unity-build.webp" width="304" alt="BUILDING 40% with a hammer and a progress line"> | <img src="docs/images/bar-unity-exception.webp" width="304" alt="EXCEPTION: NullReferenceException"> |
+| A build, with its progress | An exception, while it matters |
+
+<p align="center">
+  <img src="docs/images/app-unity.png" width="70%" alt="Unity Engine panel: connected editors, compile state, alert settings">
+</p>
+
+### 📅 Ceremonies and schedules
 
 Configurable working hours, lunch and away detection, a standup prompt with an
 answer-collection modal, and an end-of-day wrap-up that can be confirmed from
 the hardware **START** button or dismissed with **BACK**.
 
+<p align="center">
+  <img src="docs/images/app-ceremonies.png" width="70%" alt="Ceremonies panel: stand-up time, lunch hours, end-of-day wrap-up">
+</p>
+
 ---
 
-## Requirements
+## 📋 Requirements
 
 | | |
 | :--- | :--- |
@@ -167,7 +293,7 @@ the hardware **START** button or dismissed with **BACK**.
 | **Python** | Only to compile animations (`seq2anim.py`, with Pillow and colorlog). Nothing needs a C++ compiler: `better-sqlite3` ships prebuilt. |
 | **Hardware** | A BUSY Bar over USB — optional; `pnpm dev:mock` covers the rest |
 
-### Git LFS is mandatory
+### 🗃️ Git LFS is mandatory
 
 `Animations/` is ~1,800 PNGs stored in Git LFS. Cloning without LFS installed
 leaves every one of them as a **130-byte pointer file**, and because
@@ -199,9 +325,9 @@ broken-animation build described above.
 
 ---
 
-## Installation
+## 📦 Installation
 
-### From a release
+### ⬇️ From a release
 
 Download the installer from the
 [latest release](https://github.com/Istalry/SprintTicker/releases/latest) and
@@ -218,7 +344,7 @@ keeps its database in the `userData` directory described under **First run**,
 so it is portable in the "no install step" sense rather than the "leaves
 nothing behind" sense.
 
-### From source
+### 🧑‍💻 From source
 
 ```bash
 git lfs install
@@ -231,7 +357,7 @@ pnpm install
 itself. It is listed under `allowBuilds` in `pnpm-workspace.yaml`, so no
 separate build approval step is needed on pnpm 11.
 
-### The native module
+### 🧩 The native module
 
 `better-sqlite3` is a native addon, but there is nothing to build: since version
 13 it ships one prebuilt N-API binary per platform, which Node (for the tests)
@@ -240,7 +366,7 @@ and Electron (for the app) both load as it is. Alternating `pnpm test` and
 
 ---
 
-## First run
+## 🏁 First run
 
 1. Launch the app; the onboarding wizard appears on first start.
 2. The device answers at `10.0.4.20` over USB, which is the default and needs no
@@ -252,12 +378,23 @@ and Electron (for the app) both load as it is. Alternating `pnpm test` and
 4. In the **Notifications** panel, choose which applications may reach the
    bar. Nothing is mirrored until you allow it.
 
+<table>
+  <tr>
+    <th width="50%">🟢 Device Diagnostics, with a bar</th>
+    <th width="50%">💻 Device &amp; Logs, without one</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/app-device.png" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, display health"></td>
+    <td><img src="docs/images/app-nobar-device.png" alt="Device and Logs in no-bar mode: Add a BUSY Bar, updates, factory reset"></td>
+  </tr>
+</table>
+
 Application data lives in Electron's `userData` directory. On Windows an
 installed build uses `%APPDATA%\SprintTicker\sprintticker.db`.
 
 ---
 
-## Updates
+## 🔄 Updates
 
 The app checks GitHub for a newer release and tells you when one exists. It does
 not download or install anything: builds are unsigned, so every automatic update
@@ -282,7 +419,7 @@ than a regression, and buying one is a deliberate no — see
 
 ---
 
-## Development
+## 🛠️ Development
 
 ```bash
 pnpm dev
@@ -302,7 +439,7 @@ Equivalent to `MOCK_HARDWARE=true`, or `--mock-hardware` on a packaged build.
 The driver logs what it would have transmitted and the canvas emulator shows the
 frame.
 
-### Quality gates
+### ✅ Quality gates
 
 ```bash
 pnpm lint
@@ -311,7 +448,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1724 tests across 90 files for the app -- the main and shared
+`pnpm test` runs 1725 tests across 90 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
@@ -342,7 +479,7 @@ tasks kept for history, sessions it closed, and a verdict. It exits 1 if a
 worklog, a second of tracked time or a task reference went missing. The
 original is never opened.
 
-### Conventions
+### 📐 Conventions
 
 Code standards, the process boundaries between main / preload / renderer, and
 the BUSY Bar hardware contract the render path must not violate are all in
@@ -352,7 +489,7 @@ wrong number of stops reboots the device.
 
 ---
 
-## Packaging
+## 📦 Packaging
 
 Windows x64, via `electron-builder`:
 
@@ -380,7 +517,7 @@ pnpm --filter @sprintticker/desktop-app package:portable
 
 ---
 
-## Local HTTP API
+## 🔌 Local HTTP API
 
 The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for
 the Unity Editor plugin.
@@ -393,7 +530,7 @@ the Unity Editor plugin.
 | `/api/v1/unity/heartbeat` | `POST` | Unity Editor C# plugin active connection heartbeat pings |
 | `/api/input` | `POST` | Inject physical hardware key events (`up`, `down`, `start`, `ok`, etc.) |
 
-### Security
+### 🔒 Security
 
 Loopback is not a security boundary: any page in any browser on this machine can
 POST to `127.0.0.1`, and this API can drive the hardware and inject input
@@ -415,7 +552,7 @@ network.
 
 ---
 
-## Unity Editor plugin
+## 🎮 Unity Editor plugin
 
 The monorepo includes a Unity Editor C# package connecting assembly compilation,
 Play Mode transitions and console exceptions to the bar.
@@ -439,7 +576,7 @@ without modifying your scenes or project code.
 
 ---
 
-## Tools
+## 🧰 Tools
 
 - **Animation studio** — `pnpm studio` serves a scene editor at
   `http://127.0.0.1:5180` for the bar's full-screen animations: a rounded
@@ -480,6 +617,14 @@ without modifying your scenes or project code.
   409s. `--compositing` measures whether an animated icon plays beside a text
   image, and `--rear` what the rear display accepts and shows; both draw above
   the app, so they run with it open.
+- **Documentation pictures** — `pnpm docs:images` rebuilds every screenshot and
+  bar clip in `docs/images/`. It runs the app on a throwaway profile with
+  invented projects, under `--mock-hardware`, records what the app sends its
+  emulator, and renders that as the LED panel; the scenes and icons come
+  straight from `Animations/`. Close SprintTicker and Unity first: the Unity
+  events it replays would otherwise reach the running app, and its bar, and an
+  open editor's own events would land in the pictures. Needs Python with
+  Pillow, as compiling an animation does.
 
 Windows batch shortcuts for the common commands sit in the repository root:
 `install.bat`, `run_editor.bat`, `package-win.bat`, `verify-unity.bat`,
@@ -487,7 +632,7 @@ Windows batch shortcuts for the common commands sit in the repository root:
 
 ---
 
-## Repository layout
+## 🗂️ Repository layout
 
 ```
 SprintTicker/
@@ -498,8 +643,10 @@ SprintTicker/
 ├── Animations/            # Our full-screen animations: PNG frames (LFS) + .anim
 ├── Documentation/         # User guide, architecture, API reference, hardware guide
 ├── docs/                  # Generated: those three as one page (GitHub Pages)
+├── docs/images/           # Generated: the screenshots and bar clips (pnpm docs:images)
 ├── scripts/               # Preflight, packaging, probe and icon tooling
 ├── scripts/lib/           # Device helpers shared by the probe and the studio
+├── scripts/doc-images/    # Captures and renders docs/images/
 ├── tools/pixel-editor/    # Standalone 16×16 editor (pnpm editor)
 ├── tools/glyphs-to-ts.js  # Compiles the pixel-font glyph sheets (pnpm fonts:build)
 ├── CLAUDE.md              # Code standards, process boundaries, hardware contract
@@ -508,7 +655,7 @@ SprintTicker/
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 The three documents below are also published as one browsable page at
 **[istalry.github.io/SprintTicker](https://istalry.github.io/SprintTicker/)**.
@@ -542,7 +689,7 @@ you want a copy.
 
 ---
 
-## Known limitations
+## ⚠️ Known limitations
 
 - **Windows only.** Nothing here has been run on macOS or Linux.
 - **One device, one user.** The address defaults to `10.0.4.20` over USB and is
@@ -558,7 +705,7 @@ you want a copy.
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 This is a personal project, but issues and pull requests are welcome.
 
@@ -568,7 +715,7 @@ pass, and new behaviour needs a test. Follow the conventions in
 
 ---
 
-## License
+## 📄 License
 
 MIT — see [LICENSE](LICENSE).
 

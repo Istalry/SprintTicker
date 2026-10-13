@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+### Changed
+
+- **The README and the user guide show the app.** Screenshots of every panel,
+  with a bar and without one, and the bar's own screens as it shows them --
+  tracking, paused, Unity, banners, the Lunch, Away, meeting and end-of-day
+  scenes -- animated. Troubleshooting entries fold under their question.
+  `pnpm docs:images` rebuilds the pictures from a throwaway profile with
+  invented projects.
+
 ### Fixed
 
+- **Today's table shows today.** The Active Session panel's list headed
+  "Today's Logged Work" held the latest fifty worklogs whatever their day, so
+  each morning it opened on yesterday's hours, and its total disagreed with
+  Work History for the same date. It now holds the current local day.
 - **Today's table names each task by its key.** The Active Session panel's
   list of the day's worklogs headed its first column Task Key and filled it
   with the task's internal id -- `demo-pf_PF-33` for a local task `PF-33`.

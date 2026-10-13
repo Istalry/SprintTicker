@@ -5,7 +5,7 @@
  *   pnpm docs:images     # builds, captures, then renders scenes and icons
  *
  * or, on a build that is already current, `node scripts/doc-images/capture-app.js`.
- * Close SprintTicker first (see below).
+ * Close SprintTicker and Unity first (see below).
  *
  * Runs the app on a throwaway profile, under `--mock-hardware`, filled with
  * invented projects and tasks, and drives it over the Chrome DevTools
@@ -23,6 +23,8 @@
  *   The Unity events below are POSTed to the webhook port, though, and if the
  *   installed app is running *it* owns that port and would put them on the
  *   user's bar. So the script refuses to start while anything answers there.
+ * - **No other Unity editor.** Every editor open on the machine posts to the
+ *   webhook port, so the script stops if one besides its own connects.
  * - **No real notifications.** The listener is off on the profile except for
  *   the few seconds a picture needs it -- a simulated notification is dropped
  *   while it is off -- so a toast arriving mid-capture has little chance of
@@ -154,6 +156,7 @@ class Page {
   async shot(name) {
     // Let a panel's own fetches settle and its transitions finish.
     await sleep(900);
+    await assertNoOtherEditor(this);
     const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
     const file = path.join(IMAGES, `${name}.png`);
     fs.writeFileSync(file, Buffer.from(data, 'base64'));
@@ -253,8 +256,32 @@ async function clip(page, framesDir, name, ms, act = async () => {}) {
   await page.eval('window.__docRec.start()');
   await sleep(ms);
   const frames = await page.eval('window.__docRec.stop()');
+  await assertNoOtherEditor(page);
   fs.writeFileSync(path.join(framesDir, `${name}.json`), JSON.stringify({ name, holdMs: 1000, frames }));
   log(`clip ${name}: ${frames.length} frame(s)`);
+}
+
+/**
+ * Refuses to go on while a Unity editor other than the invented one is
+ * connected.
+ *
+ * Every Unity editor open on this machine posts to the webhook port, whichever
+ * app owns it, so a real project's heartbeats and console errors reach the
+ * capture instance. The first run of this script published one that way: a
+ * real "Plugins: Failed..." exception on the bar in a screenshot, and "2 Unity
+ * Instances Connected" in another. Checked before every picture rather than
+ * once, because an editor can connect at any moment, a heartbeat every five
+ * seconds.
+ */
+async function assertNoOtherEditor(page) {
+  const telemetry = await page.api('getUnityTelemetry()');
+  const others = (telemetry?.instances ?? []).filter(i => i.instanceId !== EDITOR.instanceId);
+  if (others.length > 0) {
+    throw new Error(
+      `${others.length} other Unity editor(s) connected -- close Unity before capturing; ` +
+        'its events would end up in the pictures'
+    );
+  }
 }
 
 async function unity(route, body = {}) {
@@ -468,7 +495,10 @@ async function main() {
   let page = null;
   try {
     page = await Page.open(url => !url.includes('#mini') && !url.startsWith('devtools'));
-    await sleep(3000);
+    // Longer than an editor's heartbeat interval, so an open one is seen
+    // before anything is captured.
+    await sleep(6000);
+    await assertNoOtherEditor(page);
     await listener(page, false);
     // Off by default; the exception screen is one of the pictures.
     const unitySettings = await page.api('getUnitySettings()');

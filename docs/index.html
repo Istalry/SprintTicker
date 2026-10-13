@@ -374,6 +374,26 @@
   .note p { margin: 0; max-width: none; }
   .note p + p { margin-top: 9px; }
   .note.trap { border-left-color: var(--danger); background: var(--danger-bg); }
+
+  /* Pictures from docs/images/. Screenshots of the app get a hairline frame;
+     the bar's clips carry their own bezel. */
+  section img { display: block; margin: 18px 0; border-radius: 4px; height: auto; }
+  section img[src*="/app-"], section img[src^="images/app-"] { border: 1px solid var(--border); }
+  [align="center"] img { margin-left: auto; margin-right: auto; }
+  td img { margin: 4px 0; }
+
+  /* A <details> block folds the long answer under its question: the
+     troubleshooting entries, mostly. Searching the page still opens one. */
+  details {
+    margin-top: 14px;
+    max-width: 68ch;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  summary { cursor: pointer; padding: 10px 16px; color: var(--ink); font-weight: 600; }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  details > :not(summary) { margin-left: 16px; margin-right: 16px; }
   .note .label {
     font-family: var(--f-mono);
     font-size: 10.5px;
@@ -453,11 +473,11 @@
     <div class="rail-title">Contents</div>
     <nav>
       <a class="lead" href="#guide">User guide</a>
-      <a href="#guide-first-run">First run</a>
-      <a href="#guide-the-panels">The panels</a>
-      <a href="#guide-the-bar-itself">The bar itself</a>
-      <a href="#guide-troubleshooting">Troubleshooting</a>
-      <a href="#guide-your-data">Your data</a>
+      <a href="#guide-first-run">🏁 First run</a>
+      <a href="#guide-the-panels">🗂️ The panels</a>
+      <a href="#guide-the-bar-itself">💡 The bar itself</a>
+      <a href="#guide-troubleshooting">🩺 Troubleshooting</a>
+      <a href="#guide-your-data">🔐 Your data</a>
       <a class="lead" href="#architecture">Architecture</a>
       <a href="#architecture-the-whole-thing-in-one-picture">The whole thing in one picture</a>
       <a href="#architecture-process-boundaries">Process boundaries</a>
@@ -482,22 +502,55 @@
         <div class="num">Document 1</div>
         <h2>User guide</h2>
         <p>Using SprintTicker day to day.</p>
-        <p>Installation is in the <a href="../README.md#installation">README</a>. This picks up from
+        <p>Installation is in the <a href="../README.md#-installation">README</a>. This picks up from
         first launch.</p>
+        <p align="center">
+          <img src="images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, a Unity compile, the Lunch scene and a Slack banner">
+        </p><table>
+        <thead>
+        <tr>
+        <th align="left"></th>
+        <th align="left"></th>
+        </tr>
+        </thead>
+        <tbody><tr>
+        <td align="left">🏁 <a href="#-first-run">First run</a></td>
+        <td align="left">the setup wizard, with or without a bar, and the mini timer</td>
+        </tr>
+        <tr>
+        <td align="left">🗂️ <a href="#-the-panels">The panels</a></td>
+        <td align="left">the nine tabs of the window, one by one</td>
+        </tr>
+        <tr>
+        <td align="left">💡 <a href="#-the-bar-itself">The bar itself</a></td>
+        <td align="left">every screen the bar shows, and its buttons</td>
+        </tr>
+        <tr>
+        <td align="left">🩺 <a href="#-troubleshooting">Troubleshooting</a></td>
+        <td align="left">when something does not do what it should</td>
+        </tr>
+        <tr>
+        <td align="left">🔐 <a href="#-your-data">Your data</a></td>
+        <td align="left">where it lives, and what leaves your machine</td>
+        </tr>
+        </tbody></table>
       </div>
-      <h3 id="guide-first-run">First run</h3>
+      <h3 id="guide-first-run">🏁 First run</h3>
       <p>The onboarding wizard opens automatically. Three steps:</p>
-      <p><strong>1. Hardware.</strong> First, whether you have a BUSY Bar. If you do, plug it in over
+      <p align="center">
+        <img src="images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar, device address 10.0.4.20, Test Ping">
+        <img src="images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
+      </p><p><strong>1️⃣ Hardware.</strong> First, whether you have a BUSY Bar. If you do, plug it in over
       USB. It presents a virtual Ethernet adapter and answers on <code>10.0.4.20</code>, so there
       is usually nothing to configure — press <strong>Test Ping</strong> to confirm the link. A
       failure here is reported as a failure; it never congratulates you on a
       connection it did not make.</p>
       <p>If you do not, choose <strong>Not now</strong>: SprintTicker runs without one (see
-      <a href="#without-a-busy-bar">Without a BUSY Bar</a>), and you can add a bar later.</p>
+      <a href="#-without-a-busy-bar">Without a BUSY Bar</a>), and you can add a bar later.</p>
       <p>Developing without a bar but wanting to see what it would show? Run
       <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen emulator
       shows what the device would display.</p>
-      <p><strong>2. Task provider.</strong> Choose OpenProject, Jira Cloud or ad-hoc, and enter the
+      <p><strong>2️⃣ Task provider.</strong> Choose OpenProject, Jira Cloud or ad-hoc, and enter the
       credentials for the one you picked:</p>
       <div class="table-wrap"><table>
       <thead>
@@ -507,15 +560,15 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left">OpenProject</td>
+      <td align="left">🔷 OpenProject</td>
       <td align="left">Domain URL, and an API key from <em>My Account → Access tokens</em></td>
       </tr>
       <tr>
-      <td align="left">Jira Cloud</td>
+      <td align="left">🟦 Jira Cloud</td>
       <td align="left">Site URL, your account email, and a token from <code>id.atlassian.com</code></td>
       </tr>
       <tr>
-      <td align="left">Ad-hoc</td>
+      <td align="left">📝 Ad-hoc</td>
       <td align="left">Nothing — local tasks only</td>
       </tr>
       </tbody></table></div>
@@ -524,9 +577,22 @@
       the wizard saves the choice and immediately fetches your projects.</p>
       <p>The <strong>fallback overhead ticket</strong> (default <code>MISC-1</code>) is what ad-hoc time is
       logged against — meetings, admin, anything without a ticket.</p>
-      <p><strong>3. Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
-      <h4>Without a BUSY Bar</h4>
-      <p>Everything that keeps time works without the hardware: the task picker, the
+      <p><strong>3️⃣ Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
+      <h4>💻 Without a BUSY Bar</h4>
+      <div class="table-wrap"><table>
+        <tr>
+          <th width="50%">🟢 With a bar</th>
+          <th width="50%">💻 Without one</th>
+        </tr>
+        <tr>
+          <td><img src="images/app-session-tracking.png" alt="Active Session with the bar emulator in the top bar"></td>
+          <td><img src="images/app-nobar-session.png" alt="Active Session in no-bar mode: no emulator, the same session"></td>
+        </tr>
+        <tr>
+          <td>Nine tabs; the emulator and the connection readout in the top bar.</td>
+          <td>Six tabs; everything that keeps time is still there.</td>
+        </tr>
+      </table></div><p>Everything that keeps time works without the hardware: the task picker, the
       running timer, pausing, finishing, worklog sync, history, the ceremonies and
       the end-of-day wrap-up. What steps aside is what only describes the bar — the
       on-screen emulator and connection readout in the top bar, <strong>Priority Rules</strong>,
@@ -541,51 +607,77 @@
       factory reset.</p>
       <p>The app does not look for a bar in this mode, so it logs nothing about one being
       unreachable.</p>
-      <p>To switch, use <strong>Use without a bar</strong> in Device Diagnostics; the bar is cleared
+      <p align="center">
+        <img src="images/app-nobar-device.png" width="70%" alt="Device and Logs in no-bar mode, with an Add a BUSY Bar button">
+      </p><p>To switch, use <strong>Use without a bar</strong> in Device Diagnostics; the bar is cleared
       and handed back to its own clock first. To add a bar later,
       press <strong>Add a BUSY Bar</strong> in Device &amp; Logs: the address and token you had set
       before are kept, and the bar&#39;s screens come back at once.</p>
-      <h4>The mini timer</h4>
+      <h4>⏱️ The mini timer</h4>
       <p>A small window that stays above every other one and shows what the bar would:
       the task key and title, the elapsed time, and a coloured edge -- green while
       tracking, amber while paused, grey with nothing running. Open it with <strong>Mini
       Timer</strong> in the top bar or <strong>Show Mini Timer</strong> in the tray menu.</p>
-      <ul>
-      <li><strong>Pause</strong>, <strong>Resume</strong> and <strong>Stop</strong> act on the session as the dashboard does.
+      <p align="center">
+        <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
+      </p><ul>
+      <li>⏯️ <strong>Pause</strong>, <strong>Resume</strong> and <strong>Stop</strong> act on the session as the dashboard does.
       Stop logs the time without marking the task done.</li>
-      <li>The <strong>list</strong> button brings the dashboard forward with the task picker open:
+      <li>📋 The <strong>list</strong> button brings the dashboard forward with the task picker open:
       that is how you start or switch a task from it.</li>
-      <li>Drag it by any part that is not a button. It reopens where you left it; if
+      <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
       that was on a monitor you have since unplugged, it comes back in the
       bottom-right corner of the main one.</li>
-      <li>It reopens at the next launch if it was open when you quit, and stays closed
+      <li>🔁 It reopens at the next launch if it was open when you quit, and stays closed
       if you closed it.</li>
       </ul>
       <p>It counts seconds, which the bar does not: on screen a second costs nothing.</p>
       <hr>
-      <h3 id="guide-the-panels">The panels</h3>
+      <h3 id="guide-the-panels">🗂️ The panels</h3>
       <p>Nine tabs down the left.</p>
-      <h4>Active Session</h4>
+      <h4>▶️ Active Session</h4>
       <p>The main screen. Start a task, and the bar shows it. Pause, resume, and finish
       from here.</p>
-      <p>Finishing asks for a comment and whether to mark the task done. Marking it done
+      <p align="center">
+        <img src="images/app-session-tracking.png" width="80%" alt="Active Session: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
+      </p><p>Finishing asks for a comment and whether to mark the task done. Marking it done
       celebrates on the bar -- a green badge drops in, ticks itself, and throws
       confetti beside <strong>DONE!</strong> -- then returns to the session. It also fires your
       configured completion transition — which in Jira usually means &quot;To
       Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
       yourself. Stopping without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
-      <h4>Projects &amp; Tasks</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="center"></th>
+      <th align="center"></th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="center"><img src="images/bar-scene-task-done.webp" width="304" alt="DONE! with a green check and confetti"></td>
+      <td align="center"><img src="images/bar-scene-task-logged.webp" width="304" alt="LOGGED with the stopwatch hand sweeping back"></td>
+      </tr>
+      <tr>
+      <td align="center">✅ Finished and marked done</td>
+      <td align="center">📝 Stopped: time logged, task still open</td>
+      </tr>
+      </tbody></table></div>
+      <h4>📁 Projects &amp; Tasks</h4>
       <p>Your cached projects and their tasks, refreshed from the provider. Create local
       ad-hoc tasks here for work that has no ticket.</p>
-      <p>A task from Jira or OpenProject shows the start of its description under its
+      <p align="center">
+        <img src="images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden and Pixel Forge, four tasks with their status">
+      </p><p>A task from Jira or OpenProject shows the start of its description under its
       title, on one line. The task picker searches it too, so you can find a task by
       what it is about.</p>
       <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
       Task Providers refetches it.</p>
-      <h4>Work History</h4>
+      <h4>📊 Work History</h4>
       <p>Worklogs by date, with a daily summary and an end-of-day export.</p>
-      <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
+      <p align="center">
+        <img src="images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
+      </p><p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
       refused a 40-second session, the time is still in your history — it just is not
       in Jira.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
@@ -597,11 +689,13 @@
       left running behind another one. Its end is where the next session began, the
       latest it can have run, so check it before copying it to a timesheet; it is not
       sent to your provider.</p>
-      <h4>Task Providers</h4>
+      <h4>🔌 Task Providers</h4>
       <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
       me, everything open, or your own query (JQL for Jira, a v3 filter array for
       OpenProject).</p>
-      <p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
+      <p align="center">
+        <img src="images/app-providers.png" width="80%" alt="Task Providers: the active provider, its domain and API key, and the status mappings">
+      </p><p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
       into Windows notifications: assigned to you, a mention, a comment, a status
       change, a date alert. Tick the ones you want. Clicking a notification opens the
       work package in your browser. With a bar, they can go there too, as a banner
@@ -618,11 +712,11 @@
       SprintTicker looks at the issues you are assigned, reported or watch at each
       check, and works out what changed. That has edges worth knowing:</p>
       <ul>
-      <li><strong>Your own changes never notify you</strong>, including the status changes
+      <li>🙈 <strong>Your own changes never notify you</strong>, including the status changes
       SprintTicker makes for you when you start or finish a task.</li>
-      <li><strong>A mention on an issue you do not follow is not seen</strong>, and neither is a
+      <li>👀 <strong>A mention on an issue you do not follow is not seen</strong>, and neither is a
       mention in a description rather than a comment.</li>
-      <li><strong>Jira has no date alerts</strong>, so that box is not offered.</li>
+      <li>📅 <strong>Jira has no date alerts</strong>, so that box is not offered.</li>
       </ul>
       <p>Below the credentials is the <strong>sync queue</strong>: every worklog that has not reached
       the provider, with the server&#39;s own message, the attempt count against the
@@ -635,11 +729,11 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left"><strong>Sync Now</strong></td>
+      <td align="left">🔄 <strong>Sync Now</strong></td>
       <td align="left">Fetches projects and tasks immediately</td>
       </tr>
       <tr>
-      <td align="left"><strong>Retry Failed</strong></td>
+      <td align="left">♻️ <strong>Retry Failed</strong></td>
       <td align="left">Un-parks rows that gave up — use after fixing what broke them</td>
       </tr>
       </tbody></table></div>
@@ -650,19 +744,54 @@
       would send byte-identical requests forever, so the app stops and tells you
       why. <strong>Retry Failed</strong> is for after you have fixed the cause.</p>
       </div>
-      <h4>Unity Engine</h4>
+      <h4>🎮 Unity Engine</h4>
       <p>Discovered Unity projects and plugin injection. Once installed, the bar shows
-      compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.
+      compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.</p>
+      <p align="center">
+        <img src="images/app-unity.png" width="80%" alt="Unity Engine panel: connected editors, compile and Play Mode state, sound and alert settings">
+      </p>
       The icons move. While scripts compile the gear turns; during Play Mode the
       pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
       bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
-      a notification without an app logo rings its bell, the end-of-day prompt&#39;s
-      alarm clock rings, and the lunch prompt&#39;s burger hops. An OpenProject notification passes a shine across the OpenProject logo;
-      other apps&#39; logos stay still. The bar animates them itself. If one ever shows still, the log&#39;s
-      <code>[IconAnimator]</code> lines say why, and the screen is otherwise unaffected.</p>
-      <h4>Ceremonies</h4>
+      a notification without an app logo rings its bell, the end-of-day prompt's
+      alarm clock rings, and the lunch prompt's burger hops. An OpenProject notification passes a shine across the OpenProject logo;
+      other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
+      `[IconAnimator]` lines say why, and the screen is otherwise unaffected.<div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="center"></th>
+      <th align="center"></th>
+      <th align="center"></th>
+      <th align="center"></th>
+      <th align="center"></th>
+      <th align="center"></th>
+      <th align="center"></th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="center"><img src="images/bar-icon-gear.webp" width="64" alt="Gear turning"></td>
+      <td align="center"><img src="images/bar-icon-playmode.webp" width="64" alt="Game pad"></td>
+      <td align="center"><img src="images/bar-icon-hammer.webp" width="64" alt="Hammer striking"></td>
+      <td align="center"><img src="images/bar-icon-bulb.webp" width="64" alt="Glowing bulb"></td>
+      <td align="center"><img src="images/bar-icon-warning.webp" width="64" alt="Warning triangle shaking"></td>
+      <td align="center"><img src="images/bar-icon-bell.webp" width="64" alt="Bell ringing"></td>
+      <td align="center"><img src="images/bar-icon-clock.webp" width="64" alt="Alarm clock ringing"></td>
+      </tr>
+      <tr>
+      <td align="center">compiling</td>
+      <td align="center">Play Mode</td>
+      <td align="center">build</td>
+      <td align="center">lightmap bake</td>
+      <td align="center">exception</td>
+      <td align="center">notification</td>
+      <td align="center">end of day</td>
+      </tr>
+      </tbody></table></div>
+      <h4>📅 Ceremonies</h4>
       <p>Working hours, and the three scheduled events:</p>
-      <div class="table-wrap"><table>
+      <p align="center">
+        <img src="images/app-ceremonies.png" width="80%" alt="Ceremonies panel: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
+      </p><div class="table-wrap"><table>
       <thead>
       <tr>
       <th align="left"></th>
@@ -671,17 +800,17 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left"><strong>Stand-up prompt</strong></td>
+      <td align="left">🗣️ <strong>Stand-up prompt</strong></td>
       <td align="left">09:30</td>
       <td align="left">Prompts you, and collects answers in a modal</td>
       </tr>
       <tr>
-      <td align="left"><strong>Lunch</strong></td>
+      <td align="left">🥪 <strong>Lunch</strong></td>
       <td align="left">12:30–13:30</td>
       <td align="left">Switches to Lunch mode</td>
       </tr>
       <tr>
-      <td align="left"><strong>End-of-day wrap-up</strong></td>
+      <td align="left">🌙 <strong>End-of-day wrap-up</strong></td>
       <td align="left">17:30</td>
       <td align="left">Prompts to wrap up; can save open editors and schedule a shutdown</td>
       </tr>
@@ -694,9 +823,36 @@
       round a table taking turns to speak, beside <strong>MEETING</strong>, on blue. Each loops
       for as long as the mode lasts, and the bar plays it itself, so it keeps moving
       when the computer is busy.</p>
-      <h4>Notifications</h4>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="center"></th>
+      <th align="center"></th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="center"><img src="images/bar-scene-lunch.webp" width="304" alt="LUNCH: a sandwich building itself on teal"></td>
+      <td align="center"><img src="images/bar-scene-away.webp" width="304" alt="AWAY: a steaming coffee on purple"></td>
+      </tr>
+      <tr>
+      <td align="center">🥪 Lunch</td>
+      <td align="center">☕ Away</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-scene-meeting.webp" width="304" alt="MEETING: three people round a table on blue"></td>
+      <td align="center"><img src="images/bar-scene-eod.webp" width="304" alt="SEE YOU!: a moon rising on a dusk gradient"></td>
+      </tr>
+      <tr>
+      <td align="center">🗣️ Stand-up</td>
+      <td align="center">🌙 End of day</td>
+      </tr>
+      </tbody></table></div>
+      <h4>🔔 Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
-      <p>Per app, choose one of three:</p>
+      <p align="center">
+        <img src="images/app-notifications.png" width="80%" alt="Notifications panel: the listener enabled and its status, banner duration, per-source rules">
+        <img src="images/bar-banner.png" width="456" alt="A Slack banner on the bar: the Slack logo, Mira, New message">
+      </p><p>Per app, choose one of three:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -705,15 +861,15 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left"><strong>Don&#39;t Show</strong></td>
+      <td align="left">🚫 <strong>Don&#39;t Show</strong></td>
       <td align="left">Ignored entirely</td>
       </tr>
       <tr>
-      <td align="left"><strong>Default</strong></td>
+      <td align="left">💬 <strong>Default</strong></td>
       <td align="left">Claims the display at whatever <em>Notification — Default</em> scores</td>
       </tr>
       <tr>
-      <td align="left"><strong>High Priority</strong></td>
+      <td align="left">🔔 <strong>High Priority</strong></td>
       <td align="left">Claims it at whatever <em>Notification — High Priority</em> scores</td>
       </tr>
       </tbody></table></div>
@@ -729,10 +885,12 @@
       <p><strong>Sender only</strong> mode shows that a message arrived without showing what it said.</p>
       <p>Notification text is redacted from logs and the diagnostics export. Launch with
       <code>--debug-notifications</code> to see it while troubleshooting.</p>
-      <h4>Priority Rules</h4>
+      <h4>⚡ Priority Rules</h4>
       <p>What the display shows when several things want it. Every claim has a score;
       the highest holds the bar.</p>
-      <div class="table-wrap"><table>
+      <p align="center">
+        <img src="images/app-priority.png" width="80%" alt="Priority Rules: the active mode, and each claim with its level and its action in Work, Lunch and Away">
+      </p><div class="table-wrap"><table>
       <thead>
       <tr>
       <th align="left">Claim</th>
@@ -740,43 +898,43 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left">Away mode</td>
+      <td align="left">🧳 Away mode</td>
       <td align="right">100</td>
       </tr>
       <tr>
-      <td align="left">Lunch mode</td>
+      <td align="left">🥪 Lunch mode</td>
       <td align="right">95</td>
       </tr>
       <tr>
-      <td align="left">End-of-day wrap-up</td>
+      <td align="left">🌙 End-of-day wrap-up</td>
       <td align="right">80</td>
       </tr>
       <tr>
-      <td align="left">Stand-up prompt</td>
+      <td align="left">🗣️ Stand-up prompt</td>
       <td align="right">75</td>
       </tr>
       <tr>
-      <td align="left">Notification — High Priority</td>
+      <td align="left">🔔 Notification — High Priority</td>
       <td align="right">70</td>
       </tr>
       <tr>
-      <td align="left">Notification — Default</td>
+      <td align="left">💬 Notification — Default</td>
       <td align="right">65</td>
       </tr>
       <tr>
-      <td align="left">Unity build failure</td>
+      <td align="left">⚠️ Unity build failure</td>
       <td align="right">60</td>
       </tr>
       <tr>
-      <td align="left">Unity compiling</td>
+      <td align="left">⚙️ Unity compiling</td>
       <td align="right">55</td>
       </tr>
       <tr>
-      <td align="left">Unity Play Mode</td>
+      <td align="left">🎮 Unity Play Mode</td>
       <td align="right">50</td>
       </tr>
       <tr>
-      <td align="left">Active task tracker</td>
+      <td align="left">⏱️ Active task tracker</td>
       <td align="right">45</td>
       </tr>
       </tbody></table></div>
@@ -784,18 +942,20 @@
       <strong>Suppress</strong> or <strong>Queue</strong> for Work, Lunch and Away.</p>
       <p>With the shipped ordering, notifications do not interrupt Lunch or Away. That is
       the table working as configured, not a bug. Move the rows if you disagree.</p>
-      <h4>Device Diagnostics</h4>
+      <h4>🩺 Device Diagnostics</h4>
       <p>Connection status, battery, firmware, the update setting, and the animation
       debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
       live, drawn through the real renderer.</p>
-      <p>It also holds <strong>Connection</strong>, where you set the address the app dials and, if
+      <p align="center">
+        <img src="images/app-device.png" width="80%" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, and Display Health">
+      </p><p>It also holds <strong>Connection</strong>, where you set the address the app dials and, if
       your device needs one, an API token:</p>
       <ul>
-      <li><strong>Device address.</strong> Defaults to <code>10.0.4.20</code>, which is where the bar answers
+      <li>🌐 <strong>Device address.</strong> Defaults to <code>10.0.4.20</code>, which is where the bar answers
       over USB. Change it for a bar on Wi-Fi, or when you are reaching the device
       through a proxy on another address. An IPv4 address or a hostname — no
       <code>http://</code>, no port, no path.</li>
-      <li><strong>API token.</strong> Leave empty for USB, where the bar accepts unauthenticated
+      <li>🔑 <strong>API token.</strong> Leave empty for USB, where the bar accepts unauthenticated
       requests. Fill it in once the device has access protection enabled, which is
       the normal state over Wi-Fi; without it every request comes back 401 or 403.</li>
       </ul>
@@ -804,8 +964,8 @@
       new address answered; saving means the setting was stored, not that the bar
       replied. <strong>Reset to USB default</strong> puts the address back to <code>10.0.4.20</code>.</p>
       <hr>
-      <h3 id="guide-the-bar-itself">The bar itself</h3>
-      <h4>What it shows</h4>
+      <h3 id="guide-the-bar-itself">💡 The bar itself</h3>
+      <h4>🖼️ What it shows</h4>
       <p>A 72×16 RGB matrix: a 16px icon on the left, then two rows of text, both in
       proportional fonts drawn for SprintTicker. Row 0 holds roughly twelve characters
       of mixed case in its 55px field. Row 1 uses a narrower face and holds about
@@ -815,6 +975,55 @@
       <p>The small screen on the back belongs to the bar itself: it shows a copy of the
       front at twice the size, and its own clock and date when the front is empty.
       SprintTicker draws nothing there.</p>
+      <p>Every screen, as the bar shows it:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="center">Screen</th>
+      <th align="left">What it means</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="center"><img src="images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"></td>
+      <td align="left">⏱️ <strong>Tracking.</strong> The task on row 0, its time in large digits on row 1. The stopwatch&#39;s hand ticks round.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"></td>
+      <td align="left">⏸️ <strong>Paused.</strong> The key and its time; turn the wheel to <strong>STOP</strong> or <strong>FINISH</strong>, click to confirm.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"></td>
+      <td align="left">🏃 <strong>GO!</strong> A task picked on the bar itself, for two seconds.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-scene-task-logged.webp" width="304" alt="LOGGED"></td>
+      <td align="left">📝 <strong>LOGGED.</strong> Stopped: the time is kept, the task stays open.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-scene-task-done.webp" width="304" alt="DONE!"></td>
+      <td align="left">✅ <strong>DONE!</strong> Finished and marked done.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-unity-compile.webp" width="304" alt="COMPILING with a turning gear"></td>
+      <td align="left">⚙️ <strong>Compiling</strong> in Unity, with the project on row 1.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-unity-build.webp" width="304" alt="BUILDING 40% with a hammer and a progress line"></td>
+      <td align="left">🔨 <strong>Building</strong>, with its percentage and a progress line along the bottom.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game pad"></td>
+      <td align="left">🎮 <strong>Play Mode.</strong> ON AIR until you stop playing.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-unity-exception.webp" width="304" alt="EXCEPTION with a shaking warning triangle"></td>
+      <td align="left">⚠️ <strong>Exception.</strong> Its message on row 1, for a few seconds.</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-banner.png" width="304" alt="A Slack banner"></td>
+      <td align="left">🔔 <strong>Notification</strong>, from an app you allowed, with its own icon.</td>
+      </tr>
+      </tbody></table></div>
       <p>The session screen&#39;s icon is a stopwatch whose colour says where you are: green
       while a task runs, its hand ticking round once a second; amber with blinking
       pause bars while it is paused; dim grey when nothing runs (the screen then
@@ -838,7 +1047,7 @@
       animation: it shows that the clock is running, and is not the seconds of your
       session.</p>
       </div>
-      <h4>Controls</h4>
+      <h4>🎛️ Controls</h4>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -847,28 +1056,28 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left"><strong>START</strong> press</td>
+      <td align="left">▶️ <strong>START</strong> press</td>
       <td align="left">Start or pause. With nothing running, opens the task picker</td>
       </tr>
       <tr>
-      <td align="left"><strong>Wheel</strong> turn</td>
+      <td align="left">🔄 <strong>Wheel</strong> turn</td>
       <td align="left">Scroll</td>
       </tr>
       <tr>
-      <td align="left"><strong>Wheel</strong> click</td>
+      <td align="left">🖱️ <strong>Wheel</strong> click</td>
       <td align="left">Open the task picker</td>
       </tr>
       <tr>
-      <td align="left"><strong>BACK</strong> short press</td>
+      <td align="left">↩️ <strong>BACK</strong> short press</td>
       <td align="left">Dismiss the current notification</td>
       </tr>
       <tr>
-      <td align="left"><strong>BACK</strong> long press</td>
+      <td align="left">⏹️ <strong>BACK</strong> long press</td>
       <td align="left">Complete the active task and log the time</td>
       </tr>
       </tbody></table></div>
       <p>All of these are rebindable.</p>
-      <p><strong>The task picker</strong> is two stages: turn to choose a project, click to descend
+      <p>🗂️ <strong>The task picker</strong> is two stages: turn to choose a project, click to descend
       into it, turn to choose a task, click to start. <strong>BACK</strong> leaves at any point.
       A blue folder means you are choosing a project, a checklist a task. The
       checklist also gives the task&#39;s status: grey for to do, amber for in progress,
@@ -880,7 +1089,7 @@
       with a thin line along the bottom whose bright segment slides from left to
       right as you scroll: at the far left there is nothing before, at the far right
       nothing after.</p>
-      <p><strong>During a ceremony prompt</strong>, START confirms and BACK dismisses. The end-of-day
+      <p>🗣️ <strong>During a ceremony prompt</strong>, START confirms and BACK dismisses. The end-of-day
       wrap-up asks twice — the first START is &quot;yes&quot;, the second confirms — because it
       can shut your machine down. Once it is done, the bar says <strong>SEE YOU!</strong> for five
       seconds, a moon rising and the stars coming out, and then goes idle.</p>
@@ -890,18 +1099,22 @@
       ordering -- the buttons keep doing what that screen says, and the wrap-up is
       confirmed in the window.</p>
       <hr>
-      <h3 id="guide-troubleshooting">Troubleshooting</h3>
-      <p><strong>The task list is empty.</strong> Check Task Providers for a saved domain and key.
+      <h3 id="guide-troubleshooting">🩺 Troubleshooting</h3>
+      <p>Click a problem to unfold its answer.</p>
+      <details>
+      <summary>📭 <b>The task list is empty</b></summary><p> Check Task Providers for a saved domain and key.
       Press <strong>Sync Now</strong>; if it stays empty, the credentials are probably wrong — the
       app deliberately does not invent tasks. A provider error is shown rather than
       swallowed.</p>
-      <p><strong>Jira says <code>Checking the Jira credentials failed: HTTP 401</code>.</strong> Jira no longer
+      </details><details>
+      <summary>🔑 <b>Jira says <code>Checking the Jira credentials failed: HTTP 401</code></b></summary><p> Jira no longer
       accepts the API token. Atlassian tokens carry an expiry date chosen when they
       are created, so a token that worked last month can simply have run out. Create
       a new one at id.atlassian.com › Security › API tokens and paste it into Task
       Providers. Your projects and tasks stay as they were in the meantime, and the
       next sync brings them up to date.</p>
-      <p><strong>A worklog never reached Jira or OpenProject.</strong> Open the sync queue panel. The
+      </details><details>
+      <summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary><p> Open the sync queue panel. The
       row carries the server&#39;s own message. Common causes:</p>
       <ul>
       <li><em><code>404</code> — the issue no longer exists.</em> Nothing to do; the local worklog stands.</li>
@@ -910,12 +1123,14 @@
       <li><em><code>401</code>/<code>403</code> — the key was revoked.</em> Enter a new one; saving credentials
       automatically un-parks rows the old key stranded.</li>
       </ul>
-      <p><strong>Notifications never appear on the bar.</strong> Three things to check, in order: the
+      </details><details>
+      <summary>🔕 <b>Notifications never appear on the bar</b></summary><p> Three things to check, in order: the
       app is set to something other than <em>Don&#39;t Show</em>; the notification listener is
       running (Device Diagnostics reports its status — <strong>its failures are otherwise
       silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
       the usual culprits.</p>
-      <p><strong>The bar never connects.</strong> The header shows <em>Disconnected</em> and Device
+      </details><details>
+      <summary>🔌 <b>The bar never connects</b></summary><p> The header shows <em>Disconnected</em> and Device
       Diagnostics reports no firmware or battery. The bar reaches the app as a <strong>USB
       network device on <code>10.0.4.20</code></strong>, so the question is whether that device exists
       at all:</p>
@@ -937,7 +1152,7 @@
       Windows&#39; own USB network driver is refusing to bring the interface up. See
       the note below; this is not something the app can fix.</li>
       </ol>
-      <div class="note trap"><span class="label">in-place repair upgrade</span>
+      </details><div class="note trap"><span class="label">in-place repair upgrade</span>
       <p><strong>Code 10 on the Flipper network interface is a Windows driver fault, not a
       bar fault or an app fault.</strong>
       It has been reproduced on Windows 11 25H2 with an Intel 700-series USB
@@ -970,7 +1185,8 @@
       back. Earlier builds failed silently, so a diagnostics export sent in to ask
       &quot;why won&#39;t it connect&quot; contained no evidence of the failure anywhere.</p>
       </div>
-      <p><strong>An animation plays in the app but not on the bar.</strong> Fixed as of this
+      <details>
+      <summary>🎞️ <b>An animation plays in the app but not on the bar</b></summary><p> Fixed as of this
       release, and worth knowing why, because the symptom is confusing: the preview
       and the bar are fed by two different paths. The on-screen emulator draws every
       frame locally, while the bar is handed the whole animation file and plays it
@@ -979,7 +1195,8 @@
       own blank frame on top of the animation it had just started. If you still see
       it, export the logs from Device Diagnostics and look for <code>[AnimationPlayer]</code>
       lines naming the file and its size.</p>
-      <p><strong>The bar freezes and stops answering.</strong> The panel stops changing, the app
+      </details><details>
+      <summary>🧊 <b>The bar freezes and stops answering</b></summary><p> The panel stops changing, the app
       reports the bar disconnected, and sometimes the bar restarts on its own about
       45 seconds later. On firmware 1.2.4 this is what happens when the display is
       cleared a few times while a picture and an animation are both on it. Earlier
@@ -1004,16 +1221,19 @@
       times the screen closed in the last hour. If you see the warning, export the
       logs before restarting the bar; the bundle then holds the run-up to the
       freeze. Once the bar is back, the app redraws the current screen by itself.</p>
-      <p><strong>The bar shows something stale.</strong> Something is holding the display lock at a
+      </details><details>
+      <summary>🕰️ <b>The bar shows something stale</b></summary><p> Something is holding the display lock at a
       higher priority. Check Priority Rules and your current mode. After the bar
       restarts or its connection drops, the app redraws the current screen within a
       few seconds of the bar answering again; before 1.2.1 it could put back the
       screen from before the outage.</p>
-      <p><strong>Windows warns on first launch.</strong> The build is unsigned. <em>More info → Run
+      </details><details>
+      <summary>🛡️ <b>Windows warns on first launch</b></summary><p> The build is unsigned. <em>More info → Run
       anyway</em>. There is no way around it short of a code-signing certificate.</p>
-      <p><strong>Accented characters.</strong> These are transliterated to ASCII (<code>é</code> → <code>e</code>), because
+      </details><details>
+      <summary>🔤 <b>Accented characters</b></summary><p> These are transliterated to ASCII (<code>é</code> → <code>e</code>), because
       the device accepts printable ASCII only. Emoji do not render.</p>
-      <h4>No notification from OpenProject or Jira</h4>
+      </details><h4>📭 No notification from OpenProject or Jira</h4>
       <ul>
       <li><strong>Is it switched on, for that kind?</strong> Task Providers › Notifications from
       OpenProject (or Jira). <strong>Send a test notification</strong>: if it says it was sent and nothing
@@ -1029,7 +1249,7 @@
       <code>[Toasts] Windows did not show a notification</code>.</li>
       </ul>
       <hr>
-      <h3 id="guide-your-data">Your data</h3>
+      <h3 id="guide-your-data">🔐 Your data</h3>
       <p>One SQLite file: <code>%APPDATA%\SprintTicker\sprintticker.db</code>. Installing over a
       previous version does not touch it.</p>
       <p>Provider credentials are encrypted at rest with Windows&#39; own keystore. If it is
@@ -1721,7 +1941,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1724 tests across 90 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1725 tests across 90 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

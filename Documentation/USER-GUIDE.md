@@ -2,36 +2,53 @@
 
 Using SprintTicker day to day.
 
-Installation is in the [README](../README.md#installation). This picks up from
+Installation is in the [README](../README.md#-installation). This picks up from
 first launch.
+
+<p align="center">
+  <img src="../docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, a Unity compile, the Lunch scene and a Slack banner">
+</p>
+
+| | |
+| :--- | :--- |
+| 🏁 [First run](#-first-run) | the setup wizard, with or without a bar, and the mini timer |
+| 🗂️ [The panels](#-the-panels) | the nine tabs of the window, one by one |
+| 💡 [The bar itself](#-the-bar-itself) | every screen the bar shows, and its buttons |
+| 🩺 [Troubleshooting](#-troubleshooting) | when something does not do what it should |
+| 🔐 [Your data](#-your-data) | where it lives, and what leaves your machine |
 
 ---
 
-## First run
+## 🏁 First run
 
 The onboarding wizard opens automatically. Three steps:
 
-**1. Hardware.** First, whether you have a BUSY Bar. If you do, plug it in over
+<p align="center">
+  <img src="../docs/images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar, device address 10.0.4.20, Test Ping">
+  <img src="../docs/images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
+</p>
+
+**1️⃣ Hardware.** First, whether you have a BUSY Bar. If you do, plug it in over
 USB. It presents a virtual Ethernet adapter and answers on `10.0.4.20`, so there
 is usually nothing to configure — press **Test Ping** to confirm the link. A
 failure here is reported as a failure; it never congratulates you on a
 connection it did not make.
 
 If you do not, choose **Not now**: SprintTicker runs without one (see
-[Without a BUSY Bar](#without-a-busy-bar)), and you can add a bar later.
+[Without a BUSY Bar](#-without-a-busy-bar)), and you can add a bar later.
 
 Developing without a bar but wanting to see what it would show? Run
 `pnpm dev:mock` (or launch with `--mock-hardware`) and the on-screen emulator
 shows what the device would display.
 
-**2. Task provider.** Choose OpenProject, Jira Cloud or ad-hoc, and enter the
+**2️⃣ Task provider.** Choose OpenProject, Jira Cloud or ad-hoc, and enter the
 credentials for the one you picked:
 
 | Provider | What it needs |
 | :--- | :--- |
-| OpenProject | Domain URL, and an API key from *My Account → Access tokens* |
-| Jira Cloud | Site URL, your account email, and a token from `id.atlassian.com` |
-| Ad-hoc | Nothing — local tasks only |
+| 🔷 OpenProject | Domain URL, and an API key from *My Account → Access tokens* |
+| 🟦 Jira Cloud | Site URL, your account email, and a token from `id.atlassian.com` |
+| 📝 Ad-hoc | Nothing — local tasks only |
 
 You can leave credentials blank and add them later in **Task Providers**. Until
 a remote provider is configured the app runs on local ad-hoc tasks. Completing
@@ -40,9 +57,24 @@ the wizard saves the choice and immediately fetches your projects.
 The **fallback overhead ticket** (default `MISC-1`) is what ad-hoc time is
 logged against — meetings, admin, anything without a ticket.
 
-**3. Unity plugin.** Optional. Skip it if you do not use Unity.
+**3️⃣ Unity plugin.** Optional. Skip it if you do not use Unity.
 
-### Without a BUSY Bar
+### 💻 Without a BUSY Bar
+
+<table>
+  <tr>
+    <th width="50%">🟢 With a bar</th>
+    <th width="50%">💻 Without one</th>
+  </tr>
+  <tr>
+    <td><img src="../docs/images/app-session-tracking.png" alt="Active Session with the bar emulator in the top bar"></td>
+    <td><img src="../docs/images/app-nobar-session.png" alt="Active Session in no-bar mode: no emulator, the same session"></td>
+  </tr>
+  <tr>
+    <td>Nine tabs; the emulator and the connection readout in the top bar.</td>
+    <td>Six tabs; everything that keeps time is still there.</td>
+  </tr>
+</table>
 
 Everything that keeps time works without the hardware: the task picker, the
 running timer, pausing, finishing, worklog sync, history, the ceremonies and
@@ -61,40 +93,52 @@ factory reset.
 The app does not look for a bar in this mode, so it logs nothing about one being
 unreachable.
 
+<p align="center">
+  <img src="../docs/images/app-nobar-device.png" width="70%" alt="Device and Logs in no-bar mode, with an Add a BUSY Bar button">
+</p>
+
 To switch, use **Use without a bar** in Device Diagnostics; the bar is cleared
 and handed back to its own clock first. To add a bar later,
 press **Add a BUSY Bar** in Device & Logs: the address and token you had set
 before are kept, and the bar's screens come back at once.
 
-### The mini timer
+### ⏱️ The mini timer
 
 A small window that stays above every other one and shows what the bar would:
 the task key and title, the elapsed time, and a coloured edge -- green while
 tracking, amber while paused, grey with nothing running. Open it with **Mini
 Timer** in the top bar or **Show Mini Timer** in the tray menu.
 
-- **Pause**, **Resume** and **Stop** act on the session as the dashboard does.
+<p align="center">
+  <img src="../docs/images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
+</p>
+
+- ⏯️ **Pause**, **Resume** and **Stop** act on the session as the dashboard does.
   Stop logs the time without marking the task done.
-- The **list** button brings the dashboard forward with the task picker open:
+- 📋 The **list** button brings the dashboard forward with the task picker open:
   that is how you start or switch a task from it.
-- Drag it by any part that is not a button. It reopens where you left it; if
+- 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
   that was on a monitor you have since unplugged, it comes back in the
   bottom-right corner of the main one.
-- It reopens at the next launch if it was open when you quit, and stays closed
+- 🔁 It reopens at the next launch if it was open when you quit, and stays closed
   if you closed it.
 
 It counts seconds, which the bar does not: on screen a second costs nothing.
 
 ---
 
-## The panels
+## 🗂️ The panels
 
 Nine tabs down the left.
 
-### Active Session
+### ▶️ Active Session
 
 The main screen. Start a task, and the bar shows it. Pause, resume, and finish
 from here.
+
+<p align="center">
+  <img src="../docs/images/app-session-tracking.png" width="80%" alt="Active Session: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
+</p>
 
 Finishing asks for a comment and whether to mark the task done. Marking it done
 celebrates on the bar -- a green badge drops in, ticks itself, and throws
@@ -104,10 +148,19 @@ Review", not "Closed", because you send work for review rather than closing it
 yourself. Stopping without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
 
-### Projects & Tasks
+| | |
+| :---: | :---: |
+| <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE! with a green check and confetti"> | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED with the stopwatch hand sweeping back"> |
+| ✅ Finished and marked done | 📝 Stopped: time logged, task still open |
+
+### 📁 Projects & Tasks
 
 Your cached projects and their tasks, refreshed from the provider. Create local
 ad-hoc tasks here for work that has no ticket.
+
+<p align="center">
+  <img src="../docs/images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden and Pixel Forge, four tasks with their status">
+</p>
 
 A task from Jira or OpenProject shows the start of its description under its
 title, on one line. The task picker searches it too, so you can find a task by
@@ -116,9 +169,13 @@ what it is about.
 The cache is what the app and the bar read. If it looks stale, **Sync Now** in
 Task Providers refetches it.
 
-### Work History
+### 📊 Work History
 
 Worklogs by date, with a daily summary and an end-of-day export.
+
+<p align="center">
+  <img src="../docs/images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
+</p>
 
 **A worklog is written locally whether or not the remote accepted it.** If Jira
 refused a 40-second session, the time is still in your history — it just is not
@@ -135,11 +192,15 @@ left running behind another one. Its end is where the next session began, the
 latest it can have run, so check it before copying it to a timesheet; it is not
 sent to your provider.
 
-### Task Providers
+### 🔌 Task Providers
 
 Credentials, the completion transitions, and which tasks to fetch — assigned to
 me, everything open, or your own query (JQL for Jira, a v3 filter array for
 OpenProject).
+
+<p align="center">
+  <img src="../docs/images/app-providers.png" width="80%" alt="Task Providers: the active provider, its domain and API key, and the status mappings">
+</p>
 
 **Notifications from OpenProject** turns what happens on your work packages
 into Windows notifications: assigned to you, a mention, a comment, a status
@@ -159,11 +220,11 @@ or the comment. Jira Cloud has no notification feed for apps to read, so
 SprintTicker looks at the issues you are assigned, reported or watch at each
 check, and works out what changed. That has edges worth knowing:
 
-- **Your own changes never notify you**, including the status changes
+- 🙈 **Your own changes never notify you**, including the status changes
   SprintTicker makes for you when you start or finish a task.
-- **A mention on an issue you do not follow is not seen**, and neither is a
+- 👀 **A mention on an issue you do not follow is not seen**, and neither is a
   mention in a description rather than a comment.
-- **Jira has no date alerts**, so that box is not offered.
+- 📅 **Jira has no date alerts**, so that box is not offered.
 
 Below the credentials is the **sync queue**: every worklog that has not reached
 the provider, with the server's own message, the attempt count against the
@@ -171,8 +232,8 @@ ceiling, and when the next attempt is due.
 
 | Button | Does |
 | :--- | :--- |
-| **Sync Now** | Fetches projects and tasks immediately |
-| **Retry Failed** | Un-parks rows that gave up — use after fixing what broke them |
+| 🔄 **Sync Now** | Fetches projects and tasks immediately |
+| ♻️ **Retry Failed** | Un-parks rows that gave up — use after fixing what broke them |
 
 > [!NOTE]
 > **Why a row parks**
@@ -182,10 +243,14 @@ ceiling, and when the next attempt is due.
 > would send byte-identical requests forever, so the app stops and tells you
 > why. **Retry Failed** is for after you have fixed the cause.
 
-### Unity Engine
+### 🎮 Unity Engine
 
 Discovered Unity projects and plugin injection. Once installed, the bar shows
 compile progress, an "ON AIR" screen during Play Mode, and console exceptions.
+
+<p align="center">
+  <img src="../docs/images/app-unity.png" width="80%" alt="Unity Engine panel: connected editors, compile and Play Mode state, sound and alert settings">
+</p>
 The icons move. While scripts compile the gear turns; during Play Mode the
 pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
 bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
@@ -194,15 +259,24 @@ alarm clock rings, and the lunch prompt's burger hops. An OpenProject notificati
 other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
 `[IconAnimator]` lines say why, and the screen is otherwise unaffected.
 
-### Ceremonies
+| | | | | | | |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| <img src="../docs/images/bar-icon-gear.webp" width="64" alt="Gear turning"> | <img src="../docs/images/bar-icon-playmode.webp" width="64" alt="Game pad"> | <img src="../docs/images/bar-icon-hammer.webp" width="64" alt="Hammer striking"> | <img src="../docs/images/bar-icon-bulb.webp" width="64" alt="Glowing bulb"> | <img src="../docs/images/bar-icon-warning.webp" width="64" alt="Warning triangle shaking"> | <img src="../docs/images/bar-icon-bell.webp" width="64" alt="Bell ringing"> | <img src="../docs/images/bar-icon-clock.webp" width="64" alt="Alarm clock ringing"> |
+| compiling | Play Mode | build | lightmap bake | exception | notification | end of day |
+
+### 📅 Ceremonies
 
 Working hours, and the three scheduled events:
 
+<p align="center">
+  <img src="../docs/images/app-ceremonies.png" width="80%" alt="Ceremonies panel: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
+</p>
+
 | | Default | Does |
 | :--- | :--- | :--- |
-| **Stand-up prompt** | 09:30 | Prompts you, and collects answers in a modal |
-| **Lunch** | 12:30–13:30 | Switches to Lunch mode |
-| **End-of-day wrap-up** | 17:30 | Prompts to wrap up; can save open editors and schedule a shutdown |
+| 🗣️ **Stand-up prompt** | 09:30 | Prompts you, and collects answers in a modal |
+| 🥪 **Lunch** | 12:30–13:30 | Switches to Lunch mode |
+| 🌙 **End-of-day wrap-up** | 17:30 | Prompts to wrap up; can save open editors and schedule a shutdown |
 
 Both prompts can be confirmed or dismissed **from the bar itself** — see the
 hardware controls below.
@@ -214,17 +288,29 @@ round a table taking turns to speak, beside **MEETING**, on blue. Each loops
 for as long as the mode lasts, and the bar plays it itself, so it keeps moving
 when the computer is busy.
 
-### Notifications
+| | |
+| :---: | :---: |
+| <img src="../docs/images/bar-scene-lunch.webp" width="304" alt="LUNCH: a sandwich building itself on teal"> | <img src="../docs/images/bar-scene-away.webp" width="304" alt="AWAY: a steaming coffee on purple"> |
+| 🥪 Lunch | ☕ Away |
+| <img src="../docs/images/bar-scene-meeting.webp" width="304" alt="MEETING: three people round a table on blue"> | <img src="../docs/images/bar-scene-eod.webp" width="304" alt="SEE YOU!: a moon rising on a dusk gradient"> |
+| 🗣️ Stand-up | 🌙 End of day |
+
+### 🔔 Notifications
 
 Which applications may reach the bar. **Nothing is mirrored until you allow it.**
+
+<p align="center">
+  <img src="../docs/images/app-notifications.png" width="80%" alt="Notifications panel: the listener enabled and its status, banner duration, per-source rules">
+  <img src="../docs/images/bar-banner.png" width="456" alt="A Slack banner on the bar: the Slack logo, Mira, New message">
+</p>
 
 Per app, choose one of three:
 
 | Setting | Effect |
 | :--- | :--- |
-| **Don't Show** | Ignored entirely |
-| **Default** | Claims the display at whatever *Notification — Default* scores |
-| **High Priority** | Claims it at whatever *Notification — High Priority* scores |
+| 🚫 **Don't Show** | Ignored entirely |
+| 💬 **Default** | Claims the display at whatever *Notification — Default* scores |
+| 🔔 **High Priority** | Claims it at whatever *Notification — High Priority* scores |
 
 Note what that means: an app is assigned to a **class**, and the Priority Rules
 panel decides what that class is worth and how it behaves during Lunch and Away.
@@ -242,23 +328,27 @@ perfect — set an icon override on that app.
 Notification text is redacted from logs and the diagnostics export. Launch with
 `--debug-notifications` to see it while troubleshooting.
 
-### Priority Rules
+### ⚡ Priority Rules
 
 What the display shows when several things want it. Every claim has a score;
 the highest holds the bar.
 
+<p align="center">
+  <img src="../docs/images/app-priority.png" width="80%" alt="Priority Rules: the active mode, and each claim with its level and its action in Work, Lunch and Away">
+</p>
+
 | Claim | Default |
 | :--- | ---: |
-| Away mode | 100 |
-| Lunch mode | 95 |
-| End-of-day wrap-up | 80 |
-| Stand-up prompt | 75 |
-| Notification — High Priority | 70 |
-| Notification — Default | 65 |
-| Unity build failure | 60 |
-| Unity compiling | 55 |
-| Unity Play Mode | 50 |
-| Active task tracker | 45 |
+| 🧳 Away mode | 100 |
+| 🥪 Lunch mode | 95 |
+| 🌙 End-of-day wrap-up | 80 |
+| 🗣️ Stand-up prompt | 75 |
+| 🔔 Notification — High Priority | 70 |
+| 💬 Notification — Default | 65 |
+| ⚠️ Unity build failure | 60 |
+| ⚙️ Unity compiling | 55 |
+| 🎮 Unity Play Mode | 50 |
+| ⏱️ Active task tracker | 45 |
 
 Every row is editable, including what each does in each mode — **Display**,
 **Suppress** or **Queue** for Work, Lunch and Away.
@@ -266,20 +356,24 @@ Every row is editable, including what each does in each mode — **Display**,
 With the shipped ordering, notifications do not interrupt Lunch or Away. That is
 the table working as configured, not a bug. Move the rows if you disagree.
 
-### Device Diagnostics
+### 🩺 Device Diagnostics
 
 Connection status, battery, firmware, the update setting, and the animation
 debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
 live, drawn through the real renderer.
 
+<p align="center">
+  <img src="../docs/images/app-device.png" width="80%" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, and Display Health">
+</p>
+
 It also holds **Connection**, where you set the address the app dials and, if
 your device needs one, an API token:
 
-- **Device address.** Defaults to `10.0.4.20`, which is where the bar answers
+- 🌐 **Device address.** Defaults to `10.0.4.20`, which is where the bar answers
   over USB. Change it for a bar on Wi-Fi, or when you are reaching the device
   through a proxy on another address. An IPv4 address or a hostname — no
   `http://`, no port, no path.
-- **API token.** Leave empty for USB, where the bar accepts unauthenticated
+- 🔑 **API token.** Leave empty for USB, where the bar accepts unauthenticated
   requests. Fill it in once the device has access protection enabled, which is
   the normal state over Wi-Fi; without it every request comes back 401 or 403.
 
@@ -290,9 +384,9 @@ replied. **Reset to USB default** puts the address back to `10.0.4.20`.
 
 ---
 
-## The bar itself
+## 💡 The bar itself
 
-### What it shows
+### 🖼️ What it shows
 
 A 72×16 RGB matrix: a 16px icon on the left, then two rows of text, both in
 proportional fonts drawn for SprintTicker. Row 0 holds roughly twelve characters
@@ -304,6 +398,21 @@ accents, since the display draws plain ASCII only.
 The small screen on the back belongs to the bar itself: it shows a copy of the
 front at twice the size, and its own clock and date when the front is empty.
 SprintTicker draws nothing there.
+
+Every screen, as the bar shows it:
+
+| Screen | What it means |
+| :---: | :--- |
+| <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
+| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **STOP** or **FINISH**, click to confirm. |
+| <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
+| <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
+| <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE!"> | ✅ **DONE!** Finished and marked done. |
+| <img src="../docs/images/bar-unity-compile.webp" width="304" alt="COMPILING with a turning gear"> | ⚙️ **Compiling** in Unity, with the project on row 1. |
+| <img src="../docs/images/bar-unity-build.webp" width="304" alt="BUILDING 40% with a hammer and a progress line"> | 🔨 **Building**, with its percentage and a progress line along the bottom. |
+| <img src="../docs/images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game pad"> | 🎮 **Play Mode.** ON AIR until you stop playing. |
+| <img src="../docs/images/bar-unity-exception.webp" width="304" alt="EXCEPTION with a shaking warning triangle"> | ⚠️ **Exception.** Its message on row 1, for a few seconds. |
+| <img src="../docs/images/bar-banner.png" width="304" alt="A Slack banner"> | 🔔 **Notification**, from an app you allowed, with its own icon. |
 
 The session screen's icon is a stopwatch whose colour says where you are: green
 while a task runs, its hand ticking round once a second; amber with blinking
@@ -331,19 +440,19 @@ message on row 1 instead of the project.
 > animation: it shows that the clock is running, and is not the seconds of your
 > session.
 
-### Controls
+### 🎛️ Controls
 
 | Control | Does |
 | :--- | :--- |
-| **START** press | Start or pause. With nothing running, opens the task picker |
-| **Wheel** turn | Scroll |
-| **Wheel** click | Open the task picker |
-| **BACK** short press | Dismiss the current notification |
-| **BACK** long press | Complete the active task and log the time |
+| ▶️ **START** press | Start or pause. With nothing running, opens the task picker |
+| 🔄 **Wheel** turn | Scroll |
+| 🖱️ **Wheel** click | Open the task picker |
+| ↩️ **BACK** short press | Dismiss the current notification |
+| ⏹️ **BACK** long press | Complete the active task and log the time |
 
 All of these are rebindable.
 
-**The task picker** is two stages: turn to choose a project, click to descend
+🗂️ **The task picker** is two stages: turn to choose a project, click to descend
 into it, turn to choose a task, click to start. **BACK** leaves at any point.
 A blue folder means you are choosing a project, a checklist a task. The
 checklist also gives the task's status: grey for to do, amber for in progress,
@@ -356,7 +465,7 @@ with a thin line along the bottom whose bright segment slides from left to
 right as you scroll: at the far left there is nothing before, at the far right
 nothing after.
 
-**During a ceremony prompt**, START confirms and BACK dismisses. The end-of-day
+🗣️ **During a ceremony prompt**, START confirms and BACK dismisses. The end-of-day
 wrap-up asks twice — the first START is "yes", the second confirms — because it
 can shut your machine down. Once it is done, the bar says **SEE YOU!** for five
 seconds, a moon rising and the stars coming out, and then goes idle.
@@ -369,21 +478,36 @@ confirmed in the window.
 
 ---
 
-## Troubleshooting
+## 🩺 Troubleshooting
 
-**The task list is empty.** Check Task Providers for a saved domain and key.
+Click a problem to unfold its answer.
+
+<details>
+<summary>📭 <b>The task list is empty</b></summary>
+
+ Check Task Providers for a saved domain and key.
 Press **Sync Now**; if it stays empty, the credentials are probably wrong — the
 app deliberately does not invent tasks. A provider error is shown rather than
 swallowed.
 
-**Jira says `Checking the Jira credentials failed: HTTP 401`.** Jira no longer
+</details>
+
+<details>
+<summary>🔑 <b>Jira says <code>Checking the Jira credentials failed: HTTP 401</code></b></summary>
+
+ Jira no longer
 accepts the API token. Atlassian tokens carry an expiry date chosen when they
 are created, so a token that worked last month can simply have run out. Create
 a new one at id.atlassian.com › Security › API tokens and paste it into Task
 Providers. Your projects and tasks stay as they were in the meantime, and the
 next sync brings them up to date.
 
-**A worklog never reached Jira or OpenProject.** Open the sync queue panel. The
+</details>
+
+<details>
+<summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary>
+
+ Open the sync queue panel. The
 row carries the server's own message. Common causes:
 
 - *`404` — the issue no longer exists.* Nothing to do; the local worklog stands.
@@ -392,13 +516,23 @@ row carries the server's own message. Common causes:
 - *`401`/`403` — the key was revoked.* Enter a new one; saving credentials
   automatically un-parks rows the old key stranded.
 
-**Notifications never appear on the bar.** Three things to check, in order: the
+</details>
+
+<details>
+<summary>🔕 <b>Notifications never appear on the bar</b></summary>
+
+ Three things to check, in order: the
 app is set to something other than *Don't Show*; the notification listener is
 running (Device Diagnostics reports its status — **its failures are otherwise
 silent**); and nothing higher-priority holds the display, Lunch and Away being
 the usual culprits.
 
-**The bar never connects.** The header shows *Disconnected* and Device
+</details>
+
+<details>
+<summary>🔌 <b>The bar never connects</b></summary>
+
+ The header shows *Disconnected* and Device
 Diagnostics reports no firmware or battery. The bar reaches the app as a **USB
 network device on `10.0.4.20`**, so the question is whether that device exists
 at all:
@@ -419,6 +553,8 @@ at all:
    "This device cannot start"** means the bar is enumerating correctly and
    Windows' own USB network driver is refusing to bring the interface up. See
    the note below; this is not something the app can fix.
+
+</details>
 
 > [!WARNING]
 > **Code 10 on the Flipper network interface is a Windows driver fault, not a
@@ -457,7 +593,10 @@ at all:
 > back. Earlier builds failed silently, so a diagnostics export sent in to ask
 > "why won't it connect" contained no evidence of the failure anywhere.
 
-**An animation plays in the app but not on the bar.** Fixed as of this
+<details>
+<summary>🎞️ <b>An animation plays in the app but not on the bar</b></summary>
+
+ Fixed as of this
 release, and worth knowing why, because the symptom is confusing: the preview
 and the bar are fed by two different paths. The on-screen emulator draws every
 frame locally, while the bar is handed the whole animation file and plays it
@@ -467,7 +606,12 @@ own blank frame on top of the animation it had just started. If you still see
 it, export the logs from Device Diagnostics and look for `[AnimationPlayer]`
 lines naming the file and its size.
 
-**The bar freezes and stops answering.** The panel stops changing, the app
+</details>
+
+<details>
+<summary>🧊 <b>The bar freezes and stops answering</b></summary>
+
+ The panel stops changing, the app
 reports the bar disconnected, and sometimes the bar restarts on its own about
 45 seconds later. On firmware 1.2.4 this is what happens when the display is
 cleared a few times while a picture and an animation are both on it. Earlier
@@ -495,19 +639,36 @@ times the screen closed in the last hour. If you see the warning, export the
 logs before restarting the bar; the bundle then holds the run-up to the
 freeze. Once the bar is back, the app redraws the current screen by itself.
 
-**The bar shows something stale.** Something is holding the display lock at a
+</details>
+
+<details>
+<summary>🕰️ <b>The bar shows something stale</b></summary>
+
+ Something is holding the display lock at a
 higher priority. Check Priority Rules and your current mode. After the bar
 restarts or its connection drops, the app redraws the current screen within a
 few seconds of the bar answering again; before 1.2.1 it could put back the
 screen from before the outage.
 
-**Windows warns on first launch.** The build is unsigned. *More info → Run
+</details>
+
+<details>
+<summary>🛡️ <b>Windows warns on first launch</b></summary>
+
+ The build is unsigned. *More info → Run
 anyway*. There is no way around it short of a code-signing certificate.
 
-**Accented characters.** These are transliterated to ASCII (`é` → `e`), because
+</details>
+
+<details>
+<summary>🔤 <b>Accented characters</b></summary>
+
+ These are transliterated to ASCII (`é` → `e`), because
 the device accepts printable ASCII only. Emoji do not render.
 
-### No notification from OpenProject or Jira
+</details>
+
+### 📭 No notification from OpenProject or Jira
 
 - **Is it switched on, for that kind?** Task Providers › Notifications from
   OpenProject (or Jira). **Send a test notification**: if it says it was sent and nothing
@@ -525,7 +686,7 @@ the device accepts printable ASCII only. Emoji do not render.
 
 ---
 
-## Your data
+## 🔐 Your data
 
 One SQLite file: `%APPDATA%\SprintTicker\sprintticker.db`. Installing over a
 previous version does not touch it.

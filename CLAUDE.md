@@ -883,9 +883,13 @@ duplicated-constant hazard again, in binary. Four things about them:
   `make-images.py` renders those, and every scene and icon in `Animations/`,
   as the LED panel. Never capture the real profile: development shares the
   real database (§7), so its pictures would publish the user's own task names.
-- **Close SprintTicker before running it.** The Unity events it replays go to
-  port 39123, and if the installed app owns that port they reach the real bar.
-  The script refuses to start while anything answers there.
+- **Close SprintTicker and Unity before running it.** The Unity events it
+  replays go to port 39123, and if the installed app owns that port they reach
+  the real bar; the script refuses to start while anything answers there.
+  Every Unity editor open on the machine posts to that port too, so a real
+  project's console errors land in the pictures -- the first run published
+  one, `Plugins: Failed...`, on the emulator. The script stops if any editor
+  but its own connects.
 - **Not LFS, and on a budget.** `.gitattributes` keeps LFS to `Animations/`
   on purpose. Animated clips are WebP rather than GIF -- the LED bloom made the
   Away scene a megabyte as a GIF, 110 KB as WebP -- and screenshots are

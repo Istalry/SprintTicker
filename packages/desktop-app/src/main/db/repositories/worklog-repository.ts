@@ -1,5 +1,5 @@
 import { DatabaseConnection } from '../database-connection';
-import { localDayBoundsUtc } from '../../../shared/local-date';
+import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
 
 export interface WorklogRecord {
   id: string;
@@ -399,14 +399,16 @@ export class WorklogRepository {
   }
 
   /**
-   * Retrieves today's completed worklogs from SQLite database.
+   * The worklogs of the user's current day, newest first.
+   *
+   * It used to be the latest fifty whatever their day, under a table headed
+   * "Today's Logged Work" with a total beside it -- so each morning the total
+   * opened on yesterday's hours and disagreed with Work History for the same
+   * date. The day is the local one, as everywhere a date names a day of work
+   * (see local-date.ts).
    */
-  public getTodaysWorklogs(): WorklogRecord[] {
-    const stmt = this.dbConn.getDb().prepare<[], WorklogRow>(
-      `${SELECT_WORKLOGS} ORDER BY w.created_at_utc DESC LIMIT 50`
-    );
-
-    return stmt.all().map(toRecord);
+  public getTodaysWorklogs(now: Date = new Date()): WorklogRecord[] {
+    return this.getWorklogsByDate(localDateKey(now));
   }
 
   /**

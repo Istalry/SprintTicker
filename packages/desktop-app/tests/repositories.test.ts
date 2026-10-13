@@ -167,6 +167,23 @@ describe('SQLite Repositories Unit Tests', () => {
     expect(worklogRepo.getWorklogsByDate(addLocalDays(day, -1)).map(w => w.id)).toEqual(['wl_just_before']);
   });
 
+  it('WorklogRepository_GetTodaysWorklogs_YesterdaysWork_IsLeftOut', () => {
+    // It returned the latest fifty whatever their day, so the session panel's
+    // "Today's Logged Work" opened every morning on yesterday's hours.
+    const today = '2026-09-08';
+    const { startUtc } = localDayBoundsUtc(today);
+    const lateYesterday = new Date(Date.parse(startUtc) - 60_000).toISOString();
+    const thisMorning = new Date(Date.parse(startUtc) + 9 * 3600_000).toISOString();
+    const base = { sessionId: 'sess-1', taskId: 'TASK-1', durationSeconds: 60, comment: '' };
+    taskRepo.saveTask({ id: 'TASK-1', projectId: 'P1', key: 'T-1', title: 'Task', status: 'todo' });
+
+    worklogRepo.saveWorklog({ ...base, id: 'wl_yesterday', startedAtUtc: lateYesterday, createdAtUtc: lateYesterday });
+    worklogRepo.saveWorklog({ ...base, id: 'wl_today', startedAtUtc: thisMorning, createdAtUtc: thisMorning });
+
+    const noon = new Date(Date.parse(startUtc) + 12 * 3600_000);
+    expect(worklogRepo.getTodaysWorklogs(noon).map(w => w.id)).toEqual(['wl_today']);
+  });
+
   it('WorklogRepository_GetWorklogsByDate_MalformedDate_ReturnsEmpty', () => {
     // The date arrives from IPC, so a bad one must not take the query down.
     expect(worklogRepo.getWorklogsByDate('08/09/2026')).toEqual([]);
