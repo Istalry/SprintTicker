@@ -35,7 +35,7 @@ import { ScheduleSettingsDTO } from './dtos';
  */
 export const DEFAULT_SCHEDULE_SETTINGS: Readonly<Required<Pick<ScheduleSettingsDTO,
   'standupTime' | 'enableStandupPrompt' | 'lunchStartTime' | 'lunchEndTime' |
-  'enableLunchMute' | 'eodWrapUpTime' | 'promptTimeoutSeconds'>>> = {
+  'enableLunchMute' | 'eodWrapUpTime' | 'promptTimeoutSeconds' | 'askAboutForgottenSessions'>>> = {
   standupTime: '09:30',
   enableStandupPrompt: true,
   lunchStartTime: '12:30',
@@ -43,7 +43,8 @@ export const DEFAULT_SCHEDULE_SETTINGS: Readonly<Required<Pick<ScheduleSettingsD
   enableLunchMute: true,
   eodWrapUpTime: '17:30',
   // 0 means the prompt waits indefinitely rather than dismissing itself.
-  promptTimeoutSeconds: 0
+  promptTimeoutSeconds: 0,
+  askAboutForgottenSessions: true
 };
 
 /**
@@ -70,6 +71,7 @@ export function normalizeScheduleSettings(
     standupTime: s.standupTime ?? DEFAULT_SCHEDULE_SETTINGS.standupTime,
     enableStandupPrompt: s.enableStandupPrompt ?? DEFAULT_SCHEDULE_SETTINGS.enableStandupPrompt,
     enableLunchMute: s.enableLunchMute ?? DEFAULT_SCHEDULE_SETTINGS.enableLunchMute,
+    askAboutForgottenSessions: s.askAboutForgottenSessions ?? DEFAULT_SCHEDULE_SETTINGS.askAboutForgottenSessions,
 
     lunchStartTime,
     lunchStart: lunchStartTime,

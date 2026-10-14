@@ -12,6 +12,7 @@ export const CeremoniesView: React.FC = () => {
   const [eodTime, setEodTime] = useState<string>('17:30');
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
   const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
+  const [askAboutForgotten, setAskAboutForgotten] = useState<boolean>(DEFAULT_SCHEDULE_SETTINGS.askAboutForgottenSessions);
   // With no stored settings to read there is nothing to wait for; loaded
   // is otherwise set once the read settles.
   const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getScheduleSettings);
@@ -26,6 +27,7 @@ export const CeremoniesView: React.FC = () => {
           if (sched.lunchEnd) setLunchEnd(sched.lunchEnd);
           if (sched.eodTime) setEodTime(sched.eodTime);
           if (sched.autoDismissSeconds !== undefined) setTimeoutSeconds(sched.autoDismissSeconds);
+          if (sched.askAboutForgottenSessions !== undefined) setAskAboutForgotten(sched.askAboutForgottenSessions);
           if (sched.shutdownByDefault !== undefined) {
             setShutdownByDefault(sched.shutdownByDefault);
           } else if (sched.eodShutdownByDefault !== undefined) {
@@ -52,7 +54,8 @@ export const CeremoniesView: React.FC = () => {
         autoDismissSeconds: timeoutSeconds,
         promptTimeoutSeconds: timeoutSeconds,
         shutdownByDefault,
-        eodShutdownByDefault: shutdownByDefault
+        eodShutdownByDefault: shutdownByDefault,
+        askAboutForgottenSessions: askAboutForgotten
       };
       await window.electronAPI.saveScheduleSettings(settings);
     }
@@ -60,7 +63,7 @@ export const CeremoniesView: React.FC = () => {
 
   const saveStatus = useAutoSave(
     handleSave,
-    [standupTime, lunchStart, lunchEnd, eodTime, timeoutSeconds, shutdownByDefault],
+    [standupTime, lunchStart, lunchEnd, eodTime, timeoutSeconds, shutdownByDefault, askAboutForgotten],
     loaded
   );
 
@@ -210,6 +213,21 @@ export const CeremoniesView: React.FC = () => {
                 className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple bg-dark-900 border-border-dark"
               />
               <span className="text-xs text-text-primary">Shutdown computer by default during EOD wrap-up</span>
+            </label>
+
+            <label className="flex items-start space-x-2.5 pt-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={askAboutForgotten}
+                onChange={e => setAskAboutForgotten(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded text-accent-purple focus:ring-accent-purple bg-dark-900 border-border-dark"
+              />
+              <span className="text-xs text-text-primary">
+                Ask about a session left running overnight
+                <span className="block text-text-secondary">
+                  Paused at your last activity until you say when you stopped. Working past midnight is never interrupted.
+                </span>
+              </span>
             </label>
 
             <div className="pt-1 flex items-center justify-between">

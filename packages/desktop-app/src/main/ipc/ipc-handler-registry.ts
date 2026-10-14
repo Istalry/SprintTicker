@@ -18,9 +18,10 @@ import { ProviderEventSettingsDTO } from '../../shared/provider-events';
 import { WindowsNotificationListenerService } from '../services/windows-notification-listener-service';
 import { PriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { ContextScheduleService } from '../services/context-schedule-service';
+import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO } from '../../shared/dtos';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
@@ -70,6 +71,8 @@ export interface IPCHandlerRegistryDeps {
   providerEvents?: ProviderEventService;
   priorityEngine?: PriorityPreemptionEngine;
   contextScheduleService?: ContextScheduleService;
+  /** Asks about a session left running overnight; without it, nothing is ever asked. */
+  forgottenSessionService?: ForgottenSessionService;
   windowsNotificationService?: WindowsNotificationListenerService;
   systemAutomationService?: ISystemAutomationService;
   providerManager?: ProviderManager;
@@ -100,6 +103,7 @@ export class IPCHandlerRegistry {
   private windowsNotificationService: WindowsNotificationListenerService;
   private priorityEngine: PriorityPreemptionEngine;
   private contextScheduleService: ContextScheduleService;
+  private forgottenSessionService?: ForgottenSessionService;
   private diagnosticExporter: DiagnosticExporter;
   private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
@@ -124,6 +128,7 @@ export class IPCHandlerRegistry {
       providerEvents,
       priorityEngine,
       contextScheduleService,
+      forgottenSessionService,
       windowsNotificationService,
       systemAutomationService,
       providerManager,
@@ -166,6 +171,7 @@ export class IPCHandlerRegistry {
     this.priorityEngine.setRenderer(renderer);
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer, this.getWindow);
+    this.forgottenSessionService = forgottenSessionService;
     this.diagnosticExporter = new DiagnosticExporter(driver, settingsRepo.getConnection(), {
       webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
     });
@@ -217,6 +223,16 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.DISCARD_SESSION, async (): Promise<DiscardSessionResultDTO> => {
       return this.engine.discardSession();
     });
+
+    ipcMain.handle(IPCChannel.GET_FORGOTTEN_REVIEW, async (): Promise<ForgottenSessionReviewDTO | null> =>
+      this.forgottenSessionService?.getReview() ?? null
+    );
+
+    // Validated by the service: an unknown action, or an end outside the
+    // session, throws rather than logging something nobody chose.
+    ipcMain.handle(IPCChannel.RESOLVE_FORGOTTEN_SESSION, async (_event, resolution: ForgottenSessionResolutionDTO) =>
+      this.forgottenSessionService?.resolve(resolution) ?? false
+    );
 
     // 2. Project & Task Management IPC Handlers
     ipcMain.handle(IPCChannel.SYNC_PROVIDER_NOW, async (): Promise<ProviderSyncResult> => {

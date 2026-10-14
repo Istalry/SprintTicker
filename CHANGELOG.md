@@ -4,6 +4,15 @@
 
 ### Added
 
+- **A session left running is caught, not billed.** A session forgotten
+  overnight or over the weekend kept counting -- 62 hours on Monday -- and
+  stopping it sent them all to the provider at once. Coming back after your
+  last activity on an earlier day, at least two hours before, now pauses it
+  at that activity and asks when you stopped: at your last activity, at your
+  end-of-day hour that day, or at a time you pick. Then log and stop, log and
+  restart it now, discard it, or count it all. Overtime past midnight is never
+  interrupted while you are at the keyboard. The question can be turned off in
+  Ceremonies.
 - **Three ways to end a session, everywhere.** Keep the task open, mark it
   done, or discard the session -- in the Finish dialog, from the mini timer's
   Stop, and on the bar, whose paused menu now reads STOP, FINISH and DROP.
@@ -24,6 +33,10 @@
 
 ### Changed
 
+- **A worklog belongs to the day it began.** Work History, today's table and
+  the end-of-day summary filed it on the day it stopped, so a session from
+  17:00 to 01:00 showed under the second day here and under the first in Jira
+  and OpenProject.
 - **The README and the user guide show the app.** Screenshots of every panel,
   with a bar and without one, and the bar's own screens as it shows them --
   tracking, paused, Unity, banners, the Lunch, Away, meeting and end-of-day

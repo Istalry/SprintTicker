@@ -132,4 +132,36 @@ export class SessionRepository {
 
     stmt.run(sessionId, pausedAtUtc, resumedAtUtc || null);
   }
+
+  /**
+   * Closes the session's latest pause, if it is still open. Only the latest:
+   * pauses recorded before `resumed_at_utc` was filled in are open too, and
+   * stamping them with this resume would invent their length.
+   *
+   * @returns false when the latest pause was already closed, or there is none.
+   */
+  public closeLatestPause(sessionId: string, resumedAtUtc: string): boolean {
+    const result = this.dbConn.getDb().prepare(`
+      UPDATE paused_intervals SET resumed_at_utc = ?
+      WHERE id = (SELECT MAX(id) FROM paused_intervals WHERE session_id = ?)
+        AND resumed_at_utc IS NULL
+    `).run(resumedAtUtc, sessionId);
+    return result.changes > 0;
+  }
+
+  /** The session's pauses, oldest first; `resumedAtUtc` is null while one is open. */
+  public getPauseIntervals(sessionId: string): Array<{ pausedAtUtc: string; resumedAtUtc: string | null }> {
+    return this.dbConn.getDb().prepare<[string], { pausedAtUtc: string; resumedAtUtc: string | null }>(`
+      SELECT paused_at_utc AS pausedAtUtc, resumed_at_utc AS resumedAtUtc
+      FROM paused_intervals WHERE session_id = ? ORDER BY id
+    `).all(sessionId);
+  }
+
+  /** The paused seconds stored for the session, without the live length of a pause in progress. */
+  public getStoredPausedSeconds(sessionId: string): number {
+    const row = this.dbConn.getDb()
+      .prepare<[string], { total: number }>('SELECT total_paused_seconds AS total FROM active_sessions WHERE id = ?')
+      .get(sessionId);
+    return row?.total ?? 0;
+  }
 }

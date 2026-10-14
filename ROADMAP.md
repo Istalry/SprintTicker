@@ -1012,11 +1012,26 @@ the device a timestamp.
 
 ---
 
+## 5. Time tracking that forgives
+
+**Done (2026-10):** ad-hoc time kept local and finishable; three ways to end a
+session everywhere, with a confirmed discard; a task reassigned mid-session
+kept and its completion confirmed; lunch never overriding what the user does;
+a session left running across a change of day paused at the last activity and
+asked about, with overtime untouched; worklogs filed on the day they began.
+
+**Next: correcting a worklog already sent.** A stop sends at once, so a wrong
+duration is fixed today in Jira or OpenProject by hand. Fixing it here needs
+the remote worklog's id stored (a migration) and an update and delete for
+each provider. Waiting on: nothing but the work; it is its own batch.
+
+---
+
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.25 statements / 87.91 branches / 93.38 functions / 95.89 lines across 1867
-tests in 96 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.27 statements / 88.03 branches / 93.59 functions / 95.93 lines across 1937
+tests in 99 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

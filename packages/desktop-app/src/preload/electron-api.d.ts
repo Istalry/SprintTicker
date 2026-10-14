@@ -24,6 +24,8 @@ import type {
   UserMode,
   ScheduleSettingsDTO,
   ResumePromptDTO,
+  ForgottenSessionReviewDTO,
+  ForgottenSessionResolutionDTO,
   UnityProjectInjectionResult,
   WorklogDTO,
   UnitySettingsDTO,
@@ -61,6 +63,11 @@ export interface IElectronAPI {
   completeSession: (comment?: string, markDone?: boolean) => Promise<{ success: boolean; loggedSeconds: number }>;
   /** Ends the session keeping nothing -- no worklog, nothing sent. Confirm with the user first. */
   discardSession: () => Promise<DiscardSessionResultDTO>;
+  /** A session left running overnight, paused at the last activity and awaiting an answer; null when none. */
+  getForgottenReview: () => Promise<ForgottenSessionReviewDTO | null>;
+  /** Answers it. False when nothing was being asked any more. */
+  resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) => Promise<boolean>;
+  onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => () => void;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 
   // Worklogs

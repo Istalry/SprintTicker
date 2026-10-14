@@ -160,6 +160,24 @@ move a task that is no longer yours; on the bar, FINISH (or a long BACK)
 shows **NOT YOURS / DONE? OK=YES**, and BACK refuses. The task stays listed
 until the session ends, and leaves at the next sync after that.
 
+⏰ **A session left running** -- not stopped before the weekend, or overnight
+-- is caught when you come back. If your last activity on the computer (or a
+press on the bar) was on an earlier day, at least two hours ago, the session
+is paused at that moment and nothing is logged. The window asks when you
+stopped working on it: at your last activity, at your end-of-day hour that
+day, or at a time you pick, each with the time it would log. Then **Log and
+stop**, **Log and restart it now** (asking first if the task is no longer
+assigned to you), **Discard**, or **I was working all along**, which counts
+the whole absence. Stopping it from the bar or the mini timer logs up to your
+last activity; resuming it does not count the gap. Turn the question off in
+**Ceremonies**.
+
+🌙 **Overtime is never interrupted.** As long as you are at the keyboard or
+mouse, working past midnight is just a long session: nothing pauses it and
+nothing asks. Only more than two hours without any input across midnight --
+a long call -- brings the question, and **I was working all along** keeps it
+all.
+
 🗑️ **Discard this session**, the third choice, is for a session started by
 mistake: nothing is kept in your history and nothing is sent to your
 provider. It asks you to confirm, naming the task and the time it would throw
@@ -213,6 +231,9 @@ Worklogs by date, with a daily summary and an end-of-day export.
 <p align="center">
   <img src="../docs/images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
 </p>
+
+**A worklog belongs to the day it began**, as Jira and OpenProject file it: a
+session from 17:00 to 01:00 is all on the first day.
 
 **A worklog is written locally whether or not the remote accepted it.** If Jira
 refused a 40-second session, the time is still in your history — it just is not

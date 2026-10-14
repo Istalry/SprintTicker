@@ -412,7 +412,14 @@ export class WorklogRepository {
   }
 
   /**
-   * Retrieves worklogs logged on a specific YYYY-MM-DD date.
+   * Retrieves the worklogs of a specific YYYY-MM-DD date: those that began
+   * that day.
+   *
+   * By its start, as Jira (`started`) and OpenProject (`spentOn`) file it.
+   * It used to be the day the worklog was written -- its stop -- so a
+   * session from 17:00 to 01:00 showed under the second day here and under
+   * the first at the provider. No index serves `started_at_utc`; the table is
+   * small, and one would need a migration.
    *
    * The date is the user's local day. It used to be matched with strftime over
    * created_at_utc and no 'localtime' modifier, which grouped by the UTC day
@@ -430,8 +437,8 @@ export class WorklogRepository {
 
       const stmt = db.prepare<[string, string], WorklogRow>(
         `${SELECT_WORKLOGS}
-          WHERE w.created_at_utc >= ? AND w.created_at_utc < ?
-          ORDER BY w.created_at_utc DESC`
+          WHERE w.started_at_utc >= ? AND w.started_at_utc < ?
+          ORDER BY w.started_at_utc DESC`
       );
 
       // Half-open, so an entry exactly at local midnight belongs to the day

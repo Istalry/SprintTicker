@@ -78,3 +78,19 @@ export function addLocalDays(dateKey: string, days: number): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   return localDateKey(new Date(year, month - 1, day + days));
 }
+
+/** `HH:MM`, as the schedule stores its times. */
+const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/**
+ * The instant at `HH:MM`, local time, on the local day of `day`: the
+ * end-of-day hour of the day a forgotten session was last worked on.
+ * Built from local parts, so a DST change that day is resolved by Date.
+ */
+export function atLocalTime(day: Date, timeOfDay: string): Date {
+  const match = TIME_OF_DAY_PATTERN.exec(timeOfDay ?? '');
+  if (!match) {
+    throw new Error(`Expected an HH:MM time of day, received: ${String(timeOfDay)}`);
+  }
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), Number(match[1]), Number(match[2]));
+}

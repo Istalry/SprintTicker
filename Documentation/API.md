@@ -33,6 +33,9 @@ Everything else is a request/response `invoke`.
 | `session:pause` / `session:resume` | Pause and resume |
 | `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
 | `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first |
+| `session:get-forgotten-review` | The session left running across a change of day, paused at the last activity and awaiting an answer: `{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted }`, or null |
+| `session:resolve-forgotten` | Answers it with `{ action, endUtc? }`: `stop` or `restart` log up to `endUtc` (between the start and now, required), `discard` keeps nothing, `keep` counts the whole absence and runs on. An unknown action or an end outside the session throws; answers `false` when nothing is asked any more |
+| `session:on-forgotten-review` | Pushes the question when it is found, and null once anything answers it -- the window, the bar's STOP, a resume |
 | `session:discard` | End the session keeping nothing: no worklog, nothing queued, the task's status untouched, no scene on the bar. Answers `{ success, discardedSeconds }`. Every caller confirms with the user first |
 | `session:on-updated` | **Event** — the session changed |
 

@@ -154,6 +154,24 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('a session left running', () => {
+    it('ForgottenReview_ServiceWired_AsksAndAnswersThroughIt', async () => {
+      const review = { sessionId: 's1', taskKey: 'MG-12' };
+      const getReview = vi.fn().mockReturnValue(review);
+      const resolve = vi.fn().mockReturnValue(true);
+      build({ forgottenSessionService: { getReview, resolve } });
+
+      expect(await invoke(IPCChannel.GET_FORGOTTEN_REVIEW)).toEqual(review);
+      expect(await invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, { action: 'stop', endUtc: '2026-10-16T16:04:00.000Z' })).toBe(true);
+      expect(resolve).toHaveBeenCalledWith({ action: 'stop', endUtc: '2026-10-16T16:04:00.000Z' });
+    });
+
+    it('ForgottenReview_NoService_NothingIsEverAsked', async () => {
+      expect(await invoke(IPCChannel.GET_FORGOTTEN_REVIEW)).toBeNull();
+      expect(await invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, { action: 'keep' })).toBe(false);
+    });
+  });
+
   describe('the question after lunch', () => {
     it('AnswerResumePrompt_ABoolean_ReachesTheScheduleService', async () => {
       const answerResumePrompt = vi.fn().mockReturnValue(true);

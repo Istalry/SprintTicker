@@ -10,6 +10,9 @@ export enum IPCChannel {
   RESUME_SESSION = 'session:resume',
   COMPLETE_SESSION = 'session:complete',
   DISCARD_SESSION = 'session:discard',
+  GET_FORGOTTEN_REVIEW = 'session:get-forgotten-review',
+  RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
+  ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
   ON_SESSION_UPDATED = 'session:on-updated',
 
   // Task Provider & Task Query

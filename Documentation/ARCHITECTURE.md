@@ -150,6 +150,21 @@ immediate drain rather than waiting out the interval.
 `discardSession()` ends a session keeping nothing -- no worklog, nothing
 queued, the task's status untouched. Every caller confirms with the user first.
 
+A session can also end in the past. `resumeSession` records when each pause
+ended (`paused_intervals.resumed_at_utc`, written by nothing before), so
+`stopSessionAt(endUtc)` logs the time up to an end the user chose, less the
+pauses before it -- through `workedSecondsUntil` in
+`src/shared/session-review.ts`, which the window uses to show what each end
+would log. `pauseSessionAt(utc)` pauses a running session as of an instant in
+the past, without a pause row: provisional, so `withdrawPause()` can take it
+back and `stopSessionAt` can log past it. Pauses from before resumes were
+recorded are known only as a total, which `getClosedPauses` places at the
+start.
+
+A worklog belongs to the day it began (`started_at_utc`), as Jira's `started`
+and OpenProject's `spentOn` file it; Work History and the end-of-day summary
+used to file it on its stop.
+
 Ad-hoc work is told apart by its id (`adhoc_` prefix, `isAdHocTaskId`), not by
 the caller's flag: every list that offers an ad-hoc row again starts it as an
 ordinary task. An ad-hoc session never moves a remote status and is never
@@ -448,6 +463,28 @@ after Away ended and before the next check entered Lunch. `exitLunchMode`
 switches to WORK before its own restart, which is how that restart is told
 apart from the user's.
 
+### `PresenceMonitor` and `ForgottenSessionService` — `src/main/services/`
+
+Time is wall clock minus pauses, so a session forgotten on Friday read 62
+hours on Monday and its stop sent them all at once. `PresenceMonitor` keeps
+`last_user_presence_utc`: now less `powerMonitor.getSystemIdleTime()`,
+written every minute when it moves on, on lock and suspend, at quit
+(synchronously, before the database closes), and on a press on the bar.
+
+`ForgottenSessionService` looks for a forgotten session at start, on resume
+and unlock, every minute, and on a press on the bar -- reading the previous
+presence before recording the new one. A session is forgotten when it is
+running, the later of the previous presence and its start falls on an
+earlier local day than today, that was at least `FORGOTTEN_MIN_GAP_MS` (two
+hours) ago, the user is present now, and the Ceremonies setting is on.
+Overtime never qualifies: input moves the presence on every minute. The
+session is then paused at that instant (`pauseSessionAt`), the question is
+stored as `forgotten_session_review` -- it survives a restart -- and the
+window is brought forward. The service listens to the engine: anything else
+done to the session answers the question. Its bar listener is prepended to
+the driver's `input` event, ahead of `InputDecoder`'s, so a first press that
+resumes the session does not hide that it was left running.
+
 ### `WindowsNotificationListenerService` — `src/main/services/`
 
 Polls the Windows Action Center database via a PowerShell child process, and
@@ -655,7 +692,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1867 tests across 96 files, in two projects: `main` in Node for
+Vitest, 1937 tests across 99 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

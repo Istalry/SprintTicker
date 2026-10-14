@@ -5,7 +5,8 @@ import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { ActiveSessionDTO, TaskDTO, ProjectDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, TaskDTO, ProjectDTO, PauseIntervalDTO, ArgumentException } from '../../shared/dtos';
+import { workedSecondsUntil } from '../../shared/session-review';
 
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/provider-settings';
@@ -365,12 +366,124 @@ export class TimeTrackingEngine extends EventEmitter {
     // active.totalPausedSeconds already includes the live duration of the current pause
     // (calculated inside SessionRepository.getActiveSession), so we don't need to add it again.
     this._sessionRepo.updateStatus(active.sessionId, 'TRACKING', active.totalPausedSeconds, undefined);
-    
+
+    // When each pause ended, so a session can be stopped at a time in the
+    // past (`stopSessionAt`). It was never written, so only the total said
+    // how long the pauses were, not where they fell. A pause with no row is
+    // the retroactive one (`pauseSessionAt`): it gets its row now.
+    const resumedAtUtc = new Date().toISOString();
+    if (!this._sessionRepo.closeLatestPause(active.sessionId, resumedAtUtc)) {
+      this._sessionRepo.recordPauseInterval(active.sessionId, active.lastPauseStartUtc, resumedAtUtc);
+    }
+
     this._currentSession = this._sessionRepo.getActiveSession();
     this.startTickLoop();
     this.notifyListeners();
 
     return this._currentSession!;
+  }
+
+  /**
+   * Pauses the running session as of an instant in the past: the user's last
+   * activity, when a session was left running overnight. From then on it
+   * shows, logs and resumes as a session paused at that instant, so every way
+   * of ending it -- the bar's paused menu included -- stops at that instant.
+   *
+   * Provisional: no pause row is written, so `withdrawPause` can take it back
+   * and `stopSessionAt` can log past it when the user says they worked on.
+   *
+   * @throws ArgumentException for an instant before the start or in the future.
+   */
+  public pauseSessionAt(pausedAtUtc: string): ActiveSessionDTO {
+    const active = this.getCurrentSession();
+    if (!active || active.status !== 'TRACKING') {
+      throw new Error('No active tracking session available to pause');
+    }
+    const at = Date.parse(pausedAtUtc);
+    if (!Number.isFinite(at) || at < Date.parse(active.startTimeUtc) || at > Date.now()) {
+      throw new ArgumentException(
+        `A session can be paused only between its start and now, not at ${String(pausedAtUtc)}.`,
+        'pausedAtUtc'
+      );
+    }
+
+    this._sessionRepo.updateStatus(active.sessionId, 'PAUSED', active.totalPausedSeconds, new Date(at).toISOString());
+    this._currentSession = this._sessionRepo.getActiveSession();
+    this.stopTickLoop();
+    this.notifyListeners();
+    return this._currentSession!;
+  }
+
+  /**
+   * Takes back the pause in progress as though it never happened: its whole
+   * length counts as work. For the retroactive pause, when the user says they
+   * were working all along; it has no row to remove.
+   */
+  public withdrawPause(): ActiveSessionDTO {
+    const active = this.getCurrentSession();
+    if (!active || active.status !== 'PAUSED') {
+      throw new Error('No paused session available to resume');
+    }
+    // The stored total, without the live length of this pause.
+    const pausedSeconds = this._sessionRepo.getStoredPausedSeconds(active.sessionId);
+    this._sessionRepo.updateStatus(active.sessionId, 'TRACKING', pausedSeconds, undefined);
+    this._currentSession = this._sessionRepo.getActiveSession();
+    this.startTickLoop();
+    this.notifyListeners();
+    return this._currentSession!;
+  }
+
+  /**
+   * The open session's finished pauses, oldest first. A session paused
+   * before resumes were recorded has open rows that are not its current
+   * pause: their lengths are known only as a total, which is then placed at
+   * the start -- right for any end after it, which is every end that matters.
+   */
+  public getClosedPauses(): PauseIntervalDTO[] {
+    const active = this.getCurrentSession();
+    if (!active) return [];
+    const rows = this._sessionRepo.getPauseIntervals(active.sessionId);
+    const last = rows[rows.length - 1];
+    const currentOpen = active.status === 'PAUSED' && last !== undefined && last.resumedAtUtc === null ? 1 : 0;
+    if (rows.filter(row => row.resumedAtUtc === null).length > currentOpen) {
+      const pausedMs = this._sessionRepo.getStoredPausedSeconds(active.sessionId) * 1000;
+      return [{
+        fromUtc: active.startTimeUtc,
+        toUtc: new Date(Date.parse(active.startTimeUtc) + pausedMs).toISOString()
+      }];
+    }
+    return rows
+      .filter((row): row is { pausedAtUtc: string; resumedAtUtc: string } => row.resumedAtUtc !== null)
+      .map(row => ({ fromUtc: row.pausedAtUtc, toUtc: row.resumedAtUtc }));
+  }
+
+  /**
+   * Stops the session as of `endUtc` and logs the time worked up to then:
+   * the end the user chose for a session left running. A retroactive pause in
+   * progress is not subtracted -- the user has said when they stopped, which
+   * may be after it began. A pause opened from the app still counts as one.
+   *
+   * @throws ArgumentException for an end before the start or in the future.
+   */
+  public stopSessionAt(endUtc: string, comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
+    const active = this.getCurrentSession();
+    if (!active) return { success: false, loggedSeconds: 0 };
+    const end = Date.parse(endUtc);
+    if (!Number.isFinite(end) || end < Date.parse(active.startTimeUtc) || end > Date.now()) {
+      throw new ArgumentException(
+        `A session can be stopped only between its start and now, not at ${String(endUtc)}.`,
+        'endUtc'
+      );
+    }
+
+    const pauses = this.getClosedPauses();
+    const rows = this._sessionRepo.getPauseIntervals(active.sessionId);
+    const last = rows[rows.length - 1];
+    if (active.status === 'PAUSED' && last !== undefined && last.resumedAtUtc === null) {
+      pauses.push({ fromUtc: last.pausedAtUtc, toUtc: new Date().toISOString() });
+    }
+    const loggedSeconds = workedSecondsUntil(active.startTimeUtc, new Date(end).toISOString(), pauses);
+    return this.finishSession(active, loggedSeconds, comment, markDone);
   }
 
   /**
@@ -403,7 +516,16 @@ export class TimeTrackingEngine extends EventEmitter {
   public stopSession(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
     const active = this.getCurrentSession();
     if (!active) return { success: false, loggedSeconds: 0 };
+    return this.finishSession(active, active.elapsedSeconds, comment, markDone);
+  }
 
+  /** Logs `loggedSeconds` for the session, queues them for the provider, and ends it. */
+  private finishSession(
+    active: ActiveSessionDTO,
+    loggedSeconds: number,
+    comment?: string,
+    markDone?: boolean
+  ): { success: boolean; loggedSeconds: number } {
     this.stopTickLoop();
 
     // The id as well as the flag: a session started before ad-hoc was read
@@ -435,7 +557,6 @@ export class TimeTrackingEngine extends EventEmitter {
       }
     }
 
-    const loggedSeconds = active.elapsedSeconds;
     this._sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
 
     const nowIso = new Date().toISOString();

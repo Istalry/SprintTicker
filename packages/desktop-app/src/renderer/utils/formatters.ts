@@ -55,3 +55,15 @@ export function setRegionalLocale(locale: string | null | undefined): void {
 export function formatClockTime(date: Date): string {
   return date.toLocaleTimeString(regionalLocale);
 }
+
+/** `14:05`, in the regional format: a time the user picks, where seconds would be noise. */
+export function formatHoursMinutes(date: Date): string {
+  return date.toLocaleTimeString(regionalLocale, { hour: '2-digit', minute: '2-digit' });
+}
+
+/** `Fri 17 Oct, 18:04`, in the regional format: an instant on a day that may not be today. */
+export function formatDayAndTime(date: Date): string {
+  return date.toLocaleString(regionalLocale, {
+    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+  });
+}

@@ -102,6 +102,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     resumeSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
     completeSession: vi.fn().mockResolvedValue({ success: true, loggedSeconds: 5025 }),
     discardSession: vi.fn().mockResolvedValue({ success: true, discardedSeconds: 0 }),
+    getForgottenReview: vi.fn().mockResolvedValue(null),
+    resolveForgottenSession: vi.fn().mockResolvedValue(true),
+    onForgottenReview: subscribe('onForgottenReview'),
     onSessionUpdated: subscribe('onSessionUpdated'),
 
     getTodaysWorklogs: vi.fn().mockResolvedValue([]),

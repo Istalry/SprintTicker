@@ -13,6 +13,8 @@ import type {
   ProviderSettingsUpdateDTO,
   ScheduleSettingsDTO,
   ResumePromptDTO,
+  ForgottenSessionReviewDTO,
+  ForgottenSessionResolutionDTO,
   UserMode,
   WorklogDTO,
   UnitySettingsDTO,
@@ -35,6 +37,14 @@ const electronAPI: IElectronAPI = {
   resumeSession: () => ipcRenderer.invoke(IPCChannel.RESUME_SESSION),
   completeSession: (comment?: string, markDone?: boolean) => ipcRenderer.invoke(IPCChannel.COMPLETE_SESSION, { comment, markDone }),
   discardSession: () => ipcRenderer.invoke(IPCChannel.DISCARD_SESSION),
+  getForgottenReview: () => ipcRenderer.invoke(IPCChannel.GET_FORGOTTEN_REVIEW),
+  resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) =>
+    ipcRenderer.invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, resolution),
+  onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => {
+    const handler = (_event: IpcRendererEvent, review: ForgottenSessionReviewDTO | null) => callback(review);
+    ipcRenderer.on(IPCChannel.ON_FORGOTTEN_SESSION_REVIEW, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_FORGOTTEN_SESSION_REVIEW, handler);
+  },
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, session: ActiveSessionDTO | null) => callback(session);
     ipcRenderer.on(IPCChannel.ON_SESSION_UPDATED, handler);

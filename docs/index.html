@@ -658,6 +658,22 @@
       move a task that is no longer yours; on the bar, FINISH (or a long BACK)
       shows <strong>NOT YOURS / DONE? OK=YES</strong>, and BACK refuses. The task stays listed
       until the session ends, and leaves at the next sync after that.</p>
+      <p>⏰ <strong>A session left running</strong> -- not stopped before the weekend, or overnight
+      -- is caught when you come back. If your last activity on the computer (or a
+      press on the bar) was on an earlier day, at least two hours ago, the session
+      is paused at that moment and nothing is logged. The window asks when you
+      stopped working on it: at your last activity, at your end-of-day hour that
+      day, or at a time you pick, each with the time it would log. Then <strong>Log and
+      stop</strong>, <strong>Log and restart it now</strong> (asking first if the task is no longer
+      assigned to you), <strong>Discard</strong>, or <strong>I was working all along</strong>, which counts
+      the whole absence. Stopping it from the bar or the mini timer logs up to your
+      last activity; resuming it does not count the gap. Turn the question off in
+      <strong>Ceremonies</strong>.</p>
+      <p>🌙 <strong>Overtime is never interrupted.</strong> As long as you are at the keyboard or
+      mouse, working past midnight is just a long session: nothing pauses it and
+      nothing asks. Only more than two hours without any input across midnight --
+      a long call -- brings the question, and <strong>I was working all along</strong> keeps it
+      all.</p>
       <p>🗑️ <strong>Discard this session</strong>, the third choice, is for a session started by
       mistake: nothing is kept in your history and nothing is sent to your
       provider. It asks you to confirm, naming the task and the time it would throw
@@ -711,7 +727,9 @@
       <p>Worklogs by date, with a daily summary and an end-of-day export.</p>
       <p align="center">
         <img src="images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
-      </p><p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
+      </p><p><strong>A worklog belongs to the day it began</strong>, as Jira and OpenProject file it: a
+      session from 17:00 to 01:00 is all on the first day.</p>
+      <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
       refused a 40-second session, the time is still in your history — it just is not
       in Jira.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
@@ -1504,6 +1522,19 @@
       immediate drain rather than waiting out the interval.</p>
       <p><code>discardSession()</code> ends a session keeping nothing -- no worklog, nothing
       queued, the task&#39;s status untouched. Every caller confirms with the user first.</p>
+      <p>A session can also end in the past. <code>resumeSession</code> records when each pause
+      ended (<code>paused_intervals.resumed_at_utc</code>, written by nothing before), so
+      <code>stopSessionAt(endUtc)</code> logs the time up to an end the user chose, less the
+      pauses before it -- through <code>workedSecondsUntil</code> in
+      <code>src/shared/session-review.ts</code>, which the window uses to show what each end
+      would log. <code>pauseSessionAt(utc)</code> pauses a running session as of an instant in
+      the past, without a pause row: provisional, so <code>withdrawPause()</code> can take it
+      back and <code>stopSessionAt</code> can log past it. Pauses from before resumes were
+      recorded are known only as a total, which <code>getClosedPauses</code> places at the
+      start.</p>
+      <p>A worklog belongs to the day it began (<code>started_at_utc</code>), as Jira&#39;s <code>started</code>
+      and OpenProject&#39;s <code>spentOn</code> file it; Work History and the end-of-day summary
+      used to file it on its stop.</p>
       <p>Ad-hoc work is told apart by its id (<code>adhoc_</code> prefix, <code>isAdHocTaskId</code>), not by
       the caller&#39;s flag: every list that offers an ad-hoc row again starts it as an
       ordinary task. An ad-hoc session never moves a remote status and is never
@@ -1868,6 +1899,25 @@
       after Away ended and before the next check entered Lunch. <code>exitLunchMode</code>
       switches to WORK before its own restart, which is how that restart is told
       apart from the user&#39;s.</p>
+      <h4><code>PresenceMonitor</code> and <code>ForgottenSessionService</code> — <code>src/main/services/</code></h4>
+      <p>Time is wall clock minus pauses, so a session forgotten on Friday read 62
+      hours on Monday and its stop sent them all at once. <code>PresenceMonitor</code> keeps
+      <code>last_user_presence_utc</code>: now less <code>powerMonitor.getSystemIdleTime()</code>,
+      written every minute when it moves on, on lock and suspend, at quit
+      (synchronously, before the database closes), and on a press on the bar.</p>
+      <p><code>ForgottenSessionService</code> looks for a forgotten session at start, on resume
+      and unlock, every minute, and on a press on the bar -- reading the previous
+      presence before recording the new one. A session is forgotten when it is
+      running, the later of the previous presence and its start falls on an
+      earlier local day than today, that was at least <code>FORGOTTEN_MIN_GAP_MS</code> (two
+      hours) ago, the user is present now, and the Ceremonies setting is on.
+      Overtime never qualifies: input moves the presence on every minute. The
+      session is then paused at that instant (<code>pauseSessionAt</code>), the question is
+      stored as <code>forgotten_session_review</code> -- it survives a restart -- and the
+      window is brought forward. The service listens to the engine: anything else
+      done to the session answers the question. Its bar listener is prepended to
+      the driver&#39;s <code>input</code> event, ahead of <code>InputDecoder</code>&#39;s, so a first press that
+      resumes the session does not hide that it was left running.</p>
       <h4><code>WindowsNotificationListenerService</code> — <code>src/main/services/</code></h4>
       <p>Polls the Windows Action Center database via a PowerShell child process, and
       mirrors notifications from apps you have allowed. App icons are resolved from
@@ -2071,7 +2121,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1867 tests across 96 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1937 tests across 99 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2139,6 +2189,18 @@
       <tr>
       <td align="left"><code>session:get-current</code> / <code>session:on-updated</code> carry <code>taskUnlisted: true</code></td>
       <td align="left">The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:get-forgotten-review</code></td>
+      <td align="left">The session left running across a change of day, paused at the last activity and awaiting an answer: <code>{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted }</code>, or null</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:resolve-forgotten</code></td>
+      <td align="left">Answers it with <code>{ action, endUtc? }</code>: <code>stop</code> or <code>restart</code> log up to <code>endUtc</code> (between the start and now, required), <code>discard</code> keeps nothing, <code>keep</code> counts the whole absence and runs on. An unknown action or an end outside the session throws; answers <code>false</code> when nothing is asked any more</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:on-forgotten-review</code></td>
+      <td align="left">Pushes the question when it is found, and null once anything answers it -- the window, the bar&#39;s STOP, a resume</td>
       </tr>
       <tr>
       <td align="left"><code>session:discard</code></td>

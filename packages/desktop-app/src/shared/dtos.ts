@@ -185,6 +185,8 @@ export interface ScheduleSettingsDTO {
   autoDismissSeconds?: number; // Alias for UI compatibility
   shutdownByDefault?: boolean; // Default checkbox state in EOD wrap-up wizard
   eodShutdownByDefault?: boolean; // Alias for UI compatibility
+  /** Ask, rather than log, about a session left running across a change of day. */
+  askAboutForgottenSessions?: boolean;
 }
 
 /**
@@ -195,6 +197,44 @@ export interface ScheduleSettingsDTO {
 export interface ResumePromptDTO {
   taskKey: string;
   taskTitle: string;
+}
+
+/** A pause of a session, closed: from when to when. */
+export interface PauseIntervalDTO {
+  fromUtc: string;
+  toUtc: string;
+}
+
+/**
+ * A session left running across a change of day while the user was away. It
+ * has been paused at their last activity, and nothing is logged until they
+ * say when they stopped working on it.
+ */
+export interface ForgottenSessionReviewDTO {
+  sessionId: string;
+  taskKey: string;
+  taskTitle: string;
+  startTimeUtc: string;
+  /** When the user was last at the machine: where the session was paused. */
+  lastPresenceUtc: string;
+  /** The end-of-day hour of that day, when it falls between the start and now. */
+  endOfDayUtc: string | null;
+  /** The pauses before, for the time each end would log. */
+  pauses: PauseIntervalDTO[];
+  /** The task has left the user's list: restarting it asks first. */
+  taskUnlisted: boolean;
+}
+
+/**
+ * The answer: log up to `endUtc` and stop; the same, then start the task again
+ * now; throw the session away; or count the whole absence as work.
+ */
+export type ForgottenSessionAction = 'stop' | 'restart' | 'discard' | 'keep';
+
+export interface ForgottenSessionResolutionDTO {
+  action: ForgottenSessionAction;
+  /** Required for `stop` and `restart`: between the start and now. */
+  endUtc?: string;
 }
 
 export type UserMode = 'WORK' | 'LUNCH' | 'AWAY';

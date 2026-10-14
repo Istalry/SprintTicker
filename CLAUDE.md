@@ -823,6 +823,17 @@ and anything listing tasks filters `archived_at_utc IS NULL`. A worklog is
 written only after `ensureTaskExists`, because a session's task can vanish
 while it runs.
 
+**Time is wall clock; an absence across a change of day is asked about.** A
+session's time is now minus its start minus its pauses, so an absence the
+same day counts as work -- a meeting away from the desk is work. One across
+midnight is not assumed either way: `ForgottenSessionService` pauses the
+session at the user's last activity (`pauseSessionAt`) and asks, and nothing
+is logged or sent until they answer. Overtime is never interrupted -- input
+moves the presence on every minute -- and no time the user has not
+confirmed is ever sent. Presence is read *before* it is recorded, at every
+check: recorded first, the evidence of the absence is gone. A worklog belongs
+to the day it began (`started_at_utc`), as the providers file it.
+
 **The sync never retires the task of the open session.** A task reassigned,
 closed or moved on the provider leaves the user's scope, and the prune used
 to retire it mid-session -- deleted, when nothing was logged on it yet -- so

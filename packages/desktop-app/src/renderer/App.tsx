@@ -31,6 +31,7 @@ import { ProjectTaskManagerView } from './views/Tasks/ProjectTaskManagerView';
 import { WorklogHistoryView } from './views/History/WorklogHistoryView';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { ResumeAfterLunchPrompt } from './components/ResumeAfterLunchPrompt';
+import { ForgottenSessionModal } from './components/ForgottenSessionModal';
 import { HardwareDisplayEmulator } from './components/HardwareDisplayEmulator';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { FolderGit2, History } from 'lucide-react';
@@ -395,6 +396,7 @@ export const App: React.FC = () => {
       />
 
       <ResumeAfterLunchPrompt />
+      <ForgottenSessionModal />
 
       {/* Onboarding Setup Wizard Modal */}
       <OnboardingWizardModal

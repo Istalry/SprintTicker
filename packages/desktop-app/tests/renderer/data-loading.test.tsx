@@ -95,6 +95,23 @@ describe('CeremoniesView auto-save', () => {
       { timeout: AUTO_SAVE_DELAY_MS * 3 }
     );
   });
+
+  it('AskAboutForgottenSessions_StoredOff_ShowsOffAndSavesTheChange', async () => {
+    // The panel writes the whole schedule: a field it does not carry is lost.
+    const bridge = installElectronApi({
+      getScheduleSettings: vi.fn().mockResolvedValue({ ...STORED, askAboutForgottenSessions: false })
+    });
+    render(<CeremoniesView />);
+    const box = (await screen.findByLabelText(/Ask about a session left running overnight/)) as HTMLInputElement;
+    await waitFor(() => expect(box.checked).toBe(false));
+
+    fireEvent.click(box);
+
+    await waitFor(
+      () => expect(bridge.api.saveScheduleSettings).toHaveBeenCalledWith(expect.objectContaining({ askAboutForgottenSessions: true })),
+      { timeout: AUTO_SAVE_DELAY_MS * 3 }
+    );
+  });
 });
 
 describe('SyncQueuePanel', () => {

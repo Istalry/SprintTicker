@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, screen, shell } from 'electron';
+import { app, BrowserWindow, Notification, powerMonitor, screen, shell } from 'electron';
 import path from 'path';
 import { LoggerInterceptor } from './diagnostics/logger-interceptor';
 
@@ -28,6 +28,8 @@ import { ProviderManager } from './providers/provider-manager';
 
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
 import { ContextScheduleService } from './services/context-schedule-service';
+import { PresenceMonitor } from './services/presence-monitor';
+import { ForgottenSessionService } from './services/forgotten-session-service';
 import { TrayManager } from './tray/tray-manager';
 import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
@@ -49,6 +51,8 @@ let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
 let windowsNotificationService: WindowsNotificationListenerService | null = null;
 let contextScheduleService: ContextScheduleService | null = null;
+let presenceMonitor: PresenceMonitor | null = null;
+let forgottenSessionService: ForgottenSessionService | null = null;
 let updateChecker: UpdateChecker | null = null;
 let updateCheckTimer: NodeJS.Timeout | null = null;
 let miniWindowManager: MiniWindowManager | null = null;
@@ -293,6 +297,21 @@ async function startApplication(): Promise<void> {
     () => mainWindow
   );
 
+  presenceMonitor = new PresenceMonitor(settingsRepo, () => powerMonitor.getSystemIdleTime());
+  forgottenSessionService = new ForgottenSessionService(engine, settingsRepo, presenceMonitor, () => mainWindow);
+  const forgotten = forgottenSessionService;
+  const presence = presenceMonitor;
+  // Back at the machine: look before anything records the new presence.
+  powerMonitor.on('resume', () => forgotten.check());
+  powerMonitor.on('unlock-screen', () => forgotten.check());
+  // Leaving it: the last input is the presence to judge the return by.
+  powerMonitor.on('lock-screen', () => presence.record());
+  powerMonitor.on('suspend', () => presence.record());
+  // Prepended, so it runs before InputDecoder's listener: a first press on
+  // Monday that resumed or paused the session would otherwise hide that it
+  // was left running all weekend.
+  driver.prependListener('input', () => forgotten.check({ barInput: true }));
+
   // Reads its own version rather than being told one, so a packaged build and
   // a dev run cannot disagree about what is installed.
   updateChecker = new UpdateChecker(app.getVersion(), settingsRepo);
@@ -315,6 +334,7 @@ async function startApplication(): Promise<void> {
     providerEvents: providerEventService,
     priorityEngine,
     contextScheduleService,
+    forgottenSessionService,
     windowsNotificationService,
     providerManager,
     syncWorker: engine.getSyncWorker(),
@@ -331,6 +351,10 @@ async function startApplication(): Promise<void> {
     trayManager.initialize();
   }
   miniWindowManager.restore();
+  // Before the first render: a session left running since Friday is drawn
+  // paused at Friday's last activity, not as 62 hours.
+  forgottenSessionService.check();
+  forgottenSessionService.start();
   renderer.renderActiveSession(engine.getCurrentSession());
 
   // Connect engine ticks to display renderer and IPC window broadcast for live matrix timer updates
@@ -413,6 +437,15 @@ app.on('will-quit', event => {
   // preventDefault() holds the quit open until the teardown finishes, then
   // app.exit() ends it for real.
   event.preventDefault();
+
+  // Synchronously, before anything closes the database: the presence a
+  // forgotten session is judged by at the next start.
+  try {
+    presenceMonitor?.record();
+  } catch (err) {
+    console.warn('[Main] Could not record the last presence at quit:', err);
+  }
+  forgottenSessionService?.dispose();
 
   void (async () => {
     try {
