@@ -12,7 +12,7 @@
   says how many it hides. The project selected in the panel stays listed while
   empty. When no project has a task for you -- before the first sync, or with
   nothing assigned -- everything is listed and the switch says so; ad-hoc
-  work, which stays in progress for good, does not count.
+  work, which stays in progress until finished as done, does not count.
 
 ### Changed
 
@@ -25,6 +25,16 @@
 
 ### Fixed
 
+- **Ad-hoc time is no longer sent to Jira or OpenProject.** It was queued for
+  the active provider under the task's internal id, so Jira was asked to log
+  time on an issue called `adhoc_...`, answered 404, and the row ended in the
+  failed queue -- while the task picker promised a fallback ticket nothing
+  used. Ad-hoc time now stays in Work History. Rows already failed for this
+  reason stay in the sync queue panel. The "fallback ticket" setting is now
+  what it always was in practice, the **ad-hoc task key** new ad-hoc tasks show.
+- **An ad-hoc task can be finished.** Finishing one as done was skipped, so
+  it stayed in progress for good. And one started again from a list was
+  treated as a provider's task, its status pushed to Jira under the same id.
 - **Today's table shows today.** The Active Session panel's list headed
   "Today's Logged Work" held the latest fifty worklogs whatever their day, so
   each morning it opened on yesterday's hours, and its total disagreed with

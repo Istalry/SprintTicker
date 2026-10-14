@@ -147,6 +147,12 @@ active provider's `minimumLoggableSeconds` whether the duration can be recorded
 remotely at all, and if so enqueues it and wakes the sync worker for an
 immediate drain rather than waiting out the interval.
 
+Ad-hoc work is told apart by its id (`adhoc_` prefix, `isAdHocTaskId`), not by
+the caller's flag: every list that offers an ad-hoc row again starts it as an
+ordinary task. An ad-hoc session never moves a remote status and is never
+queued -- its worklog stays local -- and finishing it as done marks the row
+done here only.
+
 ### Provider layer — `src/main/providers/`
 
 ```
@@ -601,7 +607,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1757 tests across 92 files, in two projects: `main` in Node for
+Vitest, 1763 tests across 92 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

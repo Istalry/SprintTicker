@@ -54,8 +54,9 @@ You can leave credentials blank and add them later in **Task Providers**. Until
 a remote provider is configured the app runs on local ad-hoc tasks. Completing
 the wizard saves the choice and immediately fetches your projects.
 
-The **fallback overhead ticket** (default `MISC-1`) is what ad-hoc time is
-logged against — meetings, admin, anything without a ticket.
+The **ad-hoc task key** (default `MISC-1`) is the key your own ad-hoc tasks
+show — meetings, admin, anything without a ticket. Ad-hoc time stays in your
+Work History and is **never sent** to Jira or OpenProject.
 
 **3️⃣ Unity plugin.** Optional. Skip it if you do not use Unity.
 
@@ -158,6 +159,12 @@ instead: the time is kept and the task stays open.
 Your cached projects and their tasks, refreshed from the provider. Create local
 ad-hoc tasks here for work that has no ticket.
 
+> [!NOTE]
+> **Ad-hoc time stays on this machine.** It is in Work History like any other
+> time, but it is never sent to your provider, which has no ticket to put it
+> on. Finishing an ad-hoc task as done marks it done here only. The key it
+> shows is the one set in **Task Providers** (`MISC-1` by default).
+
 <p align="center">
   <img src="../docs/images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden and Pixel Forge, four tasks with their status">
 </p>
@@ -177,7 +184,8 @@ selected stays listed even when it is empty, so one you have just created does
 not vanish before its first task. If no project has a task for you -- before
 the first sync, or on a day nothing is assigned to you -- every project is
 listed, and the switch says so: *none has a task: showing all*. Ad-hoc work
-does not count for this, since an ad-hoc task stays in progress for good.
+does not count for this, since an ad-hoc task stays in progress until you
+finish it as done.
 
 The cache is what the app and the bar read. If it looks stale, **Sync Now** in
 Task Providers refetches it.

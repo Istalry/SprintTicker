@@ -3,11 +3,12 @@ import { SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
-import { createId, IdPrefix } from '../db/id-generator';
+import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { ActiveSessionDTO, TaskDTO, ProjectDTO } from '../../shared/dtos';
 
 import { ProviderManager } from '../providers/provider-manager';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/provider-settings';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
@@ -220,6 +221,10 @@ export class TimeTrackingEngine extends EventEmitter {
       this.stopSession('Auto-completed due to new task start');
     }
 
+    // Ad-hoc by its id as well as by the flag: a list offering an ad-hoc row
+    // again starts it as an ordinary task. See isAdHocTaskId.
+    const adHoc = isAdHoc || isAdHocTaskId(taskId);
+
     let finalTitle = customTitle || 'Active Task';
     let finalKey = taskKey || taskId;
     let finalProjectId = projectId;
@@ -241,7 +246,7 @@ export class TimeTrackingEngine extends EventEmitter {
         finalKey = existing.key;
         finalTitle = customTitle;
       } else {
-        const adHocTask = this._taskRepo.createAdHocTask(customTitle, 'MISC-1');
+        const adHocTask = this._taskRepo.createAdHocTask(customTitle, this.adHocTaskKey());
         effectiveTaskId = adHocTask.id;
         finalKey = adHocTask.key;
         finalTitle = adHocTask.title;
@@ -266,11 +271,14 @@ export class TimeTrackingEngine extends EventEmitter {
         if (existingTask.status !== 'in_progress') {
           this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
         }
-        
-        // Always attempt to push status to remote provider asynchronously to ensure consistency
-        this._providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
-          console.warn(`[TimeTrackingEngine] Failed to remote update task status:`, err);
-        });
+
+        // An ad-hoc task exists only here; the provider would be asked to move
+        // an issue it has never heard of.
+        if (!adHoc) {
+          this._providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
+            console.warn(`[TimeTrackingEngine] Failed to remote update task status:`, err);
+          });
+        }
       }
     }
 
@@ -283,7 +291,7 @@ export class TimeTrackingEngine extends EventEmitter {
       taskId: effectiveTaskId,
       taskKey: finalKey,
       taskTitle: finalTitle,
-      isAdHoc,
+      isAdHoc: adHoc,
       status: 'TRACKING',
       startTimeUtc,
       totalPausedSeconds: 0
@@ -295,6 +303,14 @@ export class TimeTrackingEngine extends EventEmitter {
     this.notifyListeners();
 
     return this._currentSession!;
+  }
+
+  /** The configured ad-hoc key; the default when the manager cannot say (a test double). */
+  private adHocTaskKey(): string {
+    const manager = this._providerManager as Partial<ProviderManager>;
+    return typeof manager.getAdHocTaskKey === 'function'
+      ? manager.getAdHocTaskKey()
+      : PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY];
   }
 
   /// <summary>
@@ -346,16 +362,24 @@ export class TimeTrackingEngine extends EventEmitter {
 
     this.stopTickLoop();
 
-    // If user selected to mark task as done on session stop
-    if (markDone && !active.isAdHoc && active.taskId) {
+    // The id as well as the flag: a session started before ad-hoc was read
+    // from the id may carry `isAdHoc = false` on an ad-hoc row.
+    const adHoc = active.isAdHoc || isAdHocTaskId(active.taskId);
+
+    if (markDone && active.taskId) {
       const existingTask = this._taskRepo.getTaskById(active.taskId);
       if (existingTask) {
+        // Ad-hoc work is marked done too. It used to be skipped outright, so
+        // every ad-hoc task stayed in progress for good and its project always
+        // looked like it had something open.
         this._taskRepo.updateTask({ ...existingTask, status: 'done' });
-        
-        // Push completion status remotely
-        this._providerManager.updateTaskStatus(active.taskId, 'done').catch(err => {
-          console.warn(`[TimeTrackingEngine] Failed to remote update task status to done:`, err);
-        });
+
+        // Only the provider's own tasks have a remote status to move.
+        if (!adHoc) {
+          this._providerManager.updateTaskStatus(active.taskId, 'done').catch(err => {
+            console.warn(`[TimeTrackingEngine] Failed to remote update task status to done:`, err);
+          });
+        }
       }
     }
 
@@ -411,7 +435,16 @@ export class TimeTrackingEngine extends EventEmitter {
     const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
     const minimumSeconds = activeProvider ? activeProvider.minimumLoggableSeconds : 1;
 
-    if (loggedSeconds >= minimumSeconds) {
+    //
+    // Ad-hoc time is never queued. It was queued for the active provider, so
+    // Jira was asked to log time on an issue called `adhoc_...`, answered 404,
+    // and the row ended in the failed queue -- while the picker promised a
+    // fallback ticket that nothing ever used. It stays in local history.
+    if (adHoc) {
+      console.log(
+        `[TimeTrackingEngine] Session ${active.sessionId} is ad-hoc work: kept in local history and not queued.`
+      );
+    } else if (loggedSeconds >= minimumSeconds) {
       this._worklogRepo.enqueueSyncItem({
         id: createId(IdPrefix.SYNC_ITEM),
         providerId: activeProvider ? activeProvider.providerId : 'openproject',

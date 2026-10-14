@@ -42,7 +42,7 @@ Everything else is a request/response `invoke`.
 | `provider:get-all` | Current provider settings |
 | `provider:set-active` | Persist settings, reinitialise providers, start a sync. Takes a **partial** `ProviderSettingsUpdateDTO`, so unrelated providers' credentials are left alone |
 | `provider:get-projects` / `provider:get-tasks` | Read the local cache. Each project carries `openTaskCount`: its tasks neither done nor archived |
-| `provider:create-adhoc` | A local task with no ticket |
+| `provider:create-adhoc` | A local task with no ticket. Its key is the configured ad-hoc key (`fallback_ticket_key`, `MISC-1` by default); its time is never queued for a provider |
 | `provider:fetch-op-statuses` | OpenProject status list, for the settings form |
 | `provider:sync-now` | Fetch projects and tasks immediately |
 | `provider:get-sync-queue` | Everything undelivered, with attempt counts and the server's own message |

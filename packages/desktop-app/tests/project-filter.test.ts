@@ -62,7 +62,7 @@ describe('filterProjectsWithTasks', () => {
   });
 
   it('FilterProjectsWithTasks_OnlyTheAdHocProjectHasTasks_ListsEverything', () => {
-    // An ad-hoc task stays in progress for good, so the ad-hoc project always
+    // An ad-hoc task stays in progress until finished as done, so the ad-hoc project often
     // has one; it used to be the whole list whenever nothing was assigned.
     const list = [project(ADHOC_PROJECT_ID, 4), project('A', 0), project('B', 0)];
 

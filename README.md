@@ -153,7 +153,8 @@ Its **notifications become Windows toasts** -- assigned, mentioned, commented,
 status changed, date alert, each switchable -- and optionally banners on the
 bar. A click opens the work package.
 
-Local **ad-hoc tasks** cover work that has no ticket.
+Local **ad-hoc tasks** cover work that has no ticket. Their time stays in your
+history and is never sent to the provider.
 
 <p align="center">
   <img src="docs/images/app-providers.png" width="70%" alt="Task Providers panel: OpenProject domain, API key and status mappings">
@@ -452,7 +453,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1757 tests across 92 files for the app -- the main and shared
+`pnpm test` runs 1763 tests across 92 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

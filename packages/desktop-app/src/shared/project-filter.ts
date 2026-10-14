@@ -54,9 +54,10 @@ function hasOpenTask(project: ProjectDTO): boolean {
  *   the user right now, and an empty or one-project picker there reads as
  *   data lost. Decided before `keepIds` and without the ad-hoc project: the
  *   kept project used to count as "something left", so the Projects tab
- *   showed that one project alone; and an ad-hoc task stays in progress for
- *   good -- finishing one never marks it done -- so the ad-hoc project
- *   always has one, and was the whole list whenever nothing was assigned.
+ *   showed that one project alone; and an ad-hoc task stays in progress
+ *   until it is finished as done, which the mini timer's Stop, the bar's STOP
+ *   and the end-of-day wrap-up never do -- so the ad-hoc project nearly always
+ *   has one, and was the whole list whenever nothing was assigned.
  */
 export function filterProjectsWithTasks<T extends ProjectDTO>(
   projects: readonly T[],

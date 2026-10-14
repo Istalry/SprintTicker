@@ -907,7 +907,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       });
 
       it('HandleHardwareInput_OnlyAdHocWorkOpen_ListsEveryProject', () => {
-        // An ad-hoc task stays in progress for good. With nothing assigned,
+        // An ad-hoc task stays in progress until finished as done. With nothing assigned,
         // the ad-hoc project used to be the only project the bar offered.
         taskRepo.saveTask({ id: 'T2', projectId: 'P2', key: 'B-1', title: 'Waiting', status: 'done' });
         projectRepo.saveProject({ id: ADHOC_PROJECT_ID, key: ADHOC_PROJECT_ID, name: 'Ad-hoc' });

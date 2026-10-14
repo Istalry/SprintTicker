@@ -35,3 +35,15 @@ export type IdPrefixValue = (typeof IdPrefix)[keyof typeof IdPrefix];
 export function createId(prefix: IdPrefixValue): string {
   return `${prefix}${Date.now()}_${randomUUID()}`;
 }
+
+/**
+ * True for a task this machine created as ad-hoc work.
+ *
+ * Read from the id rather than from a caller's flag: every list that offers an
+ * ad-hoc row again -- the Projects tab, both pickers -- starts it with
+ * `isAdHoc = false`, and that sent its status, and its time, to Jira under an
+ * id Jira has never heard of.
+ */
+export function isAdHocTaskId(taskId: string | undefined | null): boolean {
+  return Boolean(taskId) && taskId!.startsWith(IdPrefix.ADHOC_TASK);
+}

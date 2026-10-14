@@ -282,9 +282,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
 
           {step === 2 && (
             <div className="space-y-4">
-              <h4 className="text-sm font-bold font-mono text-white">2. Task Provider & Fallback Configuration</h4>
+              <h4 className="text-sm font-bold font-mono text-white">2. Task Provider</h4>
               <p className="text-xs text-text-secondary">
-                Choose your primary task provider and configure the fallback ticket ID for non-sprint ad-hoc tasks:
+                Choose your primary task provider, and the key your own ad-hoc tasks show:
               </p>
 
               <div>
@@ -368,7 +368,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               )}
 
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Fallback Overhead Ticket ID</label>
+                <label className="block text-xs font-mono text-text-secondary mb-1">Ad-Hoc Task Key</label>
                 <input
                   type="text"
                   value={fallbackKey}

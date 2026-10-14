@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
+import type { ProviderManager } from '../src/main/providers/provider-manager';
 
 /**
  * The lunch split stops the active session and starts a fresh one afterwards,
@@ -114,5 +115,125 @@ describe('Ad-hoc task identity', () => {
 
     expect(countAdHocTasks()).toBe(1);
     expect(taskRepo.getTaskById(first.taskId)?.title).toBe('Renamed title');
+  });
+});
+
+/**
+ * Ad-hoc work exists only on this machine. It used to be treated as a task of
+ * the active provider whenever a list started it again -- every list passes
+ * `isAdHoc = false` -- and its time was always queued for that provider, so
+ * Jira was asked to move and to log time on an issue called `adhoc_...`. And
+ * finishing it as done was skipped outright, so it stayed in progress for good.
+ */
+describe('Ad-hoc work stays local', () => {
+  let dbConn: DatabaseConnection;
+  let taskRepo: TaskRepository;
+  let sessionRepo: SessionRepository;
+  let engine: TimeTrackingEngine;
+  let statusPushes: Array<[string, string]>;
+
+  function queuedTaskIds(): string[] {
+    return dbConn
+      .getDb()
+      .prepare<[], { task_id: string }>('SELECT task_id FROM worklog_sync_queue')
+      .all()
+      .map(row => row.task_id);
+  }
+
+  /** Moves the running session's start back, so it logs whole minutes. */
+  function backdate(minutes: number): void {
+    const active = sessionRepo.getActiveSession()!;
+    sessionRepo.saveSession({ ...active, startTimeUtc: new Date(Date.now() - minutes * 60_000).toISOString(), totalPausedSeconds: 0 });
+  }
+
+  beforeEach(() => {
+    dbConn = new DatabaseConnection(':memory:');
+    taskRepo = new TaskRepository(dbConn);
+    sessionRepo = new SessionRepository(dbConn);
+    statusPushes = [];
+    const manager = {
+      getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60 }),
+      getAdHocTaskKey: () => 'ADMIN-1',
+      updateTaskStatus: vi.fn(async (taskId: string, status: string) => {
+        statusPushes.push([taskId, status]);
+        return true;
+      }),
+      // Never answers, so a queued row stays visible to the assertions.
+      logTimeForProvider: () => new Promise(() => undefined)
+    } as unknown as ProviderManager;
+    engine = new TimeTrackingEngine(sessionRepo, new WorklogRepository(dbConn), taskRepo, manager, new ProjectRepository(dbConn));
+    taskRepo.saveTask({ id: '10001', projectId: '10000', key: 'SCRUM-2', title: 'Tache 2', status: 'todo' });
+  });
+
+  afterEach(() => {
+    engine.dispose();
+    dbConn.close();
+  });
+
+  it('StartTask_NewAdHocTask_ShowsTheConfiguredKey', () => {
+    const session = engine.startTask('', true, 'Code review');
+
+    expect(session.taskKey).toBe('ADMIN-1');
+    expect(taskRepo.getTaskById(session.taskId)?.key).toBe('ADMIN-1');
+  });
+
+  it('StopSession_AdHocMarkedDone_IsDoneLocallyAndNothingGoesToTheProvider', () => {
+    const session = engine.startTask('', true, 'Code review');
+
+    engine.stopSession('Finished', true);
+
+    expect(taskRepo.getTaskById(session.taskId)?.status).toBe('done');
+    expect(statusPushes).toEqual([]);
+  });
+
+  it('StartTask_AdHocRowStartedFromAList_IsStillAdHoc', () => {
+    // The Projects tab and both pickers start a listed row with isAdHoc = false.
+    const first = engine.startTask('', true, 'Code review');
+    engine.stopSession('Lunch');
+
+    const again = engine.startTask(first.taskId, false);
+
+    expect(again.isAdHoc).toBe(true);
+    expect(statusPushes).toEqual([]);
+  });
+
+  it('StopSession_AdHocWork_IsKeptLocallyAndNeverQueued', () => {
+    engine.startTask('', true, 'Code review');
+    backdate(30);
+
+    engine.stopSession('Done for now');
+
+    expect(queuedTaskIds()).toEqual([]);
+    const worklogs = dbConn.getDb().prepare<[], { n: number }>('SELECT COUNT(*) AS n FROM worklogs').get()!.n;
+    expect(worklogs).toBe(1);
+  });
+
+  it('StopSession_ProviderTask_IsStillQueuedAndMoved', () => {
+    // The other side of the line: a provider's task keeps both.
+    engine.startTask('10001');
+    backdate(30);
+
+    engine.stopSession('Finished', true);
+
+    expect(queuedTaskIds()).toEqual(['10001']);
+    expect(statusPushes).toEqual([['10001', 'in_progress'], ['10001', 'done']]);
+  });
+
+  it('StopSession_AdHocRowStoredWithoutTheFlag_IsStillKeptLocal', () => {
+    // A session started before ad-hoc was read from the id carries
+    // isAdHoc = false on an ad-hoc row. Stopping it must not queue it either.
+    const first = engine.startTask('', true, 'Code review');
+    engine.stopSession('Lunch');
+    engine.startTask('10001');
+    // saveSession's upsert leaves the task alone, so the row is rewritten here.
+    dbConn
+      .getDb()
+      .prepare("UPDATE active_sessions SET task_id = ?, is_ad_hoc = 0, start_time_utc = ? WHERE status = 'TRACKING'")
+      .run(first.taskId, new Date(Date.now() - 30 * 60_000).toISOString());
+
+    engine.stopSession('Done', true);
+
+    expect(queuedTaskIds()).toEqual([]);
+    expect(statusPushes).toEqual([['10001', 'in_progress']]);
   });
 });

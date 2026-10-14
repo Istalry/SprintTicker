@@ -451,7 +451,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
         )}
 
         <div>
-          <label className="block text-xs font-mono text-text-secondary mb-1">Ad-Hoc Fallback Ticket Key</label>
+          <label className="block text-xs font-mono text-text-secondary mb-1">Ad-Hoc Task Key</label>
           <input
             type="text"
             value={fallbackTicketKey}
@@ -459,7 +459,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
             placeholder="e.g. MISC-1 or ADMIN-1"
             className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
           />
-          <p className="text-xs text-text-secondary mt-1">Non-sprint ad-hoc tasks will log hours against this issue key.</p>
+          <p className="text-xs text-text-secondary mt-1">
+            The key new ad-hoc tasks show, in the lists and on the bar. Their time stays in your Work History and is
+            never sent to the provider.
+          </p>
         </div>
       </div>
 

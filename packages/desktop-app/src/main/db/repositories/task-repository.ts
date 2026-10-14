@@ -169,9 +169,9 @@ export class TaskRepository {
   }
 
   /**
-   * Creates a custom Ad-Hoc task mapped to a fallback ticket key.
+   * Creates a custom ad-hoc task, shown under `adHocKey` (the configured ad-hoc key).
    */
-  public createAdHocTask(customTitle: string, fallbackKey: string = 'MISC-1'): TaskDTO {
+  public createAdHocTask(customTitle: string, adHocKey: string = 'MISC-1'): TaskDTO {
     if (!customTitle) {
       throw new Error('Custom title is required for ad-hoc task creation');
     }
@@ -180,7 +180,7 @@ export class TaskRepository {
     const adHocTask: TaskDTO = {
       id: taskId,
       projectId: ADHOC_PROJECT_ID,
-      key: fallbackKey,
+      key: adHocKey,
       title: customTitle,
       status: 'in_progress'
     };

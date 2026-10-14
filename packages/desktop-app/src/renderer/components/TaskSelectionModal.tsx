@@ -209,7 +209,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                   <PlusCircle className="w-5 h-5 text-accent-purple" />
                   <div>
                     <div className="font-bold text-white">+ Create Custom / Ad-Hoc Task</div>
-                    <div className="text-xs text-text-secondary">Logged under fallback ticket MISC-1</div>
+                    <div className="text-xs text-text-secondary">Kept in your Work History, not sent to your provider</div>
                   </div>
                 </button>
               </div>
@@ -233,7 +233,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
               </div>
 
               <div className="text-xs font-mono text-accent-amber bg-accent-amber/10 p-3 rounded-lg border border-accent-amber/20">
-                ℹ️ Time will be logged under fallback ticket: <strong>MISC-1</strong>
+                ℹ️ Ad-hoc time stays in your Work History. It is <strong>not sent</strong> to Jira or OpenProject.
               </div>
             </div>
           ) : (

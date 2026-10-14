@@ -575,8 +575,9 @@
       <p>You can leave credentials blank and add them later in <strong>Task Providers</strong>. Until
       a remote provider is configured the app runs on local ad-hoc tasks. Completing
       the wizard saves the choice and immediately fetches your projects.</p>
-      <p>The <strong>fallback overhead ticket</strong> (default <code>MISC-1</code>) is what ad-hoc time is
-      logged against — meetings, admin, anything without a ticket.</p>
+      <p>The <strong>ad-hoc task key</strong> (default <code>MISC-1</code>) is the key your own ad-hoc tasks
+      show — meetings, admin, anything without a ticket. Ad-hoc time stays in your
+      Work History and is <strong>never sent</strong> to Jira or OpenProject.</p>
       <p><strong>3️⃣ Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
       <h4>💻 Without a BUSY Bar</h4>
       <div class="table-wrap"><table>
@@ -666,6 +667,12 @@
       <h4>📁 Projects &amp; Tasks</h4>
       <p>Your cached projects and their tasks, refreshed from the provider. Create local
       ad-hoc tasks here for work that has no ticket.</p>
+      <div class="note"><span class="label">Ad-hoc time stays on this machine.</span>
+      <p>It is in Work History like any other
+      time, but it is never sent to your provider, which has no ticket to put it
+      on. Finishing an ad-hoc task as done marks it done here only. The key it
+      shows is the one set in <strong>Task Providers</strong> (<code>MISC-1</code> by default).</p>
+      </div>
       <p align="center">
         <img src="images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden and Pixel Forge, four tasks with their status">
       </p><p>A task from Jira or OpenProject shows the start of its description under its
@@ -682,7 +689,8 @@
       not vanish before its first task. If no project has a task for you -- before
       the first sync, or on a day nothing is assigned to you -- every project is
       listed, and the switch says so: <em>none has a task: showing all</em>. Ad-hoc work
-      does not count for this, since an ad-hoc task stays in progress for good.</p>
+      does not count for this, since an ad-hoc task stays in progress until you
+      finish it as done.</p>
       <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
       Task Providers refetches it.</p>
       <h4>📊 Work History</h4>
@@ -1441,6 +1449,11 @@
       active provider&#39;s <code>minimumLoggableSeconds</code> whether the duration can be recorded
       remotely at all, and if so enqueues it and wakes the sync worker for an
       immediate drain rather than waiting out the interval.</p>
+      <p>Ad-hoc work is told apart by its id (<code>adhoc_</code> prefix, <code>isAdHocTaskId</code>), not by
+      the caller&#39;s flag: every list that offers an ad-hoc row again starts it as an
+      ordinary task. An ad-hoc session never moves a remote status and is never
+      queued -- its worklog stays local -- and finishing it as done marks the row
+      done here only.</p>
       <h4>Provider layer — <code>src/main/providers/</code></h4>
       <pre><code>ITaskProvider  ← the contract (task-provider-interface.ts)
           ├── OpenProjectProvider   REST API v3, HAL pagination
@@ -1956,7 +1969,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1757 tests across 92 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1763 tests across 92 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2052,7 +2065,7 @@
       </tr>
       <tr>
       <td align="left"><code>provider:create-adhoc</code></td>
-      <td align="left">A local task with no ticket</td>
+      <td align="left">A local task with no ticket. Its key is the configured ad-hoc key (<code>fallback_ticket_key</code>, <code>MISC-1</code> by default); its time is never queued for a provider</td>
       </tr>
       <tr>
       <td align="left"><code>provider:fetch-op-statuses</code></td>

@@ -49,6 +49,17 @@ export class ProviderManager {
     return this._settingsRepo.getSetting(key, PROVIDER_SETTING_DEFAULTS[key]);
   }
 
+  /**
+   * The key ad-hoc tasks show, in the lists and on the bar.
+   *
+   * Named the "fallback ticket" once, with a promise that ad-hoc hours were
+   * logged against it. Nothing ever did that, and nothing will: ad-hoc time
+   * stays in local history. The setting is what it can honestly be, a label.
+   */
+  public getAdHocTaskKey(): string {
+    return this.readSetting(ProviderSettingKey.FALLBACK_TICKET_KEY).trim() || PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY];
+  }
+
   /// <summary>
   /// Re-reads stored domain credentials and status mappings from database settings.
   /// </summary>
