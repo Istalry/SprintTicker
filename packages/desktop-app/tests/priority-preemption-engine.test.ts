@@ -138,7 +138,7 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
   });
 
   it('GetEventPriority_UnknownEvent_FallsBackToTheDefault', () => {
-    expect(engine.getEventPriority('menuPriority')).toBe(50);
+    expect(engine.getEventPriority('someEventWithNoRule')).toBe(50);
   });
 });
 

@@ -244,8 +244,10 @@ Two rules, both scars:
 | Claim | Event name | Default score |
 | :--- | :--- | ---: |
 | Away mode | `awayModePriority` | 100 |
+| Bar task picker | `menuPriority` | 97 |
 | Lunch mode | `lunchModePriority` | 95 |
 | End-of-day wrap-up | `eodWrapUpPriority` | 80 |
+| Resume after lunch question | `resumePromptPriority` | 76 |
 | Stand-up prompt | `standupPromptPriority` | 75 |
 | Notification — high | `highNotificationPriority` | 70 |
 | Notification — default | `messagingPriority` | 65 |
@@ -257,6 +259,11 @@ Two rules, both scars:
 Each rule also carries an action per user mode — `DISPLAY`, `SUPPRESS` or
 `QUEUE` — for `WORK`, `LUNCH` and `AWAY`. That is how notifications correctly
 do not interrupt a break: not a special case in the code, a row in the table.
+
+The bar's picker had no row, so it took the default 50 and was queued under
+Lunch: START during lunch opened a picker nobody could see. It has its own row
+now, above Lunch, and is never queued -- every press redraws it, and a copy
+queued under Away replayed after the user had closed it.
 
 ### Render pipeline — `src/main/hardware/`
 
@@ -408,11 +415,38 @@ It also runs the two-stage task picker (project, then task) driven entirely from
 the bar, and the paused menu: STOP, FINISH and DROP, of which row 1 shows the
 pair holding the choice (`pausedChoicesShown`). DROP asks **DISCARD?** first;
 while the question is up the click confirms, BACK refuses, and every other
-key waits. Its project list goes through `filterProjectsWithTasks`
+key waits. A session started anywhere else while the picker is open closes
+it: it used to hold the display over the new session until BACK. After lunch,
+under `resumePromptPriority`, OK and START answer yes and BACK no; the answer
+goes to `ContextScheduleService` through the action handlers. Its project list goes through `filterProjectsWithTasks`
 (`src/shared/project-filter.ts`), the rule the window's two lists use, and
 reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
 inside an EventEmitter listener with no error handler terminates the main
 process, so without it a button press could take the whole app down.
+
+### `ContextScheduleService` — `src/main/services/`
+
+Runs the day: the stand-up and end-of-day prompts, Lunch, and Away on lock or
+suspend, from a check every 30 seconds.
+
+Lunch stops a running session and restarts it when lunch ends, which files the
+time as two worklogs either side of the break. The task to restart is the
+`lunch_resume` setting, with the day it was stored: in a field, a restart
+during lunch forgot it. It is restarted when lunch ends, or at the first check
+in WORK after the end -- the app was closed, or Windows stayed locked, since
+Away never leaves for Lunch's end -- and dropped if it is another day's or if
+anything is open by then. A task no longer listed (`TaskRepository.isListed`)
+is not restarted but asked about, in the window (`schedule:on-resume-prompt`)
+and on the bar under `resumePromptPriority`; the entry is kept until answered,
+so a restart asks again.
+
+The service also listens to the engine. A session going TRACKING during lunch
+is the user working through it: the stored resume is dropped,
+`lunch_skipped_date` stops the next check entering Lunch again that day, and
+the mode goes back to WORK. "During lunch" includes the lunch hours in WORK,
+after Away ended and before the next check entered Lunch. `exitLunchMode`
+switches to WORK before its own restart, which is how that restart is told
+apart from the user's.
 
 ### `WindowsNotificationListenerService` — `src/main/services/`
 
@@ -621,7 +655,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1820 tests across 94 files, in two projects: `main` in Node for
+Vitest, 1867 tests across 96 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

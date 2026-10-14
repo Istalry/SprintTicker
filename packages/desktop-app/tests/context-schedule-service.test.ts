@@ -9,7 +9,10 @@ import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 
 describe('ContextScheduleService Unit Tests', () => {
   let mockPriorityEngine: { getUserMode: ReturnType<typeof vi.fn>; setUserMode: ReturnType<typeof vi.fn> };
-  let mockSettingsRepo: { getSetting: ReturnType<typeof vi.fn> };
+  let mockSettingsRepo: { getSetting: ReturnType<typeof vi.fn>; setSetting: ReturnType<typeof vi.fn> };
+  /** The schedule every test reads; the other keys -- lunch's resume -- are a real store. */
+  let schedule: object;
+  const setSchedule = (value: object) => { schedule = value; };
   let mockEngine: { getCurrentSession: ReturnType<typeof vi.fn>; pauseSession: ReturnType<typeof vi.fn>; resumeSession: ReturnType<typeof vi.fn> };
   let mockRenderer: { renderLunchMode: ReturnType<typeof vi.fn>; renderAwayMode: ReturnType<typeof vi.fn>; renderActiveSession: ReturnType<typeof vi.fn>; renderCeremonyPrompt: ReturnType<typeof vi.fn> };
   let service: ContextScheduleService;
@@ -25,19 +28,28 @@ describe('ContextScheduleService Unit Tests', () => {
       // default happened to be -- and the clock values below were chosen
       // against that value. Changing the product default then broke a test that
       // is not about defaults at all.
-      getSetting: vi.fn().mockReturnValue({
-        standupTime: '10:00',
-        lunchStartTime: '12:30',
-        lunchEndTime: '13:30',
-        eodWrapUpTime: '18:00'
-      })
+      getSetting: vi.fn(),
+      setSetting: vi.fn()
     };
+    setSchedule({
+      standupTime: '10:00',
+      lunchStartTime: '12:30',
+      lunchEndTime: '13:30',
+      eodWrapUpTime: '18:00'
+    });
+    const store = new Map<string, unknown>();
+    mockSettingsRepo.getSetting.mockImplementation((key: string, fallback: unknown) =>
+      key === 'schedule_settings' ? schedule : store.has(key) ? store.get(key) : fallback
+    );
+    mockSettingsRepo.setSetting.mockImplementation((key: string, value: unknown) => store.set(key, value));
     mockEngine = {
       getCurrentSession: vi.fn().mockReturnValue(null),
       pauseSession: vi.fn(),
       resumeSession: vi.fn(),
       stopSession: vi.fn(),
-      startTask: vi.fn()
+      startTask: vi.fn(),
+      subscribe: vi.fn().mockReturnValue(() => undefined),
+      isTaskListed: vi.fn().mockReturnValue(true)
     };
     mockRenderer = {
       renderLunchMode: vi.fn(),
@@ -140,7 +152,7 @@ describe('ContextScheduleService Unit Tests', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 30, 13, 14, 0)); // 13:14 (between 13:13 and 13:15)
 
-    mockSettingsRepo.getSetting.mockReturnValue({
+    setSchedule({
       lunchStart: '13:13',
       lunchEnd: '13:15',
       enableLunchMute: true
@@ -360,7 +372,7 @@ describe('ContextScheduleService Unit Tests', () => {
       // Stand-up off, so every renderCeremonyPrompt call in this block is the
       // End-of-Day one and a `mockImplementationOnce` cannot be spent on the
       // wrong ceremony.
-      mockSettingsRepo.getSetting.mockReturnValue({
+      setSchedule({
         standupTime: '10:00',
         enableStandupPrompt: false,
         lunchStartTime: '12:30',

@@ -178,6 +178,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     updateCeremonyPrompt: vi.fn().mockResolvedValue(true),
     snoozeCeremony: vi.fn().mockResolvedValue(true),
     onCeremonyPrompt: subscribe('onCeremonyPrompt'),
+    getResumePrompt: vi.fn().mockResolvedValue(null),
+    answerResumePrompt: vi.fn().mockResolvedValue(true),
+    onResumePrompt: subscribe('onResumePrompt'),
 
     getUnitySettings: vi.fn().mockResolvedValue({ buildChime: 'none', enableFailureSound: false, enablePlayModeDnd: true }),
     saveUnitySettings: vi.fn().mockResolvedValue(true),

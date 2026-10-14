@@ -12,6 +12,7 @@ import type {
   PriorityRule,
   ProviderSettingsUpdateDTO,
   ScheduleSettingsDTO,
+  ResumePromptDTO,
   UserMode,
   WorklogDTO,
   UnitySettingsDTO,
@@ -117,6 +118,13 @@ const electronAPI: IElectronAPI = {
   cancelEodWrapUp: () => ipcRenderer.invoke(IPCChannel.CANCEL_EOD_WRAP_UP),
   updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => ipcRenderer.invoke(IPCChannel.UPDATE_CEREMONY_PROMPT, { type, title }),
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes = 10) => ipcRenderer.invoke(IPCChannel.SNOOZE_CEREMONY, { type, minutes }),
+  getResumePrompt: () => ipcRenderer.invoke(IPCChannel.GET_RESUME_PROMPT),
+  answerResumePrompt: (resume: boolean) => ipcRenderer.invoke(IPCChannel.ANSWER_RESUME_PROMPT, resume),
+  onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => {
+    const handler = (_event: IpcRendererEvent, prompt: ResumePromptDTO | null) => callback(prompt);
+    ipcRenderer.on(IPCChannel.ON_RESUME_PROMPT, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_RESUME_PROMPT, handler);
+  },
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => {
     const handler = (_event: IpcRendererEvent, prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) =>
       callback(prompt);

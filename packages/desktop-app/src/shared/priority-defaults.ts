@@ -19,6 +19,17 @@ import { PriorityRule } from './dtos';
  */
 export const ACTIVE_TRACKER_EVENT = 'activeTrackerPriority';
 
+/**
+ * The bar's task picker, opened by a press on the bar. It had no rule, so it
+ * took the default 50 and was queued under anything above that -- Lunch
+ * first: START during lunch opened a picker nobody could see, and the wheel
+ * then moved through it blind.
+ */
+export const BAR_MENU_EVENT = 'menuPriority';
+
+/** "Resume it anyway?", asked after lunch about a task no longer the user's. */
+export const RESUME_PROMPT_EVENT = 'resumePromptPriority';
+
 export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
   {
     id: 'away_mode',
@@ -26,6 +37,14 @@ export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
     priority: 100,
     actionOnWork: 'DISPLAY',
     actionOnLunch: 'SUPPRESS',
+    actionOnAway: 'DISPLAY'
+  },
+  {
+    id: 'bar_menu',
+    eventName: BAR_MENU_EVENT,
+    priority: 97,
+    actionOnWork: 'DISPLAY',
+    actionOnLunch: 'DISPLAY',
     actionOnAway: 'DISPLAY'
   },
   {
@@ -43,6 +62,14 @@ export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
     actionOnWork: 'DISPLAY',
     actionOnLunch: 'SUPPRESS',
     actionOnAway: 'DISPLAY'
+  },
+  {
+    id: 'resume_prompt',
+    eventName: RESUME_PROMPT_EVENT,
+    priority: 76,
+    actionOnWork: 'DISPLAY',
+    actionOnLunch: 'SUPPRESS',
+    actionOnAway: 'QUEUE'
   },
   {
     id: 'standup_prompt',

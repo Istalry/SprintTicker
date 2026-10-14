@@ -8,6 +8,7 @@ import { SettingsRepository } from '../../src/main/db/repositories/settings-repo
 import { TimeTrackingEngine } from '../../src/main/engine/time-tracking-engine';
 import { ActiveSessionDTO, UserMode } from '../../src/shared/dtos';
 import { FRONT_ELEMENT_IDS } from '../../src/shared/device-constants';
+import { BAR_MENU_EVENT } from '../../src/shared/priority-defaults';
 import { FirmwareSimulator } from './firmware-simulator';
 
 /**
@@ -45,6 +46,8 @@ export type EventName =
   | 'startTask' | 'startTaskFromBar' | 'pause' | 'resume' | 'tick' | 'stop' | 'finish'
   /** The paused menu's DROP: the question, BACK on it, and the click that confirms. */
   | 'askDiscard' | 'cancelDiscard' | 'discard'
+  /** The bar's task picker, opened with nothing running, and BACK out of it. */
+  | 'openPicker' | 'closePicker'
   | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd'
   /** The bar unreachable, back, or rebooted while unreachable. */
   | 'barDrop' | 'barBack' | 'barReboot';
@@ -94,6 +97,7 @@ export class Desk {
     Object.values(EDITORS).map(editor => [editor.instanceId, { compiling: false, building: false, playing: false }])
   );
   private sessionCount = 0;
+  private picking = false;
   /** Until when the bar is rebooting, and no `barBack` brings it back. */
   private rebootingUntil = 0;
   private readonly next: () => number;
@@ -181,16 +185,36 @@ export class Desk {
       case 'startTask':
       case 'startTaskFromBar': {
         this.session = this.newSession();
-        // From the app the engine's subscriber renders the session; from the
-        // bar the picker plays GO! first.
-        if (event === 'startTaskFromBar') this.renderer.renderTaskStarted(this.session);
-        else this.renderer.renderActiveSession(this.session);
+        // The engine's listeners in the order they subscribed: the decoder's
+        // closes a picker left open, ContextScheduleService's leaves Lunch.
+        // From the bar, the picker is closed after GO!, not by the listener.
+        const fromThePicker = event === 'startTaskFromBar' && this.picking;
+        if (!fromThePicker && this.picking) this.closePicker();
+        this.workThroughLunch();
+        // From the app the IPC registry's subscriber renders the session; from
+        // the bar the picker plays GO! first, then lets go of the display.
+        if (event === 'startTaskFromBar') {
+          this.renderer.renderTaskStarted(this.session);
+          if (fromThePicker) this.closePicker();
+        } else this.renderer.renderActiveSession(this.session);
         return;
       }
+      case 'openPicker':
+        // As InputDecoder does: START or a click with nothing running.
+        if (this.session || this.picking) return;
+        this.picking = true;
+        this.renderer.renderTaskSelection('PROJECT', 'Game', { position: { index: 0, count: 2 } });
+        return;
+      case 'closePicker':
+        if (!this.picking) return;
+        this.closePicker();
+        this.renderer.renderIdle();
+        return;
       case 'pause':
       case 'resume':
         if (!this.session) return;
         this.session = { ...this.session, status: event === 'pause' ? 'PAUSED' : 'TRACKING' };
+        if (event === 'resume') this.workThroughLunch();
         this.renderer.renderActiveSession(this.session);
         return;
       case 'tick':
@@ -246,6 +270,11 @@ export class Desk {
     }
   }
 
+  /** The bar's picker is open: it holds the display until BACK or a pick. */
+  public get isPicking(): boolean {
+    return this.picking;
+  }
+
   public note(what: string): void {
     const lock = this.priority.getActiveLockEventName();
     this.timeline.push(
@@ -260,6 +289,20 @@ export class Desk {
     this.renderer.dispose();
     this.driver.disconnect();
     this.device.uninstall();
+  }
+
+  /**
+   * A session starting or resuming during lunch is the user working through
+   * it: ContextScheduleService's session listener, which runs before the IPC
+   * registry's render of the session, leaves Lunch.
+   */
+  private workThroughLunch(): void {
+    if (this.mode === 'LUNCH') this.enterMode('WORK');
+  }
+
+  private closePicker(): void {
+    this.picking = false;
+    this.priority.releaseActiveLock(BAR_MENU_EVENT);
   }
 
   private enterMode(mode: UserMode): void {
@@ -286,8 +329,19 @@ export function expectSettledScreen(desk: Desk): void {
   const shown = desk.device.shown();
   const lock = desk.priority.getActiveLockEventName();
   const context = `mode ${desk.mode}, lock ${String(lock)}, session ${desk.session?.status ?? 'none'}, panel [${shown.join(', ')}]`;
-  if (desk.mode === 'LUNCH' || desk.mode === 'AWAY') {
+  // The picker outranks Lunch, not Away; under Away it waits, set aside.
+  // Lunch can begin under Away here, as the 'modes' case scripts it, and
+  // Away's lock then stays.
+  const away = desk.mode === 'AWAY' || lock === 'awayModePriority';
+  if (away || (desk.mode === 'LUNCH' && !desk.isPicking)) {
     if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the ${desk.mode} scene: ${context}`);
+    return;
+  }
+  // The user's hand on the bar: it stays over everything else until BACK.
+  if (desk.isPicking) {
+    if (lock !== BAR_MENU_EVENT || !desk.device.has(FRONT_ELEMENT_IDS.FRAME)) {
+      throw new Error(`Expected the bar's picker, which is open: ${context}`);
+    }
     return;
   }
   // Nothing outranks Unity once every banner and scene is over, so an editor

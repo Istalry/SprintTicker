@@ -112,6 +112,21 @@ export class TaskRepository {
     }
   }
 
+  /**
+   * Whether the task is still in the user's lists: its row exists and the
+   * sync has not archived it. Asked before anything restarts a task on the
+   * user's behalf -- a task reassigned, closed or moved since is no longer
+   * theirs to track without asking.
+   */
+  public isListed(taskId: string): boolean {
+    if (!taskId) return false;
+    const db = this.dbConn.getDb();
+    const row = db
+      .prepare<[string], { n: number }>('SELECT COUNT(*) AS n FROM tasks WHERE id = ? AND archived_at_utc IS NULL')
+      .get(taskId);
+    return (row?.n ?? 0) > 0;
+  }
+
   /** A row as a DTO; a NULL priority or description is left off rather than carried as null. */
   private static toDto(
     row: Omit<TaskDTO, 'priorityRank' | 'description'> & { priorityRank: number | null; description: string | null }

@@ -23,6 +23,7 @@ import type {
   PriorityRule,
   UserMode,
   ScheduleSettingsDTO,
+  ResumePromptDTO,
   UnityProjectInjectionResult,
   WorklogDTO,
   UnitySettingsDTO,
@@ -124,6 +125,11 @@ export interface IElectronAPI {
   updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => Promise<boolean>;
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes?: number) => Promise<boolean>;
   onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
+  /** After lunch: the task stopped for it is no longer the user's. Null when nothing is asked. */
+  getResumePrompt: () => Promise<ResumePromptDTO | null>;
+  /** Resumes the task, or leaves it. False when the question had already been answered. */
+  answerResumePrompt: (resume: boolean) => Promise<boolean>;
+  onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => () => void;
 
   // Unity Telemetry & Audio Settings
   getUnitySettings: () => Promise<UnitySettingsDTO>;

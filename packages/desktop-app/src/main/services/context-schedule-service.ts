@@ -4,9 +4,29 @@ import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { ScheduleSettingsDTO, ArgumentNullException } from '../../shared/dtos';
+import { ScheduleSettingsDTO, ArgumentNullException, ActiveSessionDTO, ResumePromptDTO } from '../../shared/dtos';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
+import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+
+/** The session lunch stopped, to start again when it ends, and the day it was stopped. */
+interface LunchResume {
+  taskId: string;
+  isAdHoc: boolean;
+  customTitle?: string;
+  projectId: string;
+  taskKey?: string;
+  dateKey: string;
+}
+
+function isLunchResume(value: unknown): value is LunchResume {
+  const v = value as Partial<LunchResume> | null;
+  return (
+    typeof v === 'object' && v !== null &&
+    typeof v.taskId === 'string' && typeof v.projectId === 'string' &&
+    typeof v.isAdHoc === 'boolean' && typeof v.dateKey === 'string'
+  );
+}
 
 /**
  * Service that automatically monitors Windows session locks/sleep events and lunch schedules,
@@ -14,6 +34,13 @@ import { localDateKey } from '../../shared/local-date';
  */
 export class ContextScheduleService {
   private static readonly CHECK_INTERVAL_MS = 30000; // 30 seconds
+  /**
+   * The session lunch stopped. In the database rather than in memory: kept in
+   * a field, a restart during lunch forgot it, and the task never came back.
+   */
+  public static readonly LUNCH_RESUME_KEY = 'lunch_resume';
+  /** The day the user chose to work through lunch: it does not start again that day. */
+  public static readonly LUNCH_SKIPPED_KEY = 'lunch_skipped_date';
 
   private readonly _priorityEngine: PriorityPreemptionEngine;
   private readonly _settingsRepo: SettingsRepository;
@@ -26,8 +53,10 @@ export class ContextScheduleService {
   private _standupSnoozeUntilTimestamp: number | null = null;
   private _eodSnoozeUntilTimestamp: number | null = null;
   private _isInitialCheck = true;
-  private _autoStoppedTaskDataForLunch: { taskId: string, isAdHoc: boolean, customTitle?: string, projectId: string, taskKey?: string } | null = null;
+  /** The lunch resume being asked about: its task is no longer the user's. */
+  private _resumePrompt: LunchResume | null = null;
   private _timer?: NodeJS.Timeout;
+  private readonly _unsubscribeEngine: () => void;
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,
@@ -47,6 +76,7 @@ export class ContextScheduleService {
     this._renderer = renderer;
     this._getWindow = getWindow;
 
+    this._unsubscribeEngine = engine.subscribe(session => this.onSessionChanged(session));
     this.registerPowerMonitorListeners();
     this.startScheduleTimer();
   }
@@ -97,26 +127,27 @@ export class ContextScheduleService {
       }
 
       // 2. Evaluate Lunch Schedule
-      const lunchStartStr = settings.lunchStartTime || settings.lunchStart || '12:30';
-      const lunchEndStr = settings.lunchEndTime || settings.lunchEnd || '13:30';
-      const [startH, startM] = lunchStartStr.split(':').map(Number);
-      const [endH, endM] = lunchEndStr.split(':').map(Number);
-
-      const lunchStartMins = startH * 60 + startM;
-      const lunchEndMins = endH * 60 + endM;
-
-      const isLunchTime = currentMinutes >= lunchStartMins && currentMinutes < lunchEndMins;
+      const lunch = ContextScheduleService.lunchWindow(settings);
+      const isLunchTime = currentMinutes >= lunch.startMins && currentMinutes < lunch.endMins;
       const currentMode = this._priorityEngine.getUserMode();
+      // The user started work during lunch: entering it again would stop that
+      // session, 30 seconds after they started it.
+      const workingThroughLunch =
+        this._settingsRepo.getSetting<string | null>(ContextScheduleService.LUNCH_SKIPPED_KEY, null) === todayDateString;
 
       // Isolated from the End-of-Day evaluation below. These are the only calls
       // here that reach the renderer before it, and `requestRender` rethrows a
       // failed render -- so a lunch screen that could not be drawn used to take
       // the End-of-Day prompt down with it, on this tick and every tick after.
       try {
-        if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY') {
+        if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
           this.enterLunchMode();
         } else if (!isLunchTime && currentMode === 'LUNCH') {
           this.exitLunchMode();
+        } else if (!isLunchTime && currentMode === 'WORK' && currentMinutes >= lunch.endMins) {
+          // Lunch ended while nothing was here to end it: the app was closed,
+          // or Windows was locked -- Away, which lunch never leaves.
+          this.resumeAfterLunch();
         }
       } catch (err) {
         console.error('[ContextScheduleService] Lunch mode transition failed:', err);
@@ -225,16 +256,22 @@ export class ContextScheduleService {
   /// pause gap in it. The task itself is reused, so the split does not create a
   /// duplicate ad-hoc task.
   /// </summary>
+  ///
+  /// With nothing running the resume already stored is left alone: that is a
+  /// restart during lunch, or Away ending in the middle of it.
+  /// </summary>
   public enterLunchMode(): void {
     const session = this._engine.getCurrentSession();
     if (session && session.status === 'TRACKING') {
-      this._autoStoppedTaskDataForLunch = {
+      const resume: LunchResume = {
         taskId: session.taskId,
         isAdHoc: session.isAdHoc,
         customTitle: session.taskTitle,
         projectId: session.projectId,
-        taskKey: session.taskKey
+        taskKey: session.taskKey,
+        dateKey: localDateKey(new Date())
       };
+      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, resume);
       this._engine.stopSession('Auto-completed for Lunch Break split', false);
     }
 
@@ -244,20 +281,36 @@ export class ContextScheduleService {
 
   /// <summary>
   /// Exits LUNCH mode and resumes work mode.
+  ///
+  /// WORK first, then the restart: the session listener tells the user's own
+  /// start during lunch from this one by the mode it happens in.
   /// </summary>
   public exitLunchMode(): void {
     this._priorityEngine.setUserMode('WORK');
     this._renderer.setContextMode('WORK');
+    this.resumeAfterLunch();
+  }
 
-    if (this._autoStoppedTaskDataForLunch) {
-      const data = this._autoStoppedTaskDataForLunch;
-      this._autoStoppedTaskDataForLunch = null;
-      
-      const currentSession = this._engine.getCurrentSession();
-      if (!currentSession) {
+  /// <summary>
+  /// The question being asked after lunch, for a window opened after it was.
+  /// </summary>
+  public getResumePrompt(): ResumePromptDTO | null {
+    return this._resumePrompt ? ContextScheduleService.toPromptDto(this._resumePrompt) : null;
+  }
+
+  /// <summary>
+  /// Answers "resume it anyway?", from the window or the bar. False when
+  /// nothing is being asked -- the other one answered first.
+  /// </summary>
+  public answerResumePrompt(resume: boolean): boolean {
+    const data = this._resumePrompt;
+    if (!data) return false;
+    this.closeResumePrompt(() => {
+      if (resume && !this._engine.getCurrentSession()) {
         this._engine.startTask(data.taskId, data.isAdHoc, data.customTitle, data.projectId, data.taskKey);
       }
-    }
+    });
+    return true;
   }
 
   /// <summary>
@@ -280,10 +333,111 @@ export class ContextScheduleService {
   /// Disposes background timers and unregisters powerMonitor listeners.
   /// </summary>
   public dispose(): void {
+    this._unsubscribeEngine();
     if (this._timer) {
       clearInterval(this._timer);
       this._timer = undefined;
     }
+  }
+
+  /**
+   * Restarts the session lunch stopped -- once, and only if it is still
+   * wanted. Anything open now is the user's choice and wins; an entry from
+   * another day is dropped; and a task that left the user's lists over the
+   * break is asked about rather than restarted.
+   */
+  private resumeAfterLunch(): void {
+    if (this._resumePrompt) return;
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.LUNCH_RESUME_KEY, null);
+    if (stored === null) return;
+    if (!isLunchResume(stored) || stored.dateKey !== localDateKey(new Date()) || this._engine.getCurrentSession()) {
+      this.forgetLunchResume();
+      return;
+    }
+    if (!stored.isAdHoc && !this._engine.isTaskListed(stored.taskId)) {
+      // Kept until answered, so a restart asks again rather than forgetting.
+      this._resumePrompt = stored;
+      this._renderer.renderResumePrompt();
+      this.sendResumePrompt(ContextScheduleService.toPromptDto(stored));
+      return;
+    }
+    this.forgetLunchResume();
+    this._engine.startTask(stored.taskId, stored.isAdHoc, stored.customTitle, stored.projectId, stored.taskKey);
+  }
+
+  /**
+   * A session started or resumed. During lunch that is the user working
+   * through it, from the window, the mini timer or the bar: the lunch screen
+   * goes, nothing restarts when lunch ends, and lunch does not start again
+   * today. It used to stay LUNCH -- the sandwich over the running session --
+   * and the task lunch had stopped came back at the end, over the user's.
+   */
+  private onSessionChanged(session: ActiveSessionDTO | null): void {
+    if (session?.status !== 'TRACKING') return;
+    if (this._resumePrompt) {
+      // Something else started while the question was up: it is moot.
+      this.closeResumePrompt();
+      return;
+    }
+    if (!this.isDuringLunch()) return;
+    this.forgetLunchResume();
+    this._settingsRepo.setSetting(ContextScheduleService.LUNCH_SKIPPED_KEY, localDateKey(new Date()));
+    if (this._priorityEngine.getUserMode() === 'LUNCH') {
+      this._priorityEngine.setUserMode('WORK');
+      this._renderer.setContextMode('WORK');
+    }
+  }
+
+  /**
+   * LUNCH, or the lunch hours while Away ended and the next check has not yet
+   * entered LUNCH: a session started then would be stopped by it.
+   */
+  private isDuringLunch(): boolean {
+    const mode = this._priorityEngine.getUserMode();
+    if (mode === 'LUNCH') return true;
+    if (mode !== 'WORK') return false;
+    const settings = normalizeScheduleSettings(
+      this._settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {})
+    );
+    const lunch = ContextScheduleService.lunchWindow(settings);
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    return minutes >= lunch.startMins && minutes < lunch.endMins;
+  }
+
+  /** Ends the question: the stored resume, the bar's lock and the window's dialog, around `between`. */
+  private closeResumePrompt(between?: () => void): void {
+    this._resumePrompt = null;
+    this.forgetLunchResume();
+    // The session starts under the prompt's lock, and its release draws it.
+    between?.();
+    this._priorityEngine.releaseActiveLock(RESUME_PROMPT_EVENT);
+    this.sendResumePrompt(null);
+  }
+
+  private forgetLunchResume(): void {
+    this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, null);
+  }
+
+  /** Brings the window up to ask, as the ceremonies do; null closes the dialog. */
+  private sendResumePrompt(prompt: ResumePromptDTO | null): void {
+    const win = this._getWindow?.();
+    if (!win || win.isDestroyed()) return;
+    if (prompt) {
+      if (typeof win.isMinimized === 'function' && win.isMinimized()) win.restore();
+      if (typeof win.show === 'function') win.show();
+    }
+    win.webContents.send(IPCChannel.ON_RESUME_PROMPT, prompt);
+  }
+
+  private static toPromptDto(data: LunchResume): ResumePromptDTO {
+    return { taskKey: data.taskKey || data.taskId, taskTitle: data.customTitle ?? '' };
+  }
+
+  private static lunchWindow(settings: ScheduleSettingsDTO): { startMins: number; endMins: number } {
+    const [startH, startM] = (settings.lunchStartTime || settings.lunchStart || '12:30').split(':').map(Number);
+    const [endH, endM] = (settings.lunchEndTime || settings.lunchEnd || '13:30').split(':').map(Number);
+    return { startMins: startH * 60 + startM, endMins: endH * 60 + endM };
   }
 
   private registerPowerMonitorListeners(): void {

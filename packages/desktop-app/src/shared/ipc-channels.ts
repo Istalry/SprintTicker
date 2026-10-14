@@ -66,6 +66,9 @@ export enum IPCChannel {
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
   UPDATE_CEREMONY_PROMPT = 'schedule:update-ceremony-prompt',
+  GET_RESUME_PROMPT = 'schedule:get-resume-prompt',
+  ANSWER_RESUME_PROMPT = 'schedule:answer-resume-prompt',
+  ON_RESUME_PROMPT = 'schedule:on-resume-prompt',
 
   // Unity Injector & Gitignore
   SETUP_GITIGNORE = 'unity-injector:setup-gitignore',

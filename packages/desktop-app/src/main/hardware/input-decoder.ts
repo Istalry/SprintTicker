@@ -6,6 +6,7 @@ import { orderTasksForSelection } from '../../shared/task-order';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
 import { filterProjectsWithTasks, ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
+import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
@@ -38,7 +39,7 @@ export class InputDecoder {
    * happened to overwrite it.
    */
   private releaseSelectionLock(): void {
-    this._priorityEngine?.releaseActiveLock('menuPriority');
+    this._priorityEngine?.releaseActiveLock(BAR_MENU_EVENT);
   }
   private _selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
   private _projectsList: { id: string, name: string }[] = [];
@@ -87,6 +88,17 @@ export class InputDecoder {
         this.handleHardwareInput(event);
       } catch (err) {
         console.error('[InputDecoder] Unhandled error while processing hardware input:', err);
+      }
+    });
+
+    // A task started elsewhere -- the window, the mini timer -- while the
+    // picker is open on the bar: the picker is moot. Left open, it held the
+    // display over the new session until someone pressed BACK, and a click on
+    // the bar then switched tasks from a list nobody meant to use.
+    this._engine.subscribe(session => {
+      if (session && this._isSelectingTask) {
+        this._isSelectingTask = false;
+        this.releaseSelectionLock();
       }
     });
   }
@@ -232,6 +244,23 @@ export class InputDecoder {
       }
     }
 
+    // 3. After lunch: resume a task that is no longer the user's? The answer
+    // goes to ContextScheduleService through the action handlers, which owns
+    // the question and its lock.
+    if (activeLock === RESUME_PROMPT_EVENT) {
+      const isYes =
+        normalizedKey === 'start' || normalizedKey === 'ok' || normalizedKey === 'click' || normalizedKey === 'busy';
+      if (isYes && (event.type === 'press' || !event.type)) {
+        this.notifyActionHandlers('CONFIRM_RESUME_PROMPT', normalizedKey);
+        return 'CONFIRM_RESUME_PROMPT';
+      }
+      if (normalizedKey === 'back' || normalizedKey === 'cancel' || normalizedKey === 'back_hold') {
+        this.notifyActionHandlers('DISMISS_RESUME_PROMPT', normalizedKey);
+        return 'DISMISS_RESUME_PROMPT';
+      }
+      return 'AWAIT_RESUME_PROMPT';
+    }
+
     if (this._isSelectingTask && this._renderer) {
       if (normalizedKey === 'back') {
         this._isSelectingTask = false;
@@ -275,10 +304,12 @@ export class InputDecoder {
         if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
           const task = this._tasksList[this._selectedTaskIndex];
           let started: ActiveSessionDTO | null = null;
+          // Before the start, so the session listener above does not let go
+          // of the display ahead of GO!.
+          this._isSelectingTask = false;
           if (task && task.id !== NO_TASKS_ID) {
              started = this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
           }
-          this._isSelectingTask = false;
           // GO! before the menu lets go of the display: releasing it redraws
           // the session, and the scene is what should be drawn. Only for a
           // real start -- "No Tasks" starts nothing, and saying GO! would lie.

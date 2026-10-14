@@ -11,6 +11,8 @@ import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { ONLY_PROJECTS_WITH_TASKS_KEY } from '../src/shared/project-filter';
 import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
+import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
+import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 
 describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -1171,6 +1173,98 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
    * screen, or when the press means "take me to the app" rather than an
    * action on the bar.
    */
+  describe('the bar during lunch', () => {
+    // START with nothing running opens the picker. Its lock had no rule, so it
+    // took the default 50 and was queued under Lunch's 95: a picker nobody
+    // could see, which the wheel then moved through blind.
+    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
+    let priority: PriorityPreemptionEngine;
+
+    beforeEach(() => {
+      priority = new PriorityPreemptionEngine(new SettingsRepository(dbConn));
+      renderer = new DisplayRenderer(driver, priority);
+      priority.setRenderer(renderer);
+      decoder.setRenderer(renderer);
+      decoder.setPriorityEngine(priority);
+      priority.setUserMode('LUNCH');
+      renderer.setContextMode('LUNCH');
+    });
+
+    afterEach(() => {
+      renderer.dispose();
+    });
+
+    it('HandleHardwareInput_StartDuringLunch_ThePickerTakesTheDisplay', () => {
+      expect(priority.getActiveLockEventName()).toBe('lunchModePriority');
+      const picker = vi.spyOn(renderer, 'renderTaskSelection');
+
+      press('start');
+
+      expect(priority.getActiveLockEventName()).toBe(BAR_MENU_EVENT);
+      expect(picker).toHaveReturnedWith(expect.objectContaining({ ledColorHex: '#3B82F6FF' }));
+    });
+
+    it('StartTask_ElsewhereWhileThePickerIsOpen_ThePickerLetsGo', () => {
+      // Started from the window: the picker held the display over the new
+      // session until BACK, and a click then switched tasks from it.
+      press('start');
+
+      engine.startTask('T-9', false, 'From the window');
+
+      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
+      expect(press('ok')).toBe('TRIGGER_TASK_SELECTOR_MODAL');
+      expect(engine.getCurrentSession()?.taskId).toBe('T-9');
+    });
+
+    it('HandleHardwareInput_PickerClosedDuringLunch_LunchComesBack', () => {
+      press('start');
+
+      press('back');
+
+      expect(priority.getActiveLockEventName()).toBe('lunchModePriority');
+    });
+  });
+
+  describe('resuming after lunch a task that is no longer the user\'s', () => {
+    // ContextScheduleService owns the question; the decoder only hands it the
+    // answer, through the action handlers the IPC registry routes.
+    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
+    let heard: string[];
+
+    beforeEach(() => {
+      heard = [];
+      decoder.registerActionHandler(action => heard.push(action));
+      decoder.setPriorityEngine({
+        getActiveLockEventName: () => RESUME_PROMPT_EVENT,
+        releaseActiveLock: () => undefined,
+        dismissNotification: () => false
+      } as never);
+    });
+
+    it.each(['ok', 'start'])('HandleHardwareInput_%sOnTheQuestion_AnswersYes', key => {
+      const picker = vi.spyOn(renderer, 'renderTaskSelection');
+
+      expect(press(key)).toBe('CONFIRM_RESUME_PROMPT');
+
+      expect(heard).toEqual(['CONFIRM_RESUME_PROMPT']);
+      expect(picker).not.toHaveBeenCalled();
+    });
+
+    it('HandleHardwareInput_BackOnTheQuestion_AnswersNo', () => {
+      expect(press('back')).toBe('DISMISS_RESUME_PROMPT');
+      expect(heard).toEqual(['DISMISS_RESUME_PROMPT']);
+    });
+
+    it('HandleHardwareInput_WheelTurnedOnTheQuestion_AnswersNothing', () => {
+      // Turning the wheel is not an answer, and must not reach the session.
+      engine.startTask('T-9', false, 'Running');
+
+      expect(press('rotate_left')).toBe('AWAIT_RESUME_PROMPT');
+      expect(heard).toEqual([]);
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+  });
+
   describe('presses that defer to something else', () => {
     const at = () => new Date().toISOString();
     let dismissed: boolean[];

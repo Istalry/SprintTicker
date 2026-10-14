@@ -4,6 +4,7 @@ import path from 'path';
 import { loadAnimationSequence } from '../src/main/hardware/animation-sequence';
 import { FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
 import { ANIMATIONS_DIR, Desk, EventName, advance, expectSettledScreen, realTurns } from './support/desk';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 
 // As in display-stress.test.ts: every `.anim` read once, then from memory, so
 // a file read never lands at some arbitrary point of simulated time.
@@ -199,6 +200,93 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expect(lock()).toBe('unityPlayModePriority');
       expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
       expect(icon()).toBe('icon_playmode_16x16.anim');
+    });
+  });
+
+  /**
+   * Working through lunch. A session started or resumed during it used to
+   * leave the sandwich up over the running session, and the bar's picker was
+   * queued under Lunch's lock: START opened a picker nobody could see.
+   */
+  describe('lunch, and the user working through it', () => {
+    const scene = (): boolean => desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE);
+
+    it('Picker_DuringLunch_DrawsOverTheSandwich_BackBringsItBack', async () => {
+      await play('lunchStart', 2000);
+      expect(scene()).toBe(true);
+
+      await play('openPicker', 1000);
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expect(scene()).toBe(false);
+      expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+
+      await play('closePicker', SETTLE_MS);
+      expect(lock()).toBe('lunchModePriority');
+      expectSettledScreen(desk);
+    });
+
+    it('TaskPickedOnTheBar_DuringLunch_TheSessionReplacesTheSandwich', async () => {
+      await play('lunchStart', 2000, 'openPicker', 1000, 'startTaskFromBar', SETTLE_MS);
+
+      expect(desk.mode).toBe('WORK');
+      expect(scene()).toBe(false);
+      expectSettledScreen(desk);
+    });
+
+    it('TaskStartedInTheWindow_WhileThePickerIsOpen_TheSessionShows', async () => {
+      // Found by a stress seed: the picker kept the display, the session
+      // waiting under it until someone pressed BACK on the bar.
+      await play('openPicker', 1000, 'startTask', SETTLE_MS);
+
+      expect(desk.isPicking).toBe(false);
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('PickerOpenedAndClosedUnderAway_IsNotReplayedWhenAwayEnds', async () => {
+      // Found by a stress seed: refused under Away, the picker was queued, and
+      // replayed when Away ended -- after the user had closed it -- holding
+      // the display for a picker the bar had already left.
+      await play('awayStart', 1000, 'openPicker', 500, 'closePicker', 500, 'awayEnd', SETTLE_MS);
+
+      expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('PausedSessionResumed_DuringLunch_TheSessionReplacesTheSandwich', async () => {
+      // Paused before lunch, so lunch had nothing to stop.
+      await play('startTask', 500, 'pause', 500, 'lunchStart', 2000, 'resume', SETTLE_MS);
+
+      expect(desk.mode).toBe('WORK');
+      expect(scene()).toBe(false);
+      expectSettledScreen(desk);
+    });
+
+    it('ResumeQuestionAnsweredYes_TheSessionTakesTheDisplay', async () => {
+      // As ContextScheduleService answers: the session starts under the
+      // question's lock, and the release draws it.
+      desk.renderer.renderResumePrompt();
+      await advance(1000);
+      expect(lock()).toBe(RESUME_PROMPT_EVENT);
+      expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+
+      await play('startTask');
+      desk.priority.releaseActiveLock(RESUME_PROMPT_EVENT);
+      await advance(SETTLE_MS);
+
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('ResumeQuestionAnsweredNo_BackOnTheIdleClock', async () => {
+      desk.renderer.renderResumePrompt();
+      await advance(1000);
+
+      desk.priority.releaseActiveLock(RESUME_PROMPT_EVENT);
+      await advance(SETTLE_MS);
+
+      expect(lock()).toBeNull();
+      expectSettledScreen(desk);
     });
   });
 

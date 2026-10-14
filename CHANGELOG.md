@@ -33,6 +33,19 @@
 
 ### Fixed
 
+- **Lunch never undoes what you do.** A task started or resumed during lunch
+  ran under the sandwich, and if you stopped it before lunch ended, the task
+  lunch had stopped came back anyway. Starting or resuming a task during
+  lunch -- from the window, the mini timer or the bar -- now ends Lunch for
+  the day, and nothing restarts at its end. The task lunch stops is kept in
+  the database, so closing the app over lunch, or leaving Windows locked past
+  its end, no longer loses it. And a task reassigned, closed or moved over the
+  break is no longer restarted without asking: the window and the bar ask
+  first.
+- **The bar's task picker shows during lunch.** It was queued under Lunch, so
+  START opened a picker nobody could see. It also closes when a task is
+  started from the window, and no longer comes back after Away when it was
+  opened and closed under it.
 - **A task reassigned while you track it stays.** The sync retired it
   mid-session -- deleted outright when no time had been logged on it yet --
   so it vanished from the lists and finishing it as done did nothing. It now

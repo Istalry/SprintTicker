@@ -235,8 +235,10 @@ Every claim on the display carries a score, and the highest score holds it:
 | Claim | Score |
 | :--- | ---: |
 | 🧳 Away mode | 100 |
+| 🎛️ Bar task picker | 97 |
 | 🥪 Lunch mode | 95 |
 | 🌙 End-of-day wrap-up | 80 |
+| 🥪 Resume after lunch question | 76 |
 | 🗣️ Standup prompt | 75 |
 | 🔔 Notification — High Priority | 70 |
 | 💬 Notification — Default | 65 |
@@ -279,7 +281,9 @@ discovers installed Unity projects and manages plugin injection.
 
 Configurable working hours, lunch and away detection, a standup prompt with an
 answer-collection modal, and an end-of-day wrap-up that can be confirmed from
-the hardware **START** button or dismissed with **BACK**.
+the hardware **START** button or dismissed with **BACK**. Lunch stops the
+running task and starts it again afterwards, across a restart of the app too;
+start or resume a task during lunch and Lunch ends for the day instead.
 
 <p align="center">
   <img src="docs/images/app-ceremonies.png" width="70%" alt="Ceremonies panel: stand-up time, lunch hours, end-of-day wrap-up">
@@ -453,7 +457,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1820 tests across 94 files for the app -- the main and shared
+`pnpm test` runs 1867 tests across 96 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

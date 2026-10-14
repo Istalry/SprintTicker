@@ -26,12 +26,14 @@ describe('Standup & Ceremony Snooze Unit Tests', () => {
         lunchStartTime: '12:30',
         lunchEndTime: '13:30',
         eodWrapUpTime: '18:00'
-      })
+      }),
+      setSetting: vi.fn()
     };
     mockEngine = {
       getCurrentSession: vi.fn().mockReturnValue(null),
       pauseSession: vi.fn(),
-      resumeSession: vi.fn()
+      resumeSession: vi.fn(),
+      subscribe: vi.fn().mockReturnValue(() => undefined)
     };
     mockRenderer = {
       renderLunchMode: vi.fn(),

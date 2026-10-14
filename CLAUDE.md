@@ -592,6 +592,17 @@ changing it:
 - **A one-shot scene ends on the holder's screen**, through
   `grantedScreens`, not on the session: DONE! during Play Mode used to end
   on the idle clock with Play Mode still holding the lock.
+- **A screen that redraws on every press is never queued.** The bar's
+  picker (`menuPriority`) had no rule, sat at the default 50 under Lunch, and
+  START during lunch opened it invisibly. It has a rule now, above Lunch, and
+  passes `queueOnPreempt: false`: a copy queued under Away replayed after the
+  user had closed it, holding the display for nothing.
+- **Lunch never overrides the user.** `ContextScheduleService` listens to the
+  engine: a session going TRACKING during lunch ends Lunch for the day
+  (`lunch_skipped_date`) and drops the stored restart (`lunch_resume`). Its
+  own restart runs after the switch to WORK, which is how it is told apart.
+  Anything that restarts a task on the user's behalf checks
+  `TaskRepository.isListed` first and asks when it is not.
 
 The app posts toasts of its own (`ProviderEventService`), and two things about
 them are traps:

@@ -187,6 +187,16 @@ export interface ScheduleSettingsDTO {
   eodShutdownByDefault?: boolean; // Alias for UI compatibility
 }
 
+/**
+ * The question asked after lunch when the task stopped for it is no longer
+ * the user's: reassigned, closed or moved over the break. Null when nothing
+ * is being asked.
+ */
+export interface ResumePromptDTO {
+  taskKey: string;
+  taskTitle: string;
+}
+
 export type UserMode = 'WORK' | 'LUNCH' | 'AWAY';
 export type PriorityAction = 'DISPLAY' | 'QUEUE' | 'SUPPRESS';
 

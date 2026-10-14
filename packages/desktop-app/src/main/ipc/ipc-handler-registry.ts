@@ -484,6 +484,15 @@ export class IPCHandlerRegistry {
       return { success: true };
     });
 
+    ipcMain.handle(IPCChannel.GET_RESUME_PROMPT, async () => this.contextScheduleService.getResumePrompt());
+
+    ipcMain.handle(IPCChannel.ANSWER_RESUME_PROMPT, async (_event, resume: unknown) => {
+      if (typeof resume !== 'boolean') {
+        throw new ArgumentException(`The answer must be true or false, got ${String(resume)}.`, 'resume');
+      }
+      return this.contextScheduleService.answerResumePrompt(resume);
+    });
+
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
       const activeSession = this.engine.getCurrentSession();
       if (activeSession) {
@@ -1016,6 +1025,9 @@ export class IPCHandlerRegistry {
     // confirmation took one START, and ran the wrap-up -- shutdown included,
     // when ticked -- on a single press.
     this.inputDecoder.registerActionHandler((action: string, inputKey: string) => {
+      if (action === 'CONFIRM_RESUME_PROMPT' || action === 'DISMISS_RESUME_PROMPT') {
+        this.contextScheduleService.answerResumePrompt(action === 'CONFIRM_RESUME_PROMPT');
+      }
       this.broadcast(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
     });
   }

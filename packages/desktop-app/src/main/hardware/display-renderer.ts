@@ -18,7 +18,7 @@ import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequenc
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { measureText } from '../../shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
-import { ACTIVE_TRACKER_EVENT } from '../../shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 
 /** The paused screen's STOP/FINISH bars: row 1's capitals fit inside 7px. */
@@ -36,6 +36,12 @@ const PAUSED_MORE_GAP_PX = 2;
 const PAUSED_MORE_COLOR = '#6B7280';
 const PAUSED_CONFIRM_COLOR = '#EF4444';
 const PAUSED_CONFIRM_HINT_COLOR = '#E5E7EB';
+/**
+ * After lunch, about a task no longer the user's. "RESUME? OK=YES" is 56px of
+ * a 55px row; OK answers yes and BACK no, as on every question on the bar.
+ */
+export const RESUME_PROMPT_TEXT = { question: 'NOT YOURS', hint: 'RESUME IT?' } as const;
+const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
  * The paused menu, left to right: stop and keep the task open, finish it, or
@@ -970,6 +976,32 @@ export class DisplayRenderer {
   }
 
   /**
+   * Asks, after lunch, whether to resume the task stopped for it, which has
+   * since left the user's lists -- reassigned, closed or moved over the break.
+   * It is not restarted without asking. OK resumes it and BACK leaves it, in
+   * InputDecoder; the window asks the same question.
+   */
+  public renderResumePrompt(): DisplayPayload {
+    return this.requestRender(RESUME_PROMPT_EVENT, () => {
+      this.paintIconAndTwoRows(
+        getBitmapById('burger'),
+        RESUME_PROMPT_TEXT.question,
+        RESUME_PROMPT_TEXT.hint,
+        PAUSED_CONFIRM_COLOR,
+        PAUSED_CONFIRM_HINT_COLOR
+      );
+      this.ledMode = 'PULSE_ALERT';
+      const payload: DisplayPayload = {
+        frontElements: this.canvasToEmulatorElements(),
+        ledColorHex: RESUME_PROMPT_LED
+      };
+      void this.transmitFrame(RESUME_PROMPT_LED, payload.frontElements)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
+      return payload;
+    });
+  }
+
+  /**
    * Closes the day once the end-of-day wrap-up is done: SEE YOU!, a moon
    * rising and stars coming out, then the session as it then stands.
    *
@@ -1214,7 +1246,7 @@ export class DisplayRenderer {
       }
     }
 
-    return this.requestRender('menuPriority', () => {
+    return this.requestRender(BAR_MENU_EVENT, () => {
       const isProject = stage === 'PROJECT';
       const iconId: BitmapIconId = isProject ? 'folder' : TASK_STATUS_ICONS[status ?? 'todo'] ?? 'task';
       const label = isProject ? 'Project' : description || 'Task';
@@ -1237,7 +1269,10 @@ export class DisplayRenderer {
       void this.transmitFrame('#3B82F6FF', frontEls)
         .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
       return payload;
-    });
+      // Never queued: every press redraws it, so a queued copy is stale by the
+      // time it replays -- and one queued under Away replayed after the user
+      // had closed it, holding the display for a picker the bar had left.
+    }, { queueOnPreempt: false });
   }
 
   /**

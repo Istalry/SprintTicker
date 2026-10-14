@@ -881,6 +881,23 @@
       <td align="center">🌙 End of day</td>
       </tr>
       </tbody></table></div>
+      <p>🥪 <strong>Lunch stops the task you are tracking and starts it again when lunch
+      ends</strong>, so the time goes in as two worklogs either side of the break. The task
+      to restart is kept in the database: closing the app over lunch, or leaving
+      Windows locked until after it ends, does not lose it -- it starts again when
+      you are back. Lunch never undoes what you do:</p>
+      <ul>
+      <li><strong>Working through lunch.</strong> Start a task, resume a paused one or switch tasks
+      during lunch -- in the window, the mini timer or on the bar -- and Lunch ends
+      there and then. Nothing restarts when it would have ended, even if you stop
+      your task before that, and Lunch does not start again that day.</li>
+      <li><strong>The bar&#39;s picker works during lunch.</strong> START or a click with nothing
+      running opens it over the sandwich; BACK brings the sandwich back.</li>
+      <li><strong>A task that left your list over the break</strong> -- reassigned, closed or
+      moved -- is not restarted without asking. The window asks <strong>Resume after
+      lunch?</strong>, and the bar shows <strong>NOT YOURS / RESUME IT?</strong>: OK resumes it, BACK
+      leaves it. Starting another task answers no.</li>
+      </ul>
       <h4>🔔 Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p align="center">
@@ -936,12 +953,20 @@
       <td align="right">100</td>
       </tr>
       <tr>
+      <td align="left">🎛️ Bar task picker</td>
+      <td align="right">97</td>
+      </tr>
+      <tr>
       <td align="left">🥪 Lunch mode</td>
       <td align="right">95</td>
       </tr>
       <tr>
       <td align="left">🌙 End-of-day wrap-up</td>
       <td align="right">80</td>
+      </tr>
+      <tr>
+      <td align="left">🥪 Resume after lunch question</td>
+      <td align="right">76</td>
       </tr>
       <tr>
       <td align="left">🗣️ Stand-up prompt</td>
@@ -1600,6 +1625,11 @@
       <td align="right">100</td>
       </tr>
       <tr>
+      <td align="left">Bar task picker</td>
+      <td align="left"><code>menuPriority</code></td>
+      <td align="right">97</td>
+      </tr>
+      <tr>
       <td align="left">Lunch mode</td>
       <td align="left"><code>lunchModePriority</code></td>
       <td align="right">95</td>
@@ -1608,6 +1638,11 @@
       <td align="left">End-of-day wrap-up</td>
       <td align="left"><code>eodWrapUpPriority</code></td>
       <td align="right">80</td>
+      </tr>
+      <tr>
+      <td align="left">Resume after lunch question</td>
+      <td align="left"><code>resumePromptPriority</code></td>
+      <td align="right">76</td>
       </tr>
       <tr>
       <td align="left">Stand-up prompt</td>
@@ -1648,6 +1683,10 @@
       <p>Each rule also carries an action per user mode — <code>DISPLAY</code>, <code>SUPPRESS</code> or
       <code>QUEUE</code> — for <code>WORK</code>, <code>LUNCH</code> and <code>AWAY</code>. That is how notifications correctly
       do not interrupt a break: not a special case in the code, a row in the table.</p>
+      <p>The bar&#39;s picker had no row, so it took the default 50 and was queued under
+      Lunch: START during lunch opened a picker nobody could see. It has its own row
+      now, above Lunch, and is never queued -- every press redraws it, and a copy
+      queued under Away replayed after the user had closed it.</p>
       <h4>Render pipeline — <code>src/main/hardware/</code></h4>
       <pre><code>DisplayRenderer      decides what a screen looks like
             │
@@ -1801,11 +1840,34 @@
       the bar, and the paused menu: STOP, FINISH and DROP, of which row 1 shows the
       pair holding the choice (<code>pausedChoicesShown</code>). DROP asks <strong>DISCARD?</strong> first;
       while the question is up the click confirms, BACK refuses, and every other
-      key waits. Its project list goes through <code>filterProjectsWithTasks</code>
+      key waits. A session started anywhere else while the picker is open closes
+      it: it used to hold the display over the new session until BACK. After lunch,
+      under <code>resumePromptPriority</code>, OK and START answer yes and BACK no; the answer
+      goes to <code>ContextScheduleService</code> through the action handlers. Its project list goes through <code>filterProjectsWithTasks</code>
       (<code>src/shared/project-filter.ts</code>), the rule the window&#39;s two lists use, and
       reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
       inside an EventEmitter listener with no error handler terminates the main
       process, so without it a button press could take the whole app down.</p>
+      <h4><code>ContextScheduleService</code> — <code>src/main/services/</code></h4>
+      <p>Runs the day: the stand-up and end-of-day prompts, Lunch, and Away on lock or
+      suspend, from a check every 30 seconds.</p>
+      <p>Lunch stops a running session and restarts it when lunch ends, which files the
+      time as two worklogs either side of the break. The task to restart is the
+      <code>lunch_resume</code> setting, with the day it was stored: in a field, a restart
+      during lunch forgot it. It is restarted when lunch ends, or at the first check
+      in WORK after the end -- the app was closed, or Windows stayed locked, since
+      Away never leaves for Lunch&#39;s end -- and dropped if it is another day&#39;s or if
+      anything is open by then. A task no longer listed (<code>TaskRepository.isListed</code>)
+      is not restarted but asked about, in the window (<code>schedule:on-resume-prompt</code>)
+      and on the bar under <code>resumePromptPriority</code>; the entry is kept until answered,
+      so a restart asks again.</p>
+      <p>The service also listens to the engine. A session going TRACKING during lunch
+      is the user working through it: the stored resume is dropped,
+      <code>lunch_skipped_date</code> stops the next check entering Lunch again that day, and
+      the mode goes back to WORK. &quot;During lunch&quot; includes the lunch hours in WORK,
+      after Away ended and before the next check entered Lunch. <code>exitLunchMode</code>
+      switches to WORK before its own restart, which is how that restart is told
+      apart from the user&#39;s.</p>
       <h4><code>WindowsNotificationListenerService</code> — <code>src/main/services/</code></h4>
       <p>Polls the Windows Action Center database via a PowerShell child process, and
       mirrors notifications from apps you have allowed. App icons are resolved from
@@ -2009,7 +2071,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1820 tests across 94 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1867 tests across 96 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2228,6 +2290,10 @@
       <tr>
       <td align="left">Ceremonies</td>
       <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
+      </tr>
+      <tr>
+      <td align="left">Resume after lunch</td>
+      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle }</code>, and null once it is answered, from the window or the bar</td>
       </tr>
       <tr>
       <td align="left">Unity</td>

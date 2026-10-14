@@ -332,6 +332,23 @@ when the computer is busy.
 | <img src="../docs/images/bar-scene-meeting.webp" width="304" alt="MEETING: three people round a table on blue"> | <img src="../docs/images/bar-scene-eod.webp" width="304" alt="SEE YOU!: a moon rising on a dusk gradient"> |
 | 🗣️ Stand-up | 🌙 End of day |
 
+🥪 **Lunch stops the task you are tracking and starts it again when lunch
+ends**, so the time goes in as two worklogs either side of the break. The task
+to restart is kept in the database: closing the app over lunch, or leaving
+Windows locked until after it ends, does not lose it -- it starts again when
+you are back. Lunch never undoes what you do:
+
+- **Working through lunch.** Start a task, resume a paused one or switch tasks
+  during lunch -- in the window, the mini timer or on the bar -- and Lunch ends
+  there and then. Nothing restarts when it would have ended, even if you stop
+  your task before that, and Lunch does not start again that day.
+- **The bar's picker works during lunch.** START or a click with nothing
+  running opens it over the sandwich; BACK brings the sandwich back.
+- **A task that left your list over the break** -- reassigned, closed or
+  moved -- is not restarted without asking. The window asks **Resume after
+  lunch?**, and the bar shows **NOT YOURS / RESUME IT?**: OK resumes it, BACK
+  leaves it. Starting another task answers no.
+
 ### 🔔 Notifications
 
 Which applications may reach the bar. **Nothing is mirrored until you allow it.**
@@ -377,8 +394,10 @@ the highest holds the bar.
 | Claim | Default |
 | :--- | ---: |
 | 🧳 Away mode | 100 |
+| 🎛️ Bar task picker | 97 |
 | 🥪 Lunch mode | 95 |
 | 🌙 End-of-day wrap-up | 80 |
+| 🥪 Resume after lunch question | 76 |
 | 🗣️ Stand-up prompt | 75 |
 | 🔔 Notification — High Priority | 70 |
 | 💬 Notification — Default | 65 |

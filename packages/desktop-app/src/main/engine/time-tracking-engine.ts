@@ -213,6 +213,13 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /// <summary>
+  /// Whether a task is still in the user's lists -- see TaskRepository.isListed.
+  /// </summary>
+  public isTaskListed(taskId: string): boolean {
+    return this._taskRepo.isListed(taskId);
+  }
+
+  /// <summary>
   /// Starts tracking a task session.
   /// </summary>
   public startTask(

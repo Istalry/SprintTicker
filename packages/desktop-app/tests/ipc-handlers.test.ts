@@ -35,6 +35,7 @@ import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import type { PriorityRule, UpdateStatusDTO } from '../src/shared/dtos';
+import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 
 /**
  * The IPC handlers as the renderer sees them: a channel, a payload, an answer,
@@ -135,6 +136,42 @@ describe('IPC handlers', () => {
       expect(sentOn(IPCChannel.ON_HARDWARE_INPUT_EVENT)).toEqual([
         { inputKey: 'up', actionAssigned: 'NAVIGATE_QUEUE_PREV' }
       ]);
+    });
+
+    it.each([
+      ['ok', true],
+      ['back', false]
+    ])('HardwareAction_%sOnTheResumeQuestion_AnswersIt', (key, resume) => {
+      // The decoder only says which answer; the schedule service owns the question.
+      const answerResumePrompt = vi.fn().mockReturnValue(true);
+      build({ contextScheduleService: { answerResumePrompt } });
+      vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue(RESUME_PROMPT_EVENT);
+      decoder.setPriorityEngine(priorityEngine);
+
+      decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
+
+      expect(answerResumePrompt).toHaveBeenCalledWith(resume);
+    });
+  });
+
+  describe('the question after lunch', () => {
+    it('AnswerResumePrompt_ABoolean_ReachesTheScheduleService', async () => {
+      const answerResumePrompt = vi.fn().mockReturnValue(true);
+      const getResumePrompt = vi.fn().mockReturnValue({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2' });
+      build({ contextScheduleService: { answerResumePrompt, getResumePrompt } });
+
+      expect(await invoke(IPCChannel.GET_RESUME_PROMPT)).toEqual({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2' });
+      expect(await invoke(IPCChannel.ANSWER_RESUME_PROMPT, false)).toBe(true);
+      expect(answerResumePrompt).toHaveBeenCalledWith(false);
+    });
+
+    it('AnswerResumePrompt_NotABoolean_IsRefused', async () => {
+      // "false" as a string is truthy: taken loosely, it would resume the task.
+      const answerResumePrompt = vi.fn();
+      build({ contextScheduleService: { answerResumePrompt } });
+
+      await expect(invoke(IPCChannel.ANSWER_RESUME_PROMPT, 'false')).rejects.toThrow(/true or false/);
+      expect(answerResumePrompt).not.toHaveBeenCalled();
     });
   });
 

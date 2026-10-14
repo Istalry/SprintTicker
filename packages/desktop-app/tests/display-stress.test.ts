@@ -58,6 +58,7 @@ const WEIGHTS: Record<EventName, number> = {
   compileStartB: 3, compileEndB: 3, buildStartB: 1, buildEndB: 1, playEnterB: 1, playExitB: 1, exceptionB: 1,
   banner: 3, highBanner: 1,
   startTask: 2, startTaskFromBar: 1, pause: 2, resume: 2, tick: 6, stop: 1, finish: 1,
+  openPicker: 1, closePicker: 1,
   lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1,
   // The bar dropping out and coming back, as a Wi-Fi blip or a restart does.
   barDrop: 1, barBack: 2, barReboot: 1

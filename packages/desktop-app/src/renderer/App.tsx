@@ -30,6 +30,7 @@ import { StandupPromptModal } from './views/Standup/StandupPromptModal';
 import { ProjectTaskManagerView } from './views/Tasks/ProjectTaskManagerView';
 import { WorklogHistoryView } from './views/History/WorklogHistoryView';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
+import { ResumeAfterLunchPrompt } from './components/ResumeAfterLunchPrompt';
 import { HardwareDisplayEmulator } from './components/HardwareDisplayEmulator';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { FolderGit2, History } from 'lucide-react';
@@ -392,6 +393,8 @@ export const App: React.FC = () => {
           await complete('Finalized during End-of-Day Wrap-Up');
         }}
       />
+
+      <ResumeAfterLunchPrompt />
 
       {/* Onboarding Setup Wizard Modal */}
       <OnboardingWizardModal
