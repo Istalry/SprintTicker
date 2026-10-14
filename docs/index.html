@@ -679,8 +679,10 @@
       and turning it off lists them all. It is one setting: the task picker shows
       the same switch, and the bar&#39;s own picker follows it. The project you have
       selected stays listed even when it is empty, so one you have just created does
-      not vanish before its first task. If the switch would leave nothing to list
-      -- before the first sync -- every project is listed.</p>
+      not vanish before its first task. If no project has a task for you -- before
+      the first sync, or on a day nothing is assigned to you -- every project is
+      listed, and the switch says so: <em>none has a task: showing all</em>. Ad-hoc work
+      does not count for this, since an ad-hoc task stays in progress for good.</p>
       <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
       Task Providers refetches it.</p>
       <h4>📊 Work History</h4>
@@ -1954,7 +1956,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1748 tests across 92 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1757 tests across 92 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

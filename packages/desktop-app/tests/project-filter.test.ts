@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { filterProjectsWithTasks, firstProjectWithTasks } from '../src/shared/project-filter';
 import { ProjectDTO } from '../src/shared/dtos';
+import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
 
 const project = (id: string, openTaskCount?: number): ProjectDTO => ({ id, key: id, name: id, openTaskCount });
 
@@ -46,12 +47,60 @@ describe('filterProjectsWithTasks', () => {
 
     expect(result.visible).toEqual(empty);
     expect(result.hiddenCount).toBe(0);
+    expect(result.nothingAssigned).toBe(true);
+  });
+
+  it('FilterProjectsWithTasks_NothingAssignedButAProjectKept_StillListsEverything', () => {
+    // The selected project used to count as "something left", so the
+    // Projects tab showed that one project alone, with the rest hidden.
+    const empty = [project('A', 0), project('B', 0), project('C', 0)];
+
+    const result = filterProjectsWithTasks(empty, true, ['B']);
+
+    expect(result.visible).toEqual(empty);
+    expect(result.nothingAssigned).toBe(true);
+  });
+
+  it('FilterProjectsWithTasks_OnlyTheAdHocProjectHasTasks_ListsEverything', () => {
+    // An ad-hoc task stays in progress for good, so the ad-hoc project always
+    // has one; it used to be the whole list whenever nothing was assigned.
+    const list = [project(ADHOC_PROJECT_ID, 4), project('A', 0), project('B', 0)];
+
+    const result = filterProjectsWithTasks(list, true);
+
+    expect(result.visible).toEqual(list);
+    expect(result.nothingAssigned).toBe(true);
+  });
+
+  it('FilterProjectsWithTasks_AdHocAndAssignedWork_ListsBoth', () => {
+    const list = [project(ADHOC_PROJECT_ID, 4), project('A', 2), project('B', 0)];
+
+    const result = filterProjectsWithTasks(list, true);
+
+    expect(result.visible.map(p => p.id)).toEqual([ADHOC_PROJECT_ID, 'A']);
+    expect(result.hiddenCount).toBe(1);
+    expect(result.nothingAssigned).toBe(false);
+  });
+
+  it('FilterProjectsWithTasks_NoProjects_ListsNothingAndClaimsNothing', () => {
+    // "None has a task" beside an empty list would be about nothing.
+    const result = filterProjectsWithTasks([], true);
+
+    expect(result).toEqual({ visible: [], hiddenCount: 0, nothingAssigned: false });
+  });
+
+  it('FilterProjectsWithTasks_Off_NeverSaysNothingIsAssigned', () => {
+    expect(filterProjectsWithTasks([project('A', 0)], false).nothingAssigned).toBe(false);
   });
 });
 
 describe('firstProjectWithTasks', () => {
   it('FirstProjectWithTasks_SomeEmpty_SkipsToTheFirstWithAnOpenTask', () => {
     expect(firstProjectWithTasks([project('A', 0), project('B', 3)])).toBe('B');
+  });
+
+  it('FirstProjectWithTasks_AdHocFirst_OpensOnTheAssignedWork', () => {
+    expect(firstProjectWithTasks([project(ADHOC_PROJECT_ID, 4), project('A', 0), project('B', 1)])).toBe('B');
   });
 
   it('FirstProjectWithTasks_AllEmpty_FallsBackToTheFirst', () => {

@@ -45,7 +45,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   const [customTitle, setCustomTitle] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [onlyWithTasks, setOnlyWithTasks] = useOnlyProjectsWithTasks();
-  const { visible: listedProjects, hiddenCount } = filterProjectsWithTasks(activeProjects, onlyWithTasks);
+  const { visible: listedProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(activeProjects, onlyWithTasks);
 
   useEffect(() => {
     if (!window.electronAPI?.getProjects) return;
@@ -163,7 +163,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                 <p className="text-xs text-text-secondary">
                   Choose an active project to track time against:
                 </p>
-                <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} />
+                <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} nothingAssigned={nothingAssigned} />
               </div>
 
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">

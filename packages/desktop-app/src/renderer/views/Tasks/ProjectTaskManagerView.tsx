@@ -254,7 +254,7 @@ export const ProjectTaskManagerView: React.FC = () => {
   const activeProject = projects.find(p => p.id === selectedProjectId);
   // The selected project stays listed whatever it holds -- one just created
   // has no task yet -- and so does the running session's.
-  const { visible: listedProjects, hiddenCount } = filterProjectsWithTasks(
+  const { visible: listedProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(
     projects,
     onlyWithTasks,
     [selectedProjectId, activeSession?.projectId ?? ''].filter(Boolean)
@@ -301,7 +301,7 @@ export const ProjectTaskManagerView: React.FC = () => {
           <div className="flex items-center justify-between border-b border-border-dark pb-3">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Projects ({listedProjects.length})</h3>
           </div>
-          <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} />
+          <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} nothingAssigned={nothingAssigned} />
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
             {listedProjects.map(proj => (

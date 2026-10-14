@@ -1,6 +1,7 @@
 import { DatabaseConnection } from '../database-connection';
 import { retireTasks } from './task-repository';
 import { ProjectDTO } from '../../../shared/dtos';
+import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
 
 /**
  * Repository layer for managing projects in SQLite.
@@ -146,7 +147,7 @@ export class ProjectRepository {
       if (!db || !db.open) return;
 
       // Ensure ADHOC is never deleted
-      const safeProjectIds = [...activeProjectIds, 'ADHOC'];
+      const safeProjectIds = [...activeProjectIds, ADHOC_PROJECT_ID];
 
       // We need to dynamically build the query parameters
       const placeholders = safeProjectIds.map(() => '?').join(',');

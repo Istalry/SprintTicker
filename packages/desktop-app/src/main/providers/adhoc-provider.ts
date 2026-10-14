@@ -1,5 +1,6 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 
 /**
  * Local task provider adapter mapping custom ad-hoc entries to fallback ticket ID (MISC-1).
@@ -17,7 +18,7 @@ export class AdHocProvider implements ITaskProvider {
   }
 
   public async getProjects(): Promise<ProjectDTO[]> {
-    return [{ id: 'ADHOC', key: 'ADHOC', name: 'Custom Ad-Hoc / Misc Overhead' }];
+    return [{ id: ADHOC_PROJECT_ID, key: ADHOC_PROJECT_ID, name: 'Custom Ad-Hoc / Misc Overhead' }];
   }
 
   public async getTasks(projectId: string): Promise<TaskDTO[]> {

@@ -34,6 +34,14 @@ describe('TaskSelectionModal project filter', () => {
     expect(screen.getByText('(2 hidden)')).toBeTruthy();
   });
 
+  it('Open_NoProjectsAtAll_SaysSoAndClaimsNothingAboutTasks', async () => {
+    installElectronApi({ getProjects: vi.fn().mockResolvedValue([]) });
+    render(<TaskSelectionModal isOpen onClose={vi.fn()} projects={[]} onSelectTask={vi.fn()} />);
+
+    expect(await screen.findByText(/No active projects registered/)).toBeTruthy();
+    expect(screen.queryByText(/showing all/)).toBeNull();
+  });
+
   it('Untick_Switch_ListsEveryProjectAndStoresTheChoice', async () => {
     const bridge = installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
     render(modal());
@@ -115,6 +123,22 @@ describe('ProjectTaskManagerView project filter', () => {
     expect(list.getByText('Sprint')).toBeTruthy();
     expect(list.queryByText('Empty')).toBeNull();
     expect(list.getByText('(2 hidden)')).toBeTruthy();
+  });
+
+  it('Mount_NothingAssigned_ListsEveryProjectAndSaysWhy', async () => {
+    // The selected project used to count as "something left", so this showed
+    // the first project alone with "(2 hidden)" -- every other project gone.
+    const empty = PROJECTS.map(p => ({ ...p, openTaskCount: 0 }));
+    installElectronApi({ getProjects: vi.fn().mockResolvedValue(empty) });
+    render(<ProjectTaskManagerView />);
+
+    const list = await sidebar();
+
+    expect(list.getByText('Projects (3)')).toBeTruthy();
+    expect(list.getByText('Empty')).toBeTruthy();
+    expect(list.getByText('Finished')).toBeTruthy();
+    expect(list.getByText('(none has a task: showing all)')).toBeTruthy();
+    expect(list.queryByText(/hidden/)).toBeNull();
   });
 
   it('SelectedProject_SwitchTurnedOn_StaysListedWhileEmpty', async () => {

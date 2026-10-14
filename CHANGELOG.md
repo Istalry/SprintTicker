@@ -10,7 +10,9 @@
   default, and remembered -- hides every project with no open task, in the
   Projects & Tasks panel, the task picker and the bar's own picker alike, and
   says how many it hides. The project selected in the panel stays listed while
-  empty, and if the switch would leave nothing, everything is listed.
+  empty. When no project has a task for you -- before the first sync, or with
+  nothing assigned -- everything is listed and the switch says so; ad-hoc
+  work, which stays in progress for good, does not count.
 
 ### Changed
 

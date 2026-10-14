@@ -174,8 +174,10 @@ has a task to do or in progress. The switch says how many projects it hides,
 and turning it off lists them all. It is one setting: the task picker shows
 the same switch, and the bar's own picker follows it. The project you have
 selected stays listed even when it is empty, so one you have just created does
-not vanish before its first task. If the switch would leave nothing to list
--- before the first sync -- every project is listed.
+not vanish before its first task. If no project has a task for you -- before
+the first sync, or on a day nothing is assigned to you -- every project is
+listed, and the switch says so: *none has a task: showing all*. Ad-hoc work
+does not count for this, since an ad-hoc task stays in progress for good.
 
 The cache is what the app and the bar read. If it looks stale, **Sync Now** in
 Task Providers refetches it.

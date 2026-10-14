@@ -3,6 +3,7 @@ import { DatabaseConnection } from '../database-connection';
 import { createId, IdPrefix } from '../id-generator';
 import { TOMBSTONE_PROJECT_ID } from '../migrations';
 import { TaskDTO } from '../../../shared/dtos';
+import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
 
 /** True for a `tasks` row that some worklog references. */
 const HAS_WORKLOGS = 'EXISTS (SELECT 1 FROM worklogs w WHERE w.task_id = tasks.id)';
@@ -178,7 +179,7 @@ export class TaskRepository {
     const taskId = createId(IdPrefix.ADHOC_TASK);
     const adHocTask: TaskDTO = {
       id: taskId,
-      projectId: 'ADHOC',
+      projectId: ADHOC_PROJECT_ID,
       key: fallbackKey,
       title: customTitle,
       status: 'in_progress'

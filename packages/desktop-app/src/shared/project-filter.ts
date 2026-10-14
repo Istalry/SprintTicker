@@ -1,4 +1,5 @@
 import { ProjectDTO } from './dtos';
+import { ADHOC_PROJECT_ID } from './adhoc-project';
 
 /**
  * "Only my projects": which projects the lists offer.
@@ -28,37 +29,53 @@ export interface ProjectFilterResult<T> {
   visible: T[];
   /** How many the switch hid, so a list can say so rather than look short. */
   hiddenCount: number;
+  /**
+   * The switch is on but found nothing assigned, so everything is listed.
+   * Said beside the switch: a ticked box that changes nothing reads as broken.
+   */
+  nothingAssigned: boolean;
+}
+
+/** An unknown count counts as open: hiding on a guess would lose a project. */
+function hasOpenTask(project: ProjectDTO): boolean {
+  return project.openTaskCount === undefined || project.openTaskCount > 0;
 }
 
 /**
  * The projects to list.
  *
  * - A project whose open-task count is unknown is kept: a provider's own
- *   project list carries no count, and hiding on a guess would lose one.
+ *   project list carries no count.
  * - `keepIds` stay whatever they hold: the project selected in the Projects
  *   tab, so one just created does not vanish before it has a task, and the
  *   running session's.
- * - If the switch would leave nothing, everything is listed. That is a first
- *   launch, or a provider that has not synced yet, and an empty picker there
- *   reads as data lost.
+ * - If no project the provider gave has an open task, everything is listed.
+ *   That is a first launch, a provider not synced yet, or nothing assigned to
+ *   the user right now, and an empty or one-project picker there reads as
+ *   data lost. Decided before `keepIds` and without the ad-hoc project: the
+ *   kept project used to count as "something left", so the Projects tab
+ *   showed that one project alone; and an ad-hoc task stays in progress for
+ *   good -- finishing one never marks it done -- so the ad-hoc project
+ *   always has one, and was the whole list whenever nothing was assigned.
  */
 export function filterProjectsWithTasks<T extends ProjectDTO>(
   projects: readonly T[],
   enabled: boolean,
   keepIds: readonly string[] = []
 ): ProjectFilterResult<T> {
-  if (!enabled) return { visible: [...projects], hiddenCount: 0 };
-  const visible = projects.filter(
-    p => p.openTaskCount === undefined || p.openTaskCount > 0 || keepIds.includes(p.id)
-  );
-  if (visible.length === 0) return { visible: [...projects], hiddenCount: 0 };
-  return { visible, hiddenCount: projects.length - visible.length };
+  if (!enabled) return { visible: [...projects], hiddenCount: 0, nothingAssigned: false };
+  if (!projects.some(p => p.id !== ADHOC_PROJECT_ID && hasOpenTask(p))) {
+    return { visible: [...projects], hiddenCount: 0, nothingAssigned: projects.length > 0 };
+  }
+  const visible = projects.filter(p => hasOpenTask(p) || keepIds.includes(p.id));
+  return { visible, hiddenCount: projects.length - visible.length, nothingAssigned: false };
 }
 
 /**
  * The project a list opens on: the first with an open task, else the first.
- * An unknown count counts as open, as above. Empty string for no projects.
+ * The ad-hoc project's open task is no reason to open on it, as above. An
+ * unknown count counts as open. Empty string for no projects.
  */
 export function firstProjectWithTasks(projects: readonly ProjectDTO[]): string {
-  return (projects.find(p => (p.openTaskCount ?? 1) > 0) ?? projects[0])?.id ?? '';
+  return (projects.find(p => p.id !== ADHOC_PROJECT_ID && hasOpenTask(p)) ?? projects[0])?.id ?? '';
 }

@@ -10,6 +10,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { ONLY_PROJECTS_WITH_TASKS_KEY } from '../src/shared/project-filter';
+import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
 
 describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -903,6 +904,20 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         press('rotate_right');
 
         expect(shownProjects).toEqual(['Beta', 'Beta']);
+      });
+
+      it('HandleHardwareInput_OnlyAdHocWorkOpen_ListsEveryProject', () => {
+        // An ad-hoc task stays in progress for good. With nothing assigned,
+        // the ad-hoc project used to be the only project the bar offered.
+        taskRepo.saveTask({ id: 'T2', projectId: 'P2', key: 'B-1', title: 'Waiting', status: 'done' });
+        projectRepo.saveProject({ id: ADHOC_PROJECT_ID, key: ADHOC_PROJECT_ID, name: 'Ad-hoc' });
+        taskRepo.createAdHocTask('Code review');
+        openPicker();
+        press('rotate_right');
+        press('rotate_right');
+        press('rotate_right');
+
+        expect(shownProjects).toEqual(['Ad-hoc', 'Alpha', 'Beta', 'Gamma']);
       });
 
       it('HandleHardwareInput_SwitchOff_ListsEveryProject', () => {
