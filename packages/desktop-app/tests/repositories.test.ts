@@ -4,6 +4,7 @@ import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
+import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { localDayBoundsUtc, addLocalDays } from '../src/shared/local-date';
 
 describe('SQLite Repositories Unit Tests', () => {
@@ -42,6 +43,23 @@ describe('SQLite Repositories Unit Tests', () => {
     // Assert
     expect(tasks).toHaveLength(1);
     expect(tasks[0].title).toBe('Fix Audio Artifacts');
+  });
+
+  it('ProjectRepository_GetAllProjects_CountsOnlyOpenTasks', () => {
+    // The count behind "only projects with tasks": a done task is nothing to
+    // pick and an archived one is not listed at all.
+    const projectRepo = new ProjectRepository(dbConn);
+    projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+    projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
+    taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Waiting', status: 'todo' });
+    taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Under way', status: 'in_progress' });
+    taskRepo.saveTask({ id: 'T3', projectId: 'P1', key: 'A-3', title: 'Finished', status: 'done' });
+    taskRepo.saveTask({ id: 'T4', projectId: 'P1', key: 'A-4', title: 'Archived', status: 'todo' });
+    dbConn.getDb().prepare("UPDATE tasks SET archived_at_utc = '2026-10-01T00:00:00Z' WHERE id = 'T4'").run();
+
+    const counts = projectRepo.getAllProjects().map(p => [p.id, p.openTaskCount]);
+
+    expect(counts).toEqual([['P1', 2], ['P2', 0]]);
   });
 
   it('TaskRepository_SaveTaskWithADescription_ReadsItBackAndClearsIt', () => {

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- **Only projects with tasks.** A provider lists every project you can see,
+  while the tasks it fetches are the ones assigned to you, so most projects in
+  the pickers held nothing to pick. A switch above the project list -- on by
+  default, and remembered -- hides every project with no open task, in the
+  Projects & Tasks panel, the task picker and the bar's own picker alike, and
+  says how many it hides. The project selected in the panel stays listed while
+  empty, and if the switch would leave nothing, everything is listed.
+
 ### Changed
 
 - **The README and the user guide show the app.** Screenshots of every panel,

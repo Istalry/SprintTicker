@@ -41,13 +41,15 @@ Everything else is a request/response `invoke`.
 | :--- | :--- |
 | `provider:get-all` | Current provider settings |
 | `provider:set-active` | Persist settings, reinitialise providers, start a sync. Takes a **partial** `ProviderSettingsUpdateDTO`, so unrelated providers' credentials are left alone |
-| `provider:get-projects` / `provider:get-tasks` | Read the local cache |
+| `provider:get-projects` / `provider:get-tasks` | Read the local cache. Each project carries `openTaskCount`: its tasks neither done nor archived |
 | `provider:create-adhoc` | A local task with no ticket |
 | `provider:fetch-op-statuses` | OpenProject status list, for the settings form |
 | `provider:sync-now` | Fetch projects and tasks immediately |
 | `provider:get-sync-queue` | Everything undelivered, with attempt counts and the server's own message |
 | `provider:retry-failed-worklogs` | Un-park `FAILED` rows |
 | `projects:on-updated` | **Event** — the cached project list changed |
+| `projects:get-only-with-tasks` / `projects:set-only-with-tasks` | The "only projects with tasks" switch, on by default. The setter takes a boolean and throws `ArgumentException` on anything else |
+| `projects:on-only-with-tasks` | **Event** — the switch changed, so every view showing it follows |
 
 > `provider:reconcile` was removed. It was declared on the bridge with no
 > handler in main, so calling it rejected. The providers keep their
@@ -307,6 +309,12 @@ open, or a custom query — and each adapter renders it in its own dialect: JQL
 for Jira, a v3 filter array for OpenProject. A custom OpenProject filter is
 validated and **throws** if malformed, because an invalid filter that quietly
 matched nothing would let the prune delete every cached task for the project.
+
+The scope decides which tasks are fetched; it does not touch the project list,
+which a provider returns whole. "Only projects with tasks"
+(`src/shared/project-filter.ts`) is what hides the projects the scope left
+empty, in the window's lists and the bar's picker alike, by `openTaskCount`
+rather than by assignee: tasks carry no assignee here.
 
 ---
 

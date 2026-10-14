@@ -671,6 +671,16 @@
       </p><p>A task from Jira or OpenProject shows the start of its description under its
       title, on one line. The task picker searches it too, so you can find a task by
       what it is about.</p>
+      <p>🔎 <strong>Only projects with tasks</strong> -- the switch above the project list, on by
+      default -- hides every project with no open task. A provider lists every
+      project you can see, while the tasks it fetches are the ones assigned to you,
+      so most projects held nothing to pick. A project is listed again as soon as it
+      has a task to do or in progress. The switch says how many projects it hides,
+      and turning it off lists them all. It is one setting: the task picker shows
+      the same switch, and the bar&#39;s own picker follows it. The project you have
+      selected stays listed even when it is empty, so one you have just created does
+      not vanish before its first task. If the switch would leave nothing to list
+      -- before the first sync -- every project is listed.</p>
       <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
       Task Providers refetches it.</p>
       <h4>📊 Work History</h4>
@@ -1083,7 +1093,8 @@
       checklist also gives the task&#39;s status: grey for to do, amber for in progress,
       green for done, and a done task&#39;s name is dimmed. Tasks come in that order of
       use: in progress first, then to do, then done, and within each the most urgent
-      first, by the priority set in Jira or OpenProject. The second
+      first, by the priority set in Jira or OpenProject. Projects follow the <strong>Only
+      projects with tasks</strong> switch of the Projects &amp; Tasks panel. The second
       row shows the task key, followed by as much of its description as fits, and on
       its right where you are in the list -- <code>3/12</code> --
       with a thin line along the bottom whose bright segment slides from left to
@@ -1735,7 +1746,9 @@
       </tr>
       </tbody></table></div>
       <p>It also runs the two-stage task picker (project, then task) driven entirely from
-      the bar. The driver listener is wrapped in a try/catch on purpose: a throw
+      the bar. Its project list goes through <code>filterProjectsWithTasks</code>
+      (<code>src/shared/project-filter.ts</code>), the rule the window&#39;s two lists use, and
+      reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
       inside an EventEmitter listener with no error handler terminates the main
       process, so without it a button press could take the whole app down.</p>
       <h4><code>WindowsNotificationListenerService</code> — <code>src/main/services/</code></h4>
@@ -1941,7 +1954,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1725 tests across 90 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1748 tests across 92 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2033,7 +2046,7 @@
       </tr>
       <tr>
       <td align="left"><code>provider:get-projects</code> / <code>provider:get-tasks</code></td>
-      <td align="left">Read the local cache</td>
+      <td align="left">Read the local cache. Each project carries <code>openTaskCount</code>: its tasks neither done nor archived</td>
       </tr>
       <tr>
       <td align="left"><code>provider:create-adhoc</code></td>
@@ -2058,6 +2071,14 @@
       <tr>
       <td align="left"><code>projects:on-updated</code></td>
       <td align="left"><strong>Event</strong> — the cached project list changed</td>
+      </tr>
+      <tr>
+      <td align="left"><code>projects:get-only-with-tasks</code> / <code>projects:set-only-with-tasks</code></td>
+      <td align="left">The &quot;only projects with tasks&quot; switch, on by default. The setter takes a boolean and throws <code>ArgumentException</code> on anything else</td>
+      </tr>
+      <tr>
+      <td align="left"><code>projects:on-only-with-tasks</code></td>
+      <td align="left"><strong>Event</strong> — the switch changed, so every view showing it follows</td>
       </tr>
       </tbody></table></div>
       <div class="note">
@@ -2415,6 +2436,11 @@
       for Jira, a v3 filter array for OpenProject. A custom OpenProject filter is
       validated and <strong>throws</strong> if malformed, because an invalid filter that quietly
       matched nothing would let the prune delete every cached task for the project.</p>
+      <p>The scope decides which tasks are fetched; it does not touch the project list,
+      which a provider returns whole. &quot;Only projects with tasks&quot;
+      (<code>src/shared/project-filter.ts</code>) is what hides the projects the scope left
+      empty, in the window&#39;s lists and the bar&#39;s picker alike, by <code>openTaskCount</code>
+      rather than by assignee: tasks carry no assignee here.</p>
       <hr>
       <h3 id="api-the-busy-bar-device-contract">The BUSY Bar device contract</h3>
       <p><strong>Source:</strong> <code>src/main/hardware/busybar-driver.ts</code>, and

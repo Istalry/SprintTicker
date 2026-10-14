@@ -134,6 +134,10 @@ time on screen, with or without a bar:
   </tr>
 </table>
 
+🔎 **Only projects with tasks**, on by default, keeps every project list short:
+the Projects & Tasks panel, the task picker and the bar's own picker hide the
+projects with nothing assigned to you to do.
+
 ### 🔷 OpenProject integration
 
 Fetches projects and work packages over the REST API v3, updates a work
@@ -448,7 +452,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1725 tests across 90 files for the app -- the main and shared
+`pnpm test` runs 1748 tests across 92 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

@@ -9,6 +9,7 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
+import { ONLY_PROJECTS_WITH_TASKS_KEY } from '../src/shared/project-filter';
 
 describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -878,6 +879,39 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         const noTasks = positions.find(([stage, label]) => stage === 'TASK' && label === 'No Tasks');
         expect(noTasks).toBeDefined();
         expect(noTasks?.[2]).toBeUndefined();
+      });
+    });
+
+    describe('only projects with tasks', () => {
+      let shownProjects: string[];
+
+      beforeEach(() => {
+        shownProjects = [];
+        renderer.renderTaskSelection = ((stage: string, label: string) => {
+          if (stage === 'PROJECT') shownProjects.push(label);
+        }) as never;
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
+        projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
+        projectRepo.saveProject({ id: 'P3', key: 'P3', name: 'Gamma' });
+        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Finished', status: 'done' });
+        taskRepo.saveTask({ id: 'T2', projectId: 'P2', key: 'B-1', title: 'Waiting', status: 'todo' });
+      });
+
+      it('HandleHardwareInput_SwitchOnByDefault_ListsOnlyProjectsWithAnOpenTask', () => {
+        // Alpha holds only a done task, Gamma none: neither is anything to pick.
+        openPicker();
+        press('rotate_right');
+
+        expect(shownProjects).toEqual(['Beta', 'Beta']);
+      });
+
+      it('HandleHardwareInput_SwitchOff_ListsEveryProject', () => {
+        new SettingsRepository(dbConn).setSetting(ONLY_PROJECTS_WITH_TASKS_KEY, false);
+        openPicker();
+        press('rotate_right');
+        press('rotate_right');
+
+        expect(shownProjects).toEqual(['Alpha', 'Beta', 'Gamma']);
       });
     });
 

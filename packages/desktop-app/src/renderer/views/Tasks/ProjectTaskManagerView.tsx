@@ -3,6 +3,9 @@ import { FolderPlus, Plus, Trash2, Edit3, Upload, FileText, CheckCircle, AlertCi
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
 import { triggerDesktopConfetti } from '../../utils/confetti-fx';
 import { FinishSessionModal } from '../../components/FinishSessionModal';
+import { ProjectFilterToggle } from '../../components/ProjectFilterToggle';
+import { useOnlyProjectsWithTasks } from '../../hooks/useOnlyProjectsWithTasks';
+import { filterProjectsWithTasks, firstProjectWithTasks } from '../../../shared/project-filter';
 
 export const ProjectTaskManagerView: React.FC = () => {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
@@ -11,6 +14,7 @@ export const ProjectTaskManagerView: React.FC = () => {
   // Without the bridge there is nothing to wait for.
   const [loading, setLoading] = useState<boolean>(() => Boolean(window.electronAPI?.getProjects));
   const [activeSession, setActiveSession] = useState<ActiveSessionDTO | null>(null);
+  const [onlyWithTasks, setOnlyWithTasks] = useOnlyProjectsWithTasks();
 
   /**
    * Which project the task list is showing, readable from a subscription.
@@ -49,15 +53,22 @@ export const ProjectTaskManagerView: React.FC = () => {
     return window.electronAPI.getProjects().then(projs => {
       setProjects(projs);
       // Keep a choice already made; a refetch after creating a project must
-      // not jump back to the first one.
-      setSelectedProjectId(current => current || (projs.length > 0 ? projs[0].id : ''));
+      // not jump back to the first one. Open on a project with something in
+      // it: the selected project is never hidden, so opening on an empty one
+      // would show it whatever the "only projects with tasks" switch says.
+      setSelectedProjectId(current => current || firstProjectWithTasks(projs));
       setLoading(false);
     });
   };
 
   const fetchTasks = (projId: string): Promise<void> => {
     if (!projId || !window.electronAPI?.getTasks) return Promise.resolve();
-    return window.electronAPI.getTasks(projId).then(setTasks);
+    // The projects come back with them: every task change -- added, imported,
+    // deleted, started, done -- moves a project's open-task count, and the
+    // "only projects with tasks" switch reads it. A stale count hid a project
+    // whose first task had just been added once another was selected.
+    const projectsRead = window.electronAPI.getProjects ? window.electronAPI.getProjects().then(setProjects) : Promise.resolve();
+    return Promise.all([window.electronAPI.getTasks(projId).then(setTasks), projectsRead]).then(() => undefined);
   };
 
   useEffect(() => {
@@ -91,7 +102,7 @@ export const ProjectTaskManagerView: React.FC = () => {
           setProjects(synced);
           setSelectedProjectId(current => {
             if (current && synced.some(p => p.id === current)) return current;
-            return synced.length > 0 ? synced[0].id : '';
+            return firstProjectWithTasks(synced);
           });
           // A sync that refreshed the projects refreshed the tasks under them
           // too, and a status changed on the board is the most likely thing to
@@ -241,6 +252,13 @@ export const ProjectTaskManagerView: React.FC = () => {
   };
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
+  // The selected project stays listed whatever it holds -- one just created
+  // has no task yet -- and so does the running session's.
+  const { visible: listedProjects, hiddenCount } = filterProjectsWithTasks(
+    projects,
+    onlyWithTasks,
+    [selectedProjectId, activeSession?.projectId ?? ''].filter(Boolean)
+  );
 
   if (loading) {
     return <div className="p-8 text-text-secondary font-mono text-sm">Loading Project & Task Registry...</div>;
@@ -281,11 +299,12 @@ export const ProjectTaskManagerView: React.FC = () => {
         {/* Projects List Sidebar */}
         <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-border-dark pb-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Projects ({projects.length})</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Projects ({listedProjects.length})</h3>
           </div>
+          <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} />
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-            {projects.map(proj => (
+            {listedProjects.map(proj => (
               <div
                 key={proj.id}
                 onClick={() => setSelectedProjectId(proj.id)}

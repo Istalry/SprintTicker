@@ -135,6 +135,10 @@ export enum IPCChannel {
   ON_MINI_VISIBILITY = 'mini:on-visibility',
   /** Brings the dashboard forward with its task picker open. */
   OPEN_TASK_PICKER = 'mini:open-task-picker',
+  /** "Only my projects": whether project lists hide those with no open task. */
+  GET_ONLY_PROJECTS_WITH_TASKS = 'projects:get-only-with-tasks',
+  SET_ONLY_PROJECTS_WITH_TASKS = 'projects:set-only-with-tasks',
+  ON_ONLY_PROJECTS_WITH_TASKS = 'projects:on-only-with-tasks',
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',

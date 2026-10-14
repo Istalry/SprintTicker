@@ -11,6 +11,7 @@ import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
+import { IPCChannel } from '../src/shared/ipc-channels';
 
 vi.mock('electron', () => ({
   ipcMain: { handle: vi.fn(), on: vi.fn(), emit: vi.fn() },
@@ -300,6 +301,60 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       expect(res.success).toBe(false);
       expect(logged).not.toHaveBeenCalled();
       expect(done).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('only projects with tasks', () => {
+    let send: ReturnType<typeof vi.fn>;
+    let settingsRepo: SettingsRepository;
+
+    /** The handler most recently registered on a channel: every test registers afresh. */
+    function handler(channel: string): (...args: unknown[]) => unknown {
+      const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const found = calls.filter(call => call[0] === channel).pop();
+      expect(found).toBeDefined();
+      return found![1] as (...args: unknown[]) => unknown;
+    }
+
+    beforeEach(async () => {
+      send = vi.fn();
+      const mockWindow = {
+        isDestroyed: () => false,
+        webContents: { send, isDestroyed: () => false }
+      } as unknown as BrowserWindow;
+      settingsRepo = new SettingsRepository(dbConn);
+      const driver = new BusyBarDriver('10.0.4.20', true);
+      await driver.connect();
+      new IPCHandlerRegistry({
+        engine,
+        taskRepo: new TaskRepository(dbConn),
+        settingsRepo,
+        driver,
+        inputDecoder: new InputDecoder(driver, engine, settingsRepo),
+        renderer,
+        getWindow: () => mockWindow,
+        saveUnityScenes: async () => false
+      }).registerAllHandlers();
+    });
+
+    it('GetOnlyProjectsWithTasks_NeverSet_AnswersOn', async () => {
+      await expect(handler(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS)({})).resolves.toBe(true);
+    });
+
+    it('SetOnlyProjectsWithTasks_Off_StoresItAndTellsEveryView', async () => {
+      // The switch shows in two views and the bar's picker reads it: flipped
+      // in one, the others must follow.
+      await expect(handler(IPCChannel.SET_ONLY_PROJECTS_WITH_TASKS)({}, false)).resolves.toBe(false);
+
+      await expect(handler(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS)({})).resolves.toBe(false);
+      expect(send).toHaveBeenCalledWith(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, false);
+    });
+
+    it('SetOnlyProjectsWithTasks_NotABoolean_ThrowsAndStoresNothing', async () => {
+      await expect(handler(IPCChannel.SET_ONLY_PROJECTS_WITH_TASKS)({}, 'no')).rejects.toThrow(/boolean/);
+
+      await expect(handler(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS)({})).resolves.toBe(true);
+      expect(send).not.toHaveBeenCalledWith(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, expect.anything());
     });
   });
 

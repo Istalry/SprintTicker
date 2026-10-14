@@ -170,6 +170,15 @@ export interface IElectronAPI {
   onMiniWindowVisibility: (callback: (open: boolean) => void) => () => void;
   /** Brings the dashboard forward with its task picker open. */
   openTaskPicker: () => Promise<boolean>;
+  /**
+   * "Only my projects": whether the Projects tab, the task picker and the
+   * bar's picker hide projects with no open task. Shared by all three, so a
+   * change in one is broadcast to the others.
+   */
+  getOnlyProjectsWithTasks: () => Promise<boolean>;
+  /** Resolves the setting as stored. */
+  setOnlyProjectsWithTasks: (enabled: boolean) => Promise<boolean>;
+  onOnlyProjectsWithTasks: (callback: (enabled: boolean) => void) => () => void;
   getUpdateCheckEnabled: () => Promise<boolean>;
   setUpdateCheckEnabled: (enabled: boolean) => Promise<boolean>;
   openReleasePage: (url: string) => Promise<boolean>;

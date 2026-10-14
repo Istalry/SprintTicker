@@ -182,6 +182,13 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_MINI_VISIBILITY, handler);
   },
   openTaskPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PICKER),
+  getOnlyProjectsWithTasks: () => ipcRenderer.invoke(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS),
+  setOnlyProjectsWithTasks: (enabled: boolean) => ipcRenderer.invoke(IPCChannel.SET_ONLY_PROJECTS_WITH_TASKS, enabled),
+  onOnlyProjectsWithTasks: (callback: (enabled: boolean) => void) => {
+    const handler = (_event: IpcRendererEvent, enabled: boolean) => callback(enabled);
+    ipcRenderer.on(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, handler);
+  },
   getUpdateCheckEnabled: () => ipcRenderer.invoke(IPCChannel.GET_UPDATE_CHECK_ENABLED),
   setUpdateCheckEnabled: (enabled: boolean) =>
     ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),

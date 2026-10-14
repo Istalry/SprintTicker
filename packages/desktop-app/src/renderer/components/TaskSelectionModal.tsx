@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, PlusCircle, ArrowLeft, Check, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { filterProjectsWithTasks, firstProjectWithTasks } from '../../shared/project-filter';
+import { useOnlyProjectsWithTasks } from '../hooks/useOnlyProjectsWithTasks';
+import { ProjectFilterToggle } from './ProjectFilterToggle';
 
 interface TaskSelectionModalProps {
   isOpen: boolean;
@@ -35,19 +38,21 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   // The prop is what App had; the dialog asks main for the current list on
   // mount and falls back to the prop if that fails.
   const [activeProjects, setActiveProjects] = useState<ProjectDTO[]>(propProjects || []);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(() => propProjects?.[0]?.id ?? '');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(() => firstProjectWithTasks(propProjects || []));
   const [loadedTasks, setLoadedTasks] = useState<{ projectId: string; tasks: TaskDTO[] } | null>(null);
   const [isAdHocMode, setIsAdHocMode] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customTitle, setCustomTitle] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [onlyWithTasks, setOnlyWithTasks] = useOnlyProjectsWithTasks();
+  const { visible: listedProjects, hiddenCount } = filterProjectsWithTasks(activeProjects, onlyWithTasks);
 
   useEffect(() => {
     if (!window.electronAPI?.getProjects) return;
     window.electronAPI.getProjects().then(projs => {
       const list = projs || [];
       setActiveProjects(list);
-      setSelectedProjectId(list.length > 0 ? list[0].id : '');
+      setSelectedProjectId(firstProjectWithTasks(list));
     }).catch(() => {
       setActiveProjects(propProjects || []);
     });
@@ -154,13 +159,16 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
         <div className="p-6 space-y-4 flex-1">
           {step === 1 ? (
             <div className="space-y-3">
-              <p className="text-xs text-text-secondary">
-                Choose an active project to track time against:
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-text-secondary">
+                  Choose an active project to track time against:
+                </p>
+                <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} />
+              </div>
 
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {activeProjects.length > 0 ? (
-                  activeProjects.map(proj => (
+                {listedProjects.length > 0 ? (
+                  listedProjects.map(proj => (
                     <button
                       key={proj.id}
                       onClick={() => {

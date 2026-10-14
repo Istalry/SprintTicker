@@ -46,6 +46,12 @@ export interface ProjectDTO {
   name: string;
   key: string;
   providerId?: string;
+  /**
+   * Tasks in the project not yet done, archived ones left out. Filled in by
+   * the local cache; absent on a project straight from a provider, which
+   * knows nothing of the cache. See `filterProjectsWithTasks`.
+   */
+  openTaskCount?: number;
 }
 
 export interface HardwareBindingConfig {

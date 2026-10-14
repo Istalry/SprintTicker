@@ -32,6 +32,7 @@ import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue 
 import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
+import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
 
@@ -948,6 +949,21 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.MINI_IS_OPEN, async (): Promise<boolean> => this.miniWindow?.isOpen() ?? false);
     ipcMain.handle(IPCChannel.OPEN_TASK_PICKER, async (): Promise<boolean> => openTaskPickerInMainWindow(this.getWindow()));
     this.miniWindow?.subscribe(open => this.broadcast(IPCChannel.ON_MINI_VISIBILITY, open));
+
+    ipcMain.handle(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS, async (): Promise<boolean> =>
+      this.settingsRepo.getSetting<boolean>(ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT)
+    );
+
+    // Broadcast, because the switch appears in two views of the window and
+    // the bar's picker reads it too: flipped in one, the others follow.
+    ipcMain.handle(IPCChannel.SET_ONLY_PROJECTS_WITH_TASKS, async (_event, enabled: boolean): Promise<boolean> => {
+      if (typeof enabled !== 'boolean') {
+        throw new ArgumentException(`Expected a boolean, received: ${String(enabled)}`);
+      }
+      this.settingsRepo.setSetting(ONLY_PROJECTS_WITH_TASKS_KEY, enabled);
+      this.broadcast(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, enabled);
+      return enabled;
+    });
 
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {
       return this.updateChecker ? this.updateChecker.isEnabled() : false;

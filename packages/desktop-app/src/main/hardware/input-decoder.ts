@@ -5,6 +5,7 @@ import { ActiveSessionDTO, HardwareBindingConfig, TaskDTO } from '../../shared/d
 import { orderTasksForSelection } from '../../shared/task-order';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
+import { filterProjectsWithTasks, ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
@@ -423,7 +424,15 @@ export class InputDecoder {
   private startTaskSelection() {
     this._isSelectingTask = true;
     this._selectionStage = 'PROJECT';
-    this._projectsList = this._engine.getProjects().map(p => ({ id: p.id, name: p.name }));
+    // The same "only my projects" switch as the window's lists, read here
+    // rather than pushed: it can only change between two pickers. No project
+    // needs keeping in view -- the picker opens only with no session running.
+    const onlyWithTasks = this._settingsRepo.getSetting<boolean>(
+      ONLY_PROJECTS_WITH_TASKS_KEY,
+      ONLY_PROJECTS_WITH_TASKS_DEFAULT
+    );
+    this._projectsList = filterProjectsWithTasks(this._engine.getProjects(), onlyWithTasks)
+      .visible.map(p => ({ id: p.id, name: p.name }));
     if (this._projectsList.length === 0) {
       this._projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];
     }

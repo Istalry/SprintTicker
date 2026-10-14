@@ -166,6 +166,17 @@ A task from Jira or OpenProject shows the start of its description under its
 title, on one line. The task picker searches it too, so you can find a task by
 what it is about.
 
+🔎 **Only projects with tasks** -- the switch above the project list, on by
+default -- hides every project with no open task. A provider lists every
+project you can see, while the tasks it fetches are the ones assigned to you,
+so most projects held nothing to pick. A project is listed again as soon as it
+has a task to do or in progress. The switch says how many projects it hides,
+and turning it off lists them all. It is one setting: the task picker shows
+the same switch, and the bar's own picker follows it. The project you have
+selected stays listed even when it is empty, so one you have just created does
+not vanish before its first task. If the switch would leave nothing to list
+-- before the first sync -- every project is listed.
+
 The cache is what the app and the bar read. If it looks stale, **Sync Now** in
 Task Providers refetches it.
 
@@ -458,7 +469,8 @@ A blue folder means you are choosing a project, a checklist a task. The
 checklist also gives the task's status: grey for to do, amber for in progress,
 green for done, and a done task's name is dimmed. Tasks come in that order of
 use: in progress first, then to do, then done, and within each the most urgent
-first, by the priority set in Jira or OpenProject. The second
+first, by the priority set in Jira or OpenProject. Projects follow the **Only
+projects with tasks** switch of the Projects & Tasks panel. The second
 row shows the task key, followed by as much of its description as fits, and on
 its right where you are in the list -- `3/12` --
 with a thin line along the bottom whose bright segment slides from left to

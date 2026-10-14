@@ -388,7 +388,9 @@ Turns physical events into application actions, through a rebindable map.
 | BACK long press | `COMPLETE_AND_LOG_ACTIVE_TASK` |
 
 It also runs the two-stage task picker (project, then task) driven entirely from
-the bar. The driver listener is wrapped in a try/catch on purpose: a throw
+the bar. Its project list goes through `filterProjectsWithTasks`
+(`src/shared/project-filter.ts`), the rule the window's two lists use, and
+reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
 inside an EventEmitter listener with no error handler terminates the main
 process, so without it a button press could take the whole app down.
 
@@ -599,7 +601,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1725 tests across 90 files, in two projects: `main` in Node for
+Vitest, 1748 tests across 92 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
