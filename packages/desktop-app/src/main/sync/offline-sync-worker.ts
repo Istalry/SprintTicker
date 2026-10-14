@@ -10,6 +10,7 @@ import { ProjectDTO, TaskDTO, ProviderSyncResult } from '../../shared/dtos';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProviderManager } from '../providers/provider-manager';
+import { isAdHocTaskId } from '../db/id-generator';
 
 /**
  * Background worker service managing offline worklog retry queueing, periodic network sync,
@@ -27,6 +28,11 @@ export class OfflineSyncWorker {
   private rerunRequested: boolean = false;
   private isSyncingProjects: boolean = false;
   private isOnline: boolean = true;
+  /** The tasks no prune may take: the one the running session tracks. */
+  private getProtectedTaskIds: () => string[] = () => [];
+  /** Protected tasks the provider stopped listing at the last sync. */
+  private unlistedTaskIds: Set<string> = new Set();
+  private unlistedListeners: Set<() => void> = new Set();
 
   constructor(
     providerManager: ProviderManager,
@@ -81,6 +87,45 @@ export class OfflineSyncWorker {
 
   public setOnlineStatus(online: boolean): void {
     this.isOnline = online;
+  }
+
+  /**
+   * Names the tasks the prune must leave alone: the one being tracked.
+   *
+   * A task reassigned, closed or moved on the provider leaves the user's
+   * scope, and the next sync used to retire it -- deleted outright if no time
+   * had been logged on it yet -- while it was being tracked. The session ran
+   * on, but the task vanished from the lists, and finishing it as done did
+   * nothing at all: there was no row left to mark. The time is real, so the
+   * task stays until the session ends; the sync after that retires it.
+   */
+  public protectTasks(getProtectedTaskIds: () => string[]): void {
+    this.getProtectedTaskIds = getProtectedTaskIds;
+  }
+
+  /** True when a protected task was missing from what the provider listed at the last sync. */
+  public isUnlisted(taskId: string): boolean {
+    return this.unlistedTaskIds.has(taskId);
+  }
+
+  /** Called when the set of unlisted tasks changes, so the session can say so. */
+  public onUnlistedChanged(listener: () => void): () => void {
+    this.unlistedListeners.add(listener);
+    return () => this.unlistedListeners.delete(listener);
+  }
+
+  private setUnlisted(taskIds: string[]): void {
+    const next = new Set(taskIds);
+    const changed = next.size !== this.unlistedTaskIds.size || [...next].some(id => !this.unlistedTaskIds.has(id));
+    this.unlistedTaskIds = next;
+    if (!changed) return;
+    for (const listener of this.unlistedListeners) {
+      try {
+        listener();
+      } catch (err) {
+        console.error('[OfflineSyncWorker] Unlisted-task listener failed:', err);
+      }
+    }
   }
 
   /**
@@ -151,6 +196,14 @@ export class OfflineSyncWorker {
 
     // Phase 2: commit the complete, verified snapshot.
     try {
+      // The tracked task survives the prune whatever the provider says, and so
+      // does its project. Ad-hoc tasks are never the provider's to list.
+      const protectedIds = this.getProtectedTaskIds().filter(id => id && !isAdHocTaskId(id));
+      const listedIds = new Set([...tasksByProject.values()].flat().map(t => t.id));
+      const protectedProjectIds = protectedIds
+        .map(id => this.taskRepo.getTaskById(id)?.projectId)
+        .filter((id): id is string => Boolean(id));
+
       for (const p of projects) {
         this.projectRepo.saveProject(p);
         const tasks = tasksByProject.get(p.id) ?? [];
@@ -158,9 +211,15 @@ export class OfflineSyncWorker {
           this.taskRepo.saveTask(t);
         }
         // Remove tasks closed or deleted on the remote provider.
-        this.taskRepo.deleteTasksNotIn(p.id, tasks.map(t => t.id));
+        this.taskRepo.deleteTasksNotIn(p.id, [...tasks.map(t => t.id), ...protectedIds]);
       }
-      this.projectRepo.deleteProjectsNotIn(projects.map(p => p.id));
+      this.projectRepo.deleteProjectsNotIn([...projects.map(p => p.id), ...protectedProjectIds]);
+
+      const unlisted = protectedIds.filter(id => !listedIds.has(id));
+      if (unlisted.length > 0) {
+        console.log(`[OfflineSyncWorker] Tracked task(s) no longer listed by the provider, kept until the session ends: ${unlisted.join(', ')}`);
+      }
+      this.setUnlisted(unlisted);
 
       const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
       console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);

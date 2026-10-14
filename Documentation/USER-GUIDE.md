@@ -152,6 +152,14 @@ Review", not "Closed", because you send work for review rather than closing it
 yourself. Stopping without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
 
+🔀 **A task that leaves your list while you track it** -- reassigned to someone
+else, closed or moved on Jira or OpenProject -- keeps running. The panel and
+the mini timer say **No longer assigned to you**, and your time is logged as
+usual. Marking it done asks first, since your completion transition would
+move a task that is no longer yours; on the bar, FINISH (or a long BACK)
+shows **NOT YOURS / DONE? OK=YES**, and BACK refuses. The task stays listed
+until the session ends, and leaves at the next sync after that.
+
 🗑️ **Discard this session**, the third choice, is for a session started by
 mistake: nothing is kept in your history and nothing is sent to your
 provider. It asks you to confirm, naming the task and the time it would throw
@@ -536,6 +544,20 @@ are created, so a token that worked last month can simply have run out. Create
 a new one at id.atlassian.com › Security › API tokens and paste it into Task
 Providers. Your projects and tasks stay as they were in the meantime, and the
 next sync brings them up to date.
+
+</details>
+
+<details>
+<summary>🔀 <b>The task I am tracking says "No longer assigned to you"</b></summary>
+
+ Since you started it, the task
+left what your provider lists for you: reassigned to someone else, closed, or
+moved to a project you are not in. Nothing is lost: the session keeps running
+and its time is logged when you stop. The task stays in your lists until then.
+Marking it done asks first, because your completion transition would move a
+task that is no longer yours. If the provider refuses the time -- some Jira
+setups forbid logging on someone else's issue -- the row appears in the sync
+queue panel with Jira's own message.
 
 </details>
 

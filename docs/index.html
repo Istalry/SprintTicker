@@ -651,6 +651,13 @@
       Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
       yourself. Stopping without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
+      <p>🔀 <strong>A task that leaves your list while you track it</strong> -- reassigned to someone
+      else, closed or moved on Jira or OpenProject -- keeps running. The panel and
+      the mini timer say <strong>No longer assigned to you</strong>, and your time is logged as
+      usual. Marking it done asks first, since your completion transition would
+      move a task that is no longer yours; on the bar, FINISH (or a long BACK)
+      shows <strong>NOT YOURS / DONE? OK=YES</strong>, and BACK refuses. The task stays listed
+      until the session ends, and leaves at the next sync after that.</p>
       <p>🗑️ <strong>Discard this session</strong>, the third choice, is for a session started by
       mistake: nothing is kept in your history and nothing is sent to your
       provider. It asks you to confirm, naming the task and the time it would throw
@@ -1147,6 +1154,15 @@
       Providers. Your projects and tasks stay as they were in the meantime, and the
       next sync brings them up to date.</p>
       </details><details>
+      <summary>🔀 <b>The task I am tracking says "No longer assigned to you"</b></summary><p> Since you started it, the task
+      left what your provider lists for you: reassigned to someone else, closed, or
+      moved to a project you are not in. Nothing is lost: the session keeps running
+      and its time is logged when you stop. The task stays in your lists until then.
+      Marking it done asks first, because your completion transition would move a
+      task that is no longer yours. If the provider refuses the time -- some Jira
+      setups forbid logging on someone else&#39;s issue -- the row appears in the sync
+      queue panel with Jira&#39;s own message.</p>
+      </details><details>
       <summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary><p> Open the sync queue panel. The
       row carries the server&#39;s own message. Common causes:</p>
       <ul>
@@ -1527,6 +1543,13 @@
       <td align="left">A claim left behind by a crash is reclaimable after this</td>
       </tr>
       </tbody></table></div>
+      <p><strong>The tracked task survives the prune.</strong> The engine names it
+      (<code>protectTasks</code>), and a sync that no longer finds it -- reassigned, closed or
+      moved -- keeps it and its project, records it as unlisted, and tells the
+      engine, which re-sends the session with <code>taskUnlisted</code>. It used to be retired
+      mid-session, deleted outright when no time had been logged on it yet, so
+      finishing it as done found no row and did nothing. The sync after the session
+      ends retires it as usual.</p>
       <p>A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
       <strong>coalesces</strong>, setting a flag so the new row drains before the current pass
       ends. Without that, finishing one task and starting the next — the app&#39;s core
@@ -1986,7 +2009,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1795 tests across 93 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1820 tests across 94 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2050,6 +2073,10 @@
       <tr>
       <td align="left"><code>session:complete</code></td>
       <td align="left">Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:get-current</code> / <code>session:on-updated</code> carry <code>taskUnlisted: true</code></td>
+      <td align="left">The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first</td>
       </tr>
       <tr>
       <td align="left"><code>session:discard</code></td>

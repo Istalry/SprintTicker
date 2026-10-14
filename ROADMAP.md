@@ -1015,8 +1015,8 @@ the device a timestamp.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.24 statements / 87.83 branches / 93.34 functions / 95.79 lines across 1795
-tests in 93 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.28 statements / 87.92 branches / 93.34 functions / 95.83 lines across 1820
+tests in 94 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

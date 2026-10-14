@@ -113,6 +113,19 @@ describe('mini timer', () => {
       expect(bridge.api.completeSession).not.toHaveBeenCalled();
     });
 
+    it('Stop_DoneOnAnUnlistedTask_AsksFirst', async () => {
+      const bridge = installElectronApi({ getCurrentSession: async () => ({ ...TRACKING_SESSION, taskUnlisted: true }) });
+      render(<MiniBar />);
+      expect(await screen.findByLabelText('No longer assigned to you')).toBeTruthy();
+      fireEvent.click(screen.getByLabelText('Stop'));
+
+      fireEvent.click(screen.getByText('Done'));
+      expect(bridge.api.completeSession).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Yes'));
+
+      expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, true);
+    });
+
     it('Stop_SessionEndsElsewhere_TheQuestionGoesWithIt', async () => {
       // Stopped from the bar while the choice was open: the next session
       // must not open on a question about the last one.

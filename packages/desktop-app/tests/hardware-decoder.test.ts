@@ -400,6 +400,53 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     }
   });
 
+  describe('long BACK on a task that is no longer the user\'s', () => {
+    const longBack = (): string =>
+      decoder.handleHardwareInput({ key: 'back_hold', type: 'press', timestamp: new Date().toISOString() });
+
+    beforeEach(() => {
+      engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
+      decoder.setRenderer(renderer);
+      renderer.renderActiveSession(engine.getCurrentSession());
+      vi.spyOn(engine.getSyncWorker(), 'isUnlisted').mockReturnValue(true);
+    });
+
+    it('HandleHardwareInput_LongBackWhileTracking_PausesToAsk', () => {
+      // The question lives on the paused screen.
+      longBack();
+
+      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      expect(renderer.getPausedConfirm()).toBe('FINISH_UNLISTED');
+    });
+
+    it('HandleHardwareInput_LongBackRefused_ResumesAsIfNothingHappened', () => {
+      longBack();
+      renderer.renderActiveSession(engine.getCurrentSession());
+
+      decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
+
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      expect(renderer.getPausedConfirm()).toBeNull();
+    });
+
+    it('HandleHardwareInput_LongBackConfirmed_FinishesIt', () => {
+      longBack();
+      renderer.renderActiveSession(engine.getCurrentSession());
+
+      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+
+      expect(engine.getCurrentSession()).toBeNull();
+    });
+
+    it('HandleHardwareInput_LongBackOnAListedTask_FinishesWithoutAsking', () => {
+      vi.mocked(engine.getSyncWorker().isUnlisted).mockReturnValue(false);
+
+      longBack();
+
+      expect(engine.getCurrentSession()).toBeNull();
+    });
+  });
+
   describe('paused STOP/FINISH/DROP choice', () => {
     const turn = (key: string): string =>
       decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
@@ -477,6 +524,53 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       turn('rotate_right');
 
       expect(redraws).toHaveBeenCalledTimes(1);
+    });
+
+    describe('finishing a task that is no longer the user\'s', () => {
+      // Reassigned, closed or moved since it started: finishing it fires the
+      // user's completion transition on a task that is no longer theirs, so
+      // the bar asks, as the window does.
+      let done: ReturnType<typeof vi.spyOn>;
+
+      beforeEach(() => {
+        vi.spyOn(engine.getSyncWorker(), 'isUnlisted').mockReturnValue(true);
+        done = vi.spyOn(engine, 'stopSession');
+      });
+
+      it('HandleHardwareInput_FinishOnAnUnlistedTask_AsksFirst', () => {
+        const action = turn('ok'); // FINISH is where a pause opens
+
+        expect(action).toBe('ASK_PAUSED_FINISH');
+        expect(renderer.getPausedConfirm()).toBe('FINISH_UNLISTED');
+        expect(done).not.toHaveBeenCalled();
+      });
+
+      it('HandleHardwareInput_FinishConfirmed_MarksItDone', () => {
+        turn('ok');
+        const action = turn('ok');
+
+        expect(action).toBe('CONFIRM_PAUSED_FINISH');
+        expect(done).toHaveBeenCalledWith(expect.any(String), true);
+        expect(engine.getCurrentSession()).toBeNull();
+      });
+
+      it('HandleHardwareInput_FinishRefused_StaysPausedOnTheMenu', () => {
+        turn('ok');
+        turn('back');
+
+        expect(done).not.toHaveBeenCalled();
+        expect(renderer.getPausedConfirm()).toBeNull();
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      });
+
+      it('HandleHardwareInput_StopOnAnUnlistedTask_DoesNotAsk', () => {
+        // Logging the time and leaving the task open moves nothing remote.
+        turn('rotate_left');
+        turn('ok');
+
+        expect(done).toHaveBeenCalledWith(expect.any(String));
+        expect(renderer.getPausedConfirm()).toBeNull();
+      });
     });
 
     describe('discarding from the bar', () => {

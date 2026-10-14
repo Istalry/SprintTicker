@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, RefreshCw, Sparkles } from 'lucide-react';
+import { Play, Pause, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
 import { formatSeconds } from '../utils/formatters';
@@ -64,6 +64,15 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           <h2 className="text-xl font-bold text-white tracking-tight">
             {session?.taskTitle || 'No Active Task Selected'}
           </h2>
+          {session?.taskUnlisted && (
+            <div
+              role="status"
+              className="mt-2 inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-xs font-mono"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>No longer assigned to you -- time is still logged</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-baseline space-x-4 bg-dark-900 p-4 rounded-lg border border-border-dark">

@@ -67,6 +67,15 @@ export class TimeTrackingEngine extends EventEmitter {
       this._projectRepo,
       this._taskRepo
     );
+    // The tracked task outlives the provider's list until the session ends,
+    // and the session says when it has left it.
+    this._syncWorker.protectTasks(() => {
+      const open = this._sessionRepo.getActiveSession();
+      return open ? [open.taskId] : [];
+    });
+    this._syncWorker.onUnlistedChanged(() => {
+      if (this._currentSession) this.notifyListeners();
+    });
   }
 
   /**
@@ -182,7 +191,11 @@ export class TimeTrackingEngine extends EventEmitter {
   /// </summary>
   public getCurrentSession(): ActiveSessionDTO | null {
     if (!this._currentSession) return null;
-    return this._sessionRepo.getActiveSession();
+    const session = this._sessionRepo.getActiveSession();
+    if (session && this._syncWorker.isUnlisted(session.taskId)) {
+      return { ...session, taskUnlisted: true };
+    }
+    return session;
   }
 
   /// <summary>
@@ -404,6 +417,14 @@ export class TimeTrackingEngine extends EventEmitter {
             console.warn(`[TimeTrackingEngine] Failed to remote update task status to done:`, err);
           });
         }
+      } else {
+        // The sync now keeps the tracked task, but a session started before
+        // that, or on a task retired some other way, has no row to mark. Say
+        // so: it used to do nothing, silently.
+        console.warn(
+          `[TimeTrackingEngine] ${active.taskKey} is no longer in the local cache; ` +
+            'its time is logged but it could not be marked done.'
+        );
       }
     }
 

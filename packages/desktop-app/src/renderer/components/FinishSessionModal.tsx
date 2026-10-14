@@ -27,7 +27,12 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
   onFinishOption,
   onDiscard
 }) => {
-  const [confirmingDiscard, setConfirmingDiscard] = useState<boolean>(false);
+  const [confirming, setConfirming] = useState<'discard' | 'finish' | null>(null);
+  const confirmingDiscard = confirming === 'discard';
+
+  // Reassigned, closed or moved since it started: marking it done would fire
+  // the user's completion transition on a task that is no longer theirs.
+  const markDone = () => (session.taskUnlisted ? setConfirming('finish') : onFinishOption(true));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
@@ -48,7 +53,23 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
           </button>
         </div>
 
-        {confirmingDiscard ? (
+        {confirming === 'finish' ? (
+          <ConfirmPanel
+            title="No longer assigned to you"
+            message={
+              <>
+                <span className="text-accent-blue font-bold">{session.taskKey}</span> left your list since you started
+                it: reassigned, closed or moved. Your{' '}
+                <strong className="text-white">{formatSeconds(session.elapsedSeconds)}</strong> are logged either way.
+                Mark it done anyway? Your completion transition will be applied to it.
+              </>
+            }
+            confirmLabel="Mark done anyway"
+            cancelLabel="Back"
+            onConfirm={() => onFinishOption(true)}
+            onCancel={() => setConfirming(null)}
+          />
+        ) : confirmingDiscard ? (
           <ConfirmPanel
             title="Discard this session?"
             tone="danger"
@@ -62,7 +83,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
             confirmLabel="Discard"
             cancelLabel="Keep it"
             onConfirm={onDiscard}
-            onCancel={() => setConfirmingDiscard(false)}
+            onCancel={() => setConfirming(null)}
           />
         ) : (
           <>
@@ -89,7 +110,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
               </button>
 
               <button
-                onClick={() => onFinishOption(true)}
+                onClick={markDone}
                 className="w-full flex items-center justify-between p-4 bg-accent-green/10 hover:bg-accent-green/20 border border-accent-green/30 hover:border-accent-green/60 rounded-xl text-left transition-all group"
               >
                 <div className="space-y-1">
@@ -104,7 +125,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
               </button>
 
               <button
-                onClick={() => setConfirmingDiscard(true)}
+                onClick={() => setConfirming('discard')}
                 className="w-full flex items-center justify-between p-3 bg-transparent hover:bg-accent-red/10 border border-border-dark hover:border-accent-red/40 rounded-xl text-left transition-all group"
               >
                 <div className="space-y-1">
@@ -121,7 +142,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
           </>
         )}
 
-        {!confirmingDiscard && (
+        {!confirming && (
           <div className="flex justify-end pt-2">
             <button
               onClick={onClose}

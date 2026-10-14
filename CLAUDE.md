@@ -812,6 +812,15 @@ and anything listing tasks filters `archived_at_utc IS NULL`. A worklog is
 written only after `ensureTaskExists`, because a session's task can vanish
 while it runs.
 
+**The sync never retires the task of the open session.** A task reassigned,
+closed or moved on the provider leaves the user's scope, and the prune used
+to retire it mid-session -- deleted, when nothing was logged on it yet -- so
+finishing it as done found no row and silently did nothing.
+`OfflineSyncWorker.protectTasks` keeps it, and its project, until the session
+ends, and `ActiveSessionDTO.taskUnlisted` says it has left the list. Marking
+such a task done asks the user first, in the window and on the bar: their
+completion transition would move a task that is no longer theirs.
+
 ## 8. Commit identity
 
 This repository is configured with a **repo-local** author identity:

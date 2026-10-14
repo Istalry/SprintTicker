@@ -194,6 +194,14 @@ uncoordinated flushers used to race here and double-bill (F-02, F-03).
 | `SYNC_BACKOFF_MAX_MS` | 1 h | Ceiling on one wait |
 | `SYNC_CLAIM_TIMEOUT_MS` | 10 min | A claim left behind by a crash is reclaimable after this |
 
+**The tracked task survives the prune.** The engine names it
+(`protectTasks`), and a sync that no longer finds it -- reassigned, closed or
+moved -- keeps it and its project, records it as unlisted, and tells the
+engine, which re-sends the session with `taskUnlisted`. It used to be retired
+mid-session, deleted outright when no time had been logged on it yet, so
+finishing it as done found no row and did nothing. The sync after the session
+ends retires it as usual.
+
 A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
 **coalesces**, setting a flag so the new row drains before the current pass
 ends. Without that, finishing one task and starting the next — the app's core
@@ -613,7 +621,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1795 tests across 93 files, in two projects: `main` in Node for
+Vitest, 1820 tests across 94 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

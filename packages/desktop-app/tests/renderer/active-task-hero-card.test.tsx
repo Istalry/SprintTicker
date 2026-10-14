@@ -54,6 +54,54 @@ describe('ActiveTaskHeroCard', () => {
     expect(onComplete).toHaveBeenCalledWith(undefined, false);
   });
 
+  describe('a task that is no longer the user\'s', () => {
+    const UNLISTED = { ...TRACKING_SESSION, taskUnlisted: true };
+
+    it('Render_Unlisted_SaysSoAndThatTheTimeIsStillLogged', () => {
+      card(UNLISTED);
+
+      expect(screen.getByRole('status').textContent).toMatch(/No longer assigned to you.*time is still logged/);
+    });
+
+    it('Render_Listed_SaysNothing', () => {
+      card();
+
+      expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    it('MarkDone_Unlisted_AsksBeforeFinishing', () => {
+      const onComplete = card(UNLISTED);
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+
+      expect(onComplete).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Mark done anyway' }));
+      expect(onComplete).toHaveBeenCalledWith(undefined, true);
+    });
+
+    it('MarkDone_UnlistedThenBack_FinishesNothing', () => {
+      const onComplete = card(UNLISTED);
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+      expect(onComplete).not.toHaveBeenCalled();
+      expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
+    });
+
+    it('RemainInProgress_Unlisted_DoesNotAsk', () => {
+      // Logging the time and leaving the task open moves nothing remote.
+      const onComplete = card(UNLISTED);
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText(/Remain 'In Progress'/));
+
+      expect(onComplete).toHaveBeenCalledWith(undefined, false);
+    });
+  });
+
   describe('discarding', () => {
     it('Discard_Confirmed_DiscardsAndLogsNothing', () => {
       const onDiscard = vi.fn();

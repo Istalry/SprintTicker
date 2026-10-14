@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ListTodo, Pause, Play, Square, X } from 'lucide-react';
+import { AlertTriangle, ListTodo, Pause, Play, Square, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { formatSeconds } from '../utils/formatters';
 
@@ -23,8 +23,8 @@ export const MiniBar: React.FC = () => {
    * and nothing else, so finishing a task or throwing away a session started
    * by mistake meant opening the dashboard.
    */
-  const [ending, setEndingFor] = useState<{ sessionId: string; step: 'choose' | 'discard' } | null>(null);
-  const setEnding = (step: 'choose' | 'discard' | null) =>
+  const [ending, setEndingFor] = useState<{ sessionId: string; step: 'choose' | 'discard' | 'finish' } | null>(null);
+  const setEnding = (step: 'choose' | 'discard' | 'finish' | null) =>
     setEndingFor(step && session ? { sessionId: session.sessionId, step } : null);
 
   const tracking = session?.status === 'TRACKING';
@@ -61,7 +61,18 @@ export const MiniBar: React.FC = () => {
       <div className="flex-1 min-w-0 leading-tight">
         {session ? (
           <>
-            <div className="text-[11px] font-bold text-accent-blue truncate">{session.taskKey}</div>
+            <div className="text-[11px] font-bold text-accent-blue truncate flex items-center gap-1">
+              {session.taskUnlisted && (
+                <span
+                  role="img"
+                  aria-label="No longer assigned to you"
+                  title="No longer assigned to you: reassigned, closed or moved. Time is still logged."
+                >
+                  <AlertTriangle className="w-3 h-3 shrink-0 text-accent-amber" />
+                </span>
+              )}
+              <span className="truncate">{session.taskKey}</span>
+            </div>
             <div className="text-xs text-text-primary truncate" title={session.taskTitle}>{session.taskTitle}</div>
           </>
         ) : (
@@ -81,7 +92,7 @@ export const MiniBar: React.FC = () => {
           <button type="button" title="Stop and log the time; the task stays open" className={`${choice} text-accent-blue hover:bg-accent-blue/15`} onClick={end('Stop', () => complete(undefined, false))}>
             Not done
           </button>
-          <button type="button" title="Log the time and mark the task done" className={`${choice} text-accent-green hover:bg-accent-green/15`} onClick={end('Finish', () => complete(undefined, true))}>
+          <button type="button" title="Log the time and mark the task done" className={`${choice} text-accent-green hover:bg-accent-green/15`} onClick={session?.taskUnlisted ? () => setEnding('finish') : end('Finish', () => complete(undefined, true))}>
             Done
           </button>
           <button type="button" title="Keep nothing: no worklog, nothing sent" className={`${choice} text-text-secondary hover:text-accent-red hover:bg-accent-red/15`} onClick={() => setEnding('discard')}>
@@ -89,6 +100,18 @@ export const MiniBar: React.FC = () => {
           </button>
           <button type="button" title="Keep the session running" aria-label="Keep the session" className={button} onClick={() => setEnding(null)}>
             <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {choosing === 'finish' && (
+        <div className="flex items-center gap-1" role="alertdialog" aria-label="Not yours: mark it done anyway?">
+          <span className="text-[11px] text-accent-amber font-bold" title="Reassigned, closed or moved since you started it">Not yours. Done?</span>
+          <button type="button" title="Mark it done anyway: your completion transition is applied" className={`${choice} bg-accent-green/90 hover:bg-accent-green text-dark-900`} onClick={end('Finish', () => complete(undefined, true))}>
+            Yes
+          </button>
+          <button type="button" title="Back to the choices" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')}>
+            No
           </button>
         </div>
       )}

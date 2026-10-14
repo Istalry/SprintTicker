@@ -14,6 +14,13 @@ export interface ActiveSessionDTO {
   totalPausedSeconds: number;
   elapsedSeconds: number; // Calculated on Main process
   lastPauseStartUtc?: string;
+  /**
+   * The provider stopped listing this task at the last sync: reassigned,
+   * closed or moved. The session goes on and its time is logged; finishing it
+   * as done asks first, since the task is no longer the user's to move.
+   * Absent otherwise.
+   */
+  taskUnlisted?: boolean;
 }
 
 /** What `session:discard` answers: whether a session was there, and how much time was thrown away. */

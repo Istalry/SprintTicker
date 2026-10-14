@@ -54,9 +54,13 @@ export const PAUSED_CHOICE_LABELS: Record<PausedChoice, string> = { STOP: 'STOP'
  * A question the paused screen asks instead of offering the menu. The
  * wheel's click answers yes and BACK no; see InputDecoder.
  */
-export type PausedConfirm = 'DISCARD';
+export type PausedConfirm = 'DISCARD' | 'FINISH_UNLISTED';
 export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint: string }> = {
-  DISCARD: { question: 'DISCARD?', hint: 'OK=YES BACK=NO' }
+  DISCARD: { question: 'DISCARD?', hint: 'OK=YES BACK=NO' },
+  // Finishing a task the provider no longer lists as the user's: reassigned,
+  // closed or moved. "OK=YES BACK=NO" beside "DONE?" is 60px of a 55px row,
+  // and BACK refuses every question on the bar.
+  FINISH_UNLISTED: { question: 'NOT YOURS', hint: 'DONE? OK=YES' }
 };
 
 /**

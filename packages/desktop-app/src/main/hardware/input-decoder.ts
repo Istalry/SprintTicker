@@ -46,6 +46,12 @@ export class InputDecoder {
   private _selectedProjectIndex: number = 0;
   private _selectedTaskIndex: number = 0;
   private _eodConfirmStep: number = 0;
+  /**
+   * Set when a long BACK paused a running session to ask whether to finish a
+   * task that is no longer the user's: refusing resumes it, as if the press
+   * had not happened.
+   */
+  private _resumeOnConfirmRefused: boolean = false;
 
   private _defaultBindings: HardwareBindingConfig = {
     startButtonPress: 'TOGGLE_TRACK_PAUSE',
@@ -307,15 +313,25 @@ export class InputDecoder {
       const confirm = this._renderer.getPausedConfirm();
       if (confirm) {
         if (isWheelClick) {
+          this._resumeOnConfirmRefused = false;
+          this._renderer.clearPausedConfirm({ redraw: false });
+          if (confirm === 'FINISH_UNLISTED') {
+            this.finishFromTheBar('Completed via BUSY Bar after confirming');
+            this.notifyActionHandlers('CONFIRM_PAUSED_FINISH', normalizedKey);
+            return 'CONFIRM_PAUSED_FINISH';
+          }
           // No LOGGED, no DONE!: nothing was kept. Ending the session redraws
           // the screen.
-          this._renderer.clearPausedConfirm({ redraw: false });
           this._engine.discardSession();
           this.notifyActionHandlers('CONFIRM_PAUSED_DISCARD', normalizedKey);
           return 'CONFIRM_PAUSED_DISCARD';
         }
         if (isBack) {
           this._renderer.clearPausedConfirm();
+          if (this._resumeOnConfirmRefused) {
+            this._resumeOnConfirmRefused = false;
+            this._engine.resumeSession();
+          }
           this.notifyActionHandlers('CANCEL_PAUSED_CONFIRM', normalizedKey);
           return 'CANCEL_PAUSED_CONFIRM';
         }
@@ -344,16 +360,15 @@ export class InputDecoder {
           // the scene rather than drawn first.
           this._renderer.renderTaskLogged();
           this._engine.stopSession('Stopped via BUSY Bar Paused Menu');
+        } else if (activeSession?.taskUnlisted) {
+          // Reassigned, closed or moved since it started: finishing it would
+          // fire the user's completion transition on a task that is no longer
+          // theirs. Ask, as the window does.
+          this._renderer.askPausedConfirm('FINISH_UNLISTED');
+          this.notifyActionHandlers('ASK_PAUSED_FINISH', normalizedKey);
+          return 'ASK_PAUSED_FINISH';
         } else {
-          if (this._renderer.renderTaskCompletionConfetti) {
-            this._renderer.renderTaskCompletionConfetti();
-          }
-          // `markDone` is the whole difference between the two branches, and
-          // omitting it made FINISH identical to STOP -- it logged the time,
-          // played the confetti and left the task in progress. Reported from
-          // daily use: finishing from the bar left the board untouched, so the
-          // same work had to be closed again from the app.
-          this._engine.stopSession('Completed via BUSY Bar Paused Menu', true);
+          this.finishFromTheBar('Completed via BUSY Bar Paused Menu');
         }
         this.notifyActionHandlers('VALIDATE_PAUSED_SELECTION', normalizedKey);
         return 'VALIDATE_PAUSED_SELECTION';
@@ -412,6 +427,19 @@ export class InputDecoder {
         break;
       }
       case 'COMPLETE_AND_LOG_ACTIVE_TASK': {
+        const toFinish = this._engine.getCurrentSession();
+        if (toFinish?.taskUnlisted && this._renderer) {
+          // The question lives on the paused screen, so a running session is
+          // paused to ask it -- the question first, so the pause draws it at
+          // once -- and refusing resumes it.
+          this._renderer.askPausedConfirm('FINISH_UNLISTED');
+          if (toFinish.status === 'TRACKING') {
+            this._resumeOnConfirmRefused = true;
+            this._engine.pauseSession();
+          }
+          this.notifyActionHandlers('ASK_PAUSED_FINISH', inputKey);
+          break;
+        }
         // Named for what it does, which is why the missing `markDone` was easy
         // to miss: it logged and did not complete. See the paused menu above.
         this._engine.stopSession('Completed via BUSY Bar Long Press', true);
@@ -448,6 +476,19 @@ export class InputDecoder {
         console.error('[InputDecoder] Error in action handler:', err);
       }
     }
+  }
+
+  /** FINISH: DONE! on the bar, then the session stopped and its task marked done. */
+  private finishFromTheBar(comment: string): void {
+    if (this._renderer?.renderTaskCompletionConfetti) {
+      this._renderer.renderTaskCompletionConfetti();
+    }
+    // `markDone` is the whole difference from STOP, and omitting it made
+    // FINISH identical to STOP -- it logged the time, played the confetti and
+    // left the task in progress. Reported from daily use: finishing from the
+    // bar left the board untouched, so the same work had to be closed again
+    // from the app.
+    this._engine.stopSession(comment, true);
   }
 
   private startTaskSelection() {

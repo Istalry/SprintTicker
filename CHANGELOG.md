@@ -33,6 +33,12 @@
 
 ### Fixed
 
+- **A task reassigned while you track it stays.** The sync retired it
+  mid-session -- deleted outright when no time had been logged on it yet --
+  so it vanished from the lists and finishing it as done did nothing. It now
+  stays until the session ends, the panel and the mini timer say **No longer
+  assigned to you**, the time is logged as usual, and marking it done asks
+  first, on the bar too.
 - **Discard discards.** `session:discard` logged the time and sent it to the
   provider like any stop. Nothing in the window called it, so it never
   showed; it now keeps nothing.
