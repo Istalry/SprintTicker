@@ -108,6 +108,24 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     global.fetch = originalFetch;
   });
 
+  it('OpenProjectProvider_LogTime_AnswerWithoutAnId_ReportsNone', async () => {
+    // Never one made up: it would be kept as the handle for a correction.
+    await openProjectProvider.initialize({ domain: 'https://op.test', apiToken: 'token' });
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+
+    const result = await openProjectProvider.logTime({
+      taskId: 'OP-101',
+      durationSeconds: 600,
+      startedAtUtc: '2026-08-07T10:00:00Z',
+      comment: 'work',
+      isAdHoc: false
+    });
+
+    expect(result).toEqual({ success: true, remoteWorklogId: undefined });
+    global.fetch = originalFetch;
+  });
+
   it('OpenProjectProvider_UpdateTaskStatus_ValidStatus_SendsPatchRequest', async () => {
     await openProjectProvider.initialize({ 
       domain: 'https://op.test', 
@@ -163,7 +181,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     // as a measured "you logged nothing today".
     expect(reconciliation.remoteLoggedTimeToday).toBeNull();
     expect(result.success).toBe(true);
-    expect(result.remoteWorklogId).toContain('adhoc_wl_');
+    expect(result.remoteWorklogId).toBeUndefined();
   });
 
   it('AdHocProvider_UpdateTaskStatus_ReturnsFalse', async () => {

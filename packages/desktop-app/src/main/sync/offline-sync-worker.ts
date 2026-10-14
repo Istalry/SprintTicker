@@ -320,7 +320,7 @@ export class OfflineSyncWorker {
         });
 
         if (result.success) {
-          this.worklogRepo.markSyncItemSynced(item.id);
+          this.worklogRepo.markSyncItemSynced(item.id, result.remoteWorklogId);
           succeeded++;
         } else {
           // A provider that reports failure without throwing tells us

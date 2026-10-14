@@ -70,6 +70,12 @@ if (report.recovered.length > 0) {
   console.table(report.recovered);
 }
 console.log(`Foreign key violations: ${report.foreignKeyViolations}`);
+if (report.queueLinks) {
+  console.log(
+    `Queued sends tied to their worklog: ${report.queueLinks.linked}; ` +
+      `not tied (correctable here only): ${report.queueLinks.unlinked}`
+  );
+}
 
 if (report.problems.length === 0) {
   console.log('OK: every worklog and every second kept, every orphan named, at most one open session.');

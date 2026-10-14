@@ -33,6 +33,11 @@
 
 ### Changed
 
+- **Each worklog sent keeps the provider's id for it** (migration 8), the
+  groundwork for correcting a worklog already sent. Queued sends are tied to
+  the worklog they carry; those from before are tied where the match is
+  certain. When Jira or OpenProject answers without an id, none is kept: the
+  adapters used to invent one (`jira_wl_<time>`).
 - **A worklog belongs to the day it began.** Work History, today's table and
   the end-of-day summary filed it on the day it stopped, so a session from
   17:00 to 01:00 showed under the second day here and under the first in Jira

@@ -572,8 +572,9 @@ export class TimeTrackingEngine extends EventEmitter {
       title: active.taskTitle,
       projectId: active.projectId
     });
+    const worklogId = createId(IdPrefix.WORKLOG);
     this._worklogRepo.saveWorklog({
-      id: createId(IdPrefix.WORKLOG),
+      id: worklogId,
       sessionId: active.sessionId,
       taskId: active.taskId,
       durationSeconds: loggedSeconds,
@@ -624,7 +625,8 @@ export class TimeTrackingEngine extends EventEmitter {
         taskId: active.taskId,
         durationSeconds: loggedSeconds,
         startedAtUtc: active.startTimeUtc,
-        comment: worklogComment
+        comment: worklogComment,
+        worklogId
       });
     } else {
       console.log(

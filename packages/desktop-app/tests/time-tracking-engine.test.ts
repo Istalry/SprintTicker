@@ -229,6 +229,19 @@ describe('TimeTrackingEngine Unit Tests', () => {
       expect(delivered[0].taskId).toBe('10001');
     });
 
+    it('StopSession_Queued_TheRowNamesItsWorklog', () => {
+      // What lets a worklog already sent be corrected later.
+      startBackdatedSession(5);
+
+      stopEngine.stopSession('Finished');
+
+      const rows = dbConn
+        .getDb()
+        .prepare<[], { worklog_id: string | null; operation: string }>('SELECT worklog_id, operation FROM worklog_sync_queue')
+        .all();
+      expect(rows).toEqual([{ worklog_id: worklogRepo.getTodaysWorklogs()[0].id, operation: 'CREATE' }]);
+    });
+
     it('StopSession_SessionShorterThanOneSecond_IsNotQueuedForAProviderThatWillRefuseIt', async () => {
       // A mis-click: start and stop inside the same second. elapsedSeconds is
       // floored and clamped, so it is 0 -- and every provider's logTime throws

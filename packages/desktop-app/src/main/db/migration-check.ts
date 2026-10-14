@@ -22,6 +22,8 @@ export interface MigrationCensus {
   openSessions: number;
   /** Worklogs written by a migration for a session it had to close. */
   recoveredWorklogs: number;
+  /** Rows of the provider queue, sent or not: each is time owed to, or held by, a provider. */
+  syncQueueRows: number;
 }
 
 export interface TombstoneTask {
@@ -47,6 +49,12 @@ export interface MigrationCheckReport {
   tombstones: TombstoneTask[];
   recovered: RecoveredWorklog[];
   foreignKeyViolations: number;
+  /**
+   * Queue rows tied to their worklog (migration 8), and those that could not
+   * be: an unlinked row's worklog can be corrected here but not at the
+   * provider. Null before the column exists.
+   */
+  queueLinks: { linked: number; unlinked: number } | null;
   /** Empty when the migration kept everything; otherwise, what it did not. */
   problems: string[];
 }
@@ -91,7 +99,8 @@ export function takeCensus(db: Database.Database): MigrationCensus {
       : 0,
     recoveredWorklogs: hasWorklogs
       ? count(db, 'SELECT COUNT(*) AS n FROM worklogs WHERE comment = ?', RECOVERED_SESSION_COMMENT)
-      : 0
+      : 0,
+    syncQueueRows: tableExists(db, 'worklog_sync_queue') ? count(db, 'SELECT COUNT(*) AS n FROM worklog_sync_queue') : 0
   };
 }
 
@@ -136,6 +145,9 @@ function findProblems(before: MigrationCensus, after: MigrationCensus, foreignKe
   }
   if (after.openSessions > 1) {
     problems.push(`${after.openSessions} sessions are still open; at most one may be.`);
+  }
+  if (after.syncQueueRows < before.syncQueueRows) {
+    problems.push(`The provider queue went from ${before.syncQueueRows} rows to ${after.syncQueueRows}.`);
   }
   if (foreignKeyViolations > 0) {
     problems.push(`${foreignKeyViolations} rows violate a foreign key.`);
@@ -185,6 +197,14 @@ export function checkMigration(
         .all(RECOVERED_SESSION_COMMENT)
     : [];
 
+  const queueLinks =
+    tableExists(db, 'worklog_sync_queue') && columnExists(db, 'worklog_sync_queue', 'worklog_id')
+      ? {
+          linked: count(db, 'SELECT COUNT(*) AS n FROM worklog_sync_queue WHERE worklog_id IS NOT NULL'),
+          unlinked: count(db, 'SELECT COUNT(*) AS n FROM worklog_sync_queue WHERE worklog_id IS NULL')
+        }
+      : null;
+
   return {
     before,
     after,
@@ -192,6 +212,7 @@ export function checkMigration(
     tombstones,
     recovered,
     foreignKeyViolations,
+    queueLinks,
     problems: findProblems(before, after, foreignKeyViolations)
   };
 }

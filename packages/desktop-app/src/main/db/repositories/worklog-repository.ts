@@ -58,6 +58,9 @@ function toRecord(r: WorklogRow): WorklogRecord {
 
 export type SyncQueueStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
 
+/** What a queue row asks of the provider (migration 8). */
+export type SyncQueueOperation = 'CREATE' | 'UPDATE' | 'DELETE';
+
 export interface SyncQueueRecord {
   id: string;
   providerId: string;
@@ -74,6 +77,13 @@ export interface SyncQueueRecord {
   claimedAtUtc: string | null;
   /** Message from the most recent failed attempt. */
   lastError: string | null;
+  /** The local worklog this row sends or corrects; null for a row nothing could be linked to. */
+  worklogId: string | null;
+  operation: SyncQueueOperation;
+  /** The provider's id for the entry, once a `CREATE` has been answered with one. */
+  remoteWorklogId: string | null;
+  /** For an `UPDATE` or `DELETE`: the `CREATE` row whose marker the remote comment carries. */
+  originSyncId: string | null;
 }
 
 /** Raw column shape of a worklog_sync_queue row. */
@@ -90,6 +100,10 @@ interface SyncQueueRow {
   next_attempt_at_utc: string | null;
   claimed_at_utc: string | null;
   last_error: string | null;
+  worklog_id: string | null;
+  operation: SyncQueueOperation;
+  remote_worklog_id: string | null;
+  origin_sync_id: string | null;
 }
 
 function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
@@ -105,7 +119,11 @@ function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
     status: r.status,
     nextAttemptAtUtc: r.next_attempt_at_utc,
     claimedAtUtc: r.claimed_at_utc,
-    lastError: r.last_error
+    lastError: r.last_error,
+    worklogId: r.worklog_id,
+    operation: r.operation,
+    remoteWorklogId: r.remote_worklog_id,
+    originSyncId: r.origin_sync_id
   };
 }
 
@@ -156,6 +174,9 @@ export class WorklogRepository {
 
   /**
    * Enqueues a worklog to the offline retry queue.
+   *
+   * `worklogId` names the local worklog the row sends, which is what lets
+   * that worklog be corrected once it has been sent.
    */
   public enqueueSyncItem(payload: {
     id: string;
@@ -164,11 +185,12 @@ export class WorklogRepository {
     durationSeconds: number;
     startedAtUtc: string;
     comment: string;
+    worklogId?: string | null;
   }): void {
     const stmt = this.dbConn.getDb().prepare(`
       INSERT INTO worklog_sync_queue (
-        id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, worklog_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
     `);
 
     stmt.run(
@@ -178,7 +200,8 @@ export class WorklogRepository {
       payload.durationSeconds,
       payload.startedAtUtc,
       payload.comment,
-      new Date().toISOString()
+      new Date().toISOString(),
+      payload.worklogId ?? null
     );
   }
 
@@ -264,23 +287,33 @@ export class WorklogRepository {
       .run(nowUtc, id);
 
     if (result.changes !== 1) return null;
+    return this.getSyncItem(id);
+  }
 
-    const row = db
+  /** One queue row, whatever its state, or null when there is none. */
+  public getSyncItem(id: string): SyncQueueRecord | null {
+    const row = this.dbConn
+      .getDb()
       .prepare<[string], SyncQueueRow>('SELECT * FROM worklog_sync_queue WHERE id = ?')
       .get(id);
     return row ? mapSyncQueueRow(row) : null;
   }
 
-  /** Marks a claimed row as delivered. */
-  public markSyncItemSynced(id: string): void {
+  /**
+   * Marks a claimed row as delivered, keeping the id the provider gave the
+   * entry when it gave one -- the only handle a later correction has on it.
+   * A row that already knows its id keeps it when the answer carries none.
+   */
+  public markSyncItemSynced(id: string, remoteWorklogId?: string): void {
     this.dbConn
       .getDb()
       .prepare(
         `UPDATE worklog_sync_queue
-            SET status = 'SYNCED', claimed_at_utc = NULL, last_error = NULL
+            SET status = 'SYNCED', claimed_at_utc = NULL, last_error = NULL,
+                remote_worklog_id = COALESCE(?, remote_worklog_id)
           WHERE id = ?`
       )
-      .run(id);
+      .run(remoteWorklogId ?? null, id);
   }
 
   /**

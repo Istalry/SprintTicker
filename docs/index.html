@@ -1989,7 +1989,7 @@
       </tr>
       <tr>
       <td align="left"><code>worklog_sync_queue</code></td>
-      <td align="left">Outbound worklogs: <code>PENDING</code> / <code>SYNCING</code> / <code>SYNCED</code> / <code>FAILED</code>, with backoff and <code>last_error</code></td>
+      <td align="left">Outbound worklogs: <code>PENDING</code> / <code>SYNCING</code> / <code>SYNCED</code> / <code>FAILED</code>, with backoff and <code>last_error</code>. Each row names the <code>worklog_id</code> it sends, its <code>operation</code> (<code>CREATE</code> today), and once sent the provider&#39;s <code>remote_worklog_id</code></td>
       </tr>
       <tr>
       <td align="left"><code>settings</code></td>
@@ -2020,12 +2020,22 @@
       end is inferred, and sending it is the user&#39;s call.</li>
       <li><code>task-description</code> — a nullable <code>description</code> on <code>tasks</code>, filled by the next
       sync.</li>
+      <li><code>worklog-remote-identity</code> — ties each queue row to its worklog and keeps
+      the id the provider gave the entry, so a worklog already sent can be
+      corrected. Nothing linked the two, and the provider&#39;s answer was read for
+      <code>success</code> and dropped. The identity lives on the queue rather than the
+      worklog because deleting a worklog removes it locally at once while its
+      remote deletion still has to name the entry. Existing rows are tied to
+      the worklog written beside them -- same task, start and duration -- only
+      where the match is one to one; nothing sent before it has a remote id.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
       counts either side (<code>db/migration-check.ts</code>): every worklog and every second
       kept, apart from worklogs written for recovered sessions; every orphaned task id
-      given a task; at most one open session; no foreign key violation. The rules
+      given a task; at most one open session; no foreign key violation; no row of
+      the provider queue lost. It also reports how many queued sends are tied to
+      their worklog. The rules
       name no migration, so a new one is held to them unchanged. The tests prove the
       migrations on invented data; this proves them on data nobody invented.</p>
       <p><strong>Tasks with history are archived, never deleted.</strong> The sync prune, deleting a
@@ -2121,7 +2131,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1937 tests across 99 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1949 tests across 99 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2514,6 +2524,11 @@
       not ask once per project. A new adapter has to find out how its API treats a
       bad credential, and <code>scripts/fake-jira.js</code> reproduces Jira&#39;s answer so the
       check has cover.</p>
+      <p><strong><code>logTime</code> answers the entry&#39;s own id, or none.</strong> <code>remoteWorklogId</code> is kept
+      on the queue row and is how a later correction finds the entry. When the API
+      answers without one, leave it <code>undefined</code>: an id made up here
+      (<code>jira_wl_&lt;time&gt;</code>, as the adapters once did) is indistinguishable from a real
+      one, and a correction sent to it would miss an entry that does exist.</p>
       <p><strong><code>minimumLoggableSeconds</code> is a fact about your API, not a policy.</strong> Jira&#39;s time
       tracking is minute-granular, so it declares 60; OpenProject and AdHoc record
       arbitrary durations and declare 1. The engine reads it before queueing, so a

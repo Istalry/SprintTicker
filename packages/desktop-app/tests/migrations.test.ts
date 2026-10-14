@@ -419,4 +419,93 @@ describe('Schema Migrations', () => {
       expect(() => open('second', '2026-03-01T10:00:00.000Z')).not.toThrow();
     });
   });
+
+  describe('migration 8: a queued send knows its worklog', () => {
+    /** A version-7 database with one task, as the build before this one leaves it. */
+    function atVersion7(): void {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 7)) migration.up(db);
+      db.pragma('user_version = 7');
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('t1', 'P1', 'A-1', 'Task', 'todo', '2026-01-01T00:00:00.000Z')"
+      ).run();
+    }
+
+    /** A worklog and, when `queued`, the row the engine wrote beside it: same task, start and duration. */
+    function stopped(worklogId: string, start: string, seconds: number, queueId?: string): void {
+      db.prepare(
+        `INSERT INTO worklogs (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc)
+         VALUES (?, 's1', 't1', ?, ?, 'work', ?)`
+      ).run(worklogId, seconds, start, start);
+      if (queueId) queued(queueId, start, seconds);
+    }
+
+    function queued(id: string, start: string, seconds: number): void {
+      db.prepare(
+        `INSERT INTO worklog_sync_queue (id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status)
+         VALUES (?, 'jira', 't1', ?, ?, 'work', ?, 'SYNCED')`
+      ).run(id, seconds, start, start);
+    }
+
+    const row = (id: string) =>
+      db.prepare<[string], { worklog_id: string | null; operation: string; remote_worklog_id: string | null; origin_sync_id: string | null }>(
+        'SELECT worklog_id, operation, remote_worklog_id, origin_sync_id FROM worklog_sync_queue WHERE id = ?'
+      ).get(id);
+
+    it('Migration008_RowWrittenBesideItsWorklog_IsTiedToIt', () => {
+      atVersion7();
+      stopped('w1', '2026-03-01T09:00:00.000Z', 900, 'q1');
+      stopped('w2', '2026-03-01T10:00:00.000Z', 900, 'q2');
+
+      runMigrations(db);
+
+      expect(row('q1')).toEqual({ worklog_id: 'w1', operation: 'CREATE', remote_worklog_id: null, origin_sync_id: null });
+      expect(row('q2')?.worklog_id).toBe('w2');
+    });
+
+    it('Migration008_TwoIdenticalWorklogs_TiesNeither', () => {
+      // Which entry at the provider is which cannot be told; a wrong tie
+      // would correct the other one.
+      atVersion7();
+      stopped('w1', '2026-03-01T09:00:00.000Z', 900, 'q1');
+      stopped('w2', '2026-03-01T09:00:00.000Z', 900, 'q2');
+
+      runMigrations(db);
+
+      expect(row('q1')?.worklog_id).toBeNull();
+      expect(row('q2')?.worklog_id).toBeNull();
+    });
+
+    it('Migration008_TwoRowsForOneWorklog_TiesNeither', () => {
+      atVersion7();
+      stopped('w1', '2026-03-01T09:00:00.000Z', 900, 'q1');
+      queued('q2', '2026-03-01T09:00:00.000Z', 900);
+
+      runMigrations(db);
+
+      expect(row('q1')?.worklog_id).toBeNull();
+      expect(row('q2')?.worklog_id).toBeNull();
+    });
+
+    it('Migration008_RowWithoutItsWorklog_StaysUntied', () => {
+      atVersion7();
+      queued('q1', '2026-03-01T09:00:00.000Z', 900);
+      stopped('w1', '2026-03-01T09:00:00.000Z', 600);
+
+      runMigrations(db);
+
+      expect(row('q1')?.worklog_id).toBeNull();
+    });
+
+    it('Migration008_FromThenOn_AnUnknownOperationIsRefused', () => {
+      atVersion7();
+      runMigrations(db);
+
+      expect(() =>
+        db.prepare(
+          `INSERT INTO worklog_sync_queue (id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, operation)
+           VALUES ('q9', 'jira', 't1', 60, '2026-03-01T09:00:00.000Z', '', '2026-03-01T09:00:00.000Z', 'PENDING', 'MOVE')`
+        ).run()
+      ).toThrow(/CHECK/);
+    });
+  });
 });

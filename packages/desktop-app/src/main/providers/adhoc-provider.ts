@@ -34,10 +34,9 @@ export class AdHocProvider implements ITaskProvider {
 
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
     console.log(`[AdHocProvider] Logging ad-hoc time under ${this.fallbackKey}: ${payload.durationSeconds}s ("${payload.comment}")`);
-    return {
-      success: true,
-      remoteWorklogId: `adhoc_wl_${Date.now()}`
-    };
+    // No remote, so no remote id: one made up here would be kept as the
+    // handle for correcting an entry that exists nowhere.
+    return { success: true };
   }
 
   public async updateTaskStatus(_taskId: string, _status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {

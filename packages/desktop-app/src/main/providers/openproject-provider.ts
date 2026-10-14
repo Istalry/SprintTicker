@@ -440,8 +440,9 @@ export class OpenProjectProvider implements ITaskProvider {
       );
 
       const json = await res.json() as { id?: number };
-      const remoteWorklogId = json.id ? json.id.toString() : `op_wl_${Date.now()}`;
-      console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId})`);
+      // No id is reported as none, not made up: see JiraProvider.logTime.
+      const remoteWorklogId = json.id ? json.id.toString() : undefined;
+      console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId ?? 'none given'})`);
       return { success: true, remoteWorklogId };
     }
   }

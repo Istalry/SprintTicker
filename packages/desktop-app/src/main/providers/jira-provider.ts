@@ -509,9 +509,12 @@ export class JiraProvider implements ITaskProvider {
     );
 
     const body = await this.readJson<{ id?: string | number }>(res, `Logging time on ${issueKey}`);
+    // No id is reported as none. An id made up here (`jira_wl_<time>`) was
+    // indistinguishable from a real one, and a correction sent to it would
+    // fail against an entry that does exist.
     return {
       success: true,
-      remoteWorklogId: body.id !== undefined && body.id !== null ? String(body.id) : `jira_wl_${Date.now()}`
+      remoteWorklogId: body.id !== undefined && body.id !== null ? String(body.id) : undefined
     };
   }
 

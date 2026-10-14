@@ -243,6 +243,28 @@ describe('Worklog sync queue ownership', () => {
       expect(send).toHaveBeenCalledTimes(1);
     });
 
+    it('ProcessPendingQueue_ProviderGivesTheEntryAnId_KeepsIt', async () => {
+      // The only handle a later correction has on the provider's entry.
+      enqueue('sync_kept');
+      const worker = new OfflineSyncWorker(
+        managerStub({ logTimeForProvider: async () => ({ success: true, remoteWorklogId: '10234' }) }),
+        worklogRepo
+      );
+
+      await worker.processPendingQueue();
+
+      expect(worklogRepo.getSyncItem('sync_kept')).toMatchObject({ status: 'SYNCED', remoteWorklogId: '10234' });
+    });
+
+    it('ProcessPendingQueue_ProviderGivesNoId_KeepsNone', async () => {
+      enqueue('sync_none');
+      const worker = new OfflineSyncWorker(managerStub({}), worklogRepo);
+
+      await worker.processPendingQueue();
+
+      expect(worklogRepo.getSyncItem('sync_none')).toMatchObject({ status: 'SYNCED', remoteWorklogId: null });
+    });
+
     it('ProcessPendingQueue_ProviderFails_RowSurvivesForALaterAttempt', async () => {
       enqueue('sync_flaky');
       const worker = new OfflineSyncWorker(

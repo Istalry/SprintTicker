@@ -355,6 +355,54 @@ const M007_TASK_DESCRIPTION = `
   ALTER TABLE tasks ADD COLUMN description TEXT;
 `;
 
+/**
+ * Migration 8 ties each queued send to its worklog and keeps the id the
+ * provider gave it, so a worklog already sent can be corrected.
+ *
+ * Nothing linked the two: the engine wrote a worklog and a queue row side by
+ * side with separate ids, and the provider's answer -- Jira's worklog id,
+ * OpenProject's time entry id -- was read for `success` and dropped. So
+ * correcting a worklog here could not say which remote entry to change.
+ *
+ * The identity lives on the queue, not on the worklog: a deletion removes
+ * the local worklog at once, and its queued DELETE still has to name the
+ * remote entry. `operation` says what a row asks of the provider; an
+ * `UPDATE` or `DELETE` names in `origin_sync_id` the `CREATE` row whose
+ * marker (`withSyncMarker`) the remote comment carries, which is how an
+ * entry sent before this migration is found again.
+ *
+ * Existing rows are linked to the worklog written beside them -- same task,
+ * same start, same duration, which the engine took from one session -- but
+ * only where the match is one to one. Two identical worklogs cannot be told
+ * apart, and a wrong link would correct the wrong entry; an unlinked row
+ * leaves its worklog correctable locally only. No remote id is known for
+ * anything sent before now.
+ */
+const M008_WORKLOG_REMOTE_IDENTITY = `
+  ALTER TABLE worklog_sync_queue ADD COLUMN worklog_id TEXT;
+  ALTER TABLE worklog_sync_queue ADD COLUMN operation TEXT NOT NULL DEFAULT 'CREATE'
+      CHECK(operation IN ('CREATE', 'UPDATE', 'DELETE'));
+  ALTER TABLE worklog_sync_queue ADD COLUMN remote_worklog_id TEXT;
+  ALTER TABLE worklog_sync_queue ADD COLUMN origin_sync_id TEXT;
+
+  UPDATE worklog_sync_queue AS q
+     SET worklog_id = (
+       SELECT w.id FROM worklogs w
+        WHERE w.task_id = q.task_id
+          AND w.started_at_utc = q.started_at_utc
+          AND w.duration_seconds = q.duration_seconds)
+   WHERE (SELECT COUNT(*) FROM worklogs w
+           WHERE w.task_id = q.task_id
+             AND w.started_at_utc = q.started_at_utc
+             AND w.duration_seconds = q.duration_seconds) = 1
+     AND (SELECT COUNT(*) FROM worklog_sync_queue o
+           WHERE o.task_id = q.task_id
+             AND o.started_at_utc = q.started_at_utc
+             AND o.duration_seconds = q.duration_seconds) = 1;
+
+  CREATE INDEX idx_sync_queue_worklog ON worklog_sync_queue(worklog_id);
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -363,7 +411,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 4, name: 'task-priority-rank', up: db => db.exec(M004_TASK_PRIORITY) },
   { version: 5, name: 'worklog-task-foreign-key', up: m005WorklogTaskForeignKey },
   { version: 6, name: 'one-open-session', up: m006OneOpenSession },
-  { version: 7, name: 'task-description', up: db => db.exec(M007_TASK_DESCRIPTION) }
+  { version: 7, name: 'task-description', up: db => db.exec(M007_TASK_DESCRIPTION) },
+  { version: 8, name: 'worklog-remote-identity', up: db => db.exec(M008_WORKLOG_REMOTE_IDENTITY) }
 ];
 
 /** Schema version a fully migrated database reports. */

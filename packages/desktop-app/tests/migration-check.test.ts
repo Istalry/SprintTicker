@@ -43,6 +43,11 @@ describe('checkMigration', () => {
     session.run('s-old', 't1', 'A-1', 'Kept task', '2026-03-02T09:00:00.000Z', 'TRACKING');
     session.run('s-new', 't1', 'A-1', 'Kept task', '2026-03-02T10:00:00.000Z', 'TRACKING');
     worklog('w1', 's-gone', 'gone');
+    // Sent, from the same session: migration 8 ties the two together.
+    db.prepare(
+      `INSERT INTO worklog_sync_queue (id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status)
+       VALUES ('q1', 'jira', 'gone', 900, '2026-03-01T09:00:00.000Z', 'work', '2026-03-01T09:15:00.000Z', 'SYNCED')`
+    ).run();
   }
 
   function worklog(id: string, sessionId: string, taskId: string): void {
@@ -64,6 +69,27 @@ describe('checkMigration', () => {
     expect(report.recovered).toHaveLength(1);
     expect(report.after.worklogs).toBe(report.before.worklogs + 1);
     expect(report.foreignKeyViolations).toBe(0);
+    expect(report.queueLinks).toEqual({ linked: 1, unlinked: 0 });
+  });
+
+  it('CheckMigration_MigrationLosesAQueueRow_SaysSo', () => {
+    // A sent row is the only handle on the provider's entry; a pending one is time not yet delivered.
+    atVersion4WithDamage();
+
+    const report = checkMigration(db, d => {
+      runMigrations(d);
+      d.prepare("DELETE FROM worklog_sync_queue WHERE id = 'q1'").run();
+    });
+
+    expect(report.problems).toEqual(['The provider queue went from 1 rows to 0.']);
+  });
+
+  it('CheckMigration_BeforeTheQueueKnowsItsWorklogs_ReportsNoLinks', () => {
+    atVersion4WithDamage();
+
+    const report = checkMigration(db, () => undefined);
+
+    expect(report.queueLinks).toBeNull();
   });
 
   it('CheckMigration_AlreadyCurrent_ChangesNothingAndPasses', () => {
@@ -156,7 +182,8 @@ describe('checkMigration', () => {
       orphanWorklogs: 0,
       orphanTaskIds: 0,
       openSessions: 0,
-      recoveredWorklogs: 0
+      recoveredWorklogs: 0,
+      syncQueueRows: 0
     });
   });
 

@@ -1030,7 +1030,7 @@ each provider. Waiting on: nothing but the work; it is its own batch.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.27 statements / 88.03 branches / 93.59 functions / 95.93 lines across 1937
+**94.27 statements / 88.16 branches / 93.61 functions / 95.93 lines across 1949
 tests in 99 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

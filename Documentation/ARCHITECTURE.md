@@ -548,7 +548,7 @@ testing runs against your actual worklogs.
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
-| `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error` |
+| `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id` |
 | `settings` | Key/value, including provider configuration |
 
 Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
@@ -575,12 +575,22 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
    end is inferred, and sending it is the user's call.
 7. `task-description` — a nullable `description` on `tasks`, filled by the next
    sync.
+8. `worklog-remote-identity` — ties each queue row to its worklog and keeps
+   the id the provider gave the entry, so a worklog already sent can be
+   corrected. Nothing linked the two, and the provider's answer was read for
+   `success` and dropped. The identity lives on the queue rather than the
+   worklog because deleting a worklog removes it locally at once while its
+   remote deletion still has to name the entry. Existing rows are tied to
+   the worklog written beside them -- same task, start and duration -- only
+   where the match is one to one; nothing sent before it has a remote id.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares
 counts either side (`db/migration-check.ts`): every worklog and every second
 kept, apart from worklogs written for recovered sessions; every orphaned task id
-given a task; at most one open session; no foreign key violation. The rules
+given a task; at most one open session; no foreign key violation; no row of
+the provider queue lost. It also reports how many queued sends are tied to
+their worklog. The rules
 name no migration, so a new one is held to them unchanged. The tests prove the
 migrations on invented data; this proves them on data nobody invented.
 
@@ -692,7 +702,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1937 tests across 99 files, in two projects: `main` in Node for
+Vitest, 1949 tests across 99 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

@@ -206,6 +206,12 @@ not ask once per project. A new adapter has to find out how its API treats a
 bad credential, and `scripts/fake-jira.js` reproduces Jira's answer so the
 check has cover.
 
+**`logTime` answers the entry's own id, or none.** `remoteWorklogId` is kept
+on the queue row and is how a later correction finds the entry. When the API
+answers without one, leave it `undefined`: an id made up here
+(`jira_wl_<time>`, as the adapters once did) is indistinguishable from a real
+one, and a correction sent to it would miss an entry that does exist.
+
 **`minimumLoggableSeconds` is a fact about your API, not a policy.** Jira's time
 tracking is minute-granular, so it declares 60; OpenProject and AdHoc record
 arbitrary durations and declare 1. The engine reads it before queueing, so a

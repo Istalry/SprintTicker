@@ -499,6 +499,21 @@ describe('JiraProvider', () => {
       expect(result).toEqual({ success: true, remoteWorklogId: '90210' });
     });
 
+    it('LogTime_AnswerWithoutAnId_ReportsNone', async () => {
+      // Never one made up: it would be kept as the handle for a correction.
+      record(ok({}));
+
+      const result = await (await configured()).logTime({
+        taskId: 'A-1',
+        durationSeconds: 3600,
+        startedAtUtc: '2026-01-01T09:00:00.000Z',
+        comment: 'work',
+        isAdHoc: false
+      });
+
+      expect(result).toEqual({ success: true, remoteWorklogId: undefined });
+    });
+
     it('LogTime_AnyRequest_SendsTimeSpentInSeconds', async () => {
       const { inits } = record(ok({ id: '1' }));
 
