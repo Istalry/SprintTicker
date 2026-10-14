@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import path from 'path';
-import fs from 'fs';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
@@ -11,11 +9,11 @@ describe('Project & Task Management and Worklog History Unit Tests', () => {
   let projectRepo: ProjectRepository;
   let taskRepo: TaskRepository;
   let worklogRepo: WorklogRepository;
-  let testDbPath: string;
 
   beforeEach(() => {
-    testDbPath = path.join(process.cwd(), `test_proj_mgmt_${Date.now()}.db`);
-    dbConn = new DatabaseConnection(testDbPath);
+    // In memory: see data-wipe-and-task-status.test.ts for what a file
+    // named by Date.now() did.
+    dbConn = new DatabaseConnection(':memory:');
     projectRepo = new ProjectRepository(dbConn);
     taskRepo = new TaskRepository(dbConn);
     worklogRepo = new WorklogRepository(dbConn);
@@ -23,13 +21,6 @@ describe('Project & Task Management and Worklog History Unit Tests', () => {
 
   afterEach(() => {
     dbConn.close();
-    if (fs.existsSync(testDbPath)) {
-      try {
-        fs.unlinkSync(testDbPath);
-      } catch {
-        // Ignore file cleanup lock on windows
-      }
-    }
   });
 
   it('ProjectRepository_SaveAndGetAllProjects_ReturnsCreatedProjects', () => {

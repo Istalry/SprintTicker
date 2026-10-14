@@ -714,7 +714,11 @@ interfaces, `PascalCase` methods).
   asserted a high-priority notification evaluated to priority 95 passed happily
   while the feature was broken end to end, because nothing produces 95.
 - Prefer a real collaborator to a stub where it is cheap. Use
-  `new DatabaseConnection(':memory:')`, not the singleton.
+  `new DatabaseConnection(':memory:')`, not the singleton -- and not a file
+  named by `Date.now()` either. Two suites started in the same millisecond
+  opened the same one, and the second failed migrating a schema the first
+  had built (`duplicate column name`): the test that failed once in eight
+  runs, in two files, until 2026-10-14.
 - Tests must not spawn PowerShell against the developer's own machine or leave a
   database behind. **Every service that shells out takes its executor by
   constructor** -- `SystemAutomationService`'s `CommandExecFn`,

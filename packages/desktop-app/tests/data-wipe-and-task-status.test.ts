@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import path from 'path';
-import fs from 'fs';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
@@ -9,20 +7,18 @@ describe('Data Wipe & Task Status Unit Tests', () => {
   let dbConn: DatabaseConnection;
   let projectRepo: ProjectRepository;
   let taskRepo: TaskRepository;
-  let testDbPath: string;
 
   beforeEach(() => {
-    testDbPath = path.join(process.cwd(), `test_wipe_${Date.now()}.db`);
-    dbConn = new DatabaseConnection(testDbPath);
+    // In memory, never a file named by Date.now(): two runs starting in the
+    // same millisecond opened the same file, and the second migrated a
+    // schema the first had already built ("duplicate column name").
+    dbConn = new DatabaseConnection(':memory:');
     projectRepo = new ProjectRepository(dbConn);
     taskRepo = new TaskRepository(dbConn);
   });
 
   afterEach(() => {
     dbConn.close();
-    if (fs.existsSync(testDbPath)) {
-      try { fs.unlinkSync(testDbPath); } catch { /* ignore */ }
-    }
   });
 
   it('DatabaseConnection_WipeAllData_ClearsAllProjectsAndDataCompletely', () => {
