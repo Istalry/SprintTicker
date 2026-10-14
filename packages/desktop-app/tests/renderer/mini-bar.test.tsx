@@ -55,16 +55,75 @@ describe('mini timer', () => {
     expect(await screen.findByLabelText('Pause')).toBeTruthy();
   });
 
-  it('Stop_LogsTheTimeWithoutMarkingTheTaskDone', async () => {
-    // Stop is "I am done for now", not "the task is finished": closing the
-    // ticket is the dashboard's decision, where the comment can be written.
-    const bridge = installElectronApi({ getCurrentSession: async () => TRACKING_SESSION });
-    render(<MiniBar />);
+  describe('ending a session', () => {
+    // Stop offers the three ways to end a session in place of the buttons.
+    // It used to log the time and nothing else, so finishing a task or
+    // throwing away one started by mistake meant opening the dashboard.
+    const openEndings = async () => {
+      const bridge = installElectronApi({ getCurrentSession: async () => TRACKING_SESSION });
+      render(<MiniBar />);
+      fireEvent.click(await screen.findByLabelText('Stop'));
+      return bridge;
+    };
 
-    fireEvent.click(await screen.findByLabelText('Stop'));
+    it('Stop_NotDone_LogsTheTimeWithoutMarkingTheTaskDone', async () => {
+      const bridge = await openEndings();
 
-    expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, false);
-    expect(await screen.findByText('No task running')).toBeTruthy();
+      fireEvent.click(screen.getByText('Not done'));
+
+      expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, false);
+      expect(await screen.findByText('No task running')).toBeTruthy();
+    });
+
+    it('Stop_Done_LogsAndMarksTheTaskDone', async () => {
+      const bridge = await openEndings();
+
+      fireEvent.click(screen.getByText('Done'));
+
+      expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, true);
+    });
+
+    it('Stop_DiscardConfirmed_DiscardsAndLogsNothing', async () => {
+      const bridge = await openEndings();
+
+      fireEvent.click(screen.getByText('Discard'));
+      fireEvent.click(screen.getByText('Yes'));
+
+      expect(bridge.api.discardSession).toHaveBeenCalledTimes(1);
+      expect(bridge.api.completeSession).not.toHaveBeenCalled();
+      expect(await screen.findByText('No task running')).toBeTruthy();
+    });
+
+    it('Stop_DiscardRefused_KeepsTheSessionAndOffersTheChoicesAgain', async () => {
+      const bridge = await openEndings();
+
+      fireEvent.click(screen.getByText('Discard'));
+      fireEvent.click(screen.getByText('No'));
+
+      expect(bridge.api.discardSession).not.toHaveBeenCalled();
+      expect(screen.getByText('Not done')).toBeTruthy();
+    });
+
+    it('Stop_ThenKeep_GivesTheButtonsBack', async () => {
+      const bridge = await openEndings();
+
+      fireEvent.click(screen.getByLabelText('Keep the session'));
+
+      expect(screen.getByLabelText('Pause')).toBeTruthy();
+      expect(bridge.api.completeSession).not.toHaveBeenCalled();
+    });
+
+    it('Stop_SessionEndsElsewhere_TheQuestionGoesWithIt', async () => {
+      // Stopped from the bar while the choice was open: the next session
+      // must not open on a question about the last one.
+      const bridge = await openEndings();
+
+      act(() => bridge.emit('onSessionUpdated', null));
+      act(() => bridge.emit('onSessionUpdated', { ...TRACKING_SESSION, sessionId: 'sess-next' }));
+
+      expect(await screen.findByLabelText('Pause')).toBeTruthy();
+      expect(screen.queryByText('Not done')).toBeNull();
+    });
   });
 
   it('SessionUpdated_ElsewhereInTheApp_ReachesTheMiniTimer', async () => {

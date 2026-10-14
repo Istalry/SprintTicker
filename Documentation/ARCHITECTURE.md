@@ -147,6 +147,9 @@ active provider's `minimumLoggableSeconds` whether the duration can be recorded
 remotely at all, and if so enqueues it and wakes the sync worker for an
 immediate drain rather than waiting out the interval.
 
+`discardSession()` ends a session keeping nothing -- no worklog, nothing
+queued, the task's status untouched. Every caller confirms with the user first.
+
 Ad-hoc work is told apart by its id (`adhoc_` prefix, `isAdHocTaskId`), not by
 the caller's flag: every list that offers an ad-hoc row again starts it as an
 ordinary task. An ad-hoc session never moves a remote status and is never
@@ -394,7 +397,10 @@ Turns physical events into application actions, through a rebindable map.
 | BACK long press | `COMPLETE_AND_LOG_ACTIVE_TASK` |
 
 It also runs the two-stage task picker (project, then task) driven entirely from
-the bar. Its project list goes through `filterProjectsWithTasks`
+the bar, and the paused menu: STOP, FINISH and DROP, of which row 1 shows the
+pair holding the choice (`pausedChoicesShown`). DROP asks **DISCARD?** first;
+while the question is up the click confirms, BACK refuses, and every other
+key waits. Its project list goes through `filterProjectsWithTasks`
 (`src/shared/project-filter.ts`), the rule the window's two lists use, and
 reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
 inside an EventEmitter listener with no error handler terminates the main
@@ -607,7 +613,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1763 tests across 92 files, in two projects: `main` in Node for
+Vitest, 1795 tests across 93 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

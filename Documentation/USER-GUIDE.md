@@ -114,8 +114,11 @@ Timer** in the top bar or **Show Mini Timer** in the tray menu.
   <img src="../docs/images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
 </p>
 
-- ⏯️ **Pause**, **Resume** and **Stop** act on the session as the dashboard does.
-  Stop logs the time without marking the task done.
+- ⏯️ **Pause** and **Resume** act on the session as the dashboard does.
+- ⏹️ **Stop** offers the three ways to end it, in place of the buttons:
+  **Not done** logs the time and keeps the task open, **Done** also marks it
+  done, and **Discard** throws the session away after a **Yes**. **×** keeps
+  the session running.
 - 📋 The **list** button brings the dashboard forward with the task picker open:
   that is how you start or switch a task from it.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -148,6 +151,11 @@ configured completion transition — which in Jira usually means "To
 Review", not "Closed", because you send work for review rather than closing it
 yourself. Stopping without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
+
+🗑️ **Discard this session**, the third choice, is for a session started by
+mistake: nothing is kept in your history and nothing is sent to your
+provider. It asks you to confirm, naming the task and the time it would throw
+away, because that time does not come back.
 
 | | |
 | :---: | :---: |
@@ -425,7 +433,7 @@ Every screen, as the bar shows it:
 | Screen | What it means |
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
-| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **STOP** or **FINISH**, click to confirm. |
+| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **STOP**, **FINISH** or **DROP**, click to confirm. DROP asks first. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
 | <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE!"> | ✅ **DONE!** Finished and marked done. |
@@ -440,8 +448,13 @@ while a task runs, its hand ticking round once a second; amber with blinking
 pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
 row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
-1 offers **STOP** and **FINISH** side by side; turn the wheel left for STOP,
-right for FINISH -- turning further stays put -- and click to confirm. Picking
+1 offers **STOP**, **FINISH** and **DROP**; the wheel moves one choice per
+notch and stops at either end, and a click confirms. Row 1 has room for two of
+them, so it shows STOP and FINISH with a small arrow towards DROP, and FINISH
+and DROP once you turn to it. DROP discards the session, so it asks first:
+**DISCARD?** in red, **OK=YES BACK=NO**. A click throws the session away --
+no worklog, nothing sent, no scene -- and BACK, short or long, brings the menu
+back; the other buttons wait for the answer. Picking
 a task from the bar's own picker shows **GO!** for two seconds, the stopwatch
 setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
 **LOGGED** for three seconds, the stopwatch's hand sweeping back to twelve;

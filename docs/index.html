@@ -622,8 +622,11 @@
       <p align="center">
         <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
       </p><ul>
-      <li>⏯️ <strong>Pause</strong>, <strong>Resume</strong> and <strong>Stop</strong> act on the session as the dashboard does.
-      Stop logs the time without marking the task done.</li>
+      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as the dashboard does.</li>
+      <li>⏹️ <strong>Stop</strong> offers the three ways to end it, in place of the buttons:
+      <strong>Not done</strong> logs the time and keeps the task open, <strong>Done</strong> also marks it
+      done, and <strong>Discard</strong> throws the session away after a <strong>Yes</strong>. <strong>×</strong> keeps
+      the session running.</li>
       <li>📋 The <strong>list</strong> button brings the dashboard forward with the task picker open:
       that is how you start or switch a task from it.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -648,6 +651,10 @@
       Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
       yourself. Stopping without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
+      <p>🗑️ <strong>Discard this session</strong>, the third choice, is for a session started by
+      mistake: nothing is kept in your history and nothing is sent to your
+      provider. It asks you to confirm, naming the task and the time it would throw
+      away, because that time does not come back.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1009,7 +1016,7 @@
       </tr>
       <tr>
       <td align="center"><img src="images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"></td>
-      <td align="left">⏸️ <strong>Paused.</strong> The key and its time; turn the wheel to <strong>STOP</strong> or <strong>FINISH</strong>, click to confirm.</td>
+      <td align="left">⏸️ <strong>Paused.</strong> The key and its time; turn the wheel to <strong>STOP</strong>, <strong>FINISH</strong> or <strong>DROP</strong>, click to confirm. DROP asks first.</td>
       </tr>
       <tr>
       <td align="center"><img src="images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"></td>
@@ -1049,8 +1056,13 @@
       pause bars while it is paused; dim grey when nothing runs (the screen then
       reads <strong>Ready / No task running</strong>). While a task runs, row 0 shows the task and
       row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
-      1 offers <strong>STOP</strong> and <strong>FINISH</strong> side by side; turn the wheel left for STOP,
-      right for FINISH -- turning further stays put -- and click to confirm. Picking
+      1 offers <strong>STOP</strong>, <strong>FINISH</strong> and <strong>DROP</strong>; the wheel moves one choice per
+      notch and stops at either end, and a click confirms. Row 1 has room for two of
+      them, so it shows STOP and FINISH with a small arrow towards DROP, and FINISH
+      and DROP once you turn to it. DROP discards the session, so it asks first:
+      <strong>DISCARD?</strong> in red, <strong>OK=YES BACK=NO</strong>. A click throws the session away --
+      no worklog, nothing sent, no scene -- and BACK, short or long, brings the menu
+      back; the other buttons wait for the answer. Picking
       a task from the bar&#39;s own picker shows <strong>GO!</strong> for two seconds, the stopwatch
       setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
       <strong>LOGGED</strong> for three seconds, the stopwatch&#39;s hand sweeping back to twelve;
@@ -1449,6 +1461,8 @@
       active provider&#39;s <code>minimumLoggableSeconds</code> whether the duration can be recorded
       remotely at all, and if so enqueues it and wakes the sync worker for an
       immediate drain rather than waiting out the interval.</p>
+      <p><code>discardSession()</code> ends a session keeping nothing -- no worklog, nothing
+      queued, the task&#39;s status untouched. Every caller confirms with the user first.</p>
       <p>Ad-hoc work is told apart by its id (<code>adhoc_</code> prefix, <code>isAdHocTaskId</code>), not by
       the caller&#39;s flag: every list that offers an ad-hoc row again starts it as an
       ordinary task. An ad-hoc session never moves a remote status and is never
@@ -1761,7 +1775,10 @@
       </tr>
       </tbody></table></div>
       <p>It also runs the two-stage task picker (project, then task) driven entirely from
-      the bar. Its project list goes through <code>filterProjectsWithTasks</code>
+      the bar, and the paused menu: STOP, FINISH and DROP, of which row 1 shows the
+      pair holding the choice (<code>pausedChoicesShown</code>). DROP asks <strong>DISCARD?</strong> first;
+      while the question is up the click confirms, BACK refuses, and every other
+      key waits. Its project list goes through <code>filterProjectsWithTasks</code>
       (<code>src/shared/project-filter.ts</code>), the rule the window&#39;s two lists use, and
       reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
       inside an EventEmitter listener with no error handler terminates the main
@@ -1969,7 +1986,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1763 tests across 92 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1795 tests across 93 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2036,7 +2053,7 @@
       </tr>
       <tr>
       <td align="left"><code>session:discard</code></td>
-      <td align="left">Stop without recording</td>
+      <td align="left">End the session keeping nothing: no worklog, nothing queued, the task&#39;s status untouched, no scene on the bar. Answers <code>{ success, discardedSeconds }</code>. Every caller confirms with the user first</td>
       </tr>
       <tr>
       <td align="left"><code>session:on-updated</code></td>

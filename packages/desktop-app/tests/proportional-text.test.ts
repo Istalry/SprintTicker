@@ -245,10 +245,10 @@ describe('it fits the two-row layout', () => {
   });
 
   it('DrawSmallText_PausedControls_FitInsideTheirHighlight', () => {
-    // The paused screen draws STOP and FINISH in capitals inside 7px-tall
+    // The paused screen draws STOP, FINISH and DROP in capitals inside 7px-tall
     // highlight bars (y=1..7 and 9..15), with the text 1px below the bar's top.
     // Capitals must not reach the bar's last row, or the label touches its edge.
-    const capitals = 'STOPFINISH';
+    const capitals = 'STOPFINISHDROP';
     for (const char of capitals) {
       const glyph = glyphFor(char, ROW1_FONT);
       const inkRows = glyph.rows.map((bits, row) => (bits ? row : -1)).filter(row => row >= 0);

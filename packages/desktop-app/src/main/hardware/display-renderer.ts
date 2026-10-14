@@ -30,6 +30,53 @@ const PAUSED_BAR_HEIGHT = 7;
  */
 const PAUSED_TIMER_GAP_PX = 2;
 const PAUSED_CHOICE_GAP_PX = 3;
+/** The arrow saying a choice lies beyond the two shown: 2px wide, and 2px from them. */
+const PAUSED_MORE_MARKER_PX = 2;
+const PAUSED_MORE_GAP_PX = 2;
+const PAUSED_MORE_COLOR = '#6B7280';
+const PAUSED_CONFIRM_COLOR = '#EF4444';
+const PAUSED_CONFIRM_HINT_COLOR = '#E5E7EB';
+
+/**
+ * The paused menu, left to right: stop and keep the task open, finish it, or
+ * throw the session away.
+ *
+ * Row 1 is 55px and the three do not fit in it -- STOP, FINISH and DISCARD
+ * come to 77 with their bars -- so the row shows the pair that holds the
+ * choice, with an arrow towards the one off screen. Even a pair is tight:
+ * FINISH beside DISCARD is 58, so DISCARD reads DROP on the bar.
+ */
+export const PAUSED_CHOICES = ['STOP', 'FINISH', 'DISCARD'] as const;
+export type PausedChoice = (typeof PAUSED_CHOICES)[number];
+export const PAUSED_CHOICE_LABELS: Record<PausedChoice, string> = { STOP: 'STOP', FINISH: 'FINISH', DISCARD: 'DROP' };
+
+/**
+ * A question the paused screen asks instead of offering the menu. The
+ * wheel's click answers yes and BACK no; see InputDecoder.
+ */
+export type PausedConfirm = 'DISCARD';
+export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint: string }> = {
+  DISCARD: { question: 'DISCARD?', hint: 'OK=YES BACK=NO' }
+};
+
+/**
+ * The two choices row 1 shows for a selection, and whether one lies off
+ * screen on either side. STOP and FINISH unless DISCARD is chosen, so a pause
+ * opens on the row it always had.
+ */
+export function pausedChoicesShown(selection: PausedChoice): {
+  choices: PausedChoice[];
+  moreLeft: boolean;
+  moreRight: boolean;
+} {
+  const index = PAUSED_CHOICES.indexOf(selection);
+  const start = index === PAUSED_CHOICES.length - 1 ? index - 1 : 0;
+  return {
+    choices: PAUSED_CHOICES.slice(start, start + 2),
+    moreLeft: start > 0,
+    moreRight: start + 2 < PAUSED_CHOICES.length
+  };
+}
 
 /** Between the task selector's row-1 label and its `3/12`. */
 const SELECTION_LABEL_GAP_PX = 2;
@@ -405,33 +452,67 @@ export class DisplayRenderer {
     this.showIdleClockFallback = enabled;
   }
 
-  private pausedSelection: 'STOP' | 'FINISH' = 'FINISH';
+  private pausedSelection: PausedChoice = 'FINISH';
+  private pausedConfirm: PausedConfirm | null = null;
 
-  /// <summary>
-  /// Moves the paused screen's selection to STOP or FINISH.
-  /// </summary>
   /**
-   * Sets rather than toggles: STOP is on the left and FINISH on the right, so
-   * turning the wheel left picks STOP and right picks FINISH, and a further
-   * turn the same way stays put. A toggle flipped on every notch, which let
-   * one notch too many land on the other choice just before the click.
+   * Moves the paused screen's selection to a choice.
+   *
+   * Sets rather than toggles, and the wheel moves one notch at a time along
+   * the row (`movePausedChoice`), stopping at either end. A toggle flipped on
+   * every notch, which let one notch too many land on the other choice just
+   * before the click.
    *
    * Redraws only on a change, so turning against an end costs nothing.
    */
-  public selectPausedChoice(choice: 'STOP' | 'FINISH'): 'STOP' | 'FINISH' {
+  public selectPausedChoice(choice: PausedChoice): PausedChoice {
     if (choice === this.pausedSelection) return choice;
     this.pausedSelection = choice;
-    if (this.lastSessionCache && this.lastSessionCache.status === 'PAUSED') {
-      this.renderActiveSession(this.lastSessionCache);
-    }
+    this.redrawPausedScreen();
     return this.pausedSelection;
   }
 
+  /** One notch of the wheel on the paused menu: -1 to the left, 1 to the right. */
+  public movePausedChoice(step: -1 | 1): PausedChoice {
+    const index = PAUSED_CHOICES.indexOf(this.pausedSelection);
+    const next = Math.min(PAUSED_CHOICES.length - 1, Math.max(0, index + step));
+    return this.selectPausedChoice(PAUSED_CHOICES[next]);
+  }
+
   /// <summary>
-  /// Retrieves current paused option selection ('STOP' or 'FINISH').
+  /// Retrieves the paused menu's current choice.
   /// </summary>
-  public getPausedSelection(): 'STOP' | 'FINISH' {
+  public getPausedSelection(): PausedChoice {
     return this.pausedSelection;
+  }
+
+  /** Replaces the paused menu with a yes-or-no question until it is answered. */
+  public askPausedConfirm(kind: PausedConfirm): void {
+    if (this.pausedConfirm === kind) return;
+    this.pausedConfirm = kind;
+    this.redrawPausedScreen();
+  }
+
+  /**
+   * Drops the question. Answered no, the menu is redrawn as it was; answered
+   * yes, the session is about to end and redraw the screen itself, so
+   * `redraw: false` spares an upload of a paused screen nobody will see.
+   */
+  public clearPausedConfirm(options: { redraw?: boolean } = {}): void {
+    if (this.pausedConfirm === null) return;
+    this.pausedConfirm = null;
+    if (options.redraw !== false) this.redrawPausedScreen();
+  }
+
+  /** The question the paused screen is asking, or null while it offers the menu. */
+  public getPausedConfirm(): PausedConfirm | null {
+    return this.pausedConfirm;
+  }
+
+  private redrawPausedScreen(): void {
+    if (this.lastSessionCache && this.lastSessionCache.status === 'PAUSED') {
+      this.renderActiveSession(this.lastSessionCache);
+    }
   }
 
   /// <summary>
@@ -603,20 +684,45 @@ export class DisplayRenderer {
   private paintPausedRows(taskText: string, timerText: string, color: string): void {
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
     const right = layout.TEXT_X + layout.TEXT_FIELD_WIDTH;
+
+    if (this.pausedConfirm) {
+      const text = PAUSED_CONFIRM_TEXT[this.pausedConfirm];
+      this.canvas.drawTextClipped(text.question, layout.TEXT_X, layout.ROW0_Y, PAUSED_CONFIRM_COLOR, layout.TEXT_FIELD_WIDTH);
+      this.canvas.drawSmallText(text.hint, layout.TEXT_X, layout.ROW1_Y, PAUSED_CONFIRM_HINT_COLOR, layout.TEXT_FIELD_WIDTH);
+      return;
+    }
     const timerWidth = measureText(timerText, ROW0_FONT);
     this.canvas.drawTextClipped(timerText, right - timerWidth, layout.ROW0_Y, color, timerWidth);
     this.canvas.drawTextClipped(
       taskText, layout.TEXT_X, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - timerWidth - PAUSED_TIMER_GAP_PX
     );
 
+    const shown = pausedChoicesShown(this.pausedSelection);
     let x = layout.TEXT_X;
-    for (const choice of ['STOP', 'FINISH'] as const) {
-      const width = measureText(choice, ROW1_FONT) + 1;       // a pixel of bar each side
+    if (shown.moreLeft) {
+      this.paintMoreMarker(x, 'left');
+      x += PAUSED_MORE_MARKER_PX + PAUSED_MORE_GAP_PX;
+    }
+    for (const choice of shown.choices) {
+      const label = PAUSED_CHOICE_LABELS[choice];
+      const width = measureText(label, ROW1_FONT) + 1;       // a pixel of bar each side
       const chosen = this.pausedSelection === choice;
       if (chosen) this.canvas.drawRect(x, PAUSED_BAR_Y, width, PAUSED_BAR_HEIGHT, '#F59E0B');
-      this.canvas.drawSmallText(choice, x + 1, PAUSED_BAR_Y + 1, chosen ? '#000000' : '#888888', width);
+      this.canvas.drawSmallText(label, x + 1, PAUSED_BAR_Y + 1, chosen ? '#000000' : '#888888', width);
       x += width + PAUSED_CHOICE_GAP_PX;
     }
+    if (shown.moreRight) {
+      this.paintMoreMarker(x - PAUSED_CHOICE_GAP_PX + PAUSED_MORE_GAP_PX, 'right');
+    }
+  }
+
+  /** A 2px arrow, centred on the choice bars, pointing at the choice off screen. */
+  private paintMoreMarker(x: number, pointing: 'left' | 'right'): void {
+    const middle = PAUSED_BAR_Y + Math.floor(PAUSED_BAR_HEIGHT / 2);
+    const tip = pointing === 'right' ? x + 1 : x;
+    const base = pointing === 'right' ? x : x + 1;
+    this.canvas.drawRect(base, middle - 1, 1, 3, PAUSED_MORE_COLOR);
+    this.canvas.drawRect(tip, middle, 1, 1, PAUSED_MORE_COLOR);
   }
 
   /**
@@ -886,6 +992,9 @@ export class DisplayRenderer {
    */
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
+    // A question belongs to the pause it was asked in. Resumed, stopped or
+    // replaced, the session takes it with it; the next pause offers the menu.
+    if (!session || session.status !== 'PAUSED') this.pausedConfirm = null;
 
     if (session && session.status === 'TRACKING' && this.isCelebrating && session.sessionId !== this.sceneSessionId) {
       this.isCelebrating = false;

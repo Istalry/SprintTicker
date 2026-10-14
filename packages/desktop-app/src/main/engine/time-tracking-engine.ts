@@ -353,6 +353,30 @@ export class TimeTrackingEngine extends EventEmitter {
     return this._currentSession!;
   }
 
+  /**
+   * Ends the active session and keeps nothing of it: no worklog, nothing
+   * queued, the task's status untouched.
+   *
+   * `session:discard` used to call `stopSession`, so "discard" logged the time
+   * and sent it to the provider like any stop. Every caller asks the user to
+   * confirm first; hours thrown away by a stray click do not come back.
+   */
+  public discardSession(): { success: boolean; discardedSeconds: number } {
+    const active = this.getCurrentSession();
+    if (!active) return { success: false, discardedSeconds: 0 };
+
+    this.stopTickLoop();
+    this._sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
+    console.log(
+      `[TimeTrackingEngine] Session ${active.sessionId} on ${active.taskKey} discarded: ` +
+        `${active.elapsedSeconds}s neither logged nor sent.`
+    );
+
+    this._currentSession = null;
+    this.notifyListeners();
+    return { success: true, discardedSeconds: active.elapsedSeconds };
+  }
+
   /// <summary>
   /// Stops and finalizes the active session, logging elapsed time and creating offline sync queue entry.
   /// </summary>

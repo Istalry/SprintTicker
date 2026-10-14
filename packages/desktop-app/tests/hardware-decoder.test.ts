@@ -400,7 +400,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     }
   });
 
-  describe('paused STOP/FINISH choice', () => {
+  describe('paused STOP/FINISH/DROP choice', () => {
     const turn = (key: string): string =>
       decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
 
@@ -408,6 +408,9 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
       decoder.setRenderer(renderer);
       engine.pauseSession();
+      // What the IPC layer's subscription does in the app: the renderer knows
+      // the session is paused, so a move redraws the paused screen.
+      renderer.renderActiveSession(engine.getCurrentSession());
     });
 
     it('HandleHardwareInput_TaskPaused_StartsOnFinish', () => {
@@ -421,13 +424,19 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(renderer.getPausedSelection()).toBe('STOP');
     });
 
-    it('HandleHardwareInput_TaskPaused_TurningRightPastFinishStaysOnFinish', () => {
-      // FINISH is the right-hand end. A toggle used to flip back to STOP.
+    it('HandleHardwareInput_TaskPaused_TurningRightPicksDiscard', () => {
+      turn('rotate_right');
+
+      expect(renderer.getPausedSelection()).toBe('DISCARD');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningRightPastDiscardStaysOnDiscard', () => {
+      // DISCARD is the right-hand end. A toggle used to flip back.
       turn('rotate_right');
       turn('rotate_right');
       turn('down');
 
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+      expect(renderer.getPausedSelection()).toBe('DISCARD');
     });
 
     it('HandleHardwareInput_TaskPaused_TurningLeftPastStopStaysOnStop', () => {
@@ -436,6 +445,14 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       turn('rotate_left');
 
       expect(renderer.getPausedSelection()).toBe('STOP');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TheWheelMovesOneNotchAtATime', () => {
+      // From DISCARD, one notch left is FINISH, not STOP.
+      turn('rotate_right');
+      turn('rotate_left');
+
+      expect(renderer.getPausedSelection()).toBe('FINISH');
     });
 
     it('HandleHardwareInput_TaskPaused_TurningBackAndForthFollowsTheWheel', () => {
@@ -447,11 +464,89 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
     it('HandleHardwareInput_TaskPaused_TurningAgainstAnEnd_DoesNotRedraw', () => {
       // Each redraw is an upload and a draw; turning against the end is free.
+      turn('rotate_left');
       const redraws = vi.spyOn(renderer, 'renderActiveSession');
-      turn('rotate_right');
-      turn('rotate_right');
+      turn('rotate_left');
+      turn('rotate_left');
 
       expect(redraws).not.toHaveBeenCalled();
+    });
+
+    it('HandleHardwareInput_TaskPaused_MovingRedrawsThePausedScreen', () => {
+      const redraws = vi.spyOn(renderer, 'renderActiveSession');
+      turn('rotate_right');
+
+      expect(redraws).toHaveBeenCalledTimes(1);
+    });
+
+    describe('discarding from the bar', () => {
+      const click = (): string => turn('ok');
+
+      beforeEach(() => {
+        turn('rotate_right'); // DISCARD
+      });
+
+      it('HandleHardwareInput_ClickOnDiscard_AsksBeforeDiscardingAnything', () => {
+        const action = click();
+
+        expect(action).toBe('ASK_PAUSED_DISCARD');
+        expect(renderer.getPausedConfirm()).toBe('DISCARD');
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      });
+
+      it('HandleHardwareInput_DiscardConfirmed_KeepsNothing', () => {
+        click();
+        const action = click();
+
+        expect(action).toBe('CONFIRM_PAUSED_DISCARD');
+        expect(engine.getCurrentSession()).toBeNull();
+        const worklogs = dbConn.getDb().prepare<[], { n: number }>('SELECT COUNT(*) AS n FROM worklogs').get()!.n;
+        expect(worklogs).toBe(0);
+        // The session took the question with it.
+        expect(renderer.getPausedConfirm()).toBeNull();
+      });
+
+      it('HandleHardwareInput_DiscardRefusedWithBack_GivesTheMenuBack', () => {
+        click();
+        const action = turn('back');
+
+        expect(action).toBe('CANCEL_PAUSED_CONFIRM');
+        expect(renderer.getPausedConfirm()).toBeNull();
+        expect(renderer.getPausedSelection()).toBe('DISCARD');
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      });
+
+      it('HandleHardwareInput_LongBackOnTheQuestion_RefusesRatherThanCompleting', () => {
+        // A long BACK completes the task anywhere else on the bar.
+        click();
+        const action = turn('back_hold');
+
+        expect(action).toBe('CANCEL_PAUSED_CONFIRM');
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      });
+
+      it('HandleHardwareInput_OtherKeysOnTheQuestion_WaitForTheAnswer', () => {
+        // START resumes a paused session anywhere else; here the user is
+        // deciding whether to throw it away.
+        click();
+
+        expect(turn('start')).toBe('AWAIT_PAUSED_CONFIRM');
+        expect(turn('rotate_left')).toBe('AWAIT_PAUSED_CONFIRM');
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+        expect(renderer.getPausedConfirm()).toBe('DISCARD');
+      });
+
+      it('HandleHardwareInput_SessionResumedElsewhere_DropsTheQuestion', () => {
+        // Resumed from the window while the bar asked: the next pause offers
+        // the menu, not a question about throwing this session away.
+        click();
+        engine.resumeSession();
+        renderer.renderActiveSession(engine.getCurrentSession());
+        engine.pauseSession();
+        renderer.renderActiveSession(engine.getCurrentSession());
+
+        expect(renderer.getPausedConfirm()).toBeNull();
+      });
     });
   });
 

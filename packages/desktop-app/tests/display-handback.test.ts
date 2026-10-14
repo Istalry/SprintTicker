@@ -72,6 +72,22 @@ describe('Display hand-back: the screen that ends gives the display to the right
     vi.restoreAllMocks();
   });
 
+  describe('discarding from the paused menu', () => {
+    it('Discard_Confirmed_LeavesTheIdleScreenAndNoScene', async () => {
+      await play('startTask', 500, 'pause', 500, 'askDiscard', 500, 'discard', SETTLE_MS);
+
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
+      expectSettledScreen(desk);
+    });
+
+    it('Discard_RefusedThenResumed_TracksAsBefore', async () => {
+      await play('startTask', 500, 'pause', 500, 'askDiscard', 500, 'cancelDiscard', 500, 'resume', SETTLE_MS);
+
+      expect(desk.renderer.getPausedConfirm()).toBeNull();
+      expectSettledScreen(desk);
+    });
+  });
+
   describe('Unity under something else', () => {
     it('Banner_OverABuild_HandsTheDisplayBackToTheBuild', async () => {
       // Seed 1947: the banner's end went to the idle clock, the build still running.

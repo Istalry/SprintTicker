@@ -32,7 +32,7 @@ Everything else is a request/response `invoke`.
 | `session:start-task` | Start tracking a task |
 | `session:pause` / `session:resume` | Pause and resume |
 | `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
-| `session:discard` | Stop without recording |
+| `session:discard` | End the session keeping nothing: no worklog, nothing queued, the task's status untouched, no scene on the bar. Answers `{ success, discardedSeconds }`. Every caller confirms with the user first |
 | `session:on-updated` | **Event** — the session changed |
 
 ### Providers, projects and tasks

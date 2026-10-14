@@ -51,7 +51,7 @@ export const App: React.FC = () => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Custom Hooks
-  const { session, pause, resume, complete, startTask } = useSession();
+  const { session, pause, resume, complete, discard, startTask } = useSession();
   const deviceStatus = useDeviceStatus();
   // No-bar mode: what only describes the bar steps aside -- the emulator, the
   // connection readout, and BAR_ONLY_TABS. Everything that keeps time stays.
@@ -131,6 +131,7 @@ export const App: React.FC = () => {
               onPause={pause}
               onResume={resume}
               onComplete={complete}
+              onDiscard={() => discard().catch(err => console.warn('[App] Discarding the session failed:', err))}
               onOpenTaskModal={() => setIsTaskModalOpen(true)}
             />
 

@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Three ways to end a session, everywhere.** Keep the task open, mark it
+  done, or discard the session -- in the Finish dialog, from the mini timer's
+  Stop, and on the bar, whose paused menu now reads STOP, FINISH and DROP.
+  Discarding keeps nothing and sends nothing, so each place asks first: the
+  window names the task and the time, the bar shows **DISCARD?** until the
+  wheel's click or BACK answers. The mini timer's Stop used to log the time
+  and nothing else.
+
 - **Only projects with tasks.** A provider lists every project you can see,
   while the tasks it fetches are the ones assigned to you, so most projects in
   the pickers held nothing to pick. A switch above the project list -- on by
@@ -25,6 +33,9 @@
 
 ### Fixed
 
+- **Discard discards.** `session:discard` logged the time and sent it to the
+  provider like any stop. Nothing in the window called it, so it never
+  showed; it now keeps nothing.
 - **Ad-hoc time is no longer sent to Jira or OpenProject.** It was queued for
   the active provider under the task's internal id, so Jira was asked to log
   time on an issue called `adhoc_...`, answered 404, and the row ended in the

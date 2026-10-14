@@ -43,6 +43,8 @@ export type EventName =
   | UnityEvent | `${UnityEvent}B`
   | 'banner' | 'highBanner'
   | 'startTask' | 'startTaskFromBar' | 'pause' | 'resume' | 'tick' | 'stop' | 'finish'
+  /** The paused menu's DROP: the question, BACK on it, and the click that confirms. */
+  | 'askDiscard' | 'cancelDiscard' | 'discard'
   | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd'
   /** The bar unreachable, back, or rebooted while unreachable. */
   | 'barDrop' | 'barBack' | 'barReboot';
@@ -195,6 +197,22 @@ export class Desk {
         if (!this.session) return;
         this.session = { ...this.session, elapsedSeconds: this.session.elapsedSeconds + 61 };
         this.renderer.renderActiveSession(this.session);
+        return;
+      case 'askDiscard':
+        if (this.session?.status !== 'PAUSED') return;
+        this.renderer.selectPausedChoice('DISCARD');
+        this.renderer.askPausedConfirm('DISCARD');
+        return;
+      case 'cancelDiscard':
+        this.renderer.clearPausedConfirm();
+        return;
+      case 'discard':
+        if (!this.session) return;
+        this.session = null;
+        // As InputDecoder does it: the question goes without a redraw, and the
+        // engine's subscriber draws the empty session. No scene: nothing was kept.
+        this.renderer.clearPausedConfirm({ redraw: false });
+        this.renderer.renderActiveSession(null);
         return;
       case 'stop':
       case 'finish':

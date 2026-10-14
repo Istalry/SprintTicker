@@ -16,6 +16,12 @@ export interface ActiveSessionDTO {
   lastPauseStartUtc?: string;
 }
 
+/** What `session:discard` answers: whether a session was there, and how much time was thrown away. */
+export interface DiscardSessionResultDTO {
+  success: boolean;
+  discardedSeconds: number;
+}
+
 export interface TaskDTO {
   id: string;
   projectId: string;

@@ -4,13 +4,14 @@ import { ActiveTaskHeroCard } from '../../src/renderer/components/ActiveTaskHero
 import { TRACKING_SESSION } from './electron-api-mock';
 
 describe('ActiveTaskHeroCard', () => {
-  const card = (session = TRACKING_SESSION, onComplete = vi.fn()) => {
+  const card = (session = TRACKING_SESSION, onComplete = vi.fn(), onDiscard = vi.fn()) => {
     render(
       <ActiveTaskHeroCard
         session={session}
         onPause={vi.fn()}
         onResume={vi.fn()}
         onComplete={onComplete}
+        onDiscard={onDiscard}
         onOpenTaskModal={vi.fn()}
       />
     );
@@ -51,5 +52,47 @@ describe('ActiveTaskHeroCard', () => {
     fireEvent.click(screen.getByText(/Remain 'In Progress'/));
 
     expect(onComplete).toHaveBeenCalledWith(undefined, false);
+  });
+
+  describe('discarding', () => {
+    it('Discard_Confirmed_DiscardsAndLogsNothing', () => {
+      const onDiscard = vi.fn();
+      const onComplete = card(TRACKING_SESSION, vi.fn(), onDiscard);
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText('Discard this session'));
+      // The question names the task and the time it would throw away.
+      expect(screen.getByRole('alertdialog', { name: 'Discard this session?' }).textContent).toMatch(/SPR-142/);
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+      expect(onDiscard).toHaveBeenCalledTimes(1);
+      expect(onComplete).not.toHaveBeenCalled();
+    });
+
+    it('Discard_Cancelled_DiscardsNothingAndOffersTheChoicesAgain', () => {
+      const onDiscard = vi.fn();
+      card(TRACKING_SESSION, vi.fn(), onDiscard);
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText('Discard this session'));
+      fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+
+      expect(onDiscard).not.toHaveBeenCalled();
+      expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
+    });
+
+    it('Reopen_AfterStartingADiscard_OffersTheChoicesNotTheQuestion', () => {
+      // The dialog mounts afresh on every opening; a question left from the
+      // last one would make the next Finish look like a discard.
+      card();
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText('Discard this session'));
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+
+      expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    });
   });
 });

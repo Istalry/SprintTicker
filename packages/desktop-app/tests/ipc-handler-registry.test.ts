@@ -302,6 +302,24 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       expect(logged).not.toHaveBeenCalled();
       expect(done).not.toHaveBeenCalled();
     });
+
+    it('DiscardSession_Always_KeepsNothingAndPlaysNoScene', async () => {
+      // It used to call stopSession: "discard" logged the time and sent it.
+      registry.registerAllHandlers();
+      const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const discard = calls.filter(call => call[0] === 'session:discard').pop()![1] as () => Promise<unknown>;
+      const logged = vi.spyOn(renderer, 'renderTaskLogged');
+      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+      engine.startTask('T-1', true, 'Ad hoc');
+
+      const res = await discard() as { success: boolean };
+
+      expect(res.success).toBe(true);
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(dbConn.getDb().prepare<[], { n: number }>('SELECT COUNT(*) AS n FROM worklogs').get()!.n).toBe(0);
+      expect(logged).not.toHaveBeenCalled();
+      expect(done).not.toHaveBeenCalled();
+    });
   });
 
   describe('only projects with tasks', () => {

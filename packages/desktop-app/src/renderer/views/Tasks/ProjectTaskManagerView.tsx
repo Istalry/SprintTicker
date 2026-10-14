@@ -662,7 +662,13 @@ export const ProjectTaskManagerView: React.FC = () => {
             triggerDesktopConfetti();
           }
           await fetchTasks(selectedProjectId);
-        }} 
+        }}
+        onDiscard={async () => {
+          setIsFinishModalOpen(false);
+          if (!window.electronAPI) return;
+          await window.electronAPI.discardSession();
+          await fetchTasks(selectedProjectId);
+        }}
       />
     </div>
   );

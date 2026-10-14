@@ -70,6 +70,16 @@ export function useSession() {
     return { success: false, loggedSeconds: 0 };
   };
 
+  /** Ends the session keeping nothing. The caller has already asked the user. */
+  const discard = async () => {
+    if (window.electronAPI) {
+      const res = await window.electronAPI.discardSession();
+      setSession(null);
+      return res;
+    }
+    return { success: false, discardedSeconds: 0 };
+  };
+
   const startTask = async (taskId: string, isAdHoc?: boolean, customTitle?: string) => {
     if (window.electronAPI) {
       const res = await window.electronAPI.startTask(taskId, isAdHoc, customTitle);
@@ -85,6 +95,7 @@ export function useSession() {
     pause,
     resume,
     complete,
+    discard,
     startTask
   };
 }

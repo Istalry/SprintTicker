@@ -293,21 +293,50 @@ export class InputDecoder {
     const activeSession = this._engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
 
-    // Interactive Paused State Controls: the wheel moves between STOP (left)
-    // and FINISH (right) and stops at either end; a click validates the choice.
+    // Interactive Paused State Controls: the wheel moves along STOP, FINISH
+    // and DROP and stops at either end; a click validates the choice.
     if (isPaused && this._renderer) {
       const isLeft = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
       const isRight = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
+      const isWheelClick = (normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type);
+      const isBack = normalizedKey === 'back' || normalizedKey === 'back_hold' || normalizedKey === 'cancel';
+
+      // A question on screen takes every key until it is answered: the click
+      // says yes, BACK says no. Anything else waits -- a START here would
+      // resume a session the user is deciding whether to throw away.
+      const confirm = this._renderer.getPausedConfirm();
+      if (confirm) {
+        if (isWheelClick) {
+          // No LOGGED, no DONE!: nothing was kept. Ending the session redraws
+          // the screen.
+          this._renderer.clearPausedConfirm({ redraw: false });
+          this._engine.discardSession();
+          this.notifyActionHandlers('CONFIRM_PAUSED_DISCARD', normalizedKey);
+          return 'CONFIRM_PAUSED_DISCARD';
+        }
+        if (isBack) {
+          this._renderer.clearPausedConfirm();
+          this.notifyActionHandlers('CANCEL_PAUSED_CONFIRM', normalizedKey);
+          return 'CANCEL_PAUSED_CONFIRM';
+        }
+        return 'AWAIT_PAUSED_CONFIRM';
+      }
 
       if (isLeft || isRight) {
-        this._renderer.selectPausedChoice(isLeft ? 'STOP' : 'FINISH');
+        this._renderer.movePausedChoice(isLeft ? -1 : 1);
         this.notifyActionHandlers('MOVE_PAUSED_SELECTION', normalizedKey);
         return 'MOVE_PAUSED_SELECTION';
       }
 
-      const isWheelClick = (normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type);
       if (isWheelClick) {
         const choice = this._renderer.getPausedSelection();
+        if (choice === 'DISCARD') {
+          // Hours thrown away by one click too many do not come back, so the
+          // bar asks first, as the window does.
+          this._renderer.askPausedConfirm('DISCARD');
+          this.notifyActionHandlers('ASK_PAUSED_DISCARD', normalizedKey);
+          return 'ASK_PAUSED_DISCARD';
+        }
         if (choice === 'STOP') {
           // Stop means stop: the time is logged and the task stays open.
           // LOGGED says so; the idle screen alone looked like nothing had

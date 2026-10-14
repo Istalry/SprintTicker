@@ -64,7 +64,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 | | |
 | :---: | :--- |
 | <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
-| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to STOP or FINISH, click to confirm. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to STOP, FINISH or DROP, click to confirm. |
 | <img src="docs/images/bar-unity-compile.webp" width="304" alt="COMPILING with a spinning orange gear"> | 🛠️ **Unity compiling** — and **BUILDING 40%** with a progress line for a build. |
 | <img src="docs/images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game controller"> | 🎮 **Play Mode** — ON AIR, so nobody walks in on a playtest. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
@@ -453,7 +453,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 1763 tests across 92 files for the app -- the main and shared
+`pnpm test` runs 1795 tests across 93 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

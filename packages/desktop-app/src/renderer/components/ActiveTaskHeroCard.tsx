@@ -10,6 +10,8 @@ interface ActiveTaskHeroCardProps {
   onPause: () => void;
   onResume: () => void;
   onComplete: (comment?: string, markDone?: boolean) => void;
+  /** Ends the session keeping nothing; the Finish dialog has had it confirmed. */
+  onDiscard: () => void;
   onOpenTaskModal: () => void;
 }
 
@@ -18,6 +20,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   onPause,
   onResume,
   onComplete,
+  onDiscard,
   onOpenTaskModal
 }) => {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
@@ -117,11 +120,15 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         </div>
       </section>
 
-      <FinishSessionModal 
-        isOpen={isFinishModalOpen} 
-        session={session} 
-        onClose={() => setIsFinishModalOpen(false)} 
-        onFinishOption={handleFinishOption} 
+      <FinishSessionModal
+        isOpen={isFinishModalOpen}
+        session={session}
+        onClose={() => setIsFinishModalOpen(false)}
+        onFinishOption={handleFinishOption}
+        onDiscard={() => {
+          setIsFinishModalOpen(false);
+          onDiscard();
+        }}
       />
     </>
   );

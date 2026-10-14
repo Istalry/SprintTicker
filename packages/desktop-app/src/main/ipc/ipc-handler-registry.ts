@@ -20,7 +20,7 @@ import { PriorityPreemptionEngine } from '../services/priority-preemption-engine
 import { ContextScheduleService } from '../services/context-schedule-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO } from '../../shared/dtos';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
@@ -212,9 +212,10 @@ export class IPCHandlerRegistry {
       return res;
     });
 
-    ipcMain.handle(IPCChannel.DISCARD_SESSION, async () => {
-      this.engine.stopSession('Discarded session');
-      return true;
+    // Keeps nothing: no worklog, nothing sent, no scene on the bar. The
+    // window asks for confirmation before calling this.
+    ipcMain.handle(IPCChannel.DISCARD_SESSION, async (): Promise<DiscardSessionResultDTO> => {
+      return this.engine.discardSession();
     });
 
     // 2. Project & Task Management IPC Handlers

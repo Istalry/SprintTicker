@@ -43,6 +43,60 @@ describe('TimeTrackingEngine Unit Tests', () => {
     expect(session.elapsedSeconds).toBeGreaterThanOrEqual(0);
   });
 
+  describe('discarding a session', () => {
+    // `session:discard` used to call stopSession, so a discard logged the time
+    // and queued it for the provider like any stop.
+    const count = (table: string): number =>
+      dbConn.getDb().prepare<[], { n: number }>(`SELECT COUNT(*) AS n FROM ${table}`).get()!.n;
+
+    beforeEach(() => {
+      taskRepo.saveTask({ id: '10001', projectId: '10000', key: 'SCRUM-2', title: 'Tache 2', status: 'todo' });
+      engine.startTask('10001');
+      const active = sessionRepo.getActiveSession()!;
+      sessionRepo.saveSession({ ...active, startTimeUtc: new Date(Date.now() - 90 * 60_000).toISOString() });
+    });
+
+    it('DiscardSession_Running_KeepsNoWorklogAndQueuesNothing', () => {
+      const res = engine.discardSession();
+
+      expect(res.success).toBe(true);
+      expect(res.discardedSeconds).toBeGreaterThanOrEqual(90 * 60);
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(count('worklogs')).toBe(0);
+      expect(count('worklog_sync_queue')).toBe(0);
+    });
+
+    it('DiscardSession_Running_LeavesTheTaskAsItWas', () => {
+      // Starting moved it to in_progress; throwing the session away does not
+      // finish it, nor put it back.
+      engine.discardSession();
+
+      expect(taskRepo.getTaskById('10001')?.status).toBe('in_progress');
+    });
+
+    it('DiscardSession_Paused_DiscardsItToo', () => {
+      engine.pauseSession();
+
+      expect(engine.discardSession().success).toBe(true);
+      expect(engine.getCurrentSession()).toBeNull();
+    });
+
+    it('DiscardSession_NothingRunning_SaysSo', () => {
+      engine.discardSession();
+
+      expect(engine.discardSession()).toEqual({ success: false, discardedSeconds: 0 });
+    });
+
+    it('DiscardSession_Running_TellsTheListeners', () => {
+      const heard: unknown[] = [];
+      engine.subscribe(session => heard.push(session));
+
+      engine.discardSession();
+
+      expect(heard).toEqual([null]);
+    });
+  });
+
   describe('the session is named from the stored task row', () => {
     // Reported from a photograph of the bar: it read "10001: Active Task"
     // while the app's own list, one pane away, held "SCRUM-2" and "Tache 2".

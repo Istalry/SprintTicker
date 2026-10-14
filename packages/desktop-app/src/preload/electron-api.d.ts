@@ -39,7 +39,8 @@ import type {
   ProviderSyncResult,
   SyncQueueSnapshotDTO,
   ProjectsUpdatedPayload,
-  PreviewScreenId
+  PreviewScreenId,
+  DiscardSessionResultDTO
 } from '../shared/dtos';
 
 export interface UnityInjectorAPI {
@@ -57,7 +58,8 @@ export interface IElectronAPI {
   pauseSession: () => Promise<ActiveSessionDTO>;
   resumeSession: () => Promise<ActiveSessionDTO>;
   completeSession: (comment?: string, markDone?: boolean) => Promise<{ success: boolean; loggedSeconds: number }>;
-  discardSession: () => Promise<boolean>;
+  /** Ends the session keeping nothing -- no worklog, nothing sent. Confirm with the user first. */
+  discardSession: () => Promise<DiscardSessionResultDTO>;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 
   // Worklogs
