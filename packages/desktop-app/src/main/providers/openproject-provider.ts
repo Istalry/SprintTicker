@@ -9,6 +9,7 @@ import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
 import { localDateKey } from '../../shared/local-date';
+import { WORKLOG_SEARCH_MARGIN_MS } from './provider-constants';
 
 /**
  * OpenProject's notification reasons, as provider event kinds.
@@ -387,64 +388,162 @@ export class OpenProjectProvider implements ITaskProvider {
    * failure it is, because `ProviderRequestError` carries `isPermanent`.
    */
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
+    this.requireConfigured();
+    OpenProjectProvider.validateWorklog(payload);
+
+    const cleanTaskId = OpenProjectProvider.workPackageId(payload.taskId);
+    // Deliberately not retried. `/api/v3/time_entries` has no idempotency
+    // key, so a retry after a response that was sent but never received
+    // bills the same session twice -- and an over-reported day is harder to
+    // notice, and worse, than a missing entry the queue will resend.
+    const res = await providerFetch(
+      this.providerId,
+      `${this.getBaseUrl()}/api/v3/time_entries`,
+      {
+        method: 'POST',
+        headers: this.jsonHeaders(),
+        body: JSON.stringify({
+          _links: {
+            workPackage: { href: `/api/v3/work_packages/${cleanTaskId}` }
+          },
+          ...this.timeEntryFields(payload)
+        })
+      },
+      `Logging time on WP #${cleanTaskId}`,
+      this._http
+    );
+
+    const json = await res.json() as { id?: number };
+    // No id is reported as none, not made up: see JiraProvider.logTime.
+    const remoteWorklogId = json.id ? json.id.toString() : undefined;
+    console.log(`[OpenProjectProvider] Successfully logged ${this.formatIsoDuration(payload.durationSeconds)} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId ?? 'none given'})`);
+    return { success: true, remoteWorklogId };
+  }
+
+  /**
+   * Finds the time entry whose comment carries `marker`, among the work
+   * package's entries spent from the day before `startedAtUtc` to the day
+   * after. `spentOn` is a day in this machine's timezone (see
+   * {@link timeEntryFields}), and an edit may have moved it. Throws when the
+   * entries cannot all be read: null means "not there".
+   */
+  public async findWorklog(taskId: string, startedAtUtc: string, marker: string): Promise<string | null> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to find a time entry.');
+    if (!marker) throw new ArgumentException('marker is required to find a time entry.');
+    const start = Date.parse(startedAtUtc);
+    if (Number.isNaN(start)) throw new ArgumentException(`startedAtUtc is not a timestamp: ${startedAtUtc}`);
+
+    const filters = JSON.stringify([
+      { work_package: { operator: '=', values: [OpenProjectProvider.workPackageId(taskId)] } },
+      {
+        spent_on: {
+          operator: '<>d',
+          values: [
+            localDateKey(new Date(start - WORKLOG_SEARCH_MARGIN_MS)),
+            localDateKey(new Date(start + WORKLOG_SEARCH_MARGIN_MS))
+          ]
+        }
+      }
+    ]);
+    const entries = await this.fetchCollection('/api/v3/time_entries', `Looking for time entry ${marker} on ${taskId}`, {
+      filters
+    });
+    const found = entries.find(entry => {
+      const comment = entry.comment as { raw?: unknown } | undefined;
+      return typeof comment?.raw === 'string' && comment.raw.includes(marker);
+    });
+    return found?.id !== undefined && found.id !== null ? String(found.id) : null;
+  }
+
+  /**
+   * Rewrites a time entry's hours, day and comment. The work package is not
+   * sent: an entry is not moved, only corrected. A PATCH of the same fields
+   * changes nothing when repeated, so the queue may retry it.
+   *
+   * Sent without a `lockVersion`, which time entries are not documented to
+   * need -- measured against the fake only (2026-10-14), not a live instance.
+   */
+  public async updateWorklog(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void> {
+    this.requireConfigured();
+    if (!remoteWorklogId) throw new ArgumentException('remoteWorklogId is required to update a time entry.');
+    OpenProjectProvider.validateWorklog({ ...payload, taskId });
+
+    await providerFetch(
+      this.providerId,
+      this.timeEntryUrl(remoteWorklogId),
+      { method: 'PATCH', headers: this.jsonHeaders(), body: JSON.stringify(this.timeEntryFields(payload)) },
+      `Correcting time entry ${remoteWorklogId} on ${taskId}`,
+      this._http
+    );
+  }
+
+  /** Deletes a time entry. One already deleted answers 404, which is the outcome asked for. */
+  public async deleteWorklog(taskId: string, remoteWorklogId: string): Promise<void> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to delete a time entry.');
+    if (!remoteWorklogId) throw new ArgumentException('remoteWorklogId is required to delete a time entry.');
+
+    try {
+      await providerFetch(
+        this.providerId,
+        this.timeEntryUrl(remoteWorklogId),
+        { method: 'DELETE', headers: { Authorization: this.getAuthHeader(), Accept: 'application/json' } },
+        `Deleting time entry ${remoteWorklogId} on ${taskId}`,
+        this._http
+      );
+    } catch (err) {
+      if (err instanceof ProviderRequestError && err.status === 404) return;
+      throw err;
+    }
+  }
+
+  private requireConfigured(): void {
     if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
       throw ProviderRequestError.notConfigured(this.providerId);
     }
+  }
+
+  private jsonHeaders(): Record<string, string> {
+    return {
+      'Authorization': this.getAuthHeader(),
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+  }
+
+  private timeEntryUrl(remoteWorklogId: string): string {
+    return `${this.getBaseUrl()}/api/v3/time_entries/${encodeURIComponent(remoteWorklogId)}`;
+  }
+
+  /**
+   * The fields a time entry is written with, on a POST and a PATCH alike.
+   *
+   * spentOn is a calendar day of work, so it is the local day the session
+   * started -- taking the UTC prefix billed an evening session west of UTC
+   * to tomorrow, and one started after local midnight east of UTC to
+   * yesterday.
+   */
+  private timeEntryFields(payload: WorklogPayload): Record<string, unknown> {
+    return {
+      hours: this.formatIsoDuration(payload.durationSeconds),
+      spentOn: payload.startedAtUtc ? localDateKey(new Date(payload.startedAtUtc)) : localDateKey(),
+      comment: { raw: payload.comment || 'Logged via SprintTicker' }
+    };
+  }
+
+  private static validateWorklog(payload: WorklogPayload): void {
     if (!payload.taskId) throw new ArgumentException('payload.taskId is required to log time.');
     if (payload.durationSeconds <= 0) {
       throw new ArgumentException(
         `payload.durationSeconds must be greater than zero (received ${payload.durationSeconds}).`
       );
     }
+  }
 
-    {
-      const url = `${this.getBaseUrl()}/api/v3/time_entries`;
-      const isoDuration = this.formatIsoDuration(payload.durationSeconds);
-      // spentOn is a calendar day of work, so it is the local day the session
-      // started -- taking the UTC prefix billed an evening session west of UTC
-      // to tomorrow, and one started after local midnight east of UTC to
-      // yesterday.
-      const spentOnDate = payload.startedAtUtc
-        ? localDateKey(new Date(payload.startedAtUtc))
-        : localDateKey();
-
-      const cleanTaskId = payload.taskId.replace(/^OP-/, '');
-
-      // Deliberately not retried. `/api/v3/time_entries` has no idempotency
-      // key, so a retry after a response that was sent but never received
-      // bills the same session twice -- and an over-reported day is harder to
-      // notice, and worse, than a missing entry the queue will resend.
-      const res = await providerFetch(
-        this.providerId,
-        url,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': this.getAuthHeader(),
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            _links: {
-              workPackage: { href: `/api/v3/work_packages/${cleanTaskId}` }
-            },
-            hours: isoDuration,
-            spentOn: spentOnDate,
-            comment: {
-              raw: payload.comment || 'Logged via SprintTicker'
-            }
-          })
-        },
-        `Logging time on WP #${cleanTaskId}`,
-        this._http
-      );
-
-      const json = await res.json() as { id?: number };
-      // No id is reported as none, not made up: see JiraProvider.logTime.
-      const remoteWorklogId = json.id ? json.id.toString() : undefined;
-      console.log(`[OpenProjectProvider] Successfully logged ${isoDuration} on WP #${cleanTaskId} (Entry ID: ${remoteWorklogId ?? 'none given'})`);
-      return { success: true, remoteWorklogId };
-    }
+  /** `OP-101` is the key shown; the API names work package 101. */
+  private static workPackageId(taskId: string): string {
+    return taskId.replace(/^OP-/, '');
   }
 
   /// <summary>

@@ -2131,7 +2131,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1949 tests across 99 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 1974 tests across 99 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2495,6 +2495,11 @@
         logTime(payload: WorklogPayload): Promise&lt;{ success: boolean; remoteWorklogId?: string }&gt;;
         updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;): Promise&lt;boolean&gt;;
       
+        // Optional: correcting an entry logTime made. A provider with no remote leaves them out.
+        findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise&lt;string | null&gt;;
+        updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise&lt;void&gt;;
+        deleteWorklog?(taskId: string, remoteWorklogId: string): Promise&lt;void&gt;;
+      
         // Optional: activity on the user&#39;s tasks, for toasts and bar banners.
         getEventsSince?(sinceUtc: string): Promise&lt;ProviderEventDTO[]&gt;;
         getEventsInboxUrl?(): string | null;
@@ -2529,6 +2534,20 @@
       answers without one, leave it <code>undefined</code>: an id made up here
       (<code>jira_wl_&lt;time&gt;</code>, as the adapters once did) is indistinguishable from a real
       one, and a correction sent to it would miss an entry that does exist.</p>
+      <p><strong>Correcting an entry: find it by its marker, rewrite it whole, and read a
+      404 for what it means.</strong> Every comment <code>logTime</code> sends ends with the marker of
+      its queue row (<code>syncMarker</code>, <code>[#xxxxxxxx]</code>); <code>findWorklog</code> looks for it among
+      the task&#39;s entries from a day before the start to a day after
+      (<code>WORKLOG_SEARCH_MARGIN_MS</code>), and answers null only when it has read them all
+      -- a page walk that cannot finish throws, or a correction would be given up on
+      an entry that exists. Advance through pages by what each page held, never by
+      the page size asked for: Jira clamps <code>maxResults</code>, and the fake does too so a
+      test catches it. <code>updateWorklog</code> replaces duration, start and comment (Jira
+      <code>PUT .../worklog/{id}</code>, OpenProject <code>PATCH /time_entries/{id}</code>), so repeating
+      it is harmless; it validates like <code>logTime</code>, Jira&#39;s one-minute floor
+      included. <code>deleteWorklog</code> treats a 404 as done -- the entry is already gone --
+      and nothing else: a 403 or a 500 says nothing about the entry. A 404 on an
+      update is a permanent failure: the entry was deleted at the provider.</p>
       <p><strong><code>minimumLoggableSeconds</code> is a fact about your API, not a policy.</strong> Jira&#39;s time
       tracking is minute-granular, so it declares 60; OpenProject and AdHoc record
       arbitrary durations and declare 1. The engine reads it before queueing, so a

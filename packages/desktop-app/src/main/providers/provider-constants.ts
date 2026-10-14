@@ -85,3 +85,14 @@ export const JIRA_EVENT_WINDOW_MARGIN_MINUTES = 5;
  * asking once a minute covers the pass without doubling its requests.
  */
 export const JIRA_AUTH_CHECK_TTL_MS = 60_000;
+
+/**
+ * How far before a worklog's recorded start the search for it reaches.
+ *
+ * Finding an entry sent before its id was kept goes by the marker in its
+ * comment, among the entries near its start; the start itself is not exact
+ * there. Jira stores `started` to the minute and shows it in the profile's
+ * timezone, and OpenProject files a day (`spentOn`) in this machine's -- so
+ * a day either side covers both without reading the task's whole history.
+ */
+export const WORKLOG_SEARCH_MARGIN_MS = 24 * 60 * 60 * 1000;

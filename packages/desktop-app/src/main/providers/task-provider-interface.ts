@@ -53,6 +53,29 @@ export interface ITaskProvider {
    */
   reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }>;
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
+
+  /**
+   * The id of the entry `logTime` made, found by the marker its comment
+   * carries (`syncMarker`), or null when no entry on the task near
+   * `startedAtUtc` carries it. For entries sent before their id was kept
+   * (migration 8), or whose answer had none.
+   *
+   * Throws on failure, like getProjects: null must mean "not there", never
+   * "could not look", or a correction would be given up on an entry that
+   * exists.
+   *
+   * The three worklog methods are optional because a provider without a
+   * remote has nothing to correct; the queue reports such a provider as
+   * unable rather than calling it.
+   */
+  findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise<string | null>;
+  /**
+   * Replaces the entry's duration, start and comment. Throws; an entry
+   * deleted at the provider is a permanent `ProviderRequestError` (404).
+   */
+  updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void>;
+  /** Deletes the entry. One already gone (404) counts as deleted, not as a failure. */
+  deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
 
   /**

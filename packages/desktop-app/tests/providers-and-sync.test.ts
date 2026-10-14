@@ -9,6 +9,8 @@ import { SettingsRepository } from '../src/main/db/repositories/settings-reposit
 import { JiraProvider } from '../src/main/providers/jira-provider';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import { vi } from 'vitest';
+import { isProviderRequestError } from '../src/main/providers/provider-errors';
+import { ArgumentException } from '../src/shared/dtos';
 
 describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -124,6 +126,37 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
     expect(result).toEqual({ success: true, remoteWorklogId: undefined });
     global.fetch = originalFetch;
+  });
+
+  it('OpenProjectProvider_DeleteWorklog_Refused_IsNotTakenForDeleted', async () => {
+    // Only a 404 means "already gone".
+    await openProjectProvider.initialize({ domain: 'https://op.test', apiToken: 'token' });
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403, headers: { get: () => null }, json: async () => ({}) });
+
+    await expect(openProjectProvider.deleteWorklog('OP-101', '7')).rejects.toSatisfy(
+      (err: unknown) => isProviderRequestError(err) && err.status === 403
+    );
+    global.fetch = originalFetch;
+  });
+
+  it('OpenProjectProvider_CorrectingAWorklog_BadArguments_Throw', async () => {
+    await openProjectProvider.initialize({ domain: 'https://op.test', apiToken: 'token' });
+    const payload = { taskId: 'OP-101', durationSeconds: 60, startedAtUtc: '', comment: '', isAdHoc: false };
+
+    await expect(openProjectProvider.findWorklog('', '2026-01-01T09:00:00.000Z', '[#x]')).rejects.toThrow(ArgumentException);
+    await expect(openProjectProvider.findWorklog('OP-101', 'nope', '[#x]')).rejects.toThrow(ArgumentException);
+    await expect(openProjectProvider.findWorklog('OP-101', '2026-01-01T09:00:00.000Z', '')).rejects.toThrow(ArgumentException);
+    await expect(openProjectProvider.updateWorklog('OP-101', '', payload)).rejects.toThrow(ArgumentException);
+    await expect(openProjectProvider.updateWorklog('OP-101', '7', { ...payload, durationSeconds: 0 })).rejects.toThrow(ArgumentException);
+    await expect(openProjectProvider.deleteWorklog('', '7')).rejects.toThrow(ArgumentException);
+    await expect(openProjectProvider.deleteWorklog('OP-101', '')).rejects.toThrow(ArgumentException);
+  });
+
+  it('OpenProjectProvider_CorrectingAWorklog_NotConfigured_SaysSo', async () => {
+    await expect(new OpenProjectProvider().deleteWorklog('OP-101', '7')).rejects.toSatisfy(
+      (err: unknown) => isProviderRequestError(err) && err.kind === 'not_configured'
+    );
   });
 
   it('OpenProjectProvider_UpdateTaskStatus_ValidStatus_SendsPatchRequest', async () => {

@@ -8,6 +8,8 @@ import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { ProviderManager } from '../src/main/providers/provider-manager';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
+import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
+import { isProviderRequestError } from '../src/main/providers/provider-errors';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import { ProviderEventService } from '../src/main/services/provider-event-service';
 import { ToastRequest } from '../src/main/services/toast-presenter';
@@ -167,6 +169,93 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
  * answer, and the event service's cursor, all real. What the unit tests stub
  * is exactly what this one does not.
  */
+describe('Correcting a time entry on a live OpenProject-shaped server', () => {
+  const START = '2026-09-09T10:15:00.000Z';
+  let server: ReturnType<typeof createFakeOpenProject>['server'];
+  let requests: ReturnType<typeof createFakeOpenProject>['requests'];
+  let timeEntries: ReturnType<typeof createFakeOpenProject>['timeEntries'];
+  let provider: OpenProjectProvider;
+
+  beforeAll(async () => {
+    const fake = createFakeOpenProject({ pageSize: 20, quiet: true });
+    server = fake.server;
+    requests = fake.requests;
+    timeEntries = fake.timeEntries;
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
+    provider = new OpenProjectProvider();
+    await provider.initialize({ domain: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, apiToken: 'any-key-works' });
+  });
+
+  afterAll(async () => {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+
+  beforeEach(() => {
+    requests.length = 0;
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A time entry as the queue sends it: the marker of its row at the end of the comment. */
+  const sent = async (taskId: string, marker: string, startedAtUtc = START): Promise<string> =>
+    (await provider.logTime({ taskId, durationSeconds: 1800, startedAtUtc, comment: `Pairing ${marker}`, isAdHoc: false }))
+      .remoteWorklogId!;
+
+  it('LogTime_AgainstTheServer_AnswersTheEntrysOwnId', async () => {
+    const id = await sent('OP-101', '[#own00001]');
+
+    expect(timeEntries.get(id)).toMatchObject({ workPackageId: '101', hours: 'PT30M' });
+  });
+
+  it('FindWorklog_MarkerInTheComment_FindsTheEntry', async () => {
+    await sent('OP-102', '[#other001]');
+    const id = await sent('OP-102', '[#find0001]');
+
+    expect(await provider.findWorklog('OP-102', START, '[#find0001]')).toBe(id);
+  });
+
+  it('FindWorklog_EntryOnAnotherDay_IsNotSearched', async () => {
+    // A day either side of the start, not the work package's whole history.
+    await sent('OP-103', '[#farday01]', '2026-08-01T10:00:00.000Z');
+
+    expect(await provider.findWorklog('OP-103', START, '[#farday01]')).toBeNull();
+  });
+
+  it('UpdateWorklog_SentEntry_IsRewritten', async () => {
+    const id = await sent('OP-104', '[#edit0001]');
+
+    await provider.updateWorklog('OP-104', id, {
+      taskId: 'OP-104',
+      durationSeconds: 5400,
+      startedAtUtc: START,
+      comment: 'Pairing, corrected [#edit0001]',
+      isAdHoc: false
+    });
+
+    expect(requests.find(r => r.method === 'PATCH')?.pathname).toBe(`/api/v3/time_entries/${id}`);
+    expect(timeEntries.get(id)).toMatchObject({ hours: 'PT1H30M', comment: { raw: 'Pairing, corrected [#edit0001]' } });
+  });
+
+  it('DeleteWorklog_SentEntry_IsGone_AndDeletingItAgainIsNotAFailure', async () => {
+    const id = await sent('OP-105', '[#dele0001]');
+
+    await provider.deleteWorklog('OP-105', id);
+    await expect(provider.deleteWorklog('OP-105', id)).resolves.toBeUndefined();
+
+    expect(timeEntries.has(id)).toBe(false);
+  });
+
+  it('UpdateWorklog_DeletedInOpenProject_IsAPermanentFailure', async () => {
+    const id = await sent('OP-106', '[#gone0001]');
+    await provider.deleteWorklog('OP-106', id);
+
+    await expect(
+      provider.updateWorklog('OP-106', id, { taskId: 'OP-106', durationSeconds: 600, startedAtUtc: START, comment: '', isAdHoc: false })
+    ).rejects.toSatisfy((err: unknown) => isProviderRequestError(err) && err.status === 404 && err.isPermanent);
+  });
+});
+
 describe('Provider events against a live OpenProject-shaped server', () => {
   let fake: ReturnType<typeof createFakeOpenProject>;
   let baseUrl: string;

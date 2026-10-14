@@ -164,6 +164,9 @@ function createFakeJira(overrides = {}) {
   const issues = buildIssues(options.issues);
   const activity = [];
   const requests = [];
+  /** Worklogs by id, as POSTed; PUT rewrites one and DELETE removes it. */
+  const worklogs = new Map();
+  let nextWorklogId = 10000;
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -277,8 +280,39 @@ function createFakeJira(overrides = {}) {
 
       const worklog = /^\/rest\/api\/3\/issue\/([^/]+)\/worklog$/.exec(url.pathname);
       if (worklog && req.method === 'POST') {
-        send(201, { id: String(Math.floor(Math.random() * 100000)), issueId: worklog[1] });
+        const id = String(nextWorklogId++);
+        worklogs.set(id, { id, issueId: worklog[1], ...body });
+        send(201, { id, issueId: worklog[1] });
         return;
+      }
+      if (worklog && req.method === 'GET') {
+        // Paged like a real site, `startedAfter` in epoch milliseconds.
+        const after = Number(url.searchParams.get('startedAfter')) || 0;
+        const all = [...worklogs.values()].filter(
+          w => w.issueId === worklog[1] && Date.parse(String(w.started || '').replace(/([+-]\d\d)(\d\d)$/, '$1:$2')) >= after
+        );
+        send(200, { startAt, maxResults, total: all.length, worklogs: all.slice(startAt, startAt + maxResults) });
+        return;
+      }
+
+      const oneWorklog = /^\/rest\/api\/3\/issue\/([^/]+)\/worklog\/([^/]+)$/.exec(url.pathname);
+      if (oneWorklog) {
+        const existing = worklogs.get(oneWorklog[2]);
+        if (!existing || existing.issueId !== oneWorklog[1]) {
+          send(404, { errorMessages: ['Cannot find worklog with id: ' + oneWorklog[2]] });
+          return;
+        }
+        if (req.method === 'PUT') {
+          worklogs.set(existing.id, { ...existing, ...body });
+          send(200, worklogs.get(existing.id));
+          return;
+        }
+        if (req.method === 'DELETE') {
+          worklogs.delete(existing.id);
+          res.writeHead(204);
+          res.end();
+          return;
+        }
       }
 
       const transitions = /^\/rest\/api\/3\/issue\/([^/]+)\/transitions$/.exec(url.pathname);
@@ -304,7 +338,7 @@ function createFakeJira(overrides = {}) {
     });
   });
 
-  return { server, options, projects, issues, activity, transitions: TRANSITIONS, requests };
+  return { server, options, projects, issues, activity, transitions: TRANSITIONS, requests, worklogs };
 }
 
 module.exports = { createFakeJira, DEFAULT_OPTIONS, TRANSITIONS, FAKE_ACCOUNT };

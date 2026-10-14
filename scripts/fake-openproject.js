@@ -188,6 +188,24 @@ function createFakeOpenProject(overrides = {}) {
   const requests = [];
   /** Unread notifications, newest last. Push to it to post one. */
   const notifications = [];
+  /** Time entries by id, as POSTed; PATCH rewrites one and DELETE removes it. */
+  const timeEntries = new Map();
+  let nextTimeEntryId = 500;
+
+  /** Reads a JSON body, for the routes that need one; the rest never read theirs. */
+  const readBody = (req, then) => {
+    let raw = '';
+    req.on('data', chunk => {
+      raw += chunk;
+    });
+    req.on('end', () => {
+      try {
+        then(raw ? JSON.parse(raw) : {});
+      } catch {
+        then({});
+      }
+    });
+  };
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -237,12 +255,58 @@ function createFakeOpenProject(overrides = {}) {
 
     if (url.pathname === '/api/v3/time_entries') {
       if (req.method === 'POST') {
-        send(201, { id: Math.floor(Math.random() * 100000), _type: 'TimeEntry' });
+        readBody(req, body => {
+          const id = nextTimeEntryId++;
+          const href = body?._links?.workPackage?.href || '';
+          timeEntries.set(String(id), {
+            id,
+            _type: 'TimeEntry',
+            workPackageId: href.split('/').pop(),
+            hours: body.hours,
+            spentOn: body.spentOn,
+            comment: body.comment
+          });
+          send(201, { id, _type: 'TimeEntry' });
+        });
+        return;
+      }
+      // Filtered by work package, as a search for one entry is, it answers
+      // from what was POSTed; unfiltered -- today's total -- from a fixed set.
+      const filters = JSON.parse(url.searchParams.get('filters') || '[]');
+      const byPackage = filters.find(f => f.work_package)?.work_package?.values?.[0];
+      if (byPackage !== undefined) {
+        const range = filters.find(f => f.spent_on)?.spent_on?.values ?? ['0000-00-00', '9999-99-99'];
+        const entries = [...timeEntries.values()].filter(
+          e => e.workPackageId === String(byPackage) && e.spentOn >= range[0] && e.spentOn <= range[1]
+        );
+        send(200, collection(url, entries, offset, pageSize));
         return;
       }
       const entries = [{ hours: 'PT1H30M' }, { hours: 'PT45M' }, { hours: 'PT30S' }];
       send(200, collection(url, entries, offset, pageSize));
       return;
+    }
+
+    const oneTimeEntry = /^\/api\/v3\/time_entries\/(\d+)$/.exec(url.pathname);
+    if (oneTimeEntry) {
+      const existing = timeEntries.get(oneTimeEntry[1]);
+      if (!existing) {
+        send(404, { _type: 'Error', message: 'The requested resource could not be found.' });
+        return;
+      }
+      if (req.method === 'PATCH') {
+        readBody(req, body => {
+          timeEntries.set(oneTimeEntry[1], { ...existing, ...body });
+          send(200, timeEntries.get(oneTimeEntry[1]));
+        });
+        return;
+      }
+      if (req.method === 'DELETE') {
+        timeEntries.delete(oneTimeEntry[1]);
+        res.writeHead(204);
+        res.end();
+        return;
+      }
     }
 
     if (url.pathname === '/api/v3/notifications') {
@@ -259,7 +323,7 @@ function createFakeOpenProject(overrides = {}) {
     send(404, { message: `No fake route for ${url.pathname}` });
   });
 
-  return { server, options, projects, statuses, requests, notifications };
+  return { server, options, projects, statuses, requests, notifications, timeEntries };
 }
 
 module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS };

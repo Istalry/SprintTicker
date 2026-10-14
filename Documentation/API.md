@@ -172,6 +172,11 @@ interface ITaskProvider {
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
 
+  // Optional: correcting an entry logTime made. A provider with no remote leaves them out.
+  findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise<string | null>;
+  updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void>;
+  deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
+
   // Optional: activity on the user's tasks, for toasts and bar banners.
   getEventsSince?(sinceUtc: string): Promise<ProviderEventDTO[]>;
   getEventsInboxUrl?(): string | null;
@@ -211,6 +216,21 @@ on the queue row and is how a later correction finds the entry. When the API
 answers without one, leave it `undefined`: an id made up here
 (`jira_wl_<time>`, as the adapters once did) is indistinguishable from a real
 one, and a correction sent to it would miss an entry that does exist.
+
+**Correcting an entry: find it by its marker, rewrite it whole, and read a
+404 for what it means.** Every comment `logTime` sends ends with the marker of
+its queue row (`syncMarker`, `[#xxxxxxxx]`); `findWorklog` looks for it among
+the task's entries from a day before the start to a day after
+(`WORKLOG_SEARCH_MARGIN_MS`), and answers null only when it has read them all
+-- a page walk that cannot finish throws, or a correction would be given up on
+an entry that exists. Advance through pages by what each page held, never by
+the page size asked for: Jira clamps `maxResults`, and the fake does too so a
+test catches it. `updateWorklog` replaces duration, start and comment (Jira
+`PUT .../worklog/{id}`, OpenProject `PATCH /time_entries/{id}`), so repeating
+it is harmless; it validates like `logTime`, Jira's one-minute floor
+included. `deleteWorklog` treats a 404 as done -- the entry is already gone --
+and nothing else: a 403 or a 500 says nothing about the entry. A 404 on an
+update is a permanent failure: the entry was deleted at the provider.
 
 **`minimumLoggableSeconds` is a fact about your API, not a policy.** Jira's time
 tracking is minute-granular, so it declares 60; OpenProject and AdHoc record

@@ -37,6 +37,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
   let server: ReturnType<typeof createFakeJira>['server'];
   let requests: ReturnType<typeof createFakeJira>['requests'];
   let activity: ReturnType<typeof createFakeJira>['activity'];
+  let worklogs: ReturnType<typeof createFakeJira>['worklogs'];
   let origin: string;
 
   beforeAll(async () => {
@@ -49,6 +50,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
     server = fake.server;
     requests = fake.requests;
     activity = fake.activity;
+    worklogs = fake.worklogs;
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -248,6 +250,106 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       // queue parks the row instead of spending its retry budget on identical
       // 400s.
       expect(requests).toHaveLength(0);
+    });
+  });
+
+  describe('correcting a worklog', () => {
+    const START = '2026-09-09T10:15:00.000Z';
+
+    /** A worklog as the queue sends it: the marker of its row at the end of the comment. */
+    const sent = async (taskId: string, marker: string, durationSeconds = 1800): Promise<string> => {
+      const result = await (await configured()).logTime({
+        taskId,
+        durationSeconds,
+        startedAtUtc: START,
+        comment: `Paired on the sync queue ${marker}`,
+        isAdHoc: false
+      });
+      return result.remoteWorklogId!;
+    };
+
+    it('FindWorklog_MarkerInTheComment_FindsTheEntryLogTimeMade', async () => {
+      const id = await sent('FAKE1-3', '[#find0001]');
+
+      expect(await (await configured()).findWorklog('FAKE1-3', START, '[#find0001]')).toBe(id);
+    });
+
+    it('FindWorklog_PastTheFirstPage_StillFindsIt', async () => {
+      for (let i = 0; i < PAGE_SIZE + 3; i++) await sent('FAKE1-4', `[#page${String(i).padStart(4, '0')}]`);
+      requests.length = 0;
+
+      const found = await (await configured()).findWorklog('FAKE1-4', START, `[#page${String(PAGE_SIZE + 2).padStart(4, '0')}]`);
+
+      expect(found).not.toBeNull();
+      const reads = requests.filter(r => r.pathname === '/rest/api/3/issue/FAKE1-4/worklog');
+      expect(reads.map(r => r.startAt)).toEqual([0, PAGE_SIZE]);
+    });
+
+    it('FindWorklog_NoEntryCarriesIt_IsNull', async () => {
+      await sent('FAKE1-5', '[#other001]');
+
+      expect(await (await configured()).findWorklog('FAKE1-5', START, '[#absent01]')).toBeNull();
+    });
+
+    it('UpdateWorklog_SentEntry_IsRewrittenInTheSameFormat', async () => {
+      const id = await sent('FAKE1-6', '[#edit0001]');
+
+      await (await configured()).updateWorklog('FAKE1-6', id, {
+        taskId: 'FAKE1-6',
+        durationSeconds: 3600,
+        startedAtUtc: '2026-09-09T09:00:00.000Z',
+        comment: 'Paired on the sync queue [#edit0001]',
+        isAdHoc: false
+      });
+
+      const put = requests.find(r => r.method === 'PUT');
+      expect(put?.pathname).toBe(`/rest/api/3/issue/FAKE1-6/worklog/${id}`);
+      const body = put?.body as Record<string, unknown>;
+      expect(body.started).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{4}$/);
+      expect(body.comment).toMatchObject({ type: 'doc', version: 1 });
+      expect(worklogs.get(id)).toMatchObject({ timeSpentSeconds: 3600 });
+    });
+
+    it('DeleteWorklog_SentEntry_IsGone_AndDeletingItAgainIsNotAFailure', async () => {
+      const id = await sent('FAKE1-7', '[#dele0001]');
+      const provider = await configured();
+
+      await provider.deleteWorklog('FAKE1-7', id);
+      await expect(provider.deleteWorklog('FAKE1-7', id)).resolves.toBeUndefined();
+
+      expect(worklogs.has(id)).toBe(false);
+    });
+
+    it('UpdateWorklog_DeletedInJira_IsAPermanentFailure', async () => {
+      const id = await sent('FAKE1-8', '[#gone0001]');
+      const provider = await configured();
+      await provider.deleteWorklog('FAKE1-8', id);
+
+      await expect(
+        provider.updateWorklog('FAKE1-8', id, {
+          taskId: 'FAKE1-8',
+          durationSeconds: 600,
+          startedAtUtc: START,
+          comment: '[#gone0001]',
+          isAdHoc: false
+        })
+      ).rejects.toSatisfy((err: unknown) => isProviderRequestError(err) && err.status === 404 && err.isPermanent);
+    });
+
+    it('UpdateWorklog_BelowTheMinute_ThrowsPermanentWithoutSendingAnything', async () => {
+      const id = await sent('FAKE1-9', '[#short001]');
+      requests.length = 0;
+
+      await expect(
+        (await configured()).updateWorklog('FAKE1-9', id, {
+          taskId: 'FAKE1-9',
+          durationSeconds: 30,
+          startedAtUtc: START,
+          comment: '[#short001]',
+          isAdHoc: false
+        })
+      ).rejects.toSatisfy((err: unknown) => isProviderRequestError(err) && err.isPermanent === true);
+      expect(requests.filter(r => r.method === 'PUT')).toHaveLength(0);
     });
   });
 

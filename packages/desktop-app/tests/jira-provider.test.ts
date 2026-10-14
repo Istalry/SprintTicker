@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { JiraProvider } from '../src/main/providers/jira-provider';
+import { ArgumentException } from '../src/shared/dtos';
 import { ProviderRequestError, isProviderRequestError } from '../src/main/providers/provider-errors';
 import { TaskScope } from '../src/shared/task-scope';
 import { JIRA_AUTH_CHECK_TTL_MS, MAX_COLLECTION_PAGES } from '../src/main/providers/provider-constants';
@@ -481,6 +482,76 @@ describe('JiraProvider', () => {
 
     it('QuoteJqlValue_ValueWithAQuote_IsEscaped', () => {
       expect(JiraProvider.quoteJqlValue('we"ird')).toBe('"we\\"ird"');
+    });
+  });
+
+  describe('correcting a worklog', () => {
+    const failed = (status: number): Response =>
+      ({ ok: false, status, headers: { get: () => null }, json: async () => ({}) }) as unknown as Response;
+    const adf = (text: string) => JiraProvider.toAdf(text);
+
+    it('FindWorklog_PageWithoutAWorklogsArray_IsAFailureNotAMiss', async () => {
+      // null would say "not there", and the correction would be given up on.
+      record(ok({ startAt: 0, total: 0 }));
+
+      await expect((await configured()).findWorklog('A-1', '2026-01-01T09:00:00.000Z', '[#x]')).rejects.toThrow(
+        /no `worklogs` array/
+      );
+    });
+
+    it('FindWorklog_PagesThatNeverEnd_ThrowRatherThanAnswerNotThere', async () => {
+      const { urls } = record(ok({ startAt: 0, total: 1_000_000, worklogs: [{ id: 1, comment: adf('other') }] }));
+
+      await expect((await configured()).findWorklog('A-1', '2026-01-01T09:00:00.000Z', '[#x]')).rejects.toThrow(
+        /did not end/
+      );
+      expect(urls.length).toBeGreaterThan(1);
+    });
+
+    it('FindWorklog_SearchesFromADayBeforeTheStart', async () => {
+      const { urls } = record(ok({ startAt: 0, total: 1, worklogs: [{ id: 77, comment: adf('work [#abc]') }] }));
+
+      const found = await (await configured()).findWorklog('A-1', '2026-01-02T09:00:00.000Z', '[#abc]');
+
+      expect(found).toBe('77');
+      expect(new URL(urls[0]).searchParams.get('startedAfter')).toBe(String(Date.parse('2026-01-01T09:00:00.000Z')));
+    });
+
+    it.each([
+      ['', '2026-01-01T09:00:00.000Z', '[#x]'],
+      ['A-1', 'not a time', '[#x]'],
+      ['A-1', '2026-01-01T09:00:00.000Z', '']
+    ])('FindWorklog_BadArgument_Throws(%s, %s, %s)', async (taskId, start, marker) => {
+      record(ok({}));
+
+      await expect((await configured()).findWorklog(taskId, start, marker)).rejects.toThrow(ArgumentException);
+    });
+
+    it('DeleteWorklog_ServerError_IsNotTakenForDeleted', async () => {
+      // Only a 404 means "already gone"; a 500 says nothing about the entry.
+      record(failed(500));
+
+      await expect((await configured()).deleteWorklog('A-1', '10001')).rejects.toSatisfy(
+        (err: unknown) => isProviderRequestError(err) && err.status === 500
+      );
+    });
+
+    it('UpdateWorklog_NoRemoteId_Throws', async () => {
+      const provider = await configured();
+
+      await expect(
+        provider.updateWorklog('A-1', '', { taskId: 'A-1', durationSeconds: 600, startedAtUtc: '', comment: '', isAdHoc: false })
+      ).rejects.toThrow(ArgumentException);
+      await expect(provider.deleteWorklog('A-1', '')).rejects.toThrow(ArgumentException);
+      await expect(provider.deleteWorklog('', '1')).rejects.toThrow(ArgumentException);
+    });
+
+    it('CorrectingAWorklog_NotConfigured_SaysSo', async () => {
+      const provider = new JiraProvider(noBackoff);
+
+      await expect(provider.findWorklog('A-1', '2026-01-01T09:00:00.000Z', '[#x]')).rejects.toSatisfy(
+        (err: unknown) => isProviderRequestError(err) && err.kind === 'not_configured'
+      );
     });
   });
 

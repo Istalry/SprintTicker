@@ -9,7 +9,8 @@ import {
   COLLECTION_PAGE_SIZE,
   JIRA_AUTH_CHECK_TTL_MS,
   JIRA_EVENT_WINDOW_MARGIN_MINUTES,
-  MAX_COLLECTION_PAGES
+  MAX_COLLECTION_PAGES,
+  WORKLOG_SEARCH_MARGIN_MS
 } from './provider-constants';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
 import { isJiraConfigured } from '../../shared/provider-settings';
@@ -82,6 +83,13 @@ interface JiraEventIssuePage {
 }
 
 type JiraEventIssue = NonNullable<JiraEventIssuePage['issues']>[number];
+
+/** A page of `GET /issue/{key}/worklog`. */
+interface JiraWorklogPage {
+  startAt?: number;
+  total?: number;
+  worklogs?: Array<{ id?: string | number; comment?: unknown }>;
+}
 
 /**
  * A string field of a changelog item.
@@ -463,6 +471,126 @@ export class JiraProvider implements ITaskProvider {
    */
   public async logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }> {
     this.requireConfigured();
+    this.validateWorklog(payload);
+
+    const issueKey = payload.taskId;
+    const url = `${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog`;
+    const res = await providerFetch(
+      this.providerId,
+      url,
+      {
+        method: 'POST',
+        headers: { ...this.headers(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(JiraProvider.worklogBody(payload))
+      },
+      `Logging time on ${issueKey}`,
+      this._http
+    );
+
+    const body = await this.readJson<{ id?: string | number }>(res, `Logging time on ${issueKey}`);
+    // No id is reported as none. An id made up here (`jira_wl_<time>`) was
+    // indistinguishable from a real one, and a correction sent to it would
+    // fail against an entry that does exist.
+    return {
+      success: true,
+      remoteWorklogId: body.id !== undefined && body.id !== null ? String(body.id) : undefined
+    };
+  }
+
+  /**
+   * Finds the worklog whose comment carries `marker`, among the issue's
+   * worklogs started from a day before `startedAtUtc` on.
+   *
+   * A day before, not at: `started` is stored to the minute and in the
+   * profile's timezone, and an edit may have moved it. The marker, not the
+   * time, is what identifies the entry. GET, so `providerFetch` retries it.
+   */
+  public async findWorklog(taskId: string, startedAtUtc: string, marker: string): Promise<string | null> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to find a worklog.');
+    if (!marker) throw new ArgumentException('marker is required to find a worklog.');
+    const start = Date.parse(startedAtUtc);
+    if (Number.isNaN(start)) throw new ArgumentException(`startedAtUtc is not a timestamp: ${startedAtUtc}`);
+
+    const context = `Looking for worklog ${marker} on ${taskId}`;
+    // Advanced by what each page held, never by what was asked for: Jira
+    // clamps `maxResults` to its own ceiling, and stepping by the request
+    // would skip every entry between the two.
+    let startAt = 0;
+    for (let page = 0; page < MAX_COLLECTION_PAGES; page++) {
+      const url = new URL(`${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(taskId)}/worklog`);
+      url.searchParams.set('startedAfter', String(start - WORKLOG_SEARCH_MARGIN_MS));
+      url.searchParams.set('startAt', String(startAt));
+      url.searchParams.set('maxResults', String(COLLECTION_PAGE_SIZE));
+      const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
+      const body = await this.readJson<JiraWorklogPage>(res, context);
+      if (!Array.isArray(body.worklogs)) {
+        throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no \`worklogs\` array`);
+      }
+
+      const found = body.worklogs.find(w => adfToPlainText(w.comment).includes(marker));
+      if (found?.id !== undefined) return String(found.id);
+
+      startAt = (body.startAt ?? startAt) + body.worklogs.length;
+      if (body.worklogs.length === 0 || startAt >= (body.total ?? startAt)) return null;
+    }
+    // Not "not there": the rest was never read.
+    throw new ProviderRequestError(
+      this.providerId,
+      'protocol',
+      `${context} failed: the worklogs did not end within ${MAX_COLLECTION_PAGES} pages`
+    );
+  }
+
+  /**
+   * Rewrites a worklog's duration, start and comment, with the same body and
+   * the same traps as {@link logTime}. A PUT replaces the whole entry, so
+   * repeating it after a lost answer changes nothing: the queue may retry it.
+   */
+  public async updateWorklog(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void> {
+    this.requireConfigured();
+    if (!remoteWorklogId) throw new ArgumentException('remoteWorklogId is required to update a worklog.');
+    this.validateWorklog({ ...payload, taskId });
+
+    await providerFetch(
+      this.providerId,
+      this.worklogUrl(taskId, remoteWorklogId),
+      {
+        method: 'PUT',
+        headers: { ...this.headers(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(JiraProvider.worklogBody(payload))
+      },
+      `Correcting worklog ${remoteWorklogId} on ${taskId}`,
+      this._http
+    );
+  }
+
+  /** Deletes a worklog. One already deleted in Jira answers 404, which is the outcome asked for. */
+  public async deleteWorklog(taskId: string, remoteWorklogId: string): Promise<void> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to delete a worklog.');
+    if (!remoteWorklogId) throw new ArgumentException('remoteWorklogId is required to delete a worklog.');
+
+    try {
+      await providerFetch(
+        this.providerId,
+        this.worklogUrl(taskId, remoteWorklogId),
+        { method: 'DELETE', headers: this.headers() },
+        `Deleting worklog ${remoteWorklogId} on ${taskId}`,
+        this._http
+      );
+    } catch (err) {
+      if (err instanceof ProviderRequestError && err.status === 404) return;
+      throw err;
+    }
+  }
+
+  private worklogUrl(taskId: string, remoteWorklogId: string): string {
+    return `${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(taskId)}/worklog/${encodeURIComponent(remoteWorklogId)}`;
+  }
+
+  /** What every worklog write checks first. */
+  private validateWorklog(payload: WorklogPayload): void {
     if (!payload.taskId) throw new ArgumentException('payload.taskId is required to log time.');
     if (payload.durationSeconds <= 0) {
       throw new ArgumentException(
@@ -483,38 +611,16 @@ export class JiraProvider implements ITaskProvider {
         { status: 400 }
       );
     }
+  }
 
-    const issueKey = payload.taskId;
-    const url = `${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog`;
-    const started = JiraProvider.toJiraTimestamp(
-      payload.startedAtUtc ? new Date(payload.startedAtUtc) : new Date()
-    );
-
-    const res = await providerFetch(
-      this.providerId,
-      url,
-      {
-        method: 'POST',
-        headers: { ...this.headers(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // Jira rounds to the minute internally; sending seconds is still
-          // correct and avoids this doing its own lossy arithmetic.
-          timeSpentSeconds: Math.round(payload.durationSeconds),
-          started,
-          comment: JiraProvider.toAdf(payload.comment || 'Logged via SprintTicker')
-        })
-      },
-      `Logging time on ${issueKey}`,
-      this._http
-    );
-
-    const body = await this.readJson<{ id?: string | number }>(res, `Logging time on ${issueKey}`);
-    // No id is reported as none. An id made up here (`jira_wl_<time>`) was
-    // indistinguishable from a real one, and a correction sent to it would
-    // fail against an entry that does exist.
+  /** The worklog as Jira's v3 API takes it, on a POST and on a PUT alike. */
+  private static worklogBody(payload: WorklogPayload): Record<string, unknown> {
     return {
-      success: true,
-      remoteWorklogId: body.id !== undefined && body.id !== null ? String(body.id) : undefined
+      // Jira rounds to the minute internally; sending seconds is still
+      // correct and avoids this doing its own lossy arithmetic.
+      timeSpentSeconds: Math.round(payload.durationSeconds),
+      started: JiraProvider.toJiraTimestamp(payload.startedAtUtc ? new Date(payload.startedAtUtc) : new Date()),
+      comment: JiraProvider.toAdf(payload.comment || 'Logged via SprintTicker')
     };
   }
 
