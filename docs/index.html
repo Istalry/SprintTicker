@@ -731,7 +731,20 @@
       session from 17:00 to 01:00 is all on the first day.</p>
       <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
       refused a 40-second session, the time is still in your history — it just is not
-      in Jira.</p>
+      in Jira. Each entry says where it stands: <strong>Sent</strong>, <strong>Sending</strong>, <strong>Not sent</strong>,
+      <strong>Local only</strong> (ad-hoc work, or too short for your provider), or a correction
+      on its way.</p>
+      <p align="center">
+        <img src="images/app-history-edit.png" width="80%" alt="Correcting a worklog: hours, minutes, start and comment, with the time it ends and a note that the change also goes to Jira or OpenProject">
+      </p><p>✏️ <strong>Correct or delete a worklog</strong> with the pencil and the bin on its row. A
+      correction changes the duration, the start or the comment — not the task: Jira
+      does not move a worklog from one issue to another. It applies here at once and
+      reaches Jira or OpenProject through the sync queue, so it survives a lost
+      connection or a restart; a worklog not sent yet is simply sent with the new
+      values. A deletion asks first, and deletes the entry at the provider too.
+      Worklogs sent by an earlier version are found at the provider by the
+      <code>[#xxxxxxxx]</code> tag at the end of their comment, so keep that tag if you edit the
+      comment in Jira.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
       does not delete the time logged against it</strong>: the task leaves your lists and
       stays in your history. The same happens when your provider stops listing a task
@@ -1215,6 +1228,19 @@
       <li><em><code>401</code>/<code>403</code> — the key was revoked.</em> Enter a new one; saving credentials
       automatically un-parks rows the old key stranded.</li>
       </ul>
+      </details><details>
+      <summary>✏️ <b>A correction never reached Jira or OpenProject</b></summary><p> The worklog says <strong>Correction failed</strong>,
+      and the sync queue panel lists a <em>Correction</em> row with the reason.</p>
+      <ul>
+      <li><em>Not found in Jira (or OpenProject).</em> The entry was deleted there, or its
+      comment lost the <code>[#xxxxxxxx]</code> tag that identifies it. Correct it there by
+      hand; the worklog here already has the new values.</li>
+      <li><em>Under a minute.</em> Jira records time to the minute, so a correction to a
+      shorter duration is refused before it is sent.</li>
+      <li><em><code>401</code>/<code>403</code>.</em> As for any worklog: enter a new key, and the row is retried.</li>
+      </ul>
+      <p>A <strong>Correction pending</strong> that stays put is waiting for the worklog&#39;s own send
+      to arrive first: a correction never overtakes it.</p>
       </details><details>
       <summary>🔕 <b>Notifications never appear on the bar</b></summary><p> Three things to check, in order: the
       app is set to something other than <em>Don&#39;t Show</em>; the notification listener is
@@ -2178,7 +2204,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2007 tests across 100 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2021 tests across 101 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

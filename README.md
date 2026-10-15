@@ -115,7 +115,9 @@ Timestamp-based sessions with start / pause / resume / finish, a live tracker on
 the bar, and a local worklog history with an end-of-day export. A session left
 running overnight or over the weekend is paused at your last activity and you
 are asked when you stopped, while overtime past midnight runs on untouched; a
-worklog belongs to the day it began. Persisted
+worklog belongs to the day it began. A worklog already sent can be corrected or
+deleted from Work History, and the change reaches Jira or OpenProject through
+the sync queue. Persisted
 through `better-sqlite3` with versioned schema migrations, so upgrading never
 discards existing worklogs.
 
@@ -460,7 +462,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2007 tests across 100 files for the app -- the main and shared
+`pnpm test` runs 2021 tests across 101 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

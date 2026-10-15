@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
+import { WorklogSyncState } from '../../../shared/worklog-correction';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 import { formatClockTime } from '../../utils/formatters';
+import { EditWorklogModal } from '../../components/EditWorklogModal';
+
+/** How each sync state reads on a row, and what its tooltip adds. */
+const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: string }> = {
+  local: { label: 'Local only', tone: 'text-text-secondary border-border-dark', hint: 'Kept in SprintTicker; never sent to a provider.' },
+  pending: { label: 'Sending', tone: 'text-accent-amber border-accent-amber/40', hint: 'Queued for the provider.' },
+  sent: { label: 'Sent', tone: 'text-accent-green border-accent-green/40', hint: 'At the provider.' },
+  failed: { label: 'Not sent', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see the sync queue in Settings.' },
+  'correction-pending': { label: 'Correction pending', tone: 'text-accent-amber border-accent-amber/40', hint: 'A correction is on its way to the provider.' },
+  'correction-failed': { label: 'Correction failed', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see the sync queue in Settings.' }
+};
 
 interface DaySummary {
   totalSeconds: number;
@@ -31,6 +43,9 @@ export const WorklogHistoryView: React.FC = () => {
   // flight. Loading is the gap between the two, derived rather than flagged:
   // a flag raised before the request is state set synchronously in an effect.
   const [day, setDay] = useState<DayRead | null>(null);
+  // Bumped after a correction or deletion, so the day is read again.
+  const [revision, setRevision] = useState(0);
+  const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
   const loading = day?.date !== selectedDate;
@@ -49,7 +64,7 @@ export const WorklogHistoryView: React.FC = () => {
       }
     );
     return () => { current = false; };
-  }, [selectedDate]);
+  }, [selectedDate, revision]);
 
   // Date Navigation Helpers
   const changeDateByDays = (days: number) => {
@@ -204,8 +219,32 @@ export const WorklogHistoryView: React.FC = () => {
                   )}
                 </div>
 
-                <div className="font-mono font-bold text-accent-blue">
-                  {formatDuration(log.durationSeconds)}
+                <div className="flex items-center space-x-3">
+                  {log.syncState && (
+                    <span
+                      title={SYNC_BADGE[log.syncState].hint}
+                      className={`px-1.5 py-0.5 border rounded text-[10px] ${SYNC_BADGE[log.syncState].tone}`}
+                    >
+                      {SYNC_BADGE[log.syncState].label}
+                    </span>
+                  )}
+                  <div className="font-mono font-bold text-accent-blue">
+                    {formatDuration(log.durationSeconds)}
+                  </div>
+                  <button
+                    aria-label={`Correct ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))}`}
+                    onClick={() => setEditing({ worklog: log, mode: 'edit' })}
+                    className="p-1 text-text-secondary hover:text-white hover:bg-dark-700 rounded transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    aria-label={`Delete ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))}`}
+                    onClick={() => setEditing({ worklog: log, mode: 'delete' })}
+                    className="p-1 text-text-secondary hover:text-accent-red hover:bg-dark-700 rounded transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -216,6 +255,19 @@ export const WorklogHistoryView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {editing && (
+        <EditWorklogModal
+          key={`${editing.worklog.id}-${editing.mode}`}
+          worklog={editing.worklog}
+          mode={editing.mode}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            setRevision(r => r + 1);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -124,6 +124,7 @@ describe('SyncQueuePanel', () => {
     startedAtUtc: '2026-09-01T08:00:00Z',
     comment: '',
     status: 'PENDING' as const,
+    operation: 'CREATE' as const,
     retryCount: 1,
     nextAttemptAtUtc,
     lastError: 'HTTP 503'

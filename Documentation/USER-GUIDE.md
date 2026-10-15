@@ -237,7 +237,23 @@ session from 17:00 to 01:00 is all on the first day.
 
 **A worklog is written locally whether or not the remote accepted it.** If Jira
 refused a 40-second session, the time is still in your history — it just is not
-in Jira.
+in Jira. Each entry says where it stands: **Sent**, **Sending**, **Not sent**,
+**Local only** (ad-hoc work, or too short for your provider), or a correction
+on its way.
+
+<p align="center">
+  <img src="../docs/images/app-history-edit.png" width="80%" alt="Correcting a worklog: hours, minutes, start and comment, with the time it ends and a note that the change also goes to Jira or OpenProject">
+</p>
+
+✏️ **Correct or delete a worklog** with the pencil and the bin on its row. A
+correction changes the duration, the start or the comment — not the task: Jira
+does not move a worklog from one issue to another. It applies here at once and
+reaches Jira or OpenProject through the sync queue, so it survives a lost
+connection or a restart; a worklog not sent yet is simply sent with the new
+values. A deletion asks first, and deletes the entry at the provider too.
+Worklogs sent by an earlier version are found at the provider by the
+`[#xxxxxxxx]` tag at the end of their comment, so keep that tag if you edit the
+comment in Jira.
 
 Each entry is named by its task's key and title. **Deleting a task or a project
 does not delete the time logged against it**: the task leaves your lists and
@@ -612,6 +628,24 @@ row carries the server's own message. Common causes:
   rounds to zero and is refused. The time is in your local history.
 - *`401`/`403` — the key was revoked.* Enter a new one; saving credentials
   automatically un-parks rows the old key stranded.
+
+</details>
+
+<details>
+<summary>✏️ <b>A correction never reached Jira or OpenProject</b></summary>
+
+ The worklog says **Correction failed**,
+and the sync queue panel lists a *Correction* row with the reason.
+
+- *Not found in Jira (or OpenProject).* The entry was deleted there, or its
+  comment lost the `[#xxxxxxxx]` tag that identifies it. Correct it there by
+  hand; the worklog here already has the new values.
+- *Under a minute.* Jira records time to the minute, so a correction to a
+  shorter duration is refused before it is sent.
+- *`401`/`403`.* As for any worklog: enter a new key, and the row is retried.
+
+A **Correction pending** that stays put is waiting for the worklog's own send
+to arrive first: a correction never overtakes it.
 
 </details>
 

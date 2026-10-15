@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Correct or delete a worklog already sent.** A wrong duration had to be
+  fixed by hand in Jira or OpenProject. Work History now has a pencil and a
+  bin on every worklog: the duration, the start and the comment can be
+  corrected, and a deletion asks first. The change applies here at once and
+  reaches the provider through the sync queue, so it survives a lost
+  connection or a restart; a worklog not yet sent simply goes with the new
+  values. Each worklog also says where it stands -- sent, sending, not sent,
+  local only, or a correction on its way.
 - **A session left running is caught, not billed.** A session forgotten
   overnight or over the weekend kept counting -- 62 hours on Monday -- and
   stopping it sent them all to the provider at once. Coming back after your

@@ -372,10 +372,18 @@ async function seed(page, profile) {
   const insert = db.prepare(
     'INSERT INTO worklogs (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc) VALUES (?, ?, ?, ?, ?, ?, ?)'
   );
+  // Each one sent and delivered, so Work History shows them as a user with a
+  // provider sees them: "Sent", not "Local only". Delivered rows are never
+  // sent again, so nothing leaves the machine.
+  const delivered = db.prepare(
+    `INSERT INTO worklog_sync_queue (id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, worklog_id, remote_worklog_id)
+     VALUES (?, 'openproject', ?, ?, ?, ?, ?, 'SYNCED', ?, ?)`
+  );
   WORKLOGS.forEach(([hoursAgo, taskId, minutes, comment], i) => {
     const start = new Date(Date.now() - hoursAgo * 3600 * 1000);
     const end = new Date(start.getTime() + minutes * 60 * 1000);
     insert.run(`demo-log-${i}`, `demo-session-${i}`, taskId, minutes * 60, start.toISOString(), comment, end.toISOString());
+    delivered.run(`demo-sync-${i}`, taskId, minutes * 60, start.toISOString(), comment, end.toISOString(), `demo-log-${i}`, String(900 + i));
   });
   db.close();
 }
@@ -443,6 +451,7 @@ async function captureWithBar(page, framesDir, profile) {
     await nav(label);
     await page.shot(name);
     if (name === 'app-notifications') await listener(page, false);
+    if (name === 'app-history') await shootCorrection(page);
   }
 
   await nav('Active Session');
@@ -454,6 +463,24 @@ async function captureWithBar(page, framesDir, profile) {
   // answer above must not be saved.
   await reload(page);
   await page.api('pauseSession()');
+}
+
+/**
+ * The session log with the correction dialog open on its first worklog: the
+ * panel's first picture stops above the log, where the badges and the pencil
+ * are. Cancelled afterwards, so nothing is corrected.
+ */
+async function shootCorrection(page) {
+  const opened = await page.eval(`(() => {
+    const pencil = document.querySelector('button[aria-label^="Correct "]');
+    if (!pencil) return false;
+    pencil.closest('.space-y-2').scrollIntoView({ block: 'center' });
+    pencil.click();
+    return true;
+  })()`);
+  if (!opened) throw new Error('no worklog to correct in Work History');
+  await page.shot('app-history-edit');
+  await page.click('Cancel');
 }
 
 async function captureWithoutBar(page) {

@@ -67,3 +67,14 @@ export function formatDayAndTime(date: Date): string {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   });
 }
+
+/**
+ * The sentence main threw, without the wrapper Electron puts round a rejected
+ * `invoke` -- `Error invoking remote method 'worklog:update':
+ * ArgumentException: ...` -- which would read as a crash rather than as a
+ * reason the user can act on.
+ */
+export function ipcErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  return raw.replace(/^Error invoking remote method '[^']*': /, '').replace(/^\w*(?:Error|Exception): /, '');
+}

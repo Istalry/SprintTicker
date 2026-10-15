@@ -203,6 +203,13 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
           <span className={`text-xs font-mono px-2 py-0.5 rounded border ${STATUS_TONE[item.status]}`}>
             {item.status}
           </span>
+          {item.operation !== 'CREATE' && (
+            // A correction or deletion of a worklog already sent, so the
+            // row is not read as the same time being sent twice.
+            <span className="text-xs font-mono text-accent-amber">
+              {item.operation === 'UPDATE' ? 'Correction' : 'Deletion'}
+            </span>
+          )}
           <span className="text-sm font-mono text-white truncate">{item.taskKey}</span>
           <span className="text-xs font-mono text-text-secondary">{formatSeconds(item.durationSeconds)}</span>
           <span className="text-xs font-mono text-text-secondary truncate">{item.providerId}</span>
