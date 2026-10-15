@@ -111,6 +111,12 @@ export interface SyncQueueRecord {
   remoteWorklogId: string | null;
   /** For an `UPDATE` or `DELETE`: the `CREATE` row whose marker the remote comment carries. */
   originSyncId: string | null;
+  /**
+   * Times this row has been claimed for sending, the current claim included.
+   * Never reset (migration 11): above 1, an earlier attempt may have reached
+   * the provider.
+   */
+  sendAttempts: number;
 }
 
 /** Raw column shape of a worklog_sync_queue row. */
@@ -131,6 +137,7 @@ interface SyncQueueRow {
   operation: SyncQueueOperation;
   remote_worklog_id: string | null;
   origin_sync_id: string | null;
+  send_attempts: number;
 }
 
 function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
@@ -150,7 +157,8 @@ function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
     worklogId: r.worklog_id,
     operation: r.operation,
     remoteWorklogId: r.remote_worklog_id,
-    originSyncId: r.origin_sync_id
+    originSyncId: r.origin_sync_id,
+    sendAttempts: r.send_attempts
   };
 }
 
@@ -316,7 +324,7 @@ export class WorklogRepository {
     const result = db
       .prepare(
         `UPDATE worklog_sync_queue
-            SET status = 'SYNCING', claimed_at_utc = ?
+            SET status = 'SYNCING', claimed_at_utc = ?, send_attempts = send_attempts + 1
           WHERE id = ? AND status = 'PENDING'`
       )
       .run(nowUtc, id);
@@ -538,10 +546,10 @@ export class WorklogRepository {
    * so a row can only be left SYNCING if the process died in between. Without
    * this, that worklog would never be retried.
    *
-   * Known limitation: if the provider accepted the worklog but the app died
-   * before the row was marked SYNCED, reclaiming re-POSTs it. The OpenProject
-   * v3 API offers no idempotency key, so the sync id is embedded in the comment
-   * to make any duplicate identifiable afterwards.
+   * If the provider accepted the worklog but the app died before the row was
+   * marked SYNCED, the provider holds it already. Neither API takes an
+   * idempotency key, so the sync id is embedded in the comment, and the worker
+   * looks for it before sending a row a second time (`send_attempts`).
    */
   public reclaimStaleSyncItems(timeoutMs: number, nowMs: number = Date.now()): number {
     const cutoff = new Date(nowMs - timeoutMs).toISOString();

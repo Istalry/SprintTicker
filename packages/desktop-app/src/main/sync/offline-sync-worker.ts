@@ -358,6 +358,8 @@ export class OfflineSyncWorker {
   /** Sends one claimed row: a worklog, or a correction or deletion of one already sent. */
   private async dispatch(item: SyncQueueRecord): Promise<{ success: boolean; remoteWorklogId?: string }> {
     if (item.operation === 'CREATE') {
+      const earlier = await this.findEarlierSend(item);
+      if (earlier) return { success: true, remoteWorklogId: earlier };
       return this.providerManager.logTimeForProvider(item.providerId, {
         taskId: item.taskId,
         durationSeconds: item.durationSeconds,
@@ -418,6 +420,31 @@ export class OfflineSyncWorker {
       await provider.deleteWorklog(item.taskId, remoteId);
     }
     return { success: true };
+  }
+
+  /**
+   * The provider's id for an entry an earlier attempt at this row already
+   * made, or null.
+   *
+   * A send whose answer was lost may have been recorded, and a second POST
+   * bills the time twice -- neither API takes an idempotency key. So a row
+   * sent before is looked for by its marker first. A first attempt is not:
+   * nothing can be there yet, and the search costs a request. A failed
+   * search fails the attempt, which then waits out its backoff: sending
+   * blind is the duplicate this exists to prevent.
+   */
+  private async findEarlierSend(item: SyncQueueRecord): Promise<string | null> {
+    if (item.sendAttempts <= 1) return null;
+    const provider = this.providerManager.getProvider(item.providerId);
+    if (!provider?.findWorklog) return null;
+    const remoteId = await provider.findWorklog(item.taskId, item.startedAtUtc, syncMarker(item.id));
+    if (remoteId) {
+      console.log(
+        `[OfflineSyncWorker] Worklog ${item.id} was already recorded by ${provider.providerName} ` +
+          `(entry ${remoteId}); not sending it again.`
+      );
+    }
+    return remoteId;
   }
 
   /**

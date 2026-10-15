@@ -592,4 +592,31 @@ describe('Schema Migrations', () => {
       expect(() => insert('WEB', 'WEB', 'sprintticker')).not.toThrow();
     });
   });
+
+  describe('migration 11: a queue row counts its sending attempts', () => {
+    function queued(id: string, status: string, retryCount: number, lastError: string | null): void {
+      db.prepare(
+        `INSERT INTO worklog_sync_queue (id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, retry_count, last_error)
+         VALUES (?, 'jira', 't1', 60, '2026-03-01T09:00:00.000Z', 'work', '2026-03-01T09:00:00.000Z', ?, ?, ?)`
+      ).run(id, status, retryCount, lastError);
+    }
+    const attempts = (id: string) =>
+      db.prepare<[string], { send_attempts: number }>('SELECT send_attempts FROM worklog_sync_queue WHERE id = ?').get(id)?.send_attempts;
+
+    it('Migration011_RowWithAnySignOfAnAttempt_StartsAtOne', () => {
+      // Any of these may have reached the provider: the next send looks first.
+      for (const migration of MIGRATIONS.filter(m => m.version <= 10)) migration.up(db);
+      db.pragma('user_version = 10');
+      queued('fresh', 'PENDING', 0, null);
+      queued('retried', 'PENDING', 2, 'ETIMEDOUT');
+      queued('requeued', 'PENDING', 0, 'HTTP 401');
+      queued('inflight', 'SYNCING', 0, null);
+      queued('parked', 'FAILED', 8, 'ETIMEDOUT');
+      queued('sent', 'SYNCED', 0, null);
+
+      runMigrations(db);
+
+      expect(['fresh', 'retried', 'requeued', 'inflight', 'parked', 'sent'].map(attempts)).toEqual([0, 1, 1, 1, 1, 1]);
+    });
+  });
 });

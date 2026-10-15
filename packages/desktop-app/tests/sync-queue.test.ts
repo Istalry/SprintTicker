@@ -36,6 +36,9 @@ describe('Worklog sync queue ownership', () => {
       getProjects: async () => [],
       getTasks: async () => [],
       logTimeForProvider: async () => ({ success: true }),
+      // As the real manager answers for a provider that cannot search: a
+      // row sent before is then sent again, as it always was.
+      getProvider: () => undefined,
       ...overrides
     } as unknown as ProviderManager;
   }
@@ -184,6 +187,126 @@ describe('Worklog sync queue ownership', () => {
       for (let n = 0; n < 30; n++) {
         expect(computeBackoffMs(n)).toBeLessThanOrEqual(SYNC_BACKOFF_MAX_MS);
       }
+    });
+  });
+
+  /**
+   * A send whose answer never came may have been recorded, and a second POST
+   * bills the time twice. A row sent before is looked for by its marker first.
+   */
+  describe('a send whose answer was lost', () => {
+    const marker = (id: string) => `[#${id.slice(-8)}]`;
+    /** Lets a row released behind a backoff go again now. */
+    const dueNow = (id: string) =>
+      dbConn.getDb().prepare('UPDATE worklog_sync_queue SET next_attempt_at_utc = NULL WHERE id = ?').run(id);
+    const row = (id: string) => worklogRepo.getSyncItem(id)!;
+
+    /** A manager whose provider times out on the first POST, having recorded it, and can be searched. */
+    function lostAnswerManager(found: string | null | Error) {
+      const posts: string[] = [];
+      const findWorklog = vi.fn(async () => {
+        if (found instanceof Error) throw found;
+        return found;
+      });
+      const manager = managerStub({
+        logTimeForProvider: async (_provider: string, payload: { comment: string }) => {
+          posts.push(payload.comment);
+          if (posts.length === 1) throw ProviderRequestError.fromTransport('jira', 'Logging time', new Error('ETIMEDOUT'));
+          return { success: true, remoteWorklogId: 'r-new' };
+        },
+        getProvider: () => ({ providerName: 'Jira', findWorklog })
+      });
+      return { manager, posts, findWorklog };
+    }
+
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    });
+
+    it('ProcessPendingQueue_FirstAttempt_SendsWithoutSearching', async () => {
+      enqueue('sync_00000001', 'jira');
+      const { manager, findWorklog } = lostAnswerManager(null);
+
+      await new OfflineSyncWorker(manager, worklogRepo).processPendingQueue();
+
+      expect(findWorklog).not.toHaveBeenCalled();
+    });
+
+    it('ProcessPendingQueue_RecordedDespiteTheTimeout_IsMarkedSentAndNotPostedAgain', async () => {
+      enqueue('sync_00000001', 'jira');
+      const { manager, posts, findWorklog } = lostAnswerManager('r-earlier');
+      const worker = new OfflineSyncWorker(manager, worklogRepo);
+      await worker.processPendingQueue();
+      dueNow('sync_00000001');
+
+      await worker.processPendingQueue();
+
+      expect(posts).toHaveLength(1);
+      expect(findWorklog).toHaveBeenCalledWith('OP-1', '2026-01-01T09:00:00.000Z', marker('sync_00000001'));
+      expect(row('sync_00000001')).toMatchObject({ status: 'SYNCED', remoteWorklogId: 'r-earlier', sendAttempts: 2 });
+    });
+
+    it('ProcessPendingQueue_NotRecordedAfterAll_PostsItAgain', async () => {
+      enqueue('sync_00000001', 'jira');
+      const { manager, posts } = lostAnswerManager(null);
+      const worker = new OfflineSyncWorker(manager, worklogRepo);
+      await worker.processPendingQueue();
+      dueNow('sync_00000001');
+
+      await worker.processPendingQueue();
+
+      expect(posts).toHaveLength(2);
+      expect(row('sync_00000001')).toMatchObject({ status: 'SYNCED', remoteWorklogId: 'r-new' });
+    });
+
+    it('ProcessPendingQueue_TheSearchFails_PostsNothingAndWaits', async () => {
+      // Sending blind is the duplicate this exists to prevent.
+      enqueue('sync_00000001', 'jira');
+      const { manager, posts } = lostAnswerManager(ProviderRequestError.fromTransport('jira', 'Searching', new Error('ECONNRESET')));
+      const worker = new OfflineSyncWorker(manager, worklogRepo);
+      await worker.processPendingQueue();
+      dueNow('sync_00000001');
+
+      await worker.processPendingQueue();
+
+      expect(posts).toHaveLength(1);
+      expect(row('sync_00000001').status).toBe('PENDING');
+    });
+
+    it('ProcessPendingQueue_ClaimLeftByACrash_SearchesBeforeSendingAgain', async () => {
+      // The app closed mid-request: the claim is recovered, never counted as a retry.
+      enqueue('sync_00000001', 'jira');
+      worklogRepo.claimSyncItem('sync_00000001', '2026-01-01T09:00:00.000Z');
+      worklogRepo.reclaimStaleSyncItems(SYNC_CLAIM_TIMEOUT_MS);
+      const findWorklog = vi.fn(async () => 'r-earlier');
+      const logTimeForProvider = vi.fn();
+
+      await new OfflineSyncWorker(
+        managerStub({ logTimeForProvider, getProvider: () => ({ providerName: 'Jira', findWorklog }) }),
+        worklogRepo
+      ).processPendingQueue();
+
+      expect(logTimeForProvider).not.toHaveBeenCalled();
+      expect(row('sync_00000001').status).toBe('SYNCED');
+    });
+
+    it('ProcessPendingQueue_CorrectedAfterAFailedAttempt_StillSearchesFirst', async () => {
+      // Correcting an unsent row restores its retry budget; it does not make
+      // the earlier attempt not have happened.
+      enqueue('sync_00000001', 'jira');
+      const { manager, posts, findWorklog } = lostAnswerManager('r-earlier');
+      const worker = new OfflineSyncWorker(manager, worklogRepo);
+      await worker.processPendingQueue();
+      worklogRepo.rewriteUnsentSyncItem('sync_00000001', {
+        durationSeconds: 1800, startedAtUtc: '2026-01-01T09:00:00.000Z', comment: 'Queued work'
+      });
+      expect(row('sync_00000001').retryCount).toBe(0);
+
+      await worker.processPendingQueue();
+
+      expect(findWorklog).toHaveBeenCalled();
+      expect(posts).toHaveLength(1);
     });
   });
 

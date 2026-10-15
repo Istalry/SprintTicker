@@ -3,6 +3,10 @@ import type { AddressInfo } from 'net';
 import { createFakeJira, FAKE_ACCOUNT } from '../../../scripts/fake-jira.js';
 import { JiraProvider } from '../src/main/providers/jira-provider';
 import { isProviderRequestError } from '../src/main/providers/provider-errors';
+import { DatabaseConnection } from '../src/main/db/database-connection';
+import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
+import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
+import type { ProviderManager } from '../src/main/providers/provider-manager';
 
 /**
  * The Jira adapter against a real socket.
@@ -38,6 +42,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
   let requests: ReturnType<typeof createFakeJira>['requests'];
   let activity: ReturnType<typeof createFakeJira>['activity'];
   let worklogs: ReturnType<typeof createFakeJira>['worklogs'];
+  let fakeOptions: ReturnType<typeof createFakeJira>['options'];
   let origin: string;
 
   beforeAll(async () => {
@@ -51,6 +56,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
     requests = fake.requests;
     activity = fake.activity;
     worklogs = fake.worklogs;
+    fakeOptions = fake.options;
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -334,6 +340,37 @@ describe('JiraProvider against a live Jira-shaped server', () => {
           isAdHoc: false
         })
       ).rejects.toSatisfy((err: unknown) => isProviderRequestError(err) && err.status === 404 && err.isPermanent);
+    });
+
+    it('QueueSend_AnswerLostAfterJiraRecordedIt_IsNotRecordedTwice', async () => {
+      // Real adapter, worker and queue: Jira stores the worklog and the
+      // connection drops before its answer. The retry finds it by its marker.
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const provider = await configured();
+      const manager = {
+        getProvider: () => provider,
+        logTimeForProvider: (_id: string, payload: Parameters<JiraProvider['logTime']>[0]) => provider.logTime(payload)
+      } as unknown as ProviderManager;
+      const db = new DatabaseConnection(':memory:');
+      const repo = new WorklogRepository(db);
+      const worker = new OfflineSyncWorker(manager, repo);
+      repo.enqueueSyncItem({
+        id: 'sync_lost0001', providerId: 'jira', taskId: 'FAKE1-10', durationSeconds: 1800, startedAtUtc: START, comment: 'Lost answer'
+      });
+      const onIssue = () => [...worklogs.values()].filter(w => w.issueId === 'FAKE1-10');
+      fakeOptions.loseWorklogAnswers = 1;
+
+      await worker.processPendingQueue();
+      expect(onIssue()).toHaveLength(1);
+      expect(repo.getSyncItem('sync_lost0001')?.status).toBe('PENDING');
+      db.getDb().prepare('UPDATE worklog_sync_queue SET next_attempt_at_utc = NULL').run();
+
+      await worker.processPendingQueue();
+
+      expect(onIssue()).toHaveLength(1);
+      expect(repo.getSyncItem('sync_lost0001')).toMatchObject({ status: 'SYNCED', remoteWorklogId: onIssue()[0].id });
+      db.close();
     });
 
     it('UpdateWorklog_BelowTheMinute_ThrowsPermanentWithoutSendingAnything', async () => {

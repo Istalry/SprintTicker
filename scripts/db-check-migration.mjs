@@ -78,7 +78,7 @@ if (report.queueLinks) {
 }
 
 if (report.problems.length === 0) {
-  console.log('OK: every worklog and every second kept, every orphan named, at most one open session, no queue row lost.');
+  console.log('OK: every worklog and every second kept, every orphan named, at most one open session, no queue row or project lost.');
 } else {
   console.log('PROBLEMS -- do not ship this migration:');
   for (const problem of report.problems) console.log(`  - ${problem}`);

@@ -77,6 +77,11 @@
   parked as a failure. This holds for projects made from now on: OpenProject
   projects did not say where they came from, so an older project made here
   cannot be told apart from one of theirs, and keeps the old behaviour.
+- **A worklog whose answer was lost is not logged twice.** A send that timed
+  out, or that the app closed in the middle of, may already have been
+  recorded by Jira or OpenProject, and the retry posted it again: the time
+  appeared twice. A worklog sent before is now looked for at the provider
+  first, by the tag in its comment (migration 11).
 - **A project made in SprintTicker survives the next sync.** The sync
   deleted every project its provider did not list, so one created in the
   Projects panel was gone, with its tasks, minutes later.

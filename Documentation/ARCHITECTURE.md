@@ -623,6 +623,12 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
     `key`. Nothing reads a project by its key, and a second project with the
     same one -- another provider's, one recreated under a new id, or one made
     here -- failed to save, and the repository only logged it.
+11. `send-attempts` — each queue row counts the times it was claimed for
+    sending, and the count never goes back down. A send whose answer was
+    lost may have been recorded, so a row sent before is looked for by its
+    marker before it is sent again; `retry_count` could not say so, since a
+    correction and new credentials both reset it, and a crashed claim never
+    raised it. Rows that show any sign of an attempt start at 1.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares
@@ -745,7 +751,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2057 tests across 103 files, in two projects: `main` in Node for
+Vitest, 2065 tests across 103 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

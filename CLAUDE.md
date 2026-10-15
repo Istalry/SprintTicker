@@ -806,7 +806,7 @@ session, no second of tracked time lost, every orphaned task id named, at most
 one open session, no foreign key broken, no row of the provider queue
 lost. The rules are
 `src/main/db/migration-check.ts`, tested, and hold any future migration to the
-same standard; the script only copies and prints. Migrations 5, 6, 8 and 9 were
+same standard; the script only copies and prints. Migrations 5, 6, 8, 9 and 10 were
 checked this way. Ask the user to run it from an ordinary terminal and paste
 the output -- for the reason below, its answer from an agent's shell describes
 a file that may not be theirs.
@@ -856,6 +856,15 @@ stays here and which the sync never deletes. `local` is the column's old default
 project held because that adapter did not name itself -- it means *not
 known*, never "made here", and keeps the old rule of the active provider.
 An adapter's `getProjects` must set `providerId`.
+
+**A row sent before is looked for before it is sent again.** Neither Jira nor
+OpenProject takes an idempotency key, so a POST whose answer was lost -- a
+timeout, a dropped connection, the app closing mid-request -- may already be
+recorded, and posting it again bills the time twice. The worker searches by
+the row's marker whenever `send_attempts` (migration 11) says an earlier
+attempt was made, and a failed search fails the attempt rather than sending
+blind. Never reset `send_attempts`: `retry_count` is the retry *budget* and is
+reset on purpose, which is why it could not answer this.
 
 **A correction to a sent worklog goes through the queue, behind its send.**
 `WorklogCorrectionService` rewrites the local row and queues an `UPDATE` or

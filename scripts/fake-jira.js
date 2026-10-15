@@ -61,7 +61,10 @@ const DEFAULT_OPTIONS = {
   projects: 25,
   issues: 47,
   pageSize: 20,
-  quiet: false
+  quiet: false,
+  // POSTed worklogs whose answer is lost: stored, then the connection is
+  // dropped before the 201. A timeout that reached the server looks the same.
+  loseWorklogAnswers: 0
 };
 
 /** Parses `--flag value` pairs, falling back to the given defaults. */
@@ -282,6 +285,11 @@ function createFakeJira(overrides = {}) {
       if (worklog && req.method === 'POST') {
         const id = String(nextWorklogId++);
         worklogs.set(id, { id, issueId: worklog[1], ...body });
+        if (options.loseWorklogAnswers > 0) {
+          options.loseWorklogAnswers -= 1;
+          req.socket.destroy();
+          return;
+        }
         send(201, { id, issueId: worklog[1] });
         return;
       }

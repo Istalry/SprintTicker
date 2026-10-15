@@ -450,6 +450,26 @@ const M010_PROJECT_KEY_NOT_UNIQUE = `
   ALTER TABLE projects_new RENAME TO projects;
 `;
 
+/**
+ * Migration 11: a queue row counts its sending attempts, for good.
+ *
+ * A send whose answer was lost -- a timeout, a dropped connection, the app
+ * closing mid-request -- may have been recorded by the provider, and posting
+ * it again bills the time twice. `retry_count` cannot say so: correcting an
+ * unsent row and entering credentials both reset it to restore the retry
+ * budget, and recovering a crashed claim never raised it. This one only ever
+ * goes up, and a row sent before is looked for before it is sent again.
+ *
+ * A row from before that shows any sign of an attempt starts at 1.
+ */
+const M011_SEND_ATTEMPTS = `
+  ALTER TABLE worklog_sync_queue ADD COLUMN send_attempts INTEGER NOT NULL DEFAULT 0;
+
+  UPDATE worklog_sync_queue
+     SET send_attempts = 1
+   WHERE retry_count > 0 OR last_error IS NOT NULL OR status IN ('SYNCING', 'FAILED', 'SYNCED');
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -461,7 +481,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 7, name: 'task-description', up: db => db.exec(M007_TASK_DESCRIPTION) },
   { version: 8, name: 'worklog-remote-identity', up: db => db.exec(M008_WORKLOG_REMOTE_IDENTITY) },
   { version: 9, name: 'session-provider', up: db => db.exec(M009_SESSION_PROVIDER) },
-  { version: 10, name: 'project-key-not-unique', up: db => db.exec(M010_PROJECT_KEY_NOT_UNIQUE) }
+  { version: 10, name: 'project-key-not-unique', up: db => db.exec(M010_PROJECT_KEY_NOT_UNIQUE) },
+  { version: 11, name: 'send-attempts', up: db => db.exec(M011_SEND_ATTEMPTS) }
 ];
 
 /** Schema version a fully migrated database reports. */

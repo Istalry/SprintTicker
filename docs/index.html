@@ -2120,6 +2120,12 @@
       <code>key</code>. Nothing reads a project by its key, and a second project with the
       same one -- another provider&#39;s, one recreated under a new id, or one made
       here -- failed to save, and the repository only logged it.</li>
+      <li><code>send-attempts</code> — each queue row counts the times it was claimed for
+      sending, and the count never goes back down. A send whose answer was
+      lost may have been recorded, so a row sent before is looked for by its
+      marker before it is sent again; <code>retry_count</code> could not say so, since a
+      correction and new credentials both reset it, and a crashed claim never
+      raised it. Rows that show any sign of an attempt start at 1.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
@@ -2226,7 +2232,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2057 tests across 103 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2065 tests across 103 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
