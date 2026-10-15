@@ -36,6 +36,7 @@ describe('Lunch and the session it stops', () => {
   let send: ReturnType<typeof vi.fn>;
   let service: ContextScheduleService;
   let remoteTasks: TaskDTO[];
+  let statusPushes: Array<[string, string]>;
 
   const PROJECT: ProjectDTO = { id: '10000', key: 'SCRUM', name: 'My Software Team' };
   const A: TaskDTO = { id: '10001', projectId: '10000', key: 'SCRUM-2', title: 'Tache 2', status: 'todo' };
@@ -74,11 +75,15 @@ describe('Lunch and the session it stops', () => {
       enableStandupPrompt: false, lunchStartTime: '12:30', lunchEndTime: '13:30', eodWrapUpTime: '23:00'
     });
     remoteTasks = [A, B];
+    statusPushes = [];
     const manager = {
       getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60 }),
       getProjects: async () => [PROJECT],
       getTasks: async () => remoteTasks,
-      updateTaskStatus: async () => true,
+      updateTaskStatus: async (taskId: string, status: string) => {
+        statusPushes.push([taskId, status]);
+        return true;
+      },
       logTimeForProvider: () => new Promise(() => undefined)
     } as unknown as ProviderManager;
     const taskRepo = new TaskRepository(dbConn);
@@ -369,6 +374,20 @@ describe('Lunch and the session it stops', () => {
       expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, taskKey: A.key, status: 'TRACKING' });
       expect(service.getResumePrompt()).toBeNull();
       expect(send).toHaveBeenLastCalledWith(IPCChannel.ON_RESUME_PROMPT, null);
+    });
+
+    it('AnswerResumePrompt_Yes_TracksItWithoutTakingItBack', async () => {
+      // The sync archived it over lunch. Restarting it used to bring it back
+      // into the lists and move it to In Progress on the provider -- a task
+      // now someone else's.
+      await reassignOverLunch();
+      statusPushes = [];
+
+      service.answerResumePrompt(true);
+
+      expect(engine.isTaskListed(A.id)).toBe(false);
+      expect(statusPushes).toEqual([]);
+      expect(engine.getCurrentSession()?.taskUnlisted).toBe(true);
     });
 
     it('AnswerResumePrompt_No_LeavesItAndNothingAsksAgain', async () => {

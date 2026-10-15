@@ -258,6 +258,53 @@ describe('A tracked task the provider stops listing', () => {
     });
   });
 
+  describe('restarted once it has left', () => {
+    // Restarting is the user's answer to "resume it anyway?", after lunch or
+    // a forgotten night. It tracks the task; it does not take it back.
+    const archive = (id: string) =>
+      dbConn.getDb().prepare('UPDATE tasks SET archived_at_utc = ? WHERE id = ?').run(new Date().toISOString(), id);
+
+    it('StartTask_TaskArchivedSince_StaysArchivedAndIsNotMoved', () => {
+      archive(MINE.id);
+
+      engine.startTask(MINE.id);
+
+      expect(listed(MINE.id)).toBe(false);
+      expect(statusPushes).toEqual([]);
+    });
+
+    it('StartTask_TaskArchivedSince_SaysItLeftWithoutWaitingForASync', () => {
+      // Until the next sync, finishing it as done would have asked nothing.
+      archive(MINE.id);
+
+      engine.startTask(MINE.id);
+
+      expect(engine.getCurrentSession()?.taskUnlisted).toBe(true);
+    });
+
+    it('StartTask_TaskTheSyncFoundUnlisted_IsNotMovedToInProgress', async () => {
+      // The forgotten-night path: the session kept the task's row, so it is
+      // not archived, but the sync has already seen it leave.
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      await sync();
+      engine.stopSession('Logged the night before');
+      statusPushes = [];
+
+      engine.startTask(MINE.id);
+
+      expect(statusPushes).toEqual([]);
+      expect(engine.getCurrentSession()?.taskUnlisted).toBe(true);
+    });
+
+    it('StartTask_TaskStillListed_MovesItToInProgress', () => {
+      engine.startTask(MINE.id);
+
+      expect(statusPushes).toEqual([[MINE.id, 'in_progress']]);
+      expect(taskRepo.getTaskById(MINE.id)?.status).toBe('in_progress');
+    });
+  });
+
   it('Sync_AdHocSession_IsNeverCalledUnlisted', async () => {
     // The provider never lists ad-hoc work; that is not news.
     engine.startTask('', true, 'Code review');

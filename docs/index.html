@@ -933,7 +933,9 @@
       <li><strong>A task that left your list over the break</strong> -- reassigned, closed or
       moved -- is not restarted without asking. The window asks <strong>Resume after
       lunch?</strong>, and the bar shows <strong>NOT YOURS / RESUME IT?</strong>: OK resumes it, BACK
-      leaves it. Starting another task answers no.</li>
+      leaves it. Starting another task answers no. Resuming it tracks your time
+      and nothing else: the task stays out of your lists, is not moved to In
+      Progress on the provider, and marking it done still asks first.</li>
       <li><strong>Locked when lunch begins.</strong> The bar stays on Away, but your task still
       stops at the start of lunch -- it does not count the break as work because
       Windows was locked. Unlock during lunch and the bar goes straight to Lunch;
@@ -2236,7 +2238,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2095 tests across 104 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2100 tests across 104 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

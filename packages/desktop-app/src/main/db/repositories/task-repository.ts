@@ -127,6 +127,19 @@ export class TaskRepository {
     return (row?.n ?? 0) > 0;
   }
 
+  /**
+   * Whether the sync has archived the task: its row is kept for its history,
+   * but the provider no longer lists it for the user. False for a task with
+   * no row at all, which says nothing about where it stands.
+   */
+  public isArchived(taskId: string): boolean {
+    if (!taskId) return false;
+    const row = this.dbConn.getDb()
+      .prepare<[string], { n: number }>('SELECT COUNT(*) AS n FROM tasks WHERE id = ? AND archived_at_utc IS NOT NULL')
+      .get(taskId);
+    return (row?.n ?? 0) > 0;
+  }
+
   /** A row as a DTO; a NULL priority or description is left off rather than carried as null. */
   private static toDto(
     row: Omit<TaskDTO, 'priorityRank' | 'description'> & { priorityRank: number | null; description: string | null }

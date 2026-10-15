@@ -211,7 +211,7 @@ export class TimeTrackingEngine extends EventEmitter {
   public getCurrentSession(): ActiveSessionDTO | null {
     if (!this._currentSession) return null;
     const session = this._sessionRepo.getActiveSession();
-    if (session && this._syncWorker.isUnlisted(session.taskId)) {
+    if (session && this.hasLeftTheList(session)) {
       const reason = this._syncWorker.unlistedReason(session.taskId);
       return { ...session, taskUnlisted: true, ...(reason ? { taskLeftBecause: reason } : {}) };
     }
@@ -230,6 +230,17 @@ export class TimeTrackingEngine extends EventEmitter {
   /// </summary>
   public getTasksForProject(projectId: string): TaskDTO[] {
     return this._taskRepo.getTasksByProjectId(projectId);
+  }
+
+  /**
+   * The sync says so once it has seen the session's task missing; an archived
+   * row says so at once. A task archived over lunch and restarted after it
+   * would otherwise read as the user's own until the next sync, and finishing
+   * it as done in between would move it without asking.
+   */
+  private hasLeftTheList(session: ActiveSessionDTO): boolean {
+    if (this._syncWorker.isUnlisted(session.taskId)) return true;
+    return !session.isAdHoc && !isAdHocTaskId(session.taskId) && this._taskRepo.isArchived(session.taskId);
   }
 
   /// <summary>
@@ -308,13 +319,21 @@ export class TimeTrackingEngine extends EventEmitter {
         if (!customTitle) finalTitle = existingTask.title;
         if (existingTask.projectId) finalProjectId = existingTask.projectId;
 
-        if (existingTask.status !== 'in_progress') {
-          this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+        // A task the provider no longer lists for the user -- restarted after
+        // lunch or a forgotten night, once they said yes -- is tracked as it
+        // is. Saving the row took it out of the archive, back into the lists,
+        // and the transition moved a task that is someone else's, or closed,
+        // to In Progress on the provider.
+        const stillListed = !adHoc && !this._taskRepo.isArchived(taskId) && !this._syncWorker.isUnlisted(taskId);
+        if (adHoc || stillListed) {
+          if (existingTask.status !== 'in_progress') {
+            this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
+          }
         }
 
         // An ad-hoc task exists only here; the provider would be asked to move
         // an issue it has never heard of.
-        if (!adHoc) {
+        if (stillListed) {
           this.moveTask(this.providerOfProject(finalProjectId), taskId, 'in_progress');
         }
       }

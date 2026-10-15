@@ -66,6 +66,11 @@
 
 ### Fixed
 
+- **Resuming a task that is no longer yours no longer takes it back.**
+  Answering yes to "Resume after lunch?", or restarting a forgotten session
+  on a task that had left your list, brought it back into your lists and
+  moved it to In Progress on the provider -- a task now someone else's, or
+  closed. It is now tracked as it is, and finishing it as done still asks.
 - **A task renamed while you track it shows its new name.** The session
   kept the key and title it started with, so a task renamed on the
   provider, or moved to another Jira project with a new key, showed its old

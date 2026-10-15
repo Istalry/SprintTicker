@@ -390,7 +390,9 @@ you are back. Lunch never undoes what you do:
 - **A task that left your list over the break** -- reassigned, closed or
   moved -- is not restarted without asking. The window asks **Resume after
   lunch?**, and the bar shows **NOT YOURS / RESUME IT?**: OK resumes it, BACK
-  leaves it. Starting another task answers no.
+  leaves it. Starting another task answers no. Resuming it tracks your time
+  and nothing else: the task stays out of your lists, is not moved to In
+  Progress on the provider, and marking it done still asks first.
 - **Locked when lunch begins.** The bar stays on Away, but your task still
   stops at the start of lunch -- it does not count the break as work because
   Windows was locked. Unlock during lunch and the bar goes straight to Lunch;

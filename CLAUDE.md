@@ -602,7 +602,10 @@ changing it:
   (`lunch_skipped_date`) and drops the stored restart (`lunch_resume`). Its
   own restart runs after the switch to WORK, which is how it is told apart.
   Anything that restarts a task on the user's behalf checks
-  `TaskRepository.isListed` first and asks when it is not.
+  `TaskRepository.isListed` first and asks when it is not. A yes tracks the
+  task and takes nothing back: `startTask` neither saves its row -- `saveTask`
+  un-archives -- nor sends In Progress for a task archived or seen unlisted,
+  and the session reads as unlisted at once, before the next sync.
 - **Lunch stops the session under Away too.** Lunch never *leaves* Away --
   Away outranks it -- and that used to mean it never began at all: locked at
   12:30, the session ran on and the break was logged as work. The check now
