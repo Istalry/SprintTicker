@@ -1,5 +1,6 @@
 import { DatabaseConnection } from '../database-connection';
 import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
+import { WorklogCorrectionDTO, WorklogSyncState } from '../../../shared/worklog-correction';
 
 export interface WorklogRecord {
   id: string;
@@ -13,6 +14,8 @@ export interface WorklogRecord {
   taskKey?: string;
   /** The task's title. Read-only; filled on reads. */
   taskTitle?: string;
+  /** Where it stands with its provider. Read-only; filled on reads. */
+  syncState?: WorklogSyncState;
 }
 
 /** A worklog row joined to its task. */
@@ -26,6 +29,8 @@ interface WorklogRow {
   created_at_utc: string;
   task_key: string | null;
   task_title: string | null;
+  create_status: SyncQueueStatus | null;
+  correction_status: SyncQueueStatus | null;
 }
 
 /**
@@ -37,9 +42,30 @@ interface WorklogRow {
  * its time.
  */
 const SELECT_WORKLOGS = `
-  SELECT w.*, t.key AS task_key, t.title AS task_title
+  SELECT w.*, t.key AS task_key, t.title AS task_title,
+         (SELECT q.status FROM worklog_sync_queue q
+           WHERE q.worklog_id = w.id AND q.operation = 'CREATE'
+           ORDER BY q.rowid DESC LIMIT 1) AS create_status,
+         (SELECT q.status FROM worklog_sync_queue q
+           WHERE q.worklog_id = w.id AND q.operation <> 'CREATE' AND q.status <> 'SYNCED'
+           ORDER BY q.rowid DESC LIMIT 1) AS correction_status
   FROM worklogs w
   LEFT JOIN tasks t ON t.id = w.task_id`;
+
+/** Where a worklog stands, from its send and its latest open correction. */
+function syncStateOf(createStatus: SyncQueueStatus | null, correctionStatus: SyncQueueStatus | null): WorklogSyncState {
+  if (correctionStatus) return correctionStatus === 'FAILED' ? 'correction-failed' : 'correction-pending';
+  switch (createStatus) {
+    case null:
+      return 'local';
+    case 'SYNCED':
+      return 'sent';
+    case 'FAILED':
+      return 'failed';
+    default:
+      return 'pending';
+  }
+}
 
 function toRecord(r: WorklogRow): WorklogRecord {
   const record: WorklogRecord = {
@@ -53,6 +79,7 @@ function toRecord(r: WorklogRow): WorklogRecord {
   };
   if (r.task_key !== null) record.taskKey = r.task_key;
   if (r.task_title !== null) record.taskTitle = r.task_title;
+  record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null);
   return record;
 }
 
@@ -213,10 +240,18 @@ export class WorklogRepository {
    */
   public getPendingQueueItems(nowUtc: string = new Date().toISOString()): SyncQueueRecord[] {
     const stmt = this.dbConn.getDb().prepare<[string], SyncQueueRow>(
-      `SELECT * FROM worklog_sync_queue
+      `SELECT * FROM worklog_sync_queue q
         WHERE status = 'PENDING'
           AND (next_attempt_at_utc IS NULL OR next_attempt_at_utc <= ?)
-        ORDER BY created_at_utc ASC`
+          -- A correction waits for whatever came before it on the same
+          -- worklog: an UPDATE sent ahead of its CREATE names no entry.
+          AND NOT EXISTS (
+            SELECT 1 FROM worklog_sync_queue earlier
+             WHERE q.worklog_id IS NOT NULL
+               AND earlier.worklog_id = q.worklog_id
+               AND earlier.rowid < q.rowid
+               AND earlier.status <> 'SYNCED')
+        ORDER BY created_at_utc ASC, rowid ASC`
     );
     return stmt.all(nowUtc).map(mapSyncQueueRow);
   }
@@ -288,6 +323,135 @@ export class WorklogRepository {
 
     if (result.changes !== 1) return null;
     return this.getSyncItem(id);
+  }
+
+  /** One worklog, with its task's name and its sync state, or null. */
+  public getWorklogById(id: string): WorklogRecord | null {
+    const row = this.dbConn
+      .getDb()
+      .prepare<[string], WorklogRow>(`${SELECT_WORKLOGS} WHERE w.id = ?`)
+      .get(id);
+    return row ? toRecord(row) : null;
+  }
+
+  /** Rewrites a worklog's duration, start and comment. True when there was one to rewrite. */
+  public rewriteWorklog(id: string, correction: WorklogCorrectionDTO): boolean {
+    return (
+      this.dbConn
+        .getDb()
+        .prepare('UPDATE worklogs SET duration_seconds = ?, started_at_utc = ?, comment = ? WHERE id = ?')
+        .run(correction.durationSeconds, correction.startedAtUtc, correction.comment, id).changes === 1
+    );
+  }
+
+  /** Deletes a worklog row. True when there was one. */
+  public deleteWorklog(id: string): boolean {
+    return this.dbConn.getDb().prepare('DELETE FROM worklogs WHERE id = ?').run(id).changes === 1;
+  }
+
+  /** The latest row that sends `worklogId` (a CREATE), whatever its state, or null when it was never queued. */
+  public getSendOf(worklogId: string): SyncQueueRecord | null {
+    const row = this.dbConn
+      .getDb()
+      .prepare<[string], SyncQueueRow>(
+        `SELECT * FROM worklog_sync_queue
+          WHERE worklog_id = ? AND operation = 'CREATE'
+          ORDER BY rowid DESC LIMIT 1`
+      )
+      .get(worklogId);
+    return row ? mapSyncQueueRow(row) : null;
+  }
+
+  /** The corrections of `worklogId` not yet claimed or delivered: PENDING or FAILED. */
+  public getUnsentCorrectionsOf(worklogId: string): SyncQueueRecord[] {
+    return this.dbConn
+      .getDb()
+      .prepare<[string], SyncQueueRow>(
+        `SELECT * FROM worklog_sync_queue
+          WHERE worklog_id = ? AND operation <> 'CREATE' AND status IN ('PENDING', 'FAILED')
+          ORDER BY rowid ASC`
+      )
+      .all(worklogId)
+      .map(mapSyncQueueRow);
+  }
+
+  /**
+   * Rewrites what an unclaimed row will send, and gives it a fresh start: a
+   * row parked for what it used to say may well go through now.
+   *
+   * Only while PENDING or FAILED -- checked in the statement itself, so a
+   * row the worker claims in between is not changed under it. False then,
+   * and the caller queues a correction behind it instead.
+   */
+  public rewriteUnsentSyncItem(id: string, correction: WorklogCorrectionDTO): boolean {
+    return (
+      this.dbConn
+        .getDb()
+        .prepare(
+          `UPDATE worklog_sync_queue
+              SET duration_seconds = ?, started_at_utc = ?, comment = ?,
+                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = NULL, last_error = NULL
+            WHERE id = ? AND status IN ('PENDING', 'FAILED')`
+        )
+        .run(correction.durationSeconds, correction.startedAtUtc, correction.comment, id).changes === 1
+    );
+  }
+
+  /** Drops an unclaimed row (PENDING or FAILED). False when it was claimed or delivered meanwhile. */
+  public dropUnsentSyncItem(id: string): boolean {
+    return (
+      this.dbConn
+        .getDb()
+        .prepare("DELETE FROM worklog_sync_queue WHERE id = ? AND status IN ('PENDING', 'FAILED')")
+        .run(id).changes === 1
+    );
+  }
+
+  /**
+   * Queues a correction or a deletion of a worklog already sent, behind
+   * whatever is queued for it (see getPendingQueueItems). `originSyncId` is
+   * the row that sent it: its marker is what finds the entry, and its
+   * `remote_worklog_id` is the entry's id once known.
+   */
+  public enqueueCorrection(payload: {
+    id: string;
+    operation: 'UPDATE' | 'DELETE';
+    worklogId: string;
+    originSyncId: string;
+    providerId: string;
+    taskId: string;
+    durationSeconds: number;
+    startedAtUtc: string;
+    comment: string;
+  }): void {
+    this.dbConn
+      .getDb()
+      .prepare(
+        `INSERT INTO worklog_sync_queue (
+           id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status,
+           worklog_id, operation, origin_sync_id
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`
+      )
+      .run(
+        payload.id,
+        payload.providerId,
+        payload.taskId,
+        payload.durationSeconds,
+        payload.startedAtUtc,
+        payload.comment,
+        new Date().toISOString(),
+        payload.worklogId,
+        payload.operation,
+        payload.originSyncId
+      );
+  }
+
+  /** Records the provider's id for the entry a send made, once a search has found it. */
+  public setRemoteWorklogId(syncId: string, remoteWorklogId: string): void {
+    this.dbConn
+      .getDb()
+      .prepare('UPDATE worklog_sync_queue SET remote_worklog_id = ? WHERE id = ?')
+      .run(remoteWorklogId, syncId);
   }
 
   /** One queue row, whatever its state, or null when there is none. */

@@ -1,3 +1,4 @@
+import type { WorklogSyncState } from './worklog-correction';
 /**
  * Data Transfer Objects (DTOs) for the IPC bridge and the local webhook endpoints.
  */
@@ -342,6 +343,8 @@ export interface WorklogDTO {
   taskKey?: string;
   /** The task's title. Absent only for a worklog whose task row is missing. */
   taskTitle?: string;
+  /** Where it stands with its provider: sent, on its way, parked, or kept here only. */
+  syncState?: WorklogSyncState;
 }
 
 export interface UnitySettingsDTO {
@@ -717,6 +720,8 @@ export interface SyncQueueItemDTO {
   startedAtUtc: string;
   comment: string;
   status: SyncQueueItemStatus;
+  /** What the row asks of the provider: a worklog, or a correction or deletion of one. */
+  operation: 'CREATE' | 'UPDATE' | 'DELETE';
   retryCount: number;
   /** Earliest time this row may be retried; null means immediately. */
   nextAttemptAtUtc: string | null;

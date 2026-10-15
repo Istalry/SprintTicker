@@ -9,6 +9,7 @@ import { WorklogRepository } from '../src/main/db/repositories/worklog-repositor
 import { ProviderManager } from '../src/main/providers/provider-manager';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
 import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
+import { WorklogCorrectionService } from '../src/main/services/worklog-correction-service';
 import { isProviderRequestError } from '../src/main/providers/provider-errors';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import { ProviderEventService } from '../src/main/services/provider-event-service';
@@ -38,6 +39,7 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
 
   let server: ReturnType<typeof createFakeOpenProject>['server'];
   let requests: ReturnType<typeof createFakeOpenProject>['requests'];
+  let timeEntries: ReturnType<typeof createFakeOpenProject>['timeEntries'];
   let baseUrl: string;
 
   let dbConn: DatabaseConnection;
@@ -55,6 +57,7 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     });
     server = fake.server;
     requests = fake.requests;
+    timeEntries = fake.timeEntries;
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
     baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -84,6 +87,47 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     const manager = new ProviderManager(settingsRepo);
     return new OfflineSyncWorker(manager, worklogRepo, projectRepo, taskRepo);
   }
+
+  it('CorrectingAWorklog_ThroughTheWholeStack_ReachesTheServer', async () => {
+    // Database, manager, worker, adapter and HTTP, all real: a worklog sent,
+    // corrected, corrected again as if sent before its id was kept, and
+    // deleted, against a server that keeps what it is told.
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    settingsRepo.setSetting(ProviderSettingKey.OP_DOMAIN, baseUrl);
+    settingsRepo.setSetting(ProviderSettingKey.OP_API_KEY, 'any-key-works');
+    const manager = new ProviderManager(settingsRepo);
+    const worker = new OfflineSyncWorker(manager, worklogRepo, projectRepo, taskRepo);
+    const service = new WorklogCorrectionService(worklogRepo, manager, () => undefined);
+    const start = '2026-10-13T09:00:00.000Z';
+    taskRepo.ensureTaskExists({ id: 'OP-7001', key: 'OP-7001', title: 'Fake', projectId: '7' });
+    worklogRepo.saveWorklog({
+      id: 'w-e2e', sessionId: 's', taskId: 'OP-7001', durationSeconds: 7200, startedAtUtc: start,
+      comment: 'Pairing', createdAtUtc: start
+    });
+    worklogRepo.enqueueSyncItem({
+      id: 'sync_e2e_00000001', providerId: 'openproject', taskId: 'OP-7001', durationSeconds: 7200,
+      startedAtUtc: start, comment: 'Pairing', worklogId: 'w-e2e'
+    });
+    const entry = () => [...timeEntries.values()].find(e => String(e.comment?.raw).includes('[#00000001]'));
+
+    await worker.processPendingQueue();
+    expect(entry()).toMatchObject({ hours: 'PT2H' });
+
+    service.correct('w-e2e', { durationSeconds: 5400, startedAtUtc: start, comment: 'Pairing, fixed' });
+    await worker.processPendingQueue();
+    expect(entry()).toMatchObject({ hours: 'PT1H30M', comment: { raw: 'Pairing, fixed [#00000001]' } });
+
+    dbConn.getDb().prepare('UPDATE worklog_sync_queue SET remote_worklog_id = NULL').run();
+    service.correct('w-e2e', { durationSeconds: 3600, startedAtUtc: start, comment: 'Pairing, fixed' });
+    await worker.processPendingQueue();
+    expect(entry()).toMatchObject({ hours: 'PT1H' });
+    expect(requests.some(r => r.method === 'GET' && r.pathname === '/api/v3/time_entries')).toBe(true);
+
+    service.remove('w-e2e');
+    await worker.processPendingQueue();
+    expect(entry()).toBeUndefined();
+    expect(worklogRepo.getSyncQueueSnapshot().counts).toMatchObject({ pending: 0, failed: 0 });
+  });
 
   it('SyncTasksAndProjects_MultiPageRemote_CachesEveryProjectNotJustTheFirstPage', async () => {
     const worker = buildWorker(baseUrl);

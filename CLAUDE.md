@@ -839,6 +839,17 @@ confirmed is ever sent. Presence is read *before* it is recorded, at every
 check: recorded first, the evidence of the absence is gone. A worklog belongs
 to the day it began (`started_at_utc`), as the providers file it.
 
+**A correction to a sent worklog goes through the queue, behind its send.**
+`WorklogCorrectionService` rewrites the local row and queues an `UPDATE` or
+`DELETE` that names the `CREATE` row it corrects (`origin_sync_id`);
+`getPendingQueueItems` holds it until that send has arrived. Never call a
+provider's `updateWorklog` or `deleteWorklog` from anywhere else: a direct
+call runs ahead of a send still in flight and names no entry, and a lost
+network loses the correction. Two things keep the entry findable: the
+comment of every correction ends with the *original* row's marker, never its
+own, and an id the provider did not give is never stored -- the adapters
+used to invent one (`jira_wl_<time>`), indistinguishable from a real id.
+
 **The sync never retires the task of the open session.** A task reassigned,
 closed or moved on the provider leaves the user's scope, and the prune used
 to retire it mid-session -- deleted, when nothing was logged on it yet -- so

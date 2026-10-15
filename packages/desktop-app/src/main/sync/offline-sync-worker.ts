@@ -1,9 +1,10 @@
-import { WorklogRepository } from '../db/repositories/worklog-repository';
-import { isProviderRequestError } from '../providers/provider-errors';
+import { SyncQueueRecord, WorklogRepository } from '../db/repositories/worklog-repository';
+import { isProviderRequestError, ProviderRequestError } from '../providers/provider-errors';
 import {
   MAX_SYNC_ATTEMPTS,
   SYNC_CLAIM_TIMEOUT_MS,
   computeBackoffMs,
+  syncMarker,
   withSyncMarker
 } from './sync-constants';
 import { ProjectDTO, TaskDTO, ProviderSyncResult } from '../../shared/dtos';
@@ -273,6 +274,11 @@ export class OfflineSyncWorker {
         total.processed += pass.processed;
         total.succeeded += pass.succeeded;
         total.failed += pass.failed;
+        // A correction waits for the send before it, so it was not due
+        // when this pass began; one more pass delivers it now rather than
+        // at the next interval. It ends: a delivered row is never due
+        // again, and a failed one waits out its backoff.
+        if (pass.succeeded > 0) this.rerunRequested = true;
       } while (this.rerunRequested);
     } finally {
       this.isProcessing = false;
@@ -310,14 +316,7 @@ export class OfflineSyncWorker {
 
       processed++;
       try {
-        const result = await this.providerManager.logTimeForProvider(item.providerId, {
-          taskId: item.taskId,
-          durationSeconds: item.durationSeconds,
-          startedAtUtc: item.startedAtUtc,
-          // Tagged so a re-POST after a crashed claim is identifiable.
-          comment: withSyncMarker(item.comment, item.id),
-          isAdHoc: item.providerId === 'adhoc'
-        });
+        const result = await this.dispatch(item);
 
         if (result.success) {
           this.worklogRepo.markSyncItemSynced(item.id, result.remoteWorklogId);
@@ -354,6 +353,71 @@ export class OfflineSyncWorker {
 
     console.log(`[OfflineSyncWorker] Sync complete. Succeeded: ${succeeded}, Failed: ${failed}`);
     return { processed, succeeded, failed };
+  }
+
+  /** Sends one claimed row: a worklog, or a correction or deletion of one already sent. */
+  private async dispatch(item: SyncQueueRecord): Promise<{ success: boolean; remoteWorklogId?: string }> {
+    if (item.operation === 'CREATE') {
+      return this.providerManager.logTimeForProvider(item.providerId, {
+        taskId: item.taskId,
+        durationSeconds: item.durationSeconds,
+        startedAtUtc: item.startedAtUtc,
+        // Tagged so a re-POST after a crashed claim is identifiable, and so
+        // a correction can find the entry when its id is not known.
+        comment: withSyncMarker(item.comment, item.id),
+        isAdHoc: item.providerId === 'adhoc'
+      });
+    }
+
+    const provider = this.providerManager.getProvider(item.providerId);
+    if (!provider?.findWorklog || !provider.updateWorklog || !provider.deleteWorklog) {
+      // Permanent: the same provider will be just as unable in an hour.
+      throw new ProviderRequestError(
+        item.providerId,
+        'protocol',
+        `${provider?.providerName ?? item.providerId} cannot correct a worklog it holds.`,
+        { status: 400 }
+      );
+    }
+
+    // The entry is the one the original send made: its id, once known, is on
+    // that row, and its marker is what finds it when it is not.
+    const originId = item.originSyncId ?? item.id;
+    const origin = this.worklogRepo.getSyncItem(originId);
+    let remoteId = item.remoteWorklogId ?? origin?.remoteWorklogId ?? null;
+    if (!remoteId) {
+      remoteId = await provider.findWorklog(item.taskId, origin?.startedAtUtc ?? item.startedAtUtc, syncMarker(originId));
+      if (remoteId) this.worklogRepo.setRemoteWorklogId(originId, remoteId);
+    }
+
+    if (!remoteId) {
+      if (item.operation === 'DELETE') {
+        // Nothing carries the marker any more: the entry is already gone,
+        // which is what a deletion asks for.
+        console.log(`[OfflineSyncWorker] Worklog ${item.worklogId} not found at ${provider.providerName}; nothing to delete.`);
+        return { success: true };
+      }
+      throw new ProviderRequestError(
+        item.providerId,
+        'protocol',
+        `Not found in ${provider.providerName}: the worklog may have been deleted or edited there. Correct it there by hand.`,
+        { status: 404 }
+      );
+    }
+
+    if (item.operation === 'UPDATE') {
+      await provider.updateWorklog(item.taskId, remoteId, {
+        taskId: item.taskId,
+        durationSeconds: item.durationSeconds,
+        startedAtUtc: item.startedAtUtc,
+        // The original marker, never this row's: the next search goes by it.
+        comment: withSyncMarker(item.comment, originId),
+        isAdHoc: false
+      });
+    } else {
+      await provider.deleteWorklog(item.taskId, remoteId);
+    }
+    return { success: true };
   }
 
   /**

@@ -49,7 +49,7 @@ Everything else is a request/response `invoke`.
 | `provider:create-adhoc` | A local task with no ticket. Its key is the configured ad-hoc key (`fallback_ticket_key`, `MISC-1` by default); its time is never queued for a provider |
 | `provider:fetch-op-statuses` | OpenProject status list, for the settings form |
 | `provider:sync-now` | Fetch projects and tasks immediately |
-| `provider:get-sync-queue` | Everything undelivered, with attempt counts and the server's own message |
+| `provider:get-sync-queue` | Everything undelivered, with attempt counts and the server's own message. Each row's `operation` says what it asks: `CREATE` a worklog, `UPDATE` or `DELETE` one already sent |
 | `provider:retry-failed-worklogs` | Un-park `FAILED` rows |
 | `projects:on-updated` | **Event** — the cached project list changed |
 | `projects:get-only-with-tasks` / `projects:set-only-with-tasks` | The "only projects with tasks" switch, on by default. The setter takes a boolean and throws `ArgumentException` on anything else |
@@ -70,7 +70,16 @@ Everything else is a request/response `invoke`.
 `projects:delete` and `tasks:delete` delete a task only if no time was logged
 against it; one with worklogs is archived -- off every list, still in history.
 Worklogs come back with `taskKey` and `taskTitle` beside `taskId`, read from
-the task row, archived or not.
+the task row, archived or not, and with `syncState`: `local` (never queued),
+`pending`, `failed`, `sent`, `correction-pending` or `correction-failed`.
+
+| Channel | Purpose |
+| :--- | :--- |
+| `worklog:update` | `(worklogId, { durationSeconds, startedAtUtc, comment })`. Rewrites the worklog here at once and queues the change for its provider; answers the worklog as it now stands and resends `worklog:on-updated`. Rejects with the reason, as a sentence, when the correction is refused: under a second, under the provider's floor (Jira: a minute) for a worklog it holds, ending in the future, or a comment over `WORKLOG_COMMENT_MAX_CHARS` (1000). The task cannot change |
+| `worklog:delete` | `(worklogId)`. Deletes the worklog here at once and queues its deletion at the provider; answers `true` |
+
+The rules are `checkWorklogCorrection` in `src/shared/worklog-correction.ts`,
+which the window applies too, so it refuses exactly what main refuses.
 
 ### Hardware input
 

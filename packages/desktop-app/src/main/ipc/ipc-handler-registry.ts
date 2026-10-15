@@ -1,3 +1,5 @@
+import { WorklogCorrectionService } from '../services/worklog-correction-service';
+import { WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { IPCChannel } from '../../shared/ipc-channels';
@@ -73,6 +75,8 @@ export interface IPCHandlerRegistryDeps {
   contextScheduleService?: ContextScheduleService;
   /** Asks about a session left running overnight; without it, nothing is ever asked. */
   forgottenSessionService?: ForgottenSessionService;
+  /** Corrects and deletes worklogs; without it, both channels refuse. */
+  worklogCorrections?: WorklogCorrectionService;
   windowsNotificationService?: WindowsNotificationListenerService;
   systemAutomationService?: ISystemAutomationService;
   providerManager?: ProviderManager;
@@ -82,6 +86,17 @@ export interface IPCHandlerRegistryDeps {
   saveUnityScenes?: UnitySceneSaver;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
   webhookServer?: { getStatus(): { listening: boolean; port: number } };
+}
+
+/** The shape a correction must have before it reaches the service, which checks its values. */
+function isWorklogCorrection(value: unknown): value is WorklogCorrectionDTO {
+  const c = value as Partial<WorklogCorrectionDTO> | null;
+  return (
+    typeof c === 'object' && c !== null &&
+    typeof c.durationSeconds === 'number' &&
+    typeof c.startedAtUtc === 'string' &&
+    typeof c.comment === 'string'
+  );
 }
 
 export class IPCHandlerRegistry {
@@ -94,6 +109,7 @@ export class IPCHandlerRegistry {
   private settingsRepo: SettingsRepository;
   private secrets: SecretStore;
   private worklogRepo: WorklogRepository;
+  private worklogCorrections?: WorklogCorrectionService;
   private driver: BusyBarDriver;
   private inputDecoder: InputDecoder;
   private renderer: DisplayRenderer;
@@ -159,6 +175,7 @@ export class IPCHandlerRegistry {
     this.miniWindow = miniWindow;
     this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
+    this.worklogCorrections = deps.worklogCorrections;
     this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
     // The default is never started and shows nothing: it serves the settings
     // to a test, or a build that has no toasts.
@@ -269,6 +286,7 @@ export class IPCHandlerRegistry {
           startedAtUtc: item.startedAtUtc,
           comment: item.comment,
           status: item.status,
+          operation: item.operation,
           retryCount: item.retryCount,
           nextAttemptAtUtc: item.nextAttemptAtUtc,
           lastError: item.lastError
@@ -790,6 +808,27 @@ export class IPCHandlerRegistry {
     // 9. Worklogs IPC Handlers
     ipcMain.handle(IPCChannel.GET_TODAYS_WORKLOGS, async () => {
       return this.worklogRepo.getTodaysWorklogs();
+    });
+
+    // A correction changes the worklog here at once and queues it for the
+    // provider; both answer with what the window should show next. The
+    // service validates, and its refusal reaches the window as the error.
+    ipcMain.handle(IPCChannel.UPDATE_WORKLOG, async (_event, worklogId: unknown, correction: unknown) => {
+      if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
+      if (typeof worklogId !== 'string' || !isWorklogCorrection(correction)) {
+        throw new ArgumentException('A correction needs a worklog id, a duration, a start and a comment.');
+      }
+      const corrected = this.worklogCorrections.correct(worklogId, correction);
+      this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return corrected;
+    });
+
+    ipcMain.handle(IPCChannel.DELETE_WORKLOG, async (_event, worklogId: unknown) => {
+      if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
+      if (typeof worklogId !== 'string') throw new ArgumentException('A deletion needs a worklog id.');
+      this.worklogCorrections.remove(worklogId);
+      this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return true;
     });
 
     // 10. Unity Telemetry & Audio Settings IPC Handlers

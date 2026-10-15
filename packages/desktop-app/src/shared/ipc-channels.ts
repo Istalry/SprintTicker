@@ -83,6 +83,8 @@ export enum IPCChannel {
   // Worklogs
   GET_TODAYS_WORKLOGS = 'worklog:get-todays',
   ON_WORKLOGS_UPDATED = 'worklog:on-updated',
+  UPDATE_WORKLOG = 'worklog:update',
+  DELETE_WORKLOG = 'worklog:delete',
 
   // Unity Telemetry & Audio Settings
   GET_UNITY_SETTINGS = 'unity:get-settings',

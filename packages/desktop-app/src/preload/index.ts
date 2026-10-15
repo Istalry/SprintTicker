@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import type { ProviderEventSettingsDTO } from '../shared/provider-events';
+import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -79,6 +80,9 @@ const electronAPI: IElectronAPI = {
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_BY_DATE, dateString),
+  updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) =>
+    ipcRenderer.invoke(IPCChannel.UPDATE_WORKLOG, worklogId, correction),
+  deleteWorklog: (worklogId: string) => ipcRenderer.invoke(IPCChannel.DELETE_WORKLOG, worklogId),
   getDailyWorklogSummary: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_DAILY_WORKLOG_SUMMARY, dateString),
 
   // Database Management

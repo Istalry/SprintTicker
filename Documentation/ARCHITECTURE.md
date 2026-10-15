@@ -222,6 +222,35 @@ A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
 ends. Without that, finishing one task and starting the next — the app's core
 loop — waited out the full interval anyway.
 
+**The queue carries corrections too.** A row's `operation` is `CREATE` (a
+worklog), `UPDATE` or `DELETE` (one already sent). A correction names in
+`origin_sync_id` the row that sent the worklog: that row holds the entry's id
+once the provider gave one, and its marker finds the entry when it did not
+(`findWorklog`), after which the id is kept. An `UPDATE` keeps the original
+marker in the comment, so the next search still finds it. A `DELETE` that
+finds nothing is done -- the entry is gone -- while an `UPDATE` that finds
+nothing parks with "Not found in Jira". `getPendingQueueItems` holds a row
+until every earlier row of its worklog has arrived, so an `UPDATE` never runs
+ahead of the `CREATE` it corrects, and a pass that delivered anything runs
+once more so the correction behind it goes out at once.
+
+### `WorklogCorrectionService` — `src/main/services/`
+
+Corrects or deletes a worklog: here at once, at the provider through the queue.
+What it queues depends on how far the send got:
+
+| The send | A correction | A deletion |
+| :--- | :--- | :--- |
+| None (ad-hoc, too short, recovered, or untied by migration 8) | Here only | Here only |
+| Queued, not claimed (`PENDING`, `FAILED`) | The queued row is rewritten, and given a fresh start | The queued row is dropped -- unless an attempt was made, whose lost answer may have created the entry; then a `DELETE` goes out and finds it by its marker |
+| Claimed or delivered | An `UPDATE` behind it; one unsent per worklog, the latest wins | A `DELETE` behind it, replacing any unsent `UPDATE` |
+| At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
+
+Each change runs in one transaction with the worklog's, and wakes the worker
+as a stop does. The rules for a valid correction are
+`checkWorklogCorrection` in `src/shared/`, shared with the window; the
+provider's floor applies only to a worklog that goes to it.
+
 ### `PriorityPreemptionEngine` — `src/main/services/`
 
 Decides what the display shows. Every claim carries a score; the highest holds
@@ -702,7 +731,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 1974 tests across 99 files, in two projects: `main` in Node for
+Vitest, 2007 tests across 100 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

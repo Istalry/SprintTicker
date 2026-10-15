@@ -1,3 +1,4 @@
+import { WorklogCorrectionService } from './services/worklog-correction-service';
 import { app, BrowserWindow, Notification, powerMonitor, screen, shell } from 'electron';
 import path from 'path';
 import { LoggerInterceptor } from './diagnostics/logger-interceptor';
@@ -335,6 +336,14 @@ async function startApplication(): Promise<void> {
     priorityEngine,
     contextScheduleService,
     forgottenSessionService,
+    worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
+      // Wakes the worker, as a stop does: a correction should not wait out
+      // the five-minute interval to reach the provider.
+      void engine!
+        .getSyncWorker()
+        .processPendingQueue()
+        .catch(err => console.warn('[Main] Draining the queue after a correction failed:', err));
+    }),
     windowsNotificationService,
     providerManager,
     syncWorker: engine.getSyncWorker(),

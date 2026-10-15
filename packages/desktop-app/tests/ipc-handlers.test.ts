@@ -193,6 +193,46 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('correcting a worklog', () => {
+    const correction = { durationSeconds: 3600, startedAtUtc: '2026-10-13T09:00:00.000Z', comment: 'Pairing' };
+
+    it('UpdateWorklog_AWellFormedCorrection_ReachesTheServiceAndTheTableIsResent', async () => {
+      const correct = vi.fn().mockReturnValue({ id: 'w1', ...correction });
+      build({ worklogCorrections: { correct } });
+
+      expect(await handler(IPCChannel.UPDATE_WORKLOG)({}, 'w1', correction)).toMatchObject({ id: 'w1' });
+      expect(correct).toHaveBeenCalledWith('w1', correction);
+      expect(sentOn(IPCChannel.ON_WORKLOGS_UPDATED)).toHaveLength(1);
+    });
+
+    it.each([
+      ['no id', undefined, correction],
+      ['a duration as text', 'w1', { ...correction, durationSeconds: '3600' }],
+      ['no correction', 'w1', null]
+    ])('UpdateWorklog_%s_IsRefused', async (_label, id, payload) => {
+      const correct = vi.fn();
+      build({ worklogCorrections: { correct } });
+
+      await expect(handler(IPCChannel.UPDATE_WORKLOG)({}, id, payload)).rejects.toThrow(/needs a worklog id/);
+      expect(correct).not.toHaveBeenCalled();
+    });
+
+    it('DeleteWorklog_AnId_ReachesTheServiceAndTheTableIsResent', async () => {
+      const remove = vi.fn();
+      build({ worklogCorrections: { remove } });
+
+      expect(await invoke(IPCChannel.DELETE_WORKLOG, 'w1')).toBe(true);
+      expect(remove).toHaveBeenCalledWith('w1');
+      expect(sentOn(IPCChannel.ON_WORKLOGS_UPDATED)).toHaveLength(1);
+      await expect(invoke(IPCChannel.DELETE_WORKLOG, 7)).rejects.toThrow(/needs a worklog id/);
+    });
+
+    it('CorrectingAWorklog_NoService_IsRefused', async () => {
+      await expect(handler(IPCChannel.UPDATE_WORKLOG)({}, 'w1', correction)).rejects.toThrow(/unavailable/);
+      await expect(invoke(IPCChannel.DELETE_WORKLOG, 'w1')).rejects.toThrow(/unavailable/);
+    });
+  });
+
   describe('end-of-day wrap-up', () => {
     it('WrapUp_AnEditorSaved_ReportsIt', async () => {
       saveUnityScenes.mockResolvedValue(true);

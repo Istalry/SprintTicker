@@ -11,6 +11,7 @@
  */
 
 import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../shared/provider-events';
+import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -89,6 +90,10 @@ export interface IElectronAPI {
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;
+  /** Corrects a worklog here and queues the change for its provider. Rejects with the reason when refused. */
+  updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) => Promise<WorklogDTO>;
+  /** Deletes a worklog here and queues its deletion at the provider. */
+  deleteWorklog: (worklogId: string) => Promise<boolean>;
   getDailyWorklogSummary: (dateString: string) => Promise<{
     date: string;
     totalSeconds: number;

@@ -1610,6 +1610,53 @@
       <strong>coalesces</strong>, setting a flag so the new row drains before the current pass
       ends. Without that, finishing one task and starting the next — the app&#39;s core
       loop — waited out the full interval anyway.</p>
+      <p><strong>The queue carries corrections too.</strong> A row&#39;s <code>operation</code> is <code>CREATE</code> (a
+      worklog), <code>UPDATE</code> or <code>DELETE</code> (one already sent). A correction names in
+      <code>origin_sync_id</code> the row that sent the worklog: that row holds the entry&#39;s id
+      once the provider gave one, and its marker finds the entry when it did not
+      (<code>findWorklog</code>), after which the id is kept. An <code>UPDATE</code> keeps the original
+      marker in the comment, so the next search still finds it. A <code>DELETE</code> that
+      finds nothing is done -- the entry is gone -- while an <code>UPDATE</code> that finds
+      nothing parks with &quot;Not found in Jira&quot;. <code>getPendingQueueItems</code> holds a row
+      until every earlier row of its worklog has arrived, so an <code>UPDATE</code> never runs
+      ahead of the <code>CREATE</code> it corrects, and a pass that delivered anything runs
+      once more so the correction behind it goes out at once.</p>
+      <h4><code>WorklogCorrectionService</code> — <code>src/main/services/</code></h4>
+      <p>Corrects or deletes a worklog: here at once, at the provider through the queue.
+      What it queues depends on how far the send got:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">The send</th>
+      <th align="left">A correction</th>
+      <th align="left">A deletion</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">None (ad-hoc, too short, recovered, or untied by migration 8)</td>
+      <td align="left">Here only</td>
+      <td align="left">Here only</td>
+      </tr>
+      <tr>
+      <td align="left">Queued, not claimed (<code>PENDING</code>, <code>FAILED</code>)</td>
+      <td align="left">The queued row is rewritten, and given a fresh start</td>
+      <td align="left">The queued row is dropped -- unless an attempt was made, whose lost answer may have created the entry; then a <code>DELETE</code> goes out and finds it by its marker</td>
+      </tr>
+      <tr>
+      <td align="left">Claimed or delivered</td>
+      <td align="left">An <code>UPDATE</code> behind it; one unsent per worklog, the latest wins</td>
+      <td align="left">A <code>DELETE</code> behind it, replacing any unsent <code>UPDATE</code></td>
+      </tr>
+      <tr>
+      <td align="left">At a provider with no remote (ad-hoc rows of an older build)</td>
+      <td align="left">Here only</td>
+      <td align="left">Here only</td>
+      </tr>
+      </tbody></table></div>
+      <p>Each change runs in one transaction with the worklog&#39;s, and wakes the worker
+      as a stop does. The rules for a valid correction are
+      <code>checkWorklogCorrection</code> in <code>src/shared/</code>, shared with the window; the
+      provider&#39;s floor applies only to a worklog that goes to it.</p>
       <h4><code>PriorityPreemptionEngine</code> — <code>src/main/services/</code></h4>
       <p>Decides what the display shows. Every claim carries a score; the highest holds
       the display and takes a named lock, which the claimant must release.</p>
@@ -2131,7 +2178,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 1974 tests across 99 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2007 tests across 100 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2255,7 +2302,7 @@
       </tr>
       <tr>
       <td align="left"><code>provider:get-sync-queue</code></td>
-      <td align="left">Everything undelivered, with attempt counts and the server&#39;s own message</td>
+      <td align="left">Everything undelivered, with attempt counts and the server&#39;s own message. Each row&#39;s <code>operation</code> says what it asks: <code>CREATE</code> a worklog, <code>UPDATE</code> or <code>DELETE</code> one already sent</td>
       </tr>
       <tr>
       <td align="left"><code>provider:retry-failed-worklogs</code></td>
@@ -2288,7 +2335,26 @@
       <p><code>projects:delete</code> and <code>tasks:delete</code> delete a task only if no time was logged
       against it; one with worklogs is archived -- off every list, still in history.
       Worklogs come back with <code>taskKey</code> and <code>taskTitle</code> beside <code>taskId</code>, read from
-      the task row, archived or not.</p>
+      the task row, archived or not, and with <code>syncState</code>: <code>local</code> (never queued),
+      <code>pending</code>, <code>failed</code>, <code>sent</code>, <code>correction-pending</code> or <code>correction-failed</code>.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Channel</th>
+      <th align="left">Purpose</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>worklog:update</code></td>
+      <td align="left"><code>(worklogId, { durationSeconds, startedAtUtc, comment })</code>. Rewrites the worklog here at once and queues the change for its provider; answers the worklog as it now stands and resends <code>worklog:on-updated</code>. Rejects with the reason, as a sentence, when the correction is refused: under a second, under the provider&#39;s floor (Jira: a minute) for a worklog it holds, ending in the future, or a comment over <code>WORKLOG_COMMENT_MAX_CHARS</code> (1000). The task cannot change</td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklog:delete</code></td>
+      <td align="left"><code>(worklogId)</code>. Deletes the worklog here at once and queues its deletion at the provider; answers <code>true</code></td>
+      </tr>
+      </tbody></table></div>
+      <p>The rules are <code>checkWorklogCorrection</code> in <code>src/shared/worklog-correction.ts</code>,
+      which the window applies too, so it refuses exactly what main refuses.</p>
       <h4>Hardware input</h4>
       <div class="table-wrap"><table>
       <thead>
