@@ -683,7 +683,9 @@ Start to finish, across every component:
    not the one active now -- and wakes the worker.
 6. The worker claims the row atomically, POSTs it, and marks it `SYNCED` — or
    parks it with the server's own message if the failure is permanent, or backs
-   off if it is not.
+   off if it is not. The first row a provider parks on refused credentials
+   raises one toast (`onSendingStopped`), and no more until new credentials
+   are saved or a send goes through.
 7. The Sync Queue panel shows anything still in flight, with attempt count and
    next attempt time.
 
@@ -751,7 +753,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2100 tests across 104 files, in two projects: `main` in Node for
+Vitest, 2115 tests across 104 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

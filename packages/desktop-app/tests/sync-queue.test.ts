@@ -522,6 +522,146 @@ describe('Worklog sync queue ownership', () => {
 
       expect(rowFor('sync_unconfigured')?.status).toBe('FAILED');
     });
+
+    describe('the user hears that sending stopped', () => {
+      // A parked row shows only in the queue panel, which nobody opens until
+      // their time is missing from the provider.
+      let refusing: boolean;
+      let worker: OfflineSyncWorker;
+      let heard: string[];
+
+      beforeEach(() => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        vi.spyOn(console, 'log').mockImplementation(() => undefined);
+        refusing = true;
+        worker = new OfflineSyncWorker(managerStub({
+          logTimeForProvider: async () => {
+            if (refusing) throw ProviderRequestError.fromStatus('openproject', 401, 'Logging time on WP #1');
+            return { success: true, remoteWorklogId: '77' };
+          }
+        }), worklogRepo);
+        heard = [];
+        worker.onSendingStopped(providerId => heard.push(providerId));
+      });
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('ProcessPendingQueue_CredentialsRefusedForManyRows_TellsOnce', async () => {
+        // A day's worth of rows must not be a day's worth of toasts.
+        enqueue('sync_a');
+        enqueue('sync_b');
+        enqueue('sync_c');
+
+        await worker.processPendingQueue();
+
+        expect(heard).toEqual(['openproject']);
+      });
+
+      it('ProcessPendingQueue_RefusedAgainAtTheNextPass_DoesNotTellAgain', async () => {
+        enqueue('sync_a');
+        await worker.processPendingQueue();
+        enqueue('sync_b');
+
+        await worker.processPendingQueue();
+
+        expect(heard).toEqual(['openproject']);
+      });
+
+      it('ProcessPendingQueue_NewCredentialsRefusedToo_TellsAgain', async () => {
+        enqueue('sync_a');
+        await worker.processPendingQueue();
+
+        worker.requeueFailedWorklogs();
+        await worker.processPendingQueue();
+
+        expect(heard).toEqual(['openproject', 'openproject']);
+      });
+
+      it('ProcessPendingQueue_RefusedAfterASendWentThrough_TellsAgain', async () => {
+        enqueue('sync_a');
+        await worker.processPendingQueue();
+        refusing = false;
+        enqueue('sync_b');
+        await worker.processPendingQueue();
+
+        refusing = true;
+        enqueue('sync_c');
+        await worker.processPendingQueue();
+
+        expect(heard).toEqual(['openproject', 'openproject']);
+      });
+
+      it('ProcessPendingQueue_NetworkDown_TellsNothing', async () => {
+        // The queue retries that on its own; the user has nothing to do.
+        const offline = new OfflineSyncWorker(managerStub({
+          logTimeForProvider: async () => {
+            throw ProviderRequestError.fromTransport('openproject', 'Logging time', new Error('ECONNRESET'));
+          }
+        }), worklogRepo);
+        const told = vi.fn();
+        offline.onSendingStopped(told);
+        enqueue('sync_a');
+
+        await offline.processPendingQueue();
+
+        expect(told).not.toHaveBeenCalled();
+      });
+
+      it('ProcessPendingQueue_ProviderNotConfigured_TellsNothing', async () => {
+        // No credentials were refused: none were saved.
+        const unconfigured = new OfflineSyncWorker(managerStub({
+          logTimeForProvider: async () => {
+            throw ProviderRequestError.notConfigured('openproject');
+          }
+        }), worklogRepo);
+        const told = vi.fn();
+        unconfigured.onSendingStopped(told);
+        enqueue('sync_a');
+
+        await unconfigured.processPendingQueue();
+
+        expect(told).not.toHaveBeenCalled();
+      });
+
+      it('OnSendingStopped_SubscribedAfterTheStop_IsToldAtOnce', async () => {
+        // The first pass runs at start, before main has wired the toasts.
+        enqueue('sync_a');
+        await worker.processPendingQueue();
+
+        const late = vi.fn();
+        worker.onSendingStopped(late);
+
+        expect(late).toHaveBeenCalledWith('openproject');
+      });
+
+      it('ProcessPendingQueue_ListenerThrows_TheRowIsStillParked', async () => {
+        worker.onSendingStopped(() => {
+          throw new Error('toast broke');
+        });
+        enqueue('sync_a');
+
+        const result = await worker.processPendingQueue();
+
+        expect(result.failed).toBe(1);
+        expect(rowFor('sync_a')?.status).toBe('FAILED');
+        expect(heard).toEqual(['openproject']);
+        expect(console.error).toHaveBeenCalledWith('[OfflineSyncWorker] Sending-stopped listener failed:', expect.any(Error));
+      });
+
+      it('OnSendingStopped_Unsubscribed_HearsNothingMore', async () => {
+        const told = vi.fn();
+        const unsubscribe = worker.onSendingStopped(told);
+        unsubscribe();
+        enqueue('sync_a');
+
+        await worker.processPendingQueue();
+
+        expect(told).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('identifiers do not collide', () => {

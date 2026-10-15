@@ -624,6 +624,14 @@ them are traps:
   now holds `APP_USER_MODEL_ID` in `app-identity.ts` to the JSON. A packaged
   build with no shortcut at all was measured showing toasts under the right
   name and icon (2026-10-01), so the portable build is fine.
+- **"Sending time stopped" is told once per stop, and told late.** The
+  worker parks a row on refused credentials (`auth`) silently -- only the
+  queue panel showed it -- so `onSendingStopped` fires on the first such row
+  per provider, and again only after new credentials or a send that went
+  through. It replays a stop to a listener that subscribes afterwards: the
+  first queue pass runs from `engine.initialize()`, before main wires
+  `ProviderEventService`, and an overnight-expired token is found exactly
+  there. The toast ignores `showToasts`, which is about the user's tasks.
 - **Our own toasts reach the bar once, from the app -- never through the
   listener.** The listener skips every ID in `OWN_APP_USER_MODEL_IDS`, on the
   database path *and* the WinRT path; the latter used to skip nothing. Let it

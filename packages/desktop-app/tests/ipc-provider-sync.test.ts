@@ -49,6 +49,9 @@ describe('Saving provider settings triggers a sync', () => {
   let requeueCalls = 0;
   let drainCalls = 0;
   let syncCalls: number;
+  /** What the worker tells after a committed sync, as the real one does. */
+  let syncedListeners: Array<(result: unknown) => void>;
+  let syncAnswer: { status: 'synced' | 'failed'; reason?: string; projects: number; tasks: number };
 
   /** Captures what the registry broadcasts to the renderer. */
   function windowStub() {
@@ -74,6 +77,8 @@ describe('Saving provider settings triggers a sync', () => {
     vi.clearAllMocks();
     sent = [];
     syncCalls = 0;
+    syncedListeners = [];
+    syncAnswer = { status: 'synced', projects: 1, tasks: 0 };
     requeueCalls = 0;
     drainCalls = 0;
 
@@ -95,8 +100,14 @@ describe('Saving provider settings triggers a sync', () => {
     syncWorker = {
       syncTasksAndProjects: async () => {
         syncCalls += 1;
+        if (syncAnswer.status !== 'synced') return syncAnswer;
         projectRepo.saveProject({ id: 'P1', key: 'ALPHA', name: 'Alpha' });
-        return { status: 'synced' as const, projects: 1, tasks: 0 };
+        syncedListeners.forEach(listener => listener(syncAnswer));
+        return syncAnswer;
+      },
+      onSynced: (listener: (result: unknown) => void) => {
+        syncedListeners.push(listener);
+        return () => undefined;
       },
       // Saving credentials un-parks worklogs that failed against the old ones,
       // and drains the queue when it revived any. Counted so the test below can
@@ -219,6 +230,48 @@ describe('Saving provider settings triggers a sync', () => {
 
     expect(result).toEqual({ status: 'synced', projects: 1, tasks: 0 });
     expect(sent.some(m => m.channel === IPCChannel.ON_PROJECTS_UPDATED)).toBe(true);
+  });
+
+  describe('every sync reaches the window', () => {
+    const updates = () => sent.filter(m => m.channel === IPCChannel.ON_PROJECTS_UPDATED);
+
+    it('PeriodicSync_Committed_BroadcastsTheProjects', async () => {
+      // The five-minute pass: nothing in the window asked for it, and a task
+      // added on the provider used to appear only when the user changed views.
+      await syncWorker.syncTasksAndProjects();
+
+      expect(updates()).toHaveLength(1);
+      expect((updates()[0].payload as { projects: Array<{ id: string }> }).projects.map(p => p.id)).toEqual(['P1']);
+    });
+
+    it('SyncProviderNow_Committed_BroadcastsOnce', async () => {
+      // Once from the worker; the handler must not add its own.
+      await handlerFor(IPCChannel.SYNC_PROVIDER_NOW)({});
+
+      expect(updates()).toHaveLength(1);
+    });
+
+    it('SyncProviderNow_Failed_StillBroadcastsTheOutcome', async () => {
+      // The worker tells only a committed sync; the window still learns why
+      // the one it asked for did not happen.
+      syncAnswer = { status: 'failed', reason: 'HTTP 500', projects: 0, tasks: 0 };
+
+      await handlerFor(IPCChannel.SYNC_PROVIDER_NOW)({});
+
+      expect(updates()).toHaveLength(1);
+      expect((updates()[0].payload as { result: { status: string } }).result.status).toBe('failed');
+    });
+
+    it('SetActiveProvider_SyncCommitted_BroadcastsOnce', async () => {
+      await handlerFor(IPCChannel.SET_ACTIVE_PROVIDER)({}, {
+        providerId: 'openproject',
+        opDomain: 'http://127.0.0.1:8099',
+        opApiKey: 'any-key'
+      });
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(updates()).toHaveLength(1);
+    });
   });
 
   describe('the sync queue is readable from the renderer', () => {

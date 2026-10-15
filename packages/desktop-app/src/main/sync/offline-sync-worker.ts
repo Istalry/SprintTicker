@@ -36,7 +36,10 @@ export class OfflineSyncWorker {
   /** Why each unlisted task left, once its provider has said. */
   private unlistedReasons: Map<string, TaskLeftReason> = new Map();
   private unlistedListeners: Set<() => void> = new Set();
-  private syncedListeners: Set<() => void> = new Set();
+  private syncedListeners: Set<(result: ProviderSyncResult) => void> = new Set();
+  /** Providers whose sends stopped on refused credentials, until they are fixed. */
+  private sendingStopped: Set<string> = new Set();
+  private sendingStoppedListeners: Set<(providerId: string) => void> = new Set();
 
   constructor(
     providerManager: ProviderManager,
@@ -122,9 +125,25 @@ export class OfflineSyncWorker {
    * shows them -- the session's names, the window's lists -- can read them
    * again. Not called for a failed or skipped sync: nothing changed.
    */
-  public onSynced(listener: () => void): () => void {
+  public onSynced(listener: (result: ProviderSyncResult) => void): () => void {
     this.syncedListeners.add(listener);
     return () => this.syncedListeners.delete(listener);
+  }
+
+  /**
+   * Called once when a provider refuses the saved credentials for a worklog,
+   * so the user hears that sending stopped: a parked row shows only in the
+   * queue panel, which nobody opens until their time is missing. Once per
+   * stop, not per row -- a day's worth of rows would be a day's worth of
+   * toasts -- and again only after new credentials or a send that went
+   * through. A stop that happened before the listener subscribed is told at
+   * once: the first pass runs at start, before main has wired the toasts,
+   * and an expired token is found exactly there.
+   */
+  public onSendingStopped(listener: (providerId: string) => void): () => void {
+    this.sendingStoppedListeners.add(listener);
+    for (const providerId of this.sendingStopped) this.tellSendingStopped(listener, providerId);
+    return () => this.sendingStoppedListeners.delete(listener);
   }
 
   /** Called when the set of unlisted tasks changes, so the session can say so. */
@@ -143,15 +162,32 @@ export class OfflineSyncWorker {
     if (changed || reasonsLearnt) this.notifyUnlisted();
   }
 
-  private notifySynced(): void {
+  private notifySynced(result: ProviderSyncResult): void {
     for (const listener of this.syncedListeners) {
       try {
-        listener();
+        listener(result);
       } catch (err) {
         // A listener is a reader of what was just saved; its failure must
         // not fail the sync that saved it.
         console.error('[OfflineSyncWorker] Synced listener failed:', err);
       }
+    }
+  }
+
+  private noteSendingStopped(providerId: string): void {
+    if (this.sendingStopped.has(providerId)) return;
+    this.sendingStopped.add(providerId);
+    console.warn(`[OfflineSyncWorker] ${providerId} refused the saved credentials; worklogs wait for new ones.`);
+    for (const listener of this.sendingStoppedListeners) this.tellSendingStopped(listener, providerId);
+  }
+
+  private tellSendingStopped(listener: (providerId: string) => void, providerId: string): void {
+    try {
+      listener(providerId);
+    } catch (err) {
+      // Telling the user failed; the row is parked all the same, and shows
+      // in the queue panel. The queue pass must not fail for it.
+      console.error('[OfflineSyncWorker] Sending-stopped listener failed:', err);
     }
   }
 
@@ -262,8 +298,9 @@ export class OfflineSyncWorker {
 
       const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
       console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);
-      this.notifySynced();
-      return { status: 'synced', projects: projects.length, tasks: taskCount };
+      const result: ProviderSyncResult = { status: 'synced', projects: projects.length, tasks: taskCount };
+      this.notifySynced(result);
+      return result;
     } catch (e) {
       console.error(`[OfflineSyncWorker] Failed to commit synced projects and tasks:`, e);
       return {
@@ -394,6 +431,8 @@ export class OfflineSyncWorker {
 
         if (result.success) {
           this.worklogRepo.markSyncItemSynced(item.id, result.remoteWorklogId);
+          // The credentials work again, so a later refusal is news again.
+          this.sendingStopped.delete(item.providerId);
           succeeded++;
         } else {
           // A provider that reports failure without throwing tells us
@@ -418,6 +457,7 @@ export class OfflineSyncWorker {
           // provider settings handler. Without that this would strand
           // billable time, which is the bug this queue was rebuilt to stop.
           this.worklogRepo.parkSyncItemAsFailed(item.id, message);
+          if (err.kind === 'auth') this.noteSendingStopped(err.providerId);
         } else {
           this.releaseFailure(item.id, item.retryCount, message);
         }
@@ -530,6 +570,8 @@ export class OfflineSyncWorker {
    * time came back.
    */
   public requeueFailedWorklogs(): number {
+    // New credentials: whatever stopped is worth hearing about again.
+    this.sendingStopped.clear();
     const revived = this.worklogRepo.requeueFailedItems();
     if (revived > 0) {
       console.log(`[OfflineSyncWorker] Requeued ${revived} previously failed worklog(s).`);

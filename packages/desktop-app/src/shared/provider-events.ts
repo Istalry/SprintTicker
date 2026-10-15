@@ -165,6 +165,18 @@ export interface ProviderEventText {
   body: string;
 }
 
+/**
+ * The toast for a provider that refused the saved credentials while sending
+ * time. It says the time is safe, because "stopped" alone reads as lost.
+ */
+export function describeSendingStopped(providerName: string): ProviderEventText {
+  const name = providerName.trim();
+  return {
+    title: `Sending time to ${name || 'your provider'} stopped`,
+    body: `${name || 'Your provider'} refused the saved credentials. Your time is kept here: enter them again in Task Providers and it goes out.`
+  };
+}
+
 /** A toast's text: a sentence, since a toast has the room for one. */
 export function describeProviderEvent(event: ProviderEventDTO): ProviderEventText {
   const actor = event.actorName?.trim();

@@ -52,7 +52,7 @@ Everything else is a request/response `invoke`.
 | `provider:sync-now` | Fetch projects and tasks immediately |
 | `provider:get-sync-queue` | Everything undelivered, with attempt counts and the server's own message. Each row's `operation` says what it asks: `CREATE` a worklog, `UPDATE` or `DELETE` one already sent |
 | `provider:retry-failed-worklogs` | Un-park `FAILED` rows |
-| `projects:on-updated` | **Event** — the cached project list changed |
+| `projects:on-updated` | **Event** — the cached project list changed: after every committed sync, the periodic one included, and after a manual or credentials-triggered one that failed, carrying its result |
 | `projects:get-only-with-tasks` / `projects:set-only-with-tasks` | The "only projects with tasks" switch, on by default. The setter takes a boolean and throws `ArgumentException` on anything else |
 | `projects:on-only-with-tasks` | **Event** — the switch changed, so every view showing it follows |
 

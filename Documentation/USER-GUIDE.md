@@ -308,7 +308,13 @@ check, and works out what changed. That has edges worth knowing:
 
 Below the credentials is the **sync queue**: every worklog that has not reached
 the provider, with the server's own message, the attempt count against the
-ceiling, and when the next attempt is due.
+ceiling, and when the next attempt is due. When the provider refuses your saved
+credentials, a Windows notification says **Sending time to Jira stopped** (or
+OpenProject) -- once, even with provider notifications switched off. Your time
+waits in the queue; saving the credentials again sends it.
+
+The project and task lists refresh by themselves after every sync, every five
+minutes, so a task added on the provider appears without changing views.
 
 | Button | Does |
 | :--- | :--- |

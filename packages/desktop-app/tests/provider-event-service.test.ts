@@ -352,6 +352,26 @@ describe('ProviderEventService', () => {
     service.saveSettings({ ...DEFAULT_PROVIDER_EVENT_SETTINGS, showToasts: false });
     expect(service.sendTest()).toEqual({ toast: false, bar: false });
   });
+
+  it('ReportSendingStopped_ToastsOff_StillTellsTheUser', () => {
+    // The switch is about what happens on the user's tasks; this is the
+    // app's own alarm, and a refusal nobody hears of strands their time.
+    service.saveSettings({ ...DEFAULT_PROVIDER_EVENT_SETTINGS, showToasts: false });
+
+    expect(service.reportSendingStopped('Jira')).toBe(true);
+
+    expect(toasts).toEqual([{
+      title: 'Sending time to Jira stopped',
+      body: 'Jira refused the saved credentials. Your time is kept here: enter them again in Task Providers and it goes out.'
+    }]);
+  });
+
+  it('ReportSendingStopped_NoName_SaysYourProvider', () => {
+    service.reportSendingStopped('  ');
+
+    expect(toasts[0].title).toBe('Sending time to your provider stopped');
+    expect(toasts[0].body).toMatch(/^Your provider refused/);
+  });
 });
 
 describe('provider event settings and text', () => {

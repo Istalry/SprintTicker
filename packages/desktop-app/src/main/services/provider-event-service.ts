@@ -13,6 +13,7 @@ import {
   ProviderEventTestResultDTO,
   ProviderEventText,
   describeProviderEvent,
+  describeSendingStopped,
   describeProviderEventForBar,
   normaliseProviderEventSettings,
   summarizeProviderEvents
@@ -174,6 +175,16 @@ export class ProviderEventService {
     } finally {
       this.polling = false;
     }
+  }
+
+  /**
+   * Says that sending time to a provider stopped on its credentials. Not
+   * gated by `showToasts`, which is about what happens on the user's tasks:
+   * this is the app's own alarm, once per stop, and the user cannot act on
+   * a refusal they never hear of.
+   */
+  public reportSendingStopped(providerName: string): boolean {
+    return this.deps.toasts.show(describeSendingStopped(providerName));
   }
 
   /** Shows a sample through the destinations the settings have switched on. */

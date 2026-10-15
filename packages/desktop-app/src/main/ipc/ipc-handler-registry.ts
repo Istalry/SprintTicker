@@ -258,10 +258,8 @@ export class IPCHandlerRegistry {
         return { status: 'failed', reason: 'Sync worker unavailable.', projects: 0, tasks: 0 };
       }
       const result = await this.syncWorker.syncTasksAndProjects();
-      this.broadcast(IPCChannel.ON_PROJECTS_UPDATED, {
-        result,
-        projects: this.projectRepo.getAllProjects()
-      });
+      // A committed sync has told the window already, through onSynced.
+      if (result.status !== 'synced') this.broadcastProjects(result);
       return result;
     });
 
@@ -1068,6 +1066,11 @@ export class IPCHandlerRegistry {
       this.broadcast(IPCChannel.ON_DISPLAY_STATE_UPDATED, state);
     });
 
+    // Every committed sync, the five-minute one included: the window only
+    // heard of the ones it asked for, so a task added or renamed on the
+    // provider appeared when the user changed views, not when it arrived.
+    this.syncWorker?.onSynced(result => this.broadcastProjects(result));
+
     this.priorityEngine.onUserModeChanged((mode) => {
       this.broadcast(IPCChannel.ON_USER_MODE_UPDATED, mode);
     });
@@ -1122,16 +1125,21 @@ export class IPCHandlerRegistry {
     void this.syncWorker
       .syncTasksAndProjects()
       .then(result => {
-        this.broadcast(IPCChannel.ON_PROJECTS_UPDATED, {
-          result,
-          projects: this.projectRepo.getAllProjects()
-        });
+        // A committed sync has told the window already, through onSynced.
+        if (result.status !== 'synced') this.broadcastProjects(result);
       })
       .catch(err => {
         // syncTasksAndProjects reports failure in its result rather than by
         // throwing, so reaching here means a defect rather than an outage.
         console.error('[IPCHandlerRegistry] Provider sync threw unexpectedly:', err);
       });
+  }
+
+  private broadcastProjects(result: ProviderSyncResult): void {
+    this.broadcast(IPCChannel.ON_PROJECTS_UPDATED, {
+      result,
+      projects: this.projectRepo.getAllProjects()
+    });
   }
 
   /**

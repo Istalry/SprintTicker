@@ -286,6 +286,10 @@ async function startApplication(): Promise<void> {
     }
   });
   providerEventService.start();
+  const sendingAlerts = providerEventService;
+  engine.getSyncWorker().onSendingStopped(providerId => {
+    sendingAlerts.reportSendingStopped(providerManager.getProvider(providerId)?.providerName ?? providerId);
+  });
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   const listener = windowsNotificationService;
   followBar(activeDriver, () => listener.startListening(), () => listener.stopListening(), 'Windows notification mirroring');

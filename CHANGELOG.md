@@ -66,6 +66,14 @@
 
 ### Fixed
 
+- **You hear when the provider stops accepting your time.** A worklog the
+  provider refused on expired or revoked credentials waited in the sync
+  queue, visible only there, while every day's time piled up behind it. A
+  Windows notification now says sending stopped -- once, not per worklog --
+  and that the time is kept until the credentials are entered again.
+- **The window follows the five-minute sync.** The project and task lists
+  refreshed only after a sync the window asked for, so a task added or
+  renamed on the provider appeared when you changed views.
 - **Resuming a task that is no longer yours no longer takes it back.**
   Answering yes to "Resume after lunch?", or restarting a forgotten session
   on a task that had left your list, brought it back into your lists and
