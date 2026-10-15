@@ -283,6 +283,12 @@ function createFakeJira(overrides = {}) {
 
       const worklog = /^\/rest\/api\/3\/issue\/([^/]+)\/worklog$/.exec(url.pathname);
       if (worklog && req.method === 'POST') {
+        // Time logged on an issue deleted since is refused, as Jira does: a
+        // 404, which the queue parks rather than retrying.
+        if (!issues.some(i => String(i.id) === worklog[1] || i.key === worklog[1])) {
+          send(404, { errorMessages: ['Issue does not exist or you do not have permission to see it.'], errors: {} });
+          return;
+        }
         const id = String(nextWorklogId++);
         worklogs.set(id, { id, issueId: worklog[1], ...body });
         if (options.loseWorklogAnswers > 0) {

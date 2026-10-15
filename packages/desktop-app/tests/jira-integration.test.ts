@@ -5,6 +5,7 @@ import { JiraProvider } from '../src/main/providers/jira-provider';
 import { isProviderRequestError } from '../src/main/providers/provider-errors';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
+import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 
@@ -370,6 +371,44 @@ describe('JiraProvider against a live Jira-shaped server', () => {
 
       expect(onIssue()).toHaveLength(1);
       expect(repo.getSyncItem('sync_lost0001')).toMatchObject({ status: 'SYNCED', remoteWorklogId: onIssue()[0].id });
+      db.close();
+    });
+
+    it('QueueSend_IssueDeletedInJira_ParksTheRowAndKeepsTheTimeHere', async () => {
+      // The issue went between the session and the send. Jira's 404 answers
+      // the same at every retry, so the row parks at once with Jira's words,
+      // and the worklog stays in the local history. It is not a credentials
+      // problem, so nobody is told sending stopped.
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const provider = await configured();
+      const manager = {
+        getProvider: () => provider,
+        logTimeForProvider: (_id: string, payload: Parameters<JiraProvider['logTime']>[0]) => provider.logTime(payload)
+      } as unknown as ProviderManager;
+      const db = new DatabaseConnection(':memory:');
+      const repo = new WorklogRepository(db);
+      const worker = new OfflineSyncWorker(manager, repo);
+      const stopped = vi.fn();
+      worker.onSendingStopped(stopped);
+      new TaskRepository(db).ensureTaskExists({ id: 'FAKE9-999', key: 'FAKE9-999', title: 'Deleted since', projectId: 'P' });
+      repo.saveWorklog({
+        id: 'wl_deleted', sessionId: 's1', taskId: 'FAKE9-999', durationSeconds: 1800,
+        startedAtUtc: START, comment: 'On a deleted issue', createdAtUtc: START
+      });
+      repo.enqueueSyncItem({
+        id: 'sync_deleted01', providerId: 'jira', taskId: 'FAKE9-999', durationSeconds: 1800,
+        startedAtUtc: START, comment: 'On a deleted issue', worklogId: 'wl_deleted'
+      });
+
+      const result = await worker.processPendingQueue();
+
+      expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1 });
+      expect(repo.getSyncItem('sync_deleted01')).toMatchObject({ status: 'FAILED', retryCount: 0 });
+      expect(repo.getSyncItem('sync_deleted01')?.lastError).toContain('Issue does not exist');
+      expect(repo.getWorklogById('wl_deleted')).toMatchObject({ durationSeconds: 1800, syncState: 'failed' });
+      expect(stopped).not.toHaveBeenCalled();
+      expect([...worklogs.values()].some(w => w.issueId === 'FAKE9-999')).toBe(false);
       db.close();
     });
 

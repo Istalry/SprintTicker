@@ -11,6 +11,7 @@ import { syncMarker } from '../src/main/sync/sync-constants';
 import { WorklogCorrectionService } from '../src/main/services/worklog-correction-service';
 import { ArgumentException, ArgumentNullException } from '../src/shared/dtos';
 import { WORKLOG_COMMENT_MAX_CHARS } from '../src/shared/worklog-correction';
+import { localDateKey } from '../src/shared/local-date';
 
 const HOUR = 3600;
 const START = '2026-10-13T09:00:00.000Z';
@@ -226,6 +227,39 @@ describe('Correcting a worklog', () => {
       expect(remote.provider.updateWorklog).toHaveBeenCalledWith('T-1', '555', expect.objectContaining({ durationSeconds: HOUR }));
     });
 
+    it('Remove_WhileTheSendIsInFlight_DeletesWhatTheSendMakes', async () => {
+      // The send is claimed, so it cannot be dropped: the DELETE waits for it
+      // and names the entry it made.
+      const send = logged('w1');
+      worklogs.claimSyncItem(send);
+
+      service.remove('w1');
+      expect(worklogs.getPendingQueueItems()).toEqual([]);
+      worklogs.markSyncItemSynced(send, '555');
+      remote.entries.set('555', { taskId: 'T-1', durationSeconds: 2 * HOUR, startedAtUtc: START, comment: 'x', isAdHoc: false });
+      await worker.processPendingQueue();
+
+      expect(remote.provider.deleteWorklog).toHaveBeenCalledWith('T-1', '555');
+      expect(remote.entries.size).toBe(0);
+      expect(worklogs.getWorklogById('w1')).toBeNull();
+    });
+
+    it('Remove_WhileTheSendIsInFlightAndItFails_LeavesNothingAtTheProvider', async () => {
+      // The attempt in flight fails and the send goes back to the queue: it
+      // still goes out, and the DELETE behind it takes it away again. The
+      // user's removal holds whichever way the send went.
+      const send = logged('w1');
+      worklogs.claimSyncItem(send);
+      service.remove('w1');
+      worklogs.releaseSyncItemAfterFailure(send, 'socket hang up', 0, 8);
+
+      await worker.processPendingQueue();
+      await worker.processPendingQueue();
+
+      expect(remote.entries.size).toBe(0);
+      expect(rows().map(r => [r.operation, r.status])).toEqual([['CREATE', 'SYNCED'], ['DELETE', 'SYNCED']]);
+    });
+
     it('Correct_SentBeforeIdsWereKept_FindsTheEntryByItsMarkerAndKeepsTheId', async () => {
       const send = await sent();
       dbConn.getDb().prepare('UPDATE worklog_sync_queue SET remote_worklog_id = NULL').run();
@@ -236,6 +270,44 @@ describe('Correcting a worklog', () => {
       expect(remote.provider.findWorklog).toHaveBeenCalledWith('T-1', START, syncMarker(send));
       expect(onlyEntry().durationSeconds).toBe(HOUR);
       expect(worklogs.getSyncItem(send)?.remoteWorklogId).toBe('100');
+    });
+
+    it('Correct_MovedToTheDayBefore_TheEntryAndTheHistoryBothMove', async () => {
+      // Logged on the wrong day: the provider files a worklog under its start,
+      // and so does the history, so both must follow the new one.
+      await sent();
+      const dayBefore = '2026-10-12T09:00:00.000Z';
+
+      service.correct('w1', { durationSeconds: 2 * HOUR, startedAtUtc: dayBefore, comment: 'Pairing' });
+      await worker.processPendingQueue();
+
+      expect(remote.provider.updateWorklog).toHaveBeenCalledWith('T-1', '100', expect.objectContaining({ startedAtUtc: dayBefore }));
+      expect(onlyEntry().startedAtUtc).toBe(dayBefore);
+      expect(worklogs.getWorklogsByDate(localDateKey(new Date(dayBefore))).map(w => w.id)).toEqual(['w1']);
+      expect(worklogs.getWorklogsByDate(localDateKey(new Date(START)))).toEqual([]);
+    });
+
+    it('Correct_TaskArchivedSince_StillReachesTheEntry', async () => {
+      // The task left the user's lists after the time was sent; the time is
+      // still theirs to correct, and the entry is still on the issue.
+      await sent();
+      dbConn.getDb().prepare('UPDATE tasks SET archived_at_utc = ? WHERE id = ?').run(START, 'T-1');
+
+      service.correct('w1', fix(HOUR));
+      await worker.processPendingQueue();
+
+      expect(onlyEntry().durationSeconds).toBe(HOUR);
+      expect(worklogs.getWorklogById('w1')?.syncState).toBe('sent');
+    });
+
+    it('Remove_TaskArchivedSince_DeletesTheEntry', async () => {
+      await sent();
+      dbConn.getDb().prepare('UPDATE tasks SET archived_at_utc = ? WHERE id = ?').run(START, 'T-1');
+
+      service.remove('w1');
+      await worker.processPendingQueue();
+
+      expect(remote.entries.size).toBe(0);
     });
 
     it('Correct_EntryGoneAtTheProvider_ParksWithTheReason', async () => {
