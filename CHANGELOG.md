@@ -77,6 +77,13 @@
   parked as a failure. This holds for projects made from now on: OpenProject
   projects did not say where they came from, so an older project made here
   cannot be told apart from one of theirs, and keeps the old behaviour.
+- **A task closed on the provider mid-session is no longer reopened.** It
+  read like any task that left the list -- "No longer assigned to you",
+  NOT YOURS on the bar -- and confirming FINISH sent the completion
+  transition, which on OpenProject moved the closed work package back to
+  To Test or To Review. SprintTicker now asks the provider why a tracked
+  task left: closed, reassigned, or deleted. A closed one is finished without
+  a question and without touching it there.
 - **A worklog whose answer was lost is not logged twice.** A send that timed
   out, or that the app closed in the middle of, may already have been
   recorded by Jira or OpenProject, and the retry posted it again: the time

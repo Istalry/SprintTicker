@@ -218,10 +218,11 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
   let server: ReturnType<typeof createFakeOpenProject>['server'];
   let requests: ReturnType<typeof createFakeOpenProject>['requests'];
   let timeEntries: ReturnType<typeof createFakeOpenProject>['timeEntries'];
+  let fake: ReturnType<typeof createFakeOpenProject>;
   let provider: OpenProjectProvider;
 
   beforeAll(async () => {
-    const fake = createFakeOpenProject({ pageSize: 20, quiet: true });
+    fake = createFakeOpenProject({ pageSize: 20, quiet: true });
     server = fake.server;
     requests = fake.requests;
     timeEntries = fake.timeEntries;
@@ -288,6 +289,18 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
     await expect(provider.deleteWorklog('OP-105', id)).resolves.toBeUndefined();
 
     expect(timeEntries.has(id)).toBe(false);
+  });
+
+  it.each([
+    ['open', () => undefined, 'open'],
+    ['closed', () => fake.closedWorkPackages.add(108), 'closed'],
+    ['deleted', () => fake.deletedWorkPackages.add(108), 'gone']
+  ])('GetTaskStanding_WorkPackage%s_SaysSo', async (_label, arrange, expected) => {
+    fake.closedWorkPackages.clear();
+    fake.deletedWorkPackages.clear();
+    arrange();
+
+    expect(await provider.getTaskStanding('OP-108')).toBe(expected);
   });
 
   it('UpdateWorklog_DeletedInOpenProject_IsAPermanentFailure', async () => {

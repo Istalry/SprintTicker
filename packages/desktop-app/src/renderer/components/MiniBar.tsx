@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, ListTodo, Pause, Play, Square, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { formatSeconds } from '../utils/formatters';
+import { finishNeedsConfirmation, taskLeftLabel } from '../../shared/task-left';
 
 /**
  * The always-on-top mini timer: what the BUSY Bar shows, on screen.
@@ -65,8 +66,8 @@ export const MiniBar: React.FC = () => {
               {session.taskUnlisted && (
                 <span
                   role="img"
-                  aria-label="No longer assigned to you"
-                  title="No longer assigned to you: reassigned, closed or moved. Time is still logged."
+                  aria-label={taskLeftLabel(session.taskLeftBecause)}
+                  title={`${taskLeftLabel(session.taskLeftBecause)}. Time is still logged.`}
                 >
                   <AlertTriangle className="w-3 h-3 shrink-0 text-accent-amber" />
                 </span>
@@ -92,7 +93,7 @@ export const MiniBar: React.FC = () => {
           <button type="button" title="Stop and log the time; the task stays open" className={`${choice} text-accent-blue hover:bg-accent-blue/15`} onClick={end('Stop', () => complete(undefined, false))}>
             Not done
           </button>
-          <button type="button" title="Log the time and mark the task done" className={`${choice} text-accent-green hover:bg-accent-green/15`} onClick={session?.taskUnlisted ? () => setEnding('finish') : end('Finish', () => complete(undefined, true))}>
+          <button type="button" title="Log the time and mark the task done" className={`${choice} text-accent-green hover:bg-accent-green/15`} onClick={finishNeedsConfirmation(session) ? () => setEnding('finish') : end('Finish', () => complete(undefined, true))}>
             Done
           </button>
           <button type="button" title="Keep nothing: no worklog, nothing sent" className={`${choice} text-text-secondary hover:text-accent-red hover:bg-accent-red/15`} onClick={() => setEnding('discard')}>

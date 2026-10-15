@@ -153,12 +153,16 @@ yourself. Stopping without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
 
 🔀 **A task that leaves your list while you track it** -- reassigned to someone
-else, closed or moved on Jira or OpenProject -- keeps running. The panel and
-the mini timer say **No longer assigned to you**, and your time is logged as
-usual. Marking it done asks first, since your completion transition would
-move a task that is no longer yours; on the bar, FINISH (or a long BACK)
-shows **NOT YOURS / DONE? OK=YES**, and BACK refuses. The task stays listed
-until the session ends, and leaves at the next sync after that.
+else, closed or moved on Jira or OpenProject -- keeps running, and your time
+is logged as usual. SprintTicker asks the provider why, and the panel and the
+mini timer say so: **No longer assigned to you**, **Closed on the provider**,
+or **No longer on the provider** when it was deleted or you can no longer see
+it. Marking it done asks first, since your completion transition would move a
+task that is no longer yours; on the bar, FINISH (or a long BACK) shows
+**NOT YOURS / DONE? OK=YES**, and BACK refuses. A task already **closed**
+there is the exception: marking it done asks nothing and moves nothing on the
+provider. The task stays listed until the session ends, and leaves at the
+next sync after that.
 
 ⏰ **A session left running** -- not stopped before the weekend, or overnight
 -- is caught when you come back. If your last activity on the computer (or a
@@ -613,7 +617,7 @@ next sync brings them up to date.
 </details>
 
 <details>
-<summary>🔀 <b>The task I am tracking says "No longer assigned to you"</b></summary>
+<summary>🔀 <b>The task I am tracking says "No longer assigned to you" or "Closed on the provider"</b></summary>
 
  Since you started it, the task
 left what your provider lists for you: reassigned to someone else, closed, or

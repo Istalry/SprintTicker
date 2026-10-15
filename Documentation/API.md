@@ -33,6 +33,7 @@ Everything else is a request/response `invoke`.
 | `session:pause` / `session:resume` | Pause and resume |
 | `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
 | `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first |
+| ... and `taskLeftBecause` | Why, once the provider has said: `closed` (done there -- finishing it asks nothing and sends no transition), `reassigned` (still open, out of the user's scope) or `gone` (deleted, or no longer visible). Absent while unknown |
 | `session:get-forgotten-review` | The session left running across a change of day, paused at the last activity and awaiting an answer: `{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted }`, or null |
 | `session:resolve-forgotten` | Answers it with `{ action, endUtc? }`: `stop` or `restart` log up to `endUtc` (between the start and now, required), `discard` keeps nothing, `keep` counts the whole absence and runs on. An unknown action or an end outside the session throws; answers `false` when nothing is asked any more |
 | `session:on-forgotten-review` | Pushes the question when it is found, and null once anything answers it -- the window, the bar's STOP, a resume |
@@ -185,6 +186,10 @@ interface ITaskProvider {
   findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise<string | null>;
   updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void>;
   deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
+
+  // Optional: where one task stands, for a tracked task that left the list.
+  // 404 is 'gone'; any other failure throws.
+  getTaskStanding?(taskId: string): Promise<'open' | 'closed' | 'gone'>;
 
   // Optional: activity on the user's tasks, for toasts and bar banners.
   getEventsSince?(sinceUtc: string): Promise<ProviderEventDTO[]>;

@@ -91,6 +91,26 @@ describe('ActiveTaskHeroCard', () => {
       expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
     });
 
+    it.each([
+      ['closed', /Closed on the provider/],
+      ['gone', /No longer on the provider/],
+      ['reassigned', /No longer assigned to you/]
+    ] as const)('Render_LeftBecause%s_SaysWhy', (reason, text) => {
+      card({ ...UNLISTED, taskLeftBecause: reason });
+
+      expect(screen.getByRole('status').textContent).toMatch(text);
+    });
+
+    it('MarkDone_ClosedThere_FinishesWithoutAsking', () => {
+      // Nothing to move on a task already closed, so nothing to ask.
+      const onComplete = card({ ...UNLISTED, taskLeftBecause: 'closed' });
+
+      fireEvent.click(screen.getByText('Finish & Log Hours'));
+      fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+
+      expect(onComplete).toHaveBeenCalledWith(undefined, true);
+    });
+
     it('RemainInProgress_Unlisted_DoesNotAsk', () => {
       // Logging the time and leaving the task open moves nothing remote.
       const onComplete = card(UNLISTED);

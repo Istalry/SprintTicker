@@ -501,6 +501,30 @@ export class OpenProjectProvider implements ITaskProvider {
     }
   }
 
+  /** Where a work package stands: closed when its status says `isClosed`. */
+  public async getTaskStanding(taskId: string): Promise<'open' | 'closed' | 'gone'> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to read where a task stands.');
+
+    const id = OpenProjectProvider.workPackageId(taskId);
+    try {
+      const res = await providerFetch(
+        this.providerId,
+        `${this.getBaseUrl()}/api/v3/work_packages/${encodeURIComponent(id)}`,
+        { headers: { Authorization: this.getAuthHeader(), Accept: 'application/json' } },
+        `Reading the status of work package ${id}`,
+        this._http
+      );
+      const wp = (await res.json()) as { _embedded?: { status?: { isClosed?: boolean } } };
+      // `isClosed` is set per status by the instance's administrator, so it
+      // is the instance's own answer -- the name is not.
+      return wp._embedded?.status?.isClosed === true ? 'closed' : 'open';
+    } catch (err) {
+      if (err instanceof ProviderRequestError && err.status === 404) return 'gone';
+      throw err;
+    }
+  }
+
   private requireConfigured(): void {
     if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
       throw ProviderRequestError.notConfigured(this.providerId);

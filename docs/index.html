@@ -652,12 +652,16 @@
       yourself. Stopping without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
       <p>🔀 <strong>A task that leaves your list while you track it</strong> -- reassigned to someone
-      else, closed or moved on Jira or OpenProject -- keeps running. The panel and
-      the mini timer say <strong>No longer assigned to you</strong>, and your time is logged as
-      usual. Marking it done asks first, since your completion transition would
-      move a task that is no longer yours; on the bar, FINISH (or a long BACK)
-      shows <strong>NOT YOURS / DONE? OK=YES</strong>, and BACK refuses. The task stays listed
-      until the session ends, and leaves at the next sync after that.</p>
+      else, closed or moved on Jira or OpenProject -- keeps running, and your time
+      is logged as usual. SprintTicker asks the provider why, and the panel and the
+      mini timer say so: <strong>No longer assigned to you</strong>, <strong>Closed on the provider</strong>,
+      or <strong>No longer on the provider</strong> when it was deleted or you can no longer see
+      it. Marking it done asks first, since your completion transition would move a
+      task that is no longer yours; on the bar, FINISH (or a long BACK) shows
+      <strong>NOT YOURS / DONE? OK=YES</strong>, and BACK refuses. A task already <strong>closed</strong>
+      there is the exception: marking it done asks nothing and moves nothing on the
+      provider. The task stays listed until the session ends, and leaves at the
+      next sync after that.</p>
       <p>⏰ <strong>A session left running</strong> -- not stopped before the weekend, or overnight
       -- is caught when you come back. If your last activity on the computer (or a
       press on the bar) was on an earlier day, at least two hours ago, the session
@@ -1218,7 +1222,7 @@
       Providers. Your projects and tasks stay as they were in the meantime, and the
       next sync brings them up to date.</p>
       </details><details>
-      <summary>🔀 <b>The task I am tracking says "No longer assigned to you"</b></summary><p> Since you started it, the task
+      <summary>🔀 <b>The task I am tracking says "No longer assigned to you" or "Closed on the provider"</b></summary><p> Since you started it, the task
       left what your provider lists for you: reassigned to someone else, closed, or
       moved to a project you are not in. Nothing is lost: the session keeps running
       and its time is logged when you stop. The task stays in your lists until then.
@@ -2232,7 +2236,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2065 tests across 103 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2087 tests across 103 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2300,6 +2304,10 @@
       <tr>
       <td align="left"><code>session:get-current</code> / <code>session:on-updated</code> carry <code>taskUnlisted: true</code></td>
       <td align="left">The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first</td>
+      </tr>
+      <tr>
+      <td align="left">... and <code>taskLeftBecause</code></td>
+      <td align="left">Why, once the provider has said: <code>closed</code> (done there -- finishing it asks nothing and sends no transition), <code>reassigned</code> (still open, out of the user&#39;s scope) or <code>gone</code> (deleted, or no longer visible). Absent while unknown</td>
       </tr>
       <tr>
       <td align="left"><code>session:get-forgotten-review</code></td>
@@ -2619,6 +2627,10 @@
         findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise&lt;string | null&gt;;
         updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise&lt;void&gt;;
         deleteWorklog?(taskId: string, remoteWorklogId: string): Promise&lt;void&gt;;
+      
+        // Optional: where one task stands, for a tracked task that left the list.
+        // 404 is &#39;gone&#39;; any other failure throws.
+        getTaskStanding?(taskId: string): Promise&lt;&#39;open&#39; | &#39;closed&#39; | &#39;gone&#39;&gt;;
       
         // Optional: activity on the user&#39;s tasks, for toasts and bar banners.
         getEventsSince?(sinceUtc: string): Promise&lt;ProviderEventDTO[]&gt;;

@@ -7,7 +7,7 @@ import {
   syncMarker,
   withSyncMarker
 } from './sync-constants';
-import { ProjectDTO, TaskDTO, ProviderSyncResult } from '../../shared/dtos';
+import { ProjectDTO, TaskDTO, ProviderSyncResult, TaskLeftReason } from '../../shared/dtos';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProviderManager } from '../providers/provider-manager';
@@ -33,6 +33,8 @@ export class OfflineSyncWorker {
   private getProtectedTaskIds: () => string[] = () => [];
   /** Protected tasks the provider stopped listing at the last sync. */
   private unlistedTaskIds: Set<string> = new Set();
+  /** Why each unlisted task left, once its provider has said. */
+  private unlistedReasons: Map<string, TaskLeftReason> = new Map();
   private unlistedListeners: Set<() => void> = new Set();
 
   constructor(
@@ -109,17 +111,28 @@ export class OfflineSyncWorker {
     return this.unlistedTaskIds.has(taskId);
   }
 
+  /** Why an unlisted task left the list, or undefined while that is not known. */
+  public unlistedReason(taskId: string): TaskLeftReason | undefined {
+    return this.unlistedReasons.get(taskId);
+  }
+
   /** Called when the set of unlisted tasks changes, so the session can say so. */
   public onUnlistedChanged(listener: () => void): () => void {
     this.unlistedListeners.add(listener);
     return () => this.unlistedListeners.delete(listener);
   }
 
-  private setUnlisted(taskIds: string[]): void {
+  private setUnlisted(taskIds: string[], reasonsLearnt = false): void {
     const next = new Set(taskIds);
     const changed = next.size !== this.unlistedTaskIds.size || [...next].some(id => !this.unlistedTaskIds.has(id));
     this.unlistedTaskIds = next;
-    if (!changed) return;
+    for (const id of [...this.unlistedReasons.keys()]) {
+      if (!next.has(id)) this.unlistedReasons.delete(id);
+    }
+    if (changed || reasonsLearnt) this.notifyUnlisted();
+  }
+
+  private notifyUnlisted(): void {
     for (const listener of this.unlistedListeners) {
       try {
         listener();
@@ -220,7 +233,9 @@ export class OfflineSyncWorker {
       if (unlisted.length > 0) {
         console.log(`[OfflineSyncWorker] Tracked task(s) no longer listed by the provider, kept until the session ends: ${unlisted.join(', ')}`);
       }
-      this.setUnlisted(unlisted);
+      // The reason first, so the session is re-sent once, saying both.
+      const reasonsLearnt = await this.explainUnlisted(unlisted);
+      this.setUnlisted(unlisted, reasonsLearnt);
 
       const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
       console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);
@@ -234,6 +249,41 @@ export class OfflineSyncWorker {
         tasks: 0
       };
     }
+  }
+
+  /**
+   * Asks each unlisted task's provider why it left: closed, reassigned or
+   * gone. They used to read the same -- NOT YOURS -- and confirming FINISH
+   * on a task already closed fired the completion transition, which on
+   * OpenProject moved it out of Closed again. A failed read leaves the reason
+   * unknown and the sync is not failed for it: the list is already saved.
+   * True when a reason was learnt; the caller tells the listeners.
+   */
+  private async explainUnlisted(taskIds: string[]): Promise<boolean> {
+    let learnt = false;
+    for (const id of taskIds) {
+      if (this.unlistedReasons.has(id)) continue;
+      const provider = this.providerOfTask(id);
+      if (!provider?.getTaskStanding) continue;
+      try {
+        const standing = await provider.getTaskStanding(id);
+        this.unlistedReasons.set(id, standing === 'open' ? 'reassigned' : standing);
+        learnt = true;
+      } catch (err) {
+        console.warn(`[OfflineSyncWorker] Could not read where ${id} stands; it is shown as no longer yours.`, err);
+      }
+    }
+    return learnt;
+  }
+
+  /** The provider a task came from, by its project; the active one when that is not known. */
+  private providerOfTask(taskId: string) {
+    const manager = this.providerManager as Partial<ProviderManager>;
+    const projectId = this.taskRepo.getTaskById(taskId)?.projectId;
+    const providerId = projectId ? this.projectRepo.getProviderIdOf(projectId) : null;
+    const named = providerId && typeof manager.getProvider === 'function' ? manager.getProvider(providerId) : undefined;
+    if (named) return named;
+    return typeof manager.getActiveProvider === 'function' ? manager.getActiveProvider() : undefined;
   }
 
   /**

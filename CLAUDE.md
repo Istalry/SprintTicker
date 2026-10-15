@@ -806,8 +806,8 @@ session, no second of tracked time lost, every orphaned task id named, at most
 one open session, no foreign key broken, no row of the provider queue
 lost. The rules are
 `src/main/db/migration-check.ts`, tested, and hold any future migration to the
-same standard; the script only copies and prints. Migrations 5, 6, 8, 9 and 10 were
-checked this way. Ask the user to run it from an ordinary terminal and paste
+same standard; the script only copies and prints. Migrations 5, 6, 8, 9, 10 and 11
+were checked this way. Ask the user to run it from an ordinary terminal and paste
 the output -- for the reason below, its answer from an agent's shell describes
 a file that may not be theirs.
 
@@ -884,7 +884,13 @@ finishing it as done found no row and silently did nothing.
 `OfflineSyncWorker.protectTasks` keeps it, and its project, until the session
 ends, and `ActiveSessionDTO.taskUnlisted` says it has left the list. Marking
 such a task done asks the user first, in the window and on the bar: their
-completion transition would move a task that is no longer theirs.
+completion transition would move a task that is no longer theirs. The sync
+then asks the provider why (`getTaskStanding`, `taskLeftBecause`): a task
+*closed* there is finished without asking and **without a transition** --
+sending one moved an OpenProject work package out of Closed again. Every
+place that decides goes through `finishNeedsConfirmation` in
+`shared/task-left.ts`, so the window, the mini timer and the bar cannot
+disagree.
 
 ## 8. Commit identity
 

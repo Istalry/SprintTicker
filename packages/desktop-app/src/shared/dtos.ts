@@ -30,7 +30,17 @@ export interface ActiveSessionDTO {
    * Absent otherwise.
    */
   taskUnlisted?: boolean;
+  /**
+   * Why the task left the list, once the provider has said: `closed` -- done
+   * there, so finishing it moves nothing and asks nothing; `reassigned` --
+   * still open, but no longer in the user's scope; `gone` -- deleted, or no
+   * longer visible to them. Absent while unknown, which reads as reassigned.
+   */
+  taskLeftBecause?: TaskLeftReason;
 }
+
+/** Why a tracked task left the provider's list: see `ActiveSessionDTO.taskLeftBecause`. */
+export type TaskLeftReason = 'closed' | 'reassigned' | 'gone';
 
 /** What `session:discard` answers: whether a session was there, and how much time was thrown away. */
 export interface DiscardSessionResultDTO {

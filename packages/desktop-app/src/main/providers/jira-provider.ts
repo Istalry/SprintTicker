@@ -565,6 +565,27 @@ export class JiraProvider implements ITaskProvider {
     );
   }
 
+  /** Where an issue stands: done when its status is in Jira's `done` category. */
+  public async getTaskStanding(taskId: string): Promise<'open' | 'closed' | 'gone'> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to read where a task stands.');
+
+    const url = new URL(`${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(taskId)}`);
+    url.searchParams.set('fields', 'status');
+    const context = `Reading the status of ${taskId}`;
+    try {
+      const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
+      const body = await this.readJson<{ fields?: { status?: { statusCategory?: { key?: string } } } }>(res, context);
+      // The category, never the name: a workflow can call done anything.
+      return body.fields?.status?.statusCategory?.key === 'done' ? 'closed' : 'open';
+    } catch (err) {
+      // Jira answers 404 alike for a deleted issue and one the user may no
+      // longer see.
+      if (err instanceof ProviderRequestError && err.status === 404) return 'gone';
+      throw err;
+    }
+  }
+
   /** Deletes a worklog. One already deleted in Jira answers 404, which is the outcome asked for. */
   public async deleteWorklog(taskId: string, remoteWorklogId: string): Promise<void> {
     this.requireConfigured();

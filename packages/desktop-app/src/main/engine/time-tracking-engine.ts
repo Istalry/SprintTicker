@@ -195,7 +195,8 @@ export class TimeTrackingEngine extends EventEmitter {
     if (!this._currentSession) return null;
     const session = this._sessionRepo.getActiveSession();
     if (session && this._syncWorker.isUnlisted(session.taskId)) {
-      return { ...session, taskUnlisted: true };
+      const reason = this._syncWorker.unlistedReason(session.taskId);
+      return { ...session, taskUnlisted: true, ...(reason ? { taskLeftBecause: reason } : {}) };
     }
     return session;
   }
@@ -592,8 +593,10 @@ export class TimeTrackingEngine extends EventEmitter {
         // looked like it had something open.
         this._taskRepo.updateTask({ ...existingTask, status: 'done' });
 
-        // Only the provider's own tasks have a remote status to move.
-        if (!adHoc) {
+        // Only the provider's own tasks have a remote status to move, and
+        // one closed there has none: the completion transition moved an
+        // OpenProject work package out of Closed again.
+        if (!adHoc && active.taskLeftBecause !== 'closed') {
           this.moveTask(active.providerId, active.taskId, 'done');
         }
       } else {

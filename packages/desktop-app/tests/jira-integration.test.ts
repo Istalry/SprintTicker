@@ -373,6 +373,15 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       db.close();
     });
 
+    it.each([
+      // The fake cycles To Do, In Progress, To Review, Done.
+      ['FAKE1-1', 'open'],
+      ['FAKE1-4', 'closed'],
+      ['FAKE9-999', 'gone']
+    ])('GetTaskStanding_%s_Is%s', async (key, expected) => {
+      expect(await (await configured()).getTaskStanding(key)).toBe(expected);
+    });
+
     it('UpdateWorklog_BelowTheMinute_ThrowsPermanentWithoutSendingAnything', async () => {
       const id = await sent('FAKE1-9', '[#short001]');
       requests.length = 0;

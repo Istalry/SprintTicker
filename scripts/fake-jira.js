@@ -339,6 +339,17 @@ function createFakeJira(overrides = {}) {
         return;
       }
 
+      // One issue, by id or key, as the adapter reads where a task stands.
+      // An unknown one is 404, as Jira answers for a deleted issue and for
+      // one the caller may no longer see.
+      const oneIssue = /^\/rest\/api\/3\/issue\/([^/]+)$/.exec(url.pathname);
+      if (oneIssue && req.method === 'GET') {
+        const found = issues.find(i => String(i.id) === oneIssue[1] || i.key === oneIssue[1]);
+        if (found) send(200, found);
+        else send(404, { errorMessages: ['Issue does not exist or you do not have permission to see it.'], errors: {} });
+        return;
+      }
+
       send(404, {
         errorMessages: [`No fake route for ${req.method} ${url.pathname}`],
         errors: {}

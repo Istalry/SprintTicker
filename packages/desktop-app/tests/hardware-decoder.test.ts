@@ -565,6 +565,36 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(engine.getCurrentSession()?.status).toBe('PAUSED');
       });
 
+      it('HandleHardwareInput_FinishOnATaskClosedThere_FinishesWithoutAsking', () => {
+        // Nothing to move on a task already closed, so nothing to ask.
+        vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('closed');
+
+        const action = turn('ok');
+
+        expect(action).toBe('VALIDATE_PAUSED_SELECTION');
+        expect(renderer.getPausedConfirm()).toBeNull();
+        expect(done).toHaveBeenCalledWith(expect.any(String), true);
+      });
+
+      it('HandleHardwareInput_LongBackOnATaskClosedThere_FinishesWithoutAsking', () => {
+        vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('closed');
+
+        const action = decoder.handleHardwareInput({ key: 'back_hold', type: 'long_press', timestamp: new Date().toISOString() });
+
+        expect(action).toBe('COMPLETE_AND_LOG_ACTIVE_TASK');
+        expect(renderer.getPausedConfirm()).toBeNull();
+        expect(engine.getCurrentSession()).toBeNull();
+      });
+
+      it('HandleHardwareInput_LongBackOnATaskReassigned_StillAsks', () => {
+        vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('reassigned');
+
+        decoder.handleHardwareInput({ key: 'back_hold', type: 'long_press', timestamp: new Date().toISOString() });
+
+        expect(renderer.getPausedConfirm()).toBe('FINISH_UNLISTED');
+        expect(done).not.toHaveBeenCalled();
+      });
+
       it('HandleHardwareInput_StopOnAnUnlistedTask_DoesNotAsk', () => {
         // Logging the time and leaving the task open moves nothing remote.
         turn('rotate_left');

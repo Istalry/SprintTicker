@@ -79,6 +79,15 @@ export interface ITaskProvider {
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
 
   /**
+   * Where one task stands, read on its own: `open`, `closed` (done on the
+   * provider), or `gone` -- deleted, or no longer visible to the user, which
+   * the provider answers alike with a 404. For a tracked task that left the
+   * list, so the user is told which of those it was. Throws on any other
+   * failure; optional, since a provider without a remote has no answer.
+   */
+  getTaskStanding?(taskId: string): Promise<'open' | 'closed' | 'gone'>;
+
+  /**
    * What happened to the user's tasks after `sinceUtc` (exclusive): assigned,
    * mentioned, commented, status changed, date alert. Optional -- a provider
    * without a remote has nothing to report -- and listed in

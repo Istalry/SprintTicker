@@ -207,6 +207,10 @@ function createFakeOpenProject(overrides = {}) {
     });
   };
 
+  // Work packages closed, or deleted, since they were listed: a test puts ids here.
+  const closedWorkPackages = new Set();
+  const deletedWorkPackages = new Set();
+
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const offset = Number(url.searchParams.get('offset')) || 1;
@@ -316,14 +320,21 @@ function createFakeOpenProject(overrides = {}) {
 
     const singleWorkPackage = /^\/api\/v3\/work_packages\/(\d+)$/.exec(url.pathname);
     if (singleWorkPackage) {
-      send(200, { id: Number(singleWorkPackage[1]), lockVersion: 1, subject: 'Fake work package' });
+      const id = Number(singleWorkPackage[1]);
+      if (deletedWorkPackages.has(id)) {
+        send(404, { _type: 'Error', message: 'The requested resource could not be found.' });
+        return;
+      }
+      // Status embedded as a real instance embeds it, `isClosed` and all.
+      const status = closedWorkPackages.has(id) ? statuses[statuses.length - 1] : statuses[0];
+      send(200, { id, lockVersion: 1, subject: 'Fake work package', _embedded: { status } });
       return;
     }
 
     send(404, { message: `No fake route for ${url.pathname}` });
   });
 
-  return { server, options, projects, statuses, requests, notifications, timeEntries };
+  return { server, options, projects, statuses, requests, notifications, timeEntries, closedWorkPackages, deletedWorkPackages };
 }
 
 module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS };

@@ -1,11 +1,31 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'fs';
 import path from 'path';
+import { loadAnimationSequence } from '../src/main/hardware/animation-sequence';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { ActiveSessionDTO } from '../src/shared/dtos';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
 import { BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
 import { FirmwareSimulator, RuleId } from './support/firmware-simulator';
+
+// Every `.anim` read once, before the tests, then served from memory. These
+// tests wait on real time, 4 s at most, and a scene's first read -- half a
+// megabyte, decoded -- took longer than that with the whole suite loading the
+// disk in parallel: TaskDone_OneShotSceneAndBack failed now and then, only in
+// a full run. What they check is the order of requests, not file reading.
+vi.mock('../src/main/hardware/animation-sequence', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/main/hardware/animation-sequence')>();
+  const loaded = new Map<string, ReturnType<typeof actual.loadAnimationSequence>>();
+  return {
+    ...actual,
+    loadAnimationSequence: (dir: string, name: string) => {
+      const key = path.join(dir, name);
+      if (!loaded.has(key)) loaded.set(key, actual.loadAnimationSequence(dir, name));
+      return loaded.get(key)!;
+    }
+  };
+});
 
 vi.mock('electron', () => ({
   app: { isPackaged: false },
@@ -56,6 +76,11 @@ describe('Front display screen lifecycle', () => {
   /** Removals by id the device was sent. */
   const removalsById = (): string[] => requests.filter(r => r.includes('element_ids'));
   const everEmptiedWhileOpen = (): boolean => canvas.history.slice(1).some(set => set.length === 0);
+
+  beforeAll(async () => {
+    const names = fs.readdirSync(ANIMATIONS_DIR).filter(name => fs.statSync(path.join(ANIMATIONS_DIR, name)).isDirectory());
+    await Promise.all(names.map(name => loadAnimationSequence(ANIMATIONS_DIR, name)));
+  }, 60_000);
 
   beforeEach(async () => {
     canvas = new FirmwareSimulator({ settleMs: SETTLE_MS }).install();

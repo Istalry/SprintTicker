@@ -3,6 +3,7 @@ import { Clock, CheckCircle2, X, Sparkles, Trash2 } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
 import { formatSeconds } from '../utils/formatters';
 import { ConfirmPanel } from './ConfirmPanel';
+import { finishNeedsConfirmation } from '../../shared/task-left';
 
 interface FinishSessionModalProps {
   isOpen: boolean;
@@ -30,9 +31,9 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
   const [confirming, setConfirming] = useState<'discard' | 'finish' | null>(null);
   const confirmingDiscard = confirming === 'discard';
 
-  // Reassigned, closed or moved since it started: marking it done would fire
-  // the user's completion transition on a task that is no longer theirs.
-  const markDone = () => (session.taskUnlisted ? setConfirming('finish') : onFinishOption(true));
+  // Reassigned or moved since it started: marking it done would fire the
+  // user's completion transition on a task that is no longer theirs.
+  const markDone = () => (finishNeedsConfirmation(session) ? setConfirming('finish') : onFinishOption(true));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">

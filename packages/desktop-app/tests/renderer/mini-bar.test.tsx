@@ -126,6 +126,19 @@ describe('mini timer', () => {
       expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, true);
     });
 
+    it('Stop_DoneOnATaskClosedThere_FinishesWithoutAsking', async () => {
+      const bridge = installElectronApi({
+        getCurrentSession: async () => ({ ...TRACKING_SESSION, taskUnlisted: true, taskLeftBecause: 'closed' as const })
+      });
+      render(<MiniBar />);
+      expect(await screen.findByLabelText('Closed on the provider')).toBeTruthy();
+      fireEvent.click(screen.getByLabelText('Stop'));
+
+      fireEvent.click(screen.getByText('Done'));
+
+      expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, true);
+    });
+
     it('Stop_SessionEndsElsewhere_TheQuestionGoesWithIt', async () => {
       // Stopped from the bar while the choice was open: the next session
       // must not open on a question about the last one.

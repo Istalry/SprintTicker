@@ -3,6 +3,7 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { ActiveSessionDTO, HardwareBindingConfig, TaskDTO } from '../../shared/dtos';
 import { orderTasksForSelection } from '../../shared/task-order';
+import { finishNeedsConfirmation } from '../../shared/task-left';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
 import { filterProjectsWithTasks, ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
@@ -391,10 +392,10 @@ export class InputDecoder {
           // the scene rather than drawn first.
           this._renderer.renderTaskLogged();
           this._engine.stopSession('Stopped via BUSY Bar Paused Menu');
-        } else if (activeSession?.taskUnlisted) {
-          // Reassigned, closed or moved since it started: finishing it would
-          // fire the user's completion transition on a task that is no longer
-          // theirs. Ask, as the window does.
+        } else if (finishNeedsConfirmation(activeSession)) {
+          // Reassigned or moved since it started: finishing it would fire
+          // the user's completion transition on a task that is no longer
+          // theirs. Ask, as the window does. Closed there: nothing to ask.
           this._renderer.askPausedConfirm('FINISH_UNLISTED');
           this.notifyActionHandlers('ASK_PAUSED_FINISH', normalizedKey);
           return 'ASK_PAUSED_FINISH';
@@ -459,12 +460,12 @@ export class InputDecoder {
       }
       case 'COMPLETE_AND_LOG_ACTIVE_TASK': {
         const toFinish = this._engine.getCurrentSession();
-        if (toFinish?.taskUnlisted && this._renderer) {
+        if (finishNeedsConfirmation(toFinish) && this._renderer) {
           // The question lives on the paused screen, so a running session is
           // paused to ask it -- the question first, so the pause draws it at
           // once -- and refusing resumes it.
           this._renderer.askPausedConfirm('FINISH_UNLISTED');
-          if (toFinish.status === 'TRACKING') {
+          if (toFinish?.status === 'TRACKING') {
             this._resumeOnConfirmRefused = true;
             this._engine.pauseSession();
           }

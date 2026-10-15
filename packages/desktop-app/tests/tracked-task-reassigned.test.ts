@@ -24,6 +24,8 @@ describe('A tracked task the provider stops listing', () => {
   let remoteProjects: ProjectDTO[];
   let remoteTasks: Record<string, TaskDTO[]>;
   let statusPushes: Array<[string, string]>;
+  /** What the provider says of the tracked task when asked on its own. */
+  let getTaskStanding: ReturnType<typeof vi.fn>;
 
   const MINE: TaskDTO = { id: '10001', projectId: '10000', key: 'SCRUM-2', title: 'Tache 2', status: 'todo' };
   const OTHER: TaskDTO = { id: '10002', projectId: '10000', key: 'SCRUM-3', title: 'Tache 3', status: 'todo' };
@@ -39,8 +41,9 @@ describe('A tracked task the provider stops listing', () => {
     remoteProjects = [{ id: '10000', key: 'SCRUM', name: 'My Software Team' }];
     remoteTasks = { '10000': [MINE, OTHER] };
     statusPushes = [];
+    getTaskStanding = vi.fn(async () => 'open');
     const manager = {
-      getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60 }),
+      getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60, getTaskStanding }),
       getProjects: async () => remoteProjects,
       getTasks: async (projectId: string) => remoteTasks[projectId] ?? [],
       updateTaskStatus: async (taskId: string, status: string) => {
@@ -174,6 +177,85 @@ describe('A tracked task the provider stops listing', () => {
     remoteTasks['10000'] = [MINE, OTHER];
     await sync();
     expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  describe('why it left', () => {
+    it.each([
+      ['open', 'reassigned'],
+      ['closed', 'closed'],
+      ['gone', 'gone']
+    ])('Sync_ProviderSaysTheTaskIs%s_TheSessionSays%s', async (standing, reason) => {
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      getTaskStanding.mockResolvedValue(standing);
+
+      await sync();
+
+      expect(getTaskStanding).toHaveBeenCalledWith(MINE.id);
+      expect(engine.getCurrentSession()).toMatchObject({ taskUnlisted: true, taskLeftBecause: reason });
+    });
+
+    it('Sync_ReasonKnown_IsNotAskedAgainAtTheNextSync', async () => {
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      await sync();
+
+      await sync();
+
+      expect(getTaskStanding).toHaveBeenCalledTimes(1);
+    });
+
+    it('Sync_ProviderCannotSay_StillUnlistedWithNoReason', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      getTaskStanding.mockRejectedValue(new Error('ECONNRESET'));
+
+      const result = await sync();
+
+      expect(result.status).toBe('synced');
+      expect(engine.getCurrentSession()?.taskUnlisted).toBe(true);
+      expect(engine.getCurrentSession()?.taskLeftBecause).toBeUndefined();
+    });
+
+    it('Sync_ReasonLearnt_TellsTheSessionsListeners', async () => {
+      engine.startTask(MINE.id);
+      const heard: Array<string | undefined> = [];
+      engine.subscribe(session => heard.push(session?.taskLeftBecause));
+      remoteTasks['10000'] = [OTHER];
+      getTaskStanding.mockResolvedValue('closed');
+
+      await sync();
+
+      expect(heard.at(-1)).toBe('closed');
+    });
+
+    it('StopSession_FinishedAfterItWasClosedThere_MarksItDoneHereAndMovesNothing', async () => {
+      // The completion transition on a closed OpenProject work package moved
+      // it out of Closed again.
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      getTaskStanding.mockResolvedValue('closed');
+      await sync();
+
+      engine.stopSession('Finished', true);
+
+      expect(taskRepo.getTaskById(MINE.id)?.status).toBe('done');
+      expect(statusPushes).toEqual([[MINE.id, 'in_progress']]);
+    });
+
+    it('Sync_TaskListedAgain_ForgetsTheReason', async () => {
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      getTaskStanding.mockResolvedValue('closed');
+      await sync();
+
+      remoteTasks['10000'] = [MINE, OTHER];
+      await sync();
+
+      expect(engine.getCurrentSession()?.taskUnlisted).toBeUndefined();
+      expect(engine.getCurrentSession()?.taskLeftBecause).toBeUndefined();
+    });
   });
 
   it('Sync_AdHocSession_IsNeverCalledUnlisted', async () => {

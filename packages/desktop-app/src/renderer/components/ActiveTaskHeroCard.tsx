@@ -4,6 +4,7 @@ import { ActiveSessionDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
 import { formatSeconds } from '../utils/formatters';
 import { FinishSessionModal } from './FinishSessionModal';
+import { taskLeftLabel } from '../../shared/task-left';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -70,7 +71,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               className="mt-2 inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-xs font-mono"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>No longer assigned to you -- time is still logged</span>
+              <span>{taskLeftLabel(session.taskLeftBecause)} -- time is still logged</span>
             </div>
           )}
         </div>
