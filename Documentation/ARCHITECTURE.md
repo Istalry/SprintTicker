@@ -572,7 +572,7 @@ testing runs against your actual worklogs.
 
 | Table | Holds |
 | :--- | :--- |
-| `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app, or `local`, the old default, meaning not known |
+| `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app -- which the sync never deletes -- or `local`, the old default, meaning not known. Keys need not be unique |
 | `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text |
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
@@ -619,13 +619,17 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
    package. An open session takes its project's provider; `local`, the
    column's default and what every OpenProject project held, counts as not
    known and keeps the old rule.
+10. `project-key-not-unique` — rebuilds `projects` without `UNIQUE` on
+    `key`. Nothing reads a project by its key, and a second project with the
+    same one -- another provider's, one recreated under a new id, or one made
+    here -- failed to save, and the repository only logged it.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares
 counts either side (`db/migration-check.ts`): every worklog and every second
 kept, apart from worklogs written for recovered sessions; every orphaned task id
 given a task; at most one open session; no foreign key violation; no row of
-the provider queue lost. It also reports how many queued sends are tied to
+the provider queue lost, no project lost. It also reports how many queued sends are tied to
 their worklog. The rules
 name no migration, so a new one is held to them unchanged. The tests prove the
 migrations on invented data; this proves them on data nobody invented.
@@ -741,7 +745,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2048 tests across 102 files, in two projects: `main` in Node for
+Vitest, 2057 tests across 103 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

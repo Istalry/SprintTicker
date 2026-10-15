@@ -562,4 +562,34 @@ describe('Schema Migrations', () => {
       expect(providerOf('s2')).toBeNull();
     });
   });
+
+  describe('migration 10: a project key is not unique', () => {
+    const insert = (id: string, key: string, providerId: string) =>
+      db.prepare(
+        "INSERT INTO projects (id, key, name, provider_id, created_at_utc) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00.000Z')"
+      ).run(id, key, `Project ${id}`, providerId);
+
+    it('Migration010_ExistingProjects_AreKeptAsTheyWere', () => {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 9)) migration.up(db);
+      db.pragma('user_version = 9');
+      insert('10000', 'WEB', 'jira');
+      insert('MINE', 'MINE', 'sprintticker');
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT id, key, name, provider_id FROM projects ORDER BY id').all()).toEqual([
+        { id: '10000', key: 'WEB', name: 'Project 10000', provider_id: 'jira' },
+        { id: 'MINE', key: 'MINE', name: 'Project MINE', provider_id: 'sprintticker' }
+      ]);
+    });
+
+    it('Migration010_FromThenOn_TwoProjectsMayShareAKey', () => {
+      // A Jira WEB and an OpenProject web, or one made here: the second used
+      // to fail to save, silently.
+      runMigrations(db);
+      insert('10000', 'WEB', 'jira');
+
+      expect(() => insert('WEB', 'WEB', 'sprintticker')).not.toThrow();
+    });
+  });
 });

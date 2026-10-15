@@ -84,6 +84,20 @@ describe('checkMigration', () => {
     expect(report.problems).toEqual(['The provider queue went from 1 rows to 0.']);
   });
 
+  it('CheckMigration_MigrationLosesAProject_SaysSo', () => {
+    // Migration 10 rebuilds the projects table: a row it dropped would take
+    // the project's name out of every list.
+    atVersion4WithDamage();
+    db.prepare("INSERT INTO projects (id, key, name, created_at_utc) VALUES ('P9', 'NINE', 'Nine', '2026-01-01T00:00:00.000Z')").run();
+
+    const report = checkMigration(db, d => {
+      runMigrations(d);
+      d.prepare("DELETE FROM projects WHERE id = 'P9'").run();
+    });
+
+    expect(report.problems).toEqual([expect.stringMatching(/^Projects went from \d+ to \d+\.$/)]);
+  });
+
   it('CheckMigration_BeforeTheQueueKnowsItsWorklogs_ReportsNoLinks', () => {
     atVersion4WithDamage();
 
@@ -179,6 +193,7 @@ describe('checkMigration', () => {
       worklogs: 0,
       trackedSeconds: 0,
       tasks: 0,
+      projects: 0,
       orphanWorklogs: 0,
       orphanTaskIds: 0,
       openSessions: 0,

@@ -696,7 +696,9 @@
       </tbody></table></div>
       <h4>📁 Projects &amp; Tasks</h4>
       <p>Your cached projects and their tasks, refreshed from the provider. Create local
-      ad-hoc tasks here for work that has no ticket.</p>
+      ad-hoc tasks here for work that has no ticket, or a project of your own: the
+      next sync leaves it alone, and time on its tasks stays on this machine like
+      ad-hoc time.</p>
       <div class="note"><span class="label">Ad-hoc time stays on this machine.</span>
       <p>It is in Work History like any other
       time, but it is never sent to your provider, which has no ticket to put it
@@ -2048,7 +2050,7 @@
       </thead>
       <tbody><tr>
       <td align="left"><code>projects</code></td>
-      <td align="left">Cached projects, with <code>provider_id</code>: the provider&#39;s own id, <code>sprintticker</code> for a project made in the app, or <code>local</code>, the old default, meaning not known</td>
+      <td align="left">Cached projects, with <code>provider_id</code>: the provider&#39;s own id, <code>sprintticker</code> for a project made in the app -- which the sync never deletes -- or <code>local</code>, the old default, meaning not known. Keys need not be unique</td>
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
@@ -2114,13 +2116,17 @@
       package. An open session takes its project&#39;s provider; <code>local</code>, the
       column&#39;s default and what every OpenProject project held, counts as not
       known and keeps the old rule.</li>
+      <li><code>project-key-not-unique</code> — rebuilds <code>projects</code> without <code>UNIQUE</code> on
+      <code>key</code>. Nothing reads a project by its key, and a second project with the
+      same one -- another provider&#39;s, one recreated under a new id, or one made
+      here -- failed to save, and the repository only logged it.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
       counts either side (<code>db/migration-check.ts</code>): every worklog and every second
       kept, apart from worklogs written for recovered sessions; every orphaned task id
       given a task; at most one open session; no foreign key violation; no row of
-      the provider queue lost. It also reports how many queued sends are tied to
+      the provider queue lost, no project lost. It also reports how many queued sends are tied to
       their worklog. The rules
       name no migration, so a new one is held to them unchanged. The tests prove the
       migrations on invented data; this proves them on data nobody invented.</p>
@@ -2220,7 +2226,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2048 tests across 102 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2057 tests across 103 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

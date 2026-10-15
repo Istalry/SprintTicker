@@ -77,6 +77,12 @@
   parked as a failure. This holds for projects made from now on: OpenProject
   projects did not say where they came from, so an older project made here
   cannot be told apart from one of theirs, and keeps the old behaviour.
+- **A project made in SprintTicker survives the next sync.** The sync
+  deleted every project its provider did not list, so one created in the
+  Projects panel was gone, with its tasks, minutes later.
+- **Two projects may share a key.** A Jira project recreated under a new id,
+  or one sharing a key with a project made here, failed to save -- logged,
+  never shown -- and was missing from every list (migration 10).
 - **Lunch starts even when Windows is locked.** Locked when lunch began, the
   task kept running behind Away and the lunch hour was logged as work. It
   stops at lunch now, Away or not, and comes back after; unlocking during

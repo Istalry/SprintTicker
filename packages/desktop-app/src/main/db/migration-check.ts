@@ -15,6 +15,8 @@ export interface MigrationCensus {
   worklogs: number;
   trackedSeconds: number;
   tasks: number;
+  /** Projects: none may be lost, and migration 10 rebuilds their table. */
+  projects: number;
   /** Worklogs whose task does not exist: history no name can be put to. */
   orphanWorklogs: number;
   /** Distinct task ids among those, each of which should become a task. */
@@ -92,6 +94,7 @@ export function takeCensus(db: Database.Database): MigrationCensus {
     worklogs: hasWorklogs ? count(db, 'SELECT COUNT(*) AS n FROM worklogs') : 0,
     trackedSeconds: hasWorklogs ? count(db, 'SELECT COALESCE(SUM(duration_seconds), 0) AS n FROM worklogs') : 0,
     tasks: hasTasks ? count(db, 'SELECT COUNT(*) AS n FROM tasks') : 0,
+    projects: tableExists(db, 'projects') ? count(db, 'SELECT COUNT(*) AS n FROM projects') : 0,
     orphanWorklogs: hasWorklogs ? count(db, `SELECT COUNT(*) AS n FROM worklogs ${orphanFilter}`) : 0,
     orphanTaskIds: hasWorklogs ? count(db, `SELECT COUNT(DISTINCT task_id) AS n FROM worklogs ${orphanFilter}`) : 0,
     openSessions: hasSessions
@@ -139,6 +142,9 @@ function findProblems(before: MigrationCensus, after: MigrationCensus, foreignKe
       `There are ${after.tasks} tasks; expected at least ${before.tasks + before.orphanTaskIds}, ` +
         `one for each existing task and each orphaned task id.`
     );
+  }
+  if (after.projects < before.projects) {
+    problems.push(`Projects went from ${before.projects} to ${after.projects}.`);
   }
   if (after.orphanWorklogs > 0) {
     problems.push(`${after.orphanWorklogs} worklogs still name a task that does not exist.`);

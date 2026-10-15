@@ -806,7 +806,7 @@ session, no second of tracked time lost, every orphaned task id named, at most
 one open session, no foreign key broken, no row of the provider queue
 lost. The rules are
 `src/main/db/migration-check.ts`, tested, and hold any future migration to the
-same standard; the script only copies and prints. Migrations 5, 6 and 8 were
+same standard; the script only copies and prints. Migrations 5, 6, 8 and 9 were
 checked this way. Ask the user to run it from an ordinary terminal and paste
 the output -- for the reason below, its answer from an agent's shell describes
 a file that may not be theirs.
@@ -852,7 +852,7 @@ the session when it starts (`active_sessions.provider_id`, migration 9),
 never to whichever provider is active when it ends: a Jira issue's numeric
 id sent to OpenProject can name a real, different work package. Two values
 are not providers. `sprintticker` is a project made in the app, whose time
-stays here. `local` is the column's old default, which every OpenProject
+stays here and which the sync never deletes. `local` is the column's old default, which every OpenProject
 project held because that adapter did not name itself -- it means *not
 known*, never "made here", and keeps the old rule of the active provider.
 An adapter's `getProjects` must set `providerId`.

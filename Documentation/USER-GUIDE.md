@@ -191,7 +191,9 @@ away, because that time does not come back.
 ### 📁 Projects & Tasks
 
 Your cached projects and their tasks, refreshed from the provider. Create local
-ad-hoc tasks here for work that has no ticket.
+ad-hoc tasks here for work that has no ticket, or a project of your own: the
+next sync leaves it alone, and time on its tasks stays on this machine like
+ad-hoc time.
 
 > [!NOTE]
 > **Ad-hoc time stays on this machine.** It is in Work History like any other

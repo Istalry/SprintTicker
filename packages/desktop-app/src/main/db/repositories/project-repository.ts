@@ -2,7 +2,7 @@ import { DatabaseConnection } from '../database-connection';
 import { retireTasks } from './task-repository';
 import { ProjectDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
-import { UNKNOWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
+import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
 
 /**
  * Repository layer for managing projects in SQLite.
@@ -165,9 +165,11 @@ export class ProjectRepository {
       // We need to dynamically build the query parameters
       const placeholders = safeProjectIds.map(() => '?').join(',');
       
-      // First find which projects we are going to delete, so we can delete their tasks too
-      const findStmt = db.prepare(`SELECT id FROM projects WHERE id NOT IN (${placeholders})`);
-      const projectsToDelete = findStmt.all(...safeProjectIds) as { id: string }[];
+      // First find which projects we are going to delete, so we can delete their tasks too.
+      // A project made here is never the provider's to list: it was deleted
+      // at every sync, with its tasks, minutes after the user created it.
+      const findStmt = db.prepare(`SELECT id FROM projects WHERE id NOT IN (${placeholders}) AND provider_id <> ?`);
+      const projectsToDelete = findStmt.all(...safeProjectIds, OWN_PROJECT_PROVIDER_ID) as { id: string }[];
 
       if (projectsToDelete.length === 0) return;
 

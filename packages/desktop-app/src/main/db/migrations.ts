@@ -425,6 +425,31 @@ const M009_SESSION_PROVIDER = `
    WHERE is_ad_hoc = 0;
 `;
 
+/**
+ * Migration 10: a project's key is no longer unique.
+ *
+ * Nothing reads a project by its key, and two providers -- or a provider and
+ * a project made here -- can each have a `WEB`. The constraint made the
+ * second one's save throw, which the repository logs and swallows, so that
+ * project was simply missing: for one sync when Jira recreated a project
+ * under a new id, and for good once a project made here held the key, since
+ * the sync no longer deletes those. SQLite cannot drop a constraint, so the
+ * table is rebuilt; nothing references it by foreign key.
+ */
+const M010_PROJECT_KEY_NOT_UNIQUE = `
+  CREATE TABLE projects_new (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL,
+      name TEXT NOT NULL,
+      provider_id TEXT NOT NULL DEFAULT 'local',
+      created_at_utc TEXT NOT NULL
+  );
+  INSERT INTO projects_new (id, key, name, provider_id, created_at_utc)
+       SELECT id, key, name, provider_id, created_at_utc FROM projects;
+  DROP TABLE projects;
+  ALTER TABLE projects_new RENAME TO projects;
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -435,7 +460,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 6, name: 'one-open-session', up: m006OneOpenSession },
   { version: 7, name: 'task-description', up: db => db.exec(M007_TASK_DESCRIPTION) },
   { version: 8, name: 'worklog-remote-identity', up: db => db.exec(M008_WORKLOG_REMOTE_IDENTITY) },
-  { version: 9, name: 'session-provider', up: db => db.exec(M009_SESSION_PROVIDER) }
+  { version: 9, name: 'session-provider', up: db => db.exec(M009_SESSION_PROVIDER) },
+  { version: 10, name: 'project-key-not-unique', up: db => db.exec(M010_PROJECT_KEY_NOT_UNIQUE) }
 ];
 
 /** Schema version a fully migrated database reports. */
