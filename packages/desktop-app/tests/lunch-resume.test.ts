@@ -177,6 +177,67 @@ describe('Lunch and the session it stops', () => {
 
       expect(engine.getCurrentSession()?.taskId).toBe(A.id);
     });
+
+    it('EvaluateSchedule_LockedWhenLunchStarts_StopsTheSessionAndKeepsItForAfter', () => {
+      // Lunch never leaves Away, so it used to leave the session too: it ran
+      // on behind the lock, and the lunch hour was logged as work.
+      startA();
+      at(12, 20);
+      service.enterAwayMode();
+
+      check(12, 31);
+
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(priority.getUserMode()).toBe('AWAY');
+      at(13, 40);
+      service.exitAwayMode();
+      check(13, 41);
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+    });
+
+    it('ExitAwayMode_DuringLunch_ShowsLunchStraightAway', () => {
+      // WORK first and LUNCH at the next check drew the screen twice.
+      startA();
+      at(12, 20);
+      service.enterAwayMode();
+      check(12, 31);
+      renderer.setContextMode.mockClear();
+
+      at(12, 50);
+      service.exitAwayMode();
+
+      expect(priority.getUserMode()).toBe('LUNCH');
+      expect(renderer.setContextMode.mock.calls).toEqual([['LUNCH']]);
+    });
+
+    it('ExitAwayMode_AsleepWhenLunchStarted_StopsTheSessionThen', () => {
+      // No check ran over the start of lunch: the machine was asleep.
+      startA();
+      at(12, 20);
+      service.enterAwayMode();
+      at(12, 50);
+
+      service.exitAwayMode();
+
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(priority.getUserMode()).toBe('LUNCH');
+      check(13, 31);
+      expect(engine.getCurrentSession()?.taskId).toBe(A.id);
+    });
+
+    it('ExitAwayMode_DuringALunchWorkedThrough_GoesBackToWork', () => {
+      check(12, 35);
+      startA();
+      at(12, 40);
+      service.enterAwayMode();
+      check(12, 41);
+      at(12, 50);
+
+      service.exitAwayMode();
+
+      expect(priority.getUserMode()).toBe('WORK');
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+    });
   });
 
   describe('working through lunch', () => {
@@ -239,8 +300,8 @@ describe('Lunch and the session it stops', () => {
     });
 
     it('StartTask_DuringLunchHoursAfterAwayEnded_TheNextCheckDoesNotStopIt', () => {
-      // Unlocked mid-lunch: WORK until the next check enters LUNCH, which
-      // would stop a session started in between.
+      // Unlocked mid-lunch: back into LUNCH, and a session started then is
+      // working through it -- the next check must not stop it.
       check(12, 35);
       service.enterAwayMode();
       at(12, 50);

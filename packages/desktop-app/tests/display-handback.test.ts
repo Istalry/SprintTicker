@@ -310,6 +310,20 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expect(lock()).toBeNull();
       expectSettledScreen(desk);
     });
+
+    it('LunchStartsWhileLocked_UnlockedDuringIt_TheSandwichNotTheSession', async () => {
+      // Locked when lunch began: the session stops behind Away, and unlocking
+      // goes straight to LUNCH, never through an empty WORK screen.
+      await play('startTask', SETTLE_MS, 'awayStart', SETTLE_MS, 'lunchStartUnderAway', SETTLE_MS);
+      expect(lock()).toBe('awayModePriority');
+
+      await play('awayEndIntoLunch', SETTLE_MS);
+      expect(desk.mode).toBe('LUNCH');
+      expectSettledScreen(desk);
+
+      await play('lunchEnd', SETTLE_MS);
+      expectSettledScreen(desk);
+    });
   });
 
   /**

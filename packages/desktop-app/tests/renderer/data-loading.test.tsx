@@ -96,6 +96,20 @@ describe('CeremoniesView auto-save', () => {
     );
   });
 
+  it('LunchEndBeforeItsStart_SaysSoAndSavesNothing', async () => {
+    const bridge = installElectronApi({ getScheduleSettings: vi.fn().mockResolvedValue(STORED) });
+    render(<CeremoniesView />);
+    const end = (await screen.findByLabelText('Lunch End Time')) as HTMLInputElement;
+    await waitFor(() => expect(end.value).toBe(STORED.lunchEnd));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    fireEvent.change(end, { target: { value: '11:00' } });
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Lunch must end after it starts/);
+    await new Promise(r => setTimeout(r, AUTO_SAVE_DELAY_MS * 2));
+    expect(bridge.api.saveScheduleSettings).not.toHaveBeenCalled();
+  });
+
   it('AskAboutForgottenSessions_StoredOff_ShowsOffAndSavesTheChange', async () => {
     // The panel writes the whole schedule: a field it does not carry is lost.
     const bridge = installElectronApi({

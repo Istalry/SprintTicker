@@ -83,3 +83,26 @@ export function normalizeScheduleSettings(
     autoDismissSeconds: promptTimeoutSeconds
   };
 }
+
+/** `HH:MM`, 00:00 to 23:59, as a time input holds it. */
+const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Why a schedule cannot be kept, or null when it can. Shared, so the
+ * Ceremonies view refuses what main would.
+ *
+ * Lunch must start before it ends, on one day. The scheduler compares
+ * minutes of the day, so a window across midnight -- or one whose end comes
+ * first -- never matched any minute: lunch silently never began.
+ */
+export function checkScheduleSettings(settings: ScheduleSettingsDTO): string | null {
+  const s = normalizeScheduleSettings(settings);
+  const times: Array<[string, string | undefined]> = [
+    ['Stand-up', s.standupTime], ['Lunch start', s.lunchStartTime], ['Lunch end', s.lunchEndTime], ['End of day', s.eodWrapUpTime]
+  ];
+  for (const [name, value] of times) {
+    if (!value || !CLOCK_TIME.test(value)) return `${name} must be a time of day, HH:MM.`;
+  }
+  if (s.lunchStartTime! >= s.lunchEndTime!) return 'Lunch must end after it starts, on the same day.';
+  return null;
+}

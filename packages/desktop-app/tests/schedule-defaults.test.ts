@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_SCHEDULE_SETTINGS,
+  checkScheduleSettings,
   normalizeScheduleSettings
 } from '../src/shared/schedule-defaults';
 
@@ -73,5 +74,25 @@ describe('Schedule Defaults Unit Tests', () => {
     for (const t of Object.values(DEFAULT_SCHEDULE_SETTINGS)) {
       if (typeof t === 'string') expect(t).toMatch(/^\d{2}:(00|30)$/);
     }
+  });
+});
+
+describe('checkScheduleSettings', () => {
+  it('CheckScheduleSettings_TheDefaults_AreKept', () => {
+    expect(checkScheduleSettings({})).toBeNull();
+  });
+
+  it.each([
+    ['ends before it starts', '13:30', '12:30'],
+    ['ends as it starts', '12:30', '12:30'],
+    ['crosses midnight', '23:30', '00:30']
+  ])('CheckScheduleSettings_LunchThat%s_IsRefused', (_label, start, end) => {
+    // The scheduler compares minutes of one day: such a window never matched
+    // any of them, and lunch silently never began.
+    expect(checkScheduleSettings({ lunchStartTime: start, lunchEndTime: end })).toMatch(/Lunch must end after it starts/);
+  });
+
+  it.each([['standupTime', 'Stand-up'], ['eodWrapUpTime', 'End of day']])('CheckScheduleSettings_%sNotATime_IsRefused', (field, name) => {
+    expect(checkScheduleSettings({ [field]: '25:00' })).toBe(`${name} must be a time of day, HH:MM.`);
   });
 });

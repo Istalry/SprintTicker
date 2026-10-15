@@ -928,7 +928,13 @@
       moved -- is not restarted without asking. The window asks <strong>Resume after
       lunch?</strong>, and the bar shows <strong>NOT YOURS / RESUME IT?</strong>: OK resumes it, BACK
       leaves it. Starting another task answers no.</li>
+      <li><strong>Locked when lunch begins.</strong> The bar stays on Away, but your task still
+      stops at the start of lunch -- it does not count the break as work because
+      Windows was locked. Unlock during lunch and the bar goes straight to Lunch;
+      unlock after it and your task starts again.</li>
       </ul>
+      <p>Lunch must start and end on the same day, start first: the Ceremonies panel
+      says so and saves nothing until it does. A window across midnight never began.</p>
       <h4>🔔 Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p align="center">
@@ -2214,7 +2220,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2034 tests across 102 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2048 tests across 102 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

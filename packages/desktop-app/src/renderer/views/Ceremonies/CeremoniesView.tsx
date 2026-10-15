@@ -3,7 +3,7 @@ import { Calendar, Clock, Moon, Play, ShieldAlert } from 'lucide-react';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
-import { DEFAULT_SCHEDULE_SETTINGS } from '../../../shared/schedule-defaults';
+import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings } from '../../../shared/schedule-defaults';
 
 export const CeremoniesView: React.FC = () => {
   const [standupTime, setStandupTime] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.standupTime);
@@ -41,22 +41,27 @@ export const CeremoniesView: React.FC = () => {
     }
   }, []);
 
+  const settings: ScheduleSettingsDTO = {
+    standupTime,
+    lunchStart,
+    lunchEnd,
+    lunchStartTime: lunchStart,
+    lunchEndTime: lunchEnd,
+    eodTime,
+    eodWrapUpTime: eodTime,
+    autoDismissSeconds: timeoutSeconds,
+    promptTimeoutSeconds: timeoutSeconds,
+    shutdownByDefault,
+    eodShutdownByDefault: shutdownByDefault,
+    askAboutForgottenSessions: askAboutForgotten
+  };
+  // Checked here as main checks it, so a half-typed lunch window is shown as
+  // wrong rather than saved and silently never matching any minute.
+  const refusal = checkScheduleSettings(settings);
+
   const handleSave = async () => {
+    if (refusal) throw new Error(refusal);
     if (window.electronAPI?.saveScheduleSettings) {
-      const settings: ScheduleSettingsDTO = {
-        standupTime,
-        lunchStart,
-        lunchEnd,
-        lunchStartTime: lunchStart,
-        lunchEndTime: lunchEnd,
-        eodTime,
-        eodWrapUpTime: eodTime,
-        autoDismissSeconds: timeoutSeconds,
-        promptTimeoutSeconds: timeoutSeconds,
-        shutdownByDefault,
-        eodShutdownByDefault: shutdownByDefault,
-        askAboutForgottenSessions: askAboutForgotten
-      };
       await window.electronAPI.saveScheduleSettings(settings);
     }
   };
@@ -143,8 +148,9 @@ export const CeremoniesView: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-text-secondary mb-1">Lunch Start Time</label>
+              <label htmlFor="lunch-start" className="block text-xs text-text-secondary mb-1">Lunch Start Time</label>
               <input
+                id="lunch-start"
                 type="time"
                 value={lunchStart}
                 onChange={e => setLunchStart(e.target.value)}
@@ -153,8 +159,9 @@ export const CeremoniesView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs text-text-secondary mb-1">Lunch End Time</label>
+              <label htmlFor="lunch-end" className="block text-xs text-text-secondary mb-1">Lunch End Time</label>
               <input
+                id="lunch-end"
                 type="time"
                 value={lunchEnd}
                 onChange={e => setLunchEnd(e.target.value)}
@@ -162,6 +169,7 @@ export const CeremoniesView: React.FC = () => {
               />
             </div>
           </div>
+          {refusal && <p role="alert" className="text-xs text-accent-red">{refusal} Not saved.</p>}
         </div>
 
         {/* Card 3: Dialog Prompt Timeout Limits */}

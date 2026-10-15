@@ -49,6 +49,8 @@ export type EventName =
   /** The bar's task picker, opened with nothing running, and BACK out of it. */
   | 'openPicker' | 'closePicker'
   | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd'
+  /** Lunch beginning under Away, which stops the session and stays Away; and unlocking into it. */
+  | 'lunchStartUnderAway' | 'awayEndIntoLunch'
   /** The bar unreachable, back, or rebooted while unreachable. */
   | 'barDrop' | 'barBack' | 'barReboot';
 
@@ -262,6 +264,16 @@ export class Desk {
         this.rebootingUntil = Date.now() + REBOOT_MS;
         return;
       case 'lunchStart': return this.enterMode('LUNCH');
+      case 'lunchStartUnderAway':
+        if (this.mode !== 'AWAY' || this.session?.status !== 'TRACKING') return;
+        // The engine's subscriber draws the empty session; no scene, since
+        // the user did not stop it.
+        this.session = null;
+        this.renderer.renderActiveSession(null);
+        return;
+      case 'awayEndIntoLunch':
+        if (this.mode !== 'AWAY') return;
+        return this.enterMode('LUNCH');
       case 'awayStart': return this.enterMode('AWAY');
       case 'lunchEnd':
       case 'awayEnd':

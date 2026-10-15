@@ -77,6 +77,13 @@
   parked as a failure. This holds for projects made from now on: OpenProject
   projects did not say where they came from, so an older project made here
   cannot be told apart from one of theirs, and keeps the old behaviour.
+- **Lunch starts even when Windows is locked.** Locked when lunch began, the
+  task kept running behind Away and the lunch hour was logged as work. It
+  stops at lunch now, Away or not, and comes back after; unlocking during
+  lunch shows Lunch at once rather than the work screen first.
+- **A lunch window that cannot happen is refused.** One ending before it
+  started -- or across midnight -- never matched any minute, so lunch
+  silently never began. The Ceremonies panel says why and saves nothing.
 - **Lunch never undoes what you do.** A task started or resumed during lunch
   ran under the sandwich, and if you stopped it before lunch ended, the task
   lunch had stopped came back anyway. Starting or resuming a task during

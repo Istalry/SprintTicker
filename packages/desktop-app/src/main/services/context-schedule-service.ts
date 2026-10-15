@@ -142,6 +142,11 @@ export class ContextScheduleService {
       try {
         if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
           this.enterLunchMode();
+        } else if (isLunchTime && currentMode === 'AWAY' && !workingThroughLunch) {
+          // Locked when lunch began. Lunch never leaves Away, but the session
+          // still stops: it ran on behind the lock, and the lunch hour was
+          // logged as work. Unlocking during the break shows LUNCH.
+          this.stopForLunch();
         } else if (!isLunchTime && currentMode === 'LUNCH') {
           this.exitLunchMode();
         } else if (!isLunchTime && currentMode === 'WORK' && currentMinutes >= lunch.endMins) {
@@ -261,6 +266,17 @@ export class ContextScheduleService {
   /// restart during lunch, or Away ending in the middle of it.
   /// </summary>
   public enterLunchMode(): void {
+    this.stopForLunch();
+
+    this._priorityEngine.setUserMode('LUNCH');
+    this._renderer.setContextMode('LUNCH');
+  }
+
+  /**
+   * Stops a running session for lunch and keeps it to restart afterwards;
+   * the mode is the caller's. Nothing running leaves the stored resume alone.
+   */
+  private stopForLunch(): void {
     const session = this._engine.getCurrentSession();
     if (session && session.status === 'TRACKING') {
       const resume: LunchResume = {
@@ -274,9 +290,6 @@ export class ContextScheduleService {
       this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, resume);
       this._engine.stopSession('Auto-completed for Lunch Break split', false);
     }
-
-    this._priorityEngine.setUserMode('LUNCH');
-    this._renderer.setContextMode('LUNCH');
   }
 
   /// <summary>
@@ -323,8 +336,17 @@ export class ContextScheduleService {
 
   /// <summary>
   /// Exits AWAY mode when Windows unlocks or resumes.
+  ///
+  /// Into LUNCH, not WORK, when that is the hour: WORK first and LUNCH at the
+  /// next check drew the screen twice, and a session started in between was
+  /// read as working through lunch. A session still running -- the machine
+  /// slept through lunch's start, so no check stopped it -- stops now.
   /// </summary>
   public exitAwayMode(): void {
+    if (this._priorityEngine.getUserMode() === 'AWAY' && this.isLunchHour() && !this.isWorkingThroughLunch()) {
+      this.enterLunchMode();
+      return;
+    }
     this._priorityEngine.setUserMode('WORK');
     this._renderer.setContextMode('WORK');
   }
@@ -396,6 +418,11 @@ export class ContextScheduleService {
     const mode = this._priorityEngine.getUserMode();
     if (mode === 'LUNCH') return true;
     if (mode !== 'WORK') return false;
+    return this.isLunchHour();
+  }
+
+  /** Whether now falls in the configured lunch window, whatever the mode. */
+  private isLunchHour(): boolean {
     const settings = normalizeScheduleSettings(
       this._settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {})
     );
@@ -403,6 +430,11 @@ export class ContextScheduleService {
     const now = new Date();
     const minutes = now.getHours() * 60 + now.getMinutes();
     return minutes >= lunch.startMins && minutes < lunch.endMins;
+  }
+
+  /** The user started work during today's lunch, so it does not start again. */
+  private isWorkingThroughLunch(): boolean {
+    return this._settingsRepo.getSetting<string | null>(ContextScheduleService.LUNCH_SKIPPED_KEY, null) === localDateKey(new Date());
   }
 
   /** Ends the question: the stored resume, the bar's lock and the window's dialog, around `between`. */

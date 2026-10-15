@@ -33,7 +33,7 @@ import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 import { parseTaskScope } from '../../shared/task-scope';
-import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
+import { normalizeScheduleSettings, checkScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
 import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
@@ -501,6 +501,8 @@ export class IPCHandlerRegistry {
       // Normalised on the way in as well. The Ceremonies view populates both
       // spellings by hand today; doing it here means a future caller that
       // forgets one cannot leave the two readers disagreeing.
+      const refusal = checkScheduleSettings(settings);
+      if (refusal) throw new ArgumentException(refusal, 'settings');
       this.settingsRepo.setSetting('schedule_settings', normalizeScheduleSettings(settings));
       this.contextScheduleService.evaluateSchedule();
       return true;

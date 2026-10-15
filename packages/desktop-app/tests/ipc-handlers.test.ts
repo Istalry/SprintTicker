@@ -194,6 +194,29 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('the schedule', () => {
+    it('SaveSchedule_LunchEndingBeforeItStarts_IsRefusedAndNothingIsWritten', async () => {
+      const evaluateSchedule = vi.fn();
+      build({ contextScheduleService: { evaluateSchedule } });
+
+      await expect(
+        invoke(IPCChannel.SAVE_SCHEDULE_SETTINGS, { lunchStartTime: '13:30', lunchEndTime: '12:30' })
+      ).rejects.toThrow(/Lunch must end after it starts/);
+      expect(settingsRepo.getSetting('schedule_settings', null)).toBeNull();
+      expect(evaluateSchedule).not.toHaveBeenCalled();
+    });
+
+    it('SaveSchedule_AValidOne_IsKeptAndAppliedAtOnce', async () => {
+      const evaluateSchedule = vi.fn();
+      build({ contextScheduleService: { evaluateSchedule } });
+
+      await invoke(IPCChannel.SAVE_SCHEDULE_SETTINGS, { lunchStartTime: '12:00', lunchEndTime: '12:45' });
+
+      expect(settingsRepo.getSetting<{ lunchEnd: string }>('schedule_settings', { lunchEnd: '' }).lunchEnd).toBe('12:45');
+      expect(evaluateSchedule).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('correcting a worklog', () => {
     const correction = { durationSeconds: 3600, startedAtUtc: '2026-10-13T09:00:00.000Z', comment: 'Pairing' };
 

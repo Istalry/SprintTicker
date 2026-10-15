@@ -603,6 +603,14 @@ changing it:
   own restart runs after the switch to WORK, which is how it is told apart.
   Anything that restarts a task on the user's behalf checks
   `TaskRepository.isListed` first and asks when it is not.
+- **Lunch stops the session under Away too.** Lunch never *leaves* Away --
+  Away outranks it -- and that used to mean it never began at all: locked at
+  12:30, the session ran on and the break was logged as work. The check now
+  stops it and keeps the restart while staying Away, and `exitAwayMode`
+  goes straight to LUNCH during the lunch hours (stopping a session the
+  machine slept through the start of), never WORK first: WORK and then LUNCH
+  at the next check is two renders, and a session started in between reads
+  as working through lunch.
 
 The app posts toasts of its own (`ProviderEventService`), and two things about
 them are traps:
