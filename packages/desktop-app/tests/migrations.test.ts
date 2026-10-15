@@ -508,4 +508,58 @@ describe('Schema Migrations', () => {
       ).toThrow(/CHECK/);
     });
   });
+
+  describe('migration 9: a session knows its provider', () => {
+    /** A version-8 database with a Jira project, an OpenProject one as the old adapter saved it, and an ad-hoc one. */
+    function atVersion8(): void {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 8)) migration.up(db);
+      db.pragma('user_version = 8');
+      const project = db.prepare(
+        "INSERT INTO projects (id, key, name, provider_id, created_at_utc) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00.000Z')"
+      );
+      project.run('J', 'J', 'Jira project', 'jira');
+      project.run('OP', 'OP', 'OpenProject project', 'local');
+    }
+
+    function session(id: string, projectId: string, adHoc = false, status = 'COMPLETED'): void {
+      db.prepare(
+        `INSERT INTO active_sessions (id, project_id, task_id, task_key, task_title, is_ad_hoc, start_time_utc, status)
+         VALUES (?, ?, 't', 'T-1', 'Task', ?, '2026-03-01T09:00:00.000Z', ?)`
+      ).run(id, projectId, adHoc ? 1 : 0, status);
+    }
+
+    const providerOf = (id: string) =>
+      db.prepare<[string], { provider_id: string | null }>('SELECT provider_id FROM active_sessions WHERE id = ?').get(id)?.provider_id;
+
+    it('Migration009_SessionOnAJiraProject_TakesJira', () => {
+      atVersion8();
+      session('s1', 'J', false, 'TRACKING');
+
+      runMigrations(db);
+
+      expect(providerOf('s1')).toBe('jira');
+    });
+
+    it('Migration009_ProjectHoldingTheOldDefault_IsNotKnown', () => {
+      // 'local' is what every OpenProject project held: it is not "made here",
+      // and reading it so would keep a running OpenProject session's time back.
+      atVersion8();
+      session('s1', 'OP', false, 'TRACKING');
+
+      runMigrations(db);
+
+      expect(providerOf('s1')).toBeNull();
+    });
+
+    it('Migration009_AdHocOrProjectGone_IsNotKnown', () => {
+      atVersion8();
+      session('s1', 'J', true);
+      session('s2', 'GONE');
+
+      runMigrations(db);
+
+      expect(providerOf('s1')).toBeNull();
+      expect(providerOf('s2')).toBeNull();
+    });
+  });
 });

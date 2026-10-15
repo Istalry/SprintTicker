@@ -2,6 +2,7 @@ import { DatabaseConnection } from '../database-connection';
 import { retireTasks } from './task-repository';
 import { ProjectDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
+import { UNKNOWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
 
 /**
  * Repository layer for managing projects in SQLite.
@@ -85,10 +86,22 @@ export class ProjectRepository {
           provider_id = excluded.provider_id
       `);
 
-      stmt.run(project.id, project.key, project.name, project.providerId || 'local', new Date().toISOString());
+      stmt.run(project.id, project.key, project.name, project.providerId || UNKNOWN_PROJECT_PROVIDER_ID, new Date().toISOString());
     } catch (err) {
       console.warn('[ProjectRepository] Failed to save project:', err);
     }
+  }
+
+  /**
+   * The provider a project came from, or null when there is no such project.
+   * A session reads it when it starts, so that its time goes back to where
+   * its task came from (migration 9).
+   */
+  public getProviderIdOf(projectId: string): string | null {
+    const row = this.dbConn.getDb()
+      .prepare<[string], { provider_id: string }>('SELECT provider_id FROM projects WHERE id = ?')
+      .get(projectId);
+    return row?.provider_id ?? null;
   }
 
   /**

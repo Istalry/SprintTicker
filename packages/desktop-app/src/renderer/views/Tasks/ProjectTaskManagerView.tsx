@@ -6,6 +6,7 @@ import { FinishSessionModal } from '../../components/FinishSessionModal';
 import { ProjectFilterToggle } from '../../components/ProjectFilterToggle';
 import { useOnlyProjectsWithTasks } from '../../hooks/useOnlyProjectsWithTasks';
 import { filterProjectsWithTasks, firstProjectWithTasks } from '../../../shared/project-filter';
+import { OWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
 
 export const ProjectTaskManagerView: React.FC = () => {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
@@ -135,7 +136,7 @@ export const ProjectTaskManagerView: React.FC = () => {
         id,
         key: id,
         name: newProjName.trim(),
-        providerId: 'local'
+        providerId: OWN_PROJECT_PROVIDER_ID
       });
       setNewProjKey('');
       setNewProjName('');

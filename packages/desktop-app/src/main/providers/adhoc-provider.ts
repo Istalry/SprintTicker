@@ -18,7 +18,7 @@ export class AdHocProvider implements ITaskProvider {
   }
 
   public async getProjects(): Promise<ProjectDTO[]> {
-    return [{ id: ADHOC_PROJECT_ID, key: ADHOC_PROJECT_ID, name: 'Custom Ad-Hoc / Misc Overhead' }];
+    return [{ id: ADHOC_PROJECT_ID, key: ADHOC_PROJECT_ID, name: 'Custom Ad-Hoc / Misc Overhead', providerId: this.providerId }];
   }
 
   public async getTasks(projectId: string): Promise<TaskDTO[]> {

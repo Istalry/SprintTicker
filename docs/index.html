@@ -2042,7 +2042,7 @@
       </thead>
       <tbody><tr>
       <td align="left"><code>projects</code></td>
-      <td align="left">Cached projects, with <code>provider_id</code></td>
+      <td align="left">Cached projects, with <code>provider_id</code>: the provider&#39;s own id, <code>sprintticker</code> for a project made in the app, or <code>local</code>, the old default, meaning not known</td>
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
@@ -2050,7 +2050,7 @@
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
-      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index</td>
+      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index. <code>provider_id</code> is where its time goes, read from its project when it starts</td>
       </tr>
       <tr>
       <td align="left"><code>paused_intervals</code></td>
@@ -2101,6 +2101,13 @@
       remote deletion still has to name the entry. Existing rows are tied to
       the worklog written beside them -- same task, start and duration -- only
       where the match is one to one; nothing sent before it has a remote id.</li>
+      <li><code>session-provider</code> — a session records the provider its task came from,
+      and its time and status changes go there. They went to whichever provider
+      was active when it ended, so switching provider mid-session sent a Jira
+      issue&#39;s id to OpenProject, where a numeric id can name a different work
+      package. An open session takes its project&#39;s provider; <code>local</code>, the
+      column&#39;s default and what every OpenProject project held, counts as not
+      known and keeps the old rule.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
@@ -2133,8 +2140,10 @@
       <p>Start to finish, across every component:</p>
       <ol>
       <li><strong>You pick a task</strong> — from the UI, or with the wheel on the bar.</li>
-      <li><code>TimeTrackingEngine.startTask()</code> writes <code>active_sessions</code>, and asks the
-      provider to move the issue to its configured in-progress status.</li>
+      <li><code>TimeTrackingEngine.startTask()</code> writes <code>active_sessions</code>, with the
+      provider the task&#39;s project came from, and asks that provider to move the
+      issue to its configured in-progress status. A project made in the app has
+      none: its time stays in local history.</li>
       <li>The engine notifies subscribers → <code>DisplayRenderer</code> composes the tracker
       screen → <code>PriorityPreemptionEngine</code> scores it at <code>activeTrackerPriority</code>
       (45) and, if nothing outranks it, grants the display → <code>BusyBarDriver</code>
@@ -2142,8 +2151,9 @@
       <li><strong>A Slack notification arrives.</strong> The listener matches it against your rules,
       the engine scores it at 65 or 70, and it preempts the tracker — unless you
       are at Lunch, whose rule sits above both.</li>
-      <li><strong>You finish.</strong> The engine writes a local worklog, checks
-      <code>minimumLoggableSeconds</code>, enqueues the row and wakes the worker.</li>
+      <li><strong>You finish.</strong> The engine writes a local worklog, checks the session&#39;s
+      provider&#39;s <code>minimumLoggableSeconds</code>, enqueues the row for that provider --
+      not the one active now -- and wakes the worker.</li>
       <li>The worker claims the row atomically, POSTs it, and marks it <code>SYNCED</code> — or
       parks it with the server&#39;s own message if the failure is permanent, or backs
       off if it is not.</li>
@@ -2204,7 +2214,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2021 tests across 101 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2034 tests across 102 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

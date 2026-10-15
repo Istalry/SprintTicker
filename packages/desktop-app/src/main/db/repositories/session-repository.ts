@@ -38,6 +38,7 @@ export class SessionRepository {
       status: 'TRACKING' | 'PAUSED' | 'COMPLETED';
       total_paused_seconds: number;
       last_pause_start_utc: string | null;
+      provider_id: string | null;
     }>('SELECT * FROM active_sessions WHERE status IN (\'TRACKING\', \'PAUSED\') ORDER BY start_time_utc DESC LIMIT 1');
 
     const row = stmt.get();
@@ -66,7 +67,8 @@ export class SessionRepository {
       startTimeUtc: row.start_time_utc,
       totalPausedSeconds: effectivePausedSeconds,
       elapsedSeconds,
-      lastPauseStartUtc: row.last_pause_start_utc || undefined
+      lastPauseStartUtc: row.last_pause_start_utc || undefined,
+      ...(row.provider_id ? { providerId: row.provider_id } : {})
     };
   }
 
@@ -80,8 +82,9 @@ export class SessionRepository {
 
     const stmt = this.dbConn.getDb().prepare(`
       INSERT INTO active_sessions (
-        id, project_id, task_id, task_key, task_title, is_ad_hoc, start_time_utc, status, total_paused_seconds, last_pause_start_utc
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, project_id, task_id, task_key, task_title, is_ad_hoc, start_time_utc, status, total_paused_seconds,
+        last_pause_start_utc, provider_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         start_time_utc = excluded.start_time_utc,
@@ -99,7 +102,8 @@ export class SessionRepository {
       session.startTimeUtc,
       session.status,
       session.totalPausedSeconds,
-      session.lastPauseStartUtc || null
+      session.lastPauseStartUtc || null,
+      session.providerId ?? null
     );
   }
 

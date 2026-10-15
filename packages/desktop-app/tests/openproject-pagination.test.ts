@@ -265,6 +265,8 @@ describe('OpenProject collection pagination', () => {
       const projects = await provider.getProjects();
 
       expect(projects.map(p => p.key)).toEqual(['alpha', 'beta', 'gamma']);
+      // Unnamed, the rows took the column's default and looked made here.
+      expect(projects.every(p => p.providerId === 'openproject')).toBe(true);
     });
 
     it('GetTasks_TwoPages_ReturnsWorkPackagesFromBothPages', async () => {

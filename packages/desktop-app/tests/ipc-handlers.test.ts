@@ -36,6 +36,7 @@ import { IPCChannel } from '../src/shared/ipc-channels';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import type { PriorityRule, UpdateStatusDTO } from '../src/shared/dtos';
 import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
 
 /**
  * The IPC handlers as the renderer sees them: a channel, a payload, an answer,
@@ -360,6 +361,13 @@ describe('IPC handlers', () => {
       await invoke(IPCChannel.DELETE_PROJECT, {});
 
       expect(projects().getAllProjects()).toHaveLength(1);
+    });
+
+    it('CreateProject_WhateverTheCallerSays_IsMadeHere', async () => {
+      // Its tasks exist nowhere else: their time must never be queued.
+      await invoke(IPCChannel.CREATE_PROJECT, { id: 'MINE', key: 'MINE', name: 'Mine', providerId: 'jira' });
+
+      expect(projects().getProviderIdOf('MINE')).toBe(OWN_PROJECT_PROVIDER_ID);
     });
 
     it('DeleteProject_GivenAnObject_DeletesIt', async () => {

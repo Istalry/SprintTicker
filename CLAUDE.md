@@ -839,6 +839,16 @@ confirmed is ever sent. Presence is read *before* it is recorded, at every
 check: recorded first, the evidence of the absence is gone. A worklog belongs
 to the day it began (`started_at_utc`), as the providers file it.
 
+**A session's time goes to the provider its task came from**, recorded on
+the session when it starts (`active_sessions.provider_id`, migration 9),
+never to whichever provider is active when it ends: a Jira issue's numeric
+id sent to OpenProject can name a real, different work package. Two values
+are not providers. `sprintticker` is a project made in the app, whose time
+stays here. `local` is the column's old default, which every OpenProject
+project held because that adapter did not name itself -- it means *not
+known*, never "made here", and keeps the old rule of the active provider.
+An adapter's `getProjects` must set `providerId`.
+
 **A correction to a sent worklog goes through the queue, behind its send.**
 `WorklogCorrectionService` rewrites the local row and queues an `UPDATE` or
 `DELETE` that names the `CREATE` row it corrects (`origin_sync_id`);

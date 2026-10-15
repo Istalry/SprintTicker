@@ -146,7 +146,10 @@ export class OpenProjectProvider implements ITaskProvider {
       .map(p => ({
         id: (p.id as number | string).toString(),
         key: (p.identifier as string) || `proj_${p.id}`,
-        name: (p.name as string) || 'Untitled Project'
+        name: (p.name as string) || 'Untitled Project',
+        // Without it the row took the column's default, 'local', and nothing
+        // could tell an OpenProject project from one made in SprintTicker.
+        providerId: this.providerId
       }));
   }
 

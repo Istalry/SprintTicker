@@ -11,6 +11,7 @@ import { workedSecondsUntil } from '../../shared/session-review';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/provider-settings';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
+import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -296,12 +297,14 @@ export class TimeTrackingEngine extends EventEmitter {
         // An ad-hoc task exists only here; the provider would be asked to move
         // an issue it has never heard of.
         if (!adHoc) {
-          this._providerManager.updateTaskStatus(taskId, 'in_progress').catch(err => {
-            console.warn(`[TimeTrackingEngine] Failed to remote update task status:`, err);
-          });
+          this.moveTask(this.providerOfProject(finalProjectId), taskId, 'in_progress');
         }
       }
     }
+
+    // Read once, now: the session's time goes back to where its task came
+    // from, whatever provider is active by the time it ends.
+    const providerId = adHoc ? undefined : this.providerOfProject(finalProjectId);
 
     const startTimeUtc = new Date().toISOString();
     const sessionId = createId(IdPrefix.SESSION);
@@ -315,7 +318,8 @@ export class TimeTrackingEngine extends EventEmitter {
       isAdHoc: adHoc,
       status: 'TRACKING',
       startTimeUtc,
-      totalPausedSeconds: 0
+      totalPausedSeconds: 0,
+      ...(providerId ? { providerId } : {})
     };
 
     this._sessionRepo.saveSession(newSession);
@@ -324,6 +328,54 @@ export class TimeTrackingEngine extends EventEmitter {
     this.notifyListeners();
 
     return this._currentSession!;
+  }
+
+  /**
+   * Where a session's time is queued, and the shortest time that provider can
+   * record; null for a project made in SprintTicker, whose time stays here.
+   *
+   * The session's own provider, not the active one: the active one used to
+   * decide, so switching provider mid-session sent a Jira issue's id to
+   * OpenProject. A session from before migration 9 recorded none and keeps
+   * the old rule. A manager without `getProvider` is a test double.
+   */
+  private destinationOf(session: ActiveSessionDTO): { providerId: string; minimumSeconds: number } | null {
+    if (session.providerId === OWN_PROJECT_PROVIDER_ID) return null;
+    const manager = this._providerManager as Partial<ProviderManager> | undefined;
+    if (session.providerId) {
+      const provider = typeof manager?.getProvider === 'function' ? manager.getProvider(session.providerId) : undefined;
+      return { providerId: session.providerId, minimumSeconds: provider ? provider.minimumLoggableSeconds : 1 };
+    }
+    const active = typeof manager?.getActiveProvider === 'function' ? manager.getActiveProvider() : null;
+    return active
+      ? { providerId: active.providerId, minimumSeconds: active.minimumLoggableSeconds }
+      : { providerId: 'openproject', minimumSeconds: 1 };
+  }
+
+  /**
+   * The provider a project came from, or undefined when that is not known: no
+   * such project, or the column's legacy default (see
+   * {@link UNKNOWN_PROJECT_PROVIDER_ID}).
+   */
+  private providerOfProject(projectId: string): string | undefined {
+    const providerId = this._projectRepo.getProviderIdOf(projectId);
+    return providerId && providerId !== UNKNOWN_PROJECT_PROVIDER_ID ? providerId : undefined;
+  }
+
+  /**
+   * Moves a task on the provider it came from, in the background; nothing for
+   * a project made here. Unknown -- a session from before migration 9, or a
+   * test double -- falls back to the active provider.
+   */
+  private moveTask(providerId: string | undefined, taskId: string, status: 'in_progress' | 'done'): void {
+    if (providerId === OWN_PROJECT_PROVIDER_ID) return;
+    const manager = this._providerManager as Partial<ProviderManager>;
+    const moved = providerId && typeof manager.updateTaskStatusFor === 'function'
+      ? manager.updateTaskStatusFor(providerId, taskId, status)
+      : this._providerManager.updateTaskStatus(taskId, status);
+    moved.catch(err => {
+      console.warn(`[TimeTrackingEngine] Failed to move ${taskId} to ${status} on its provider:`, err);
+    });
   }
 
   /** The configured ad-hoc key; the default when the manager cannot say (a test double). */
@@ -542,9 +594,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
         // Only the provider's own tasks have a remote status to move.
         if (!adHoc) {
-          this._providerManager.updateTaskStatus(active.taskId, 'done').catch(err => {
-            console.warn(`[TimeTrackingEngine] Failed to remote update task status to done:`, err);
-          });
+          this.moveTask(active.providerId, active.taskId, 'done');
         }
       } else {
         // The sync now keeps the tracked task, but a session started before
@@ -606,8 +656,7 @@ export class TimeTrackingEngine extends EventEmitter {
     //
     // The local worklog above is still written either way. The session did
     // happen, and the history is the one place that should say so.
-    const activeProvider = this._providerManager ? this._providerManager.getActiveProvider() : null;
-    const minimumSeconds = activeProvider ? activeProvider.minimumLoggableSeconds : 1;
+    const destination = this.destinationOf(active);
 
     //
     // Ad-hoc time is never queued. It was queued for the active provider, so
@@ -618,10 +667,15 @@ export class TimeTrackingEngine extends EventEmitter {
       console.log(
         `[TimeTrackingEngine] Session ${active.sessionId} is ad-hoc work: kept in local history and not queued.`
       );
-    } else if (loggedSeconds >= minimumSeconds) {
+    } else if (!destination) {
+      console.log(
+        `[TimeTrackingEngine] Session ${active.sessionId} is on a project made in SprintTicker: ` +
+          'kept in local history and not queued.'
+      );
+    } else if (loggedSeconds >= destination.minimumSeconds) {
       this._worklogRepo.enqueueSyncItem({
         id: createId(IdPrefix.SYNC_ITEM),
-        providerId: activeProvider ? activeProvider.providerId : 'openproject',
+        providerId: destination.providerId,
         taskId: active.taskId,
         durationSeconds: loggedSeconds,
         startedAtUtc: active.startTimeUtc,
@@ -631,7 +685,7 @@ export class TimeTrackingEngine extends EventEmitter {
     } else {
       console.log(
         `[TimeTrackingEngine] Session ${active.sessionId} logged ${loggedSeconds}s, below the ` +
-          `${minimumSeconds}s ${activeProvider ? activeProvider.providerId : 'provider'} can record. ` +
+          `${destination.minimumSeconds}s ${destination.providerId} can record. ` +
           'Kept in local history and not queued.'
       );
     }

@@ -38,6 +38,7 @@ import { localDateKey } from '../../shared/local-date';
 import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
+import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -315,7 +316,9 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.CREATE_PROJECT, async (_event, payload: { id: string; key: string; name: string; providerId?: string }) => {
-      this.projectRepo.saveProject(payload);
+      // Made here, whatever the caller says: its tasks exist nowhere else, so
+      // their time must never be queued for a provider.
+      this.projectRepo.saveProject({ ...payload, providerId: OWN_PROJECT_PROVIDER_ID });
       return true;
     });
 

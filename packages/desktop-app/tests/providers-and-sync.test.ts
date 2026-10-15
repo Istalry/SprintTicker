@@ -409,6 +409,23 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
         })
       ).rejects.toThrow(/notaprovider/);
     });
+
+    it('UpdateTaskStatusFor_UnknownProvider_Throws', async () => {
+      const manager = managerOn(dbConn);
+
+      await expect(manager.updateTaskStatusFor('notaprovider', 'X-1', 'done')).rejects.toThrow(/notaprovider/);
+    });
+
+    it('UpdateTaskStatusFor_NamedProvider_MovesItThereNotOnTheActiveOne', async () => {
+      const manager = managerOn(dbConn);
+      const jira = vi.spyOn(manager.getProvider('jira')!, 'updateTaskStatus').mockResolvedValue(true);
+      const openProject = vi.spyOn(manager.getActiveProvider(), 'updateTaskStatus');
+
+      await manager.updateTaskStatusFor('jira', '10001', 'done');
+
+      expect(jira).toHaveBeenCalledWith('10001', 'done');
+      expect(openProject).not.toHaveBeenCalled();
+    });
   });
 });
 

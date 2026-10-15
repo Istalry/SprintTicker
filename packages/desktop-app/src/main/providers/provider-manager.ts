@@ -161,6 +161,23 @@ export class ProviderManager {
     return this.getActiveProvider().updateTaskStatus(taskId, status);
   }
 
+  /**
+   * Moves a task on a *named* provider: the one it came from, not whichever
+   * is active by the time the session ends. Throws when no such provider is
+   * registered, like {@link logTimeForProvider}.
+   */
+  public async updateTaskStatusFor(
+    providerId: string,
+    taskId: string,
+    status: 'in_progress' | 'to_test' | 'to_review' | 'done'
+  ): Promise<boolean> {
+    const provider = this._providers.get(providerId);
+    if (!provider) {
+      throw new Error(`No registered provider with id "${providerId}"`);
+    }
+    return provider.updateTaskStatus(taskId, status);
+  }
+
   /// <summary>
   /// Logs spent time to the active provider and triggers background queue flushing on success.
   /// </summary>

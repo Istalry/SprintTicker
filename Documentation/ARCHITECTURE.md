@@ -572,9 +572,9 @@ testing runs against your actual worklogs.
 
 | Table | Holds |
 | :--- | :--- |
-| `projects` | Cached projects, with `provider_id` |
+| `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app, or `local`, the old default, meaning not known |
 | `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text |
-| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index |
+| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
 | `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id` |
@@ -612,6 +612,13 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
    remote deletion still has to name the entry. Existing rows are tied to
    the worklog written beside them -- same task, start and duration -- only
    where the match is one to one; nothing sent before it has a remote id.
+9. `session-provider` — a session records the provider its task came from,
+   and its time and status changes go there. They went to whichever provider
+   was active when it ended, so switching provider mid-session sent a Jira
+   issue's id to OpenProject, where a numeric id can name a different work
+   package. An open session takes its project's provider; `local`, the
+   column's default and what every OpenProject project held, counts as not
+   known and keeps the old rule.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares
@@ -650,8 +657,10 @@ suite once wrote a real database to disk. Tests use
 Start to finish, across every component:
 
 1. **You pick a task** — from the UI, or with the wheel on the bar.
-2. `TimeTrackingEngine.startTask()` writes `active_sessions`, and asks the
-   provider to move the issue to its configured in-progress status.
+2. `TimeTrackingEngine.startTask()` writes `active_sessions`, with the
+   provider the task's project came from, and asks that provider to move the
+   issue to its configured in-progress status. A project made in the app has
+   none: its time stays in local history.
 3. The engine notifies subscribers → `DisplayRenderer` composes the tracker
    screen → `PriorityPreemptionEngine` scores it at `activeTrackerPriority`
    (45) and, if nothing outranks it, grants the display → `BusyBarDriver`
@@ -659,8 +668,9 @@ Start to finish, across every component:
 4. **A Slack notification arrives.** The listener matches it against your rules,
    the engine scores it at 65 or 70, and it preempts the tracker — unless you
    are at Lunch, whose rule sits above both.
-5. **You finish.** The engine writes a local worklog, checks
-   `minimumLoggableSeconds`, enqueues the row and wakes the worker.
+5. **You finish.** The engine writes a local worklog, checks the session's
+   provider's `minimumLoggableSeconds`, enqueues the row for that provider --
+   not the one active now -- and wakes the worker.
 6. The worker claims the row atomically, POSTs it, and marks it `SYNCED` — or
    parks it with the server's own message if the failure is permanent, or backs
    off if it is not.
@@ -731,7 +741,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2021 tests across 101 files, in two projects: `main` in Node for
+Vitest, 2034 tests across 102 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

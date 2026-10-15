@@ -66,6 +66,17 @@
 
 ### Fixed
 
+- **Time goes back to the provider its task came from.** A session's time
+  and its status changes went to whichever provider was active when it
+  ended, so switching from Jira to OpenProject mid-session sent the Jira
+  issue's id to OpenProject -- where the same number can be a different work
+  package. Each session now records its provider when it starts (migration
+  9), and holds to that provider's minimum duration too.
+- **Time on a project made in SprintTicker stays in local history.** It was
+  queued for the active provider, which had never heard of the task, and
+  parked as a failure. This holds for projects made from now on: OpenProject
+  projects did not say where they came from, so an older project made here
+  cannot be told apart from one of theirs, and keeps the old behaviour.
 - **Lunch never undoes what you do.** A task started or resumed during lunch
   ran under the sandwich, and if you stopped it before lunch ended, the task
   lunch had stopped came back anyway. Starting or resuming a task during

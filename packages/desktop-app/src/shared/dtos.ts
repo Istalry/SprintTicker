@@ -16,6 +16,14 @@ export interface ActiveSessionDTO {
   elapsedSeconds: number; // Calculated on Main process
   lastPauseStartUtc?: string;
   /**
+   * The provider the task came from, read from its project when the session
+   * started; its time and status changes go there, whatever provider is
+   * active by the time it ends. `local` for a project made in SprintTicker,
+   * whose time stays here. Absent for ad-hoc work, and for a session from
+   * before it was recorded, which falls back to the active provider.
+   */
+  providerId?: string;
+  /**
    * The provider stopped listing this task at the last sync: reassigned,
    * closed or moved. The session goes on and its time is logged; finishing it
    * as done asks first, since the task is no longer the user's to move.

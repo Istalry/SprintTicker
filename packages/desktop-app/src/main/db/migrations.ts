@@ -403,6 +403,28 @@ const M008_WORKLOG_REMOTE_IDENTITY = `
   CREATE INDEX idx_sync_queue_worklog ON worklog_sync_queue(worklog_id);
 `;
 
+/**
+ * Migration 9: a session records the provider its task came from.
+ *
+ * Its time used to be queued for whichever provider was active when it
+ * ended, so switching provider mid-session sent a Jira issue's id to
+ * OpenProject -- where a numeric id can name a real, different work package.
+ * The provider is now read from the task's project when the session starts.
+ *
+ * Existing sessions take their project's provider, the same rule. NULL is
+ * "not known", and keeps the old rule of the active provider: an ad-hoc
+ * session, a session whose project is gone, and one whose project holds the
+ * column's default 'local' -- which every OpenProject project held, since
+ * that adapter did not name itself, so it does not mean "made here".
+ */
+const M009_SESSION_PROVIDER = `
+  ALTER TABLE active_sessions ADD COLUMN provider_id TEXT;
+
+  UPDATE active_sessions
+     SET provider_id = (SELECT NULLIF(p.provider_id, 'local') FROM projects p WHERE p.id = active_sessions.project_id)
+   WHERE is_ad_hoc = 0;
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -412,7 +434,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 5, name: 'worklog-task-foreign-key', up: m005WorklogTaskForeignKey },
   { version: 6, name: 'one-open-session', up: m006OneOpenSession },
   { version: 7, name: 'task-description', up: db => db.exec(M007_TASK_DESCRIPTION) },
-  { version: 8, name: 'worklog-remote-identity', up: db => db.exec(M008_WORKLOG_REMOTE_IDENTITY) }
+  { version: 8, name: 'worklog-remote-identity', up: db => db.exec(M008_WORKLOG_REMOTE_IDENTITY) },
+  { version: 9, name: 'session-provider', up: db => db.exec(M009_SESSION_PROVIDER) }
 ];
 
 /** Schema version a fully migrated database reports. */
