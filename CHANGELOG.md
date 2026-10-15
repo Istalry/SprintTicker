@@ -66,6 +66,11 @@
 
 ### Fixed
 
+- **A task renamed while you track it shows its new name.** The session
+  kept the key and title it started with, so a task renamed on the
+  provider, or moved to another Jira project with a new key, showed its old
+  names on the bar and in the window until it ended. The next sync now
+  brings them, and the bar redraws once.
 - **Time goes back to the provider its task came from.** A session's time
   and its status changes went to whichever provider was active when it
   ended, so switching from Jira to OpenProject mid-session sent the Jira

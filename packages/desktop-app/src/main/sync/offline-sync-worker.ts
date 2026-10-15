@@ -36,6 +36,7 @@ export class OfflineSyncWorker {
   /** Why each unlisted task left, once its provider has said. */
   private unlistedReasons: Map<string, TaskLeftReason> = new Map();
   private unlistedListeners: Set<() => void> = new Set();
+  private syncedListeners: Set<() => void> = new Set();
 
   constructor(
     providerManager: ProviderManager,
@@ -116,6 +117,16 @@ export class OfflineSyncWorker {
     return this.unlistedReasons.get(taskId);
   }
 
+  /**
+   * Called after every sync that committed the provider's lists, so what
+   * shows them -- the session's names, the window's lists -- can read them
+   * again. Not called for a failed or skipped sync: nothing changed.
+   */
+  public onSynced(listener: () => void): () => void {
+    this.syncedListeners.add(listener);
+    return () => this.syncedListeners.delete(listener);
+  }
+
   /** Called when the set of unlisted tasks changes, so the session can say so. */
   public onUnlistedChanged(listener: () => void): () => void {
     this.unlistedListeners.add(listener);
@@ -130,6 +141,18 @@ export class OfflineSyncWorker {
       if (!next.has(id)) this.unlistedReasons.delete(id);
     }
     if (changed || reasonsLearnt) this.notifyUnlisted();
+  }
+
+  private notifySynced(): void {
+    for (const listener of this.syncedListeners) {
+      try {
+        listener();
+      } catch (err) {
+        // A listener is a reader of what was just saved; its failure must
+        // not fail the sync that saved it.
+        console.error('[OfflineSyncWorker] Synced listener failed:', err);
+      }
+    }
   }
 
   private notifyUnlisted(): void {
@@ -239,6 +262,7 @@ export class OfflineSyncWorker {
 
       const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
       console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);
+      this.notifySynced();
       return { status: 'synced', projects: projects.length, tasks: taskCount };
     } catch (e) {
       console.error(`[OfflineSyncWorker] Failed to commit synced projects and tasks:`, e);

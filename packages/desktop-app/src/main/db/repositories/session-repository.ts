@@ -126,6 +126,17 @@ export class SessionRepository {
   }
 
   /**
+   * Renames an open session's task: its key and title as the provider now
+   * gives them. The session copies them when it starts, and nothing else
+   * wrote them, so a rename or a Jira move left the old ones on the bar.
+   */
+  public renameSessionTask(sessionId: string, taskKey: string, taskTitle: string): void {
+    this.dbConn.getDb()
+      .prepare('UPDATE active_sessions SET task_key = ?, task_title = ? WHERE id = ?')
+      .run(taskKey, taskTitle, sessionId);
+  }
+
+  /**
    * Records a paused interval entry in paused_intervals table.
    */
   public recordPauseInterval(sessionId: string, pausedAtUtc: string, resumedAtUtc?: string): void {

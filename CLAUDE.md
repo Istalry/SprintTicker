@@ -892,6 +892,13 @@ place that decides goes through `finishNeedsConfirmation` in
 `shared/task-left.ts`, so the window, the mini timer and the bar cannot
 disagree.
 
+**The open session copies its task's key and title, so it follows them.**
+`active_sessions` stores both at start, and the bar and the window read them
+from there, not from `tasks`. After every committed sync (`onSynced`) the
+engine copies them again from the task row and notifies once -- only when
+they differ, since every redraw is two requests to the bar. Ad-hoc sessions
+are left alone: their name is the user's, and it is the worklog's comment.
+
 ## 8. Commit identity
 
 This repository is configured with a **repo-local** author identity:

@@ -78,6 +78,23 @@ export class TimeTrackingEngine extends EventEmitter {
     this._syncWorker.onUnlistedChanged(() => {
       if (this._currentSession) this.notifyListeners();
     });
+    this._syncWorker.onSynced(() => this.followTaskRename());
+  }
+
+  /**
+   * Takes the tracked task's key and title from its row after a sync: a task
+   * renamed, or moved to another Jira project -- which gives it a new key and
+   * keeps its id -- kept its old names on the bar and in the window until the
+   * session ended. Ad-hoc work is named by the user, not the provider.
+   */
+  private followTaskRename(): void {
+    const open = this._currentSession ? this._sessionRepo.getActiveSession() : null;
+    if (!open || open.isAdHoc || isAdHocTaskId(open.taskId)) return;
+    const task = this._taskRepo.getTaskById(open.taskId);
+    if (!task || (task.key === open.taskKey && task.title === open.taskTitle)) return;
+    this._sessionRepo.renameSessionTask(open.sessionId, task.key, task.title);
+    this._currentSession = this._sessionRepo.getActiveSession();
+    this.notifyListeners();
   }
 
   /**
