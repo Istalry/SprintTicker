@@ -598,6 +598,11 @@ export class IPCHandlerRegistry {
       return true;
     });
 
+    ipcMain.handle(IPCChannel.JOIN_STANDUP, async () => {
+      this.contextScheduleService.joinStandup();
+      return true;
+    });
+
     ipcMain.handle(IPCChannel.CANCEL_STANDUP_PROMPT, async () => {
       this.priorityEngine.releaseActiveLock('standupPromptPriority');
       const activeSession = this.engine.getCurrentSession();
@@ -1090,6 +1095,9 @@ export class IPCHandlerRegistry {
     this.inputDecoder.registerActionHandler((action: string, inputKey: string) => {
       if (action === 'CONFIRM_RESUME_PROMPT' || action === 'DISMISS_RESUME_PROMPT') {
         this.contextScheduleService.answerResumePrompt(action === 'CONFIRM_RESUME_PROMPT');
+      }
+      if (action === 'CONFIRM_STANDUP_PROMPT') {
+        this.contextScheduleService.joinStandup();
       }
       this.broadcast(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
     });

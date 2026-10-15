@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ResumeAfterLunchPrompt } from '../../src/renderer/components/ResumeAfterLunchPrompt';
 import { installElectronApi } from './electron-api-mock';
 
-const QUESTION = { taskKey: 'SCRUM-2', taskTitle: 'Tache 2' };
+const QUESTION = { taskKey: 'SCRUM-2', taskTitle: 'Tache 2', after: 'lunch' as const };
 
 /**
  * After lunch, about a task that left the user's lists over the break. Main
@@ -52,7 +52,18 @@ describe('resume after lunch', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
-  it('AnsweredOnTheBar_TheDialogCloses', async () => {
+  it('Render_AfterTheStandup_SaysSo', async () => {
+    installElectronApi({ getResumePrompt: async () => ({ ...QUESTION, after: 'standup' as const }) });
+    render(<ResumeAfterLunchPrompt />);
+
+    const dialog = await screen.findByRole('alertdialog');
+
+    expect(dialog.textContent).toMatch(/Resume after the stand-up\?/);
+    expect(dialog.textContent).toMatch(/The stand-up stopped/);
+    expect(dialog.textContent).not.toMatch(/lunch/i);
+  });
+
+    it('AnsweredOnTheBar_TheDialogCloses', async () => {
     const bridge = installElectronApi({ getResumePrompt: async () => QUESTION });
     render(<ResumeAfterLunchPrompt />);
     await screen.findByRole('alertdialog');

@@ -360,7 +360,7 @@ Working hours, and the three scheduled events:
 
 | | Default | Does |
 | :--- | :--- | :--- |
-| 🗣️ **Stand-up prompt** | 09:30 | Prompts you, and collects answers in a modal |
+| 🗣️ **Stand-up prompt** | 09:30 | Prompts you; **Join** switches your timer to Daily Standup |
 | 🥪 **Lunch** | 12:30–13:30 | Switches to Lunch mode |
 | 🌙 **End-of-day wrap-up** | 17:30 | Prompts to wrap up; can save open editors and schedule a shutdown |
 
@@ -380,6 +380,16 @@ when the computer is busy.
 | 🥪 Lunch | ☕ Away |
 | <img src="../docs/images/bar-scene-meeting.webp" width="304" alt="MEETING: three people round a table on blue"> | <img src="../docs/images/bar-scene-eod.webp" width="304" alt="SEE YOU!: a moon rising on a dusk gradient"> |
 | 🗣️ Stand-up | 🌙 End of day |
+
+🗣️ **Joining the stand-up switches your timer to it.** Press **Join** in the
+window, or OK on the bar's prompt: the task you are tracking stops, its time
+logged, and a **Daily Standup** task starts -- one ad-hoc task, reused every
+day. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
+again, by the same rules as after lunch: once, that day, and only if you have
+not started something else meanwhile. A task that left your list during the
+meeting is asked about first: **Resume after the stand-up?** in the window,
+**NOT YOURS / RESUME IT?** on the bar. **Dismiss**, BACK, or leaving the prompt
+alone keeps your task running.
 
 🥪 **Lunch stops the task you are tracking and starts it again when lunch
 ends**, so the time goes in as two worklogs either side of the break. The task

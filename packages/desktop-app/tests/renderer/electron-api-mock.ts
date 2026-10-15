@@ -180,6 +180,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     saveScheduleSettings: vi.fn().mockResolvedValue(true),
     triggerStandupPrompt: vi.fn().mockResolvedValue({ success: true }),
     cancelStandupPrompt: vi.fn().mockResolvedValue(true),
+    joinStandup: vi.fn().mockResolvedValue(true),
     triggerEodPrompt: vi.fn().mockResolvedValue({ success: true }),
     triggerEodWrapUp: vi.fn().mockResolvedValue({ success: true, savedUnityScenes: false, savedVSCode: false }),
     cancelEodWrapUp: vi.fn().mockResolvedValue(true),

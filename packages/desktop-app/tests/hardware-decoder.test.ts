@@ -815,8 +815,11 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(decoder.getEodConfirmStep()).toBe(0);
   });
 
-  it('HandleHardwareInput_StandupPromptActive_ConfirmPress_AcknowledgesStandupPrompt', () => {
-    // Arrange
+  it('HandleHardwareInput_StandupPromptActive_ConfirmPress_LeavesTheJoinToTheSchedule', () => {
+    // Joining switches the timer under the prompt's lock and releases it
+    // there, which draws once (ContextScheduleService.joinStandup, reached
+    // through the action handlers). Released here, the old session was drawn
+    // and then the stand-up over it.
     let lockReleased = false;
     const priorityEngine = {
       getActiveLockEventName: () => 'standupPromptPriority',
@@ -831,7 +834,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
     // Assert
     expect(action).toBe('CONFIRM_STANDUP_PROMPT');
-    expect(lockReleased).toBe(true);
+    expect(lockReleased).toBe(false);
   });
 
   it('HandleHardwareInput_StandupPromptActive_BackPress_DismissesWithoutAnswering', () => {

@@ -27,6 +27,13 @@ import { ScheduleSettingsDTO } from './dtos';
  */
 
 /**
+ * The task the stand-up switches to: what the team calls it. Ad-hoc, and one
+ * row reused every day rather than a new one each morning. The bar's meeting
+ * animation follows any title containing "standup".
+ */
+export const DAILY_STANDUP_TITLE = 'Daily Standup';
+
+/**
  * Neutral working hours.
  *
  * These were `10:05` and `12:18` -- one developer's actual calendar shipped as

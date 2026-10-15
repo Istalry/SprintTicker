@@ -327,6 +327,42 @@ describe('Display hand-back: the screen that ends gives the display to the right
   });
 
   /**
+   * The stand-up: OK on its prompt switches the timer to Daily Standup under
+   * the prompt's lock, and its STOP brings the task before back. Scenes on
+   * both sides -- the prompt's meeting, the stand-up's meeting, LOGGED -- and
+   * a frame between them, which is where the panel rules bite.
+   */
+  describe('the stand-up', () => {
+    it('JoinStandup_FromThePrompt_TheMeetingThenTheTaskBack', async () => {
+      await play('startTask', SETTLE_MS, 'standupPrompt', SETTLE_MS);
+      expect(lock()).toBe('standupPromptPriority');
+
+      await play('joinStandup', SETTLE_MS);
+      expect(lock()).toBe('activeTrackerPriority');
+      expectSettledScreen(desk);
+
+      await play('standupEnds', SETTLE_MS);
+      expect(desk.session?.taskTitle).toBe('Stress the bar');
+      expectSettledScreen(desk);
+    });
+
+    it('JoinStandup_NothingRunning_TheMeetingThenTheIdleClock', async () => {
+      await play('standupPrompt', SETTLE_MS, 'joinStandup', SETTLE_MS);
+      expectSettledScreen(desk);
+
+      await play('standupEnds', SETTLE_MS);
+      expect(desk.session).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('JoinStandup_InOneTick_NoScreenStuck', async () => {
+      // Prompt, OK and STOP faster than any request answers.
+      await play('startTask', 'standupPrompt', 'joinStandup', 'standupEnds', SETTLE_MS);
+      expectSettledScreen(desk);
+    });
+  });
+
+  /**
    * The bar going away and coming back. 2026-10-07: it froze on BUILDING 40%,
    * was restarted, and came back showing it -- the clear for the build's end
    * had failed while it was away, and the driver replayed the last frame on

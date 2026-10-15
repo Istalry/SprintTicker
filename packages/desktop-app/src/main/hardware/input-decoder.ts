@@ -223,12 +223,10 @@ export class InputDecoder {
         if (this._windowFocusCallback) {
           this._windowFocusCallback();
         }
-        if (this._priorityEngine) {
-          this._priorityEngine.releaseActiveLock('standupPromptPriority');
-        }
-        if (this._renderer) {
-          this._renderer.renderActiveSession(this._engine.getCurrentSession());
-        }
+        // Joining is ContextScheduleService's, through the action handlers:
+        // it switches the timer to the stand-up under the prompt's lock and
+        // releases it, which draws once. Releasing here first drew the old
+        // session, then the stand-up over it.
         this.notifyActionHandlers('CONFIRM_STANDUP_PROMPT', normalizedKey);
         return 'CONFIRM_STANDUP_PROMPT';
       }

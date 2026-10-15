@@ -103,6 +103,10 @@ export const App: React.FC = () => {
         if (event.actionAssigned === 'TRIGGER_TASK_SELECTOR_MODAL' && !isEodModalOpen && !isStandupModalOpen) {
           setIsTaskModalOpen(true);
         }
+        // Answered on the bar: main has joined or dismissed it already.
+        if (event.actionAssigned === 'CONFIRM_STANDUP_PROMPT' || event.actionAssigned === 'DISMISS_STANDUP_PROMPT') {
+          setIsStandupModalOpen(false);
+        }
       });
       return () => unsubscribe();
     }
@@ -372,6 +376,10 @@ export const App: React.FC = () => {
           if (window.electronAPI?.snoozeCeremony) {
             await window.electronAPI.snoozeCeremony('STANDUP', minutes);
           }
+        }}
+        onJoin={async () => {
+          setIsStandupModalOpen(false);
+          await window.electronAPI?.joinStandup?.();
         }}
       />
 

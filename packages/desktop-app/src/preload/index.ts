@@ -127,6 +127,7 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.SAVE_SCHEDULE_SETTINGS, settings),
   triggerStandupPrompt: () => ipcRenderer.invoke(IPCChannel.TRIGGER_STANDUP_PROMPT),
   cancelStandupPrompt: () => ipcRenderer.invoke(IPCChannel.CANCEL_STANDUP_PROMPT),
+  joinStandup: () => ipcRenderer.invoke(IPCChannel.JOIN_STANDUP),
   triggerEodPrompt: () => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_PROMPT),
   triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, options),
   cancelEodWrapUp: () => ipcRenderer.invoke(IPCChannel.CANCEL_EOD_WRAP_UP),

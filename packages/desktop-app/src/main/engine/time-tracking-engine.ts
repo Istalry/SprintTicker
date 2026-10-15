@@ -243,6 +243,16 @@ export class TimeTrackingEngine extends EventEmitter {
     return !session.isAdHoc && !isAdHocTaskId(session.taskId) && this._taskRepo.isArchived(session.taskId);
   }
 
+  /**
+   * Starts ad-hoc work under a name the app gives it, on the row already
+   * made for that name when there is one. `startTask` reuses an ad-hoc row
+   * only when handed its id, so the stand-up made a new one every morning.
+   */
+  public startNamedAdHocTask(title: string): ActiveSessionDTO {
+    if (!title) throw new ArgumentException('An ad-hoc task needs a name.', 'title');
+    return this.startTask(this._taskRepo.findAdHocTaskByTitle(title)?.id ?? '', true, title);
+  }
+
   /// <summary>
   /// Whether a task is still in the user's lists -- see TaskRepository.isListed.
   /// </summary>

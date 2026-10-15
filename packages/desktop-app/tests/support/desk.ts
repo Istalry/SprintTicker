@@ -8,7 +8,8 @@ import { SettingsRepository } from '../../src/main/db/repositories/settings-repo
 import { TimeTrackingEngine } from '../../src/main/engine/time-tracking-engine';
 import { ActiveSessionDTO, UserMode } from '../../src/shared/dtos';
 import { FRONT_ELEMENT_IDS } from '../../src/shared/device-constants';
-import { BAR_MENU_EVENT } from '../../src/shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT } from '../../src/shared/priority-defaults';
+import { DAILY_STANDUP_TITLE } from '../../src/shared/schedule-defaults';
 import { FirmwareSimulator } from './firmware-simulator';
 
 /**
@@ -52,7 +53,9 @@ export type EventName =
   /** Lunch beginning under Away, which stops the session and stays Away; and unlocking into it. */
   | 'lunchStartUnderAway' | 'awayEndIntoLunch'
   /** The bar unreachable, back, or rebooted while unreachable. */
-  | 'barDrop' | 'barBack' | 'barReboot';
+  | 'barDrop' | 'barBack' | 'barReboot'
+  /** The stand-up's prompt, OK on it -- the timer switches to the stand-up -- and its STOP, which brings the task before it back. */
+  | 'standupPrompt' | 'joinStandup' | 'standupEnds';
 
 /** Lets real file reads land: the animation player and icon animator load `.anim` files from disk. */
 export async function realTurns(count = 8): Promise<void> {
@@ -100,6 +103,8 @@ export class Desk {
   );
   private sessionCount = 0;
   private picking = false;
+  /** The session the stand-up switched away from, to restart when it ends. */
+  private beforeStandup: ActiveSessionDTO | null = null;
   /** Until when the bar is rebooting, and no `barBack` brings it back. */
   private rebootingUntil = 0;
   private readonly next: () => number;
@@ -263,6 +268,39 @@ export class Desk {
         this.device.reboot();
         this.rebootingUntil = Date.now() + REBOOT_MS;
         return;
+      case 'standupPrompt':
+        this.renderer.renderCeremonyPrompt('STANDUP', 'Daily Stand-Up');
+        return;
+      case 'joinStandup': {
+        // As ContextScheduleService.joinStandup does: the engine stops the
+        // session and starts the stand-up under the prompt's lock, its
+        // subscriber drawing each, and the prompt's release draws once more.
+        if (this.session?.taskTitle === DAILY_STANDUP_TITLE) return;
+        this.beforeStandup = this.session?.status === 'TRACKING' ? this.session : null;
+        if (this.session) {
+          this.session = null;
+          this.renderer.renderActiveSession(null);
+        }
+        this.session = { ...this.newSession(), taskTitle: DAILY_STANDUP_TITLE, isAdHoc: true };
+        this.renderer.renderActiveSession(this.session);
+        this.priority.releaseActiveLock('standupPromptPriority');
+        return;
+      }
+      case 'standupEnds': {
+        if (this.session?.taskTitle !== DAILY_STANDUP_TITLE) return;
+        // STOP: the engine's subscriber and the LOGGED scene, as 'stop';
+        // then, once every listener has heard, the task before comes back.
+        this.session = null;
+        this.renderer.renderActiveSession(null);
+        this.renderer.renderTaskLogged();
+        const before = this.beforeStandup;
+        this.beforeStandup = null;
+        if (before) {
+          this.session = { ...this.newSession(), taskId: before.taskId, taskKey: before.taskKey, taskTitle: before.taskTitle };
+          this.renderer.renderActiveSession(this.session);
+        }
+        return;
+      }
       case 'lunchStart': return this.enterMode('LUNCH');
       case 'lunchStartUnderAway':
         if (this.mode !== 'AWAY' || this.session?.status !== 'TRACKING') return;
@@ -366,6 +404,11 @@ export function expectSettledScreen(desk: Desk): void {
   }
   if (!editors.some(e => e.compiling || e.building) && editors.some(e => e.playing) && lock !== 'unityPlayModePriority') {
     throw new Error(`Expected Play Mode, an editor is still in it: ${context}`);
+  }
+  // The stand-up tracks under the meeting scene, as the prompt did.
+  if (lock === ACTIVE_TRACKER_EVENT && desk.session?.status === 'TRACKING' && desk.session.taskTitle === DAILY_STANDUP_TITLE) {
+    if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the meeting scene: ${context}`);
+    return;
   }
   if (lock !== null || desk.session) {
     if (!desk.device.has(FRONT_ELEMENT_IDS.FRAME)) throw new Error(`Expected a frame: ${context}`);

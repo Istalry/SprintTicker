@@ -1,16 +1,19 @@
 import React, { useEffect } from 'react';
-import { X, Clock, BellOff } from 'lucide-react';
+import { X, Clock, BellOff, Users } from 'lucide-react';
 
 interface StandupPromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSnooze: (minutes?: number) => Promise<void>;
+  /** Switches the timer to the stand-up; the task before it restarts when it ends. */
+  onJoin: () => Promise<void>;
 }
 
 export const StandupPromptModal: React.FC<StandupPromptModalProps> = ({
   isOpen,
   onClose,
-  onSnooze
+  onSnooze,
+  onJoin
 }) => {
   useEffect(() => {
     if (isOpen) {
@@ -45,7 +48,8 @@ export const StandupPromptModal: React.FC<StandupPromptModalProps> = ({
         {/* Content */}
         <div className="p-6 space-y-4">
           <p className="text-xs text-text-secondary leading-relaxed">
-            Your scheduled Daily Stand-Up is starting now. Your current active task will keep tracking normally.
+            Your scheduled Daily Stand-Up is starting now. Join switches the timer to Daily Standup, and the
+            task you were on starts again when you stop it. Dismiss leaves your current task tracking.
           </p>
         </div>
 
@@ -62,9 +66,16 @@ export const StandupPromptModal: React.FC<StandupPromptModalProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={onClose}
-              className="flex items-center space-x-1.5 px-4 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
+              className="flex items-center space-x-1.5 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-text-secondary hover:text-white text-xs font-semibold rounded-lg border border-border-dark transition-all"
             >
               <span>Dismiss</span>
+            </button>
+            <button
+              onClick={() => void onJoin()}
+              className="flex items-center space-x-1.5 px-4 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Join</span>
             </button>
           </div>
         </div>

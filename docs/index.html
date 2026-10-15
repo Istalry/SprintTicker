@@ -878,7 +878,7 @@
       <tbody><tr>
       <td align="left">🗣️ <strong>Stand-up prompt</strong></td>
       <td align="left">09:30</td>
-      <td align="left">Prompts you, and collects answers in a modal</td>
+      <td align="left">Prompts you; <strong>Join</strong> switches your timer to Daily Standup</td>
       </tr>
       <tr>
       <td align="left">🥪 <strong>Lunch</strong></td>
@@ -923,6 +923,15 @@
       <td align="center">🌙 End of day</td>
       </tr>
       </tbody></table></div>
+      <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> in the
+      window, or OK on the bar&#39;s prompt: the task you are tracking stops, its time
+      logged, and a <strong>Daily Standup</strong> task starts -- one ad-hoc task, reused every
+      day. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
+      again, by the same rules as after lunch: once, that day, and only if you have
+      not started something else meanwhile. A task that left your list during the
+      meeting is asked about first: <strong>Resume after the stand-up?</strong> in the window,
+      <strong>NOT YOURS / RESUME IT?</strong> on the bar. <strong>Dismiss</strong>, BACK, or leaving the prompt
+      alone keeps your task running.</p>
       <p>🥪 <strong>Lunch stops the task you are tracking and starts it again when lunch
       ends</strong>, so the time goes in as two worklogs either side of the break. The task
       to restart is kept in the database: closing the app over lunch, or leaving
@@ -1991,6 +2000,17 @@
       after Away ended and before the next check entered Lunch. <code>exitLunchMode</code>
       switches to WORK before its own restart, which is how that restart is told
       apart from the user&#39;s.</p>
+      <p>Joining the stand-up (<code>joinStandup</code>, from <code>schedule:join-standup</code> or OK on the
+      bar&#39;s prompt) switches the timer to the ad-hoc <strong>Daily Standup</strong> task -- one
+      row, found by title (<code>startNamedAdHocTask</code>) -- under the prompt&#39;s lock, then
+      releases it, which draws once. The task it stopped is <code>standup_resume</code>, with
+      the stand-up&#39;s session id. When that session ends, the task restarts by the
+      lunch rules, asking first if it left the list (<code>after: &#39;standup&#39;</code>); any other
+      session drops the entry. The restart is queued as a microtask, because it is
+      made from the engine&#39;s listener: started there, the listeners after this one
+      would still be handed the ended session, and the renderer would draw the idle
+      clock over the restarted task. A stand-up stopped by lunch hands lunch the task
+      before it, not the meeting.</p>
       <h4><code>PresenceMonitor</code> and <code>ForgottenSessionService</code> — <code>src/main/services/</code></h4>
       <p>Time is wall clock minus pauses, so a session forgotten on Friday read 62
       hours on Monday and its stop sent them all at once. <code>PresenceMonitor</code> keeps
@@ -2245,7 +2265,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2125 tests across 104 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2154 tests across 106 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2498,11 +2518,11 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>
-      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle }</code>, and null once it is answered, from the window or the bar</td>
+      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code> or <code>standup</code>: what stopped the task</td>
       </tr>
       <tr>
       <td align="left">Unity</td>

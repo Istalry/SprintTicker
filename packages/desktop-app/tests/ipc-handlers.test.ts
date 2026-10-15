@@ -153,6 +153,38 @@ describe('IPC handlers', () => {
 
       expect(answerResumePrompt).toHaveBeenCalledWith(resume);
     });
+
+    it('HardwareAction_OkOnTheStandupPrompt_JoinsIt', () => {
+      const joinStandup = vi.fn();
+      build({ contextScheduleService: { joinStandup } });
+      vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue('standupPromptPriority');
+      decoder.setPriorityEngine(priorityEngine);
+
+      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+
+      expect(joinStandup).toHaveBeenCalledTimes(1);
+    });
+
+    it('HardwareAction_BackOnTheStandupPrompt_DoesNotJoin', () => {
+      const joinStandup = vi.fn();
+      build({ contextScheduleService: { joinStandup } });
+      vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue('standupPromptPriority');
+      decoder.setPriorityEngine(priorityEngine);
+
+      decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
+
+      expect(joinStandup).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the stand-up', () => {
+    it('JoinStandup_FromTheWindow_ReachesTheScheduleService', async () => {
+      const joinStandup = vi.fn();
+      build({ contextScheduleService: { joinStandup } });
+
+      expect(await invoke(IPCChannel.JOIN_STANDUP)).toBe(true);
+      expect(joinStandup).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('a session left running', () => {
@@ -176,10 +208,10 @@ describe('IPC handlers', () => {
   describe('the question after lunch', () => {
     it('AnswerResumePrompt_ABoolean_ReachesTheScheduleService', async () => {
       const answerResumePrompt = vi.fn().mockReturnValue(true);
-      const getResumePrompt = vi.fn().mockReturnValue({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2' });
+      const getResumePrompt = vi.fn().mockReturnValue({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2', after: 'lunch' });
       build({ contextScheduleService: { answerResumePrompt, getResumePrompt } });
 
-      expect(await invoke(IPCChannel.GET_RESUME_PROMPT)).toEqual({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2' });
+      expect(await invoke(IPCChannel.GET_RESUME_PROMPT)).toEqual({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2', after: 'lunch' });
       expect(await invoke(IPCChannel.ANSWER_RESUME_PROMPT, false)).toBe(true);
       expect(answerResumePrompt).toHaveBeenCalledWith(false);
     });

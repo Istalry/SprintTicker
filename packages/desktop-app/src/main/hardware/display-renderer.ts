@@ -981,10 +981,10 @@ export class DisplayRenderer {
    * It is not restarted without asking. OK resumes it and BACK leaves it, in
    * InputDecoder; the window asks the same question.
    */
-  public renderResumePrompt(): DisplayPayload {
+  public renderResumePrompt(after: 'lunch' | 'standup' = 'lunch'): DisplayPayload {
     return this.requestRender(RESUME_PROMPT_EVENT, () => {
       this.paintIconAndTwoRows(
-        getBitmapById('burger'),
+        getBitmapById(after === 'standup' ? 'clock' : 'burger'),
         RESUME_PROMPT_TEXT.question,
         RESUME_PROMPT_TEXT.hint,
         PAUSED_CONFIRM_COLOR,

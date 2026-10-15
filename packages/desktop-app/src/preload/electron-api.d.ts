@@ -131,6 +131,8 @@ export interface IElectronAPI {
   saveScheduleSettings: (settings: ScheduleSettingsDTO) => Promise<boolean>;
   triggerStandupPrompt: () => Promise<{ success: boolean }>;
   cancelStandupPrompt: () => Promise<boolean>;
+  /** Switches the timer to the Daily Standup task; the task before it restarts when it ends. */
+  joinStandup: () => Promise<boolean>;
   triggerEodPrompt: () => Promise<{ success: boolean }>;
   triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
   cancelEodWrapUp: () => Promise<boolean>;

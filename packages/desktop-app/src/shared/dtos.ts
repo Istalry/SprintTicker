@@ -216,6 +216,8 @@ export interface ScheduleSettingsDTO {
 export interface ResumePromptDTO {
   taskKey: string;
   taskTitle: string;
+  /** What stopped the task: lunch, or the stand-up it was switched away for. */
+  after: 'lunch' | 'standup';
 }
 
 /** A pause of a session, closed: from when to when. */

@@ -606,6 +606,14 @@ changing it:
   task and takes nothing back: `startTask` neither saves its row -- `saveTask`
   un-archives -- nor sends In Progress for a task archived or seen unlisted,
   and the session reads as unlisted at once, before the next sync.
+- **The stand-up's restart waits for the listeners.** `joinStandup` keeps
+  the task it stopped (`standup_resume`) and restarts it when the stand-up's
+  session ends -- which the service learns from inside the engine's
+  `notifyListeners`. Starting a task there runs a second notification inside
+  the first: every listener after this one is then handed the *ended*
+  session, and the IPC registry's render draws the idle clock over the task
+  just started. So the restart is a `queueMicrotask`. Anything else that
+  starts or stops a session from an engine listener has the same trap.
 - **Lunch stops the session under Away too.** Lunch never *leaves* Away --
   Away outranks it -- and that used to mean it never began at all: locked at
   12:30, the session ran on and the break was logged as work. The check now

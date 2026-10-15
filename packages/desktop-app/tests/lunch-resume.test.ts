@@ -353,8 +353,8 @@ describe('Lunch and the session it stops', () => {
 
       expect(engine.getCurrentSession()).toBeNull();
       expect(renderer.renderResumePrompt).toHaveBeenCalledTimes(1);
-      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title });
-      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, { taskKey: A.key, taskTitle: A.title });
+      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'lunch' });
+      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, { taskKey: A.key, taskTitle: A.title, after: 'lunch' });
     });
 
     it('LunchEnds_TaskNoLongerListed_AsksOnlyOnceAcrossChecks', async () => {
@@ -416,7 +416,7 @@ describe('Lunch and the session it stops', () => {
       restart();
       check(13, 40);
 
-      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title });
+      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'lunch' });
     });
 
     it('StartAnotherTask_WhileAsking_ClosesTheQuestion', async () => {

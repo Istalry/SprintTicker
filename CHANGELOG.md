@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Join the stand-up, and get back to your task after it.** The stand-up
+  prompt used to leave your task tracking through the meeting. Its new
+  **Join** -- or OK on the bar -- switches the timer to a Daily Standup task,
+  logging the time before it to your task, and stopping the stand-up starts
+  that task again: once, the same day, never over something you started
+  yourself, and asking first if the task left your list meanwhile. Dismiss
+  keeps things as they were.
+
 - **Correct or delete a worklog already sent.** A wrong duration had to be
   fixed by hand in Jira or OpenProject. Work History now has a pencil and a
   bin on every worklog: the duration, the start and the comment can be

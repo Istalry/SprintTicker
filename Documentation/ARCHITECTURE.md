@@ -492,6 +492,18 @@ after Away ended and before the next check entered Lunch. `exitLunchMode`
 switches to WORK before its own restart, which is how that restart is told
 apart from the user's.
 
+Joining the stand-up (`joinStandup`, from `schedule:join-standup` or OK on the
+bar's prompt) switches the timer to the ad-hoc **Daily Standup** task -- one
+row, found by title (`startNamedAdHocTask`) -- under the prompt's lock, then
+releases it, which draws once. The task it stopped is `standup_resume`, with
+the stand-up's session id. When that session ends, the task restarts by the
+lunch rules, asking first if it left the list (`after: 'standup'`); any other
+session drops the entry. The restart is queued as a microtask, because it is
+made from the engine's listener: started there, the listeners after this one
+would still be handed the ended session, and the renderer would draw the idle
+clock over the restarted task. A stand-up stopped by lunch hands lunch the task
+before it, not the meeting.
+
 ### `PresenceMonitor` and `ForgottenSessionService` — `src/main/services/`
 
 Time is wall clock minus pauses, so a session forgotten on Friday read 62
@@ -753,7 +765,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2125 tests across 104 files, in two projects: `main` in Node for
+Vitest, 2154 tests across 106 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

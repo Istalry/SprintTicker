@@ -284,8 +284,9 @@ discovers installed Unity projects and manages plugin injection.
 
 ### 📅 Ceremonies and schedules
 
-Configurable working hours, lunch and away detection, a standup prompt with an
-answer-collection modal, and an end-of-day wrap-up that can be confirmed from
+Configurable working hours, lunch and away detection, a standup prompt whose
+Join switches the timer to a Daily Standup task and back to your task after it,
+and an end-of-day wrap-up that can be confirmed from
 the hardware **START** button or dismissed with **BACK**. Lunch stops the
 running task and starts it again afterwards, across a restart of the app too;
 start or resume a task during lunch and Lunch ends for the day instead.
@@ -462,7 +463,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2125 tests across 104 files for the app -- the main and shared
+`pnpm test` runs 2154 tests across 106 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

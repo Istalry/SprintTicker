@@ -197,6 +197,29 @@ export class TaskRepository {
   }
 
   /**
+   * The listed ad-hoc task with this title, if there is one: the most recent.
+   * For a task started on the user's behalf every day, which would otherwise
+   * leave a new row in the ad-hoc list each morning.
+   */
+  public findAdHocTaskByTitle(title: string): TaskDTO | null {
+    if (!title) return null;
+    const row = this.dbConn.getDb().prepare<[string, string], {
+      id: string;
+      projectId: string;
+      key: string;
+      title: string;
+      status: 'todo' | 'in_progress' | 'done';
+      priorityRank: number | null;
+      description: string | null;
+    }>(
+      `SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank, description
+       FROM tasks WHERE project_id = ? AND title = ? AND archived_at_utc IS NULL
+       ORDER BY created_at_utc DESC LIMIT 1`
+    ).get(ADHOC_PROJECT_ID, title);
+    return row ? TaskRepository.toDto(row) : null;
+  }
+
+  /**
    * Creates a custom ad-hoc task, shown under `adHocKey` (the configured ad-hoc key).
    */
   public createAdHocTask(customTitle: string, adHocKey: string = 'MISC-1'): TaskDTO {
