@@ -41,6 +41,13 @@
 
 ### Changed
 
+- **Three new advisories patched in development tools**, none of them in the
+  installed app: shell-quote 1.12 under `concurrently`, source-map-js 1.2.2
+  under Vitest's jsdom, and postcss-selector-parser 7.1.6 under Tailwind 3.
+  The last crosses a major, so the renderer's CSS was rebuilt on both and
+  compared: byte-identical. Three more -- braces, http-cache-semantics and
+  sprintf-js, under Tailwind and electron-builder -- have no fixed release
+  yet; `pnpm-workspace.yaml` records why each is out of reach.
 - **Each worklog sent keeps the provider's id for it** (migration 8), the
   groundwork for correcting a worklog already sent. Queued sends are tied to
   the worklog they carry; those from before are tied where the match is

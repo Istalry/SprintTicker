@@ -1281,6 +1281,17 @@ already measures.
     (`app.getSystemLocale()`, `formatClockTime`); the formatting data is ICU's
     and ships whole. That also fixed the maintainer's own machine, English
     Windows with a Belgian regional format, which had shown 12-hour times.
+- [x] **Six Dependabot alerts** (2026-10-15). Three patched by overrides:
+  shell-quote, source-map-js, and postcss-selector-parser -- the one override
+  across a major, kept because the renderer's CSS built byte-identical on
+  6.1.4 and 7.1.6. Three have no fixed release and stay open, each reachable
+  only at build time with input from this repository: braces (Tailwind 3's
+  globbing), http-cache-semantics and sprintf-js (electron-builder's
+  `@electron/get`). They are recorded beside the overrides.
+- [ ] **Tailwind 3 -> 4.** It drops postcss-selector-parser and the
+  chokidar/micromatch chain that carries braces, so it retires one override
+  and one open alert. A renderer change of its own, measured the same way:
+  the CSS before and after, and the renderer tests.
 
 ## Deferred findings
 

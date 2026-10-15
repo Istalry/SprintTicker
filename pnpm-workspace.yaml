@@ -53,3 +53,31 @@ overrides:
   # never executes, since it only targets Windows. Pinned anyway: "we do not
   # call that path" is an argument that stops being true quietly.
   '@xmldom/xmldom@0.9': '^0.9.12'
+
+  # <1.11.0: quote() lets a line terminator after a `{ comment }` token through
+  # unescaped, GHSA-pqg4-j6r4-53mv. Via concurrently, which runs `pnpm dev`.
+  shell-quote@1: '^1.11.0'
+
+  # <1.2.2: indexed source maps with crafted section offsets stall the event
+  # loop, GHSA-68fv-2mgg-jv7q. Via css-tree, under jsdom, under Vitest.
+  source-map-js@1: '^1.2.2'
+
+  # 6.x: quadratic parsing of flat selectors, GHSA-rj75-hqrm-r3gf, fixed only in
+  # 7.1.6. Via tailwindcss 3 and its postcss-nested, which ask for ^6. The one
+  # entry here that crosses a major, so it was checked rather than assumed: the
+  # renderer's CSS built byte-identical on 6.1.4 and 7.1.6 (2026-10-15). Drop it
+  # with the move to Tailwind 4, which does not use this parser.
+  postcss-selector-parser@6: '^7.1.6'
+
+  # Three more advisories have no fixed release to pin, so they stay open on
+  # purpose (2026-10-15). Each is reachable only at build time, and none can be
+  # fed input from outside this repository:
+  #  - braces <=3.0.3, GHSA-vfj7-8cjw-p6xm, deep nesting exhausts the stack. Via
+  #    tailwindcss 3 (chokidar, micromatch), expanding our own content globs.
+  #  - http-cache-semantics <=4.2.0, GHSA-ch52-4w7c-c8xp, max-stale serves one
+  #    user's cached response to another. Via electron-builder's @electron/get,
+  #    whose cache downloads Electron for one user on one machine. 4.3.0 does
+  #    not change max-stale handling.
+  #  - sprintf-js <=1.1.3, GHSA-hp3w-g68c-fv3c, an unbounded precision throws.
+  #    Via roarr, the logger inside the same @electron/get, which formats its
+  #    own messages.
