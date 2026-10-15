@@ -49,6 +49,11 @@ export class SessionRepository {
     let currentPauseDuration = 0;
 
     if (row.status === 'PAUSED' && row.last_pause_start_utc) {
+      // Negative when the clock was set back during the pause, and left so on
+      // purpose: `now - startTime` is short by the same jump, and the two
+      // cancel. Clamped to zero, the work before the pause would lose the
+      // jump. workedSecondsUntil reads a pause row that ends before it began
+      // the same way.
       currentPauseDuration = Math.floor((now - new Date(row.last_pause_start_utc).getTime()) / 1000);
     }
 

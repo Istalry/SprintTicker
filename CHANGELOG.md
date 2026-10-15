@@ -66,6 +66,10 @@
 
 ### Fixed
 
+- **A session stopped at a chosen time agrees with STOP after a clock
+  change.** When the system clock was set back during a pause, ending the
+  session from the forgotten-session question logged the jump less than
+  STOP did -- 90 minutes of a two-hour session. Both now log the same.
 - **You hear when the provider stops accepting your time.** A worklog the
   provider refused on expired or revoked credentials waited in the sync
   queue, visible only there, while every day's time piled up behind it. A

@@ -69,6 +69,50 @@ describe('Ending a session at a chosen time', () => {
     expect(logged()).toBe(7 * 3600);
   });
 
+  describe('the clock set back during a pause', () => {
+    // 09:00-10:00 worked, paused, the clock corrected back half an hour, and
+    // 09:30-10:30 worked on the new clock: two hours. The session's total
+    // has the pause at -30 min, which is what keeps it right; the pause rows
+    // have it ending before it began.
+    const pauseThenSetTheClockBack = () => {
+      vi.setSystemTime(at(16, 10));
+      engine.pauseSession();
+      vi.setSystemTime(at(16, 9, 30));
+      engine.resumeSession();
+      vi.setSystemTime(at(16, 10, 30));
+    };
+
+    it('StopSessionAt_Now_LogsWhatStoppingNowLogs', () => {
+      // Stopped from the forgotten-session question rather than STOP: the
+      // same session logged 90 min one way and 120 the other.
+      pauseThenSetTheClockBack();
+      expect(engine.getCurrentSession()!.elapsedSeconds).toBe(2 * 3600);
+
+      engine.stopSessionAt(iso(at(16, 10, 30)));
+
+      expect(logged()).toBe(2 * 3600);
+    });
+
+    it('StopSessionAt_BeforeTheResumeOnTheNewClock_LogsTheWorkBeforeThePause', () => {
+      pauseThenSetTheClockBack();
+
+      engine.stopSessionAt(iso(at(16, 9, 15)));
+
+      expect(logged()).toBe(3600);
+    });
+
+    it('StopSessionAt_StillPausedAfterTheJump_LogsTheWorkBeforeThePause', () => {
+      // The pause in progress is read up to now, which is before it began.
+      vi.setSystemTime(at(16, 10));
+      engine.pauseSession();
+      vi.setSystemTime(at(16, 9, 45));
+
+      engine.stopSessionAt(iso(at(16, 9, 45)));
+
+      expect(logged()).toBe(3600);
+    });
+  });
+
   it('StopSessionAt_BeforeAPause_IgnoresIt', () => {
     lunchPause();
     vi.setSystemTime(at(16, 20));
@@ -241,6 +285,12 @@ describe('PresenceMonitor', () => {
 describe('the shared arithmetic', () => {
   it('WorkedSecondsUntil_EndBeforeStart_IsZero', () => {
     expect(workedSecondsUntil(iso(at(16, 10)), iso(at(16, 9)), [])).toBe(0);
+  });
+
+  it('WorkedSecondsUntil_PauseEndingBeforeItBegan_GivesTheJumpBack', () => {
+    const pauses = [{ fromUtc: iso(at(16, 10)), toUtc: iso(at(16, 9, 30)) }];
+
+    expect(workedSecondsUntil(iso(at(16, 9)), iso(at(16, 10, 30)), pauses)).toBe(2 * 3600);
   });
 
   it('WorkedSecondsUntil_OverlappingPause_SubtractsOnlyTheOverlap', () => {

@@ -35,6 +35,14 @@ export const FORGOTTEN_REVIEW_KEY = 'forgotten_session_review';
  * Seconds worked between `startUtc` and `endUtc`, less the pauses that fall
  * in between. Shared so the dialog shows exactly what main will log for each
  * end time it offers.
+ *
+ * A pause that ends before it began is the clock set back during it, and
+ * counts negative, as it does in the session's running total. Both read the
+ * wall clock, so the start and the end straddle the jump too: the work
+ * before the pause is on the old clock and the work after it on the new one,
+ * and `end - start` is short by the jump. The negative pause gives it back.
+ * Dropping it, as this did, logged a session stopped at a chosen time that
+ * much shorter than the same session stopped now.
  */
 export function workedSecondsUntil(startUtc: string, endUtc: string, pauses: readonly PauseIntervalDTO[]): number {
   const start = Date.parse(startUtc);
@@ -42,9 +50,11 @@ export function workedSecondsUntil(startUtc: string, endUtc: string, pauses: rea
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
   let pausedMs = 0;
   for (const pause of pauses) {
-    const from = Math.max(start, Date.parse(pause.fromUtc));
-    const to = Math.min(end, Date.parse(pause.toUtc));
-    if (to > from) pausedMs += to - from;
+    const pausedAt = Date.parse(pause.fromUtc);
+    const resumedAt = Date.parse(pause.toUtc);
+    const from = Math.max(start, pausedAt);
+    const to = Math.min(end, resumedAt);
+    if (to > from || resumedAt < pausedAt) pausedMs += to - from;
   }
   return Math.max(0, Math.floor((end - start - pausedMs) / 1000));
 }

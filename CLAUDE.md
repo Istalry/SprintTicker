@@ -858,6 +858,15 @@ confirmed is ever sent. Presence is read *before* it is recorded, at every
 check: recorded first, the evidence of the absence is gone. A worklog belongs
 to the day it began (`started_at_utc`), as the providers file it.
 
+**A negative pause is the clock set back, and it is right.** Paused at 10:00
+and resumed at 09:30 on a corrected clock, the pause measures -30 min -- and
+`now - start` is short by those same 30, so the session's total is exact.
+Never clamp it to zero: that is what the audit first proposed, and it would
+have dropped the jump from every such session. Anything that recomputes time
+from the pause rows must count a row resumed before it was paused as negative
+(`workedSecondsUntil`); the forgotten-session path did not, and logged 90
+minutes of a two-hour session that STOP logged as 120.
+
 **A session's time goes to the provider its task came from**, recorded on
 the session when it starts (`active_sessions.provider_id`, migration 9),
 never to whichever provider is active when it ends: a Jira issue's numeric
