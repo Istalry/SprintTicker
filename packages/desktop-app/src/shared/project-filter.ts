@@ -1,5 +1,6 @@
 import { ProjectDTO } from './dtos';
 import { ADHOC_PROJECT_ID } from './adhoc-project';
+import { TaskVisibility } from './task-visibility';
 
 /**
  * "Only my projects": which projects the lists offer.
@@ -10,10 +11,12 @@ import { ADHOC_PROJECT_ID } from './adhoc-project';
  * nothing to pick. This hides those, everywhere a project is chosen: the
  * Projects tab, the window's task picker and the bar's own picker.
  *
- * It filters on open tasks, not on an assignee: tasks carry no assignee here,
- * and under the default scope every task fetched is the user's anyway. Under
- * "everything open" or a custom query the same switch means "projects with
- * something open", which is what the scope asked for.
+ * It filters on the open tasks the lists would show: the user's own, plus
+ * the unassigned and teammates' ones when the task visibility shows them
+ * (`task-visibility.ts`). A project holding only a teammate's work is hidden
+ * while their work is. Under "everything open" or a custom query the same
+ * switch means "projects with something open", which is what the scope asked
+ * for.
  *
  * One rule in one place, because the three lists are drawn by two processes:
  * main draws the bar's, the renderer the window's, and a copy in each would
@@ -36,9 +39,20 @@ export interface ProjectFilterResult<T> {
   nothingAssigned: boolean;
 }
 
-/** An unknown count counts as open: hiding on a guess would lose a project. */
-function hasOpenTask(project: ProjectDTO): boolean {
-  return project.openTaskCount === undefined || project.openTaskCount > 0;
+/** The user's own work alone: what a caller that names no visibility counts. */
+const OWN_WORK_ONLY: Readonly<TaskVisibility> = Object.freeze({ unassigned: false, others: false });
+
+/**
+ * Whether a project has an open task the lists would show. An unknown count
+ * counts as open: hiding on a guess would lose a project.
+ */
+function hasOpenTask(project: ProjectDTO, visibility: TaskVisibility): boolean {
+  if (project.openTaskCount === undefined) return true;
+  const shown =
+    project.openTaskCount +
+    (visibility.unassigned ? project.openUnassignedCount ?? 0 : 0) +
+    (visibility.others ? project.openOthersCount ?? 0 : 0);
+  return shown > 0;
 }
 
 /**
@@ -62,13 +76,14 @@ function hasOpenTask(project: ProjectDTO): boolean {
 export function filterProjectsWithTasks<T extends ProjectDTO>(
   projects: readonly T[],
   enabled: boolean,
-  keepIds: readonly string[] = []
+  keepIds: readonly string[] = [],
+  visibility: TaskVisibility = OWN_WORK_ONLY
 ): ProjectFilterResult<T> {
   if (!enabled) return { visible: [...projects], hiddenCount: 0, nothingAssigned: false };
-  if (!projects.some(p => p.id !== ADHOC_PROJECT_ID && hasOpenTask(p))) {
+  if (!projects.some(p => p.id !== ADHOC_PROJECT_ID && hasOpenTask(p, visibility))) {
     return { visible: [...projects], hiddenCount: 0, nothingAssigned: projects.length > 0 };
   }
-  const visible = projects.filter(p => hasOpenTask(p) || keepIds.includes(p.id));
+  const visible = projects.filter(p => hasOpenTask(p, visibility) || keepIds.includes(p.id));
   return { visible, hiddenCount: projects.length - visible.length, nothingAssigned: false };
 }
 
@@ -77,6 +92,9 @@ export function filterProjectsWithTasks<T extends ProjectDTO>(
  * The ad-hoc project's open task is no reason to open on it, as above. An
  * unknown count counts as open. Empty string for no projects.
  */
-export function firstProjectWithTasks(projects: readonly ProjectDTO[]): string {
-  return (projects.find(p => p.id !== ADHOC_PROJECT_ID && hasOpenTask(p)) ?? projects[0])?.id ?? '';
+export function firstProjectWithTasks(
+  projects: readonly ProjectDTO[],
+  visibility: TaskVisibility = OWN_WORK_ONLY
+): string {
+  return (projects.find(p => p.id !== ADHOC_PROJECT_ID && hasOpenTask(p, visibility)) ?? projects[0])?.id ?? '';
 }

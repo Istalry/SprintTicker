@@ -77,6 +77,53 @@ describe('Schedule Defaults Unit Tests', () => {
   });
 });
 
+describe('the pause that splits a worklog', () => {
+  it('NormalizeScheduleSettings_NoThreshold_IsFifteenMinutes', () => {
+    expect(normalizeScheduleSettings({}).splitPauseMinutes).toBe(15);
+  });
+
+  it('NormalizeScheduleSettings_Zero_IsKept', () => {
+    // 0 is "never", not "unset".
+    expect(normalizeScheduleSettings({ splitPauseMinutes: 0 }).splitPauseMinutes).toBe(0);
+  });
+
+  it('NormalizeScheduleSettings_ANegativeThreshold_IsTheDefault', () => {
+    expect(normalizeScheduleSettings({ splitPauseMinutes: -5 }).splitPauseMinutes).toBe(15);
+  });
+
+  it('CheckScheduleSettings_AThresholdOverADay_IsRefused', () => {
+    expect(checkScheduleSettings({ splitPauseMinutes: 600 })).toMatch(/0 \(never\) to 480/);
+  });
+
+  it('CheckScheduleSettings_NoThresholdSaid_IsKept', () => {
+    expect(checkScheduleSettings({})).toBeNull();
+  });
+});
+
+describe('working days in the schedule', () => {
+  it('NormalizeScheduleSettings_NoWorkingDays_IsMondayToFriday', () => {
+    expect(normalizeScheduleSettings({}).workingDays).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('NormalizeScheduleSettings_TheUsersWeek_IsKept', () => {
+    expect(normalizeScheduleSettings({ workingDays: [2, 3, 4, 5, 6] }).workingDays).toEqual([2, 3, 4, 5, 6]);
+  });
+
+  it('NormalizeScheduleSettings_AnEmptyWeek_IsTheDefault', () => {
+    // An empty week would silence every ceremony for good.
+    expect(normalizeScheduleSettings({ workingDays: [] }).workingDays).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('CheckScheduleSettings_AnEmptyWeek_IsRefused', () => {
+    expect(checkScheduleSettings({ workingDays: [] })).toMatch(/at least one working day/);
+  });
+
+  it('CheckScheduleSettings_NoWorkingDaysSaid_IsKept', () => {
+    // An older window saves without the field; the stored week stays.
+    expect(checkScheduleSettings({})).toBeNull();
+  });
+});
+
 describe('checkScheduleSettings', () => {
   it('CheckScheduleSettings_TheDefaults_AreKept', () => {
     expect(checkScheduleSettings({})).toBeNull();

@@ -167,7 +167,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       await provider.getTasks('10000');
 
       const search = requests.find(r => r.pathname === '/rest/api/3/search/jql');
-      expect(search?.fields).toBe('summary,status,project,priority,description');
+      expect(search?.fields).toBe('summary,status,project,priority,description,assignee');
     });
 
     it('GetTasks_AssignedToMeScope_SendsCurrentUserClause', async () => {

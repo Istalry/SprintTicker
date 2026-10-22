@@ -32,11 +32,13 @@ Everything else is a request/response `invoke`.
 | `session:start-task` | Start tracking a task |
 | `session:pause` / `session:resume` | Pause and resume |
 | `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
-| `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first |
+| `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The tracked task is no longer the user's: the provider stopped listing it at the last sync (reassigned, closed, moved), or lists it as a teammate's. The sync keeps the task until the session ends; finishing it as done asks the user first |
 | ... and `taskLeftBecause` | Why, once the provider has said: `closed` (done there -- finishing it asks nothing and sends no transition), `reassigned` (still open, out of the user's scope) or `gone` (deleted, or no longer visible). Absent while unknown |
+| ... and `taskOwnerName` | Who the task is assigned to, when it is someone else's -- reassigned, started as a teammate's, or taken by someone between the pick and the start. The window says "Assigned to" that name |
 | `session:get-forgotten-review` | The session left running across a change of day, paused at the last activity and awaiting an answer: `{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted }`, or null |
 | `session:resolve-forgotten` | Answers it with `{ action, endUtc? }`: `stop` or `restart` log up to `endUtc` (between the start and now, required), `discard` keeps nothing, `keep` counts the whole absence and runs on. An unknown action or an end outside the session throws; answers `false` when nothing is asked any more |
 | `session:on-forgotten-review` | Pushes the question when it is found, and null once anything answers it -- the window, the bar's STOP, a resume |
+| `session:get-days` | The open session's time per local day were it stopped now, `{ dateKey, seconds }[]`: one entry unless it crosses midnight. The finish dialog says how it will be filed |
 | `session:discard` | End the session keeping nothing: no worklog, nothing queued, the task's status untouched, no scene on the bar. Answers `{ success, discardedSeconds }`. Every caller confirms with the user first |
 | `session:on-updated` | **Event** — the session changed |
 
@@ -46,7 +48,7 @@ Everything else is a request/response `invoke`.
 | :--- | :--- |
 | `provider:get-all` | Current provider settings |
 | `provider:set-active` | Persist settings, reinitialise providers, start a sync. Takes a **partial** `ProviderSettingsUpdateDTO`, so unrelated providers' credentials are left alone |
-| `provider:get-projects` / `provider:get-tasks` | Read the local cache. Each project carries `openTaskCount`: its tasks neither done nor archived |
+| `provider:get-projects` / `provider:get-tasks` | Read the local cache. Each project carries its tasks neither done nor archived, counted per owner: `openTaskCount` (the user's), `openUnassignedCount`, `openOthersCount`. `provider:get-tasks` answers every owner's tasks, each with its `ownership`; the views filter them by the task visibility |
 | `provider:create-adhoc` | A local task with no ticket. Its key is the configured ad-hoc key (`fallback_ticket_key`, `MISC-1` by default); its time is never queued for a provider |
 | `provider:fetch-op-statuses` | OpenProject status list, for the settings form |
 | `provider:sync-now` | Fetch projects and tasks immediately |
@@ -55,6 +57,8 @@ Everything else is a request/response `invoke`.
 | `projects:on-updated` | **Event** — the cached project list changed: after every committed sync, the periodic one included, and after a manual or credentials-triggered one that failed, carrying its result |
 | `projects:get-only-with-tasks` / `projects:set-only-with-tasks` | The "only projects with tasks" switch, on by default. The setter takes a boolean and throws `ArgumentException` on anything else |
 | `projects:on-only-with-tasks` | **Event** — the switch changed, so every view showing it follows |
+| `tasks:get-visibility` / `tasks:set-visibility` | Whether the task lists show unassigned tasks and teammates' tasks: `{ unassigned, others }`, `{ true, false }` by default. The setter takes exactly two booleans and throws `ArgumentException` on anything else; a damaged stored value reads its missing fields as their defaults |
+| `tasks:on-visibility` | **Event** — the task visibility changed, so every list follows |
 
 > `provider:reconcile` was removed. It was declared on the bridge with no
 > handler in main, so calling it rejected. The providers keep their
@@ -70,6 +74,15 @@ Everything else is a request/response `invoke`.
 
 `projects:delete` and `tasks:delete` delete a task only if no time was logged
 against it; one with worklogs is archived -- off every list, still in history.
+
+`tasks:open-page` takes a task id and opens the task's page on the provider it
+came from, in the browser: Jira's `<site>/browse/<KEY>`, OpenProject's
+`<site>/work_packages/<id>`. Main builds the URL from the provider's own
+configured site (`getTaskPageUrl`), opens it through `shell.openExternal` only
+if it is http(s) on that site, and answers `false` for a task with no page --
+ad-hoc work, the app's own projects, a provider not set up. The renderer
+never hands main a URL. Each worklog carries `hasTaskPage`, so Work History
+knows where to offer it.
 Worklogs come back with `taskKey` and `taskTitle` beside `taskId`, read from
 the task row, archived or not, and with `syncState`: `local` (never queued),
 `pending`, `failed`, `sent`, `correction-pending` or `correction-failed`.
@@ -99,6 +112,8 @@ which the window applies too, so it refuses exactly what main refuses.
 | `priority:on-user-mode-updated` | **Event** |
 | `display:get-state` | Current frame, for the emulator |
 | `display:on-state-updated` | **Event** |
+| `display:get-screen-icon` | The icon of the screen on the bar, for the mini timer: `{ pixels, label }`, a 16x16 bitmap and the screen's top row or scene title, or `null` while the firmware's clock shows |
+| `display:on-screen-icon` | **Event**, to every window, only when the icon changes -- the tracker's tick and a scene's frames do not move it |
 | `display:set-color-theme`, `display:trigger-confetti-burst` | Display options. `display:trigger-confetti-burst` plays DONE! alone, for the debug panel |
 | `display:preview-screen` | Draws one **real** screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting |
 
@@ -107,7 +122,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | Group | Channels |
 | :--- | :--- |
 | Device | `device:get-status`, `device:get-config`, `device:set-config`, `device:on-status-changed` |
-| Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup`, `schedule:cancel-eod-wrapup`, `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup`, `schedule:snooze-ceremony`, `schedule:on-ceremony-prompt`, `schedule:update-ceremony-prompt` |
+| Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup`, `schedule:cancel-eod-wrapup`, `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup`, `schedule:get-week-ended`, `schedule:dismiss-week-ended`, `schedule:on-week-ended`, `schedule:snooze-ceremony`, `schedule:on-ceremony-prompt`, `schedule:update-ceremony-prompt` |
 | Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it) and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch` or `standup`: what stopped the task |
 | Unity | `unity:get-settings`, `unity:save-settings`, `unity:get-telemetry`, `unity:on-telemetry-updated`, `unity-injector:*`, `dialog:open-folder-picker` |
 | Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings` |
@@ -191,11 +206,39 @@ interface ITaskProvider {
   // 404 is 'gone'; any other failure throws.
   getTaskStanding?(taskId: string): Promise<'open' | 'closed' | 'gone'>;
 
+  // Optional: assigns a task nobody owns to the user, reading its assignee
+  // first. Answers 'assigned', 'already_mine', or 'taken' with the name of
+  // whoever has it -- never reassigned away from them. Throws on failure.
+  assignToMe?(taskId: string): Promise<TaskClaim>;
+
+  // Optional: the task's page on the provider's own site, or null.
+  getTaskPageUrl?(task: Pick<TaskDTO, 'id' | 'key'>): string | null;
+
+  // Optional: the instance's holidays between two local dates, inclusive, as
+  // YYYY-MM-DD. Weekends are the user's setting, not the provider's.
+  getNonWorkingDays?(fromKey: string, toKey: string): Promise<string[]>;
+
   // Optional: activity on the user's tasks, for toasts and bar banners.
   getEventsSince?(sinceUtc: string): Promise<ProviderEventDTO[]>;
   getEventsInboxUrl?(): string | null;
 }
 ```
+
+**Assigning on start.** Starting a task nobody owns calls `assignToMe` on the
+provider it came from, in the background, once the session is running.
+Jira reads `fields=assignee` and then `PUT /rest/api/3/issue/{id}/assignee`
+with the user's `accountId`; it has no conditional write, so the read just
+before is the narrowest window it allows. OpenProject reads the work package
+and `PATCH`es `_links.assignee` under its `lockVersion`, so an assignee set in
+between is refused (409) rather than overwritten; it then reads once more and
+decides again. Both were measured on a real OpenProject 17.9 instance on 2026-10-16,
+with an edit played between the read and the write. An assignment that went through moves the task to In Progress,
+as for the user's own task. A failure is told in a toast and never queued.
+
+`getNonWorkingDays` is OpenProject's `GET /api/v3/days/non_working`, filtered
+on the range (`date` `<>d`): unfiltered, an instance answers the current year
+only, which loses New Year from a range read in December. Like every read it
+throws on failure; `not_configured` is the one the caller stays quiet about.
 
 `TaskDTO.description` is optional: plain text on one line, at most
 `TASK_DESCRIPTION_MAX_CHARS` (500), cut with an ellipsis. Convert with
@@ -237,7 +280,11 @@ its queue row (`syncMarker`, `[#xxxxxxxx]`); `findWorklog` looks for it among
 the task's entries from a day before the start to a day after
 (`WORKLOG_SEARCH_MARGIN_MS`), and answers null only when it has read them all
 -- a page walk that cannot finish throws, or a correction would be given up on
-an entry that exists. Advance through pages by what each page held, never by
+an entry that exists. On OpenProject the task's entries are picked by
+`entity_type` + `entity_id`: 17.9 has no `work_package` filter on time
+entries, since time can be logged on a meeting, and answers it 400. An
+instance from before that answers the entity filters 400 instead, and is
+searched again by `work_package`. Advance through pages by what each page held, never by
 the page size asked for: Jira clamps `maxResults`, and the fake does too so a
 test catches it. `updateWorklog` replaces duration, start and comment (Jira
 `PUT .../worklog/{id}`, OpenProject `PATCH /time_entries/{id}`), so repeating
@@ -355,11 +402,34 @@ for Jira, a v3 filter array for OpenProject. A custom OpenProject filter is
 validated and **throws** if malformed, because an invalid filter that quietly
 matched nothing would let the prune delete every cached task for the project.
 
+The default scope -- still stored as `assigned_to_me` -- fetches more than
+the user's work: their open tasks, every open task nobody is assigned, and a
+teammate's task while it is in progress (`keptByDefaultScope` in
+`src/shared/task-ownership.ts`, applied after the query as well as in it).
+Jira asks in one JQL with `OR`. OpenProject's v3 filters only `AND`, so it
+makes up to three requests per project -- assignee `=` `me`, assignee `!*`
+(none), and the configured In Progress status with assignee `!` `me` -- and
+merges them by id; with no In Progress status configured, a teammate's work
+is not asked for.
+
+**Whose a task is comes from its assignee**, never from the query that found
+it: `TaskDTO.ownership` is `unassigned` or `other` (with `assigneeName`), and
+absent for the user's own. Jira compares the issue's `assignee.accountId` with
+`/myself`; OpenProject compares the user id in `_links.assignee.href` with
+`/api/v3/users/me`, read once per configuration -- a group or placeholder
+user is someone else. An adapter that cannot read the user throws rather than
+file every task under the wrong owner.
+
 The scope decides which tasks are fetched; it does not touch the project list,
 which a provider returns whole. "Only projects with tasks"
 (`src/shared/project-filter.ts`) is what hides the projects the scope left
-empty, in the window's lists and the bar's picker alike, by `openTaskCount`
-rather than by assignee: tasks carry no assignee here.
+empty, in the window's lists and the bar's picker alike. It counts the open
+tasks the lists would show: `openTaskCount` always, and `openUnassignedCount`
+and `openOthersCount` when the task visibility (`src/shared/task-visibility.ts`)
+shows those owners. Both lists order tasks with `orderTasksForSelection`
+(`src/shared/task-order.ts`): the user's own in progress, then to do, then
+unassigned to do and in progress, a teammate's in progress, and finished work
+last.
 
 ---
 

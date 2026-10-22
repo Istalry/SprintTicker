@@ -4,10 +4,13 @@ import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { ScheduleSettingsDTO, ArgumentNullException, ActiveSessionDTO, ResumePromptDTO } from '../../shared/dtos';
+import { ScheduleSettingsDTO, ArgumentNullException, ActiveSessionDTO, ResumePromptDTO, WeekEndedDTO } from '../../shared/dtos';
 import { DAILY_STANDUP_TITLE, normalizeScheduleSettings } from '../../shared/schedule-defaults';
-import { localDateKey } from '../../shared/local-date';
+import { addLocalDays, localDateKey } from '../../shared/local-date';
+import { weekStartKey } from '../../shared/working-days';
+import { WorkingCalendar } from './working-calendar';
 import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 
 /** The session lunch stopped, to start again when it ends, and the day it was stopped. */
 interface LunchResume {
@@ -60,6 +63,10 @@ export class ContextScheduleService {
   public static readonly LUNCH_SKIPPED_KEY = 'lunch_skipped_date';
   /** The task the stand-up switched away from, to restart when it ends. */
   public static readonly STANDUP_RESUME_KEY = 'standup_resume';
+  /** The Monday of the last week closed, so a week closes once. */
+  public static readonly LAST_WEEK_CLOSED_KEY = 'last_week_closed';
+  /** The week just over, until the user has seen it: it survives a restart. */
+  public static readonly WEEK_ENDED_KEY = 'week_ended_notice';
 
   private readonly _priorityEngine: PriorityPreemptionEngine;
   private readonly _settingsRepo: SettingsRepository;
@@ -76,15 +83,20 @@ export class ContextScheduleService {
   private _resumePrompt: ResumeQuestion | null = null;
   /** The stand-up's session while a task waits for it to end; null otherwise. */
   private _standupSessionId: string | null = null;
+  /** The session the engine last told us about, to tell a start from a tick. */
+  private _lastSeen: { sessionId: string; tracking: boolean } | null = null;
   private _timer?: NodeJS.Timeout;
   private readonly _unsubscribeEngine: () => void;
+  private readonly _calendar: WorkingCalendar;
+  private readonly _weekEndedListeners = new Set<(week: WeekEndedDTO) => void>();
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,
     settingsRepo: SettingsRepository,
     engine: TimeTrackingEngine,
     renderer: DisplayRenderer,
-    getWindow?: () => BrowserWindow | null
+    getWindow?: () => BrowserWindow | null,
+    calendar?: WorkingCalendar
   ) {
     if (!priorityEngine) throw new ArgumentNullException('priorityEngine');
     if (!settingsRepo) throw new ArgumentNullException('settingsRepo');
@@ -96,8 +108,12 @@ export class ContextScheduleService {
     this._engine = engine;
     this._renderer = renderer;
     this._getWindow = getWindow;
+    // Without a provider to read holidays from, the weekdays alone decide.
+    this._calendar = calendar ?? new WorkingCalendar(settingsRepo);
 
     this.adoptStoredStandup();
+    // A session already running when the service starts was not started now.
+    this.noteSeen(engine.getCurrentSession());
     this._unsubscribeEngine = engine.subscribe(session => this.onSessionChanged(session));
     this.registerPowerMonitorListeners();
     this.startScheduleTimer();
@@ -129,8 +145,16 @@ export class ContextScheduleService {
       // already due. See local-date.ts.
       const todayDateString = localDateKey(now);
 
+      // Once a day it reads the holidays; until then, and if it cannot, it
+      // answers from what it read before. It never throws.
+      void this._calendar.refresh();
+      // A weekend or a holiday prompts for nothing: no stand-up, no lunch
+      // split, no wrap-up. Time is still tracked, as on any other day.
+      const workingToday = this._calendar.isWorkingDay(todayDateString);
+      if (workingToday && this._priorityEngine.getUserMode() !== 'AWAY') this.closeLastWeekIfMissed(todayDateString);
+
       // 1. Evaluate Daily Stand-Up Schedule
-      if (settings.enableStandupPrompt !== false) {
+      if (workingToday && settings.enableStandupPrompt !== false) {
         const [suH, suM] = (settings.standupTime || '10:00').split(':').map(Number);
         const standupMins = suH * 60 + suM;
         const isSnoozed = this._standupSnoozeUntilTimestamp !== null && Date.now() < this._standupSnoozeUntilTimestamp;
@@ -162,9 +186,9 @@ export class ContextScheduleService {
       // failed render -- so a lunch screen that could not be drawn used to take
       // the End-of-Day prompt down with it, on this tick and every tick after.
       try {
-        if (isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
+        if (workingToday && isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
           this.enterLunchMode();
-        } else if (isLunchTime && currentMode === 'AWAY' && !workingThroughLunch) {
+        } else if (workingToday && isLunchTime && currentMode === 'AWAY' && !workingThroughLunch) {
           // Locked when lunch began. Lunch never leaves Away, but the session
           // still stops: it ran on behind the lock, and the lunch hour was
           // logged as work. Unlocking during the break shows LUNCH.
@@ -186,13 +210,19 @@ export class ContextScheduleService {
       const eodStartMins = eodH * 60 + eodM;
       const isEodSnoozed = this._eodSnoozeUntilTimestamp !== null && Date.now() < this._eodSnoozeUntilTimestamp;
 
-      if (this._isInitialCheck && currentMinutes > eodStartMins) {
+      if (!workingToday) {
+        // Nothing to wrap up on a day off.
+      } else if (this._isInitialCheck && currentMinutes > eodStartMins) {
         // Suppress retroactive prompt if app launched after due time
         this._lastEodPromptDateString = todayDateString;
       } else if (currentMinutes >= eodStartMins && this._lastEodPromptDateString !== todayDateString && !isEodSnoozed) {
         this.triggerEodPrompt();
         this._lastEodPromptDateString = todayDateString;
         this._eodSnoozeUntilTimestamp = null;
+        // The wrap-up of the week's last working day closes the week.
+        if (this._calendar.lastWorkingDayOfWeek(todayDateString) === todayDateString) {
+          this.closeWeek(weekStartKey(todayDateString), todayDateString);
+        }
       }
     } catch (err) {
       console.warn('[ContextScheduleService] Skipping schedule evaluation due to closed database or system error:', err);
@@ -258,6 +288,30 @@ export class ContextScheduleService {
       }
     }
     this._priorityEngine.releaseActiveLock('standupPromptPriority');
+  }
+
+  /// <summary>
+  /// The week just over, until the user has seen it; null otherwise.
+  /// </summary>
+  public getWeekEnded(): WeekEndedDTO | null {
+    return this._settingsRepo.getSetting<WeekEndedDTO | null>(ContextScheduleService.WEEK_ENDED_KEY, null);
+  }
+
+  /// <summary>
+  /// The user has seen the week's notice: it goes, from every window.
+  /// </summary>
+  public dismissWeekEnded(): void {
+    this._settingsRepo.setSetting(ContextScheduleService.WEEK_ENDED_KEY, null);
+    this.sendToWindow(IPCChannel.ON_WEEK_ENDED, null);
+  }
+
+  /**
+   * Called once per week closed, with the week. Where sending the week to
+   * a provider's timesheet would hang; for now the window shows it.
+   */
+  public onWeekEnded(listener: (week: WeekEndedDTO) => void): () => void {
+    this._weekEndedListeners.add(listener);
+    return () => this._weekEndedListeners.delete(listener);
   }
 
   /// <summary>
@@ -340,7 +394,7 @@ export class ContextScheduleService {
         dateKey: localDateKey(new Date())
       };
       this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, resume);
-      this._engine.stopSession('Auto-completed for Lunch Break split', false);
+      this._engine.stopSession(WORKLOG_COMMENTS.LUNCH, false);
     }
   }
 
@@ -514,10 +568,19 @@ export class ContextScheduleService {
    * goes, nothing restarts when lunch ends, and lunch does not start again
    * today. It used to stay LUNCH -- the sandwich over the running session --
    * and the task lunch had stopped came back at the end, over the user's.
+   *
+   * Only a session *becoming* TRACKING counts: a new one, or one resumed.
+   * The engine tells its listeners every second while a session runs, and
+   * the schedule is checked every 30 -- so a tick in the first seconds of
+   * lunch, read as a start, skipped lunch for the day whenever a session was
+   * running. Found on the real bar (2026-10-15).
    */
   private onSessionChanged(session: ActiveSessionDTO | null): void {
     this.followStandup(session);
+    const before = this._lastSeen;
+    this.noteSeen(session);
     if (session?.status !== 'TRACKING') return;
+    if (before?.sessionId === session.sessionId && before.tracking) return;
     if (this._resumePrompt) {
       // Something else started while the question was up: it is moot.
       this.closeResumePrompt();
@@ -530,6 +593,10 @@ export class ContextScheduleService {
       this._priorityEngine.setUserMode('WORK');
       this._renderer.setContextMode('WORK');
     }
+  }
+
+  private noteSeen(session: ActiveSessionDTO | null): void {
+    this._lastSeen = session ? { sessionId: session.sessionId, tracking: session.status === 'TRACKING' } : null;
   }
 
   /**
@@ -572,6 +639,56 @@ export class ContextScheduleService {
 
   private forgetLunchResume(): void {
     this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, null);
+  }
+
+  /**
+   * Closes last week if nothing did: its last working day passed with the
+   * app closed, or before its wrap-up time -- a Friday off that the
+   * calendar did not know of, a laptop left shut. The first working day
+   * after catches it. The first run ever closes nothing: there is no week
+   * before the app knew to close one.
+   */
+  private closeLastWeekIfMissed(today: string): void {
+    const lastMonday = addLocalDays(weekStartKey(today), -7);
+    const closed = this._settingsRepo.getSetting<string | null>(ContextScheduleService.LAST_WEEK_CLOSED_KEY, null);
+    if (closed === null) {
+      this._settingsRepo.setSetting(ContextScheduleService.LAST_WEEK_CLOSED_KEY, lastMonday);
+      return;
+    }
+    if (closed >= lastMonday) return;
+    const end = this._calendar.lastWorkingDayOfWeek(lastMonday);
+    if (end === null) {
+      // A week off: nothing was worked, so nothing to tell.
+      this._settingsRepo.setSetting(ContextScheduleService.LAST_WEEK_CLOSED_KEY, lastMonday);
+      return;
+    }
+    this.closeWeek(lastMonday, end);
+  }
+
+  /** Closes the week starting `monday` -- once, whoever asks twice. */
+  private closeWeek(monday: string, end: string): void {
+    const closed = this._settingsRepo.getSetting<string | null>(ContextScheduleService.LAST_WEEK_CLOSED_KEY, null);
+    if (closed !== null && closed >= monday) return;
+    this._settingsRepo.setSetting(ContextScheduleService.LAST_WEEK_CLOSED_KEY, monday);
+
+    const week: WeekEndedDTO = { weekStart: monday, weekEnd: end, loggedSeconds: this._engine.getLoggedSeconds(monday, end) };
+    console.log(`[ContextScheduleService] Week ${monday} to ${end} closed: ${week.loggedSeconds} s logged.`);
+    this._settingsRepo.setSetting(ContextScheduleService.WEEK_ENDED_KEY, week);
+    this.sendToWindow(IPCChannel.ON_WEEK_ENDED, week);
+    for (const listener of this._weekEndedListeners) {
+      try {
+        listener(week);
+      } catch (err) {
+        // The week is closed and shown whatever a listener does with it.
+        console.error('[ContextScheduleService] Week-ended listener failed:', err);
+      }
+    }
+  }
+
+  private sendToWindow(channel: IPCChannel, payload: unknown): void {
+    const win = this._getWindow?.();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(channel, payload);
   }
 
   private forgetStandupResume(): void {

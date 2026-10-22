@@ -10,6 +10,7 @@ export enum IPCChannel {
   RESUME_SESSION = 'session:resume',
   COMPLETE_SESSION = 'session:complete',
   DISCARD_SESSION = 'session:discard',
+  GET_SESSION_DAYS = 'session:get-days',
   GET_FORGOTTEN_REVIEW = 'session:get-forgotten-review',
   RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
   ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
@@ -67,6 +68,8 @@ export enum IPCChannel {
   TRIGGER_STANDUP_PROMPT = 'schedule:trigger-standup-prompt',
   CANCEL_STANDUP_PROMPT = 'schedule:cancel-standup-prompt',
   JOIN_STANDUP = 'schedule:join-standup',
+  GET_WEEK_ENDED = 'schedule:get-week-ended',
+  DISMISS_WEEK_ENDED = 'schedule:dismiss-week-ended',
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
   UPDATE_CEREMONY_PROMPT = 'schedule:update-ceremony-prompt',
@@ -110,6 +113,9 @@ export enum IPCChannel {
   // Hardware Display Animation & Live Emulator
   GET_DISPLAY_STATE = 'display:get-state',
   ON_DISPLAY_STATE_UPDATED = 'display:on-state-updated',
+  /** The icon of the screen on the bar, for the mini timer; pushed only when it changes. */
+  GET_SCREEN_ICON = 'display:get-screen-icon',
+  ON_SCREEN_ICON = 'display:on-screen-icon',
   SET_COLOR_THEME = 'display:set-color-theme',
   TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst',
   /**
@@ -148,9 +154,15 @@ export enum IPCChannel {
   GET_ONLY_PROJECTS_WITH_TASKS = 'projects:get-only-with-tasks',
   SET_ONLY_PROJECTS_WITH_TASKS = 'projects:set-only-with-tasks',
   ON_ONLY_PROJECTS_WITH_TASKS = 'projects:on-only-with-tasks',
+  /** Whether the task lists show unassigned tasks and teammates' tasks. */
+  GET_TASK_VISIBILITY = 'tasks:get-visibility',
+  SET_TASK_VISIBILITY = 'tasks:set-visibility',
+  ON_TASK_VISIBILITY = 'tasks:on-visibility',
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',
+  /** Opens a task's page on its provider, in the browser. */
+  OPEN_TASK_PAGE = 'tasks:open-page',
   ON_UPDATE_STATUS = 'updates:on-status',
 
   /** Fetches projects and tasks from the active provider immediately. */
@@ -164,5 +176,6 @@ export enum IPCChannel {
    * The Projects view reads the cache, which only the background worker fills,
    * so without this it showed an empty list until the next five-minute tick.
    */
-  ON_PROJECTS_UPDATED = 'projects:on-updated'
+  ON_PROJECTS_UPDATED = 'projects:on-updated',
+  ON_WEEK_ENDED = 'schedule:on-week-ended'
 }

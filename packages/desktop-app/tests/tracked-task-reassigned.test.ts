@@ -7,6 +7,7 @@ import { ProjectRepository } from '../src/main/db/repositories/project-repositor
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
+import type { TaskClaim, TaskClaimReport } from '../src/shared/task-claim';
 
 /**
  * A task reassigned, closed or moved on the provider while it is tracked.
@@ -195,14 +196,48 @@ describe('A tracked task the provider stops listing', () => {
       expect(engine.getCurrentSession()).toMatchObject({ taskUnlisted: true, taskLeftBecause: reason });
     });
 
-    it('Sync_ReasonKnown_IsNotAskedAgainAtTheNextSync', async () => {
+    it('Sync_ReassignedThenClosedThere_TheSessionSaysClosed', async () => {
+      // Asked once and kept, "reassigned" outlived the close: FINISH asked
+      // NOT YOURS, and a yes sent the completion transition to a closed
+      // work package. Found on the real bar on 2026-10-15.
       engine.startTask(MINE.id);
       remoteTasks['10000'] = [OTHER];
       await sync();
+      const heard: Array<string | undefined> = [];
+      engine.subscribe(session => heard.push(session?.taskLeftBecause));
+      getTaskStanding.mockResolvedValue('closed');
 
       await sync();
 
-      expect(getTaskStanding).toHaveBeenCalledTimes(1);
+      expect(engine.getCurrentSession()?.taskLeftBecause).toBe('closed');
+      expect(heard).toEqual(['closed']);
+    });
+
+    it('Sync_ReasonUnchanged_TellsNobody', async () => {
+      // Every redraw is two requests to the bar.
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      await sync();
+      const heard: unknown[] = [];
+      engine.subscribe(session => heard.push(session));
+
+      await sync();
+
+      expect(getTaskStanding).toHaveBeenCalledTimes(2);
+      expect(heard).toEqual([]);
+    });
+
+    it('Sync_ReasonKnown_AFailedReadKeepsIt', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      engine.startTask(MINE.id);
+      remoteTasks['10000'] = [OTHER];
+      getTaskStanding.mockResolvedValue('closed');
+      await sync();
+      getTaskStanding.mockRejectedValue(new Error('ECONNRESET'));
+
+      await sync();
+
+      expect(engine.getCurrentSession()?.taskLeftBecause).toBe('closed');
     });
 
     it('Sync_ProviderCannotSay_StillUnlistedWithNoReason', async () => {
@@ -312,5 +347,253 @@ describe('A tracked task the provider stops listing', () => {
     await sync();
 
     expect(engine.getCurrentSession()?.taskUnlisted).toBeUndefined();
+  });
+});
+
+/**
+ * The sync keeps a teammate's task in progress and every task nobody owns,
+ * so "listed" no longer means "the user's". Whose a task is now says it.
+ */
+describe('Tasks that are not the user\'s', () => {
+  let dbConn: DatabaseConnection;
+  let taskRepo: TaskRepository;
+  let engine: TimeTrackingEngine;
+  let remoteTasks: TaskDTO[];
+  let statusPushes: Array<[string, string]>;
+  let getTaskStanding: ReturnType<typeof vi.fn>;
+
+  const MINE: TaskDTO = { id: '20001', projectId: '20000', key: 'TEAM-1', title: 'Mine', status: 'todo' };
+  const FREE: TaskDTO = { id: '20002', projectId: '20000', key: 'TEAM-2', title: 'Nobody\'s', status: 'todo', ownership: 'unassigned' };
+  const ALICES: TaskDTO = {
+    id: '20003', projectId: '20000', key: 'TEAM-3', title: 'Alice\'s', status: 'in_progress',
+    ownership: 'other', assigneeName: 'Alice Martin'
+  };
+
+  const sync = () => engine.getSyncWorker().syncTasksAndProjects();
+
+  beforeEach(async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    dbConn = new DatabaseConnection(':memory:');
+    taskRepo = new TaskRepository(dbConn);
+    remoteTasks = [MINE, FREE, ALICES];
+    statusPushes = [];
+    getTaskStanding = vi.fn(async () => 'open');
+    const manager = {
+      getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60, getTaskStanding }),
+      getProjects: async () => [{ id: '20000', key: 'TEAM', name: 'Team', providerId: 'jira' }],
+      getTasks: async () => remoteTasks,
+      updateTaskStatus: async (taskId: string, status: string) => {
+        statusPushes.push([taskId, status]);
+        return true;
+      },
+      updateTaskStatusFor: async (_provider: string, taskId: string, status: string) => {
+        statusPushes.push([taskId, status]);
+        return true;
+      },
+      logTimeForProvider: () => new Promise(() => undefined)
+    } as unknown as ProviderManager;
+    engine = new TimeTrackingEngine(new SessionRepository(dbConn), new WorklogRepository(dbConn), taskRepo, manager, new ProjectRepository(dbConn));
+    await sync();
+  });
+
+  afterEach(() => {
+    engine.dispose();
+    dbConn.close();
+    vi.restoreAllMocks();
+  });
+
+  it('Sync_EveryOwner_IsStoredWithItsTask', () => {
+    expect([MINE, FREE, ALICES].map(t => taskRepo.getTaskById(t.id))).toMatchObject([
+      { id: MINE.id },
+      { id: FREE.id, ownership: 'unassigned' },
+      { id: ALICES.id, ownership: 'other', assigneeName: 'Alice Martin' }
+    ]);
+    expect(taskRepo.getTaskById(MINE.id)?.ownership).toBeUndefined();
+  });
+
+  it('GetTasksByProjectId_EveryOwner_ListsThemAllWithTheirMarks', () => {
+    // Each list applies the user's visibility; the store hands it everything.
+    const listed = taskRepo.getTasksByProjectId('20000').map(t => [t.id, t.ownership ?? 'mine']);
+    expect(listed).toEqual(expect.arrayContaining([[MINE.id, 'mine'], [FREE.id, 'unassigned'], [ALICES.id, 'other']]));
+    expect(listed).toHaveLength(3);
+  });
+
+  it('GetAllProjects_OpenTaskCounts_CountsEachOwnerApart', () => {
+    // "Only projects with tasks" counts what the visibility shows, so each
+    // owner's open work is counted on its own.
+    const [project] = new ProjectRepository(dbConn).getAllProjects();
+    expect([project.openTaskCount, project.openUnassignedCount, project.openOthersCount]).toEqual([1, 1, 1]);
+  });
+
+  it('IsTaskListed_TeammatesTask_IsNotTheUsersToRestartWithoutAsking', () => {
+    expect(engine.isTaskListed(MINE.id)).toBe(true);
+    expect(engine.isTaskListed(FREE.id)).toBe(true);
+    expect(engine.isTaskListed(ALICES.id)).toBe(false);
+  });
+
+  it('Sync_TrackedTaskNowATeammatesInProgress_SaysReassignedWithoutAsking', async () => {
+    // Still listed -- as Alice's -- so the provider need not be asked why.
+    engine.startTask(MINE.id);
+    remoteTasks = [{ ...MINE, status: 'in_progress', ownership: 'other', assigneeName: 'Alice Martin' }, FREE];
+
+    await sync();
+
+    expect(engine.getCurrentSession()).toMatchObject({ taskUnlisted: true, taskLeftBecause: 'reassigned' });
+    expect(getTaskStanding).not.toHaveBeenCalled();
+  });
+
+  it('Sync_TrackedTaskChangesHands_TheScreensAreToldOnce', async () => {
+    engine.startTask(MINE.id);
+    const told = vi.fn();
+    engine.subscribe(told);
+    remoteTasks = [{ ...MINE, status: 'in_progress', ownership: 'other', assigneeName: 'Alice Martin' }, FREE];
+
+    await sync();
+    await sync();
+
+    expect(told.mock.calls.filter(([s]) => s?.taskUnlisted)).toHaveLength(1);
+  });
+
+  it('StartTask_TeammatesTaskInProgress_IsTrackedWithoutMovingIt', () => {
+    const session = engine.startTask(ALICES.id);
+
+    expect(statusPushes).toEqual([]);
+    expect(engine.getCurrentSession()).toMatchObject({ taskId: session.taskId, taskUnlisted: true, taskLeftBecause: 'reassigned' });
+  });
+
+  it('StartTask_TaskNobodyHas_IsNotMovedBeforeItIsTaken', () => {
+    engine.startTask(FREE.id);
+
+    expect(statusPushes).toEqual([]);
+  });
+
+  it('StartTask_UsersOwnTask_StillMovesToInProgress', () => {
+    engine.startTask(MINE.id);
+
+    expect(statusPushes).toEqual([[MINE.id, 'in_progress']]);
+  });
+
+  describe('taking a task nobody owns', () => {
+    let assignToMeFor: ReturnType<typeof vi.fn>;
+    let reports: TaskClaimReport[];
+
+    beforeEach(() => {
+      assignToMeFor = vi.fn(async (): Promise<TaskClaim | null> => ({ outcome: 'assigned' }));
+      (engine as unknown as { _providerManager: Record<string, unknown> })._providerManager.assignToMeFor = assignToMeFor;
+      reports = [];
+      engine.onTaskClaim(report => reports.push(report));
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+
+    it('StartTask_TaskNobodyHas_AssignsItAndThenMovesIt', async () => {
+      engine.startTask(FREE.id);
+
+      await vi.waitFor(() => expect(reports).toHaveLength(1));
+      expect(assignToMeFor).toHaveBeenCalledWith('jira', FREE.id);
+      expect(statusPushes).toEqual([[FREE.id, 'in_progress']]);
+      expect(taskRepo.getTaskById(FREE.id)).toMatchObject({ status: 'in_progress' });
+      expect(taskRepo.getTaskById(FREE.id)?.ownership).toBeUndefined();
+      expect(engine.getCurrentSession()?.taskUnlisted).toBeUndefined();
+      expect(reports[0]).toMatchObject({ taskKey: FREE.key, providerId: 'jira', claim: { outcome: 'assigned' } });
+    });
+
+    it('StartTask_AssignedToTheUserSinceTheSync_MovesIt', async () => {
+      assignToMeFor.mockResolvedValue({ outcome: 'already_mine' });
+
+      engine.startTask(FREE.id);
+
+      await vi.waitFor(() => expect(statusPushes).toEqual([[FREE.id, 'in_progress']]));
+      expect(taskRepo.getTaskById(FREE.id)?.ownership).toBeUndefined();
+    });
+
+    it('StartTask_TakenMeanwhile_RunsLeavesItWithThemAndSaysWho', async () => {
+      assignToMeFor.mockResolvedValue({ outcome: 'taken', assigneeName: 'Bob Stone' });
+      const told = vi.fn();
+      engine.subscribe(told);
+
+      const session = engine.startTask(FREE.id);
+
+      await vi.waitFor(() => expect(reports).toHaveLength(1));
+      expect(statusPushes).toEqual([]);
+      expect(taskRepo.getTaskById(FREE.id)).toMatchObject({ ownership: 'other', assigneeName: 'Bob Stone' });
+      expect(engine.getCurrentSession()).toMatchObject({
+        sessionId: session.sessionId, status: 'TRACKING', taskUnlisted: true, taskLeftBecause: 'reassigned', taskOwnerName: 'Bob Stone'
+      });
+      // The screens hear it at once, not at the next sync.
+      expect(told.mock.calls.some(([s]) => s?.taskOwnerName === 'Bob Stone')).toBe(true);
+      expect(reports[0].claim).toEqual({ outcome: 'taken', assigneeName: 'Bob Stone' });
+    });
+
+    it('Sync_AfterATakenClaim_DoesNotTellTheSameChangeAgain', async () => {
+      assignToMeFor.mockResolvedValue({ outcome: 'taken', assigneeName: 'Bob Stone' });
+      engine.startTask(FREE.id);
+      await vi.waitFor(() => expect(reports).toHaveLength(1));
+      const told = vi.fn();
+      engine.subscribe(told);
+      remoteTasks = [MINE, { ...FREE, ownership: 'other', assigneeName: 'Bob Stone' }, ALICES];
+
+      await sync();
+
+      expect(told).not.toHaveBeenCalled();
+    });
+
+    it('StartTask_AssignmentFails_ToldOnceNeitherRetriedNorMoved', async () => {
+      assignToMeFor.mockRejectedValue(new Error('HTTP 403 Forbidden'));
+
+      engine.startTask(FREE.id);
+
+      await vi.waitFor(() => expect(reports).toHaveLength(1));
+      expect(reports[0]).toMatchObject({ taskKey: FREE.key, error: 'HTTP 403 Forbidden' });
+      expect(reports[0].claim).toBeUndefined();
+      expect(assignToMeFor).toHaveBeenCalledTimes(1);
+      expect(statusPushes).toEqual([]);
+      expect(taskRepo.getTaskById(FREE.id)?.ownership).toBe('unassigned');
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+
+    it('StartTask_ProviderCannotAssign_ChangesNothingAndSaysNothing', async () => {
+      assignToMeFor.mockResolvedValue(null);
+
+      engine.startTask(FREE.id);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(reports).toEqual([]);
+      expect(taskRepo.getTaskById(FREE.id)?.ownership).toBe('unassigned');
+    });
+
+    it('StartTask_ProjectMadeInTheApp_AsksNoProvider', async () => {
+      // `sprintticker` is not a provider: asking it failed and toasted an error.
+      new ProjectRepository(dbConn).saveProject({ id: 'OWN', key: 'OWN', name: 'Own', providerId: 'sprintticker' });
+      taskRepo.saveTask({ id: 'OWN_1', projectId: 'OWN', key: 'OWN-1', title: 'Free here', status: 'todo', ownership: 'unassigned' });
+
+      engine.startTask('OWN_1');
+      await Promise.resolve();
+
+      expect(assignToMeFor).not.toHaveBeenCalled();
+      expect(reports).toEqual([]);
+    });
+
+    it('StartTask_UsersOwnOrATeammatesTask_AssignsNothing', async () => {
+      engine.startTask(MINE.id);
+      engine.startTask(ALICES.id);
+      await Promise.resolve();
+
+      expect(assignToMeFor).not.toHaveBeenCalled();
+    });
+
+    it('StartTask_SessionEndedBeforeTheAnswer_StillRecordsWhoseItIs', async () => {
+      let answer: (claim: TaskClaim) => void = () => undefined;
+      assignToMeFor.mockReturnValue(new Promise<TaskClaim>(resolve => { answer = resolve; }));
+      engine.startTask(FREE.id);
+      engine.startTask(MINE.id);
+
+      answer({ outcome: 'taken', assigneeName: 'Bob Stone' });
+
+      await vi.waitFor(() => expect(reports).toHaveLength(1));
+      expect(taskRepo.getTaskById(FREE.id)).toMatchObject({ ownership: 'other', assigneeName: 'Bob Stone' });
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id });
+      expect(engine.getCurrentSession()?.taskUnlisted).toBeUndefined();
+    });
   });
 });

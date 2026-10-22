@@ -1321,6 +1321,7 @@ export class BusyBarDriver extends EventEmitter {
       return response;
     } catch (err) {
       this.answerLost = true;
+      this.loseTrackOfDevice();
       // Timeout, abort, DNS, refused connection: from the caller's point of
       // view these are the same event -- no answer from the device -- so the
       // null return stays. What changed is that the *reason* is kept rather
@@ -1376,19 +1377,31 @@ export class BusyBarDriver extends EventEmitter {
   }
 
   /**
-   * After the bar comes back from an outage, which may have been a reboot:
-   * nothing this driver believed about the panel or the stored assets holds,
-   * and the frame left pending is a screen from before the outage. Replaying
+   * After the bar comes back from an outage, which may have been a reboot,
+   * the frame left pending is a screen from before the outage. Replaying
    * it put BUILDING 40% back on a bar whose build had long finished, the
    * clear that followed having failed while the bar was away (2026-10-07).
    * The renderer, told by `reconnected`, redraws what is current instead.
    */
   private forgetDevice(): void {
     this.answerLost = false;
-    this.ledger.forgetAll();
-    this.blankAnimationStored = false;
     this.pendingFrameArgs = null;
     this.emit('reconnected');
+  }
+
+  /**
+   * The bar did not answer: from here on, nothing this driver believed about
+   * the panel or the stored assets holds -- it may be rebooting.
+   *
+   * Forgotten at the loss, not at the ping that sees the bar back. Requests
+   * answered in between describe the panel as it is after the outage, and
+   * forgetting them too made the redraw `reconnected` asks for clear a panel
+   * a clear had just emptied: a removal answered 400 and a second close of a
+   * closed screen (stress seed 1670). A later loss forgets again.
+   */
+  private loseTrackOfDevice(): void {
+    this.ledger.forgetAll();
+    this.blankAnimationStored = false;
   }
 
   private checkPendingFrame() {
@@ -1913,6 +1926,7 @@ export class BusyBarDriver extends EventEmitter {
    */
   private notePingFailure(wasConnected: boolean, reason: string | null): void {
     this.consecutivePingFailures++;
+    this.loseTrackOfDevice();
     const detail = reason ?? 'no answer';
 
     if (wasConnected) {

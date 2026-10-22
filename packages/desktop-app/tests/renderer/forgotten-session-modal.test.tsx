@@ -40,6 +40,31 @@ describe('a session left running', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  describe('across midnight', () => {
+    /** Three days ago at that local hour, tomorrow when `nextDay`. */
+    const local = (hours: number, nextDay = false) => {
+      const d = new Date();
+      d.setDate(d.getDate() - 3 + (nextDay ? 1 : 0));
+      d.setHours(hours, 0, 0, 0);
+      return d.toISOString();
+    };
+    const review = (lastPresenceUtc: string): ForgottenSessionReviewDTO => ({
+      ...REVIEW, startTimeUtc: local(22), lastPresenceUtc, endOfDayUtc: null, pauses: []
+    });
+
+    it('Render_AnEndAfterMidnight_SaysWhichDaysTheTimeIsFiledUnder', async () => {
+      await open(review(local(1, true)));
+
+      expect(screen.getByText(/filed as/).textContent).toMatch(/filed as 2h 00m on \S+, 1h 00m on \S+\./);
+    });
+
+    it('Render_AnEndBeforeMidnight_SaysNothingOfDays', async () => {
+      await open(review(local(23)));
+
+      expect(screen.queryByText(/filed as/)).toBeNull();
+    });
+  });
+
   it('Render_Asked_ShowsEachEndWithWhatItWouldLog', async () => {
     await open();
 

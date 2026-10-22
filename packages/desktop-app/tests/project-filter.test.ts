@@ -94,6 +94,42 @@ describe('filterProjectsWithTasks', () => {
   });
 });
 
+describe('filterProjectsWithTasks with the task visibility', () => {
+  const counted = (id: string, mine: number, unassigned: number, others: number): ProjectDTO => ({
+    id, key: id, name: id, openTaskCount: mine, openUnassignedCount: unassigned, openOthersCount: others
+  });
+  const projects = [counted('MINE', 1, 0, 0), counted('FREE', 0, 2, 0), counted('THEIRS', 0, 0, 3)];
+
+  it('FilterProjectsWithTasks_FreeWorkShown_ListsAProjectHoldingOnlyFreeWork', () => {
+    const result = filterProjectsWithTasks(projects, true, [], { unassigned: true, others: false });
+
+    expect(result.visible.map(p => p.id)).toEqual(['MINE', 'FREE']);
+    expect(result.hiddenCount).toBe(1);
+  });
+
+  it('FilterProjectsWithTasks_TeammatesShown_ListsAProjectHoldingOnlyTheirWork', () => {
+    const result = filterProjectsWithTasks(projects, true, [], { unassigned: false, others: true });
+
+    expect(result.visible.map(p => p.id)).toEqual(['MINE', 'THEIRS']);
+  });
+
+  it('FilterProjectsWithTasks_NoVisibilityNamed_CountsTheUsersOwnWorkOnly', () => {
+    expect(filterProjectsWithTasks(projects, true).visible.map(p => p.id)).toEqual(['MINE']);
+  });
+
+  it('FilterProjectsWithTasks_OnlyHiddenOwnersHaveWork_ListsEverythingAndSaysSo', () => {
+    // Nothing the lists would show is open anywhere: the same as nothing assigned.
+    const result = filterProjectsWithTasks([counted('THEIRS', 0, 0, 3)], true, [], { unassigned: true, others: false });
+
+    expect(result.nothingAssigned).toBe(true);
+  });
+
+  it('FirstProjectWithTasks_FreeWorkShown_OpensOnFreeWork', () => {
+    expect(firstProjectWithTasks([counted('THEIRS', 0, 0, 3), counted('FREE', 0, 2, 0)], { unassigned: true, others: false }))
+      .toBe('FREE');
+  });
+});
+
 describe('firstProjectWithTasks', () => {
   it('FirstProjectWithTasks_SomeEmpty_SkipsToTheFirstWithAnOpenTask', () => {
     expect(firstProjectWithTasks([project('A', 0), project('B', 3)])).toBe('B');

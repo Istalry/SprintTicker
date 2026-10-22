@@ -253,6 +253,65 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
+    it('PickerOpenedUnderAway_StillOpenWhenAwayEnds_ComesBack', async () => {
+      // Found by stress seeds: refused under Away and never queued, the
+      // picker was forgotten when Away ended -- the clock came back while the
+      // bar still took presses for a list nobody could see.
+      await play('awayStart', 1000, 'openPicker', 1000, 'awayEnd', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it.each([
+      ['during DONE!', 1000],
+      ['after DONE!', SETTLE_MS]
+    ])('PickerOpened_%s_ACompileStarts_ThePickerStays', async (_when, wait) => {
+      // On the real bar (2026-10-15): FINISH, START with nothing running --
+      // the picker -- and Unity began compiling. The gear covered the picker,
+      // which outranks it, and the picker never came back.
+      await play('startTask', SETTLE_MS, 'finish', wait, 'openPicker', 500, 'compileStart', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('PickerOpenedUnderAway_UnlockedDuringLunch_ThePickerIsOverTheSandwich', async () => {
+      // Found by stress seed 1186, once unlocking into lunch let go of Away:
+      // the picker (97) outranks Lunch (95) and was not offered the display.
+      await play('awayStart', 1000, 'openPicker', 1000, 'awayEndIntoLunch', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expectSettledScreen(desk);
+
+      await play('closePicker', SETTLE_MS);
+      expect(lock()).toBe('lunchModePriority');
+      expectSettledScreen(desk);
+    });
+
+    it('PickerOpenedUnderAway_AwayEndsDuringACompile_ThePickerIsOverTheGear', async () => {
+      // Unity registered first, and the display went to the registration
+      // order rather than the user's priorities.
+      await play('compileStart', 500, 'awayStart', 1000, 'openPicker', 1000, 'awayEnd', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expectSettledScreen(desk);
+
+      await play('closePicker', SETTLE_MS);
+      expect(lock()).toBe('unityCompilingPriority');
+      expectSettledScreen(desk);
+    });
+
+    it('PickerOpenedUnderAway_ABannerQueuedMeanwhile_ThePickerComesFirst', async () => {
+      // Found by stress seeds: the queue replayed first, so the banner (70)
+      // took the display from the picker (97) when Away ended, and Lunch (95)
+      // then took it from the banner.
+      await play('awayStart', 1000, 'openPicker', 500, 'highBanner', 500, 'awayEnd', 100, 'lunchStart', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expectSettledScreen(desk);
+    });
+
     it('PausedSessionResumed_DuringLunch_TheSessionReplacesTheSandwich', async () => {
       // Paused before lunch, so lunch had nothing to stop.
       await play('startTask', 500, 'pause', 500, 'lunchStart', 2000, 'resume', SETTLE_MS);
@@ -294,12 +353,13 @@ describe('Display hand-back: the screen that ends gives the display to the right
     it('LunchRefusedDuringAway_BackToWork_IsNotReplayed', async () => {
       // A queued Lunch replayed the moment Away ended: back in WORK, holding
       // a Lunch lock that outranked every notification.
-      // Lunch begins with Away still holding the display, which outranks it.
+      // Lunch's screen asked for with Away still holding the display, which
+      // outranks it. Not by a change of mode: AWAY to LUNCH is the unlock
+      // during lunch, which ends Away (see the case below).
       desk.priority.setUserMode('AWAY');
       desk.renderer.setContextMode('AWAY');
       await advance(500);
-      desk.priority.setUserMode('LUNCH');
-      desk.renderer.setContextMode('LUNCH');
+      desk.renderer.renderLunchMode();
       await advance(500);
       expect(lock()).toBe('awayModePriority');
 
@@ -308,6 +368,31 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await advance(SETTLE_MS);
 
       expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('LunchStopsARunningTask_TheSandwichWithNoStopwatchOverIt', async () => {
+      // On the real bar (2026-10-16): lunch stopped the task, the engine's
+      // subscriber drew the empty session, and the stopwatch icon went on
+      // playing over the sandwich for the whole break.
+      await play('startTask', SETTLE_MS);
+      // As enterLunchMode does: the session stops, and the subscriber draws it
+      // empty, then the mode.
+      desk.session = null;
+      desk.renderer.renderActiveSession(null);
+      await play('lunchStart', SETTLE_MS);
+
+      expect(lock()).toBe('lunchModePriority');
+      expectSettledScreen(desk);
+    });
+
+    it('IconUpWhenTheBarDrops_AwayMeanwhile_NoIconOverTheCoffeeOnceBack', async () => {
+      // Found by stress seed 1026: the gear's removal failed while the bar was
+      // away, the reconnect called the icon gone, and it played on over the
+      // Away scene.
+      await play('startTask', SETTLE_MS, 'compileStart', SETTLE_MS, 'barDrop', 500, 'awayStart', 2000, 'barBack', SETTLE_MS);
+
+      expect(lock()).toBe('awayModePriority');
       expectSettledScreen(desk);
     });
 
@@ -328,12 +413,13 @@ describe('Display hand-back: the screen that ends gives the display to the right
 
   /**
    * The stand-up: OK on its prompt switches the timer to Daily Standup under
-   * the prompt's lock, and its STOP brings the task before back. Scenes on
-   * both sides -- the prompt's meeting, the stand-up's meeting, LOGGED -- and
-   * a frame between them, which is where the panel rules bite.
+   * the prompt's lock, and its STOP brings the task before back. The prompt's
+   * meeting scene, then the session screen with the meeting icon -- it used
+   * to be the same scene, and joining looked like nothing happening -- then
+   * LOGGED: scenes and frames in turn, which is where the panel rules bite.
    */
   describe('the stand-up', () => {
-    it('JoinStandup_FromThePrompt_TheMeetingThenTheTaskBack', async () => {
+    it('JoinStandup_FromThePrompt_TheSessionScreenThenTheTaskBack', async () => {
       await play('startTask', SETTLE_MS, 'standupPrompt', SETTLE_MS);
       expect(lock()).toBe('standupPromptPriority');
 
@@ -346,7 +432,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
-    it('JoinStandup_NothingRunning_TheMeetingThenTheIdleClock', async () => {
+    it('JoinStandup_NothingRunning_TheSessionScreenThenTheIdleClock', async () => {
       await play('standupPrompt', SETTLE_MS, 'joinStandup', SETTLE_MS);
       expectSettledScreen(desk);
 
@@ -386,6 +472,18 @@ describe('Display hand-back: the screen that ends gives the display to the right
 
       await outage(() => play('buildEnd', SETTLE_MS));
       await advance(SETTLE_MS);
+
+      expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('ShortOutage_AClearAnsweredBeforeThePingSeesTheBar_IsNotSentAgain', async () => {
+      // Found by stress seed 1670. Play Mode's screen went unanswered, the bar
+      // came back before the next ping, and a build drew and its end cleared
+      // the panel, all answered; that ping then forgot what the answers said,
+      // and the redraw it asks for removed a frame that was gone and closed a
+      // closed screen.
+      await play('playEnter', 'playExit', 'barDrop', 1000, 'barBack', 40, 'buildStart', 1000, 'buildEnd', SETTLE_MS);
 
       expect(lock()).toBeNull();
       expectSettledScreen(desk);

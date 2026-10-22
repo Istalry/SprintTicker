@@ -14,12 +14,16 @@ import {
   ProviderEventText,
   describeProviderEvent,
   describeSendingStopped,
+  describeTaskTaken,
+  describeTaskTakenForBar,
+  describeClaimFailed,
   describeProviderEventForBar,
   normaliseProviderEventSettings,
   summarizeProviderEvents
 } from '../../shared/provider-events';
 import { ITaskProvider } from '../providers/task-provider-interface';
 import { ToastPresenter } from './toast-presenter';
+import { TaskClaimReport } from '../../shared/task-claim';
 
 export interface SettingsStore {
   getSetting<T>(key: string, defaultValue: T): T;
@@ -185,6 +189,28 @@ export class ProviderEventService {
    */
   public reportSendingStopped(providerName: string): boolean {
     return this.deps.toasts.show(describeSendingStopped(providerName));
+  }
+
+  /**
+   * Says how taking a task nobody owned ended, when the user must hear it:
+   * taken by someone meanwhile -- a toast and, with a bar, a banner naming
+   * them -- or failed, a toast. An assignment that went through says
+   * nothing; the task is simply theirs. Not gated by the settings, like
+   * `reportSendingStopped`: it is about the user's own start, not events on
+   * their tasks.
+   */
+  public reportTaskClaim(report: TaskClaimReport, providerName: string): { toast: boolean; bar: boolean } {
+    if (report.error !== undefined) {
+      return { toast: this.deps.toasts.show(describeClaimFailed(report.taskKey, providerName)), bar: false };
+    }
+    if (report.claim?.outcome !== 'taken') return { toast: false, bar: false };
+    const { assigneeName } = report.claim;
+    const toast = this.deps.toasts.show(describeTaskTaken(report.taskKey, assigneeName));
+    const bar = this.barAvailable();
+    if (bar) {
+      this.deps.bar!.show({ appName: providerName, ...describeTaskTakenForBar(assigneeName) }, report.providerId ?? '');
+    }
+    return { toast, bar };
   }
 
   /** Shows a sample through the destinations the settings have switched on. */

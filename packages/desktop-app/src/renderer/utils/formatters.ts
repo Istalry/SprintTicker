@@ -61,6 +61,21 @@ export function formatHoursMinutes(date: Date): string {
   return date.toLocaleTimeString(regionalLocale, { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * "2h 00m on Mon, 1h 00m on Tue": the days a session across midnight is
+ * filed under. Null for a session within one day, where it says nothing.
+ */
+export function formatDaySplit(shares: ReadonlyArray<{ dateKey: string; seconds: number }>): string | null {
+  if (shares.length < 2) return null;
+  return shares
+    .map(({ dateKey, seconds }) => {
+      const [year, month, day] = dateKey.split('-').map(Number);
+      const weekday = new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { weekday: 'short' });
+      return `${formatHoursAndMinutes(seconds)} on ${weekday}`;
+    })
+    .join(', ');
+}
+
 /** `Fri 17 Oct, 18:04`, in the regional format: an instant on a day that may not be today. */
 export function formatDayAndTime(date: Date): string {
   return date.toLocaleString(regionalLocale, {

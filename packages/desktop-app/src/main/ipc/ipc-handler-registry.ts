@@ -1,5 +1,6 @@
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
 import { WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { IPCChannel } from '../../shared/ipc-channels';
@@ -36,9 +37,11 @@ import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings, checkScheduleSettings } from '../../shared/schedule-defaults';
 import { localDateKey } from '../../shared/local-date';
 import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
+import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibility } from '../../shared/task-visibility';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -241,6 +244,8 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.DISCARD_SESSION, async (): Promise<DiscardSessionResultDTO> => {
       return this.engine.discardSession();
     });
+
+    ipcMain.handle(IPCChannel.GET_SESSION_DAYS, async (): Promise<DayShare[]> => this.engine.getSessionDays());
 
     ipcMain.handle(IPCChannel.GET_FORGOTTEN_REVIEW, async (): Promise<ForgottenSessionReviewDTO | null> =>
       this.forgottenSessionService?.getReview() ?? null
@@ -533,7 +538,7 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
       const activeSession = this.engine.getCurrentSession();
       if (activeSession) {
-        this.engine.stopSession('Finalized during End-of-Day Wrap-Up');
+        this.engine.stopSession(WORKLOG_COMMENTS.WRAP_UP);
       }
 
       // 1. Ask open Unity Editors to save their scenes
@@ -563,9 +568,8 @@ export class IPCHandlerRegistry {
       if (process.env.NODE_ENV !== 'test') {
         setTimeout(() => {
           try {
+            // The release hands the display back itself; see CANCEL below.
             this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
-            const current = this.engine.getCurrentSession();
-            this.renderer.renderActiveSession(current);
           } catch {
             // Ignore if app closed
           }
@@ -593,8 +597,18 @@ export class IPCHandlerRegistry {
       if (this.systemAutomationService.isShutdownPending()) {
         await this.systemAutomationService.abortShutdown();
       }
-      const activeSession = this.engine.getCurrentSession();
-      this.renderer.renderActiveSession(activeSession);
+      // Nothing drawn here: a release that frees the lock it names hands the
+      // display back itself, and one that does not leaves it with whoever
+      // holds it. Drawing the session after it drew idle twice -- two clears
+      // of the device's screen (CLAUDE.md §5); seen on the real bar on
+      // 2026-10-15 as a removal of a frame already gone.
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.GET_WEEK_ENDED, async () => this.contextScheduleService.getWeekEnded());
+
+    ipcMain.handle(IPCChannel.DISMISS_WEEK_ENDED, async () => {
+      this.contextScheduleService.dismissWeekEnded();
       return true;
     });
 
@@ -909,6 +923,8 @@ export class IPCHandlerRegistry {
       return this.renderer.getDisplayState();
     });
 
+    ipcMain.handle(IPCChannel.GET_SCREEN_ICON, async () => this.renderer.getScreenIcon());
+
     ipcMain.handle(IPCChannel.SET_COLOR_THEME, async (_event, theme: ColorThemeId) => {
       this.renderer.setColorTheme(theme);
       return true;
@@ -1038,6 +1054,19 @@ export class IPCHandlerRegistry {
       return enabled;
     });
 
+    ipcMain.handle(IPCChannel.GET_TASK_VISIBILITY, async (): Promise<TaskVisibility> => readTaskVisibility(this.settingsRepo));
+
+    // Broadcast for the same reason as the switch above.
+    ipcMain.handle(IPCChannel.SET_TASK_VISIBILITY, async (_event, visibility: unknown): Promise<TaskVisibility> => {
+      if (!isTaskVisibility(visibility)) {
+        throw new ArgumentException(`Expected { unassigned: boolean, others: boolean }, received: ${JSON.stringify(visibility)}`);
+      }
+      const stored: TaskVisibility = { unassigned: visibility.unassigned, others: visibility.others };
+      this.settingsRepo.setSetting(TASK_VISIBILITY_KEY, stored);
+      this.broadcast(IPCChannel.ON_TASK_VISIBILITY, stored);
+      return stored;
+    });
+
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {
       return this.updateChecker ? this.updateChecker.isEnabled() : false;
     });
@@ -1060,6 +1089,19 @@ export class IPCHandlerRegistry {
       return true;
     });
 
+    // Only the URL main builds from the provider's own site is opened: the
+    // renderer names a task, never a URL. Checked once more here, since
+    // shell.openExternal launches whatever protocol handler it is given.
+    ipcMain.handle(IPCChannel.OPEN_TASK_PAGE, async (_event, taskId: unknown): Promise<boolean> => {
+      if (typeof taskId !== 'string' || !taskId) {
+        throw new ArgumentException(`Expected a task id, received: ${String(taskId)}`);
+      }
+      const url = this.engine.taskPageUrl(taskId);
+      if (!url || !/^https?:\/\//i.test(url)) return false;
+      await shell.openExternal(url);
+      return true;
+    });
+
     // 13. Wire Bi-directional State Broadcasts
     this.engine.subscribe((session: ActiveSessionDTO | null) => {
       this.broadcast(IPCChannel.ON_SESSION_UPDATED, session);
@@ -1069,6 +1111,10 @@ export class IPCHandlerRegistry {
 
     this.renderer.onStateChanged((state) => {
       this.broadcast(IPCChannel.ON_DISPLAY_STATE_UPDATED, state);
+    });
+
+    this.renderer.onScreenIconChanged((icon) => {
+      this.broadcast(IPCChannel.ON_SCREEN_ICON, icon);
     });
 
     // Every committed sync, the five-minute one included: the window only

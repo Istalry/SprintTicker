@@ -1026,13 +1026,147 @@ sync queue behind the send they correct; entries sent before the id was kept
 are found by the marker in their comment. Corrected and deleted from Work
 History.
 
+**Done (2026-10-15): the edge cases of an audit of the whole time path.**
+- A session's time goes to the provider its task came from.
+- Lunch under Away stops the session.
+- Projects made in the app survive the sync.
+- A resend looks for its earlier send first.
+- A closed task finishes without a transition.
+- The open session follows a rename, and restarting a task no longer yours
+  takes nothing back.
+- The window refreshes after every sync, and a refused token is told.
+- A clock set back during a pause is counted.
+- The stand-up switches the timer to a Daily Standup task and back.
+- Ceremonies keep to working days and holidays, and the week closes with a
+  reminder.
+- A session is split into worklogs at midnight and at long pauses.
+
+**Done (2026-10-15): a session on the real bar**, firmware 1.2.4, against
+a fake OpenProject. The picker, tracking, the paused menu,
+DISCARD?, NOT YOURS, a closed task finished, the split at midnight, the
+wrap-up prompt, a banner and the bar unplugged mid-question all behaved.
+It found five bugs no test had, each now fixed with one that fails first:
+lunch skipped whenever a task ran into it (the engine's tick read as a
+start), unlocking into lunch keeping the Away scene, a task's reason for
+leaving never read again, the wrap-up's cancel drawing twice, and the
+window's preview drawing animations as pictures. The stand-up's screen
+changed with it: the meeting scene of the prompt stayed while the stand-up
+ran, and joining looked like nothing happening.
+
+**Done (2026-10-16): the re-test.** Lunch with a task running stops it,
+shows the sandwich and restarts the task at its end; locked into lunch and
+unlocked during it, the bar goes from the coffee cup to the sandwich, and
+the task still restarts after. The stand-up shows the session screen with
+the meeting icon. It found one
+more bug, fixed with a test that fails first: the stopwatch played on over
+the sandwich, because the idle clock's clear was overtaken by lunch's draw
+and the icon was counted gone anyway.
+
+**Done (2026-10-16): the OpenProject contract on a real 17.9 instance**,
+with SprintTicker's own provider against it: a time entry written, found
+again by its marker, corrected with no `lockVersion`, and deleted. It found
+the resend's search refused there -- 17.9 has no `work_package` filter on
+time entries -- now fixed.
+
+**Done (2026-10-16): the picker under a Unity compile**, from a real
+editor: the picker stayed while Escape1 compiled, and BACK showed the gear.
+It never showed covered: neither editor had ever run the plugin -- it had
+no assembly definition, so Unity skipped it -- so the COMPILING seen over
+the picker came from replayed events. Fixed, with the one compile error its
+first real build showed.
+
+**Done (2026-10-16): tasks nobody owns.** The sync keeps open unassigned
+tasks and a teammate's in progress, each with whose it is (migration 12,
+checked on real data); every list shows them under the **Unassigned** and
+**Teammates'** switches, in the user's order; and starting an unassigned
+task assigns it, leaving one taken meanwhile with whoever took it and
+saying who -- toast, **TAKEN** on the bar, **Assigned to** in the window.
+Checked on a real OpenProject 17.9 instance, the race included (the stale write answered 409 and the
+second read decided again), and on the real bar; Jira against the fake only,
+with no instance to try it on.
+
+**Done (2026-10-16): open a task's page from the window.** An arrow beside a
+task in the session panel, the Projects & Tasks panel and Work History opens
+`<site>/browse/<KEY>` or `<site>/work_packages/<id>`. Main builds the URL
+from the provider's own site and opens it only if it is http(s) there; the
+renderer names the task, never a URL.
+
+**Withdrawn (2026-10-22): instance-specific OpenProject extensions.**
+OpenProject support is the stock API again, and ad-hoc time stays in local
+history, never sent. What was measured on a real 17.9 instance along the
+way stays: the `entity` filter for time entries and the assignment under
+`lockVersion`.
+
+**Done (2026-10-16): an animated meeting icon.** While the stand-up runs, the
+three at the table take turns to speak, each sitting up a pixel, with a rest
+between turns (`icon_meeting_16x16`, 336 frames, 8.9 KB). Its first frame is
+the still icon, which `animation-assets.test.ts` checks.
+
+**Done (2026-10-16): icons in the mini timer.** The icon of whatever holds the
+bar sits beside the timer, with the screen's text as its tooltip: the
+renderer keeps each frame's icon and pushes it only when it changes. Full-panel
+scenes stand as an icon (`SCENE_ICONS`); Away and SEE YOU! got their own, a
+cup and a moon taken from their scenes' sprites.
+
+---
+
+## 6. Next
+
+Ordered; each says what has to be true first.
+
+- **Stream Deck Mini, as an alternative to the bar** (planned 2026-10-16).
+  The target is the six-key Mini: no dial, no screen, 80x80 keys. Decided:
+  - **A plugin for Elgato's Stream Deck app**, on the official SDK
+    (`@elgato/streamdeck`, MIT; 2.x needs Node 24 and Stream Deck 7.1). The
+    app keeps the device, so the user's other keys stay, and SprintTicker
+    ships no native module. Driving the device over HID was set aside: it
+    takes the device from Elgato's app and brings `node-hid` into the asar.
+    Injecting the bar's keys through `/api/input` was too: a bar key means
+    something else on every screen, and a key labelled Pause must pause.
+  - **Six keys that change with the state**, as the mini timer's buttons do,
+    in a profile the plugin ships, so installing it is the whole set-up.
+    Normally: the session (the bar's screen icon, the key and the time;
+    pause or resume, or the picker with nothing running), End, Switch (the
+    window's picker), two favourite tasks chosen per key, and a last key that
+    answers the pending prompt -- stand-up, RESUME IT?, the wrap-up; OK, held
+    for BACK -- or toggles Away when none is. End turns the keys into Not
+    done, Done, Discard and Back; Done asks NOT YOURS? when
+    `finishNeedsConfirmation` says so, and Discard asks DISCARD?, each a
+    second press. The layout is a pure function of the state, tested without
+    a device.
+  - **The app's side, which needs no device:** a WebSocket on 39123
+    (`/api/v1/deck`, `ws` is shipped already) pushing the state when it
+    changes -- the plugin ticks the time itself -- and taking `{ action,
+    taskId? }`, validated, into a `DeckActionService` that calls what the
+    mini timer and IPC call, so the rules cannot diverge. It never takes the
+    bar's display. No token, as for Unity's webhooks; a handshake carrying an
+    `Origin` is refused, since a browser opens a cross-origin WebSocket
+    without CORS. The protocol lives in `shared/deck-protocol.ts`, the one
+    place the plugin imports from.
+  - **Then the plugin** (`packages/streamdeck-plugin`, made with
+    `@elgato/cli`): key faces in SVG from the shared bitmaps, a key showing
+    the app offline rather than failing when SprintTicker is closed, tests
+    against a mocked SDK, and a package test on the manifest and its UUIDs --
+    nothing here compiles it in Elgato's app, as with the Unity plugin.
+
+  Blocked, for the last step only, on a Mini to measure: how fast a key
+  face changes, how a held press feels (the SDK gives key down and up, not a
+  hold), the profile installing on that model, and reconnecting after either
+  app restarts. Elgato's Virtual Stream Deck still wants a real device
+  attached, so it does not stand in for one.
+- **Personal days off.** OpenProject 17 records a user's own days off
+  (`/api/v3/users/{id}/non_working_times`, the *My working times* page). The
+  working calendar reads only the instance's holidays; a personal day off
+  could silence the ceremonies too. Blocked on nothing but worth it only
+  once someone takes days off through OpenProject.
+
 ---
 
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.5 statements / 88.82 branches / 94.18 functions / 96.15 lines across 2154
-tests in 106 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.71 statements / 89.2 branches / 94.49 functions / 96.4 lines across 2456
+tests in 121 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1309,6 +1443,8 @@ nobody got to.
 | Sync idempotency | Documented limitation | `reclaimStaleSyncItems` can re-POST if the app died after OpenProject accepted but before the row was marked `SYNCED`. The v3 API has no idempotency key; the sync id is embedded in the comment so duplicates are greppable. |
 | Task description field | Done | Migration 7 (2026-09-30). Jira's ADF and OpenProject's Markdown become one line of plain text, capped at 500 characters. The bar's picker shows the key, then as much description as fits -- the key first, so it is never the part cut off; the app shows it under the title and searches it. |
 | Code signing | Not planned | Deliberate, as of 2026-09-09, not a gap. A SmartScreen-satisfying certificate costs money annually and requires identity verification, which is out of proportion to a personal project whose manual install works. Builds stay unsigned and the first-run warning is documented where a user meets it. Note that the old "adding one is two repository secrets" claim no longer holds: new code-signing keys must sit on a hardware token or in a cloud HSM, so CI signing needs a signing service, not a `.pfx` in a secret. |
+| Timezone changed between a session's start and its end | Deferred | Every instant is stored in UTC, so no time is lost; only the day a worklog is filed under follows the machine's zone when it ends. Rare, and the split at midnight already files each piece by its own start. |
+| The same numeric id on Jira and OpenProject | Deferred | Only one provider is active at a time, and a session records the provider its task came from (migration 9), so time goes to the right one. Prefixing task ids per provider would close it for good, at the cost of a migration of every task and worklog row. |
 | macOS / Linux | Out of scope | The notification listener is PowerShell against the Windows Action Center. Porting means a second listener, not a build target. |
 
 ---

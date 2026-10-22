@@ -27,6 +27,7 @@ import { PriorityRulesView } from './views/Priority/PriorityRulesView';
 import { DeviceDiagnosticsView } from './views/Device/DeviceDiagnosticsView';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
 import { StandupPromptModal } from './views/Standup/StandupPromptModal';
+import { WeekEndedNotice } from './components/WeekEndedNotice';
 import { ProjectTaskManagerView } from './views/Tasks/ProjectTaskManagerView';
 import { WorklogHistoryView } from './views/History/WorklogHistoryView';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
@@ -404,6 +405,7 @@ export const App: React.FC = () => {
       />
 
       <ResumeAfterLunchPrompt />
+      <WeekEndedNotice onOpenHistory={() => setActiveTab('history')} />
       <ForgottenSessionModal />
 
       {/* Onboarding Setup Wizard Modal */}

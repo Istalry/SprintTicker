@@ -160,6 +160,42 @@ function workPackagesFor(projectId, count) {
   }));
 }
 
+/** The user the credentials belong to, whatever they are: `/api/v3/users/me`. */
+const FAKE_USER = { id: 7, name: 'Fake Me' };
+
+/**
+ * Applies the assignee and status filters a task search sends, the way
+ * OpenProject reads them: `=` `me` is the user's, `!*` nobody's (assignee IS
+ * NULL), `!` `me` anyone's but the user's -- nobody's included -- and a
+ * status `=` keeps that status id. Anything else is left unfiltered.
+ */
+function applyTaskFilters(packages, rawFilters) {
+  let parsed = [];
+  try {
+    parsed = JSON.parse(rawFilters || '[]');
+  } catch {
+    // As projectIdFromFilters: an unreadable filter is not fatal here.
+  }
+  const assigneeId = wp => {
+    const href = wp._links.assignee?.href;
+    return href ? Number(href.split('/').pop()) : null;
+  };
+  return parsed.reduce((list, entry) => {
+    if (entry.assignee) {
+      const { operator, values } = entry.assignee;
+      const me = (values || []).includes('me');
+      if (operator === '=' && me) return list.filter(wp => assigneeId(wp) === FAKE_USER.id);
+      if (operator === '!*') return list.filter(wp => assigneeId(wp) === null);
+      if (operator === '!' && me) return list.filter(wp => assigneeId(wp) !== FAKE_USER.id);
+    }
+    if (entry.status && entry.status.operator === '=') {
+      const wanted = entry.status.values.map(String);
+      return list.filter(wp => wanted.includes(wp._links.status.href.split('/').pop()));
+    }
+    return list;
+  }, packages);
+}
+
 /** Reads the `project` value out of the provider's JSON filter parameter. */
 function projectIdFromFilters(rawFilters) {
   if (!rawFilters) return 1;
@@ -210,6 +246,34 @@ function createFakeOpenProject(overrides = {}) {
   // Work packages closed, or deleted, since they were listed: a test puts ids here.
   const closedWorkPackages = new Set();
   const deletedWorkPackages = new Set();
+  /** The instance's holidays, `{ date, name }`: a test pushes to it. */
+  const nonWorkingDays = [];
+  /**
+   * Whose a work package is, by id, when it is not the user's: `null` for
+   * nobody, `{ id, name }` for a teammate. Every other package is assigned to
+   * `FAKE_USER`, as the search used to return only the user's work.
+   */
+  const assignees = new Map();
+  /**
+   * Each work package's `lockVersion`, 1 until a PATCH moves it on. A PATCH
+   * carrying another answers 409, as OpenProject refuses a write over an
+   * edit made since the read.
+   */
+  const lockVersions = new Map();
+  /**
+   * Called with the id on every PATCH of one work package, before its
+   * `lockVersion` is checked: a test changes the package there to play
+   * someone editing it between the adapter's read and its write.
+   */
+  const hooks = { onWorkPackagePatch: null };
+  /**
+   * Which filter picks a time entry's work package. OpenProject 17.9 has
+   * `entity_type` + `entity_id`, since time can be logged on a meeting, and
+   * answers 400 "Filters Work package filter does not exist." to
+   * `work_package` (measured on a real 17.9 instance, 2026-10-16). `'legacy'` is an
+   * instance from before that, which knows `work_package` only.
+   */
+  const timeEntryFilters = { mode: 'entity' };
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -222,7 +286,9 @@ function createFakeOpenProject(overrides = {}) {
     const requestedPageSize = Number(url.searchParams.get('pageSize')) || options.pageSize;
     const pageSize = Math.min(requestedPageSize, options.pageSize);
 
-    requests.push({ method: req.method, pathname: url.pathname, offset, pageSize, requestedPageSize });
+    // `body` is filled in by the routes that read one, as they read it.
+    const entry = { method: req.method, pathname: url.pathname, offset, pageSize, requestedPageSize };
+    requests.push(entry);
 
     const send = (status, body) => {
       const json = JSON.stringify(body);
@@ -246,14 +312,43 @@ function createFakeOpenProject(overrides = {}) {
       return;
     }
 
+    if (url.pathname === '/api/v3/days/non_working') {
+      // The date filter is inclusive at both ends; without one, a real
+      // instance answers the current year.
+      let from = '0000-00-00';
+      let to = '9999-99-99';
+      try {
+        const filter = JSON.parse(url.searchParams.get('filters') || '[]').find(f => f.date);
+        if (filter) [from, to] = filter.date.values;
+      } catch {
+        // An unreadable filter: answer every day, as an unfiltered request would.
+      }
+      const inRange = nonWorkingDays
+        .filter(day => day.date >= from && day.date <= to)
+        .map((day, i) => ({ _type: 'NonWorkingDay', id: i + 1, ...day }));
+      send(200, collection(url, inRange, offset, pageSize));
+      return;
+    }
+
     if (url.pathname === '/api/v3/statuses') {
       send(200, collection(url, statuses, offset, pageSize));
       return;
     }
 
+    if (url.pathname === '/api/v3/users/me') {
+      send(200, { _type: 'User', ...FAKE_USER });
+      return;
+    }
+
     if (url.pathname === '/api/v3/work_packages') {
-      const projectId = projectIdFromFilters(url.searchParams.get('filters'));
-      send(200, collection(url, workPackagesFor(projectId, options.workPackages), offset, pageSize));
+      const filters = url.searchParams.get('filters');
+      const projectId = projectIdFromFilters(filters);
+      const packages = workPackagesFor(projectId, options.workPackages).map(wp => {
+        const owner = assignees.has(wp.id) ? assignees.get(wp.id) : FAKE_USER;
+        const assignee = owner ? { href: `/api/v3/users/${owner.id}`, title: owner.name } : { href: null };
+        return { ...wp, _links: { ...wp._links, assignee } };
+      });
+      send(200, collection(url, applyTaskFilters(packages, filters), offset, pageSize));
       return;
     }
 
@@ -277,7 +372,18 @@ function createFakeOpenProject(overrides = {}) {
       // Filtered by work package, as a search for one entry is, it answers
       // from what was POSTed; unfiltered -- today's total -- from a fixed set.
       const filters = JSON.parse(url.searchParams.get('filters') || '[]');
-      const byPackage = filters.find(f => f.work_package)?.work_package?.values?.[0];
+      const unknown = filters
+        .map(f => Object.keys(f)[0])
+        .find(key => (timeEntryFilters.mode === 'legacy' ? /^entity_/.test(key) : key === 'work_package'));
+      if (unknown) {
+        const name = unknown === 'work_package' ? 'Work package' : unknown === 'entity_id' ? 'Entity' : 'Entity type';
+        send(400, { _type: 'Error', message: `Filters ${name} filter does not exist.` });
+        return;
+      }
+      const byEntity = filters.find(f => f.entity_type)?.entity_type?.values?.[0] === 'WorkPackage'
+        ? filters.find(f => f.entity_id)?.entity_id?.values?.[0]
+        : undefined;
+      const byPackage = byEntity ?? filters.find(f => f.work_package)?.work_package?.values?.[0];
       if (byPackage !== undefined) {
         const range = filters.find(f => f.spent_on)?.spent_on?.values ?? ['0000-00-00', '9999-99-99'];
         const entries = [...timeEntries.values()].filter(
@@ -311,6 +417,10 @@ function createFakeOpenProject(overrides = {}) {
         res.end();
         return;
       }
+      if (req.method === 'GET') {
+        send(200, existing);
+        return;
+      }
     }
 
     if (url.pathname === '/api/v3/notifications') {
@@ -325,19 +435,48 @@ function createFakeOpenProject(overrides = {}) {
         send(404, { _type: 'Error', message: 'The requested resource could not be found.' });
         return;
       }
+      const lockVersion = () => lockVersions.get(id) ?? 1;
+      if (req.method === 'PATCH') {
+        readBody(req, body => {
+          entry.body = body;
+          if (hooks.onWorkPackagePatch) hooks.onWorkPackagePatch(id);
+          if (body?.lockVersion !== lockVersion()) {
+            send(409, {
+              _type: 'Error',
+              errorIdentifier: 'urn:openproject-org:api:v3:errors:UpdateConflict',
+              message: 'Your changes could not be saved, because the resource was changed in the meantime.'
+            });
+            return;
+          }
+          const href = body?._links?.assignee?.href;
+          if (href !== undefined) {
+            const userId = href ? Number(String(href).split('/').pop()) : null;
+            if (userId === FAKE_USER.id) assignees.delete(id);
+            else assignees.set(id, userId === null ? null : { id: userId, name: `User ${userId}` });
+          }
+          lockVersions.set(id, lockVersion() + 1);
+          send(200, { id, lockVersion: lockVersion() });
+        });
+        return;
+      }
       // Status embedded as a real instance embeds it, `isClosed` and all.
       const status = closedWorkPackages.has(id) ? statuses[statuses.length - 1] : statuses[0];
-      send(200, { id, lockVersion: 1, subject: 'Fake work package', _embedded: { status } });
+      const owner = assignees.has(id) ? assignees.get(id) : FAKE_USER;
+      const assignee = owner ? { href: `/api/v3/users/${owner.id}`, title: owner.name } : { href: null };
+      send(200, { id, lockVersion: lockVersion(), subject: 'Fake work package', _embedded: { status }, _links: { assignee } });
       return;
     }
 
     send(404, { message: `No fake route for ${url.pathname}` });
   });
 
-  return { server, options, projects, statuses, requests, notifications, timeEntries, closedWorkPackages, deletedWorkPackages };
+  return {
+    server, options, projects, statuses, requests, notifications, timeEntries, closedWorkPackages, deletedWorkPackages, nonWorkingDays,
+    timeEntryFilters, assignees, lockVersions, hooks
+  };
 }
 
-module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS };
+module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS, FAKE_USER };
 
 if (require.main === module) {
   const options = parseArgs(process.argv.slice(2), DEFAULT_OPTIONS);

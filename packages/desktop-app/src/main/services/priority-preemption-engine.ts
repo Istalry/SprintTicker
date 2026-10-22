@@ -85,6 +85,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
    * draws whenever the display comes back to the mode.
    */
   private static readonly NOT_SUSPENDED = new Set([ACTIVE_TRACKER_EVENT, 'lunchModePriority', 'awayModePriority']);
+  /** The lock each mode's screen holds. */
+  private static readonly MODE_LOCKS = { LUNCH: 'lunchModePriority', AWAY: 'awayModePriority' } as const;
   /**
    * Whoever owns a state that outlives any one event -- an editor compiling,
    * in Play Mode -- and redraws it whenever the display is free. Their locks
@@ -155,6 +157,19 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
         this.releaseActiveLock(this._activeLockEventName);
       }
       this.drainQueue();
+    } else if (this._activeLockEventName === PriorityPreemptionEngine.MODE_LOCKS[mode === 'AWAY' ? 'LUNCH' : 'AWAY']) {
+      // From one mode straight into the other: unlocked during lunch goes to
+      // LUNCH, never through WORK. Away's lock outranks Lunch and stayed, so
+      // the mode said LUNCH while the bar kept the coffee cup (real bar,
+      // 2026-10-15). Not a full release: the caller draws the new mode next,
+      // and handing the display round in between would draw a queued alert
+      // or Unity only for the mode to cover it. Only a background state the
+      // user ranks above the new mode is offered it -- the bar's picker,
+      // opened under Away, comes back over Lunch as it would over WORK.
+      this._activeLockEventName = null;
+      this._activeLockPriority = 0;
+      const modeRank = this.getEventPriority(PriorityPreemptionEngine.MODE_LOCKS[mode]);
+      this.offerToBackground(rank => rank > modeRank);
     }
     if (previous !== mode) {
       this._userModeChangeSubscribers.forEach(cb => cb(mode));
@@ -262,9 +277,16 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     }
     this._activeLockEventName = null;
     this._activeLockPriority = 0;
-    this.drainQueue();
+    // A background state the user ranks above everything waiting comes
+    // first: the bar's picker (97) open under Away lost the display to a
+    // banner queued meanwhile (70) when Away ended, and then to Lunch (95)
+    // taking it from the banner. Unity ranks below the alerts, so for it the
+    // order is as it was.
+    const waiting = this.highestWaitingPriority();
+    this.offerToBackground(rank => rank > waiting);
+    if (this._activeLockEventName === null) this.drainQueue();
     if (this._activeLockEventName === null) this.resumeSuspended();
-    if (this._activeLockEventName === null) this.offerToBackground();
+    if (this._activeLockEventName === null) this.offerToBackground(rank => rank <= waiting);
     // Hand the display back to the mode only if no queued alert, set-aside
     // screen or background state took it.
     // This used to test the queue's length, but drainQueue removes the alert
@@ -369,11 +391,35 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     };
   }
 
-  private offerToBackground(): void {
-    for (const entry of [...this._background]) {
+  /**
+   * Offers the free display to each background state, the most important
+   * first by the user's rules. In the order they registered, Unity came
+   * before the bar's picker: a picker opened under Away and still open when
+   * Away ended stayed hidden under the gear, the decoder taking presses for
+   * a list nobody could see.
+   */
+  private offerToBackground(eligible: (rank: number) => boolean): void {
+    const rules = this.getRules();
+    const rank = (entry: { eventNames: ReadonlySet<string> }) => Math.max(
+      ...[...entry.eventNames].map(name =>
+        rules.find(r => r.eventName === name || r.id === name)?.priority ?? PriorityPreemptionEngine.DEFAULT_EVENT_PRIORITY
+      )
+    );
+    const ranked = this._background.map(entry => ({ entry, rank: rank(entry) })).sort((a, b) => b.rank - a.rank);
+    for (const { entry, rank: entryRank } of ranked) {
+      if (!eligible(entryRank)) continue;
       entry.reclaim();
       if (this._activeLockEventName !== null) return;
     }
+  }
+
+  /** The most important alert queued or screen set aside, or -Infinity when none waits. */
+  private highestWaitingPriority(): number {
+    const now = Date.now();
+    const queued = this._notificationQueue
+      .filter(item => now - item.timestampMs < PriorityPreemptionEngine.DEFAULT_QUEUE_EXPIRATION_MS)
+      .map(item => item.priority);
+    return Math.max(-Infinity, ...queued, ...this._suspended.map(entry => entry.priority));
   }
 
   /** Sets the active holder aside when `eventName` takes the display from it. */

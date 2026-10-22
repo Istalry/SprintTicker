@@ -37,6 +37,7 @@ import { ProviderSettingKey } from '../src/shared/provider-settings';
 import type { PriorityRule, UpdateStatusDTO } from '../src/shared/dtos';
 import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
+import { localDateKey } from '../src/shared/local-date';
 
 /**
  * The IPC handlers as the renderer sees them: a channel, a payload, an answer,
@@ -177,6 +178,19 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('the week', () => {
+    it('WeekEnded_ReadAndDismissed_ThroughTheScheduleService', async () => {
+      const week = { weekStart: '2026-10-12', weekEnd: '2026-10-16', loggedSeconds: 3600 };
+      const getWeekEnded = vi.fn().mockReturnValue(week);
+      const dismissWeekEnded = vi.fn();
+      build({ contextScheduleService: { getWeekEnded, dismissWeekEnded } });
+
+      expect(await invoke(IPCChannel.GET_WEEK_ENDED)).toEqual(week);
+      expect(await invoke(IPCChannel.DISMISS_WEEK_ENDED)).toBe(true);
+      expect(dismissWeekEnded).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('the stand-up', () => {
     it('JoinStandup_FromTheWindow_ReachesTheScheduleService', async () => {
       const joinStandup = vi.fn();
@@ -184,6 +198,21 @@ describe('IPC handlers', () => {
 
       expect(await invoke(IPCChannel.JOIN_STANDUP)).toBe(true);
       expect(joinStandup).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the days a session is filed under', () => {
+    it('GetSessionDays_NoSession_Nothing', async () => {
+      build();
+
+      expect(await invoke(IPCChannel.GET_SESSION_DAYS)).toEqual([]);
+    });
+
+    it('GetSessionDays_ASessionToday_OneDay', async () => {
+      build();
+      engine.startTask('', true, 'Pairing');
+
+      expect(await invoke(IPCChannel.GET_SESSION_DAYS)).toEqual([{ dateKey: localDateKey(), seconds: expect.any(Number) }]);
     });
   });
 
@@ -332,6 +361,37 @@ describe('IPC handlers', () => {
       await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, {});
 
       expect(engine.getCurrentSession()).toBeNull();
+    });
+
+    it('CancelWrapUp_OnTheBar_TheScreenBehindItIsDrawnOnce', async () => {
+      // The release hands the display back itself; drawing the session after
+      // it drew idle twice -- two clears of the device's screen, the shape
+      // CLAUDE.md §5 forbids. Seen on the real bar on 2026-10-15 as a removal
+      // of a frame already gone.
+      const renderer = new DisplayRenderer(driver);
+      renderer.setPriorityEngine(priorityEngine);
+      build({ renderer });
+      renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
+      expect(priorityEngine.getActiveLockEventName()).toBe('eodWrapUpPriority');
+      const drawn = vi.spyOn(renderer, 'renderActiveSession');
+
+      await invoke(IPCChannel.CANCEL_EOD_WRAP_UP);
+
+      expect(priorityEngine.getActiveLockEventName()).not.toBe('eodWrapUpPriority');
+      expect(drawn).toHaveBeenCalledTimes(1);
+    });
+
+    it('CancelWrapUp_NothingHeldByIt_DrawsNothing', async () => {
+      // The window's Cancel with no prompt on the bar: whatever holds the
+      // display keeps it.
+      const renderer = new DisplayRenderer(driver);
+      renderer.setPriorityEngine(priorityEngine);
+      build({ renderer });
+      const drawn = vi.spyOn(renderer, 'renderActiveSession');
+
+      await invoke(IPCChannel.CANCEL_EOD_WRAP_UP);
+
+      expect(drawn).not.toHaveBeenCalled();
     });
 
     it.each([

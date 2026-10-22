@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, PlusCircle, ArrowLeft, Check, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { filterProjectsWithTasks, firstProjectWithTasks } from '../../shared/project-filter';
+import { orderTasksForSelection } from '../../shared/task-order';
+import { DEFAULT_TASK_VISIBILITY, visibleTasks } from '../../shared/task-visibility';
 import { useOnlyProjectsWithTasks } from '../hooks/useOnlyProjectsWithTasks';
+import { useTaskVisibility } from '../hooks/useTaskVisibility';
 import { ProjectFilterToggle } from './ProjectFilterToggle';
+import { TaskOwnerBadge, TaskVisibilityToggle } from './TaskVisibilityToggle';
 
 interface TaskSelectionModalProps {
   isOpen: boolean;
@@ -45,14 +49,17 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   const [customTitle, setCustomTitle] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [onlyWithTasks, setOnlyWithTasks] = useOnlyProjectsWithTasks();
-  const { visible: listedProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(activeProjects, onlyWithTasks);
+  const [visibility, setVisibility] = useTaskVisibility();
+  const { visible: listedProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(activeProjects, onlyWithTasks, [], visibility);
 
   useEffect(() => {
     if (!window.electronAPI?.getProjects) return;
     window.electronAPI.getProjects().then(projs => {
       const list = projs || [];
       setActiveProjects(list);
-      setSelectedProjectId(firstProjectWithTasks(list));
+      // The default visibility, as in the Projects tab: the stored one may
+      // not have answered yet, and this only picks where the list opens.
+      setSelectedProjectId(firstProjectWithTasks(list, DEFAULT_TASK_VISIBILITY));
     }).catch(() => {
       setActiveProjects(propProjects || []);
     });
@@ -83,8 +90,10 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   const projectTasks = tasksAreForSelection ? loadedTasks.tasks : [];
   const loadingTasks = wantsTasks && !tasksAreForSelection;
 
+  // The same order and the same visibility as the bar's picker.
+  const { visible: shownTasks, hiddenCount: hiddenTaskCount } = visibleTasks(projectTasks, visibility);
   const query = searchQuery.toLowerCase();
-  const filteredTasks = projectTasks.filter(t =>
+  const filteredTasks = orderTasksForSelection(shownTasks).filter(t =>
     t.key.toLowerCase().includes(query) ||
     t.title.toLowerCase().includes(query) ||
     (t.description ?? '').toLowerCase().includes(query)
@@ -165,6 +174,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                 </p>
                 <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} nothingAssigned={nothingAssigned} />
               </div>
+              <TaskVisibilityToggle visibility={visibility} onChange={setVisibility} />
 
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {listedProjects.length > 0 ? (
@@ -238,6 +248,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
+              <TaskVisibilityToggle visibility={visibility} onChange={setVisibility} hiddenCount={hiddenTaskCount} />
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3.5 top-3 text-text-secondary" />
                 <input
@@ -276,7 +287,10 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                         }`}
                       >
                         <div className="min-w-0">
-                          <div className="font-mono text-accent-blue font-bold">{t.key}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-accent-blue font-bold">{t.key}</span>
+                            <TaskOwnerBadge task={t} />
+                          </div>
                           <div className="text-xs text-text-secondary">{t.title}</div>
                           {t.description && (
                             <div className="text-[11px] text-text-secondary/70 truncate">{t.description}</div>

@@ -1,4 +1,6 @@
 import { ScheduleSettingsDTO } from './dtos';
+import { DEFAULT_WORKING_DAYS, checkWorkingDays } from './working-days';
+import { DEFAULT_SPLIT_PAUSE_MINUTES, checkSplitPauseMinutes } from './work-split';
 
 /**
  * The seed schedule, and the one place that understands the alias pairs.
@@ -79,6 +81,10 @@ export function normalizeScheduleSettings(
     enableStandupPrompt: s.enableStandupPrompt ?? DEFAULT_SCHEDULE_SETTINGS.enableStandupPrompt,
     enableLunchMute: s.enableLunchMute ?? DEFAULT_SCHEDULE_SETTINGS.enableLunchMute,
     askAboutForgottenSessions: s.askAboutForgottenSessions ?? DEFAULT_SCHEDULE_SETTINGS.askAboutForgottenSessions,
+    // A stored list the schedule cannot use is the default, not "no day":
+    // an empty week would silence every ceremony for good.
+    workingDays: checkWorkingDays(s.workingDays) === null ? [...s.workingDays!] : [...DEFAULT_WORKING_DAYS],
+    splitPauseMinutes: checkSplitPauseMinutes(s.splitPauseMinutes) === null ? s.splitPauseMinutes : DEFAULT_SPLIT_PAUSE_MINUTES,
 
     lunchStartTime,
     lunchStart: lunchStartTime,
@@ -111,5 +117,10 @@ export function checkScheduleSettings(settings: ScheduleSettingsDTO): string | n
     if (!value || !CLOCK_TIME.test(value)) return `${name} must be a time of day, HH:MM.`;
   }
   if (s.lunchStartTime! >= s.lunchEndTime!) return 'Lunch must end after it starts, on the same day.';
+  if (settings.splitPauseMinutes !== undefined) {
+    const refusal = checkSplitPauseMinutes(settings.splitPauseMinutes);
+    if (refusal) return refusal;
+  }
+  if (settings.workingDays !== undefined) return checkWorkingDays(settings.workingDays);
   return null;
 }

@@ -3,6 +3,8 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MiniBar } from '../../src/renderer/components/MiniBar';
 import { App } from '../../src/renderer/App';
 import { TRACKING_SESSION, installElectronApi } from './electron-api-mock';
+import { getBitmapById } from '../../src/shared/pixel-bitmaps';
+import type { ScreenIconDTO } from '../../src/shared/dtos';
 
 /**
  * The always-on-top mini timer: the bar's screen, for people without one.
@@ -211,5 +213,60 @@ describe('mini timer', () => {
     await waitFor(() =>
       expect(screen.getByTitle('Close the mini timer').getAttribute('aria-pressed')).toBe('true')
     );
+  });
+});
+
+/**
+ * The bar's icon beside the timer: what holds the bar now, so someone
+ * without one sees what it would say. It follows main, never the session.
+ */
+describe('mini timer: the screen icon', () => {
+  const gear: ScreenIconDTO = { pixels: getBitmapById('compiling'), label: 'COMPILING' };
+  const burger: ScreenIconDTO = { pixels: getBitmapById('burger'), label: 'LUNCH' };
+
+  it('Render_BarShowsAScreen_ShowsItsIconNamedByItsText', async () => {
+    installElectronApi({ getCurrentSession: async () => TRACKING_SESSION, getScreenIcon: async () => gear });
+    render(<MiniBar />);
+
+    const icon = await screen.findByRole('img', { name: 'COMPILING' });
+    expect(icon.getAttribute('title')).toBe('COMPILING');
+    // One square per lit LED, none for the dark ones.
+    const lit = gear.pixels.flat().filter(Boolean).length;
+    expect(icon.querySelectorAll('rect')).toHaveLength(lit);
+    // The row is still the session's.
+    expect(screen.getByText('SPR-142')).toBeTruthy();
+  });
+
+  it('Render_FirmwaresClock_ShowsNoIcon', async () => {
+    installElectronApi();
+    render(<MiniBar />);
+    await screen.findByText('No task running');
+
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('Push_TheBarChangesScreen_FollowsIt', async () => {
+    const bridge = installElectronApi({ getScreenIcon: async () => gear });
+    render(<MiniBar />);
+    await screen.findByRole('img', { name: 'COMPILING' });
+
+    act(() => bridge.emit('onScreenIcon', burger));
+    expect(screen.getByRole('img', { name: 'LUNCH' })).toBeTruthy();
+
+    act(() => bridge.emit('onScreenIcon', null));
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('Read_AnsweredAfterAPush_KeepsThePush', async () => {
+    // Main tells only of changes: an answer older than a push is stale.
+    let answer: (icon: ScreenIconDTO | null) => void = () => undefined;
+    const bridge = installElectronApi({ getScreenIcon: vi.fn().mockReturnValue(new Promise(resolve => { answer = resolve; })) });
+    render(<MiniBar />);
+
+    act(() => bridge.emit('onScreenIcon', burger));
+    await act(async () => answer(gear));
+
+    expect(screen.getByRole('img', { name: 'LUNCH' })).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'COMPILING' })).toBeNull();
   });
 });

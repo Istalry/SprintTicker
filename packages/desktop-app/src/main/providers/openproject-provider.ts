@@ -8,8 +8,14 @@ import { fetchOpenProjectCollection } from './openproject-collection';
 import { providerFetch, ProviderFetchOptions } from './provider-http';
 import { isOpenProjectConfigured } from '../../shared/provider-settings';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
+import { TaskOwnership, keptByDefaultScope, ownershipOf } from '../../shared/task-ownership';
 import { localDateKey } from '../../shared/local-date';
 import { WORKLOG_SEARCH_MARGIN_MS } from './provider-constants';
+import { TaskClaim, UNNAMED_ASSIGNEE } from '../../shared/task-claim';
+import { isOpenableTaskPage } from '../../shared/task-page';
+
+/** A user's href; a group's or a placeholder user's has another path. */
+const USER_HREF = /^\/api\/v3\/users\/(\d+)$/;
 
 /**
  * OpenProject's notification reasons, as provider event kinds.
@@ -44,6 +50,8 @@ export class OpenProjectProvider implements ITaskProvider {
   private _defaultCompletionAction: string = 'to_test';
   private _taskScope: TaskScopeValue = TaskScope.ASSIGNED_TO_ME;
   private _taskQuery: string = '';
+  /** The user's id (`/api/v3/users/me`): undefined until read. */
+  private _myUserId: string | undefined = undefined;
 
   /**
    * How this provider reaches the network.
@@ -71,6 +79,8 @@ export class OpenProjectProvider implements ITaskProvider {
     this._defaultCompletionAction = credentials.opCompletionAction || 'to_test';
     this._taskScope = parseTaskScope(credentials.opTaskScope);
     this._taskQuery = credentials.opTaskQuery || '';
+    // Another instance, or another API key, is another user.
+    this._myUserId = undefined;
     return true;
   }
 
@@ -161,20 +171,30 @@ export class OpenProjectProvider implements ITaskProvider {
       throw ProviderRequestError.notConfigured(this.providerId);
     }
 
-    const elements = await this.fetchCollection(
-      '/api/v3/work_packages',
-      `Fetching tasks for project ${projectId}`,
-      { filters: this.buildTaskFilter(projectId) }
-    );
+    // Built first: a custom query that does not parse throws before anything
+    // is asked of the network.
+    const filterSets = this.buildTaskFilters(projectId);
+    const me = await this.myUserId();
+    // One request per filter set, merged by id: a work package can answer two
+    // of them, and the second answer is the same package.
+    const byId = new Map<string, Record<string, unknown>>();
+    for (const filters of filterSets) {
+      const elements = await this.fetchCollection(
+        '/api/v3/work_packages',
+        `Fetching tasks for project ${projectId}`,
+        { filters }
+      );
+      for (const element of elements) byId.set(String(element.id), element);
+    }
 
-    return elements
+    return [...byId.values()]
       .map(t => {
-          const links = (t._links || {}) as Record<string, { href?: string; title?: string }>;
+          const links = (t._links || {}) as Record<string, { href?: string | null; title?: string }>;
           const opStatusId = links.status?.href?.split('/').pop();
           const typeName = (links.type?.title as string) || '';
-          
+
           let localStatus: 'todo' | 'in_progress' | 'done' = 'todo';
-          
+
           if (opStatusId === this._statusIdInProgress) {
             localStatus = 'in_progress';
           } else if (opStatusId === this._statusIdToTest || opStatusId === this._statusIdToReview) {
@@ -187,6 +207,12 @@ export class OpenProjectProvider implements ITaskProvider {
           const description = clampDescription(
             markdownToPlainText((t.description as { raw?: string } | undefined)?.raw)
           );
+          // A user's href ends in their id; a group or a placeholder user is
+          // assigned through its own path, and is never the user.
+          const assigneeHref = links.assignee?.href ?? null;
+          const assigneeId = assigneeHref ? (USER_HREF.exec(assigneeHref)?.[1] ?? assigneeHref) : null;
+          const ownership = ownershipOf(assigneeId, me);
+          const assigneeName = ownership === TaskOwnership.OTHER ? links.assignee?.title : undefined;
           return {
             id: rawId,
             projectId,
@@ -195,38 +221,86 @@ export class OpenProjectProvider implements ITaskProvider {
             status: localStatus,
             ...(priorityRank !== undefined ? { priorityRank } : {}),
             ...(description ? { description } : {}),
+            ...(ownership !== TaskOwnership.MINE ? { ownership } : {}),
+            ...(assigneeName ? { assigneeName } : {}),
             _opType: typeName // Temporary prop for filtering
           };
       })
-      .filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone');
+      .filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone')
+      .filter(t => this._taskScope !== TaskScope.ASSIGNED_TO_ME || keptByDefaultScope(t))
+      .map(({ _opType, ...task }): TaskDTO => task);
   }
 
   /**
-   * Turns the configured task scope into an OpenProject v3 `filters` array.
+   * The user's id, from `/api/v3/users/me`, read once per configuration: a
+   * work package names its assignee by href, and only the id says whether
+   * that is the user. Throws when it cannot be read -- without it every task
+   * would be filed under the wrong owner.
+   */
+  private async myUserId(): Promise<string> {
+    if (this._myUserId) return this._myUserId;
+    const context = 'Reading the OpenProject user';
+    const res = await providerFetch(
+      this.providerId,
+      `${this.getBaseUrl()}/api/v3/users/me`,
+      { headers: { Authorization: this.getAuthHeader(), Accept: 'application/json' } },
+      context,
+      this._http
+    );
+    const body = (await res.json()) as { id?: number | string };
+    if (body.id === undefined || body.id === null || String(body.id) === '') {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no id`);
+    }
+    this._myUserId = String(body.id);
+    return this._myUserId;
+  }
+
+  /**
+   * Turns the configured task scope into OpenProject v3 `filters` arrays,
+   * one request each.
    *
    * Built as data and serialised, rather than interpolated into a JSON string
    * literal as it used to be: a project identifier containing a quote produced
    * a filter that was not JSON, and OpenProject answers that with a 400 whose
    * body does not mention which filter was wrong.
    *
-   * The project and open-status clauses are not negotiable -- a scope decides
-   * *whose* work to show, not which project or whether to include closed
-   * tickets, and dropping either would hand the sync worker a task list from
-   * the wrong project.
+   * The project clause is not negotiable, nor is leaving closed work out -- a
+   * scope decides *whose* work to show, not which project or whether to
+   * include closed tickets, and dropping either would hand the sync worker a
+   * task list from the wrong project.
+   *
+   * The default scope is three requests because v3 filters only AND: the
+   * user's open work, open work nobody is assigned (`!*`, assignee IS NULL),
+   * and a teammate's work in the configured In Progress status. With no such
+   * status configured there is no way to ask for "in progress", and a
+   * teammate's work is left out rather than all of it fetched.
    */
-  private buildTaskFilter(projectId: string): string {
+  private buildTaskFilters(projectId: string): string[] {
     if (this._taskScope === TaskScope.CUSTOM) {
-      return this.parseCustomTaskQuery();
+      return [this.parseCustomTaskQuery()];
     }
 
-    const filters: Array<Record<string, { operator: string; values: string[] }>> = [
-      { project: { operator: '=', values: [projectId] } },
-      { status: { operator: 'o', values: [] } }
-    ];
-    if (this._taskScope === TaskScope.ASSIGNED_TO_ME) {
-      filters.push({ assignee: { operator: '=', values: ['me'] } });
+    type Filter = Record<string, { operator: string; values: string[] }>;
+    const project: Filter = { project: { operator: '=', values: [projectId] } };
+    const open: Filter = { status: { operator: 'o', values: [] } };
+    if (this._taskScope !== TaskScope.ASSIGNED_TO_ME) {
+      return [JSON.stringify([project, open])];
     }
-    return JSON.stringify(filters);
+
+    const sets: Filter[][] = [
+      [project, open, { assignee: { operator: '=', values: ['me'] } }],
+      [project, open, { assignee: { operator: '!*', values: [] } }]
+    ];
+    if (/^\d+$/.test(this._statusIdInProgress)) {
+      // `!` lets unassigned work through as well; its ownership is read from
+      // the package itself, so that costs nothing but a duplicate.
+      sets.push([
+        project,
+        { status: { operator: '=', values: [this._statusIdInProgress] } },
+        { assignee: { operator: '!', values: ['me'] } }
+      ]);
+    }
+    return sets.map(set => JSON.stringify(set));
   }
 
   /**
@@ -437,21 +511,38 @@ export class OpenProjectProvider implements ITaskProvider {
     const start = Date.parse(startedAtUtc);
     if (Number.isNaN(start)) throw new ArgumentException(`startedAtUtc is not a timestamp: ${startedAtUtc}`);
 
-    const filters = JSON.stringify([
-      { work_package: { operator: '=', values: [OpenProjectProvider.workPackageId(taskId)] } },
-      {
-        spent_on: {
-          operator: '<>d',
-          values: [
-            localDateKey(new Date(start - WORKLOG_SEARCH_MARGIN_MS)),
-            localDateKey(new Date(start + WORKLOG_SEARCH_MARGIN_MS))
-          ]
-        }
+    const workPackage = OpenProjectProvider.workPackageId(taskId);
+    const spentOn = {
+      spent_on: {
+        operator: '<>d',
+        values: [
+          localDateKey(new Date(start - WORKLOG_SEARCH_MARGIN_MS)),
+          localDateKey(new Date(start + WORKLOG_SEARCH_MARGIN_MS))
+        ]
       }
-    ]);
-    const entries = await this.fetchCollection('/api/v3/time_entries', `Looking for time entry ${marker} on ${taskId}`, {
-      filters
-    });
+    };
+    const search = (byWorkPackage: object[]): Promise<Record<string, unknown>[]> =>
+      this.fetchCollection('/api/v3/time_entries', `Looking for time entry ${marker} on ${taskId}`, {
+        filters: JSON.stringify([...byWorkPackage, spentOn])
+      });
+    let entries: Record<string, unknown>[];
+    try {
+      // Since time can be logged on a meeting, an entry belongs to an
+      // entity, and 17.9 knows no `work_package` filter: a real 17.9
+      // instance answered it 400, so every resend's search failed there
+      // (2026-10-16).
+      entries = await search([
+        { entity_type: { operator: '=', values: ['WorkPackage'] } },
+        { entity_id: { operator: '=', values: [workPackage] } }
+      ]);
+    } catch (err) {
+      // An instance from before entities knows `work_package` only, and
+      // refuses an unknown filter with the same 400. Its message is in the
+      // user's language, so the status is all there is to go on; a 400 for
+      // any other reason fails the second search too, and that is thrown.
+      if (!(err instanceof ProviderRequestError && err.status === 400)) throw err;
+      entries = await search([{ work_package: { operator: '=', values: [workPackage] } }]);
+    }
     const found = entries.find(entry => {
       const comment = entry.comment as { raw?: unknown } | undefined;
       return typeof comment?.raw === 'string' && comment.raw.includes(marker);
@@ -464,8 +555,8 @@ export class OpenProjectProvider implements ITaskProvider {
    * sent: an entry is not moved, only corrected. A PATCH of the same fields
    * changes nothing when repeated, so the queue may retry it.
    *
-   * Sent without a `lockVersion`, which time entries are not documented to
-   * need -- measured against the fake only (2026-10-14), not a live instance.
+   * Sent without a `lockVersion`, which time entries do not need: measured
+   * on a real OpenProject 17.9 instance (2026-10-16), which accepted it.
    */
   public async updateWorklog(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void> {
     this.requireConfigured();
@@ -501,6 +592,21 @@ export class OpenProjectProvider implements ITaskProvider {
     }
   }
 
+  /**
+   * The instance's one-off days off -- holidays -- in an inclusive range.
+   * `/api/v3/days/non_working` lists no weekends (those are `/api/v3/days/week`,
+   * and the user's own working days decide them here); unfiltered it answers
+   * the current year only, which a week across New Year would miss.
+   */
+  public async getNonWorkingDays(fromKey: string, toKey: string): Promise<string[]> {
+    this.requireConfigured();
+    if (!fromKey || !toKey) throw new ArgumentException('A range of days is required.');
+    const days = await this.fetchCollection('/api/v3/days/non_working', 'Reading the days off', {
+      filters: JSON.stringify([{ date: { operator: '<>d', values: [fromKey, toKey] } }])
+    });
+    return days.map(day => day.date).filter((date): date is string => typeof date === 'string');
+  }
+
   /** Where a work package stands: closed when its status says `isClosed`. */
   public async getTaskStanding(taskId: string): Promise<'open' | 'closed' | 'gone'> {
     this.requireConfigured();
@@ -522,6 +628,69 @@ export class OpenProjectProvider implements ITaskProvider {
     } catch (err) {
       if (err instanceof ProviderRequestError && err.status === 404) return 'gone';
       throw err;
+    }
+  }
+
+  /** `<site>/work_packages/<id>`: the numeric id, which is what OpenProject's own links use. */
+  public getTaskPageUrl(task: Pick<TaskDTO, 'id' | 'key'>): string | null {
+    if (!this._domain || !this._apiKey || !task?.id) return null;
+    const base = this.getBaseUrl();
+    const url = `${base}/work_packages/${encodeURIComponent(OpenProjectProvider.workPackageId(task.id))}`;
+    return isOpenableTaskPage(url, base) ? url : null;
+  }
+
+  /**
+   * Assigns a work package nobody owns to the user, under its `lockVersion`:
+   * OpenProject refuses (409) a write over an edit made since the read, so
+   * an assignee set in between is never overwritten. On that refusal the
+   * work package is read once more and decided again -- someone may have
+   * taken it, or only changed something else. Measured on a real
+   * OpenProject 17.9 instance (2026-10-16) with an edit played between the
+   * read and the write:
+   * the stale PATCH answered 409, and the second read found the new assignee.
+   */
+  public async assignToMe(taskId: string): Promise<TaskClaim> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to assign a task.');
+
+    const me = await this.myUserId();
+    const id = OpenProjectProvider.workPackageId(taskId);
+    const url = `${this.getBaseUrl()}/api/v3/work_packages/${encodeURIComponent(id)}`;
+    const attempt = async (): Promise<TaskClaim> => {
+      const res = await providerFetch(
+        this.providerId,
+        url,
+        { headers: { Authorization: this.getAuthHeader(), Accept: 'application/json' } },
+        `Reading the assignee of work package ${id}`,
+        this._http
+      );
+      const wp = (await res.json()) as { lockVersion?: number; _links?: { assignee?: { href?: string | null; title?: string } } };
+      const href = wp._links?.assignee?.href;
+      if (href) {
+        const assigneeId = USER_HREF.exec(href)?.[1] ?? href;
+        return assigneeId === me
+          ? { outcome: 'already_mine' }
+          : { outcome: 'taken', assigneeName: wp._links?.assignee?.title?.trim() || UNNAMED_ASSIGNEE };
+      }
+      await providerFetch(
+        this.providerId,
+        url,
+        {
+          method: 'PATCH',
+          headers: { Authorization: this.getAuthHeader(), 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ lockVersion: wp.lockVersion, _links: { assignee: { href: `/api/v3/users/${me}` } } })
+        },
+        `Assigning work package ${id} to the user`,
+        this._http
+      );
+      return { outcome: 'assigned' };
+    };
+
+    try {
+      return await attempt();
+    } catch (err) {
+      if (!(err instanceof ProviderRequestError && err.status === 409)) throw err;
+      return attempt();
     }
   }
 

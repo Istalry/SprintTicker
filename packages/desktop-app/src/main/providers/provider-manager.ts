@@ -5,6 +5,7 @@ import { JiraProvider } from './jira-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { SecretStore } from '../db/secret-store';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import type { TaskClaim } from '../../shared/task-claim';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
 /**
@@ -109,6 +110,17 @@ export class ProviderManager {
     }
   }
 
+  /**
+   * The days off known to a provider that can say, between two date keys:
+   * OpenProject's holidays. Null when none can -- Jira keeps no calendar.
+   */
+  public async getNonWorkingDays(fromKey: string, toKey: string): Promise<string[] | null> {
+    for (const provider of this._providers.values()) {
+      if (provider.getNonWorkingDays) return provider.getNonWorkingDays(fromKey, toKey);
+    }
+    return null;
+  }
+
   /// <summary>
   /// Registers a task provider instance with the provider registry.
   /// </summary>
@@ -159,6 +171,30 @@ export class ProviderManager {
   /// </summary>
   public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
     return this.getActiveProvider().updateTaskStatus(taskId, status);
+  }
+
+  /**
+   * The page of a task on the provider it came from -- or the active one
+   * when that is not known -- or null when there is none to open.
+   */
+  public taskPageUrlFor(providerId: string | undefined, task: Pick<TaskDTO, 'id' | 'key'>): string | null {
+    const provider = providerId ? this._providers.get(providerId) : this.getActiveProvider();
+    return provider?.getTaskPageUrl?.(task) ?? null;
+  }
+
+  /**
+   * Assigns a task nobody owns to the user, on the provider it came from --
+   * or the active one when that is not known (a session from before
+   * migration 9). Null when that provider cannot assign, which is no
+   * failure: a project made here has nobody to assign. Throws when the
+   * provider is not registered, or the request fails.
+   */
+  public async assignToMeFor(providerId: string | undefined, taskId: string): Promise<TaskClaim | null> {
+    const provider = providerId ? this._providers.get(providerId) : this.getActiveProvider();
+    if (!provider) {
+      throw new Error(`No registered provider with id "${providerId}"`);
+    }
+    return provider.assignToMe ? provider.assignToMe(taskId) : null;
   }
 
   /**

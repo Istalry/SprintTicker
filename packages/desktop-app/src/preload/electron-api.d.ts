@@ -12,6 +12,8 @@
 
 import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../shared/provider-events';
 import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
+import type { DayShare } from '../shared/work-split';
+import type { TaskVisibility } from '../shared/task-visibility';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -25,6 +27,7 @@ import type {
   UserMode,
   ScheduleSettingsDTO,
   ResumePromptDTO,
+  WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
   UnityProjectInjectionResult,
@@ -37,6 +40,7 @@ import type {
   NotificationListenerStatusDTO,
   BitmapIconId,
   HardwareDisplayStateDTO,
+  ScreenIconDTO,
   OpStatusDTO,
   DeviceConfigDTO,
   UpdateStatusDTO,
@@ -64,6 +68,8 @@ export interface IElectronAPI {
   completeSession: (comment?: string, markDone?: boolean) => Promise<{ success: boolean; loggedSeconds: number }>;
   /** Ends the session keeping nothing -- no worklog, nothing sent. Confirm with the user first. */
   discardSession: () => Promise<DiscardSessionResultDTO>;
+  /** The open session's time per local day, were it stopped now: one entry unless it crosses midnight. */
+  getSessionDays: () => Promise<DayShare[]>;
   /** A session left running overnight, paused at the last activity and awaiting an answer; null when none. */
   getForgottenReview: () => Promise<ForgottenSessionReviewDTO | null>;
   /** Answers it. False when nothing was being asked any more. */
@@ -133,6 +139,11 @@ export interface IElectronAPI {
   cancelStandupPrompt: () => Promise<boolean>;
   /** Switches the timer to the Daily Standup task; the task before it restarts when it ends. */
   joinStandup: () => Promise<boolean>;
+  /** The week just over, until dismissed; null otherwise. */
+  getWeekEnded: () => Promise<WeekEndedDTO | null>;
+  dismissWeekEnded: () => Promise<boolean>;
+  /** Pushed when a week closes, and null once it is dismissed anywhere. */
+  onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => () => void;
   triggerEodPrompt: () => Promise<{ success: boolean }>;
   triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
   cancelEodWrapUp: () => Promise<boolean>;
@@ -169,6 +180,9 @@ export interface IElectronAPI {
   // Hardware Display Animation & Screen Emulator
   getDisplayState: () => Promise<HardwareDisplayStateDTO>;
   onDisplayStateUpdated: (callback: (state: HardwareDisplayStateDTO) => void) => () => void;
+  /** The icon of the screen on the bar, or null for the firmware's clock. */
+  getScreenIcon: () => Promise<ScreenIconDTO | null>;
+  onScreenIcon: (callback: (icon: ScreenIconDTO | null) => void) => () => void;
   setColorTheme: (theme: string) => Promise<boolean>;
   triggerConfettiBurst: () => Promise<boolean>;
   /** Draws one real screen through the actual renderer, for the debug panel. */
@@ -201,9 +215,24 @@ export interface IElectronAPI {
   /** Resolves the setting as stored. */
   setOnlyProjectsWithTasks: (enabled: boolean) => Promise<boolean>;
   onOnlyProjectsWithTasks: (callback: (enabled: boolean) => void) => () => void;
+  /**
+   * Whether the task lists -- the Projects tab, the task picker and the bar's
+   * picker -- show unassigned tasks and teammates' tasks. The user's own are
+   * always shown. Broadcast like the switch above.
+   */
+  getTaskVisibility: () => Promise<TaskVisibility>;
+  /** Resolves the setting as stored; throws on anything but two booleans. */
+  setTaskVisibility: (visibility: TaskVisibility) => Promise<TaskVisibility>;
+  onTaskVisibility: (callback: (visibility: TaskVisibility) => void) => () => void;
   getUpdateCheckEnabled: () => Promise<boolean>;
   setUpdateCheckEnabled: (enabled: boolean) => Promise<boolean>;
   openReleasePage: (url: string) => Promise<boolean>;
+  /**
+   * Opens the task's page on the provider it came from, in the browser. Main
+   * builds the URL from the provider's own site; false when there is no page
+   * to open -- ad-hoc work, the app's own projects, a provider not set up.
+   */
+  openTaskPage: (taskId: string) => Promise<boolean>;
   onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => () => void;
 
   // Provider sync

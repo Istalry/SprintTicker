@@ -621,6 +621,12 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return STOPWATCH_PAUSED_16X16_BITMAP;
     case 'stopwatch_idle':
       return STOPWATCH_IDLE_16X16_BITMAP;
+    case 'meeting':
+      return MEETING_16X16_BITMAP;
+    case 'coffee':
+      return COFFEE_16X16_BITMAP;
+    case 'moon':
+      return MOON_16X16_BITMAP;
     case 'unity':
     default:
       return UNITY_16X16_BITMAP;
@@ -676,4 +682,75 @@ export const JIRA_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, '#2684FF', '#2684FF', '#2684FF', null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, '#2684FF', '#2684FF', null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, '#2684FF', null, null, null, null, null, null, null, null, null]
+];
+
+/**
+ * The stand-up while it runs: three people at a table, the meeting scene's
+ * cast and colours, drawn from scratch at 16px. The scene itself played for
+ * the whole stand-up and looked exactly like the prompt before it, so a
+ * press on the bar seemed to do nothing (real bar, 2026-10-15); the session
+ * screen with this icon says the timer is running, and for how long.
+ */
+export const MEETING_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#E8C25A', '#E8C25A', '#E8C25A', '#E8C25A', null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A', null, null, null, null, null, null],
+  ['#3B2416', '#3B2416', '#3B2416', '#3B2416', null, null, '#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A', null, null, '#3B2416', '#3B2416', '#3B2416', '#3B2416'],
+  ['#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A', null, null, '#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A', null, null, '#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A'],
+  ['#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A', null, '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', null, '#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A'],
+  ['#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A', null, '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', null, '#F2B98A', '#F2B98A', '#F2B98A', '#F2B98A'],
+  ['#E0533A', '#E0533A', '#E0533A', '#E0533A', '#E0533A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#F0A030', '#F0A030', '#F0A030', '#F0A030', '#F0A030'],
+  ['#E0533A', '#E0533A', '#E0533A', '#E0533A', '#E0533A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#F0A030', '#F0A030', '#F0A030', '#F0A030', '#F0A030'],
+  ['#E0533A', '#E0533A', '#E0533A', '#E0533A', '#E0533A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#3FAE6A', '#F0A030', '#F0A030', '#F0A030', '#F0A030', '#F0A030'],
+  ['#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34'],
+  ['#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34', '#A86A34'],
+  ['#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220'],
+  [null, '#6B4220', '#6B4220', null, null, null, null, null, null, null, null, null, null, '#6B4220', '#6B4220', null],
+  [null, '#6B4220', '#6B4220', null, null, null, null, null, null, null, null, null, null, '#6B4220', '#6B4220', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+/**
+ * Away and the end of the day, for the screens that show an icon where the
+ * bar plays a full-panel scene -- the mini timer. Each is its scene's own
+ * sprites, on black and without the plate: the cup and saucer of
+ * away_coffee_72x16 with two still wisps of steam, and the moon and stars of
+ * eod_moon_72x16. Change a scene and its icon together.
+ */
+export const COFFEE_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#8E93A3', null, null, null, '#8E93A3', null, null, null, null, null, null, null, null],
+  [null, null, '#8E93A3', null, null, null, '#8E93A3', null, null, null, null, null, null, null, null, null],
+  [null, null, '#8E93A3', null, null, null, '#8E93A3', null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#8E93A3', null, null, null, '#8E93A3', null, null, null, null, null, null, null, null],
+  [null, null, null, '#8E93A3', null, null, null, '#8E93A3', null, null, null, null, null, null, null, null],
+  [null, null, '#8E93A3', null, null, null, '#8E93A3', null, null, null, null, null, null, null, null, null],
+  [null, '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', null, null, null, null, null],
+  [null, '#F4F1EA', '#5A3316', '#5A3316', '#8A5A30', '#5A3316', '#5A3316', '#5A3316', '#5A3316', '#8A5A30', '#F4F1EA', null, null, null, null, null],
+  [null, '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#C4C7D2', '#C4C7D2', '#F4F1EA', '#F4F1EA', null, null, null],
+  [null, '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#C4C7D2', '#C4C7D2', null, null, '#F4F1EA', null, null],
+  [null, '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#C4C7D2', '#C4C7D2', null, null, '#F4F1EA', null, null],
+  [null, '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#C4C7D2', '#C4C7D2', '#F4F1EA', '#F4F1EA', null, null, null],
+  [null, null, '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#C4C7D2', '#C4C7D2', null, null, null, null, null, null],
+  [null, null, null, '#C4C7D2', '#C4C7D2', '#C4C7D2', '#C4C7D2', '#C4C7D2', '#C4C7D2', null, null, null, null, null, null, null],
+  [null, '#C4C7D2', '#C4C7D2', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#F4F1EA', '#C4C7D2', '#C4C7D2', null, null, null]
+];
+
+export const MOON_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, '#A5B4FC', null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, '#A5B4FC', '#FFFFFF', '#A5B4FC', null, null],
+  [null, null, null, null, null, null, null, '#FEF3C7', null, null, null, null, '#A5B4FC', null, null, null],
+  [null, null, null, null, null, '#FEF3C7', '#FEF3C7', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#FEF3C7', '#FEF3C7', '#FCD34D', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', null, null, null, null, null, null],
+  [null, null, null, null, '#FEF3C7', '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', null, null, null],
+  [null, null, null, null, null, '#FEF3C7', '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', null, '#A5B4FC', null, null],
+  [null, null, null, null, null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];

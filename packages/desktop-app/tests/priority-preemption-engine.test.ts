@@ -543,6 +543,77 @@ describe('PriorityPreemptionEngine behaviour', () => {
       expect(reclaim).not.toHaveBeenCalled();
     });
 
+    describe('offered by the user rules', () => {
+      const RANKED = {
+        rules: [
+          rule('awayModePriority', 100),
+          rule('menuPriority', 97),
+          rule('highNotificationPriority', 70),
+          rule('unityCompilingPriority', 55)
+        ]
+      };
+      /** A background state that takes the display when offered, if `wants`. */
+      const state = (engine: PriorityPreemptionEngine, eventName: string, wants = true) => {
+        const reclaim = vi.fn(() => { if (wants) engine.evaluateRequest(eventName); });
+        engine.addBackgroundScreen([eventName], reclaim);
+        return reclaim;
+      };
+
+      it('ReleaseActiveLock_TwoStates_TheHigherRankedFirst_WhateverRegisteredFirst', () => {
+        // Unity registered before the bar's picker, and took the display from it.
+        const engine = engineWith(RANKED);
+        const unity = state(engine, 'unityCompilingPriority');
+        state(engine, 'menuPriority');
+        engine.evaluateRequest('awayModePriority');
+
+        engine.releaseActiveLock('awayModePriority');
+
+        expect(engine.getActiveLockEventName()).toBe('menuPriority');
+        expect(unity).not.toHaveBeenCalled();
+      });
+
+      it('ReleaseActiveLock_AStateAboveTheQueue_ComesBeforeTheQueuedAlert', () => {
+        const engine = engineWith(RANKED);
+        state(engine, 'menuPriority');
+        engine.evaluateRequest('awayModePriority');
+        const banner = vi.fn();
+        engine.evaluateRequest('highNotificationPriority', undefined, banner);
+
+        engine.releaseActiveLock('awayModePriority');
+
+        expect(engine.getActiveLockEventName()).toBe('menuPriority');
+        expect(banner).not.toHaveBeenCalled();
+      });
+
+      it('ReleaseActiveLock_AStateBelowTheQueue_TheQueuedAlertFirst', () => {
+        // Unity under a banner: as it always was.
+        const engine = engineWith(RANKED);
+        const unity = state(engine, 'unityCompilingPriority');
+        engine.evaluateRequest('awayModePriority');
+        const banner = vi.fn();
+        engine.evaluateRequest('highNotificationPriority', undefined, banner);
+
+        engine.releaseActiveLock('awayModePriority');
+
+        expect(banner).toHaveBeenCalledTimes(1);
+        expect(engine.getActiveLockEventName()).toBe('highNotificationPriority');
+        expect(unity).not.toHaveBeenCalled();
+      });
+
+      it('ReleaseActiveLock_AStateAboveTheQueueWithNothingToShow_TheQueueStillDrains_OfferedOnce', () => {
+        const engine = engineWith(RANKED);
+        const picker = state(engine, 'menuPriority', false);
+        engine.evaluateRequest('awayModePriority');
+        const banner = vi.fn();
+        engine.evaluateRequest('highNotificationPriority', undefined, banner);
+
+        engine.releaseActiveLock('awayModePriority');
+
+        expect(banner).toHaveBeenCalledTimes(1);
+        expect(picker).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it('AddBackgroundScreen_NoLocksOrNoReclaim_Throws', () => {
       const engine = engineWith(MATRIX);
       expect(() => engine.addBackgroundScreen([], vi.fn())).toThrow();

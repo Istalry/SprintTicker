@@ -7,11 +7,17 @@ import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { ActiveSessionDTO, TaskDTO, ProjectDTO, PauseIntervalDTO, ArgumentException } from '../../shared/dtos';
 import { workedSecondsUntil } from '../../shared/session-review';
+import { addLocalDays, localDateKey } from '../../shared/local-date';
+import { DEFAULT_SPLIT_PAUSE_MINUTES, mergeShortPieces, splitWork, workedSecondsByLocalDay, DayShare } from '../../shared/work-split';
 
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/provider-settings';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
+import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
+import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
+import { hasTaskPage } from '../../shared/task-page';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -29,9 +35,13 @@ export class TimeTrackingEngine extends EventEmitter {
   private _providerManager: ProviderManager;
   private _listeners: Set<SessionStateCallback> = new Set();
   private _currentSession: ActiveSessionDTO | null = null;
+  /** Whose the tracked task was at the last sync, for the session it was read for. */
+  private _trackedOwnership: { sessionId: string; owner: TaskOwnershipValue } | null = null;
+  private _claimListeners: Set<(report: TaskClaimReport) => void> = new Set();
   private _tickTimer: NodeJS.Timeout | null = null;
   private _syncWorker: OfflineSyncWorker;
   private _initialized = false;
+  private _splitPauseSeconds: () => number;
 
   /**
    * Wires dependencies only. Deliberately free of side effects: call
@@ -47,9 +57,12 @@ export class TimeTrackingEngine extends EventEmitter {
     worklogRepo?: WorklogRepository,
     taskRepo?: TaskRepository,
     providerManager?: ProviderManager,
-    projectRepo?: ProjectRepository
+    projectRepo?: ProjectRepository,
+    /** The pause, in seconds, that ends a worklog: the user's setting, read at each stop. */
+    splitPauseSeconds: () => number = () => DEFAULT_SPLIT_PAUSE_MINUTES * 60
   ) {
     super();
+    this._splitPauseSeconds = splitPauseSeconds;
     this._sessionRepo = sessionRepo || new SessionRepository();
     this._worklogRepo = worklogRepo || new WorklogRepository();
     this._taskRepo = taskRepo || new TaskRepository();
@@ -91,10 +104,22 @@ export class TimeTrackingEngine extends EventEmitter {
     const open = this._currentSession ? this._sessionRepo.getActiveSession() : null;
     if (!open || open.isAdHoc || isAdHocTaskId(open.taskId)) return;
     const task = this._taskRepo.getTaskById(open.taskId);
-    if (!task || (task.key === open.taskKey && task.title === open.taskTitle)) return;
-    this._sessionRepo.renameSessionTask(open.sessionId, task.key, task.title);
-    this._currentSession = this._sessionRepo.getActiveSession();
-    this.notifyListeners();
+    if (!task) return;
+    // Whose it is moves without a rename, and the screens say so: a task
+    // reassigned while it stays in progress is still listed, so the sync's
+    // unlisted set -- which notifies on its own -- never changes for it.
+    // The first sync of a session has nothing to compare with, and says so
+    // only when the task is not the user's.
+    const owner = task.ownership ?? TaskOwnership.MINE;
+    const before = this._trackedOwnership?.sessionId === open.sessionId ? this._trackedOwnership.owner : TaskOwnership.MINE;
+    const ownerChanged = owner !== before;
+    this._trackedOwnership = { sessionId: open.sessionId, owner };
+    const renamed = task.key !== open.taskKey || task.title !== open.taskTitle;
+    if (renamed) {
+      this._sessionRepo.renameSessionTask(open.sessionId, task.key, task.title);
+      this._currentSession = this._sessionRepo.getActiveSession();
+    }
+    if (renamed || ownerChanged) this.notifyListeners();
   }
 
   /**
@@ -212,8 +237,16 @@ export class TimeTrackingEngine extends EventEmitter {
     if (!this._currentSession) return null;
     const session = this._sessionRepo.getActiveSession();
     if (session && this.hasLeftTheList(session)) {
-      const reason = this._syncWorker.unlistedReason(session.taskId);
-      return { ...session, taskUnlisted: true, ...(reason ? { taskLeftBecause: reason } : {}) };
+      // Listed as a teammate's is seen, not inferred: it is open, and theirs.
+      const someoneElses = this.isSomeoneElses(session);
+      const reason = someoneElses ? 'reassigned' : this._syncWorker.unlistedReason(session.taskId);
+      const ownerName = someoneElses ? this._taskRepo.getTaskById(session.taskId)?.assigneeName : undefined;
+      return {
+        ...session,
+        taskUnlisted: true,
+        ...(reason ? { taskLeftBecause: reason } : {}),
+        ...(ownerName ? { taskOwnerName: ownerName } : {})
+      };
     }
     return session;
   }
@@ -240,7 +273,26 @@ export class TimeTrackingEngine extends EventEmitter {
    */
   private hasLeftTheList(session: ActiveSessionDTO): boolean {
     if (this._syncWorker.isUnlisted(session.taskId)) return true;
-    return !session.isAdHoc && !isAdHocTaskId(session.taskId) && this._taskRepo.isArchived(session.taskId);
+    if (session.isAdHoc || isAdHocTaskId(session.taskId)) return false;
+    return this._taskRepo.isArchived(session.taskId) || this.isSomeoneElses(session);
+  }
+
+  /**
+   * The sync keeps a teammate's task in progress in the lists, so a task
+   * reassigned mid-session can stay listed -- as theirs. It has left the
+   * user's work all the same.
+   */
+  private isSomeoneElses(session: ActiveSessionDTO): boolean {
+    return !session.isAdHoc && this._taskRepo.ownershipOf(session.taskId) === TaskOwnership.OTHER;
+  }
+
+  /** Seconds logged from `fromKey` to `toKey`, both local days and both included. */
+  public getLoggedSeconds(fromKey: string, toKey: string): number {
+    let total = 0;
+    for (let day = fromKey; day <= toKey; day = addLocalDays(day, 1)) {
+      for (const log of this._worklogRepo.getWorklogsByDate(day)) total += log.durationSeconds;
+    }
+    return total;
   }
 
   /**
@@ -279,7 +331,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     // Finalize any existing active session before starting new task
     if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
-      this.stopSession('Auto-completed due to new task start');
+      this.stopSession(WORKLOG_COMMENTS.SWITCHED_TASK);
     }
 
     // Ad-hoc by its id as well as by the flag: a list offering an ad-hoc row
@@ -294,6 +346,7 @@ export class TimeTrackingEngine extends EventEmitter {
     // created a different row, so every ad-hoc session pointed at a task that
     // was never stored, and every start orphaned the row it did create.
     let effectiveTaskId = taskId;
+    let claimable = false;
 
     if (isAdHoc && customTitle) {
       // Resuming an ad-hoc task -- after the lunch split, for instance -- must
@@ -334,7 +387,13 @@ export class TimeTrackingEngine extends EventEmitter {
         // is. Saving the row took it out of the archive, back into the lists,
         // and the transition moved a task that is someone else's, or closed,
         // to In Progress on the provider.
-        const stillListed = !adHoc && !this._taskRepo.isArchived(taskId) && !this._syncWorker.isUnlisted(taskId);
+        // Someone else's task in progress is listed too, and is tracked
+        // without being moved; one nobody owns is not moved before it is
+        // taken.
+        const listed = !adHoc && !this._taskRepo.isArchived(taskId) && !this._syncWorker.isUnlisted(taskId);
+        const stillListed = listed && existingTask.ownership === undefined;
+        // One nobody owns is taken once the session is down: see claimTask.
+        claimable = listed && existingTask.ownership === TaskOwnership.UNASSIGNED;
         if (adHoc || stillListed) {
           if (existingTask.status !== 'in_progress') {
             this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
@@ -374,7 +433,101 @@ export class TimeTrackingEngine extends EventEmitter {
     this.startTickLoop();
     this.notifyListeners();
 
+    if (claimable) this.claimTask(this._currentSession!, providerId);
+
     return this._currentSession!;
+  }
+
+  /**
+   * The task's page on the provider it came from, or null: no such task, an
+   * ad-hoc task or one of the app's own projects, or a provider that cannot
+   * say. Read from the task's project, as its time is sent.
+   */
+  public taskPageUrl(taskId: string): string | null {
+    if (!taskId || isAdHocTaskId(taskId)) return null;
+    const task = this._taskRepo.getTaskById(taskId);
+    if (!task || !hasTaskPage(task.projectId, this._projectRepo.getProviderIdOf(task.projectId))) return null;
+    const manager = this._providerManager as Partial<ProviderManager>;
+    if (typeof manager.taskPageUrlFor !== 'function') return null;
+    return manager.taskPageUrlFor(this.providerOfProject(task.projectId), task);
+  }
+
+  /**
+   * Hears how each claim of a task nobody owned ended: assigned, already the
+   * user's, taken by someone meanwhile, or failed. For the toast and the bar
+   * banner; the session itself already says whose the task is.
+   */
+  public onTaskClaim(listener: (report: TaskClaimReport) => void): () => void {
+    this._claimListeners.add(listener);
+    return () => this._claimListeners.delete(listener);
+  }
+
+  /**
+   * Assigns the task of a session just started to the user, in the
+   * background: the session runs whatever the provider answers, so the
+   * start never waits on the network.
+   *
+   * Taken meanwhile, the task is recorded as that person's and left with
+   * them; the session then reads as theirs (`reassigned`), so finishing it
+   * asks first, and the toast and the bar say who has it. A failure leaves
+   * the task as it was and is told, never queued: a retry minutes later
+   * would assign a task the user may since have dropped.
+   */
+  private claimTask(session: ActiveSessionDTO, providerId: string | undefined): void {
+    const manager = this._providerManager as Partial<ProviderManager>;
+    // A project made here has no provider to ask -- asking would fail on an
+    // unregistered id and toast an error -- and a test double without it has
+    // nobody to assign.
+    if (providerId === OWN_PROJECT_PROVIDER_ID || typeof manager.assignToMeFor !== 'function') return;
+    const report: TaskClaimReport = {
+      sessionId: session.sessionId,
+      taskId: session.taskId,
+      taskKey: session.taskKey,
+      taskTitle: session.taskTitle,
+      providerId
+    };
+    void (async () => {
+      try {
+        const claim = await manager.assignToMeFor!(providerId, session.taskId);
+        if (!claim) return;
+        this.applyClaim(session, claim, providerId);
+        this.reportClaim({ ...report, claim });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`[TimeTrackingEngine] Could not assign ${session.taskKey} to the user:`, message);
+        this.reportClaim({ ...report, error: message });
+      }
+    })();
+  }
+
+  /** Records whose the claimed task now is, and moves it to In Progress once it is the user's. */
+  private applyClaim(session: ActiveSessionDTO, claim: TaskClaim, providerId: string | undefined): void {
+    const task = this._taskRepo.getTaskById(session.taskId);
+    // Saving would take an archived row out of the archive (saveTask).
+    if (task && !this._taskRepo.isArchived(session.taskId)) {
+      if (claim.outcome === 'taken') {
+        this._taskRepo.updateTask({ ...task, ownership: TaskOwnership.OTHER, assigneeName: claim.assigneeName });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { ownership, assigneeName, ...mine } = task;
+        this._taskRepo.updateTask({ ...mine, status: 'in_progress' });
+        this.moveTask(providerId, session.taskId, 'in_progress');
+      }
+    }
+    // Seen here, so the next sync does not tell the same change again.
+    const owner = claim.outcome === 'taken' ? TaskOwnership.OTHER : TaskOwnership.MINE;
+    this._trackedOwnership = { sessionId: session.sessionId, owner };
+    if (this._currentSession?.sessionId === session.sessionId) this.notifyListeners();
+  }
+
+  private reportClaim(report: TaskClaimReport): void {
+    for (const listener of this._claimListeners) {
+      try {
+        listener(report);
+      } catch (err) {
+        console.error('[TimeTrackingEngine] Error in task claim listener:', err);
+      }
+    }
   }
 
   /**
@@ -575,14 +728,40 @@ export class TimeTrackingEngine extends EventEmitter {
       );
     }
 
+    const pauses = this.pausesUntilNow(active, false);
+    const endIso = new Date(end).toISOString();
+    const loggedSeconds = workedSecondsUntil(active.startTimeUtc, endIso, pauses);
+    return this.finishSession(active, loggedSeconds, endIso, pauses, comment, markDone);
+  }
+
+  /**
+   * Every pause of the session, the one in progress running to now. A pause
+   * set retroactively (`pauseSessionAt`) has no row until it is resumed;
+   * it counts unless `withProvisional` is false -- an end chosen by the user
+   * may lie after it, and then they worked on.
+   */
+  private pausesUntilNow(active: ActiveSessionDTO, withProvisional = true): PauseIntervalDTO[] {
     const pauses = this.getClosedPauses();
+    if (active.status !== 'PAUSED') return pauses;
     const rows = this._sessionRepo.getPauseIntervals(active.sessionId);
     const last = rows[rows.length - 1];
-    if (active.status === 'PAUSED' && last !== undefined && last.resumedAtUtc === null) {
-      pauses.push({ fromUtc: last.pausedAtUtc, toUtc: new Date().toISOString() });
+    const nowIso = new Date().toISOString();
+    if (last !== undefined && last.resumedAtUtc === null) {
+      pauses.push({ fromUtc: last.pausedAtUtc, toUtc: nowIso });
+    } else if (withProvisional && active.lastPauseStartUtc) {
+      pauses.push({ fromUtc: active.lastPauseStartUtc, toUtc: nowIso });
     }
-    const loggedSeconds = workedSecondsUntil(active.startTimeUtc, new Date(end).toISOString(), pauses);
-    return this.finishSession(active, loggedSeconds, comment, markDone);
+    return pauses;
+  }
+
+  /**
+   * The open session's time per local day, were it stopped now: what the
+   * window shows before a stop across midnight files it under two days.
+   */
+  public getSessionDays(): DayShare[] {
+    const active = this.getCurrentSession();
+    if (!active) return [];
+    return workedSecondsByLocalDay(active.startTimeUtc, new Date().toISOString(), this.pausesUntilNow(active), active.elapsedSeconds);
   }
 
   /**
@@ -615,13 +794,20 @@ export class TimeTrackingEngine extends EventEmitter {
   public stopSession(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
     const active = this.getCurrentSession();
     if (!active) return { success: false, loggedSeconds: 0 };
-    return this.finishSession(active, active.elapsedSeconds, comment, markDone);
+    return this.finishSession(active, active.elapsedSeconds, new Date().toISOString(), this.pausesUntilNow(active), comment, markDone);
   }
 
-  /** Logs `loggedSeconds` for the session, queues them for the provider, and ends it. */
+  /**
+   * Logs `loggedSeconds` for the session, queues them for the provider, and
+   * ends it. The time goes in as one worklog per stretch of work between
+   * the start and `endUtc` (`splitWork`): a new one at each local midnight
+   * and after each pause of the user's threshold or more.
+   */
   private finishSession(
     active: ActiveSessionDTO,
     loggedSeconds: number,
+    endUtc: string,
+    pauses: readonly PauseIntervalDTO[],
     comment?: string,
     markDone?: boolean
   ): { success: boolean; loggedSeconds: number } {
@@ -660,7 +846,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     const nowIso = new Date().toISOString();
 
-    const worklogComment = comment || 'Completed session via SprintTicker';
+    const worklogComment = comment || WORKLOG_COMMENTS.DEFAULT;
 
     // 1. Save worklog to SQLite, under a task row that is guaranteed to
     // exist: the foreign key would otherwise refuse a worklog whose task was
@@ -671,16 +857,35 @@ export class TimeTrackingEngine extends EventEmitter {
       title: active.taskTitle,
       projectId: active.projectId
     });
-    const worklogId = createId(IdPrefix.WORKLOG);
-    this._worklogRepo.saveWorklog({
-      id: worklogId,
-      sessionId: active.sessionId,
-      taskId: active.taskId,
-      durationSeconds: loggedSeconds,
-      startedAtUtc: active.startTimeUtc,
-      comment: worklogComment,
-      createdAtUtc: nowIso
+    const destination = this.destinationOf(active);
+
+    // One worklog per stretch of work, never across midnight. A piece too
+    // short for the provider joins its neighbour rather than being dropped;
+    // local and remote get the same pieces, one queue row per worklog, so a
+    // correction always names the entry it corrects.
+    const pieces = mergeShortPieces(
+      splitWork(active.startTimeUtc, endUtc, pauses, this._splitPauseSeconds(), loggedSeconds),
+      !adHoc && destination ? destination.minimumSeconds : 1
+    );
+    const worklogs = pieces.map(piece => {
+      const id = createId(IdPrefix.WORKLOG);
+      this._worklogRepo.saveWorklog({
+        id,
+        sessionId: active.sessionId,
+        taskId: active.taskId,
+        durationSeconds: piece.durationSeconds,
+        startedAtUtc: piece.startedAtUtc,
+        comment: worklogComment,
+        createdAtUtc: nowIso
+      });
+      return { ...piece, worklogId: id };
     });
+    if (worklogs.length > 1) {
+      console.log(
+        `[TimeTrackingEngine] Session ${active.sessionId} logged as ${worklogs.length} worklogs: ` +
+          worklogs.map(w => `${w.durationSeconds}s on ${localDateKey(new Date(w.startedAtUtc))}`).join(', ') + '.'
+      );
+    }
 
     // 2. Buffer to offline sync queue, unless the provider cannot record it.
     //
@@ -705,7 +910,6 @@ export class TimeTrackingEngine extends EventEmitter {
     //
     // The local worklog above is still written either way. The session did
     // happen, and the history is the one place that should say so.
-    const destination = this.destinationOf(active);
 
     //
     // Ad-hoc time is never queued. It was queued for the active provider, so
@@ -722,15 +926,19 @@ export class TimeTrackingEngine extends EventEmitter {
           'kept in local history and not queued.'
       );
     } else if (loggedSeconds >= destination.minimumSeconds) {
-      this._worklogRepo.enqueueSyncItem({
-        id: createId(IdPrefix.SYNC_ITEM),
-        providerId: destination.providerId,
-        taskId: active.taskId,
-        durationSeconds: loggedSeconds,
-        startedAtUtc: active.startTimeUtc,
-        comment: worklogComment,
-        worklogId
-      });
+      // Each its own row, so each its own marker: a resend looks for that
+      // piece, not for the session.
+      for (const worklog of worklogs) {
+        this._worklogRepo.enqueueSyncItem({
+          id: createId(IdPrefix.SYNC_ITEM),
+          providerId: destination.providerId,
+          taskId: active.taskId,
+          durationSeconds: worklog.durationSeconds,
+          startedAtUtc: worklog.startedAtUtc,
+          comment: worklogComment,
+          worklogId: worklog.worklogId
+        });
+      }
     } else {
       console.log(
         `[TimeTrackingEngine] Session ${active.sessionId} logged ${loggedSeconds}s, below the ` +

@@ -112,12 +112,19 @@ The icons so far, and which rhythm each follows:
 | Jira | Jira notification | event | a light climbs the three chevrons once, bottom-left to top-right; shape and blue untouched |
 | Stopwatch, tracking | Session running | steady | a seconds hand ticks round once a second, the elapsed wedge filling behind it; the crown clicks at each lap |
 | Stopwatch, paused | Paused session | steady | the pause bars dim for half a second in every one and a half |
+| Meeting | Stand-up running | steady | each of the three takes a turn to speak, sitting up a pixel three times, then a rest of a second before the next |
 
 Idle, dim grey, stays still. Tracking used to as well, being on screen for
 hours, and read as nothing happening; a tick a second with a rest between is
 steady without being busy. Its rest pose is the hand at three with a quarter
 filled, so the loop starts on the fourth tick of twelve. All three states are
 one drawing, so the session screen reads as one object changing state.
+
+The meeting icon takes the stopwatch's place while the stand-up runs, so it
+keeps the session's rhythm: steady, with a rest between turns. Speaking is
+sitting up -- the head a row higher and the shirt's top row following it --
+because a head moved alone leaves a black neck. Its loop rests half a turn at
+each end, so the wrap rests as long as every other turn.
 
 Brightness that pulses must change **in steps**, and a sprite palette keeps the
 **most frequent colours exact**. Otherwise each channel rounds differently

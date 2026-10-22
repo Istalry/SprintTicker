@@ -1,4 +1,5 @@
 import type { WorklogSyncState } from './worklog-correction';
+import type { TaskOwnershipValue } from './task-ownership';
 /**
  * Data Transfer Objects (DTOs) for the IPC bridge and the local webhook endpoints.
  */
@@ -37,6 +38,12 @@ export interface ActiveSessionDTO {
    * longer visible to them. Absent while unknown, which reads as reassigned.
    */
   taskLeftBecause?: TaskLeftReason;
+  /**
+   * Who the task is assigned to, when it is someone else's: reassigned
+   * mid-session, started as a teammate's, or taken by someone between the
+   * pick and the start. Absent when unknown or the user's.
+   */
+  taskOwnerName?: string;
 }
 
 /** Why a tracked task left the provider's list: see `ActiveSessionDTO.taskLeftBecause`. */
@@ -65,6 +72,13 @@ export interface TaskDTO {
    * most `TASK_DESCRIPTION_MAX_CHARS` long. Absent for a task with none.
    */
   description?: string;
+  /**
+   * Whose the provider says it is. Absent means the user's: a row from before
+   * ownership was stored, a local or ad-hoc task -- see `task-ownership.ts`.
+   */
+  ownership?: TaskOwnershipValue;
+  /** The assignee's display name, on a task that is someone else's. */
+  assigneeName?: string;
 }
 
 export interface OpStatusDTO {
@@ -79,11 +93,16 @@ export interface ProjectDTO {
   key: string;
   providerId?: string;
   /**
-   * Tasks in the project not yet done, archived ones left out. Filled in by
+   * The user's own tasks in the project not yet done, archived ones left
+   * out -- not the unassigned ones nor a teammate's. Filled in by
    * the local cache; absent on a project straight from a provider, which
    * knows nothing of the cache. See `filterProjectsWithTasks`.
    */
   openTaskCount?: number;
+  /** Open tasks nobody is assigned, counted like `openTaskCount`. */
+  openUnassignedCount?: number;
+  /** Open tasks assigned to someone else, counted like `openTaskCount`. */
+  openOthersCount?: number;
 }
 
 export interface HardwareBindingConfig {
@@ -206,6 +225,23 @@ export interface ScheduleSettingsDTO {
   eodShutdownByDefault?: boolean; // Alias for UI compatibility
   /** Ask, rather than log, about a session left running across a change of day. */
   askAboutForgottenSessions?: boolean;
+  /**
+   * The days worked, as `Date.getDay()` numbers (0 Sunday). Nothing is
+   * prompted on the others, and the last of them in a week closes it.
+   */
+  workingDays?: number[];
+  /**
+   * A pause at least this many minutes long ends a worklog: the work after
+   * it goes in as another. 0 never splits at a pause; midnight always does.
+   */
+  splitPauseMinutes?: number;
+}
+
+/** A week just over: Monday to its last working day, and the time logged in it. */
+export interface WeekEndedDTO {
+  weekStart: string;
+  weekEnd: string;
+  loggedSeconds: number;
 }
 
 /**
@@ -365,6 +401,8 @@ export interface WorklogDTO {
   taskTitle?: string;
   /** Where it stands with its provider: sent, on its way, parked, or kept here only. */
   syncState?: WorklogSyncState;
+  /** Whether its task has a page on a provider to open (`hasTaskPage`). */
+  hasTaskPage?: boolean;
 }
 
 export interface UnitySettingsDTO {
@@ -479,7 +517,8 @@ export type BitmapIconId =
   | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows'
   | 'bell' | 'openproject' | 'jira' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
   | 'hammer' | 'bulb' | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
-  | 'folder' | 'task' | 'task_in_progress' | 'task_done';
+  | 'folder' | 'task' | 'task_in_progress' | 'task_done' | 'meeting'
+  | 'coffee' | 'moon';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 
 export interface DisplayElementDTO {
@@ -519,6 +558,19 @@ export interface DisplayElementDTO {
  * empty -- the user chose that over anything the app would draw (2026-09-30).
  * An app draw on the rear would replace the mirror.
  */
+/**
+ * The icon of the screen the bar is showing, for the mini timer.
+ *
+ * The 16x16 bitmap a screen draws at the left of its frame, or, for a
+ * full-panel scene, the icon that stands for it (`SCENE_ICONS`). `label`
+ * names the screen -- its top row, or the scene's title -- for a tooltip.
+ * Static: the bar animates its icons, the mini timer does not.
+ */
+export interface ScreenIconDTO {
+  pixels: (string | null)[][];
+  label: string;
+}
+
 export interface HardwareDisplayStateDTO {
   frontElements: DisplayElementDTO[];
   ledColorHex: string;

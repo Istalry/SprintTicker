@@ -1,12 +1,12 @@
 import { BusyBarDriver } from './busybar-driver';
 import { createHash } from 'crypto';
-import { ActiveSessionDTO, ColorThemeId, LedAnimationMode, HardwareDisplayStateDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, ColorThemeId, LedAnimationMode, HardwareDisplayStateDTO, ScreenIconDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
 import { PixelCanvas } from './pixel-canvas';
 import {
-  ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS,
+  ANIMATED_ICONS, DISPLAY_CONSTANTS, FRONT_ANIMATIONS, SCENE_ICONS, TASK_DONE_DISPLAY_SECONDS, TASK_LOGGED_DISPLAY_SECONDS,
   TASK_STARTED_DISPLAY_SECONDS, EOD_COMPLETE_DISPLAY_SECONDS
 } from '../../shared/render-constants';
 import { composeNotificationBanner } from '../../shared/notification-text';
@@ -16,6 +16,7 @@ import { DeviceRequestError, FrameOutcome, describeError } from './device-errors
 import { IconAnimator } from './icon-animator';
 import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
+import { isAdHocTaskId } from '../db/id-generator';
 import { measureText } from '../../shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
 import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
@@ -261,6 +262,13 @@ export class DisplayRenderer {
    * previous screen's, rather than leaving it spinning over the wrong text.
    */
   private frameIcon: string | null = null;
+  /**
+   * The icon the frame being painted shows, for the mini timer. Kept like
+   * `frameIcon`, and consumed with it, so a screen without one clears it.
+   */
+  private frameScreenIcon: ScreenIconDTO | null = null;
+  private screenIcon: ScreenIconDTO | null = null;
+  private screenIconCallbacks: Set<(icon: ScreenIconDTO | null) => void> = new Set();
   private showIdleClockFallback: boolean = false;
 
   /** The software 72×16 pixel canvas that is encoded and uploaded each frame. */
@@ -425,6 +433,35 @@ export class DisplayRenderer {
   public onStateChanged(cb: (state: HardwareDisplayStateDTO) => void): () => void {
     this.stateChangeCallbacks.add(cb);
     return () => this.stateChangeCallbacks.delete(cb);
+  }
+
+  /**
+   * Registers a listener for the icon of the screen on the bar, told only
+   * when it changes: the tracker redraws every second, and a scene sends
+   * the emulator every frame, neither of which moves the icon.
+   */
+  public onScreenIconChanged(cb: (icon: ScreenIconDTO | null) => void): () => void {
+    this.screenIconCallbacks.add(cb);
+    return () => this.screenIconCallbacks.delete(cb);
+  }
+
+  public getScreenIcon(): ScreenIconDTO | null {
+    return this.screenIcon;
+  }
+
+  private setScreenIcon(icon: ScreenIconDTO | null): void {
+    const current = this.screenIcon;
+    if (icon === current || (icon && current && icon.pixels === current.pixels && icon.label === current.label)) return;
+    this.screenIcon = icon;
+    for (const callback of this.screenIconCallbacks) {
+      callback(icon);
+    }
+  }
+
+  /** The icon standing for a full-panel scene, for the frame that hands the panel to it. */
+  private sceneScreenIcon(scene: string): ScreenIconDTO | null {
+    const entry = (SCENE_ICONS as Record<string, { icon: BitmapIconId; label: string } | undefined>)[scene];
+    return entry ? { pixels: getBitmapById(entry.icon), label: entry.label } : null;
   }
 
   private _contextMode: UserMode = 'WORK';
@@ -674,6 +711,7 @@ export class DisplayRenderer {
   ): void {
     this.canvas.clear();
     this.frameIcon = animatedIcon ? ANIMATED_ICONS[animatedIcon] ?? null : null;
+    this.frameScreenIcon = { pixels: iconBitmap, label: row0Text };
     // Draw 16×16 icon, centered vertically in the 16px display height
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
     this.canvas.drawBitmap(iconBitmap, 0, 0, layout.ICON_SIZE, layout.ICON_SIZE);
@@ -798,6 +836,8 @@ export class DisplayRenderer {
     // Consumed here, whatever the frame, so the next screen starts without one.
     const animatedIcon = frontOwnedByAnimation ? null : this.frameIcon;
     this.frameIcon = null;
+    const screenIcon = this.frameScreenIcon;
+    this.frameScreenIcon = null;
 
     if (frontOwnedByAnimation) {
       // Forget the signature rather than record one that was never sent, so the
@@ -825,6 +865,7 @@ export class DisplayRenderer {
       ledMode: this.ledMode,
       colorTheme: this.colorTheme,
     };
+    this.setScreenIcon(screenIcon);
 
     for (const callback of this.stateChangeCallbacks) {
       callback(this.lastState);
@@ -882,6 +923,28 @@ export class DisplayRenderer {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
+   * Clears the app's screen for the firmware's clock. Never throws.
+   */
+  private async handBackDisplay(): Promise<void> {
+    try {
+      const outcome = await this._driver.clearDisplay(APP_NAME);
+      // Abandoned, the icon may still be playing: the screen that superseded
+      // the clear puts it to rest when it says what it wants.
+      if (outcome === 'cleared') this.iconAnimator.noteCleared();
+    } catch (err) {
+      // A bar that is unplugged or out of reach is not a fault: the driver
+      // says `reconnected` when it answers again, and the current screen --
+      // this clock, if it still is -- is redrawn then. It used to log as an
+      // error with a full stack on every idle transition during an outage.
+      if (err instanceof DeviceRequestError && (err.kind === 'disconnected' || err.kind === 'unreachable')) {
+        console.warn(`[DisplayRenderer] Could not hand the display back (${describeError(err)}); redrawn when the bar answers again.`);
+        return;
+      }
+      console.error('[DisplayRenderer] _driver.clearDisplay failed:', err);
+    }
+  }
+
+  /**
    * Renders Idle View on Front Display.
    */
   public renderIdle(): DisplayPayload {
@@ -899,6 +962,7 @@ export class DisplayRenderer {
     return this.requestRender('lunchModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
+      this.frameScreenIcon = this.sceneScreenIcon(FRONT_ANIMATIONS.LUNCH);
       void this.animationPlayer.play(FRONT_ANIMATIONS.LUNCH, { loop: true, onFrame: this.onAnimationFrame })
         .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
@@ -922,6 +986,7 @@ export class DisplayRenderer {
     return this.requestRender('awayModePriority', () => {
       const frontElements: Array<Record<string, unknown>> = [];
       this.canvas.clear();
+      this.frameScreenIcon = this.sceneScreenIcon(FRONT_ANIMATIONS.AWAY);
       void this.animationPlayer.play(FRONT_ANIMATIONS.AWAY, { loop: true, onFrame: this.onAnimationFrame })
         .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
 
@@ -951,6 +1016,7 @@ export class DisplayRenderer {
 
       if (type === 'STANDUP') {
         this.canvas.clear();
+        this.frameScreenIcon = this.sceneScreenIcon(FRONT_ANIMATIONS.MEETING);
         void this.animationPlayer.play(FRONT_ANIMATIONS.MEETING, { loop: true, onFrame: this.onAnimationFrame })
           .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       } else {
@@ -1074,30 +1140,18 @@ export class DisplayRenderer {
           };
         }
       }
-      this.invalidateFrameCache();
+      this.lastTransmittedSignature = null;
       // This screen replaces the last one without passing through
       // transmitFrame, the one place that tells the icon animator what is
       // wanted. Without saying so here it kept wanting the last icon: its
-      // preview laid that icon over the emulator's empty panel, and the reset
-      // above sent it back to the device to draw the icon again -- alone, on
-      // the panel this release had just emptied, over the firmware's clock.
-      // Free on the device: with nothing drawn, show(null) sends nothing.
-      this.iconAnimator.show(null);
+      // preview laid that icon over the emulator's empty panel, and was sent
+      // back to the device to draw the icon again -- alone, on the panel this
+      // release had just emptied, over the firmware's clock. The clear takes
+      // the icon down with the screen; see leaveToClear.
+      this.iconAnimator.leaveToClear();
       // Without a bar there is no display to hand back, and the clear would
       // only throw `disconnected` into the log on every idle transition.
-      if (this._driver.isEnabled?.() !== false) {
-        void this._driver.clearDisplay(APP_NAME).catch(err => {
-          // A bar that is unplugged or out of reach is not a fault: the driver
-          // says `reconnected` when it answers again, and the current screen --
-          // this clock, if it still is -- is redrawn then. It used to log as an
-          // error with a full stack on every idle transition during an outage.
-          if (err instanceof DeviceRequestError && (err.kind === 'disconnected' || err.kind === 'unreachable')) {
-            console.warn(`[DisplayRenderer] Could not hand the display back (${describeError(err)}); redrawn when the bar answers again.`);
-            return;
-          }
-          console.error('[DisplayRenderer] _driver.clearDisplay failed:', err);
-        });
-      }
+      if (this._driver.isEnabled?.() !== false) void this.handBackDisplay();
       
       const payload: DisplayPayload = {
         frontElements: [],
@@ -1110,6 +1164,9 @@ export class DisplayRenderer {
         ledMode: 'SOLID',
         colorTheme: this.colorTheme,
       };
+      // The firmware's clock: no icon of ours.
+      this.frameScreenIcon = null;
+      this.setScreenIcon(null);
 
       for (const callback of this.stateChangeCallbacks) {
         callback(this.lastState);
@@ -1148,9 +1205,17 @@ export class DisplayRenderer {
       const isTracking = session?.status === 'TRACKING';
       const isStandup = session?.taskTitle?.toLowerCase().includes('standup');
 
+      // An ad-hoc task's key is the fallback ticket every one of them shares
+      // (MISC-1): it names nothing, and it took the row's width from the name
+      // the user typed -- "MISC-1: Dail..." for the stand-up (real bar,
+      // 2026-10-15). Read from the id too, as the engine does: a row started
+      // again from a list carries `isAdHoc = false`.
+      const adHoc = session && (session.isAdHoc || isAdHocTaskId(session.taskId));
       const titleText = !session
         ? 'Ready'
-        : isPaused
+        : adHoc
+          ? session.taskTitle || session.taskKey
+          : isPaused
           ? session.taskKey || session.taskTitle
           : `${session.taskKey}: ${session.taskTitle}`;
       const timerText = session ? this.formatTime(session.elapsedSeconds, false) : 'No task running';
@@ -1163,17 +1228,17 @@ export class DisplayRenderer {
       this.ledMode = session ? (isTracking ? 'SOLID' : 'BREATHING') : 'SOLID';
 
       this.canvas.clear();
-      if (isStandup && isTracking) {
-        void this.animationPlayer.play(FRONT_ANIMATIONS.MEETING, { loop: true, onFrame: this.onAnimationFrame })
-          .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
-      } else {
-        this.animationPlayer.stop();
-        // One stopwatch in three states, where all three -- and Day Complete --
-        // used to share the checkmark.
-        const icon: BitmapIconId = isPaused ? 'stopwatch_paused' : session ? 'stopwatch' : 'stopwatch_idle';
-        this.canvas.drawBitmap(getBitmapById(icon), 0, 0, 16, 16);
-        this.frameIcon = ANIMATED_ICONS[icon] ?? null;
-      }
+      this.animationPlayer.stop();
+      // One stopwatch in three states, where all three -- and Day Complete --
+      // used to share the checkmark. The stand-up running has its own icon on
+      // the same screen: it used to play the meeting scene, identical to the
+      // prompt before it, so joining looked like nothing happening and the
+      // user pressed START again -- pausing it (real bar, 2026-10-15).
+      const icon: BitmapIconId =
+        isStandup && isTracking ? 'meeting' : isPaused ? 'stopwatch_paused' : session ? 'stopwatch' : 'stopwatch_idle';
+      this.canvas.drawBitmap(getBitmapById(icon), 0, 0, 16, 16);
+      this.frameIcon = ANIMATED_ICONS[icon] ?? null;
+      this.frameScreenIcon = { pixels: getBitmapById(icon), label: titleText };
 
       if (isPaused) {
         this.paintPausedRows(titleText, timerText, row0Color);
@@ -1489,6 +1554,7 @@ export class DisplayRenderer {
     this.ledMode = ledMode;
 
     this.canvas.clear();
+    this.frameScreenIcon = this.sceneScreenIcon(scene);
     void this.animationPlayer.play(scene, { loop: false, onFrame: this.onAnimationFrame })
       .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
     void this.transmitFrame(ledColorHex, [])

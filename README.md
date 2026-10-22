@@ -115,14 +115,16 @@ Timestamp-based sessions with start / pause / resume / finish, a live tracker on
 the bar, and a local worklog history with an end-of-day export. A session left
 running overnight or over the weekend is paused at your last activity and you
 are asked when you stopped, while overtime past midnight runs on untouched; a
-worklog belongs to the day it began. A worklog already sent can be corrected or
+session is logged as one worklog per day it ran on, and a long pause starts a
+new one. A worklog already sent can be corrected or
 deleted from Work History, and the change reaches Jira or OpenProject through
 the sync queue. Persisted
 through `better-sqlite3` with versioned schema migrations, so upgrading never
 discards existing worklogs.
 
 A **mini timer**, a small always-on-top window, shows the running task and its
-time on screen, with or without a bar:
+time on screen, with or without a bar, beside the icon of whatever holds the
+bar -- the session, a Unity compile, a notification, lunch:
 
 <p align="center">
   <img src="docs/images/app-mini-timer.png" alt="The mini timer: MG-12, 01:24:10, pause, stop and switch buttons">
@@ -130,7 +132,7 @@ time on screen, with or without a bar:
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/app-projects.png" alt="Projects and tasks: Moonlight Garden with four tasks"></td>
+    <td width="50%"><img src="docs/images/app-projects.png" alt="Projects and tasks: Moonlight Garden's tasks, yours first, then one unassigned and a teammate's"></td>
     <td width="50%"><img src="docs/images/app-history.png" alt="Work History: 4h 10m over four tasks today"></td>
   </tr>
   <tr>
@@ -141,7 +143,15 @@ time on screen, with or without a bar:
 
 🔎 **Only projects with tasks**, on by default, keeps every project list short:
 the Projects & Tasks panel, the task picker and the bar's own picker hide the
-projects with nothing assigned to you to do.
+projects with nothing to do that the lists would show.
+
+👥 **Unassigned and teammates' tasks**: every task list also shows the open
+tasks nobody is assigned, and on request a teammate's task in progress, each
+marked as such, after your own work. Starting an unassigned task assigns it
+to you; one someone took meanwhile stays theirs, and you are told who has it.
+
+↗️ **Open on the provider**: an arrow beside a task opens it on Jira or
+OpenProject in the browser, from the session, the task list or Work History.
 
 ### 🔷 OpenProject integration
 
@@ -181,9 +191,10 @@ model allows it:
   nothing outside the one workflow it belongs to, whereas the name usually
   carries across.
 
-Which issues to fetch is a setting: assigned to me, everything open, or your own
-JQL. The same vocabulary drives the OpenProject adapter, each rendering it in its
-own dialect.
+Which issues to fetch is a setting: by default your own, every open one nobody
+is assigned, and a teammate's while it is in progress, each stored with whose
+it is; or everything open, or your own JQL. The same vocabulary drives the
+OpenProject adapter, each rendering it in its own dialect.
 
 Its activity **becomes Windows toasts** too -- assigned, status changed,
 commented, mentioned -- and optionally banners on the bar. Jira Cloud has no
@@ -290,6 +301,9 @@ and an end-of-day wrap-up that can be confirmed from
 the hardware **START** button or dismissed with **BACK**. Lunch stops the
 running task and starts it again afterwards, across a restart of the app too;
 start or resume a task during lunch and Lunch ends for the day instead.
+Ceremonies happen on the working days you pick, less the holidays your
+OpenProject instance lists, and the last one in a week closes it with a
+reminder of the time logged.
 
 <p align="center">
   <img src="docs/images/app-ceremonies.png" width="70%" alt="Ceremonies panel: stand-up time, lunch hours, end-of-day wrap-up">
@@ -463,7 +477,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2154 tests across 106 files for the app -- the main and shared
+`pnpm test` runs 2456 tests across 121 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a

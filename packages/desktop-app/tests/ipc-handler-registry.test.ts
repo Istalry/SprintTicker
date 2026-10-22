@@ -17,12 +17,13 @@ vi.mock('electron', () => ({
   ipcMain: { handle: vi.fn(), on: vi.fn(), emit: vi.fn() },
   BrowserWindow: vi.fn(),
   app: { isPackaged: false },
+  shell: { openExternal: vi.fn(async () => undefined) },
   powerMonitor: {
     on: vi.fn()
   }
 }));
 
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 
 describe('IPCHandlerRegistry Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -322,6 +323,76 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     });
   });
 
+  describe('the screen icon', () => {
+    it('ScreenIcon_TheBarChangesScreen_ReadAndPushedToEveryWindow', async () => {
+      const send = vi.fn();
+      const window = { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } };
+      const settingsRepo = new SettingsRepository(dbConn);
+      const driver = new BusyBarDriver('10.0.4.20', true);
+      const reg = new IPCHandlerRegistry({
+        engine, taskRepo: new TaskRepository(dbConn), settingsRepo, driver,
+        inputDecoder: new InputDecoder(driver, engine, settingsRepo), renderer,
+        getWindow: () => window as never
+      });
+      reg.registerAllHandlers();
+      const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const read = calls.filter(call => call[0] === IPCChannel.GET_SCREEN_ICON).pop()![1] as () => Promise<unknown>;
+
+      renderer.renderCompilation('ProjectX');
+
+      expect(await read()).toEqual(renderer.getScreenIcon());
+      expect(send).toHaveBeenCalledWith(IPCChannel.ON_SCREEN_ICON, renderer.getScreenIcon());
+    });
+  });
+
+  describe("opening a task's page", () => {
+    function handler(channel: string): (...args: unknown[]) => unknown {
+      const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const found = calls.filter(call => call[0] === channel).pop();
+      expect(found).toBeDefined();
+      return found![1] as (...args: unknown[]) => unknown;
+    }
+    const openExternal = shell.openExternal as unknown as ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      openExternal.mockClear();
+      registry.registerAllHandlers();
+    });
+
+    it('OpenTaskPage_TaskWithAPage_OpensTheUrlMainBuilt', async () => {
+      const built = vi.spyOn(engine, 'taskPageUrl').mockReturnValue('https://acme.atlassian.net/browse/SCRUM-2');
+
+      await expect(handler(IPCChannel.OPEN_TASK_PAGE)({}, '10001')).resolves.toBe(true);
+
+      expect(built).toHaveBeenCalledWith('10001');
+      expect(openExternal).toHaveBeenCalledWith('https://acme.atlassian.net/browse/SCRUM-2');
+    });
+
+    it('OpenTaskPage_NoPage_OpensNothing', async () => {
+      vi.spyOn(engine, 'taskPageUrl').mockReturnValue(null);
+
+      await expect(handler(IPCChannel.OPEN_TASK_PAGE)({}, 'adhoc_1')).resolves.toBe(false);
+
+      expect(openExternal).not.toHaveBeenCalled();
+    });
+
+    it('OpenTaskPage_NotAWebUrl_OpensNothing', async () => {
+      // The last check before the operating system: any protocol handler
+      // would launch from here.
+      vi.spyOn(engine, 'taskPageUrl').mockReturnValue('file:///C:/Windows/System32/calc.exe');
+
+      await expect(handler(IPCChannel.OPEN_TASK_PAGE)({}, '10001')).resolves.toBe(false);
+
+      expect(openExternal).not.toHaveBeenCalled();
+    });
+
+    it('OpenTaskPage_NotATaskId_Throws', async () => {
+      await expect(handler(IPCChannel.OPEN_TASK_PAGE)({}, { url: 'https://evil.test' })).rejects.toThrow(/task id/);
+
+      expect(openExternal).not.toHaveBeenCalled();
+    });
+  });
+
   describe('only projects with tasks', () => {
     let send: ReturnType<typeof vi.fn>;
     let settingsRepo: SettingsRepository;
@@ -373,6 +444,32 @@ describe('IPCHandlerRegistry Unit Tests', () => {
 
       await expect(handler(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS)({})).resolves.toBe(true);
       expect(send).not.toHaveBeenCalledWith(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, expect.anything());
+    });
+
+    it('GetTaskVisibility_NeverSet_ShowsFreeWorkAndHidesTeammates', async () => {
+      await expect(handler(IPCChannel.GET_TASK_VISIBILITY)({})).resolves.toEqual({ unassigned: true, others: false });
+    });
+
+    it('SetTaskVisibility_Valid_StoresItAndTellsEveryView', async () => {
+      const chosen = { unassigned: false, others: true };
+
+      await expect(handler(IPCChannel.SET_TASK_VISIBILITY)({}, { ...chosen, extra: 'dropped' })).resolves.toEqual(chosen);
+
+      await expect(handler(IPCChannel.GET_TASK_VISIBILITY)({})).resolves.toEqual(chosen);
+      expect(send).toHaveBeenCalledWith(IPCChannel.ON_TASK_VISIBILITY, chosen);
+    });
+
+    it('SetTaskVisibility_NotTwoBooleans_ThrowsAndStoresNothing', async () => {
+      await expect(handler(IPCChannel.SET_TASK_VISIBILITY)({}, { unassigned: true })).rejects.toThrow(/boolean/);
+
+      await expect(handler(IPCChannel.GET_TASK_VISIBILITY)({})).resolves.toEqual({ unassigned: true, others: false });
+      expect(send).not.toHaveBeenCalledWith(IPCChannel.ON_TASK_VISIBILITY, expect.anything());
+    });
+
+    it('GetTaskVisibility_StoredValueDamaged_AnswersTheDefaultsForWhatIsMissing', async () => {
+      settingsRepo.setSetting('task_visibility', { others: true });
+
+      await expect(handler(IPCChannel.GET_TASK_VISIBILITY)({})).resolves.toEqual({ unassigned: true, others: true });
     });
   });
 

@@ -4,6 +4,7 @@ import type { IElectronAPI } from '../../src/preload/electron-api';
 import type { ActiveSessionDTO, DeviceStatusDTO, HardwareDisplayStateDTO } from '../../src/shared/dtos';
 import { DEFAULT_DEVICE_CONFIG, EMPTY_DISPLAY_HEALTH } from '../../src/shared/device-constants';
 import { DEFAULT_PRIORITY_RULES } from '../../src/shared/priority-defaults';
+import { DEFAULT_TASK_VISIBILITY, type TaskVisibility } from '../../src/shared/task-visibility';
 import { DEFAULT_PROVIDER_EVENT_SETTINGS, type ProviderEventSettingsDTO } from '../../src/shared/provider-events';
 import {
   DEFAULT_NOTIFICATION_POLLING_INTERVAL_SECONDS,
@@ -103,6 +104,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     resumeSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
     completeSession: vi.fn().mockResolvedValue({ success: true, loggedSeconds: 5025 }),
     discardSession: vi.fn().mockResolvedValue({ success: true, discardedSeconds: 0 }),
+    getSessionDays: vi.fn().mockResolvedValue([]),
     getForgottenReview: vi.fn().mockResolvedValue(null),
     resolveForgottenSession: vi.fn().mockResolvedValue(true),
     onForgottenReview: subscribe('onForgottenReview'),
@@ -181,6 +183,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     triggerStandupPrompt: vi.fn().mockResolvedValue({ success: true }),
     cancelStandupPrompt: vi.fn().mockResolvedValue(true),
     joinStandup: vi.fn().mockResolvedValue(true),
+    getWeekEnded: vi.fn().mockResolvedValue(null),
+    dismissWeekEnded: vi.fn().mockResolvedValue(true),
+    onWeekEnded: subscribe('onWeekEnded'),
     triggerEodPrompt: vi.fn().mockResolvedValue({ success: true }),
     triggerEodWrapUp: vi.fn().mockResolvedValue({ success: true, savedUnityScenes: false, savedVSCode: false }),
     cancelEodWrapUp: vi.fn().mockResolvedValue(true),
@@ -220,6 +225,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
 
     getDisplayState: vi.fn().mockResolvedValue(EMPTY_DISPLAY),
     onDisplayStateUpdated: subscribe('onDisplayStateUpdated'),
+    getScreenIcon: vi.fn().mockResolvedValue(null),
+    onScreenIcon: subscribe('onScreenIcon'),
     setColorTheme: vi.fn().mockResolvedValue(true),
     triggerConfettiBurst: vi.fn().mockResolvedValue(true),
     previewDisplayScreen: vi.fn().mockResolvedValue(true),
@@ -236,9 +243,13 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getOnlyProjectsWithTasks: vi.fn().mockResolvedValue(true),
     setOnlyProjectsWithTasks: vi.fn(async (enabled: boolean) => enabled),
     onOnlyProjectsWithTasks: subscribe('onOnlyProjectsWithTasks'),
+    getTaskVisibility: vi.fn().mockResolvedValue({ ...DEFAULT_TASK_VISIBILITY }),
+    setTaskVisibility: vi.fn(async (visibility: TaskVisibility) => visibility),
+    onTaskVisibility: subscribe('onTaskVisibility'),
     getUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     setUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     openReleasePage: vi.fn().mockResolvedValue(true),
+    openTaskPage: vi.fn().mockResolvedValue(true),
     onUpdateStatus: subscribe('onUpdateStatus'),
 
     syncProviderNow: vi.fn().mockResolvedValue({ status: 'not_configured', reason: 'No provider configured', projects: 0, tasks: 0 }),

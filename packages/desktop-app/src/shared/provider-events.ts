@@ -177,6 +177,35 @@ export function describeSendingStopped(providerName: string): ProviderEventText 
   };
 }
 
+/**
+ * The toast for a task someone took between the pick and the start. It says
+ * the time still counts, and that the task was left with them, because the
+ * user did nothing wrong and may want to go and ask.
+ */
+export function describeTaskTaken(taskKey: string, assigneeName: string): ProviderEventText {
+  const key = taskKey.trim() || 'This task';
+  const who = assigneeName.trim() || 'Someone else';
+  return {
+    title: `${key} is taken`,
+    body: `${who} took it before you started. It is still theirs; your time is logged all the same.`
+  };
+}
+
+/** The bar's banner for the same: the word, then who. */
+export function describeTaskTakenForBar(assigneeName: string): ProviderEventText {
+  return { title: 'TAKEN', body: assigneeName.trim() || 'someone else' };
+}
+
+/** The toast for an assignment that failed: the task stays nobody's. */
+export function describeClaimFailed(taskKey: string, providerName: string): ProviderEventText {
+  const key = taskKey.trim() || 'The task';
+  const provider = providerName.trim() || 'Your provider';
+  return {
+    title: `${key} was not assigned to you`,
+    body: `${provider} could not assign it to you. The session runs and its time is logged; assign it there if it should be yours.`
+  };
+}
+
 /** A toast's text: a sentence, since a toast has the room for one. */
 export function describeProviderEvent(event: ProviderEventDTO): ProviderEventText {
   const actor = event.actorName?.trim();

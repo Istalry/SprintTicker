@@ -5,7 +5,13 @@ import { triggerDesktopConfetti } from '../../utils/confetti-fx';
 import { FinishSessionModal } from '../../components/FinishSessionModal';
 import { ProjectFilterToggle } from '../../components/ProjectFilterToggle';
 import { useOnlyProjectsWithTasks } from '../../hooks/useOnlyProjectsWithTasks';
+import { useTaskVisibility } from '../../hooks/useTaskVisibility';
+import { TaskOwnerBadge, TaskVisibilityToggle } from '../../components/TaskVisibilityToggle';
 import { filterProjectsWithTasks, firstProjectWithTasks } from '../../../shared/project-filter';
+import { orderTasksForSelection } from '../../../shared/task-order';
+import { DEFAULT_TASK_VISIBILITY, visibleTasks } from '../../../shared/task-visibility';
+import { hasTaskPage } from '../../../shared/task-page';
+import { TaskPageButton } from '../../components/TaskPageButton';
 import { OWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
 
 export const ProjectTaskManagerView: React.FC = () => {
@@ -16,6 +22,7 @@ export const ProjectTaskManagerView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(() => Boolean(window.electronAPI?.getProjects));
   const [activeSession, setActiveSession] = useState<ActiveSessionDTO | null>(null);
   const [onlyWithTasks, setOnlyWithTasks] = useOnlyProjectsWithTasks();
+  const [visibility, setVisibility] = useTaskVisibility();
 
   /**
    * Which project the task list is showing, readable from a subscription.
@@ -57,7 +64,9 @@ export const ProjectTaskManagerView: React.FC = () => {
       // not jump back to the first one. Open on a project with something in
       // it: the selected project is never hidden, so opening on an empty one
       // would show it whatever the "only projects with tasks" switch says.
-      setSelectedProjectId(current => current || firstProjectWithTasks(projs));
+      // Chosen under the default visibility: the stored one may not have
+      // answered yet, and this only picks where the tab opens.
+      setSelectedProjectId(current => current || firstProjectWithTasks(projs, DEFAULT_TASK_VISIBILITY));
       setLoading(false);
     });
   };
@@ -103,7 +112,7 @@ export const ProjectTaskManagerView: React.FC = () => {
           setProjects(synced);
           setSelectedProjectId(current => {
             if (current && synced.some(p => p.id === current)) return current;
-            return firstProjectWithTasks(synced);
+            return firstProjectWithTasks(synced, DEFAULT_TASK_VISIBILITY);
           });
           // A sync that refreshed the projects refreshed the tasks under them
           // too, and a status changed on the board is the most likely thing to
@@ -258,8 +267,20 @@ export const ProjectTaskManagerView: React.FC = () => {
   const { visible: listedProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(
     projects,
     onlyWithTasks,
-    [selectedProjectId, activeSession?.projectId ?? ''].filter(Boolean)
+    [selectedProjectId, activeSession?.projectId ?? ''].filter(Boolean),
+    visibility
   );
+  // In the bar's order, under the same visibility; the running session's task
+  // stays whoever's it is, or hiding a teammate's work would take away the
+  // Stop button of a session on one.
+  const { visible: shownTasks, hiddenCount: hiddenTaskCount } = visibleTasks(
+    tasks,
+    visibility,
+    [activeSession?.taskId ?? ''].filter(Boolean)
+  );
+  const listedTasks = orderTasksForSelection(shownTasks);
+  // One project's tasks: they all have a page, or none does.
+  const tasksHavePages = hasTaskPage(activeProject?.id, activeProject?.providerId);
 
   if (loading) {
     return <div className="p-8 text-text-secondary font-mono text-sm">Loading Project & Task Registry...</div>;
@@ -355,7 +376,10 @@ export const ProjectTaskManagerView: React.FC = () => {
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                 {activeProject ? `Tasks under [${activeProject.key}] ${activeProject.name}` : 'Select a Project'}
               </h3>
-              <p className="text-xs text-text-secondary mt-0.5">{tasks.length} task(s) registered</p>
+              <p className="text-xs text-text-secondary mt-0.5">{listedTasks.length} task(s) listed</p>
+              <div className="mt-1.5">
+                <TaskVisibilityToggle visibility={visibility} onChange={setVisibility} hiddenCount={hiddenTaskCount} />
+              </div>
             </div>
 
             <button
@@ -370,8 +394,8 @@ export const ProjectTaskManagerView: React.FC = () => {
 
           {/* Tasks List */}
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 flex-1">
-            {tasks.length > 0 ? (
-              tasks.map(task => (
+            {listedTasks.length > 0 ? (
+              listedTasks.map(task => (
                 <div
                   key={task.id}
                   className="flex items-center justify-between p-3.5 bg-dark-900/60 border border-border-dark rounded-lg hover:border-dark-600 transition-colors"
@@ -382,6 +406,8 @@ export const ProjectTaskManagerView: React.FC = () => {
                         {task.key}
                       </span>
                       <span className="text-xs font-bold text-white">{task.title}</span>
+                      <TaskOwnerBadge task={task} />
+                      {tasksHavePages && <TaskPageButton taskId={task.id} taskKey={task.key} />}
                     </div>
                     {task.description && (
                       <div className="text-[11px] text-text-secondary truncate" title={task.description}>

@@ -57,9 +57,12 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
     await openProjectProvider.initialize({ domain: 'https://op.test', apiToken: 'token' });
     
     const originalFetch = global.fetch;
+    // One body for every request: `id` answers `/api/v3/users/me`, and the
+    // work packages answer the searches.
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
+        id: 7,
         _embedded: {
           elements: [
             { id: 101, subject: 'OP Task', _links: { status: { href: '/api/v3/statuses/1' } } }

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AlertTriangle, ListTodo, Pause, Play, Square, X } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
+import { useScreenIcon } from '../hooks/useScreenIcon';
+import { ScreenIcon } from './ScreenIcon';
 import { formatSeconds } from '../utils/formatters';
 import { finishNeedsConfirmation, taskLeftLabel } from '../../shared/task-left';
 
@@ -14,9 +16,14 @@ import { finishNeedsConfirmation, taskLeftLabel } from '../../shared/task-left';
  *
  * The timer counts seconds here, unlike the bar, where each change is an
  * upload: on screen a second costs nothing.
+ *
+ * The icon is the bar's: whatever holds it -- the session, a compile, a
+ * notification, Lunch -- so someone without one sees what it would say. It
+ * leaves the row to the session; the screen's own text is its tooltip.
  */
 export const MiniBar: React.FC = () => {
   const { session, pause, resume, complete, discard } = useSession();
+  const screenIcon = useScreenIcon();
   const api = window.electronAPI;
   /**
    * Stop opens the three ways to end a session, in place of the buttons:
@@ -59,6 +66,8 @@ export const MiniBar: React.FC = () => {
     <div className="h-screen w-screen flex items-center gap-3 pr-2 bg-dark-800 border border-border-dark rounded-lg overflow-hidden select-none font-mono [-webkit-app-region:drag]">
       <div className={`self-stretch w-1.5 shrink-0 ${stripe}`} aria-hidden="true" />
 
+      {screenIcon && <ScreenIcon icon={screenIcon} className="w-8 h-8" />}
+
       <div className="flex-1 min-w-0 leading-tight">
         {session ? (
           <>
@@ -66,8 +75,8 @@ export const MiniBar: React.FC = () => {
               {session.taskUnlisted && (
                 <span
                   role="img"
-                  aria-label={taskLeftLabel(session.taskLeftBecause)}
-                  title={`${taskLeftLabel(session.taskLeftBecause)}. Time is still logged.`}
+                  aria-label={taskLeftLabel(session.taskLeftBecause, session.taskOwnerName)}
+                  title={`${taskLeftLabel(session.taskLeftBecause, session.taskOwnerName)}. Time is still logged.`}
                 >
                   <AlertTriangle className="w-3 h-3 shrink-0 text-accent-amber" />
                 </span>

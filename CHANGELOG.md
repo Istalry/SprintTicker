@@ -4,6 +4,21 @@
 
 ### Added
 
+- **The mini timer shows the bar's icon.** Beside the timer, the icon of
+  whatever holds the bar: the stopwatch, Unity's gear or hammer, the
+  stand-up's meeting, an app's icon during its notification, the burger at
+  lunch. Away and SEE YOU! have new icons of their own, a coffee cup and a
+  moon drawn from their scenes. Hover it for the screen's text.
+
+- **Working days, holidays and the end of the week.** The stand-up, Lunch and
+  the wrap-up used to run every day, weekends included. They now happen on
+  the working days picked in Ceremonies (Monday to Friday by default), and
+  not on the holidays an OpenProject instance lists, read once a day. The
+  wrap-up of a week's last working day -- Thursday's when Friday is a
+  holiday -- closes the week: a notice in the window shows the time logged
+  in it, until dismissed. A wrap-up missed is caught up the next working
+  day, and a week closes only once.
+
 - **Join the stand-up, and get back to your task after it.** The stand-up
   prompt used to leave your task tracking through the meeting. Its new
   **Join** -- or OK on the bar -- switches the timer to a Daily Standup task,
@@ -47,7 +62,61 @@
   nothing assigned -- everything is listed and the switch says so; ad-hoc
   work, which stays in progress until finished as done, does not count.
 
+- **Unassigned and teammates' tasks in the lists.** The Projects & Tasks
+  panel, the task picker and the bar's picker now list, besides your own
+  work, the open tasks nobody is assigned -- and, when you tick
+  **Teammates'**, a teammate's task in progress. Two switches above each
+  list, **Unassigned** (on) and **Teammates'** (off), are one setting for all
+  three, and say how many tasks they hide. Every list follows one order:
+  yours in progress, yours to do, unassigned to do, unassigned in progress,
+  teammates' in progress, then finished work. The window marks a task that is
+  not yours with *Unassigned* or the assignee's name; the bar's second row
+  adds `free` or `@` and the first name after the key. **Only projects with
+  tasks** counts what the switches show.
+
+- **Open a task on its provider.** An arrow beside a task -- the running
+  session, the Projects & Tasks panel, a Work History row -- opens it on
+  Jira or OpenProject in the browser. The app builds the address from the
+  provider's own site and opens nothing else; ad-hoc work and the app's own
+  projects have no arrow.
+
+- **Starting an unassigned task assigns it to you.** It is then moved to In
+  Progress like your own. If someone took it between your pick and the start,
+  it stays theirs and your session runs anyway: a Windows toast, a **TAKEN**
+  banner with their name on the bar, and **Assigned to** them in the panel
+  and the mini timer say who has it. A failed assignment is told in a toast
+  and not retried. OpenProject's write carries the work package's lock
+  version, so an assignee set meanwhile is never overwritten.
+
 ### Changed
+
+- **The stand-up's icon is animated.** The three people at the table take
+  turns to speak, each sitting up a pixel as they talk, with a rest between
+  turns. The bar plays it itself, as it does the stopwatch, so it costs no
+  request; where the device refuses it, the still icon stays.
+
+- **The sync reads whose each task is.** It now also keeps every open task
+  nobody is assigned and a teammate's task while it is in progress, each
+  stored with its owner. A task reassigned to a teammate while you
+  track it, and still in progress, now reads as no longer yours at once,
+  where it used to wait for the provider to say why.
+- **The stand-up shows its timer.** Once joined, the bar went on playing the
+  meeting scene of the prompt, so a press seemed to do nothing, and a second
+  START paused the stand-up. It now shows the session screen -- Daily
+  Standup and its time -- with a meeting icon in place of the stopwatch.
+- **An ad-hoc task shows its name alone on the bar.** Its key is the
+  fallback ticket every ad-hoc task shares, so the top row read "MISC-1:
+  Dail..." and lost the name to it. It now reads "Daily Standup". The
+  window still shows the key.
+- **A session across midnight is logged under each day.** A session was one
+  worklog, filed under the day it began: 23:00 to 01:00 put two hours on the
+  first day, and the morning after a session paused overnight went on the
+  evening before. It is now split when it ends -- one worklog per day, each
+  sent on its own -- and the finish dialog says how before it does. A pause
+  of 15 minutes or more starts a new worklog too (set in Ceremonies; 0 keeps
+  one per day). The pieces add up to exactly what the timer showed, and a
+  few seconds past midnight join the evening rather than being refused by
+  Jira.
 
 - **Three new advisories patched in development tools**, none of them in the
   installed app: shell-quote 1.12 under `concurrently`, source-map-js 1.2.2
@@ -64,7 +133,7 @@
 - **A worklog belongs to the day it began.** Work History, today's table and
   the end-of-day summary filed it on the day it stopped, so a session from
   17:00 to 01:00 showed under the second day here and under the first in Jira
-  and OpenProject.
+  and OpenProject. Such a session is now split at midnight besides (above).
 - **The README and the user guide show the app.** Screenshots of every panel,
   with a bar and without one, and the bar's own screens as it shows them --
   tracking, paused, Unity, banners, the Lunch, Away, meeting and end-of-day
@@ -73,6 +142,55 @@
   invented projects.
 
 ### Fixed
+
+- **The Unity plugin runs.** Unity compiles no script in a package unless an
+  assembly definition owns it, and the plugin had none: an editor skipped it
+  with a warning in its own console, and the bar heard nothing from that
+  project -- no compile, Play Mode or exception screen, and the wrap-up
+  saved none of its scenes.
+  It now has one, and once compiled it no longer refers to
+  `SceneManager.loadedSceneCount`, which Unity 2021.3 does not have, nor
+  to a compile event Unity marks obsolete, which warned at every compile.
+  Nothing to do in your projects: the plugin is linked, not copied, so they
+  pick it up at the next compile.
+- **A resend to OpenProject 17.9 finds its entry.** Before sending a time
+  entry again, the app looks for it on the server, so a send whose answer was
+  lost is not billed twice. That search filtered by work package, a filter
+  OpenProject 17.9 no longer has, and a 17.9 instance refused it: every
+  retried send there would have failed. It now searches the way 17.9 does, and the old
+  way on an older instance.
+- **Lunch starts with a task running.** The timer's tick, every second, was
+  taken for you starting work in the first seconds of lunch, so lunch was
+  skipped for the day whenever a task ran into it -- almost always. Only a
+  task you start or resume during lunch skips it now.
+- **Unlocking Windows during lunch shows lunch.** The mode became LUNCH but
+  the bar kept the Away scene until lunch ended.
+- **A task closed after it was reassigned is finished without a
+  transition.** Why a tracked task left your list was asked once; a task
+  reassigned and then closed still read NOT YOURS, and confirming FINISH
+  sent the completion transition to the closed work package. It is asked
+  again at every sync while the session runs.
+- **Cancelling the wrap-up on the bar draws the screen behind it once.** It
+  was drawn twice, and when idle that was two clears of the bar's screen.
+- **The bar preview in the window shows animations as LEDs.** An animated
+  icon flickered between its LEDs and a flat picture of itself, and scenes
+  were drawn as pictures over the matrix. Dark pixels are dim LEDs too:
+  every lit LED had the same white core, so a scene's dark background
+  looked almost white.
+- **No icon left playing over a scene.** Lunch stopping a running task left
+  the stopwatch playing over the sandwich for the whole break: the idle
+  screen's clear, which takes the icon down with it, was overtaken by
+  lunch's scene. An icon whose removal failed while the bar was unplugged
+  could likewise play on over the next scene once it was back.
+- **The bar's picker no longer hides after Away.** START pressed while
+  Windows was locked opened the picker under the Away scene; unlocking then
+  showed the clock, Unity or Lunch while the bar went on taking presses for
+  the hidden list -- a click could start a task nobody saw. It now comes back
+  as soon as Away ends, ahead of Unity, of a banner queued meanwhile and of
+  Lunch when you unlock during it.
+- **No second clear after a short outage.** When the bar came back between
+  two checks, the app forgot what it had just cleared and cleared the empty
+  panel again.
 
 - **A session stopped at a chosen time agrees with STOP after a clock
   change.** When the system clock was set back during a pause, ending the

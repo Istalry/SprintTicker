@@ -10,6 +10,7 @@ import { ActiveSessionDTO, UserMode } from '../../src/shared/dtos';
 import { FRONT_ELEMENT_IDS } from '../../src/shared/device-constants';
 import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT } from '../../src/shared/priority-defaults';
 import { DAILY_STANDUP_TITLE } from '../../src/shared/schedule-defaults';
+import { FRONT_ANIMATIONS } from '../../src/shared/render-constants';
 import { FirmwareSimulator } from './firmware-simulator';
 
 /**
@@ -143,6 +144,12 @@ export class Desk {
     this.heartbeat = setInterval(() => {
       for (const editor of Object.values(EDITORS)) this.unity.handleHeartbeat({ ...editor });
     }, HEARTBEAT_MS);
+    // As InputDecoder does: an open picker is drawn again whenever the
+    // display frees. Registered after Unity, so the engine's order by
+    // priority is what puts it first.
+    this.priority.addBackgroundScreen([BAR_MENU_EVENT], () => {
+      if (this.picking) this.renderer.renderTaskSelection('PROJECT', 'Game', { position: { index: 0, count: 2 } });
+    });
   }
 
   public async connect(): Promise<void> {
@@ -379,12 +386,21 @@ export function expectSettledScreen(desk: Desk): void {
   const shown = desk.device.shown();
   const lock = desk.priority.getActiveLockEventName();
   const context = `mode ${desk.mode}, lock ${String(lock)}, session ${desk.session?.status ?? 'none'}, panel [${shown.join(', ')}]`;
-  // The picker outranks Lunch, not Away; under Away it waits, set aside.
+  // The picker outranks Lunch, not Away; under Away it waits, and comes
+  // back as a background screen when Away ends.
   // Lunch can begin under Away here, as the 'modes' case scripts it, and
   // Away's lock then stays.
   const away = desk.mode === 'AWAY' || lock === 'awayModePriority';
   if (away || (desk.mode === 'LUNCH' && !desk.isPicking)) {
     if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the ${desk.mode} scene: ${context}`);
+    // Which scene, not just a scene: unlocked into lunch, the mode said
+    // LUNCH while Away's lock kept the coffee cup up (real bar, 2026-10-15).
+    const scene = desk.device.elements.get(FRONT_ELEMENT_IDS.SCENE)?.path ?? '';
+    const expected = desk.mode === 'LUNCH' ? FRONT_ANIMATIONS.LUNCH : FRONT_ANIMATIONS.AWAY;
+    if (!scene.startsWith(expected)) throw new Error(`Expected ${expected}, the panel plays ${scene}: ${context}`);
+    // Nothing over it: the tracker's stopwatch went on playing over the
+    // sandwich when lunch stopped a running task (real bar, 2026-10-16).
+    if (desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) throw new Error(`Expected no icon over the ${desk.mode} scene: ${context}`);
     return;
   }
   // The user's hand on the bar: it stays over everything else until BACK.
@@ -405,9 +421,12 @@ export function expectSettledScreen(desk: Desk): void {
   if (!editors.some(e => e.compiling || e.building) && editors.some(e => e.playing) && lock !== 'unityPlayModePriority') {
     throw new Error(`Expected Play Mode, an editor is still in it: ${context}`);
   }
-  // The stand-up tracks under the meeting scene, as the prompt did.
+  // The stand-up tracks on the session screen, with the meeting icon -- not
+  // under the prompt's scene, which made joining look like nothing happened.
   if (lock === ACTIVE_TRACKER_EVENT && desk.session?.status === 'TRACKING' && desk.session.taskTitle === DAILY_STANDUP_TITLE) {
-    if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the meeting scene: ${context}`);
+    if (!desk.device.has(FRONT_ELEMENT_IDS.FRAME) || desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) {
+      throw new Error(`Expected the session screen, not the meeting scene: ${context}`);
+    }
     return;
   }
   if (lock !== null || desk.session) {

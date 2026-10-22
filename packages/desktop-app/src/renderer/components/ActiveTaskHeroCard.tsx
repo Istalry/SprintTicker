@@ -5,6 +5,9 @@ import { triggerDesktopConfetti } from '../utils/confetti-fx';
 import { formatSeconds } from '../utils/formatters';
 import { FinishSessionModal } from './FinishSessionModal';
 import { taskLeftLabel } from '../../shared/task-left';
+import { hasTaskPage } from '../../shared/task-page';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
+import { TaskPageButton } from './TaskPageButton';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -61,7 +64,12 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         </div>
 
         <div>
-          <div className="text-xs font-mono text-text-secondary mb-1">{session?.taskKey || 'NO TASK SELECTED'}</div>
+          <div className="text-xs font-mono text-text-secondary mb-1 flex items-center gap-1">
+            <span>{session?.taskKey || 'NO TASK SELECTED'}</span>
+            {session && hasTaskPage(session.isAdHoc ? ADHOC_PROJECT_ID : session.projectId, session.providerId) && (
+              <TaskPageButton taskId={session.taskId} taskKey={session.taskKey} />
+            )}
+          </div>
           <h2 className="text-xl font-bold text-white tracking-tight">
             {session?.taskTitle || 'No Active Task Selected'}
           </h2>
@@ -71,7 +79,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               className="mt-2 inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-xs font-mono"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>{taskLeftLabel(session.taskLeftBecause)} -- time is still logged</span>
+              <span>{taskLeftLabel(session.taskLeftBecause, session.taskOwnerName)} -- time is still logged</span>
             </div>
           )}
         </div>

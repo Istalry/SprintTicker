@@ -21,31 +21,53 @@ describe('OpenProject task scope', () => {
   const originalFetch = global.fetch;
   const noBackoff = { sleepFn: async (): Promise<void> => undefined };
 
-  /** Captures the `filters` query parameter of the request that was issued. */
-  function captureFilter(): { calls: string[] } {
+  /** The user's id, as `/api/v3/users/me` answers it. */
+  const ME = 7;
+
+  /**
+   * Captures the `filters` query parameter of every task search issued, and
+   * answers each with `elements`; `/api/v3/users/me` answers the user.
+   */
+  function captureFilter(elements: unknown[] = []): { calls: string[] } {
     const calls: string[] = [];
     global.fetch = vi.fn().mockImplementation((url: string) => {
-      calls.push(new URL(url).searchParams.get('filters') ?? '');
+      const parsed = new URL(url);
+      const body = parsed.pathname === '/api/v3/users/me'
+        ? { id: ME, name: 'Me' }
+        : { _embedded: { elements }, _links: {} };
+      if (parsed.pathname === '/api/v3/work_packages') calls.push(parsed.searchParams.get('filters') ?? '');
       return Promise.resolve({
         ok: true,
         status: 200,
         headers: { get: () => null },
-        json: async () => ({ _embedded: { elements: [] }, _links: {} })
+        json: async () => body
       } as unknown as Response);
     });
     return { calls };
   }
 
-  async function providerWith(scope: string, query = ''): Promise<OpenProjectProvider> {
+  async function providerWith(scope: string, query = '', inProgress = ''): Promise<OpenProjectProvider> {
     const provider = new OpenProjectProvider(noBackoff);
     await provider.initialize({
       domain: BASE,
       apiToken: 'token',
       opTaskScope: scope,
-      opTaskQuery: query
+      opTaskQuery: query,
+      opStatusInProgress: inProgress
     });
     return provider;
   }
+
+  /** A work package in status `statusId`, assigned to `assignee` (null for nobody). */
+  const workPackage = (id: number, statusId: string, assignee: { id: number; name: string } | null): unknown => ({
+    id,
+    subject: `WP ${id}`,
+    _links: {
+      status: { href: `/api/v3/statuses/${statusId}` },
+      type: { title: 'Task' },
+      assignee: assignee ? { href: `/api/v3/users/${assignee.id}`, title: assignee.name } : { href: null }
+    }
+  });
 
   afterEach(() => {
     global.fetch = originalFetch;
@@ -80,6 +102,90 @@ describe('OpenProject task scope', () => {
 
       const filters = JSON.parse(calls[0]) as Array<Record<string, unknown>>;
       expect(filters.some(f => 'assignee' in f)).toBe(true);
+    });
+
+    it('GetTasks_DefaultScope_AsksForMyWorkThenWorkNobodyHas', async () => {
+      // v3 filters only AND, so "mine or nobody's" is two requests.
+      const { calls } = captureFilter();
+
+      await (await providerWith(TaskScope.ASSIGNED_TO_ME)).getTasks('P1');
+
+      const assignees = calls.map(call => (JSON.parse(call) as Array<{ assignee?: unknown }>).find(f => f.assignee)?.assignee);
+      expect(assignees).toEqual([
+        { operator: '=', values: ['me'] },
+        { operator: '!*', values: [] }
+      ]);
+    });
+
+    it('GetTasks_DefaultScopeWithAnInProgressStatus_AlsoAsksForTeammatesInProgress', async () => {
+      const { calls } = captureFilter();
+
+      await (await providerWith(TaskScope.ASSIGNED_TO_ME, '', '3')).getTasks('P1');
+
+      expect(calls).toHaveLength(3);
+      expect(JSON.parse(calls[2])).toEqual([
+        { project: { operator: '=', values: ['P1'] } },
+        { status: { operator: '=', values: ['3'] } },
+        { assignee: { operator: '!', values: ['me'] } }
+      ]);
+    });
+  });
+
+  /**
+   * Whose a task is comes from the assignee each work package names, not from
+   * which request found it -- a package answers two of them, and a custom
+   * query says nothing about owners at all.
+   */
+  describe('whose a task is', () => {
+    const ALICE = { id: 12, name: 'Alice Martin' };
+
+    it('GetTasks_AssigneeOnEachPackage_SaysWhoseItIs', async () => {
+      captureFilter([workPackage(1, '3', { id: ME, name: 'Me' }), workPackage(2, '1', null), workPackage(3, '3', ALICE)]);
+
+      const tasks = await (await providerWith(TaskScope.ASSIGNED_TO_ME, '', '3')).getTasks('P1');
+
+      expect(tasks.map(t => [t.id, t.ownership, t.assigneeName])).toEqual([
+        ['1', undefined, undefined],
+        ['2', 'unassigned', undefined],
+        ['3', 'other', 'Alice Martin']
+      ]);
+    });
+
+    it('GetTasks_DefaultScopeTeammatesWorkNotInProgress_IsLeftOut', async () => {
+      // `!` lets everything not the user's through; only in progress stays.
+      captureFilter([workPackage(4, '1', ALICE)]);
+
+      const tasks = await (await providerWith(TaskScope.ASSIGNED_TO_ME, '', '3')).getTasks('P1');
+
+      expect(tasks).toEqual([]);
+    });
+
+    it('GetTasks_AllOpen_KeepsTeammatesWorkWhateverItsStatus', async () => {
+      captureFilter([workPackage(4, '1', ALICE)]);
+
+      const tasks = await (await providerWith(TaskScope.ALL_OPEN)).getTasks('P1');
+
+      expect(tasks).toMatchObject([{ id: '4', ownership: 'other', assigneeName: 'Alice Martin' }]);
+    });
+
+    it('GetTasks_AssignedToAGroup_IsSomeoneElses', async () => {
+      captureFilter([{ ...(workPackage(5, '3', null) as object), _links: { status: { href: '/api/v3/statuses/3' }, type: { title: 'Task' }, assignee: { href: '/api/v3/groups/7', title: 'Team' } } }]);
+
+      const tasks = await (await providerWith(TaskScope.ALL_OPEN)).getTasks('P1');
+
+      // Group 7 is not user 7.
+      expect(tasks).toMatchObject([{ id: '5', ownership: 'other', assigneeName: 'Team' }]);
+    });
+
+    it('GetTasks_UserCannotBeRead_ThrowsRatherThanGuessingOwners', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({})
+      } as unknown as Response);
+
+      await expect((await providerWith(TaskScope.ASSIGNED_TO_ME)).getTasks('P1')).rejects.toThrow(/no id/);
     });
 
     it('GetTasks_AllOpen_DropsTheAssigneeClauseOnly', async () => {

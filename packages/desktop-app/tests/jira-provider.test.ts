@@ -279,7 +279,7 @@ describe('JiraProvider', () => {
 
       await (await configured()).getTasks('1');
 
-      expect(new URL(urls[0]).searchParams.get('fields')).toBe('summary,status,project,priority,description');
+      expect(new URL(urls[0]).searchParams.get('fields')).toBe('summary,status,project,priority,description,assignee');
     });
 
     it('GetTasks_NoProjectId_ThrowsArgumentException', async () => {
@@ -482,6 +482,64 @@ describe('JiraProvider', () => {
 
     it('QuoteJqlValue_ValueWithAQuote_IsEscaped', () => {
       expect(JiraProvider.quoteJqlValue('we"ird')).toBe('"we\\"ird"');
+    });
+  });
+
+  /**
+   * Whose a task is comes from the assignee on each issue, not from the JQL:
+   * a custom query says nothing about owners, and the default one asks for
+   * three kinds at once.
+   */
+  describe('whose a task is', () => {
+    const issue = (id: number, category: string, assignee: { accountId: string; displayName: string } | null): unknown => ({
+      id,
+      key: `A-${id}`,
+      fields: { summary: `Issue ${id}`, status: { name: category, statusCategory: { key: category } }, assignee }
+    });
+    const ALICE = { accountId: 'acc-alice', displayName: 'Alice Martin' };
+
+    it('GetTasks_DefaultScope_AsksForMineNobodysAndTeammatesInProgress', async () => {
+      const { urls } = record(ok({ issues: [], isLast: true }));
+
+      await (await configured()).getTasks('42');
+
+      expect(new URL(urls[0]).searchParams.get('jql')).toContain(
+        '(assignee = currentUser() OR assignee is EMPTY OR statusCategory = "In Progress")'
+      );
+    });
+
+    it('GetTasks_AssigneeOnEachIssue_SaysWhoseItIs', async () => {
+      record(ok({
+        issues: [
+          issue(1, 'new', { accountId: 'acc-me', displayName: 'Me' }),
+          issue(2, 'new', null),
+          issue(3, 'indeterminate', ALICE)
+        ],
+        isLast: true
+      }));
+
+      const tasks = await (await configured()).getTasks('42');
+
+      expect(tasks.map(t => [t.id, t.ownership, t.assigneeName])).toEqual([
+        ['1', undefined, undefined],
+        ['2', 'unassigned', undefined],
+        ['3', 'other', 'Alice Martin']
+      ]);
+    });
+
+    it('GetTasks_DefaultScopeTeammatesWorkNotInProgress_IsLeftOut', async () => {
+      // A custom JQL, or a fake that reads none, can still hand it over.
+      record(ok({ issues: [issue(4, 'new', ALICE)], isLast: true }));
+
+      expect(await (await configured()).getTasks('42')).toEqual([]);
+    });
+
+    it('GetTasks_AllOpen_KeepsTeammatesWorkWhateverItsStatus', async () => {
+      record(ok({ issues: [issue(4, 'new', ALICE)], isLast: true }));
+
+      const tasks = await (await configured({ jiraTaskScope: TaskScope.ALL_OPEN })).getTasks('42');
+
+      expect(tasks).toMatchObject([{ id: '4', ownership: 'other', assigneeName: 'Alice Martin' }]);
     });
   });
 

@@ -21,6 +21,7 @@ import { UnityTelemetryService } from './services/unity-telemetry-service';
 import { followBar } from './services/follow-bar';
 import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
+import { WorkingCalendar } from './services/working-calendar';
 import { APP_USER_MODEL_ID } from './app-identity';
 import { BitmapIconId } from '../shared/dtos';
 import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
@@ -36,7 +37,8 @@ import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
 import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
-import { DeviceConfigDTO } from '../shared/dtos';
+import { DeviceConfigDTO, ScheduleSettingsDTO } from '../shared/dtos';
+import { normalizeScheduleSettings } from '../shared/schedule-defaults';
 import { UpdateChecker } from './updater/update-checker';
 import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
@@ -213,7 +215,16 @@ async function startApplication(): Promise<void> {
   // 2. Initialize Time Tracking Engine.
   // Construction is side-effect free; initialize() starts the sync worker and
   // recovers a session left behind by a crash.
-  engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, providerManager, projectRepo);
+  // The pause that splits a worklog is read at each stop, so a change in
+  // Ceremonies applies to the next one without a restart.
+  engine = new TimeTrackingEngine(
+    sessionRepo,
+    worklogRepo,
+    taskRepo,
+    providerManager,
+    projectRepo,
+    () => normalizeScheduleSettings(settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {})).splitPauseMinutes! * 60
+  );
   engine.initialize();
 
   // 3. Initialize Hardware Driver, Display Renderer & Input Decoder
@@ -290,6 +301,10 @@ async function startApplication(): Promise<void> {
   engine.getSyncWorker().onSendingStopped(providerId => {
     sendingAlerts.reportSendingStopped(providerManager.getProvider(providerId)?.providerName ?? providerId);
   });
+  engine.onTaskClaim(report => {
+    const provider = report.providerId ? providerManager.getProvider(report.providerId) : providerManager.getActiveProvider();
+    sendingAlerts.reportTaskClaim(report, provider?.providerName ?? 'your provider');
+  });
   windowsNotificationService = new WindowsNotificationListenerService(settingsRepo, priorityEngine, renderer);
   const listener = windowsNotificationService;
   followBar(activeDriver, () => listener.startListening(), () => listener.stopListening(), 'Windows notification mirroring');
@@ -299,7 +314,9 @@ async function startApplication(): Promise<void> {
     settingsRepo,
     engine,
     renderer,
-    () => mainWindow
+    () => mainWindow,
+    // OpenProject's holidays, when it is set up; the weekdays alone otherwise.
+    new WorkingCalendar(settingsRepo, (from, to) => providerManager.getNonWorkingDays(from, to))
   );
 
   presenceMonitor = new PresenceMonitor(settingsRepo, () => powerMonitor.getSystemIdleTime());

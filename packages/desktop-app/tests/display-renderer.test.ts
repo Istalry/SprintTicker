@@ -834,6 +834,44 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(keyCall?.[4] as number).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW0_FONT));
     });
 
+    /**
+     * An ad-hoc task's key is the fallback ticket all of them share: the
+     * stand-up read "MISC-1: Dail..." on the real bar (2026-10-15).
+     */
+    describe('ad-hoc title', () => {
+      const titleDrawn = (session: Record<string, unknown>): string[] => {
+        const drawn = vi.spyOn(
+          (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas,
+          'drawTextClipped'
+        );
+        renderer.renderActiveSession({
+          taskKey: 'MISC-1', taskTitle: 'Daily Standup', elapsedSeconds: 60,
+          startedAtUtc: new Date().toISOString(), ...session
+        } as never);
+        return drawn.mock.calls.map(([text]) => text as string);
+      };
+
+      it.each(['TRACKING', 'PAUSED'])('RenderActiveSession_AdHoc%s_ShowsTheNameAlone', status => {
+        const texts = titleDrawn({ taskId: 'adhoc_1', isAdHoc: true, status });
+
+        expect(texts).toContain('Daily Standup');
+        expect(texts.some(text => text.includes('MISC-1'))).toBe(false);
+      });
+
+      it('RenderActiveSession_AdHocStartedAgainFromAList_ShowsTheNameAlone', () => {
+        // A list starts an ad-hoc row again with isAdHoc false; the id says it.
+        const texts = titleDrawn({ taskId: 'adhoc_1', isAdHoc: false, status: 'TRACKING' });
+
+        expect(texts).toContain('Daily Standup');
+      });
+
+      it('RenderActiveSession_ProviderTask_KeepsTheKey', () => {
+        const texts = titleDrawn({ taskId: 'T-1', taskKey: 'OP-1001', taskTitle: 'Fix it', isAdHoc: false, status: 'TRACKING' });
+
+        expect(texts).toContain('OP-1001: Fix it');
+      });
+    });
+
     it('RenderBuilding_Always_DrawsOurHammerRatherThanTheUnityLogo', () => {
       renderer.renderBuilding('P', 40);
       const pixels = (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();

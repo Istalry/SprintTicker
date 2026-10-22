@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Moon } from 'lucide-react';
 import { ForgottenSessionAction, ForgottenSessionReviewDTO } from '../../shared/dtos';
 import { workedSecondsUntil } from '../../shared/session-review';
-import { formatDayAndTime, formatHoursAndMinutes, formatHoursMinutes } from '../utils/formatters';
+import { formatDayAndTime, formatDaySplit, formatHoursAndMinutes, formatHoursMinutes } from '../utils/formatters';
+import { workedSecondsByLocalDay } from '../../shared/work-split';
 import { ConfirmPanel } from './ConfirmPanel';
 
 type EndChoice = 'presence' | 'eod' | 'custom';
@@ -61,6 +62,11 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
     choice === 'presence' ? review.lastPresenceUtc
       : choice === 'eod' ? review.endOfDayUtc
         : customValid ? customDate.toISOString() : null;
+
+  // The days the chosen end files the time under, when there are two.
+  const daySplit = endUtc
+    ? formatDaySplit(workedSecondsByLocalDay(review.startTimeUtc, endUtc, review.pauses, worked(endUtc)))
+    : null;
 
   const answer = (action: ForgottenSessionAction) => {
     setError(null);
@@ -179,6 +185,10 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                 )}
               </EndOption>
             </fieldset>
+
+            {daySplit && (
+              <p className="text-[11px] text-text-secondary">Across midnight, so filed as {daySplit}.</p>
+            )}
 
             {error && <p role="alert" className="text-xs text-accent-red">{error}</p>}
 

@@ -7,7 +7,9 @@ import { finishNeedsConfirmation } from '../../shared/task-left';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
 import { filterProjectsWithTasks, ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
+import { DEFAULT_TASK_VISIBILITY, TaskVisibility, ownerTag, readTaskVisibility, visibleTasks } from '../../shared/task-visibility';
 import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
@@ -29,6 +31,7 @@ export class InputDecoder {
   private _actionHandlers: Set<ActionHandler> = new Set();
   
   private _isSelectingTask: boolean = false;
+  private _unregisterPicker: (() => void) | null = null;
 
   /**
    * Releases the display lock the hardware task menu holds.
@@ -45,6 +48,8 @@ export class InputDecoder {
   private _selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
   private _projectsList: { id: string, name: string }[] = [];
   private _tasksList: { id: string, title: string, description: string, status?: TaskDTO['status'] }[] = [];
+  /** The task visibility the open picker was opened with. */
+  private _taskVisibility: TaskVisibility = { ...DEFAULT_TASK_VISIBILITY };
   private _selectedProjectIndex: number = 0;
   private _selectedTaskIndex: number = 0;
   private _eodConfirmStep: number = 0;
@@ -77,8 +82,8 @@ export class InputDecoder {
     this._driver = driver;
     this._engine = engine;
     this._settingsRepo = settingsRepo || new SettingsRepository();
-    this._priorityEngine = priorityEngine;
     this._renderer = renderer;
+    if (priorityEngine) this.setPriorityEngine(priorityEngine);
 
     // Guard the listener itself, not just the action handlers. handleHardwareInput
     // calls engine.startTask() and stopSession(), both of which throw on invalid
@@ -108,7 +113,25 @@ export class InputDecoder {
   /// Injects PriorityPreemptionEngine reference for notification dismissal checks.
   /// </summary>
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
+    this._unregisterPicker?.();
     this._priorityEngine = engine;
+    // The open picker is the user's hand on the bar, a state like Unity's:
+    // whenever the display frees, it is drawn again if it is still open.
+    // Never queued (each press redraws it), it used to be refused under Away
+    // and then forgotten -- open, invisible, still taking presses -- once
+    // Away ended and the display went to Unity, Lunch or the clock.
+    // A test double without background screens has nothing to register with.
+    this._unregisterPicker = typeof engine.addBackgroundScreen === 'function'
+      ? engine.addBackgroundScreen([BAR_MENU_EVENT], () => {
+        if (this._isSelectingTask) this.renderSelection();
+      })
+      : null;
+  }
+
+  /** Takes the picker off the background screens, when it was registered. */
+  public dispose(): void {
+    this._unregisterPicker?.();
+    this._unregisterPicker = null;
   }
 
   /// <summary>
@@ -279,15 +302,17 @@ export class InputDecoder {
           this._selectionStage = 'TASK';
           const proj = this._projectsList[this._selectedProjectIndex];
           if (proj) {
-            // Row 1 is the key, then as much of the description as fits: the
-            // key is what identifies the task in the provider, so it comes
-            // first and is never the part cut off.
-            // In progress, then to do, then done -- see `orderTasksForSelection`.
-            // A long list used to come in whatever order the store returned.
-            this._tasksList = orderTasksForSelection(this._engine.getTasksForProject(proj.id)).map(t => ({
+            // Row 1 is the key, then whose the task is when it is not the
+            // user's, then as much of the description as fits: the key is
+            // what identifies the task in the provider, so it comes first and
+            // is never the part cut off, and the owner is the next thing worth
+            // keeping. Ordered by owner and status -- see
+            // `orderTasksForSelection` -- and filtered like the window's lists.
+            const shown = visibleTasks(this._engine.getTasksForProject(proj.id), this._taskVisibility).visible;
+            this._tasksList = orderTasksForSelection(shown).map(t => ({
                id: t.id,
                title: t.title,
-               description: t.description ? `${t.key} ${t.description}` : t.key,
+               description: [t.key, ownerTag(t), t.description ?? ''].filter(Boolean).join(' '),
                status: t.status
             }));
           }
@@ -346,7 +371,7 @@ export class InputDecoder {
           this._resumeOnConfirmRefused = false;
           this._renderer.clearPausedConfirm({ redraw: false });
           if (confirm === 'FINISH_UNLISTED') {
-            this.finishFromTheBar('Completed via BUSY Bar after confirming');
+            this.finishFromTheBar(WORKLOG_COMMENTS.BAR_FINISH_CONFIRMED);
             this.notifyActionHandlers('CONFIRM_PAUSED_FINISH', normalizedKey);
             return 'CONFIRM_PAUSED_FINISH';
           }
@@ -389,7 +414,7 @@ export class InputDecoder {
           // happened. Before the stop, so the session's end is held behind
           // the scene rather than drawn first.
           this._renderer.renderTaskLogged();
-          this._engine.stopSession('Stopped via BUSY Bar Paused Menu');
+          this._engine.stopSession(WORKLOG_COMMENTS.BAR_STOP);
         } else if (finishNeedsConfirmation(activeSession)) {
           // Reassigned or moved since it started: finishing it would fire
           // the user's completion transition on a task that is no longer
@@ -398,7 +423,7 @@ export class InputDecoder {
           this.notifyActionHandlers('ASK_PAUSED_FINISH', normalizedKey);
           return 'ASK_PAUSED_FINISH';
         } else {
-          this.finishFromTheBar('Completed via BUSY Bar Paused Menu');
+          this.finishFromTheBar(WORKLOG_COMMENTS.BAR_FINISH);
         }
         this.notifyActionHandlers('VALIDATE_PAUSED_SELECTION', normalizedKey);
         return 'VALIDATE_PAUSED_SELECTION';
@@ -472,7 +497,7 @@ export class InputDecoder {
         }
         // Named for what it does, which is why the missing `markDone` was easy
         // to miss: it logged and did not complete. See the paused menu above.
-        this._engine.stopSession('Completed via BUSY Bar Long Press', true);
+        this._engine.stopSession(WORKLOG_COMMENTS.BAR_LONG_PRESS, true);
         break;
       }
       case 'TRIGGER_TASK_SELECTOR_MODAL': {
@@ -531,7 +556,11 @@ export class InputDecoder {
       ONLY_PROJECTS_WITH_TASKS_KEY,
       ONLY_PROJECTS_WITH_TASKS_DEFAULT
     );
-    this._projectsList = filterProjectsWithTasks(this._engine.getProjects(), onlyWithTasks)
+    // Read once per picker, like the switch: the tasks step uses the same
+    // answer as the projects step, so a project is never offered for tasks
+    // its list would then hide.
+    this._taskVisibility = readTaskVisibility(this._settingsRepo);
+    this._projectsList = filterProjectsWithTasks(this._engine.getProjects(), onlyWithTasks, [], this._taskVisibility)
       .visible.map(p => ({ id: p.id, name: p.name }));
     if (this._projectsList.length === 0) {
       this._projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];

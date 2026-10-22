@@ -107,6 +107,25 @@ export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   stopwatch: 'icon_stopwatch_16x16',
   // Waiting rather than working: the pause bars blink slowly.
   stopwatch_paused: 'icon_stopwatch_paused_16x16',
+  // The stand-up running, in the stopwatch's place: the three take turns to
+  // speak, each sitting up a pixel as they talk, with a rest between turns.
+  meeting: 'icon_meeting_16x16',
+};
+
+/**
+ * The icon that stands for each full-panel scene, where a screen shows an
+ * icon rather than the panel -- the mini timer -- with the scene's title.
+ * Away and the end of the day have their own, drawn from the scenes'
+ * sprites; the others reuse the icon of the screen they belong to.
+ */
+export const SCENE_ICONS: Record<(typeof FRONT_ANIMATIONS)[keyof typeof FRONT_ANIMATIONS], { icon: BitmapIconId; label: string }> = {
+  [FRONT_ANIMATIONS.LUNCH]: { icon: 'burger', label: 'LUNCH' },
+  [FRONT_ANIMATIONS.AWAY]: { icon: 'coffee', label: 'AWAY' },
+  [FRONT_ANIMATIONS.MEETING]: { icon: 'meeting', label: 'MEETING' },
+  [FRONT_ANIMATIONS.TASK_DONE]: { icon: 'checkmark', label: 'DONE!' },
+  [FRONT_ANIMATIONS.TASK_LOGGED]: { icon: 'stopwatch', label: 'LOGGED' },
+  [FRONT_ANIMATIONS.TASK_STARTED]: { icon: 'stopwatch', label: 'GO!' },
+  [FRONT_ANIMATIONS.EOD_COMPLETE]: { icon: 'moon', label: 'SEE YOU!' },
 };
 
 export const DISPLAY_CONSTANTS = {

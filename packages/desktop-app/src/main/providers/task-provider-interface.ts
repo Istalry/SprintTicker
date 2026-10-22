@@ -1,5 +1,6 @@
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ProviderEventDTO } from '../../shared/provider-events';
+import { TaskClaim } from '../../shared/task-claim';
 
 export interface WorklogPayload {
   taskId: string;
@@ -35,6 +36,13 @@ export interface ITaskProvider {
   readonly minimumLoggableSeconds: number;
 
   initialize(credentials: Record<string, string>): Promise<boolean>;
+
+  /**
+   * Optional: the instance's days off between two `YYYY-MM-DD` keys,
+   * inclusive -- holidays, not weekends. Throws `not_configured` when the
+   * instance is not set up.
+   */
+  getNonWorkingDays?(fromKey: string, toKey: string): Promise<string[]>;
   getProjects(): Promise<ProjectDTO[]>;
   getTasks(projectId: string): Promise<TaskDTO[]>;
   /**
@@ -77,6 +85,22 @@ export interface ITaskProvider {
   /** Deletes the entry. One already gone (404) counts as deleted, not as a failure. */
   deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
+
+  /**
+   * Assigns a task nobody owns to the user, reading its assignee first: a
+   * task someone took since the last sync is left with them and answered
+   * `taken`, never reassigned. Throws on failure; the caller tells the user
+   * and does not retry, since a later attempt would act on a stale choice.
+   * Optional: a provider without a remote has nobody to assign.
+   */
+  assignToMe?(taskId: string): Promise<TaskClaim>;
+
+  /**
+   * The task's page on this provider's own site, for the user to open; null
+   * when it is not set up, or the URL would leave that site. Optional: a
+   * provider without a remote has no pages.
+   */
+  getTaskPageUrl?(task: Pick<TaskDTO, 'id' | 'key'>): string | null;
 
   /**
    * Where one task stands, read on its own: `open`, `closed` (done on the

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import type { ProviderEventSettingsDTO } from '../shared/provider-events';
 import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
+import type { TaskVisibility } from '../shared/task-visibility';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -14,6 +15,7 @@ import type {
   ProviderSettingsUpdateDTO,
   ScheduleSettingsDTO,
   ResumePromptDTO,
+  WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
   UserMode,
@@ -23,6 +25,7 @@ import type {
   WindowsNotificationSettingsDTO,
   NotificationLogEntryDTO,
   HardwareDisplayStateDTO,
+  ScreenIconDTO,
   DeviceConfigDTO,
   UpdateStatusDTO,
   ProjectsUpdatedPayload,
@@ -38,6 +41,7 @@ const electronAPI: IElectronAPI = {
   resumeSession: () => ipcRenderer.invoke(IPCChannel.RESUME_SESSION),
   completeSession: (comment?: string, markDone?: boolean) => ipcRenderer.invoke(IPCChannel.COMPLETE_SESSION, { comment, markDone }),
   discardSession: () => ipcRenderer.invoke(IPCChannel.DISCARD_SESSION),
+  getSessionDays: () => ipcRenderer.invoke(IPCChannel.GET_SESSION_DAYS),
   getForgottenReview: () => ipcRenderer.invoke(IPCChannel.GET_FORGOTTEN_REVIEW),
   resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) =>
     ipcRenderer.invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, resolution),
@@ -128,6 +132,13 @@ const electronAPI: IElectronAPI = {
   triggerStandupPrompt: () => ipcRenderer.invoke(IPCChannel.TRIGGER_STANDUP_PROMPT),
   cancelStandupPrompt: () => ipcRenderer.invoke(IPCChannel.CANCEL_STANDUP_PROMPT),
   joinStandup: () => ipcRenderer.invoke(IPCChannel.JOIN_STANDUP),
+  getWeekEnded: () => ipcRenderer.invoke(IPCChannel.GET_WEEK_ENDED),
+  dismissWeekEnded: () => ipcRenderer.invoke(IPCChannel.DISMISS_WEEK_ENDED),
+  onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => {
+    const handler = (_event: IpcRendererEvent, week: WeekEndedDTO | null) => callback(week);
+    ipcRenderer.on(IPCChannel.ON_WEEK_ENDED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_WEEK_ENDED, handler);
+  },
   triggerEodPrompt: () => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_PROMPT),
   triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => ipcRenderer.invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, options),
   cancelEodWrapUp: () => ipcRenderer.invoke(IPCChannel.CANCEL_EOD_WRAP_UP),
@@ -185,6 +196,12 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.on(IPCChannel.ON_DISPLAY_STATE_UPDATED, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_DISPLAY_STATE_UPDATED, handler);
   },
+  getScreenIcon: () => ipcRenderer.invoke(IPCChannel.GET_SCREEN_ICON),
+  onScreenIcon: (callback: (icon: ScreenIconDTO | null) => void) => {
+    const handler = (_event: IpcRendererEvent, icon: ScreenIconDTO | null) => callback(icon);
+    ipcRenderer.on(IPCChannel.ON_SCREEN_ICON, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_SCREEN_ICON, handler);
+  },
   setColorTheme: (theme: string) => ipcRenderer.invoke(IPCChannel.SET_COLOR_THEME, theme),
   triggerConfettiBurst: () => ipcRenderer.invoke(IPCChannel.TRIGGER_CONFETTI_BURST),
   previewDisplayScreen: (screen: PreviewScreenId) => ipcRenderer.invoke(IPCChannel.PREVIEW_DISPLAY_SCREEN, screen),
@@ -212,10 +229,18 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.on(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_ONLY_PROJECTS_WITH_TASKS, handler);
   },
+  getTaskVisibility: () => ipcRenderer.invoke(IPCChannel.GET_TASK_VISIBILITY),
+  setTaskVisibility: (visibility: TaskVisibility) => ipcRenderer.invoke(IPCChannel.SET_TASK_VISIBILITY, visibility),
+  onTaskVisibility: (callback: (visibility: TaskVisibility) => void) => {
+    const handler = (_event: IpcRendererEvent, visibility: TaskVisibility) => callback(visibility);
+    ipcRenderer.on(IPCChannel.ON_TASK_VISIBILITY, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_TASK_VISIBILITY, handler);
+  },
   getUpdateCheckEnabled: () => ipcRenderer.invoke(IPCChannel.GET_UPDATE_CHECK_ENABLED),
   setUpdateCheckEnabled: (enabled: boolean) =>
     ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),
   openReleasePage: (url: string) => ipcRenderer.invoke(IPCChannel.OPEN_RELEASE_PAGE, url),
+  openTaskPage: (taskId: string) => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PAGE, taskId),
   onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => {
     const handler = (_event: IpcRendererEvent, status: UpdateStatusDTO) => callback(status);
     ipcRenderer.on(IPCChannel.ON_UPDATE_STATUS, handler);

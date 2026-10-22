@@ -619,4 +619,29 @@ describe('Schema Migrations', () => {
       expect(['fresh', 'retried', 'requeued', 'inflight', 'parked', 'sent'].map(attempts)).toEqual([0, 1, 1, 1, 1, 1]);
     });
   });
+
+  describe('migration 12: a task says whose it is', () => {
+    it('Migration012_ExistingTasks_AreTheUsers', () => {
+      // Every row was fetched as the user's own work: that is what it was.
+      for (const migration of MIGRATIONS.filter(m => m.version <= 11)) migration.up(db);
+      db.pragma('user_version = 11');
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('t1', 'p1', 'A-1', 'One', 'todo', '2026-01-01T00:00:00.000Z')"
+      ).run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT ownership, assignee_name FROM tasks').all()).toEqual([{ ownership: 'mine', assignee_name: null }]);
+    });
+
+    it('Migration012_FromThenOn_AnUnknownOwnershipIsRefused', () => {
+      runMigrations(db);
+
+      expect(() =>
+        db.prepare(
+          "INSERT INTO tasks (id, project_id, key, title, status, ownership, created_at_utc) VALUES ('t1', 'p1', 'A-1', 'One', 'todo', 'theirs', '2026-01-01T00:00:00.000Z')"
+        ).run()
+      ).toThrow(/CHECK/);
+    });
+  });
 });

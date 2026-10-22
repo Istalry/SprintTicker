@@ -91,12 +91,10 @@ namespace SprintTicker.Unity.Editor
         {
             CompilationPipeline.compilationStarted -= OnCompilationStarted;
             CompilationPipeline.compilationFinished -= OnCompilationFinished;
-            CompilationPipeline.assemblyCompilationStarted -= OnAssemblyCompilationStarted;
             CompilationPipeline.assemblyCompilationFinished -= OnAssemblyCompilationFinished;
 
             CompilationPipeline.compilationStarted += OnCompilationStarted;
             CompilationPipeline.compilationFinished += OnCompilationFinished;
-            CompilationPipeline.assemblyCompilationStarted += OnAssemblyCompilationStarted;
             CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompilationFinished;
 
             AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
@@ -198,12 +196,9 @@ namespace SprintTicker.Unity.Editor
             DispatchCompilePayload("finished", "compile", 100, true);
         }
 
-        private static void OnAssemblyCompilationStarted(string assemblyPath)
-        {
-            int pct = _totalAssemblies > 0 ? (int)(100f * _compiledAssemblies / _totalAssemblies) : 0;
-            DispatchCompilePayload("started", "compile", pct);
-        }
-
+        // No assemblyCompilationStarted hook: Unity marks it obsolete (CS0618
+        // from 2021.3), and all it sent was the percentage the previous
+        // assembly's finish -- or compilationStarted's 0 -- had already sent.
         private static void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] compilerMessages)
         {
             _compiledAssemblies++;

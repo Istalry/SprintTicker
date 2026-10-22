@@ -4,6 +4,8 @@ import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
 import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings } from '../../../shared/schedule-defaults';
+import { DEFAULT_WORKING_DAYS, WEEKDAYS_MONDAY_FIRST, checkWorkingDays } from '../../../shared/working-days';
+import { DEFAULT_SPLIT_PAUSE_MINUTES, MAX_SPLIT_PAUSE_MINUTES, checkSplitPauseMinutes } from '../../../shared/work-split';
 
 export const CeremoniesView: React.FC = () => {
   const [standupTime, setStandupTime] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.standupTime);
@@ -13,6 +15,8 @@ export const CeremoniesView: React.FC = () => {
   const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
   const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
   const [askAboutForgotten, setAskAboutForgotten] = useState<boolean>(DEFAULT_SCHEDULE_SETTINGS.askAboutForgottenSessions);
+  const [workingDays, setWorkingDays] = useState<number[]>([...DEFAULT_WORKING_DAYS]);
+  const [splitPauseMinutes, setSplitPauseMinutes] = useState<number>(DEFAULT_SPLIT_PAUSE_MINUTES);
   // With no stored settings to read there is nothing to wait for; loaded
   // is otherwise set once the read settles.
   const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getScheduleSettings);
@@ -28,6 +32,8 @@ export const CeremoniesView: React.FC = () => {
           if (sched.eodTime) setEodTime(sched.eodTime);
           if (sched.autoDismissSeconds !== undefined) setTimeoutSeconds(sched.autoDismissSeconds);
           if (sched.askAboutForgottenSessions !== undefined) setAskAboutForgotten(sched.askAboutForgottenSessions);
+          if (sched.workingDays) setWorkingDays(sched.workingDays);
+          if (sched.splitPauseMinutes !== undefined) setSplitPauseMinutes(sched.splitPauseMinutes);
           if (sched.shutdownByDefault !== undefined) {
             setShutdownByDefault(sched.shutdownByDefault);
           } else if (sched.eodShutdownByDefault !== undefined) {
@@ -53,11 +59,17 @@ export const CeremoniesView: React.FC = () => {
     promptTimeoutSeconds: timeoutSeconds,
     shutdownByDefault,
     eodShutdownByDefault: shutdownByDefault,
-    askAboutForgottenSessions: askAboutForgotten
+    askAboutForgottenSessions: askAboutForgotten,
+    workingDays,
+    splitPauseMinutes
   };
   // Checked here as main checks it, so a half-typed lunch window is shown as
   // wrong rather than saved and silently never matching any minute.
   const refusal = checkScheduleSettings(settings);
+  // Each refusal is shown under the card it is about: the week's and the
+  // split's under the working days, anything else under the lunch window.
+  const weekRefusal = checkWorkingDays(workingDays);
+  const splitRefusal = checkSplitPauseMinutes(splitPauseMinutes);
 
   const handleSave = async () => {
     if (refusal) throw new Error(refusal);
@@ -68,7 +80,7 @@ export const CeremoniesView: React.FC = () => {
 
   const saveStatus = useAutoSave(
     handleSave,
-    [standupTime, lunchStart, lunchEnd, eodTime, timeoutSeconds, shutdownByDefault, askAboutForgotten],
+    [standupTime, lunchStart, lunchEnd, eodTime, timeoutSeconds, shutdownByDefault, askAboutForgotten, workingDays, splitPauseMinutes],
     loaded
   );
 
@@ -99,6 +111,60 @@ export const CeremoniesView: React.FC = () => {
         </div>
 
         <AutoSaveIndicator status={saveStatus} />
+      </div>
+
+      {/* The week: which days prompt at all, and which one closes it. */}
+      <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-3">
+        <div className="flex items-center space-x-3 text-white font-bold">
+          <Calendar className="w-5 h-5 text-accent-purple" />
+          <h3 id="working-days">Working Days</h3>
+        </div>
+        <p className="text-xs text-text-secondary">
+          The stand-up, lunch and the wrap-up happen on these days only, and never on a holiday your OpenProject
+          instance lists. The wrap-up of the last one in a week closes the week.
+        </p>
+        <div role="group" aria-labelledby="working-days" className="flex flex-wrap gap-2">
+          {WEEKDAYS_MONDAY_FIRST.map(({ day, label }) => {
+            const on = workingDays.includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setWorkingDays(on ? workingDays.filter(d => d !== day) : [...workingDays, day].sort())}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  on
+                    ? 'bg-accent-purple/20 text-accent-purple border-accent-purple/40'
+                    : 'bg-dark-900 text-text-secondary border-border-dark hover:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        {weekRefusal && <p role="alert" className="text-xs text-accent-red">{weekRefusal} Not saved.</p>}
+        <div className="pt-2 border-t border-border-dark">
+          <label className="flex flex-wrap items-center gap-2 text-xs text-text-primary">
+            <span>A pause of</span>
+            <input
+              type="number"
+              min={0}
+              max={MAX_SPLIT_PAUSE_MINUTES}
+              step={1}
+              aria-label="Pause that splits a worklog, in minutes"
+              value={Number.isFinite(splitPauseMinutes) ? splitPauseMinutes : ''}
+              onChange={e => setSplitPauseMinutes(e.target.value === '' ? Number.NaN : Number(e.target.value))}
+              className="w-20 bg-dark-900 border border-border-dark rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+            />
+            <span>minutes or more starts a new worklog.</span>
+          </label>
+          <p className="mt-1 text-[11px] text-text-secondary">
+            0 keeps a session in one worklog per day. Midnight always starts a new one, so time is filed under the day
+            it was worked.
+          </p>
+          {splitRefusal && <p role="alert" className="text-xs text-accent-red">{splitRefusal} Not saved.</p>}
+        </div>
       </div>
 
       {/* Grid: Ceremonies Configuration Cards */}
@@ -169,7 +235,7 @@ export const CeremoniesView: React.FC = () => {
               />
             </div>
           </div>
-          {refusal && <p role="alert" className="text-xs text-accent-red">{refusal} Not saved.</p>}
+          {refusal && !weekRefusal && !splitRefusal && <p role="alert" className="text-xs text-accent-red">{refusal} Not saved.</p>}
         </div>
 
         {/* Card 3: Dialog Prompt Timeout Limits */}

@@ -33,22 +33,29 @@ export class ProjectRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return [];
 
-      // The open-task count rides along so every list can apply "only my
-      // projects" without a query per project. Archived tasks are history,
-      // not work (CLAUDE.md section 7).
+      // The open-task counts, one per owner, ride along so every list can
+      // apply "only my projects" under the user's task visibility without a
+      // query per project. Archived tasks are history, not work (CLAUDE.md
+      // section 7).
       const stmt = db.prepare<[], {
         id: string;
         key: string;
         name: string;
         provider_id: string;
         open_task_count: number;
+        open_unassigned_count: number;
+        open_others_count: number;
       }>(`
         SELECT p.id, p.key, p.name, p.provider_id,
-               (SELECT COUNT(*) FROM tasks t
-                 WHERE t.project_id = p.id
-                   AND t.archived_at_utc IS NULL
-                   AND t.status != 'done') AS open_task_count
+               COUNT(t.id) FILTER (WHERE t.ownership = 'mine') AS open_task_count,
+               COUNT(t.id) FILTER (WHERE t.ownership = 'unassigned') AS open_unassigned_count,
+               COUNT(t.id) FILTER (WHERE t.ownership = 'other') AS open_others_count
         FROM projects p
+        LEFT JOIN tasks t
+          ON t.project_id = p.id
+         AND t.archived_at_utc IS NULL
+         AND t.status != 'done'
+        GROUP BY p.id
         ORDER BY p.key ASC`);
 
       const rows = stmt.all();
@@ -57,7 +64,9 @@ export class ProjectRepository {
         key: r.key,
         name: r.name,
         providerId: r.provider_id,
-        openTaskCount: r.open_task_count
+        openTaskCount: r.open_task_count,
+        openUnassignedCount: r.open_unassigned_count,
+        openOthersCount: r.open_others_count
       }));
     } catch (err) {
       console.warn('[ProjectRepository] Failed to fetch projects:', err);

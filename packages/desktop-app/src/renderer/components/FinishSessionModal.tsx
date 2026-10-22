@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, CheckCircle2, X, Sparkles, Trash2 } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
-import { formatSeconds } from '../utils/formatters';
+import { formatDaySplit, formatSeconds } from '../utils/formatters';
 import { ConfirmPanel } from './ConfirmPanel';
 import { finishNeedsConfirmation } from '../../shared/task-left';
 
@@ -30,6 +30,13 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
 }) => {
   const [confirming, setConfirming] = useState<'discard' | 'finish' | null>(null);
   const confirmingDiscard = confirming === 'discard';
+  // Across midnight the time goes in under each day: say so before it does.
+  const [daySplit, setDaySplit] = useState<string | null>(null);
+  useEffect(() => {
+    window.electronAPI?.getSessionDays?.()
+      .then(days => setDaySplit(formatDaySplit(days)))
+      .catch(err => console.warn('[FinishSessionModal] Could not read the session days:', err));
+  }, []);
 
   // Reassigned or moved since it started: marking it done would fire the
   // user's completion transition on a task that is no longer theirs.
@@ -93,6 +100,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
               <br />
               <span className="text-accent-blue font-bold">{session.taskTitle}</span>
             </p>
+            {daySplit && <p className="text-[11px] text-text-secondary">Across midnight, so filed as {daySplit}.</p>}
 
             <div className="space-y-3">
               <button

@@ -14,7 +14,7 @@ A pnpm workspace with three packages:
 | Package | What it is |
 | :--- | :--- |
 | `packages/desktop-app` | Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
-| `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. |
+| `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. Its scripts compile only because `.asmdef` files own them (see below). |
 | `packages/anim-studio` | The animation scene editor (`pnpm studio`): Vite + plain TypeScript, no React, no Electron. A development tool; nothing in it ships. |
 
 The desktop app tracks time against tasks, drives a physical BUSY Bar LED
@@ -162,6 +162,11 @@ main process only through the contextBridge preload.
 - **Main must never import from `src/renderer/**`.** Also an ESLint error.
 - Anything genuinely shared goes in `src/shared/`, which must stay free of
   runtime dependencies on either side.
+- **The renderer names things; main decides what to open.** A task page is
+  opened by task id (`tasks:open-page`): main builds the URL from the
+  provider's configured site and opens it only if it is http(s) there
+  (`isOpenableTaskPage`). `shell.openExternal` launches any protocol
+  handler it is handed, and a key or id is synced data.
 - `src/preload/electron-api.d.ts` declares the `window.electronAPI` global. The
   `: IElectronAPI` annotation on the bridge object is load-bearing — it is what
   turns preload/renderer drift into a compile error.
@@ -195,6 +200,22 @@ above. Two more things about it that cost time to find:
   Porting it to TypeScript, importing it, or copying the firmware's own TS port
   would bring our code under the GPL. If you change the script, add the change
   and its date to its header: GPL-2.0 requires a modified file to say so.
+
+**The Unity plugin compiles in Unity, never here, so nothing here sees it
+break.** Unity compiles no script in a package that no `.asmdef` owns, and
+the plugin had none until 2026-10-16: both editors open that day skipped it
+with a console warning, neither had ever compiled it, and the bar heard
+nothing from them while the tests, the stress run and `docs:images` --
+all replayed events -- passed. `unity-plugin-package.test.ts` now fails on a script outside an
+assembly or an asset without its `.meta`. Two more things follow:
+- **Its API floor is Unity 2021.3** (`package.json` `unity`), and an error
+  there blocks the user's whole project from entering Play Mode. Check a
+  Unity API's version before using it: its first real compile failed on
+  `SceneManager.loadedSceneCount`, which 2021.3 does not have.
+- **Projects link it, they do not copy it.** The injector makes a junction
+  to the plugin folder it resolves first -- for a packaged build,
+  `dist-electron/win-unpacked/packages/unity-plugin` -- so a change reaches
+  the editors at their next compile once that folder has it.
 
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification
@@ -368,6 +389,16 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     every id before removing any (`canvas_element_destroy_multi`), so one
     missing id answers 400 and removes *none* of the others. Remove one id per
     request wherever one may already be gone.
+  - **The idle clock leaves the icon to its clear** (`leaveToClear`), which
+    closes the screen and takes the icon with it at no cost -- and only a
+    clear that went through (`'cleared'`) says the icon is gone. One
+    overtaken by a newer screen leaves it playing: lunch stopping a task
+    drew the sandwich during the clear, and the stopwatch played over it
+    for the whole break (real bar, 2026-10-16). Likewise a reset makes the
+    icon *unknown*, never "none": a removal that failed while the bar was
+    away left it playing when it came back (stress seed 1026). Unknown, the
+    next `show(null)` parks it, and the ledger sends nothing when the panel
+    is known to hold no icon.
   - **Keep the static icon in the frame.** It is the fallback: when the device
     refuses the `.anim`, or a 409 holds the draw off, the bar shows the icon
     still rather than a hole. The emulator follows the same rule and stops
@@ -453,6 +484,11 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     display, or the user's mode. The same goes for turning no-bar mode off.
     An outage shorter than the ping interval matters: a Lunch scene whose
     upload failed in one streamed PNG frames for the whole break.
+    **Forget at the loss, not at the return** (`loseTrackOfDevice`): requests
+    answered after the bar came back describe the panel after the outage.
+    Forgotten at the ping that saw it back, a clear answered just before was
+    lost, and the redraw cleared the empty panel again -- a removal answered
+    400 and a second close of a closed screen (stress seed 1670).
   - **The driver is the one guardian of these rules; callers are not.** Every
     display and asset request goes through one queue (`displayQueue`, a
     `SerialQueue`), and each carries a guard that runs at the head of it,
@@ -575,12 +611,22 @@ changing it:
   as the idle clock with the build still running; a compile refused under a
   banner never drew at all. Releasing a lock that is not held removes it
   from the set-aside list -- that screen ended while covered.
+  **One exception, by the user's own scores:** a background state ranked
+  above everything queued or set aside is offered first, and background
+  states are offered highest first, never in the order they registered.
+  Unity ranks below the alerts, so for it nothing changes; the bar's picker
+  (97) does not, and lost the display to a banner queued under Away.
 - **Unity's screens are states, not alerts.** `UnityTelemetryService`
   registers as a background screen and redraws whatever the editors are
   doing *now* when the display frees; its locks are never set aside or
   queued. Its operations are per editor instance: one global operation let
   the first of two projects to finish take the other's gear down. A compile
   inside a build belongs to the build and ends with it.
+- **The bar's open picker is a state too.** It is never queued (each press
+  redraws it), so under Away it was refused and then forgotten: open,
+  invisible, still taking presses, while Away's end handed the display to
+  the clock, Unity or Lunch. `InputDecoder` registers it as a background
+  screen that redraws itself while open; Desk registers the same.
 - **Modes and the tracker are not claims to restore.** The idle clock is the
   user's mode: the idle branch of `renderActiveSession` leaves alone any
   holder but the tracker, and drops the tracker's lock with the session
@@ -598,9 +644,14 @@ changing it:
   passes `queueOnPreempt: false`: a copy queued under Away replayed after the
   user had closed it, holding the display for nothing.
 - **Lunch never overrides the user.** `ContextScheduleService` listens to the
-  engine: a session going TRACKING during lunch ends Lunch for the day
+  engine: a session *going* TRACKING during lunch ends Lunch for the day
   (`lunch_skipped_date`) and drops the stored restart (`lunch_resume`). Its
   own restart runs after the switch to WORK, which is how it is told apart.
+  **The engine's listeners hear every tick**, once a second while a session
+  runs, so "going TRACKING" means a new session id or a resume, never a
+  notification that merely says TRACKING: read that way, the first tick of
+  lunch -- the check runs every 30 s -- skipped lunch whenever a task was
+  running (found on the real bar, 2026-10-15).
   Anything that restarts a task on the user's behalf checks
   `TaskRepository.isListed` first and asks when it is not. A yes tracks the
   task and takes nothing back: `startTask` neither saves its row -- `saveTask`
@@ -621,7 +672,20 @@ changing it:
   goes straight to LUNCH during the lunch hours (stopping a session the
   machine slept through the start of), never WORK first: WORK and then LUNCH
   at the next check is two renders, and a session started in between reads
-  as working through lunch.
+  as working through lunch. **AWAY to LUNCH lets go of Away's lock**
+  (`setUserMode`), which outranks Lunch: kept, the mode said LUNCH while the
+  bar showed the coffee cup. It is dropped, not released -- the mode draws
+  next -- and only a background state ranked above the new mode, the bar's
+  picker, is offered the display first.
+- **Days off silence the entries, never the exits.** The stand-up, entering
+  Lunch and the wrap-up ask `WorkingCalendar` first; leaving Lunch and Away
+  does not, or a LUNCH mode would outlive its hour into a holiday. The
+  holidays are a cache read asynchronously, so a check answers from what the
+  last read found: a failed read must keep the previous days, never empty
+  them. **A week closes once** (`last_week_closed`), at the wrap-up of its
+  last working day or at the next working day's first check -- anything that
+  acts on the close (a timesheet submission) hangs off `onWeekEnded` and
+  inherits that guarantee rather than keeping its own.
 
 The app posts toasts of its own (`ProviderEventService`), and two things about
 them are traps:
@@ -825,8 +889,8 @@ session, no second of tracked time lost, every orphaned task id named, at most
 one open session, no foreign key broken, no row of the provider queue
 lost. The rules are
 `src/main/db/migration-check.ts`, tested, and hold any future migration to the
-same standard; the script only copies and prints. Migrations 5, 6, 8, 9, 10 and 11
-were checked this way. Ask the user to run it from an ordinary terminal and paste
+same standard; the script only copies and prints. Migrations 5, 6, 8, 9, 10, 11
+and 12 were checked this way. Ask the user to run it from an ordinary terminal and paste
 the output -- for the reason below, its answer from an agent's shell describes
 a file that may not be theirs.
 
@@ -863,8 +927,29 @@ session at the user's last activity (`pauseSessionAt`) and asks, and nothing
 is logged or sent until they answer. Overtime is never interrupted -- input
 moves the presence on every minute -- and no time the user has not
 confirmed is ever sent. Presence is read *before* it is recorded, at every
-check: recorded first, the evidence of the absence is gone. A worklog belongs
-to the day it began (`started_at_utc`), as the providers file it.
+check: recorded first, the evidence of the absence is gone.
+
+**A worklog never spans local midnight.** The providers file a worklog under
+the day it began (`started_at_utc`), so a session across midnight is split
+when it ends (`splitWork` in `shared/work-split.ts`): a worklog per local day,
+and another after any pause of the user's `splitPauseMinutes` (15; 0 never).
+Each piece is its own worklog and its own queue row, so its own marker. Four
+things to keep:
+- **Split at the end, never on a timer.** A midnight timer would move the
+  session's start, which the forgotten-session check reads, would send hours
+  nobody confirmed, and misses midnight on a machine asleep. Every end goes
+  through `finishSession`; split there.
+- **The pieces add up to the session's total**, the same number STOP has
+  always logged and the LOGGED screen shows. Rounding, and a clock set back
+  during a pause (below), are settled on the longest piece. Recompute the
+  pieces from the pause rows alone and the jump is lost again.
+- **A piece too short for the provider joins its longer neighbour**
+  (`mergeShortPieces`), locally too, so the history and the provider hold
+  the same entries. Thirty seconds after midnight is otherwise a worklog
+  Jira refuses, and that time gone.
+- **A pause set retroactively has no row** (`pauseSessionAt`). `stopSession`
+  counts it (`pausesUntilNow`); `stopSessionAt` does not, because the end the
+  user chose may lie after it.
 
 **A negative pause is the clock set back, and it is right.** Paused at 10:00
 and resumed at 09:30 on a corrected clock, the pause measures -30 min -- and
@@ -873,7 +958,8 @@ Never clamp it to zero: that is what the audit first proposed, and it would
 have dropped the jump from every such session. Anything that recomputes time
 from the pause rows must count a row resumed before it was paused as negative
 (`workedSecondsUntil`); the forgotten-session path did not, and logged 90
-minutes of a two-hour session that STOP logged as 120.
+minutes of a two-hour session that STOP logged as 120. `splitWork` keeps the
+rule by settling its pieces on that total rather than summing pause rows.
 
 **A session's time goes to the provider its task came from**, recorded on
 the session when it starts (`active_sessions.provider_id`, migration 9),
@@ -905,6 +991,38 @@ comment of every correction ends with the *original* row's marker, never its
 own, and an id the provider did not give is never stored -- the adapters
 used to invent one (`jira_wl_<time>`), indistinguishable from a real id.
 
+**Listed is not mine.** The sync keeps the user's open work, every open task
+nobody is assigned and a teammate's task in progress (`keptByDefaultScope`),
+and each row says whose it is (`tasks.ownership`, migration 12) -- read from
+the assignee on the task, never from which query found it: OpenProject needs
+three queries for that set, and a custom one says nothing about owners.
+Three things follow:
+- **"Still the user's" checks the owner.** `isListed` is false for a
+  teammate's task, so nothing restarts it unasked, and a session on one reads
+  `taskUnlisted` / `reassigned` while the task stays listed. The engine
+  re-sends the session when the owner changes, since the sync's unlisted set
+  never moves for a task that is still found.
+- **Only the user's own task is moved to In Progress.** A teammate's is
+  tracked as it is; one nobody has is not moved before it is taken.
+- **The adapters need the user's identity** to tell owners apart -- Jira's
+  `/myself`, OpenProject's `/api/v3/users/me` -- and throw without it, like
+  any read the prune depends on.
+- **Taking a task reads before it writes, and never takes it from anyone.**
+  Starting an unassigned task assigns it (`assignToMe`, after the session is
+  down) only if the provider still says nobody has it; OpenProject's PATCH
+  carries the `lockVersion` read, so a 409 means someone edited it -- read
+  again and decide again, once. Measured on a real OpenProject 17.9
+  instance on 2026-10-16, race included; Jira has no conditional write and reads just before the PUT. Taken meanwhile, the row is recorded as
+  theirs and the session reads `reassigned` with `taskOwnerName`. A failure
+  is told and never queued: a retry later acts on a choice the user may have
+  dropped.
+- **The store lists every owner; the lists filter.** `getTasksByProjectId`
+  answers all of them, and each list applies the task visibility
+  (`shared/task-visibility.ts`) and the order (`shared/task-order.ts`) --
+  the window in the renderer, the bar's picker in main, one rule in shared
+  for both. A list that reads tasks without them shows a teammate's work the
+  user hid, in an order the bar does not use.
+
 **The sync never retires the task of the open session.** A task reassigned,
 closed or moved on the provider leaves the user's scope, and the prune used
 to retire it mid-session -- deleted, when nothing was logged on it yet -- so
@@ -913,12 +1031,27 @@ finishing it as done found no row and silently did nothing.
 ends, and `ActiveSessionDTO.taskUnlisted` says it has left the list. Marking
 such a task done asks the user first, in the window and on the bar: their
 completion transition would move a task that is no longer theirs. The sync
-then asks the provider why (`getTaskStanding`, `taskLeftBecause`): a task
+then asks the provider why (`getTaskStanding`, `taskLeftBecause`) -- at every
+sync, since a task reassigned can be closed afterwards -- and a task
 *closed* there is finished without asking and **without a transition** --
 sending one moved an OpenProject work package out of Closed again. Every
 place that decides goes through `finishNeedsConfirmation` in
 `shared/task-left.ts`, so the window, the mini timer and the bar cannot
 disagree.
+
+**Ad-hoc time is never queued.** It has no ticket on any provider: queued
+for the active one, Jira was asked to log time on an issue called
+`adhoc_...`, answered 404, and the row ended in the failed queue. It stays
+in local history.
+
+**OpenProject 17.9 has no `work_package` filter on time entries.** Time can
+be logged on a meeting, so an entry belongs to an entity: filter by
+`entity_type` + `entity_id`. A real 17.9 instance answered `work_package` 400, which failed
+every resend's search there; the fake passed it because it
+accepted whatever it was sent. It now refuses it as 17.9 does, and
+`timeEntryFilters.mode = 'legacy'` plays an older instance, which the
+search falls back to on a 400. Check a new filter or field against a real
+instance, not the fake.
 
 **The open session copies its task's key and title, so it follows them.**
 `active_sessions` stores both at start, and the bar and the window read them

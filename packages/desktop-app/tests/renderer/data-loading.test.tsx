@@ -128,6 +128,74 @@ describe('CeremoniesView auto-save', () => {
   });
 });
 
+describe('CeremoniesView working days', () => {
+  const STORED: ScheduleSettingsDTO = normalizeScheduleSettings({});
+
+  it('WorkingDays_StoredWeek_ShowsWhichArePressed', async () => {
+    installElectronApi({ getScheduleSettings: vi.fn().mockResolvedValue({ ...STORED, workingDays: [1, 2, 3, 4] }) });
+    render(<CeremoniesView />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Fri' }).getAttribute('aria-pressed')).toBe('false'));
+    expect(screen.getByRole('button', { name: 'Thu' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('WorkingDays_SaturdayTurnedOn_SavesIt', async () => {
+    const bridge = installElectronApi({ getScheduleSettings: vi.fn().mockResolvedValue(STORED) });
+    render(<CeremoniesView />);
+    const saturday = await screen.findByRole('button', { name: 'Sat' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mon' }).getAttribute('aria-pressed')).toBe('true'));
+
+    fireEvent.click(saturday);
+
+    await waitFor(
+      () => expect(bridge.api.saveScheduleSettings).toHaveBeenCalledWith(expect.objectContaining({ workingDays: [1, 2, 3, 4, 5, 6] })),
+      { timeout: AUTO_SAVE_DELAY_MS * 3 }
+    );
+  });
+
+  it('SplitPause_Changed_SavesIt', async () => {
+    const bridge = installElectronApi({ getScheduleSettings: vi.fn().mockResolvedValue(STORED) });
+    render(<CeremoniesView />);
+    const field = await screen.findByLabelText('Pause that splits a worklog, in minutes');
+    await waitFor(() => expect((field as HTMLInputElement).value).toBe('15'));
+
+    fireEvent.change(field, { target: { value: '30' } });
+
+    await waitFor(
+      () => expect(bridge.api.saveScheduleSettings).toHaveBeenCalledWith(expect.objectContaining({ splitPauseMinutes: 30 })),
+      { timeout: AUTO_SAVE_DELAY_MS * 3 }
+    );
+  });
+
+  it('SplitPause_OverADay_SaysSoAndSavesNothing', async () => {
+    const bridge = installElectronApi({ getScheduleSettings: vi.fn().mockResolvedValue(STORED) });
+    render(<CeremoniesView />);
+    const field = await screen.findByLabelText('Pause that splits a worklog, in minutes');
+    await waitFor(() => expect((field as HTMLInputElement).value).toBe('15'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    fireEvent.change(field, { target: { value: '600' } });
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/0 \(never\) to 480/);
+    await new Promise(r => setTimeout(r, AUTO_SAVE_DELAY_MS * 2));
+    expect(bridge.api.saveScheduleSettings).not.toHaveBeenCalled();
+  });
+
+  it('WorkingDays_EveryDayOff_SaysSoAndSavesNothing', async () => {
+    const bridge = installElectronApi({ getScheduleSettings: vi.fn().mockResolvedValue({ ...STORED, workingDays: [3] }) });
+    render(<CeremoniesView />);
+    const wednesday = await screen.findByRole('button', { name: 'Wed' });
+    await waitFor(() => expect(wednesday.getAttribute('aria-pressed')).toBe('true'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    fireEvent.click(wednesday);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/at least one working day/);
+    await new Promise(r => setTimeout(r, AUTO_SAVE_DELAY_MS * 2));
+    expect(bridge.api.saveScheduleSettings).not.toHaveBeenCalled();
+  });
+});
+
 describe('SyncQueuePanel', () => {
   const row = (nextAttemptAtUtc: string | null) => ({
     id: 'Q-1',

@@ -118,6 +118,22 @@ describe('Lunch and the session it stops', () => {
       expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, taskKey: A.key, status: 'TRACKING' });
     });
 
+    it('EvaluateSchedule_ATickBeforeTheCheck_LunchStillStops', () => {
+      // The engine tells its listeners every second while a session runs, and
+      // the check runs every 30: a tick in the first seconds of lunch was
+      // read as the user starting work, and lunch was skipped for the day.
+      // Found on the real bar on 2026-10-15.
+      startA();
+      at(12, 30);
+      vi.advanceTimersByTime(1000);
+
+      service.evaluateSchedule();
+
+      expect(priority.getUserMode()).toBe('LUNCH');
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(settings.getSetting(ContextScheduleService.LUNCH_SKIPPED_KEY, null)).toBeNull();
+    });
+
     it('EvaluateSchedule_LunchEnds_RestartsItOnlyOnce', () => {
       startA();
       check(12, 45);

@@ -4,6 +4,28 @@ import { createId, IdPrefix } from '../id-generator';
 import { TOMBSTONE_PROJECT_ID } from '../migrations';
 import { TaskDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
+import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownership';
+
+/**
+ * The columns every read selects, under the DTO's names: three queries
+ * listed them by hand, and one forgetting a new column drops it silently.
+ */
+const TASK_COLUMNS =
+  'id, project_id as projectId, key, title, status, priority_rank as priorityRank, description, ' +
+  'ownership, assignee_name as assigneeName';
+
+/** A `tasks` row as TASK_COLUMNS reads it. */
+interface TaskRow {
+  id: string;
+  projectId: string;
+  key: string;
+  title: string;
+  status: 'todo' | 'in_progress' | 'done';
+  priorityRank: number | null;
+  description: string | null;
+  ownership: string | null;
+  assigneeName: string | null;
+}
 
 /** True for a `tasks` row that some worklog references. */
 const HAS_WORKLOGS = 'EXISTS (SELECT 1 FROM worklogs w WHERE w.task_id = tasks.id)';
@@ -63,15 +85,11 @@ export class TaskRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return [];
 
-      const stmt = db.prepare<[string], {
-        id: string;
-        projectId: string;
-        key: string;
-        title: string;
-        status: 'todo' | 'in_progress' | 'done';
-        priorityRank: number | null;
-        description: string | null;
-      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank, description FROM tasks WHERE project_id = ? AND archived_at_utc IS NULL');
+      // Whoever's they are: each list applies the user's task visibility
+      // (`task-visibility.ts`), and each row says whose it is.
+      const stmt = db.prepare<[string], TaskRow>(
+        `SELECT ${TASK_COLUMNS} FROM tasks WHERE project_id = ? AND archived_at_utc IS NULL`
+      );
 
       const rows = stmt.all(projectId);
       return rows.map(r => TaskRepository.toDto(r));
@@ -92,15 +110,7 @@ export class TaskRepository {
       const db = this.dbConn.getDb();
       if (!db || !db.open) return null;
 
-      const stmt = db.prepare<[string], {
-        id: string;
-        projectId: string;
-        key: string;
-        title: string;
-        status: 'todo' | 'in_progress' | 'done';
-        priorityRank: number | null;
-        description: string | null;
-      }>('SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank, description FROM tasks WHERE id = ?');
+      const stmt = db.prepare<[string], TaskRow>(`SELECT ${TASK_COLUMNS} FROM tasks WHERE id = ?`);
 
       const row = stmt.get(taskId);
       if (!row) return null;
@@ -113,18 +123,30 @@ export class TaskRepository {
   }
 
   /**
-   * Whether the task is still in the user's lists: its row exists and the
-   * sync has not archived it. Asked before anything restarts a task on the
-   * user's behalf -- a task reassigned, closed or moved since is no longer
-   * theirs to track without asking.
+   * Whether the task is still in the user's lists: its row exists, the sync
+   * has not archived it, and it is not someone else's. Asked before anything
+   * restarts a task on the user's behalf -- a task reassigned, closed or
+   * moved since is no longer theirs to track without asking. A teammate's
+   * task in progress is listed now, so the row alone no longer says so.
    */
   public isListed(taskId: string): boolean {
     if (!taskId) return false;
     const db = this.dbConn.getDb();
     const row = db
-      .prepare<[string], { n: number }>('SELECT COUNT(*) AS n FROM tasks WHERE id = ? AND archived_at_utc IS NULL')
+      .prepare<[string], { n: number }>(
+        `SELECT COUNT(*) AS n FROM tasks WHERE id = ? AND archived_at_utc IS NULL AND ownership != '${TaskOwnership.OTHER}'`
+      )
       .get(taskId);
     return (row?.n ?? 0) > 0;
+  }
+
+  /** Whose the task is; the user's for a task with no row, as for one from before ownership. */
+  public ownershipOf(taskId: string): TaskDTO['ownership'] {
+    if (!taskId) return TaskOwnership.MINE;
+    const row = this.dbConn.getDb()
+      .prepare<[string], { ownership: string }>('SELECT ownership FROM tasks WHERE id = ?')
+      .get(taskId);
+    return parseTaskOwnership(row?.ownership);
   }
 
   /**
@@ -140,10 +162,12 @@ export class TaskRepository {
     return (row?.n ?? 0) > 0;
   }
 
-  /** A row as a DTO; a NULL priority or description is left off rather than carried as null. */
-  private static toDto(
-    row: Omit<TaskDTO, 'priorityRank' | 'description'> & { priorityRank: number | null; description: string | null }
-  ): TaskDTO {
+  /**
+   * A row as a DTO; a NULL priority or description is left off rather than
+   * carried as null, and so is the ownership of the user's own task -- what
+   * a DTO without one has always meant.
+   */
+  private static toDto(row: TaskRow): TaskDTO {
     const task: TaskDTO = {
       id: row.id,
       projectId: row.projectId,
@@ -153,6 +177,9 @@ export class TaskRepository {
     };
     if (row.priorityRank !== null && row.priorityRank !== undefined) task.priorityRank = row.priorityRank;
     if (row.description) task.description = row.description;
+    const ownership = parseTaskOwnership(row.ownership);
+    if (ownership !== TaskOwnership.MINE) task.ownership = ownership;
+    if (row.assigneeName && ownership === TaskOwnership.OTHER) task.assigneeName = row.assigneeName;
     return task;
   }
 
@@ -175,8 +202,8 @@ export class TaskRepository {
       if (!db || !db.open) return;
 
       const stmt = db.prepare(`
-        INSERT INTO tasks (id, project_id, key, title, status, priority_rank, description, created_at_utc)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (id, project_id, key, title, status, priority_rank, description, ownership, assignee_name, created_at_utc)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           project_id = excluded.project_id,
           key = excluded.key,
@@ -184,12 +211,17 @@ export class TaskRepository {
           status = excluded.status,
           priority_rank = excluded.priority_rank,
           description = excluded.description,
+          ownership = excluded.ownership,
+          assignee_name = excluded.assignee_name,
           archived_at_utc = NULL
       `);
 
       stmt.run(
         task.id, task.projectId, task.key, task.title, task.status,
-        task.priorityRank ?? null, task.description ?? null, new Date().toISOString()
+        task.priorityRank ?? null, task.description ?? null,
+        task.ownership ?? TaskOwnership.MINE,
+        task.ownership === TaskOwnership.OTHER ? (task.assigneeName ?? null) : null,
+        new Date().toISOString()
       );
     } catch (err) {
       console.warn('[TaskRepository] Failed to save task:', err);
@@ -203,16 +235,8 @@ export class TaskRepository {
    */
   public findAdHocTaskByTitle(title: string): TaskDTO | null {
     if (!title) return null;
-    const row = this.dbConn.getDb().prepare<[string, string], {
-      id: string;
-      projectId: string;
-      key: string;
-      title: string;
-      status: 'todo' | 'in_progress' | 'done';
-      priorityRank: number | null;
-      description: string | null;
-    }>(
-      `SELECT id, project_id as projectId, key, title, status, priority_rank as priorityRank, description
+    const row = this.dbConn.getDb().prepare<[string, string], TaskRow>(
+      `SELECT ${TASK_COLUMNS}
        FROM tasks WHERE project_id = ? AND title = ? AND archived_at_utc IS NULL
        ORDER BY created_at_utc DESC LIMIT 1`
     ).get(ADHOC_PROJECT_ID, title);

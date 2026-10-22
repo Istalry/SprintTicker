@@ -470,6 +470,22 @@ const M011_SEND_ATTEMPTS = `
    WHERE retry_count > 0 OR last_error IS NOT NULL OR status IN ('SYNCING', 'FAILED', 'SYNCED');
 `;
 
+/**
+ * Migration 12: a task says whose it is.
+ *
+ * The sync kept the user's own work only, so every row was theirs and
+ * nothing recorded an assignee. It now keeps unassigned tasks and teammates'
+ * tasks in progress too, and the lists, the bar and "is this still mine?"
+ * need to tell them apart. Every existing row was fetched as the user's, so
+ * `mine` is both the default and the truth for them; the next sync rewrites
+ * each from its assignee.
+ */
+const M012_TASK_OWNERSHIP = `
+  ALTER TABLE tasks ADD COLUMN ownership TEXT NOT NULL DEFAULT 'mine'
+    CHECK (ownership IN ('mine', 'unassigned', 'other'));
+  ALTER TABLE tasks ADD COLUMN assignee_name TEXT;
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -482,7 +498,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 8, name: 'worklog-remote-identity', up: db => db.exec(M008_WORKLOG_REMOTE_IDENTITY) },
   { version: 9, name: 'session-provider', up: db => db.exec(M009_SESSION_PROVIDER) },
   { version: 10, name: 'project-key-not-unique', up: db => db.exec(M010_PROJECT_KEY_NOT_UNIQUE) },
-  { version: 11, name: 'send-attempts', up: db => db.exec(M011_SEND_ATTEMPTS) }
+  { version: 11, name: 'send-attempts', up: db => db.exec(M011_SEND_ATTEMPTS) },
+  { version: 12, name: 'task-ownership', up: db => db.exec(M012_TASK_OWNERSHIP) }
 ];
 
 /** Schema version a fully migrated database reports. */

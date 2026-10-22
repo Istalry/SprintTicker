@@ -248,6 +248,17 @@ describe('OpenProject collection pagination', () => {
       await provider.initialize({ domain: BASE, apiKey: 'test-key' });
     });
 
+    /**
+     * A provider whose task search is one walk -- the default scope is one per
+     * kind of owner -- and the answer to `/api/v3/users/me`, which comes first.
+     */
+    async function oneWalk(): Promise<OpenProjectProvider> {
+      const walker = new OpenProjectProvider(noBackoff);
+      await walker.initialize({ domain: BASE, apiKey: 'test-key', opTaskScope: 'all_open' });
+      return walker;
+    }
+    const user = (): Response => ({ ok: true, status: 200, json: async () => ({ id: 7 }) }) as unknown as Response;
+
     it('GetProjects_TwoPages_ReturnsProjectsFromBothPages', async () => {
       global.fetch = vi
         .fn()
@@ -277,10 +288,11 @@ describe('OpenProject collection pagination', () => {
       });
       global.fetch = vi
         .fn()
+        .mockResolvedValueOnce(user())
         .mockResolvedValueOnce(page([wp(11), wp(12)], '/api/v3/work_packages?offset=2&pageSize=100'))
         .mockResolvedValueOnce(page([wp(13)]));
 
-      const tasks = await provider.getTasks('1');
+      const tasks = await (await oneWalk()).getTasks('1');
 
       expect(tasks.map(t => t.key)).toEqual(['OP-11', 'OP-12', 'OP-13']);
     });
@@ -295,9 +307,9 @@ describe('OpenProject collection pagination', () => {
           ...(priority ? { priority: { href: '/api/v3/priorities/9', title: priority } } : {})
         }
       });
-      global.fetch = vi.fn().mockResolvedValueOnce(page([wp(1, 'Immediate'), wp(2, 'Normal'), wp(3, 'Whenever'), wp(4)]));
+      global.fetch = vi.fn().mockResolvedValueOnce(user()).mockResolvedValueOnce(page([wp(1, 'Immediate'), wp(2, 'Normal'), wp(3, 'Whenever'), wp(4)]));
 
-      const tasks = await provider.getTasks('1');
+      const tasks = await (await oneWalk()).getTasks('1');
 
       expect(tasks.map(t => t.priorityRank)).toEqual([0, 2, undefined, undefined]);
     });
@@ -310,11 +322,11 @@ describe('OpenProject collection pagination', () => {
         ...(raw === undefined ? {} : { description: { format: 'markdown', raw, html: '<p>ignored</p>' } }),
         _links: { status: { href: '/api/v3/statuses/7' }, type: { title: 'Task' } }
       });
-      global.fetch = vi.fn().mockResolvedValueOnce(
+      global.fetch = vi.fn().mockResolvedValueOnce(user()).mockResolvedValueOnce(
         page([wp(1, '## Goal\n\nMake the **dash** cancel into a [slide](https://x/y).'), wp(2, ''), wp(3)])
       );
 
-      const tasks = await provider.getTasks('1');
+      const tasks = await (await oneWalk()).getTasks('1');
 
       expect(tasks.map(t => t.description)).toEqual(['Goal Make the dash cancel into a slide.', undefined, undefined]);
     });

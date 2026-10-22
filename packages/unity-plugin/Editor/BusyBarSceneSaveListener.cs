@@ -172,11 +172,15 @@ namespace SprintTicker.Unity.Editor
         {
             try
             {
-                var count = UnityEngine.SceneManagement.SceneManager.loadedSceneCount;
+                // sceneCount, not loadedSceneCount: the latter does not exist
+                // in Unity 2021.3, the plugin's minimum, and it never matched
+                // GetSceneAt's indices anyway -- those run over every open
+                // scene, loaded or not.
+                var count = EditorSceneManager.sceneCount;
                 for (int i = 0; i < count; i++)
                 {
                     var scene = EditorSceneManager.GetSceneAt(i);
-                    if (scene.isDirty)
+                    if (scene.isLoaded && scene.isDirty)
                     {
                         savedScenesList.Add(scene.path);
                     }

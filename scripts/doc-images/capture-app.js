@@ -253,6 +253,9 @@ const RECORDER = `(() => {
 async function clip(page, framesDir, name, ms, act = async () => {}) {
   await act();
   await sleep(SETTLE_MS);
+  // Installed again on every clip: a reload takes the page's recorder with
+  // it, and RECORDER is a no-op where one is still there.
+  await page.eval(RECORDER);
   await page.eval('window.__docRec.start()');
   await sleep(ms);
   const frames = await page.eval('window.__docRec.stop()');
@@ -302,6 +305,7 @@ const PROJECTS = [
       { key: 'MG-12', title: 'Fix the lantern glow at dusk', status: 'in_progress' },
       { key: 'MG-14', title: 'Pond ripple shader', status: 'todo' },
       { key: 'MG-15', title: 'Firefly flocking', status: 'todo' },
+      { key: 'MG-17', title: 'Dew on the leaves', status: 'in_progress' },
       { key: 'MG-9', title: 'Save system for seeds', status: 'done' }
     ]
   },
@@ -324,6 +328,13 @@ const WORKLOGS = [
   [4.8, 'demo-pf_PF-31', 40, 'Hammer and quench sounds'],
   [3.9, 'demo-mg_MG-15', 55, 'Boids, first pass'],
   [2.5, 'demo-pf_PF-33', 70, 'Iron and copper tables']
+];
+
+// Task, ownership, assignee: everything else is the user's.
+const OWNERS = [
+  ['demo-mg_MG-15', 'unassigned', null],
+  ['demo-mg_MG-17', 'other', 'Rin Okada'],
+  ['demo-pf_PF-35', 'unassigned', null]
 ];
 
 function openDb(profile) {
@@ -385,7 +396,19 @@ async function seed(page, profile) {
     insert.run(`demo-log-${i}`, `demo-session-${i}`, taskId, minutes * 60, start.toISOString(), comment, end.toISOString());
     delivered.run(`demo-sync-${i}`, taskId, minutes * 60, start.toISOString(), comment, end.toISOString(), `demo-log-${i}`, String(900 + i));
   });
+  // Whose each task is, as a sync from a team's tracker would store it: an
+  // import makes every task the user's. Two nobody has, one an invented
+  // teammate is on -- and both switches on, so the picture shows both marks.
+  for (const [taskId, ownership, assignee] of OWNERS) {
+    db.prepare('UPDATE tasks SET ownership = ?, assignee_name = ? WHERE id = ?').run(ownership, assignee, taskId);
+  }
+  // From OpenProject, as the worklogs above were sent there: a project made
+  // in the app has no page on a provider, so its tasks would show no arrow to
+  // open one. OpenProject is not set up in this profile, so nothing is asked
+  // of it -- and nothing here clicks an arrow.
+  db.prepare("UPDATE projects SET provider_id = 'openproject' WHERE id LIKE 'demo-%'").run();
   db.close();
+  await page.api('setTaskVisibility({ unassigned: true, others: true })');
 }
 
 // --- the run ---------------------------------------------------------------
@@ -462,6 +485,24 @@ async function captureWithBar(page, framesDir, profile) {
   // Closed by a reload: the wizard has no state that outlives it, and the
   // answer above must not be saved.
   await reload(page);
+
+  // Last, because joining stops MG-12: the stand-up is an ad-hoc session,
+  // shown by its name alone with the meeting icon. Stopping it restarts
+  // MG-12, at zero -- backdated again for the pictures without a bar.
+  await page.api('triggerStandupPrompt()');
+  await sleep(2500);
+  await clip(page, framesDir, 'standup', 3000, () => page.api('joinStandup()'));
+  await page.api('completeSession()');
+  await sleep(1500);
+  // The two worklogs that made -- MG-12 cut short, the stand-up's minute --
+  // would sit atop every session log pictured after this one. The throwaway
+  // profile's file, as in seed(): only the invented day stays.
+  const db = openDb(profile);
+  db.prepare("DELETE FROM worklog_sync_queue WHERE id NOT LIKE 'demo-sync-%'").run();
+  db.prepare("DELETE FROM worklogs WHERE id NOT LIKE 'demo-log-%'").run();
+  db.close();
+  backdateSession(profile, SESSION_MINUTES);
+  await sleep(1500);
   await page.api('pauseSession()');
 }
 

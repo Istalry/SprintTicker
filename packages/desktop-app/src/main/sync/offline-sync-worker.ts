@@ -152,14 +152,14 @@ export class OfflineSyncWorker {
     return () => this.unlistedListeners.delete(listener);
   }
 
-  private setUnlisted(taskIds: string[], reasonsLearnt = false): void {
+  private setUnlisted(taskIds: string[], reasonsChanged = false): void {
     const next = new Set(taskIds);
     const changed = next.size !== this.unlistedTaskIds.size || [...next].some(id => !this.unlistedTaskIds.has(id));
     this.unlistedTaskIds = next;
     for (const id of [...this.unlistedReasons.keys()]) {
       if (!next.has(id)) this.unlistedReasons.delete(id);
     }
-    if (changed || reasonsLearnt) this.notifyUnlisted();
+    if (changed || reasonsChanged) this.notifyUnlisted();
   }
 
   private notifySynced(result: ProviderSyncResult): void {
@@ -293,8 +293,8 @@ export class OfflineSyncWorker {
         console.log(`[OfflineSyncWorker] Tracked task(s) no longer listed by the provider, kept until the session ends: ${unlisted.join(', ')}`);
       }
       // The reason first, so the session is re-sent once, saying both.
-      const reasonsLearnt = await this.explainUnlisted(unlisted);
-      this.setUnlisted(unlisted, reasonsLearnt);
+      const reasonsChanged = await this.explainUnlisted(unlisted);
+      this.setUnlisted(unlisted, reasonsChanged);
 
       const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
       console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);
@@ -316,25 +316,31 @@ export class OfflineSyncWorker {
    * Asks each unlisted task's provider why it left: closed, reassigned or
    * gone. They used to read the same -- NOT YOURS -- and confirming FINISH
    * on a task already closed fired the completion transition, which on
-   * OpenProject moved it out of Closed again. A failed read leaves the reason
-   * unknown and the sync is not failed for it: the list is already saved.
-   * True when a reason was learnt; the caller tells the listeners.
+   * OpenProject moved it out of Closed again. A failed read keeps what was
+   * known, or leaves it unknown, and the sync is not failed for it: the list
+   * is already saved. True when a reason changed; the caller tells the
+   * listeners.
+   *
+   * Asked at every sync, not once: a task reassigned and then closed kept
+   * "reassigned", so FINISH asked NOT YOURS and a yes sent the transition to
+   * a closed work package (real bar, 2026-10-15). It is one read per sync,
+   * for the open session's task only.
    */
   private async explainUnlisted(taskIds: string[]): Promise<boolean> {
-    let learnt = false;
+    let changed = false;
     for (const id of taskIds) {
-      if (this.unlistedReasons.has(id)) continue;
       const provider = this.providerOfTask(id);
       if (!provider?.getTaskStanding) continue;
       try {
         const standing = await provider.getTaskStanding(id);
-        this.unlistedReasons.set(id, standing === 'open' ? 'reassigned' : standing);
-        learnt = true;
+        const reason: TaskLeftReason = standing === 'open' ? 'reassigned' : standing;
+        if (this.unlistedReasons.get(id) !== reason) changed = true;
+        this.unlistedReasons.set(id, reason);
       } catch (err) {
-        console.warn(`[OfflineSyncWorker] Could not read where ${id} stands; it is shown as no longer yours.`, err);
+        console.warn(`[OfflineSyncWorker] Could not read where ${id} stands; keeping what was known.`, err);
       }
     }
-    return learnt;
+    return changed;
   }
 
   /** The provider a task came from, by its project; the active one when that is not known. */

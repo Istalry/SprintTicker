@@ -98,6 +98,11 @@ function buildProjects(count) {
  * All three appear because `mapStatusCategory` maps each to a different local
  * status, and a fixture with only one category cannot tell a correct mapping
  * from a constant.
+ *
+ * Every one is assigned to `FAKE_ACCOUNT`, the user, as the search used to
+ * return only the user's work. A test makes one unassigned (`assignee: null`)
+ * or a teammate's by rewriting `fields.assignee`; the JQL is not read, so
+ * whose a task is decides what the adapter keeps.
  */
 function buildIssues(count) {
   const statuses = [
@@ -111,7 +116,8 @@ function buildIssues(count) {
     key: `FAKE1-${i + 1}`,
     fields: {
       summary: i === count - 1 ? `Fake issue ${i + 1} (LAST)` : `Fake issue ${i + 1}`,
-      status: statuses[i % statuses.length]
+      status: statuses[i % statuses.length],
+      assignee: { ...FAKE_ACCOUNT }
     }
   }));
 }
@@ -342,6 +348,24 @@ function createFakeJira(overrides = {}) {
           return;
         }
         send(200, { expand: 'transitions', transitions: TRANSITIONS });
+        return;
+      }
+
+      // Assigning an issue, as "Assign to me" does: 204 and no body. An
+      // `accountId` of null unassigns, as on Jira.
+      const assignee = /^\/rest\/api\/3\/issue\/([^/]+)\/assignee$/.exec(url.pathname);
+      if (assignee && req.method === 'PUT') {
+        const found = issues.find(i => String(i.id) === assignee[1] || i.key === assignee[1]);
+        if (!found) {
+          send(404, { errorMessages: ['Issue does not exist or you do not have permission to see it.'], errors: {} });
+          return;
+        }
+        const accountId = body && typeof body === 'object' ? body.accountId : undefined;
+        found.fields.assignee = !accountId
+          ? null
+          : accountId === FAKE_ACCOUNT.accountId ? { ...FAKE_ACCOUNT } : { accountId, displayName: accountId };
+        res.writeHead(204);
+        res.end();
         return;
       }
 

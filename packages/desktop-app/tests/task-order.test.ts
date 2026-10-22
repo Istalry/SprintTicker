@@ -82,6 +82,47 @@ describe('orderTasksForSelection', () => {
     expect(orderTasksForSelection([])).toEqual([]);
   });
 
+  it('OrderTasksForSelection_EveryOwner_FollowsTheUsersOrder', () => {
+    // Chosen by the user on 2026-10-16: their own work, then free work, then
+    // a teammate's in progress, then finished work.
+    const owned = (id: string, status: TaskDTO['status'], ownership?: TaskDTO['ownership']) =>
+      ({ id, status, ownership });
+    const ordered = orderTasksForSelection([
+      owned('other-done', 'done', 'other'),
+      owned('free-done', 'done', 'unassigned'),
+      owned('mine-done', 'done'),
+      owned('other-todo', 'todo', 'other'),
+      owned('other-busy', 'in_progress', 'other'),
+      owned('free-busy', 'in_progress', 'unassigned'),
+      owned('free-todo', 'todo', 'unassigned'),
+      owned('mine-todo', 'todo', 'mine'),
+      owned('mine-busy', 'in_progress')
+    ]);
+
+    expect(ids(ordered)).toEqual([
+      'mine-busy', 'mine-todo', 'free-todo', 'free-busy', 'other-busy', 'mine-done', 'free-done', 'other-todo', 'other-done'
+    ]);
+  });
+
+  it('OrderTasksForSelection_OwnerBeatsPriority', () => {
+    // An urgent free task still comes after the user's own work.
+    const ordered = orderTasksForSelection([
+      { id: 'urgent-free', status: 'todo', priorityRank: 0, ownership: 'unassigned' as const },
+      { id: 'low-mine', status: 'todo', priorityRank: 4 }
+    ]);
+
+    expect(ids(ordered)).toEqual(['low-mine', 'urgent-free']);
+  });
+
+  it('OrderTasksForSelection_UnknownOwner_SortsLast', () => {
+    const ordered = orderTasksForSelection([
+      { id: 'x', status: 'todo' as const, ownership: 'team' as never },
+      { id: 'd', status: 'done' as const }
+    ]);
+
+    expect(ids(ordered)).toEqual(['d', 'x']);
+  });
+
   it('OrderTasksForSelection_Null_ThrowsArgumentNullException', () => {
     expect(() => orderTasksForSelection(null as never)).toThrow(ArgumentNullException);
   });

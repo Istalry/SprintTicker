@@ -10,6 +10,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { ONLY_PROJECTS_WITH_TASKS_KEY } from '../src/shared/project-filter';
+import { TASK_VISIBILITY_KEY } from '../src/shared/task-visibility';
 import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
@@ -1107,6 +1108,99 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       });
     });
 
+    describe('whose tasks the picker shows', () => {
+      let rows: Array<[string, string, string | undefined]>;
+
+      /** Every task row the picker offers, top to bottom, as [title, row 1]. */
+      function taskRows(count: number): Array<[string, string | undefined]> {
+        openPicker();
+        press('ok');
+        for (let i = 1; i < count; i++) press('rotate_right');
+        return rows.filter(([stage]) => stage === 'TASK').map(([, label, description]) => [label, description]);
+      }
+
+      beforeEach(() => {
+        rows = [];
+        renderer.renderTaskSelection = ((stage: string, label: string, options?: { description?: string }) => {
+          rows.push([stage, label, options?.description]);
+        }) as never;
+        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Team' });
+        // Saved in the reverse of the order the user chose, so the order
+        // below is the picker's and not the store's.
+        taskRepo.saveTask({ id: 'T7', projectId: 'P1', key: 'T-7', title: 'Free done', status: 'done', ownership: 'unassigned' });
+        taskRepo.saveTask({ id: 'T6', projectId: 'P1', key: 'T-6', title: 'Mine done', status: 'done' });
+        taskRepo.saveTask({
+          id: 'T5', projectId: 'P1', key: 'T-5', title: 'Alice busy', status: 'in_progress',
+          ownership: 'other', assigneeName: 'Alice Martin'
+        });
+        taskRepo.saveTask({ id: 'T4', projectId: 'P1', key: 'T-4', title: 'Free started', status: 'in_progress', ownership: 'unassigned' });
+        taskRepo.saveTask({ id: 'T3', projectId: 'P1', key: 'T-3', title: 'Free todo', status: 'todo', ownership: 'unassigned' });
+        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'T-2', title: 'Mine todo', status: 'todo' });
+        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'T-1', title: 'Mine busy', status: 'in_progress' });
+      });
+
+      it('HandleHardwareInput_DefaultVisibility_ListsMineThenFreeWorkAndNoTeammatesTasks', () => {
+        expect(taskRows(6).map(([title]) => title)).toEqual([
+          'Mine busy', 'Mine todo', 'Free todo', 'Free started', 'Mine done', 'Free done'
+        ]);
+      });
+
+      it('HandleHardwareInput_TeammatesShown_PutsTheirWorkInProgressAfterTheFreeWork', () => {
+        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: true, others: true });
+
+        expect(taskRows(7).map(([title]) => title)).toEqual([
+          'Mine busy', 'Mine todo', 'Free todo', 'Free started', 'Alice busy', 'Mine done', 'Free done'
+        ]);
+      });
+
+      it('HandleHardwareInput_TaskNotTheUsers_SaysWhoseAfterTheKey', () => {
+        // Row 1 holds the key and about a word: the owner comes next, so it
+        // is not the part the width cuts off.
+        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: true, others: true });
+
+        const byTitle = new Map(taskRows(7));
+
+        expect(byTitle.get('Mine busy')).toBe('T-1');
+        expect(byTitle.get('Free todo')).toBe('T-3 free');
+        expect(byTitle.get('Alice busy')).toBe('T-5 @Alice');
+      });
+
+      it('HandleHardwareInput_UnassignedHidden_ListsTheUsersOwnWorkOnly', () => {
+        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: false, others: false });
+
+        expect(taskRows(3).map(([title]) => title)).toEqual(['Mine busy', 'Mine todo', 'Mine done']);
+      });
+
+      it('HandleHardwareInput_ProjectWithOnlyFreeWork_IsListedWhileFreeWorkIsShown', () => {
+        // "Only projects with tasks" counts what the lists would show.
+        const shown: string[] = [];
+        renderer.renderTaskSelection = ((stage: string, label: string) => {
+          if (stage === 'PROJECT') shown.push(label);
+        }) as never;
+        projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Bugs' });
+        projectRepo.saveProject({ id: 'P3', key: 'P3', name: 'Theirs' });
+        taskRepo.saveTask({ id: 'B1', projectId: 'P2', key: 'B-1', title: 'Crash', status: 'todo', ownership: 'unassigned' });
+        taskRepo.saveTask({
+          id: 'C1', projectId: 'P3', key: 'C-1', title: 'Bob busy', status: 'in_progress', ownership: 'other', assigneeName: 'Bob'
+        });
+
+        openPicker();
+        press('rotate_right');
+        press('rotate_right');
+        // By key: Team (P1), then Bugs (P2); Theirs holds only a teammate's work.
+        expect(shown).toEqual(['Team', 'Bugs', 'Bugs']);
+
+        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: false, others: true });
+        press('back');
+        shown.length = 0;
+        openPicker();
+        press('rotate_right');
+        press('rotate_right');
+        // Bugs gone with the free work; Theirs back with the teammates'.
+        expect(shown).toEqual(['Team', 'Theirs', 'Theirs']);
+      });
+    });
+
     describe('only projects with tasks', () => {
       let shownProjects: string[];
 
@@ -1206,6 +1300,65 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
    * screen, or when the press means "take me to the app" rather than an
    * action on the bar.
    */
+  describe('the picker under Away', () => {
+    // Away outranks the picker, and the picker is never queued: START under
+    // Away left it open and unseen, and when Away ended the display went to
+    // the clock (or Unity, or Lunch) while the wheel moved through it blind.
+    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
+    let priority: PriorityPreemptionEngine;
+
+    beforeEach(() => {
+      priority = new PriorityPreemptionEngine(new SettingsRepository(dbConn));
+      renderer = new DisplayRenderer(driver, priority);
+      priority.setRenderer(renderer);
+      decoder.setRenderer(renderer);
+      decoder.setPriorityEngine(priority);
+      priority.setUserMode('AWAY');
+      renderer.setContextMode('AWAY');
+    });
+
+    afterEach(() => {
+      decoder.dispose();
+      renderer.dispose();
+    });
+
+    it('AwayEnds_PickerStillOpen_ItComesBack', () => {
+      press('start');
+      expect(priority.getActiveLockEventName()).toBe('awayModePriority');
+
+      priority.setUserMode('WORK');
+
+      expect(priority.getActiveLockEventName()).toBe(BAR_MENU_EVENT);
+    });
+
+    it('AwayEnds_PickerClosedMeanwhile_TheModeHasTheDisplay', () => {
+      press('start');
+      press('back');
+
+      priority.setUserMode('WORK');
+
+      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
+    });
+
+    it('Dispose_ThePickerNoLongerReclaims', () => {
+      press('start');
+      decoder.dispose();
+
+      priority.setUserMode('WORK');
+
+      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
+    });
+
+    it('SetPriorityEngine_Again_TheOldEngineForgetsThePicker', () => {
+      decoder.setPriorityEngine(new PriorityPreemptionEngine(new SettingsRepository(dbConn)));
+      press('start');
+
+      priority.setUserMode('WORK');
+
+      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
+    });
+  });
+
   describe('the bar during lunch', () => {
     // START with nothing running opens the picker. Its lock had no rule, so it
     // took the default 50 and was queued under Lunch's 95: a picker nobody

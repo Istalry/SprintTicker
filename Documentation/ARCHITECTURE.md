@@ -106,6 +106,14 @@ still reach the dashboard alone. Picking a task from the tray or the mini timer
 goes through `openTaskPickerInMainWindow`, which sends the picker's hardware
 action on `input:on-hardware-event`.
 
+The mini timer's icon is the bar's. `DisplayRenderer` keeps the icon of the
+frame it paints (`frameScreenIcon`, beside `frameIcon` and consumed with it in
+`transmitFrame`): the bitmap a screen draws at the left, with its top row as
+the label, or for a full-panel scene the icon in `SCENE_ICONS` with the
+scene's title. The firmware's clock has none. It is pushed on its own channel,
+`display:on-screen-icon`, and only when it changes: the display state goes out
+on every tick and every scene frame.
+
 ---
 
 ## 2. Process boundaries
@@ -163,13 +171,24 @@ start.
 
 A worklog belongs to the day it began (`started_at_utc`), as Jira's `started`
 and OpenProject's `spentOn` file it; Work History and the end-of-day summary
-used to file it on its stop.
+used to file it on its stop. So a session never ends as a worklog across local
+midnight: `finishSession` splits its time with `splitWork`
+(`shared/work-split.ts`) into one worklog per local day, and another after
+each pause of `splitPauseMinutes` or more (a schedule setting, 15 by default,
+0 for never), each starting at the first instant worked in it. The split is
+made at the end, never by a timer, so the session's start -- which the
+forgotten-session check reads -- never moves, and nothing unconfirmed is sent.
+The pieces add up to the session's total exactly, a clock set back during a
+pause included; a piece shorter than the provider's floor is folded into its
+longer neighbour (`mergeShortPieces`). Each piece is a worklog and a queue row
+of its own, with its own marker, so a resend or a correction names one entry.
+`getSessionDays()` gives the window the same split for a stop now.
 
 Ad-hoc work is told apart by its id (`adhoc_` prefix, `isAdHocTaskId`), not by
 the caller's flag: every list that offers an ad-hoc row again starts it as an
-ordinary task. An ad-hoc session never moves a remote status and is never
-queued -- its worklog stays local -- and finishing it as done marks the row
-done here only.
+ordinary task. An ad-hoc session never moves a remote status, and finishing
+it as done marks the row done here only. It is never queued: its worklog
+stays local.
 
 ### Provider layer — `src/main/providers/`
 
@@ -212,10 +231,21 @@ uncoordinated flushers used to race here and double-bill (F-02, F-03).
 **The tracked task survives the prune.** The engine names it
 (`protectTasks`), and a sync that no longer finds it -- reassigned, closed or
 moved -- keeps it and its project, records it as unlisted, and tells the
-engine, which re-sends the session with `taskUnlisted`. It used to be retired
+engine, which re-sends the session with `taskUnlisted`. A task reassigned
+while it stays in progress is still found, as a teammate's: its ownership
+says so, the session reads `reassigned` without asking the provider, and the
+engine re-sends it once when the owner changes. A task nobody owned that
+someone took between the pick and the start reads the same way: the engine's
+claim (`claimTask`, after the session is down) finds it taken, records it as
+theirs, and re-sends the session at once, with `taskOwnerName`; it also hands
+`onTaskClaim` a report, which `ProviderEventService` turns into a toast and a
+**TAKEN** banner. It used to be retired
 mid-session, deleted outright when no time had been logged on it yet, so
 finishing it as done found no row and did nothing. The sync after the session
-ends retires it as usual.
+ends retires it as usual. Why it left (`getTaskStanding`, `taskLeftBecause`)
+is asked at every sync while it is unlisted, and the session re-sent only
+when the answer changes: asked once, a task reassigned and then closed kept
+"reassigned", and FINISH sent its transition to a closed work package.
 
 A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
 **coalesces**, setting a flag so the new row drains before the current pass
@@ -275,10 +305,15 @@ Two rules, both scars:
   *set aside*, redrawn by `DisplayRenderer.resumeScreen` from the last screen
   drawn under that lock; a **background state** registered with
   `addBackgroundScreen`, which redraws what it is now; and only then the
-  user's mode. Releasing a lock that is set aside rather than held removes
+  user's mode. Background states are offered highest-ranked first, and one
+  ranked above everything queued or set aside comes before the queue.
+  Releasing a lock that is set aside rather than held removes
   it from that list. The tracker and the mode locks are never set aside:
   `setContextMode` draws them as they are now.
-- **Unity is the background state.** Its compile and Play Mode screens last
+- **Unity and the bar's picker are the background states.** The picker,
+  registered by `InputDecoder`, comes back while it is open: refused under
+  Away and never queued, it would otherwise be open and unseen once Away
+  ended. Unity's compile and Play Mode screens last
   as long as an editor's state, so they are reclaimed rather than resumed:
   after a banner, a scene, Lunch, or another editor's end, the display shows
   what the editors are doing by then. Operations are tracked per editor
@@ -402,8 +437,10 @@ bar on 2026-10-05. One that finds the panel known to be empty sends nothing.
 **After an outage the renderer redraws; the driver never replays.** A failed
 ping, or a request that got no answer between two good pings, means the panel
 may hold anything: an earlier screen, the firmware's own after a reboot, or a
-screen whose clear failed while the bar was away. When the bar answers again
-the driver forgets the ledger and the pending frame and emits `reconnected`;
+screen whose clear failed while the bar was away. The driver forgets the
+ledger at the loss, so what requests answered after the bar came back still
+holds; when a ping sees it again it drops the pending frame and emits
+`reconnected`;
 `DisplayRenderer` then draws the screen of whoever holds the display
 (`resumeScreen`), or the user's mode, with its animation restarted. Replaying
 the pending frame put BUILDING 40% back on a bar whose build had long ended.
@@ -485,7 +522,9 @@ and on the bar under `resumePromptPriority`; the entry is kept until answered,
 so a restart asks again.
 
 The service also listens to the engine. A session going TRACKING during lunch
-is the user working through it: the stored resume is dropped,
+-- a new session, or one resumed; not the engine's tick, which tells its
+listeners every second while a session runs and used to skip lunch whenever
+one did -- is the user working through it: the stored resume is dropped,
 `lunch_skipped_date` stops the next check entering Lunch again that day, and
 the mode goes back to WORK. "During lunch" includes the lunch hours in WORK,
 after Away ended and before the next check entered Lunch. `exitLunchMode`
@@ -495,7 +534,10 @@ apart from the user's.
 Joining the stand-up (`joinStandup`, from `schedule:join-standup` or OK on the
 bar's prompt) switches the timer to the ad-hoc **Daily Standup** task -- one
 row, found by title (`startNamedAdHocTask`) -- under the prompt's lock, then
-releases it, which draws once. The task it stopped is `standup_resume`, with
+releases it, which draws once: the session screen, with the meeting icon in
+place of the stopwatch, animated by the device like the stopwatch
+(`ANIMATED_ICONS.meeting`). The prompt's meeting scene used to stay, and joining
+looked like nothing happening. The task it stopped is `standup_resume`, with
 the stand-up's session id. When that session ends, the task restarts by the
 lunch rules, asking first if it left the list (`after: 'standup'`); any other
 session drops the entry. The restart is queued as a microtask, because it is
@@ -503,6 +545,31 @@ made from the engine's listener: started there, the listeners after this one
 would still be handed the ended session, and the renderer would draw the idle
 clock over the restarted task. A stand-up stopped by lunch hands lunch the task
 before it, not the meeting.
+
+Only working days have ceremonies. `WorkingCalendar` answers which days are:
+the schedule's `workingDays` (Monday to Friday by default, never empty), less
+the holidays the provider lists (`getNonWorkingDays`). Those are read at most
+once a day, over the range from last week's Monday to three weeks ahead, and
+kept in the `non_working_days` setting; a failed read keeps the previous days
+and tries again at the next check, so an outage never turns a known holiday
+into a working day. The stand-up, entering Lunch and the wrap-up are gated on
+it; leaving Lunch and Away is not, so a mode never outlives its hours.
+
+The read is asynchronous and the check is not: the first check of a day
+answers from the days read the day before. That is safe because the first
+check of a day comes at midnight when the app runs overnight, and at start
+it passes over anything already due; a holiday added the same morning is the
+one case it misses.
+
+The wrap-up of the week's last working day closes the week (`closeWeek`):
+the time logged Monday to that day (`TimeTrackingEngine.getLoggedSeconds`)
+goes to the window as `WeekEndedDTO` (`schedule:on-week-ended`), is kept in
+`week_ended_notice` until dismissed, and is handed to `onWeekEnded`
+listeners -- the hook a timesheet client attaches to. `last_week_closed`
+holds the Monday of the last week closed: the first check of a working day
+in WORK closes the week before if that wrap-up was missed, and a week is
+never closed twice. A first run sets it without closing anything, and a week
+with no working day is marked closed without a notice.
 
 ### `PresenceMonitor` and `ForgottenSessionService` — `src/main/services/`
 
@@ -585,7 +652,7 @@ testing runs against your actual worklogs.
 | Table | Holds |
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app -- which the sync never deletes -- or `local`, the old default, meaning not known. Keys need not be unique |
-| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text |
+| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text; `ownership` is `mine`, `unassigned` or `other`, with `assignee_name` on a teammate's (migration 12) |
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
@@ -765,7 +832,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2154 tests across 106 files, in two projects: `main` in Node for
+Vitest, 2456 tests across 121 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

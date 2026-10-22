@@ -372,6 +372,48 @@ describe('ProviderEventService', () => {
     expect(toasts[0].title).toBe('Sending time to your provider stopped');
     expect(toasts[0].body).toMatch(/^Your provider refused/);
   });
+
+  describe('a task nobody owned, taken on start', () => {
+    const report = { sessionId: 'S-1', taskId: '20002', taskKey: 'TEAM-2', taskTitle: 'Crash', providerId: 'jira' };
+
+    it('ReportTaskClaim_TakenMeanwhile_ToastsAndShowsTakenAndWhoOnTheBar', () => {
+      // Even with toasts and the bar switched off for events: this is about
+      // the user's own start.
+      service.saveSettings({ ...DEFAULT_PROVIDER_EVENT_SETTINGS, showToasts: false, showOnBar: false });
+
+      const shown = service.reportTaskClaim({ ...report, claim: { outcome: 'taken', assigneeName: 'Bob Stone' } }, 'Jira');
+
+      expect(shown).toEqual({ toast: true, bar: true });
+      expect(toasts).toEqual([{
+        title: 'TEAM-2 is taken',
+        body: 'Bob Stone took it before you started. It is still theirs; your time is logged all the same.'
+      }]);
+      expect(banners).toEqual([{ appName: 'Jira', title: 'TAKEN', body: 'Bob Stone' }]);
+    });
+
+    it('ReportTaskClaim_NoBar_ToastsOnly', () => {
+      barEnabled = false;
+
+      expect(service.reportTaskClaim({ ...report, claim: { outcome: 'taken', assigneeName: 'Bob' } }, 'Jira'))
+        .toEqual({ toast: true, bar: false });
+      expect(banners).toHaveLength(0);
+    });
+
+    it('ReportTaskClaim_Failed_ToastsThatItWasNotAssigned', () => {
+      expect(service.reportTaskClaim({ ...report, error: 'HTTP 403' }, 'OpenProject')).toEqual({ toast: true, bar: false });
+
+      expect(toasts[0].title).toBe('TEAM-2 was not assigned to you');
+      expect(toasts[0].body).toMatch(/^OpenProject could not assign it to you\. The session runs/);
+      expect(banners).toHaveLength(0);
+    });
+
+    it('ReportTaskClaim_AssignedOrAlreadyMine_SaysNothing', () => {
+      expect(service.reportTaskClaim({ ...report, claim: { outcome: 'assigned' } }, 'Jira')).toEqual({ toast: false, bar: false });
+      expect(service.reportTaskClaim({ ...report, claim: { outcome: 'already_mine' } }, 'Jira')).toEqual({ toast: false, bar: false });
+      expect(toasts).toHaveLength(0);
+      expect(banners).toHaveLength(0);
+    });
+  });
 });
 
 describe('provider event settings and text', () => {

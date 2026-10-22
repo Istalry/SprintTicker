@@ -1,6 +1,7 @@
 import { DatabaseConnection } from '../database-connection';
 import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
 import { WorklogCorrectionDTO, WorklogSyncState } from '../../../shared/worklog-correction';
+import { hasTaskPage } from '../../../shared/task-page';
 
 export interface WorklogRecord {
   id: string;
@@ -16,6 +17,8 @@ export interface WorklogRecord {
   taskTitle?: string;
   /** Where it stands with its provider. Read-only; filled on reads. */
   syncState?: WorklogSyncState;
+  /** Whether its task has a page on a provider (`hasTaskPage`). Read-only; filled on reads. */
+  hasTaskPage?: boolean;
 }
 
 /** A worklog row joined to its task. */
@@ -29,6 +32,8 @@ interface WorklogRow {
   created_at_utc: string;
   task_key: string | null;
   task_title: string | null;
+  task_project_id: string | null;
+  project_provider_id: string | null;
   create_status: SyncQueueStatus | null;
   correction_status: SyncQueueStatus | null;
 }
@@ -43,6 +48,7 @@ interface WorklogRow {
  */
 const SELECT_WORKLOGS = `
   SELECT w.*, t.key AS task_key, t.title AS task_title,
+         t.project_id AS task_project_id, p.provider_id AS project_provider_id,
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation = 'CREATE'
            ORDER BY q.rowid DESC LIMIT 1) AS create_status,
@@ -50,7 +56,8 @@ const SELECT_WORKLOGS = `
            WHERE q.worklog_id = w.id AND q.operation <> 'CREATE' AND q.status <> 'SYNCED'
            ORDER BY q.rowid DESC LIMIT 1) AS correction_status
   FROM worklogs w
-  LEFT JOIN tasks t ON t.id = w.task_id`;
+  LEFT JOIN tasks t ON t.id = w.task_id
+  LEFT JOIN projects p ON p.id = t.project_id`;
 
 /** Where a worklog stands, from its send and its latest open correction. */
 function syncStateOf(createStatus: SyncQueueStatus | null, correctionStatus: SyncQueueStatus | null): WorklogSyncState {
@@ -80,6 +87,7 @@ function toRecord(r: WorklogRow): WorklogRecord {
   if (r.task_key !== null) record.taskKey = r.task_key;
   if (r.task_title !== null) record.taskTitle = r.task_title;
   record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null);
+  record.hasTaskPage = hasTaskPage(r.task_project_id, r.project_provider_id);
   return record;
 }
 

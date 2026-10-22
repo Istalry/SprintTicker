@@ -14,6 +14,7 @@ import { isProviderRequestError } from '../src/main/providers/provider-errors';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import { ProviderEventService } from '../src/main/services/provider-event-service';
 import { ToastRequest } from '../src/main/services/toast-presenter';
+import { WorkingCalendar } from '../src/main/services/working-calendar';
 
 /**
  * End-to-end coverage of the provider layer over a real socket.
@@ -40,6 +41,8 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
   let server: ReturnType<typeof createFakeOpenProject>['server'];
   let requests: ReturnType<typeof createFakeOpenProject>['requests'];
   let timeEntries: ReturnType<typeof createFakeOpenProject>['timeEntries'];
+  let nonWorkingDays: ReturnType<typeof createFakeOpenProject>['nonWorkingDays'];
+  let assignees: ReturnType<typeof createFakeOpenProject>['assignees'];
   let baseUrl: string;
 
   let dbConn: DatabaseConnection;
@@ -58,6 +61,8 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     server = fake.server;
     requests = fake.requests;
     timeEntries = fake.timeEntries;
+    nonWorkingDays = fake.nonWorkingDays;
+    assignees = fake.assignees;
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
     baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -73,6 +78,7 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     taskRepo = new TaskRepository(dbConn);
     worklogRepo = new WorklogRepository(dbConn);
     requests.length = 0;
+    assignees.clear();
   });
 
   afterEach(() => {
@@ -87,6 +93,33 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     const manager = new ProviderManager(settingsRepo);
     return new OfflineSyncWorker(manager, worklogRepo, projectRepo, taskRepo);
   }
+
+  it('WorkingCalendar_ThroughTheWholeStack_AHolidayIsNotWorked', async () => {
+    // Settings, manager, adapter and HTTP, as main wires the calendar.
+    settingsRepo.setSetting(ProviderSettingKey.OP_DOMAIN, baseUrl);
+    settingsRepo.setSetting(ProviderSettingKey.OP_API_KEY, 'any-key-works');
+    const manager = new ProviderManager(settingsRepo);
+    await new Promise(resolve => setImmediate(resolve));
+    nonWorkingDays.push({ date: '2026-10-16', name: 'Founders day' });
+    const calendar = new WorkingCalendar(settingsRepo, (from, to) => manager.getNonWorkingDays(from, to), () => new Date(2026, 9, 14, 9));
+
+    await calendar.refresh();
+
+    expect(calendar.isWorkingDay('2026-10-16')).toBe(false);
+    expect(calendar.lastWorkingDayOfWeek('2026-10-14')).toBe('2026-10-15');
+    nonWorkingDays.length = 0;
+  });
+
+  it('WorkingCalendar_OpenProjectNotSetUp_TheWeekdaysDecideQuietly', async () => {
+    const manager = new ProviderManager(settingsRepo);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const calendar = new WorkingCalendar(settingsRepo, (from, to) => manager.getNonWorkingDays(from, to), () => new Date(2026, 9, 14, 9));
+
+    await calendar.refresh();
+
+    expect(calendar.isWorkingDay('2026-10-16')).toBe(true);
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Could not read the days off'), expect.anything());
+  });
 
   it('CorrectingAWorklog_ThroughTheWholeStack_ReachesTheServer', async () => {
     // Database, manager, worker, adapter and HTTP, all real: a worklog sent,
@@ -150,6 +183,20 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     expect(tasks).toHaveLength(EXPECTED_TASKS_PER_PROJECT);
     // Page three of three, so the walk did not stop early.
     expect(tasks.map(t => t.key)).toContain('OP-7047');
+  });
+
+  it('SyncTasksAndProjects_WorkNobodyHasAndATeammates_KeepsWhatTheDefaultScopeKeeps', async () => {
+    // No In Progress status configured: a teammate's work cannot be asked
+    // for, and is left out rather than all of it fetched.
+    assignees.set(7002, null);
+    assignees.set(7003, { id: 12, name: 'Alice Martin' });
+    const worker = buildWorker(baseUrl);
+
+    await worker.syncTasksAndProjects();
+
+    expect(taskRepo.getTaskById('7001')?.ownership).toBeUndefined();
+    expect(taskRepo.getTaskById('7002')?.ownership).toBe('unassigned');
+    expect(taskRepo.getTaskById('7003')).toBeNull();
   });
 
   it('SyncTasksAndProjects_MultiPageRemote_ActuallyRequestsEveryPage', async () => {
@@ -237,6 +284,7 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
 
   beforeEach(() => {
     requests.length = 0;
+    fake.timeEntryFilters.mode = 'entity';
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
   });
 
@@ -258,6 +306,33 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
     const id = await sent('OP-102', '[#find0001]');
 
     expect(await provider.findWorklog('OP-102', START, '[#find0001]')).toBe(id);
+  });
+
+  /**
+   * OpenProject 17.9 has no `work_package` filter on time entries -- time can
+   * be logged on a meeting -- and the search for a resend answered 400 on a
+   * real 17.9 instance (2026-10-16): every CREATE retried there would have
+   * failed rather than finding its entry.
+   */
+  it('FindWorklog_InstanceWithEntityFilters_FindsTheEntryByEntity', async () => {
+    const id = await sent('OP-104', '[#entity01]');
+
+    // The fake refuses `work_package` here, as 17.9 does.
+    expect(await provider.findWorklog('OP-104', START, '[#entity01]')).toBe(id);
+  });
+
+  it('FindWorklog_InstanceBeforeEntityFilters_FallsBackToWorkPackage', async () => {
+    fake.timeEntryFilters.mode = 'legacy';
+    const id = await sent('OP-105', '[#legacy01]');
+
+    expect(await provider.findWorklog('OP-105', START, '[#legacy01]')).toBe(id);
+  });
+
+  it('FindWorklog_RefusedOtherwise_ThrowsWithoutTheFallback', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 403 }));
+
+    await expect(provider.findWorklog('OP-106', START, '[#broken01]')).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('FindWorklog_EntryOnAnotherDay_IsNotSearched', async () => {
@@ -301,6 +376,31 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
     arrange();
 
     expect(await provider.getTaskStanding('OP-108')).toBe(expected);
+  });
+
+  it('GetNonWorkingDays_AgainstTheServer_OnlyTheDaysInTheRange', async () => {
+    fake.nonWorkingDays.push(
+      { date: '2026-11-01', name: 'All Saints' },
+      { date: '2026-11-11', name: 'Armistice' },
+      { date: '2027-01-01', name: 'New Year' }
+    );
+
+    expect(await provider.getNonWorkingDays('2026-10-26', '2026-11-08')).toEqual(['2026-11-01']);
+    const asked = requests.find(r => r.pathname === '/api/v3/days/non_working');
+    expect(asked).toBeDefined();
+  });
+
+  it('GetNonWorkingDays_AcrossNewYear_AsksForTheRangeNotTheYear', async () => {
+    // Unfiltered, an instance answers the current year only.
+    fake.nonWorkingDays.length = 0;
+    fake.nonWorkingDays.push({ date: '2027-01-01', name: 'New Year' });
+
+    expect(await provider.getNonWorkingDays('2026-12-21', '2027-01-10')).toEqual(['2027-01-01']);
+  });
+
+  it('GetNonWorkingDays_NotSetUp_ThrowsNotConfigured', async () => {
+    await expect(new OpenProjectProvider().getNonWorkingDays('2026-10-01', '2026-10-31'))
+      .rejects.toSatisfy((err: unknown) => isProviderRequestError(err) && err.kind === 'not_configured');
   });
 
   it('UpdateWorklog_DeletedInOpenProject_IsAPermanentFailure', async () => {

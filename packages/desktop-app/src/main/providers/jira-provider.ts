@@ -13,7 +13,10 @@ import {
   WORKLOG_SEARCH_MARGIN_MS
 } from './provider-constants';
 import { TaskScope, TaskScopeValue, parseTaskScope } from '../../shared/task-scope';
+import { TaskOwnership, keptByDefaultScope, ownershipOf } from '../../shared/task-ownership';
 import { isJiraConfigured } from '../../shared/provider-settings';
+import { TaskClaim, UNNAMED_ASSIGNEE } from '../../shared/task-claim';
+import { isOpenableTaskPage } from '../../shared/task-page';
 
 /** What Jira Cloud returns from `/rest/api/3/project/search`. */
 interface JiraProjectPage {
@@ -34,6 +37,8 @@ interface JiraIssuePage {
       project?: { id?: string | number };
       status?: { name?: string; statusCategory?: { key?: string } };
       priority?: { name?: string } | null;
+      /** Null on an unassigned issue. */
+      assignee?: { accountId?: string; displayName?: string } | null;
     };
   }>;
   nextPageToken?: string;
@@ -286,7 +291,7 @@ export class JiraProvider implements ITaskProvider {
     if (!projectId) throw new ArgumentException('projectId is required to fetch tasks.');
 
     const jql = this.buildJql(projectId);
-    await this.authenticatedAccountId();
+    const me = await this.authenticatedAccountId();
     const collected: TaskDTO[] = [];
     let pageToken: string | undefined;
 
@@ -299,7 +304,8 @@ export class JiraProvider implements ITaskProvider {
       // custom fields that this then discards. The description is the one
       // heavy field asked for, and only its start is kept -- see
       // TASK_DESCRIPTION_MAX_CHARS.
-      url.searchParams.set('fields', 'summary,status,project,priority,description');
+      // The assignee says whose each task is; see task-ownership.ts.
+      url.searchParams.set('fields', 'summary,status,project,priority,description,assignee');
       if (pageToken) url.searchParams.set('nextPageToken', pageToken);
 
       const context = `Fetching Jira issues for project ${projectId}`;
@@ -337,6 +343,11 @@ export class JiraProvider implements ITaskProvider {
         if (priorityRank !== undefined) task.priorityRank = priorityRank;
         const description = clampDescription(adfToPlainText(issue.fields?.description));
         if (description) task.description = description;
+        const assignee = issue.fields?.assignee;
+        const ownership = ownershipOf(assignee?.accountId, me);
+        if (ownership !== TaskOwnership.MINE) task.ownership = ownership;
+        if (ownership === TaskOwnership.OTHER && assignee?.displayName) task.assigneeName = assignee.displayName;
+        if (this._taskScope === TaskScope.ASSIGNED_TO_ME && !keptByDefaultScope(task)) continue;
         collected.push(task);
       }
 
@@ -433,7 +444,9 @@ export class JiraProvider implements ITaskProvider {
 
     const clauses = [`project = ${JiraProvider.quoteJqlValue(projectId)}`, 'statusCategory != Done'];
     if (this._taskScope === TaskScope.ASSIGNED_TO_ME) {
-      clauses.push('assignee = currentUser()');
+      // The user's work, what nobody has taken, and a teammate's task while
+      // it is in progress -- keptByDefaultScope, as JQL.
+      clauses.push('(assignee = currentUser() OR assignee is EMPTY OR statusCategory = "In Progress")');
     }
     return `${clauses.join(' AND ')} ORDER BY updated DESC`;
   }
@@ -584,6 +597,47 @@ export class JiraProvider implements ITaskProvider {
       if (err instanceof ProviderRequestError && err.status === 404) return 'gone';
       throw err;
     }
+  }
+
+  /** `<site>/browse/<KEY>`: the key, which is what Jira's own links use. */
+  public getTaskPageUrl(task: Pick<TaskDTO, 'id' | 'key'>): string | null {
+    if (!isJiraConfigured(this._site, this._email, this._apiToken) || !task?.key) return null;
+    const base = this.getBaseUrl();
+    const url = `${base}/browse/${encodeURIComponent(task.key)}`;
+    return isOpenableTaskPage(url, base) ? url : null;
+  }
+
+  /**
+   * Assigns an issue nobody owns to the user. Jira has no conditional
+   * assignment, so the assignee is read just before: a read and a write
+   * apart is the narrowest window this API allows, and an issue taken in it
+   * is reassigned to the user -- which Jira's own "Assign to me" does too.
+   */
+  public async assignToMe(taskId: string): Promise<TaskClaim> {
+    this.requireConfigured();
+    if (!taskId) throw new ArgumentException('taskId is required to assign a task.');
+
+    const me = await this.authenticatedAccountId();
+    const issueUrl = `${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(taskId)}`;
+    const readContext = `Reading the assignee of ${taskId}`;
+    const res = await providerFetch(this.providerId, `${issueUrl}?fields=assignee`, { headers: this.headers() }, readContext, this._http);
+    const body = await this.readJson<{ fields?: { assignee?: JiraUser | null } }>(res, readContext);
+    const assignee = body.fields?.assignee;
+    if (assignee?.accountId === me) return { outcome: 'already_mine' };
+    if (assignee?.accountId) return { outcome: 'taken', assigneeName: assignee.displayName?.trim() || UNNAMED_ASSIGNEE };
+
+    await providerFetch(
+      this.providerId,
+      `${issueUrl}/assignee`,
+      {
+        method: 'PUT',
+        headers: { ...this.headers(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: me })
+      },
+      `Assigning ${taskId} to the user`,
+      this._http
+    );
+    return { outcome: 'assigned' };
   }
 
   /** Deletes a worklog. One already deleted in Jira answers 404, which is the outcome asked for. */

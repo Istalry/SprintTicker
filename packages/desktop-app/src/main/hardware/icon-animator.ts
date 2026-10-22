@@ -4,6 +4,9 @@ import { AnimationData } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
 import { ArgumentNullException } from '../../shared/dtos';
 
+/** What `drawn` is when nothing is known about the device's icon element. */
+const UNKNOWN = Symbol('unknown');
+
 /** The device element the animated icon is drawn as. One at a time, so one id. */
 export const ICON_ELEMENT_ID = FRONT_ELEMENT_IDS.ICON;
 
@@ -46,8 +49,15 @@ export class IconAnimator {
   private static readonly PREVIEW_MAX_FPS = 15;
 
   private desired: string | null = null;
-  /** What the device is believed to be showing; null for "no icon element". */
-  private drawn: string | null = null;
+  /**
+   * What the device is believed to be showing: an icon, null for none, or
+   * UNKNOWN after a reset. Unknown is not none: an icon whose removal failed
+   * while the bar was away is still playing when it comes back, and calling
+   * that "none" left a Unity hammer over the Away scene (stress seed 1026).
+   * Unknown, the next `show(null)` asks the driver to put the icon to rest,
+   * and the driver's ledger sends nothing when the panel is known to hold none.
+   */
+  private drawn: string | null | typeof UNKNOWN = null;
   private readonly uploaded = new Set<string>();
   /** Icons the device would not take. Not retried until `reset()`. */
   private readonly refused = new Set<string>();
@@ -85,13 +95,35 @@ export class IconAnimator {
   }
 
   /**
+   * Wants no icon, and leaves taking it down to a clear of the whole screen
+   * that is on its way: closing the screen takes the icon with it, at no cost.
+   * The icon is still believed drawn until {@link noteCleared} says the clear
+   * went through. A clear abandoned because a newer screen landed first --
+   * lunch drawn over the idle clock as it stopped the task -- leaves the icon
+   * playing, and the next `show()` then puts it to rest. Forgetting it here,
+   * as a reset did, left the stopwatch over the sandwich for the whole break
+   * (real bar, 2026-10-16).
+   */
+  public leaveToClear(): void {
+    if (this.desired !== null) {
+      this.desired = null;
+      this.restartPreview();
+    }
+  }
+
+  /** The screen was closed: whatever icon was drawn went with it. */
+  public noteCleared(): void {
+    this.drawn = null;
+  }
+
+  /**
    * Forgets what the device holds, after something changed it behind our back:
-   * a full clear, a reconnect, a device that may have rebooted and lost its
-   * assets. The next `show()` uploads and draws again, and icons refused before
-   * get another chance.
+   * a reconnect, a device that may have rebooted and lost its assets, a scene
+   * taking the panel. The next `show()` uploads and draws again, and icons
+   * refused before get another chance.
    */
   public reset(): void {
-    this.drawn = null;
+    this.drawn = UNKNOWN;
     this.uploaded.clear();
     this.refused.clear();
   }

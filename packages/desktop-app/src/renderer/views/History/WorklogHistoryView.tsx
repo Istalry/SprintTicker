@@ -5,6 +5,7 @@ import { WorklogSyncState } from '../../../shared/worklog-correction';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 import { formatClockTime } from '../../utils/formatters';
 import { EditWorklogModal } from '../../components/EditWorklogModal';
+import { TaskPageButton } from '../../components/TaskPageButton';
 
 /** How each sync state reads on a row, and what its tooltip adds. */
 const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: string }> = {
@@ -212,6 +213,7 @@ export const WorklogHistoryView: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-white">{log.taskKey ?? log.taskId}</span>
                     {log.taskTitle && <span className="text-text-secondary">{log.taskTitle}</span>}
+                    {log.hasTaskPage && <TaskPageButton taskId={log.taskId} taskKey={log.taskKey ?? log.taskId} />}
                     <span className="text-text-secondary">• {formatClockTime(new Date(log.startedAtUtc))}</span>
                   </div>
                   {log.comment && (

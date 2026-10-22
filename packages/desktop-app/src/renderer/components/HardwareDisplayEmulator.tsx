@@ -3,6 +3,7 @@ import { HardwareDisplayStateDTO, DisplayElementDTO } from '../../shared/dtos';
 import { DISPLAY_CONSTANTS } from '../../shared/render-constants';
 import { computeMatrixDotSize, MATRIX_GAP, MATRIX_FRAME_CHROME } from './emulator-scaling';
 import { useElementWidth } from '../hooks/useElementWidth';
+import { compositeImage, DecodedImage, ledCoreAlpha, ledLuminance } from './emulator-pixels';
 
 /**
  * Physical Hardware Display Emulator Component.
@@ -17,7 +18,8 @@ export const HardwareDisplayEmulator: React.FC = () => {
   const [displayState, setDisplayState] = useState<HardwareDisplayStateDTO | null>(null);
   const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  // Decoded once per data URL: the render loop runs every animation frame.
+  const imageCacheRef = useRef<Map<string, DecodedImage | null>>(new Map());
 
   // The matrix is sized from the space the layout leaves for it, rather than
   // dictating the header's width as it used to. The measured element is the
@@ -46,26 +48,38 @@ export const HardwareDisplayEmulator: React.FC = () => {
     return undefined;
   }, []);
 
-  // Pre-load images from displayState
+  // Decode the images in displayState into pixels; null until decoded.
   useEffect(() => {
     if (!displayState) return;
-    displayState.frontElements.forEach(el => {
-      if (el.type === 'image' && el.data) {
-        if (!imageCacheRef.current.has(el.data)) {
-          const img = new Image();
-          img.src = el.data;
-          imageCacheRef.current.set(el.data, img);
-        }
-      }
-    });
+    const cache = imageCacheRef.current;
+    // Animation frames arrive at 60 fps, each a new data URL: keep only the
+    // ones on screen now, or the cache grows for as long as a scene plays.
+    const current = new Set(displayState.frontElements.filter(el => el.type === 'image' && el.data).map(el => el.data as string));
+    for (const key of [...cache.keys()]) if (!current.has(key)) cache.delete(key);
+    for (const data of current) {
+      if (cache.has(data)) continue;
+      cache.set(data, null);
+      const img = new Image();
+      img.onload = () => {
+        const off = document.createElement('canvas');
+        off.width = img.width;
+        off.height = img.height;
+        const offCtx = off.getContext('2d');
+        if (!offCtx || !cache.has(data)) return;
+        offCtx.drawImage(img, 0, 0);
+        cache.set(data, { width: img.width, height: img.height, rgba: offCtx.getImageData(0, 0, img.width, img.height).data });
+      };
+      img.src = data;
+    }
   }, [displayState]);
 
   /**
    * Builds the 72x16 colour buffer from what main actually sent.
    *
-   * Only two element kinds reach here: 'rectangle', which is how
+   * Three element kinds reach here: 'rectangle', which is how
    * `canvasToEmulatorElements` ships a rasterised frame as one strip per colour
-   * run, and 'bitmap'. There is deliberately no text branch -- main rasterises
+   * run, 'bitmap', and 'image' -- an animation's frames, which light LEDs
+   * like the rest (see `compositeImage`). There is deliberately no text branch -- main rasterises
    * text into pixels through PixelCanvas, and a second implementation here
    * disagreed with it on font metrics and drew layouts the device never
    * produced. Confetti likewise arrives as real pixels; the emulator used to
@@ -102,6 +116,13 @@ export const HardwareDisplayEmulator: React.FC = () => {
         }
       }
     });
+    // Images last, over the rest, as the device stacks them: an animated
+    // icon's moving frames over its still one.
+    state.frontElements.forEach((el: DisplayElementDTO) => {
+      if (el.type !== 'image' || !el.data) return;
+      const decoded = imageCacheRef.current.get(el.data);
+      if (decoded) compositeImage(buffer, decoded, el.x, el.y);
+    });
 
     return buffer;
   };
@@ -132,20 +153,26 @@ export const HardwareDisplayEmulator: React.FC = () => {
           const pixelColor = pixelBuffer[r][c];
 
           if (pixelColor) {
-            // Lit LED Diode with Emissive Bloom
+            // Lit LED Diode with Emissive Bloom, as bright as its colour: a
+            // dim pixel is a dim LED, not a white one.
             ctx.shadowColor = pixelColor;
-            ctx.shadowBlur = 4;
+            ctx.shadowBlur = 4 * ledLuminance(pixelColor);
             ctx.fillStyle = pixelColor;
             ctx.beginPath();
             ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 2, 0, Math.PI * 2);
             ctx.fill();
 
-            // Inner High-Brightness Diode Core
+            // Inner High-Brightness Diode Core, for the bright colours only
             ctx.shadowBlur = 0;
-            ctx.fillStyle = '#FFFFFFFF';
-            ctx.beginPath();
-            ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 4, 0, Math.PI * 2);
-            ctx.fill();
+            const core = ledCoreAlpha(pixelColor);
+            if (core > 0) {
+              ctx.globalAlpha = core;
+              ctx.fillStyle = '#FFFFFFFF';
+              ctx.beginPath();
+              ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalAlpha = 1;
+            }
           } else {
             // Dark Unlit LED Socket Well
             ctx.shadowBlur = 0;
@@ -155,23 +182,6 @@ export const HardwareDisplayEmulator: React.FC = () => {
             ctx.fill();
           }
         }
-      }
-
-      // Draw loaded image overlays (e.g. PNG animations)
-      if (displayState) {
-        displayState.frontElements.forEach(el => {
-          if (el.type === 'image' && el.data) {
-            const img = imageCacheRef.current.get(el.data);
-            if (img && img.complete) {
-              // Draw image scaled to LED matrix grid
-              ctx.shadowBlur = 0;
-              ctx.globalAlpha = 1.0;
-              // Ensure crisp pixel art rendering
-              ctx.imageSmoothingEnabled = false;
-              ctx.drawImage(img, gap + el.x * cellSize, gap + el.y * cellSize, img.width * cellSize, img.height * cellSize);
-            }
-          }
-        });
       }
 
       animFrameRef.current = requestAnimationFrame(renderLoop);

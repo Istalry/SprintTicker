@@ -55,7 +55,8 @@ a remote provider is configured the app runs on local ad-hoc tasks. Completing
 the wizard saves the choice and immediately fetches your projects.
 
 The **ad-hoc task key** (default `MISC-1`) is the key your own ad-hoc tasks
-show — meetings, admin, anything without a ticket. Ad-hoc time stays in your
+show in the window — meetings, admin, anything without a ticket. The bar
+shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
 Work History and is **never sent** to Jira or OpenProject.
 
 **3️⃣ Unity plugin.** Optional. Skip it if you do not use Unity.
@@ -107,7 +108,10 @@ before are kept, and the bar's screens come back at once.
 
 A small window that stays above every other one and shows what the bar would:
 the task key and title, the elapsed time, and a coloured edge -- green while
-tracking, amber while paused, grey with nothing running. Open it with **Mini
+tracking, amber while paused, grey with nothing running. Beside them is the
+icon of whatever holds the bar: the stopwatch for your session, the gear while
+Unity compiles, an app's icon during its notification, the burger at lunch, a
+coffee cup while you are away. Hover it for what the bar says. Open it with **Mini
 Timer** in the top bar or **Show Mini Timer** in the tray menu.
 
 <p align="center">
@@ -202,11 +206,11 @@ ad-hoc time.
 > [!NOTE]
 > **Ad-hoc time stays on this machine.** It is in Work History like any other
 > time, but it is never sent to your provider, which has no ticket to put it
-> on. Finishing an ad-hoc task as done marks it done here only. The key it
-> shows is the one set in **Task Providers** (`MISC-1` by default).
+> on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in **Task Providers**
+> (`MISC-1` by default); the bar shows the task's name alone.
 
 <p align="center">
-  <img src="../docs/images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden and Pixel Forge, four tasks with their status">
+  <img src="../docs/images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
 </p>
 
 A task from Jira or OpenProject shows the start of its description under its
@@ -215,8 +219,8 @@ what it is about.
 
 🔎 **Only projects with tasks** -- the switch above the project list, on by
 default -- hides every project with no open task. A provider lists every
-project you can see, while the tasks it fetches are the ones assigned to you,
-so most projects held nothing to pick. A project is listed again as soon as it
+project you can see, while the tasks it fetches are yours and the team's free
+or ongoing work, so most projects held nothing to pick. A project is listed again as soon as it
 has a task to do or in progress. The switch says how many projects it hides,
 and turning it off lists them all. It is one setting: the task picker shows
 the same switch, and the bar's own picker follows it. The project you have
@@ -227,19 +231,62 @@ listed, and the switch says so: *none has a task: showing all*. Ad-hoc work
 does not count for this, since an ad-hoc task stays in progress until you
 finish it as done.
 
+👥 **Unassigned and Teammates'** -- two switches above each task list --
+decide whose tasks it shows besides yours, which are always there.
+**Unassigned**, on by default, lists the open tasks nobody is assigned: work
+free to take. **Teammates'**, off by default, lists a teammate's task while it
+is in progress. A task that is not yours carries *Unassigned* or the
+assignee's name beside its key, and the switches say how many tasks they hide.
+They are one setting: the task picker, the Projects & Tasks panel and the
+bar's picker all follow it, and **Only projects with tasks** counts what they
+show -- a project holding only unassigned work is listed while unassigned work
+is. The task you are tracking stays listed whoever's it is. Every list keeps
+one order: yours in progress, yours to do, unassigned to do, unassigned in
+progress, teammates' in progress, then finished work -- yours, then
+unassigned.
+
+↗️ **Open a task on its provider** -- the small arrow beside a task's key in
+the session panel, the Projects & Tasks panel and Work History opens it in
+your browser, on Jira or OpenProject, to comment, attach a picture or read
+the thread. Ad-hoc work and projects made in SprintTicker have no page there,
+so no arrow.
+
+🙋 **Starting an unassigned task assigns it to you**, without asking, and then
+moves it to In Progress as for your own. If someone took it in the meantime,
+it stays theirs -- SprintTicker never takes a task away from anyone -- but
+your session runs and its time is logged: a Windows toast says *TEAM-2 is
+taken*, the bar shows **TAKEN** and their name, and the panel and the mini
+timer say **Assigned to** them. Marking it done then asks first, as for any
+task that is not yours. If the assignment fails, a toast says the task *was
+not assigned to you*; it is not retried, so assign it on the provider if it
+should be yours. Starting a teammate's task in progress assigns nothing and
+moves nothing.
+
 The cache is what the app and the bar read. If it looks stale, **Sync Now** in
 Task Providers refetches it.
 
 ### 📊 Work History
 
-Worklogs by date, with a daily summary and an end-of-day export.
+Worklogs by date, with a daily summary and an end-of-day export. The arrow
+beside a task opens it on Jira or OpenProject, as in the session panel and
+the Projects & Tasks panel.
 
 <p align="center">
   <img src="../docs/images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
 </p>
 
-**A worklog belongs to the day it began**, as Jira and OpenProject file it: a
-session from 17:00 to 01:00 is all on the first day.
+**A worklog never spans midnight.** Jira and OpenProject file a worklog under
+the day it began, so a session from 23:00 to 01:00 is logged as two: an hour
+on each day, each sent on its own. A session paused overnight and resumed in
+the morning puts the morning on the morning's day. The finish dialog, and the
+question about a session left running, say how the time will be filed before
+it is. The timer still shows the whole session.
+
+**A long pause starts a new worklog too**: 15 minutes or more by default,
+set under **Working Days** in Ceremonies (0 keeps one worklog per day). A
+shorter pause is a gap inside one worklog. A piece too short for your
+provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
+rather than lost.
 
 **A worklog is written locally whether or not the remote accepted it.** If Jira
 refused a 40-second session, the time is still in your history — it just is not
@@ -334,6 +381,14 @@ minutes, so a task added on the provider appears without changing views.
 Discovered Unity projects and plugin injection. Once installed, the bar shows
 compile progress, an "ON AIR" screen during Play Mode, and console exceptions.
 
+> [!NOTE]
+> **Nothing on the bar from Unity?** Open the editor's Console and search
+> for `sprintticker`. A line saying a script *will not be compiled because
+> it does not belong to any assembly definition file* is a plugin from before
+> this release; one compile with the current plugin linked fixes it. An
+> error from `SprintTicker.Unity.Editor` stops the project's Play Mode too,
+> so report it.
+
 <p align="center">
   <img src="../docs/images/app-unity.png" width="80%" alt="Unity Engine panel: connected editors, compile and Play Mode state, sound and alert settings">
 </p>
@@ -369,8 +424,8 @@ hardware controls below.
 
 During Lunch the bar shows a sandwich building itself beside **LUNCH**, on
 teal. In Away mode it shows a steaming coffee beside **AWAY**, on purple. At the
-stand-up prompt, and while you track a stand-up task, it shows three people
-round a table taking turns to speak, beside **MEETING**, on blue. Each loops
+stand-up prompt it shows three people round a table taking turns to speak,
+beside **MEETING**, on blue. Each loops
 for as long as the mode lasts, and the bar plays it itself, so it keeps moving
 when the computer is busy.
 
@@ -384,7 +439,9 @@ when the computer is busy.
 🗣️ **Joining the stand-up switches your timer to it.** Press **Join** in the
 window, or OK on the bar's prompt: the task you are tracking stops, its time
 logged, and a **Daily Standup** task starts -- one ad-hoc task, reused every
-day. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
+day. The bar then shows its timer, with three people at a table in place of
+the stopwatch, taking turns to speak, so you can see the prompt has gone and
+the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
 again, by the same rules as after lunch: once, that day, and only if you have
 not started something else meanwhile. A task that left your list during the
 meeting is asked about first: **Resume after the stand-up?** in the window,
@@ -402,7 +459,9 @@ you are back. Lunch never undoes what you do:
   there and then. Nothing restarts when it would have ended, even if you stop
   your task before that, and Lunch does not start again that day.
 - **The bar's picker works during lunch.** START or a click with nothing
-  running opens it over the sandwich; BACK brings the sandwich back.
+  running opens it over the sandwich; BACK brings the sandwich back. Opened
+  while Windows is locked, it waits under Away and shows as soon as you
+  unlock, ahead of Unity and any notification that came in meanwhile.
 - **A task that left your list over the break** -- reassigned, closed or
   moved -- is not restarted without asking. The window asks **Resume after
   lunch?**, and the bar shows **NOT YOURS / RESUME IT?**: OK resumes it, BACK
@@ -416,6 +475,25 @@ you are back. Lunch never undoes what you do:
 
 Lunch must start and end on the same day, start first: the Ceremonies panel
 says so and saves nothing until it does. A window across midnight never began.
+
+📆 **The ceremonies happen on working days only.** **Working Days**, at the
+top of the Ceremonies panel, picks them -- Monday to Friday until you change
+it, and at least one. On any other day nothing is prompted and Lunch does not
+start; your timer works as on any day, and what you track is logged as usual.
+With OpenProject connected, the holidays your instance lists (its
+*Non-working days*, under Administration) are days off too. They are read
+once a day; if the instance cannot be reached, the weekdays you picked decide
+alone, and a holiday already read stays one.
+
+🗓️ **The wrap-up of the week's last working day closes the week.** Usually
+that is Friday's; with Friday a holiday, or a four-day week, it is Thursday's.
+A notice in the corner of the window then shows the week and the time logged
+in it, a reminder to check it is all in before your timesheet is due. **Open
+Work History** takes you to it; either button dismisses the notice, which
+otherwise stays -- across a restart too -- until you do. Missed the wrap-up
+(a day off you had not entered, the laptop shut)? The next working day closes
+the week at its first check instead, and a week closes once, whatever happens.
+A week you did not work at all closes without a notice.
 
 ### 🔔 Notifications
 
@@ -529,6 +607,7 @@ Every screen, as the bar shows it:
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
 | <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **STOP**, **FINISH** or **DROP**, click to confirm. DROP asks first. |
+| <img src="../docs/images/bar-standup.png" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
 | <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE!"> | ✅ **DONE!** Finished and marked done. |
@@ -585,11 +664,14 @@ All of these are rebindable.
 into it, turn to choose a task, click to start. **BACK** leaves at any point.
 A blue folder means you are choosing a project, a checklist a task. The
 checklist also gives the task's status: grey for to do, amber for in progress,
-green for done, and a done task's name is dimmed. Tasks come in that order of
-use: in progress first, then to do, then done, and within each the most urgent
-first, by the priority set in Jira or OpenProject. Projects follow the **Only
-projects with tasks** switch of the Projects & Tasks panel. The second
-row shows the task key, followed by as much of its description as fits, and on
+green for done, and a done task's name is dimmed. Tasks come in the window's
+order -- yours in progress, yours to do, unassigned work, teammates' work in
+progress, finished work last -- and within each the most urgent first, by the
+priority set in Jira or OpenProject. Projects and tasks follow the **Only
+projects with tasks**, **Unassigned** and **Teammates'** switches of the
+Projects & Tasks panel. The second row shows the task key, then whose the task
+is when it is not yours -- `free` for nobody's, `@Alice` for a teammate's --
+followed by as much of its description as fits, and on
 its right where you are in the list -- `3/12` --
 with a thin line along the bottom whose bright segment slides from left to
 right as you scroll: at the far left there is nothing before, at the far right
@@ -635,7 +717,7 @@ next sync brings them up to date.
 </details>
 
 <details>
-<summary>🔀 <b>The task I am tracking says "No longer assigned to you" or "Closed on the provider"</b></summary>
+<summary>🔀 <b>The task I am tracking says "No longer assigned to you", "Assigned to …" or "Closed on the provider"</b></summary>
 
  Since you started it, the task
 left what your provider lists for you: reassigned to someone else, closed, or

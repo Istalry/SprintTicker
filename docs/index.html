@@ -576,7 +576,8 @@
       a remote provider is configured the app runs on local ad-hoc tasks. Completing
       the wizard saves the choice and immediately fetches your projects.</p>
       <p>The <strong>ad-hoc task key</strong> (default <code>MISC-1</code>) is the key your own ad-hoc tasks
-      show — meetings, admin, anything without a ticket. Ad-hoc time stays in your
+      show in the window — meetings, admin, anything without a ticket. The bar
+      shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
       Work History and is <strong>never sent</strong> to Jira or OpenProject.</p>
       <p><strong>3️⃣ Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
       <h4>💻 Without a BUSY Bar</h4>
@@ -617,7 +618,10 @@
       <h4>⏱️ The mini timer</h4>
       <p>A small window that stays above every other one and shows what the bar would:
       the task key and title, the elapsed time, and a coloured edge -- green while
-      tracking, amber while paused, grey with nothing running. Open it with <strong>Mini
+      tracking, amber while paused, grey with nothing running. Beside them is the
+      icon of whatever holds the bar: the stopwatch for your session, the gear while
+      Unity compiles, an app&#39;s icon during its notification, the burger at lunch, a
+      coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
       Timer</strong> in the top bar or <strong>Show Mini Timer</strong> in the tray menu.</p>
       <p align="center">
         <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
@@ -706,18 +710,18 @@
       <div class="note"><span class="label">Ad-hoc time stays on this machine.</span>
       <p>It is in Work History like any other
       time, but it is never sent to your provider, which has no ticket to put it
-      on. Finishing an ad-hoc task as done marks it done here only. The key it
-      shows is the one set in <strong>Task Providers</strong> (<code>MISC-1</code> by default).</p>
+      on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in <strong>Task Providers</strong>
+      (<code>MISC-1</code> by default); the bar shows the task&#39;s name alone.</p>
       </div>
       <p align="center">
-        <img src="images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden and Pixel Forge, four tasks with their status">
+        <img src="images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
       </p><p>A task from Jira or OpenProject shows the start of its description under its
       title, on one line. The task picker searches it too, so you can find a task by
       what it is about.</p>
       <p>🔎 <strong>Only projects with tasks</strong> -- the switch above the project list, on by
       default -- hides every project with no open task. A provider lists every
-      project you can see, while the tasks it fetches are the ones assigned to you,
-      so most projects held nothing to pick. A project is listed again as soon as it
+      project you can see, while the tasks it fetches are yours and the team&#39;s free
+      or ongoing work, so most projects held nothing to pick. A project is listed again as soon as it
       has a task to do or in progress. The switch says how many projects it hides,
       and turning it off lists them all. It is one setting: the task picker shows
       the same switch, and the bar&#39;s own picker follows it. The project you have
@@ -727,14 +731,53 @@
       listed, and the switch says so: <em>none has a task: showing all</em>. Ad-hoc work
       does not count for this, since an ad-hoc task stays in progress until you
       finish it as done.</p>
+      <p>👥 <strong>Unassigned and Teammates&#39;</strong> -- two switches above each task list --
+      decide whose tasks it shows besides yours, which are always there.
+      <strong>Unassigned</strong>, on by default, lists the open tasks nobody is assigned: work
+      free to take. <strong>Teammates&#39;</strong>, off by default, lists a teammate&#39;s task while it
+      is in progress. A task that is not yours carries <em>Unassigned</em> or the
+      assignee&#39;s name beside its key, and the switches say how many tasks they hide.
+      They are one setting: the task picker, the Projects &amp; Tasks panel and the
+      bar&#39;s picker all follow it, and <strong>Only projects with tasks</strong> counts what they
+      show -- a project holding only unassigned work is listed while unassigned work
+      is. The task you are tracking stays listed whoever&#39;s it is. Every list keeps
+      one order: yours in progress, yours to do, unassigned to do, unassigned in
+      progress, teammates&#39; in progress, then finished work -- yours, then
+      unassigned.</p>
+      <p>↗️ <strong>Open a task on its provider</strong> -- the small arrow beside a task&#39;s key in
+      the session panel, the Projects &amp; Tasks panel and Work History opens it in
+      your browser, on Jira or OpenProject, to comment, attach a picture or read
+      the thread. Ad-hoc work and projects made in SprintTicker have no page there,
+      so no arrow.</p>
+      <p>🙋 <strong>Starting an unassigned task assigns it to you</strong>, without asking, and then
+      moves it to In Progress as for your own. If someone took it in the meantime,
+      it stays theirs -- SprintTicker never takes a task away from anyone -- but
+      your session runs and its time is logged: a Windows toast says <em>TEAM-2 is
+      taken</em>, the bar shows <strong>TAKEN</strong> and their name, and the panel and the mini
+      timer say <strong>Assigned to</strong> them. Marking it done then asks first, as for any
+      task that is not yours. If the assignment fails, a toast says the task <em>was
+      not assigned to you</em>; it is not retried, so assign it on the provider if it
+      should be yours. Starting a teammate&#39;s task in progress assigns nothing and
+      moves nothing.</p>
       <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
       Task Providers refetches it.</p>
       <h4>📊 Work History</h4>
-      <p>Worklogs by date, with a daily summary and an end-of-day export.</p>
+      <p>Worklogs by date, with a daily summary and an end-of-day export. The arrow
+      beside a task opens it on Jira or OpenProject, as in the session panel and
+      the Projects &amp; Tasks panel.</p>
       <p align="center">
         <img src="images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
-      </p><p><strong>A worklog belongs to the day it began</strong>, as Jira and OpenProject file it: a
-      session from 17:00 to 01:00 is all on the first day.</p>
+      </p><p><strong>A worklog never spans midnight.</strong> Jira and OpenProject file a worklog under
+      the day it began, so a session from 23:00 to 01:00 is logged as two: an hour
+      on each day, each sent on its own. A session paused overnight and resumed in
+      the morning puts the morning on the morning&#39;s day. The finish dialog, and the
+      question about a session left running, say how the time will be filed before
+      it is. The timer still shows the whole session.</p>
+      <p><strong>A long pause starts a new worklog too</strong>: 15 minutes or more by default,
+      set under <strong>Working Days</strong> in Ceremonies (0 keeps one worklog per day). A
+      shorter pause is a gap inside one worklog. A piece too short for your
+      provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
+      rather than lost.</p>
       <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
       refused a 40-second session, the time is still in your history — it just is not
       in Jira. Each entry says where it stands: <strong>Sent</strong>, <strong>Sending</strong>, <strong>Not sent</strong>,
@@ -823,6 +866,14 @@
       <h4>🎮 Unity Engine</h4>
       <p>Discovered Unity projects and plugin injection. Once installed, the bar shows
       compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.</p>
+      <div class="note"><span class="label">Nothing on the bar from Unity?</span>
+      <p>Open the editor&#39;s Console and search
+      for <code>sprintticker</code>. A line saying a script <em>will not be compiled because
+      it does not belong to any assembly definition file</em> is a plugin from before
+      this release; one compile with the current plugin linked fixes it. An
+      error from <code>SprintTicker.Unity.Editor</code> stops the project&#39;s Play Mode too,
+      so report it.</p>
+      </div>
       <p align="center">
         <img src="images/app-unity.png" width="80%" alt="Unity Engine panel: connected editors, compile and Play Mode state, sound and alert settings">
       </p>
@@ -895,8 +946,8 @@
       hardware controls below.</p>
       <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>, on
       teal. In Away mode it shows a steaming coffee beside <strong>AWAY</strong>, on purple. At the
-      stand-up prompt, and while you track a stand-up task, it shows three people
-      round a table taking turns to speak, beside <strong>MEETING</strong>, on blue. Each loops
+      stand-up prompt it shows three people round a table taking turns to speak,
+      beside <strong>MEETING</strong>, on blue. Each loops
       for as long as the mode lasts, and the bar plays it itself, so it keeps moving
       when the computer is busy.</p>
       <div class="table-wrap"><table>
@@ -926,7 +977,9 @@
       <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> in the
       window, or OK on the bar&#39;s prompt: the task you are tracking stops, its time
       logged, and a <strong>Daily Standup</strong> task starts -- one ad-hoc task, reused every
-      day. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
+      day. The bar then shows its timer, with three people at a table in place of
+      the stopwatch, taking turns to speak, so you can see the prompt has gone and
+      the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
       again, by the same rules as after lunch: once, that day, and only if you have
       not started something else meanwhile. A task that left your list during the
       meeting is asked about first: <strong>Resume after the stand-up?</strong> in the window,
@@ -943,7 +996,9 @@
       there and then. Nothing restarts when it would have ended, even if you stop
       your task before that, and Lunch does not start again that day.</li>
       <li><strong>The bar&#39;s picker works during lunch.</strong> START or a click with nothing
-      running opens it over the sandwich; BACK brings the sandwich back.</li>
+      running opens it over the sandwich; BACK brings the sandwich back. Opened
+      while Windows is locked, it waits under Away and shows as soon as you
+      unlock, ahead of Unity and any notification that came in meanwhile.</li>
       <li><strong>A task that left your list over the break</strong> -- reassigned, closed or
       moved -- is not restarted without asking. The window asks <strong>Resume after
       lunch?</strong>, and the bar shows <strong>NOT YOURS / RESUME IT?</strong>: OK resumes it, BACK
@@ -957,6 +1012,23 @@
       </ul>
       <p>Lunch must start and end on the same day, start first: the Ceremonies panel
       says so and saves nothing until it does. A window across midnight never began.</p>
+      <p>📆 <strong>The ceremonies happen on working days only.</strong> <strong>Working Days</strong>, at the
+      top of the Ceremonies panel, picks them -- Monday to Friday until you change
+      it, and at least one. On any other day nothing is prompted and Lunch does not
+      start; your timer works as on any day, and what you track is logged as usual.
+      With OpenProject connected, the holidays your instance lists (its
+      <em>Non-working days</em>, under Administration) are days off too. They are read
+      once a day; if the instance cannot be reached, the weekdays you picked decide
+      alone, and a holiday already read stays one.</p>
+      <p>🗓️ <strong>The wrap-up of the week&#39;s last working day closes the week.</strong> Usually
+      that is Friday&#39;s; with Friday a holiday, or a four-day week, it is Thursday&#39;s.
+      A notice in the corner of the window then shows the week and the time logged
+      in it, a reminder to check it is all in before your timesheet is due. <strong>Open
+      Work History</strong> takes you to it; either button dismisses the notice, which
+      otherwise stays -- across a restart too -- until you do. Missed the wrap-up
+      (a day off you had not entered, the laptop shut)? The next working day closes
+      the week at its first check instead, and a week closes once, whatever happens.
+      A week you did not work at all closes without a notice.</p>
       <h4>🔔 Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p align="center">
@@ -1110,6 +1182,10 @@
       <td align="left">⏸️ <strong>Paused.</strong> The key and its time; turn the wheel to <strong>STOP</strong>, <strong>FINISH</strong> or <strong>DROP</strong>, click to confirm. DROP asks first.</td>
       </tr>
       <tr>
+      <td align="center"><img src="images/bar-standup.png" width="304" alt="Daily Stand... with a meeting icon, 00:00"></td>
+      <td align="left">🗣️ <strong>Stand-up.</strong> Joined from its prompt: the stand-up&#39;s own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key.</td>
+      </tr>
+      <tr>
       <td align="center"><img src="images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"></td>
       <td align="left">🏃 <strong>GO!</strong> A task picked on the bar itself, for two seconds.</td>
       </tr>
@@ -1204,11 +1280,14 @@
       into it, turn to choose a task, click to start. <strong>BACK</strong> leaves at any point.
       A blue folder means you are choosing a project, a checklist a task. The
       checklist also gives the task&#39;s status: grey for to do, amber for in progress,
-      green for done, and a done task&#39;s name is dimmed. Tasks come in that order of
-      use: in progress first, then to do, then done, and within each the most urgent
-      first, by the priority set in Jira or OpenProject. Projects follow the <strong>Only
-      projects with tasks</strong> switch of the Projects &amp; Tasks panel. The second
-      row shows the task key, followed by as much of its description as fits, and on
+      green for done, and a done task&#39;s name is dimmed. Tasks come in the window&#39;s
+      order -- yours in progress, yours to do, unassigned work, teammates&#39; work in
+      progress, finished work last -- and within each the most urgent first, by the
+      priority set in Jira or OpenProject. Projects and tasks follow the <strong>Only
+      projects with tasks</strong>, <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches of the
+      Projects &amp; Tasks panel. The second row shows the task key, then whose the task
+      is when it is not yours -- <code>free</code> for nobody&#39;s, <code>@Alice</code> for a teammate&#39;s --
+      followed by as much of its description as fits, and on
       its right where you are in the list -- <code>3/12</code> --
       with a thin line along the bottom whose bright segment slides from left to
       right as you scroll: at the far left there is nothing before, at the far right
@@ -1238,7 +1317,7 @@
       Providers. Your projects and tasks stay as they were in the meantime, and the
       next sync brings them up to date.</p>
       </details><details>
-      <summary>🔀 <b>The task I am tracking says "No longer assigned to you" or "Closed on the provider"</b></summary><p> Since you started it, the task
+      <summary>🔀 <b>The task I am tracking says "No longer assigned to you", "Assigned to …" or "Closed on the provider"</b></summary><p> Since you started it, the task
       left what your provider lists for you: reassigned to someone else, closed, or
       moved to a project you are not in. Nothing is lost: the session keeps running
       and its time is logged when you stop. The task stays in your lists until then.
@@ -1525,6 +1604,13 @@
       still reach the dashboard alone. Picking a task from the tray or the mini timer
       goes through <code>openTaskPickerInMainWindow</code>, which sends the picker&#39;s hardware
       action on <code>input:on-hardware-event</code>.</p>
+      <p>The mini timer&#39;s icon is the bar&#39;s. <code>DisplayRenderer</code> keeps the icon of the
+      frame it paints (<code>frameScreenIcon</code>, beside <code>frameIcon</code> and consumed with it in
+      <code>transmitFrame</code>): the bitmap a screen draws at the left, with its top row as
+      the label, or for a full-panel scene the icon in <code>SCENE_ICONS</code> with the
+      scene&#39;s title. The firmware&#39;s clock has none. It is pushed on its own channel,
+      <code>display:on-screen-icon</code>, and only when it changes: the display state goes out
+      on every tick and every scene frame.</p>
       <hr>
       <h3 id="architecture-process-boundaries">2. Process boundaries</h3>
       <p><code>contextIsolation: true</code>, <code>nodeIntegration: false</code>, <code>sandbox: true</code>. These are
@@ -1588,12 +1674,23 @@
       start.</p>
       <p>A worklog belongs to the day it began (<code>started_at_utc</code>), as Jira&#39;s <code>started</code>
       and OpenProject&#39;s <code>spentOn</code> file it; Work History and the end-of-day summary
-      used to file it on its stop.</p>
+      used to file it on its stop. So a session never ends as a worklog across local
+      midnight: <code>finishSession</code> splits its time with <code>splitWork</code>
+      (<code>shared/work-split.ts</code>) into one worklog per local day, and another after
+      each pause of <code>splitPauseMinutes</code> or more (a schedule setting, 15 by default,
+      0 for never), each starting at the first instant worked in it. The split is
+      made at the end, never by a timer, so the session&#39;s start -- which the
+      forgotten-session check reads -- never moves, and nothing unconfirmed is sent.
+      The pieces add up to the session&#39;s total exactly, a clock set back during a
+      pause included; a piece shorter than the provider&#39;s floor is folded into its
+      longer neighbour (<code>mergeShortPieces</code>). Each piece is a worklog and a queue row
+      of its own, with its own marker, so a resend or a correction names one entry.
+      <code>getSessionDays()</code> gives the window the same split for a stop now.</p>
       <p>Ad-hoc work is told apart by its id (<code>adhoc_</code> prefix, <code>isAdHocTaskId</code>), not by
       the caller&#39;s flag: every list that offers an ad-hoc row again starts it as an
-      ordinary task. An ad-hoc session never moves a remote status and is never
-      queued -- its worklog stays local -- and finishing it as done marks the row
-      done here only.</p>
+      ordinary task. An ad-hoc session never moves a remote status, and finishing
+      it as done marks the row done here only. It is never queued: its worklog
+      stays local.</p>
       <h4>Provider layer — <code>src/main/providers/</code></h4>
       <pre><code>ITaskProvider  ← the contract (task-provider-interface.ts)
           ├── OpenProjectProvider   REST API v3, HAL pagination
@@ -1656,10 +1753,21 @@
       <p><strong>The tracked task survives the prune.</strong> The engine names it
       (<code>protectTasks</code>), and a sync that no longer finds it -- reassigned, closed or
       moved -- keeps it and its project, records it as unlisted, and tells the
-      engine, which re-sends the session with <code>taskUnlisted</code>. It used to be retired
+      engine, which re-sends the session with <code>taskUnlisted</code>. A task reassigned
+      while it stays in progress is still found, as a teammate&#39;s: its ownership
+      says so, the session reads <code>reassigned</code> without asking the provider, and the
+      engine re-sends it once when the owner changes. A task nobody owned that
+      someone took between the pick and the start reads the same way: the engine&#39;s
+      claim (<code>claimTask</code>, after the session is down) finds it taken, records it as
+      theirs, and re-sends the session at once, with <code>taskOwnerName</code>; it also hands
+      <code>onTaskClaim</code> a report, which <code>ProviderEventService</code> turns into a toast and a
+      <strong>TAKEN</strong> banner. It used to be retired
       mid-session, deleted outright when no time had been logged on it yet, so
       finishing it as done found no row and did nothing. The sync after the session
-      ends retires it as usual.</p>
+      ends retires it as usual. Why it left (<code>getTaskStanding</code>, <code>taskLeftBecause</code>)
+      is asked at every sync while it is unlisted, and the session re-sent only
+      when the answer changes: asked once, a task reassigned and then closed kept
+      &quot;reassigned&quot;, and FINISH sent its transition to a closed work package.</p>
       <p>A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
       <strong>coalesces</strong>, setting a flag so the new row drains before the current pass
       ends. Without that, finishing one task and starting the next — the app&#39;s core
@@ -1733,10 +1841,15 @@
       <em>set aside</em>, redrawn by <code>DisplayRenderer.resumeScreen</code> from the last screen
       drawn under that lock; a <strong>background state</strong> registered with
       <code>addBackgroundScreen</code>, which redraws what it is now; and only then the
-      user&#39;s mode. Releasing a lock that is set aside rather than held removes
+      user&#39;s mode. Background states are offered highest-ranked first, and one
+      ranked above everything queued or set aside comes before the queue.
+      Releasing a lock that is set aside rather than held removes
       it from that list. The tracker and the mode locks are never set aside:
       <code>setContextMode</code> draws them as they are now.</li>
-      <li><strong>Unity is the background state.</strong> Its compile and Play Mode screens last
+      <li><strong>Unity and the bar&#39;s picker are the background states.</strong> The picker,
+      registered by <code>InputDecoder</code>, comes back while it is open: refused under
+      Away and never queued, it would otherwise be open and unseen once Away
+      ended. Unity&#39;s compile and Play Mode screens last
       as long as an editor&#39;s state, so they are reclaimed rather than resumed:
       after a banner, a scene, Lunch, or another editor&#39;s end, the display shows
       what the editors are doing by then. Operations are tracked per editor
@@ -1900,8 +2013,10 @@
       <p><strong>After an outage the renderer redraws; the driver never replays.</strong> A failed
       ping, or a request that got no answer between two good pings, means the panel
       may hold anything: an earlier screen, the firmware&#39;s own after a reboot, or a
-      screen whose clear failed while the bar was away. When the bar answers again
-      the driver forgets the ledger and the pending frame and emits <code>reconnected</code>;
+      screen whose clear failed while the bar was away. The driver forgets the
+      ledger at the loss, so what requests answered after the bar came back still
+      holds; when a ping sees it again it drops the pending frame and emits
+      <code>reconnected</code>;
       <code>DisplayRenderer</code> then draws the screen of whoever holds the display
       (<code>resumeScreen</code>), or the user&#39;s mode, with its animation restarted. Replaying
       the pending frame put BUILDING 40% back on a bar whose build had long ended.</p>
@@ -1994,7 +2109,9 @@
       and on the bar under <code>resumePromptPriority</code>; the entry is kept until answered,
       so a restart asks again.</p>
       <p>The service also listens to the engine. A session going TRACKING during lunch
-      is the user working through it: the stored resume is dropped,
+      -- a new session, or one resumed; not the engine&#39;s tick, which tells its
+      listeners every second while a session runs and used to skip lunch whenever
+      one did -- is the user working through it: the stored resume is dropped,
       <code>lunch_skipped_date</code> stops the next check entering Lunch again that day, and
       the mode goes back to WORK. &quot;During lunch&quot; includes the lunch hours in WORK,
       after Away ended and before the next check entered Lunch. <code>exitLunchMode</code>
@@ -2003,7 +2120,10 @@
       <p>Joining the stand-up (<code>joinStandup</code>, from <code>schedule:join-standup</code> or OK on the
       bar&#39;s prompt) switches the timer to the ad-hoc <strong>Daily Standup</strong> task -- one
       row, found by title (<code>startNamedAdHocTask</code>) -- under the prompt&#39;s lock, then
-      releases it, which draws once. The task it stopped is <code>standup_resume</code>, with
+      releases it, which draws once: the session screen, with the meeting icon in
+      place of the stopwatch, animated by the device like the stopwatch
+      (<code>ANIMATED_ICONS.meeting</code>). The prompt&#39;s meeting scene used to stay, and joining
+      looked like nothing happening. The task it stopped is <code>standup_resume</code>, with
       the stand-up&#39;s session id. When that session ends, the task restarts by the
       lunch rules, asking first if it left the list (<code>after: &#39;standup&#39;</code>); any other
       session drops the entry. The restart is queued as a microtask, because it is
@@ -2011,6 +2131,28 @@
       would still be handed the ended session, and the renderer would draw the idle
       clock over the restarted task. A stand-up stopped by lunch hands lunch the task
       before it, not the meeting.</p>
+      <p>Only working days have ceremonies. <code>WorkingCalendar</code> answers which days are:
+      the schedule&#39;s <code>workingDays</code> (Monday to Friday by default, never empty), less
+      the holidays the provider lists (<code>getNonWorkingDays</code>). Those are read at most
+      once a day, over the range from last week&#39;s Monday to three weeks ahead, and
+      kept in the <code>non_working_days</code> setting; a failed read keeps the previous days
+      and tries again at the next check, so an outage never turns a known holiday
+      into a working day. The stand-up, entering Lunch and the wrap-up are gated on
+      it; leaving Lunch and Away is not, so a mode never outlives its hours.</p>
+      <p>The read is asynchronous and the check is not: the first check of a day
+      answers from the days read the day before. That is safe because the first
+      check of a day comes at midnight when the app runs overnight, and at start
+      it passes over anything already due; a holiday added the same morning is the
+      one case it misses.</p>
+      <p>The wrap-up of the week&#39;s last working day closes the week (<code>closeWeek</code>):
+      the time logged Monday to that day (<code>TimeTrackingEngine.getLoggedSeconds</code>)
+      goes to the window as <code>WeekEndedDTO</code> (<code>schedule:on-week-ended</code>), is kept in
+      <code>week_ended_notice</code> until dismissed, and is handed to <code>onWeekEnded</code>
+      listeners -- the hook a timesheet client attaches to. <code>last_week_closed</code>
+      holds the Monday of the last week closed: the first check of a working day
+      in WORK closes the week before if that wrap-up was missed, and a week is
+      never closed twice. A first run sets it without closing anything, and a week
+      with no working day is marked closed without a notice.</p>
       <h4><code>PresenceMonitor</code> and <code>ForgottenSessionService</code> — <code>src/main/services/</code></h4>
       <p>Time is wall clock minus pauses, so a session forgotten on Friday read 62
       hours on Monday and its stop sent them all at once. <code>PresenceMonitor</code> keeps
@@ -2085,7 +2227,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
-      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs; <code>description</code> is the start of the provider&#39;s, as plain text</td>
+      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs; <code>description</code> is the start of the provider&#39;s, as plain text; <code>ownership</code> is <code>mine</code>, <code>unassigned</code> or <code>other</code>, with <code>assignee_name</code> on a teammate&#39;s (migration 12)</td>
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
@@ -2265,7 +2407,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2154 tests across 106 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2456 tests across 121 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2332,11 +2474,15 @@
       </tr>
       <tr>
       <td align="left"><code>session:get-current</code> / <code>session:on-updated</code> carry <code>taskUnlisted: true</code></td>
-      <td align="left">The provider stopped listing the tracked task at the last sync (reassigned, closed, moved). The sync keeps the task until the session ends; finishing it as done asks the user first</td>
+      <td align="left">The tracked task is no longer the user&#39;s: the provider stopped listing it at the last sync (reassigned, closed, moved), or lists it as a teammate&#39;s. The sync keeps the task until the session ends; finishing it as done asks the user first</td>
       </tr>
       <tr>
       <td align="left">... and <code>taskLeftBecause</code></td>
       <td align="left">Why, once the provider has said: <code>closed</code> (done there -- finishing it asks nothing and sends no transition), <code>reassigned</code> (still open, out of the user&#39;s scope) or <code>gone</code> (deleted, or no longer visible). Absent while unknown</td>
+      </tr>
+      <tr>
+      <td align="left">... and <code>taskOwnerName</code></td>
+      <td align="left">Who the task is assigned to, when it is someone else&#39;s -- reassigned, started as a teammate&#39;s, or taken by someone between the pick and the start. The window says &quot;Assigned to&quot; that name</td>
       </tr>
       <tr>
       <td align="left"><code>session:get-forgotten-review</code></td>
@@ -2349,6 +2495,10 @@
       <tr>
       <td align="left"><code>session:on-forgotten-review</code></td>
       <td align="left">Pushes the question when it is found, and null once anything answers it -- the window, the bar&#39;s STOP, a resume</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:get-days</code></td>
+      <td align="left">The open session&#39;s time per local day were it stopped now, <code>{ dateKey, seconds }[]</code>: one entry unless it crosses midnight. The finish dialog says how it will be filed</td>
       </tr>
       <tr>
       <td align="left"><code>session:discard</code></td>
@@ -2377,7 +2527,7 @@
       </tr>
       <tr>
       <td align="left"><code>provider:get-projects</code> / <code>provider:get-tasks</code></td>
-      <td align="left">Read the local cache. Each project carries <code>openTaskCount</code>: its tasks neither done nor archived</td>
+      <td align="left">Read the local cache. Each project carries its tasks neither done nor archived, counted per owner: <code>openTaskCount</code> (the user&#39;s), <code>openUnassignedCount</code>, <code>openOthersCount</code>. <code>provider:get-tasks</code> answers every owner&#39;s tasks, each with its <code>ownership</code>; the views filter them by the task visibility</td>
       </tr>
       <tr>
       <td align="left"><code>provider:create-adhoc</code></td>
@@ -2411,6 +2561,14 @@
       <td align="left"><code>projects:on-only-with-tasks</code></td>
       <td align="left"><strong>Event</strong> — the switch changed, so every view showing it follows</td>
       </tr>
+      <tr>
+      <td align="left"><code>tasks:get-visibility</code> / <code>tasks:set-visibility</code></td>
+      <td align="left">Whether the task lists show unassigned tasks and teammates&#39; tasks: <code>{ unassigned, others }</code>, <code>{ true, false }</code> by default. The setter takes exactly two booleans and throws <code>ArgumentException</code> on anything else; a damaged stored value reads its missing fields as their defaults</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks:on-visibility</code></td>
+      <td align="left"><strong>Event</strong> — the task visibility changed, so every list follows</td>
+      </tr>
       </tbody></table></div>
       <div class="note">
       <p><code>provider:reconcile</code> was removed. It was declared on the bridge with no
@@ -2424,7 +2582,15 @@
       <code>worklogs:get-daily-summary</code>, <code>worklog:get-todays</code>, <code>db:wipe-all-data</code>, and the
       <code>worklog:on-updated</code> event.</p>
       <p><code>projects:delete</code> and <code>tasks:delete</code> delete a task only if no time was logged
-      against it; one with worklogs is archived -- off every list, still in history.
+      against it; one with worklogs is archived -- off every list, still in history.</p>
+      <p><code>tasks:open-page</code> takes a task id and opens the task&#39;s page on the provider it
+      came from, in the browser: Jira&#39;s <code>&lt;site&gt;/browse/&lt;KEY&gt;</code>, OpenProject&#39;s
+      <code>&lt;site&gt;/work_packages/&lt;id&gt;</code>. Main builds the URL from the provider&#39;s own
+      configured site (<code>getTaskPageUrl</code>), opens it through <code>shell.openExternal</code> only
+      if it is http(s) on that site, and answers <code>false</code> for a task with no page --
+      ad-hoc work, the app&#39;s own projects, a provider not set up. The renderer
+      never hands main a URL. Each worklog carries <code>hasTaskPage</code>, so Work History
+      knows where to offer it.
       Worklogs come back with <code>taskKey</code> and <code>taskTitle</code> beside <code>taskId</code>, read from
       the task row, archived or not, and with <code>syncState</code>: <code>local</code> (never queued),
       <code>pending</code>, <code>failed</code>, <code>sent</code>, <code>correction-pending</code> or <code>correction-failed</code>.</p>
@@ -2496,6 +2662,14 @@
       <td align="left"><strong>Event</strong></td>
       </tr>
       <tr>
+      <td align="left"><code>display:get-screen-icon</code></td>
+      <td align="left">The icon of the screen on the bar, for the mini timer: <code>{ pixels, label }</code>, a 16x16 bitmap and the screen&#39;s top row or scene title, or <code>null</code> while the firmware&#39;s clock shows</td>
+      </tr>
+      <tr>
+      <td align="left"><code>display:on-screen-icon</code></td>
+      <td align="left"><strong>Event</strong>, to every window, only when the icon changes -- the tracker&#39;s tick and a scene&#39;s frames do not move it</td>
+      </tr>
+      <tr>
       <td align="left"><code>display:set-color-theme</code>, <code>display:trigger-confetti-burst</code></td>
       <td align="left">Display options. <code>display:trigger-confetti-burst</code> plays DONE! alone, for the debug panel</td>
       </tr>
@@ -2518,7 +2692,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:get-week-ended</code>, <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>
@@ -2661,11 +2835,37 @@
         // 404 is &#39;gone&#39;; any other failure throws.
         getTaskStanding?(taskId: string): Promise&lt;&#39;open&#39; | &#39;closed&#39; | &#39;gone&#39;&gt;;
       
+        // Optional: assigns a task nobody owns to the user, reading its assignee
+        // first. Answers &#39;assigned&#39;, &#39;already_mine&#39;, or &#39;taken&#39; with the name of
+        // whoever has it -- never reassigned away from them. Throws on failure.
+        assignToMe?(taskId: string): Promise&lt;TaskClaim&gt;;
+      
+        // Optional: the task&#39;s page on the provider&#39;s own site, or null.
+        getTaskPageUrl?(task: Pick&lt;TaskDTO, &#39;id&#39; | &#39;key&#39;&gt;): string | null;
+      
+        // Optional: the instance&#39;s holidays between two local dates, inclusive, as
+        // YYYY-MM-DD. Weekends are the user&#39;s setting, not the provider&#39;s.
+        getNonWorkingDays?(fromKey: string, toKey: string): Promise&lt;string[]&gt;;
+      
         // Optional: activity on the user&#39;s tasks, for toasts and bar banners.
         getEventsSince?(sinceUtc: string): Promise&lt;ProviderEventDTO[]&gt;;
         getEventsInboxUrl?(): string | null;
       }
       </code></pre>
+      <p><strong>Assigning on start.</strong> Starting a task nobody owns calls <code>assignToMe</code> on the
+      provider it came from, in the background, once the session is running.
+      Jira reads <code>fields=assignee</code> and then <code>PUT /rest/api/3/issue/{id}/assignee</code>
+      with the user&#39;s <code>accountId</code>; it has no conditional write, so the read just
+      before is the narrowest window it allows. OpenProject reads the work package
+      and <code>PATCH</code>es <code>_links.assignee</code> under its <code>lockVersion</code>, so an assignee set in
+      between is refused (409) rather than overwritten; it then reads once more and
+      decides again. Both were measured on a real OpenProject 17.9 instance on 2026-10-16,
+      with an edit played between the read and the write. An assignment that went through moves the task to In Progress,
+      as for the user&#39;s own task. A failure is told in a toast and never queued.</p>
+      <p><code>getNonWorkingDays</code> is OpenProject&#39;s <code>GET /api/v3/days/non_working</code>, filtered
+      on the range (<code>date</code> <code>&lt;&gt;d</code>): unfiltered, an instance answers the current year
+      only, which loses New Year from a range read in December. Like every read it
+      throws on failure; <code>not_configured</code> is the one the caller stays quiet about.</p>
       <p><code>TaskDTO.description</code> is optional: plain text on one line, at most
       <code>TASK_DESCRIPTION_MAX_CHARS</code> (500), cut with an ellipsis. Convert with
       <code>task-description.ts</code> -- <code>adfToPlainText</code> for Jira&#39;s document tree,
@@ -2701,7 +2901,11 @@
       the task&#39;s entries from a day before the start to a day after
       (<code>WORKLOG_SEARCH_MARGIN_MS</code>), and answers null only when it has read them all
       -- a page walk that cannot finish throws, or a correction would be given up on
-      an entry that exists. Advance through pages by what each page held, never by
+      an entry that exists. On OpenProject the task&#39;s entries are picked by
+      <code>entity_type</code> + <code>entity_id</code>: 17.9 has no <code>work_package</code> filter on time
+      entries, since time can be logged on a meeting, and answers it 400. An
+      instance from before that answers the entity filters 400 instead, and is
+      searched again by <code>work_package</code>. Advance through pages by what each page held, never by
       the page size asked for: Jira clamps <code>maxResults</code>, and the fake does too so a
       test catches it. <code>updateWorklog</code> replaces duration, start and comment (Jira
       <code>PUT .../worklog/{id}</code>, OpenProject <code>PATCH /time_entries/{id}</code>), so repeating
@@ -2818,11 +3022,32 @@
       for Jira, a v3 filter array for OpenProject. A custom OpenProject filter is
       validated and <strong>throws</strong> if malformed, because an invalid filter that quietly
       matched nothing would let the prune delete every cached task for the project.</p>
+      <p>The default scope -- still stored as <code>assigned_to_me</code> -- fetches more than
+      the user&#39;s work: their open tasks, every open task nobody is assigned, and a
+      teammate&#39;s task while it is in progress (<code>keptByDefaultScope</code> in
+      <code>src/shared/task-ownership.ts</code>, applied after the query as well as in it).
+      Jira asks in one JQL with <code>OR</code>. OpenProject&#39;s v3 filters only <code>AND</code>, so it
+      makes up to three requests per project -- assignee <code>=</code> <code>me</code>, assignee <code>!*</code>
+      (none), and the configured In Progress status with assignee <code>!</code> <code>me</code> -- and
+      merges them by id; with no In Progress status configured, a teammate&#39;s work
+      is not asked for.</p>
+      <p><strong>Whose a task is comes from its assignee</strong>, never from the query that found
+      it: <code>TaskDTO.ownership</code> is <code>unassigned</code> or <code>other</code> (with <code>assigneeName</code>), and
+      absent for the user&#39;s own. Jira compares the issue&#39;s <code>assignee.accountId</code> with
+      <code>/myself</code>; OpenProject compares the user id in <code>_links.assignee.href</code> with
+      <code>/api/v3/users/me</code>, read once per configuration -- a group or placeholder
+      user is someone else. An adapter that cannot read the user throws rather than
+      file every task under the wrong owner.</p>
       <p>The scope decides which tasks are fetched; it does not touch the project list,
       which a provider returns whole. &quot;Only projects with tasks&quot;
       (<code>src/shared/project-filter.ts</code>) is what hides the projects the scope left
-      empty, in the window&#39;s lists and the bar&#39;s picker alike, by <code>openTaskCount</code>
-      rather than by assignee: tasks carry no assignee here.</p>
+      empty, in the window&#39;s lists and the bar&#39;s picker alike. It counts the open
+      tasks the lists would show: <code>openTaskCount</code> always, and <code>openUnassignedCount</code>
+      and <code>openOthersCount</code> when the task visibility (<code>src/shared/task-visibility.ts</code>)
+      shows those owners. Both lists order tasks with <code>orderTasksForSelection</code>
+      (<code>src/shared/task-order.ts</code>): the user&#39;s own in progress, then to do, then
+      unassigned to do and in progress, a teammate&#39;s in progress, and finished work
+      last.</p>
       <hr>
       <h3 id="api-the-busy-bar-device-contract">The BUSY Bar device contract</h3>
       <p><strong>Source:</strong> <code>src/main/hardware/busybar-driver.ts</code>, and
