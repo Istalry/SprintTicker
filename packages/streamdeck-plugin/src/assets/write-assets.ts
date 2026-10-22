@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { STOPWATCH_16X16_BITMAP } from '../../../desktop-app/src/shared/pixel-bitmaps';
 import { faceFor } from '../faces';
@@ -23,11 +23,8 @@ const LIST_GLYPHS: Record<KeyKind, Glyph> = {
   'not-done': 'stop',
   done: 'check',
   discard: 'trash',
-  switch: 'list',
-  favourite: 'star',
   yes: 'yes',
-  no: 'no',
-  away: 'coffee'
+  no: 'no'
 };
 
 /** Every file written, relative to the plugin's folder, with its content. */
@@ -48,8 +45,13 @@ export function pluginAssets(): Map<string, string | Buffer> {
   return files;
 }
 
-/** Writes them under `pluginDir`. */
+/**
+ * Writes them under `pluginDir`, emptying `imgs/` first: it holds nothing
+ * else, and an image of an action since removed would otherwise ship in the
+ * next pack (Away's, Switch's and Favourite's did, 2026-10-22).
+ */
 export function writeAssets(pluginDir: string): string[] {
+  rmSync(path.join(pluginDir, 'imgs'), { recursive: true, force: true });
   const written: string[] = [];
   for (const [relative, content] of pluginAssets()) {
     const target = path.join(pluginDir, relative);

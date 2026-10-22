@@ -164,14 +164,14 @@ describe('AppLink', () => {
   it('Request_Answered_ResolvesTheAnswer', async () => {
     link.start();
     latest().accept();
-    const pending = link.request({ action: 'start', taskId: 'T-1' });
+    const pending = link.request({ action: 'finish', confirmed: true });
     const sent = latest().sent[0];
-    expect(sent).toMatchObject({ action: 'start', taskId: 'T-1' });
+    expect(sent).toMatchObject({ action: 'finish', confirmed: true });
     expect(typeof sent.id).toBe('string');
     // Someone else's answer first: not this request's.
     latest().receive({ type: 'result', id: 'other', ok: true });
-    latest().receive({ type: 'result', id: sent.id, ok: false, error: 'unknown-task', message: 'Gone.' });
-    await expect(pending).resolves.toEqual({ type: 'result', id: sent.id, ok: false, error: 'unknown-task', message: 'Gone.' });
+    latest().receive({ type: 'result', id: sent.id, ok: false, error: 'no-session', message: 'Gone.' });
+    await expect(pending).resolves.toEqual({ type: 'result', id: sent.id, ok: false, error: 'no-session', message: 'Gone.' });
     expect(clock.pending).toBe(0);
   });
 
@@ -228,7 +228,7 @@ describe('AppLink', () => {
     link.start();
     latest().accept();
     first.drop();
-    first.receive(stateMessage({ mode: 'AWAY' }));
+    first.receive(stateMessage({ prompt: 'standup' }));
     expect(link.status).toBe('online');
     expect(link.message).toBeNull();
     expect(sockets).toHaveLength(2);

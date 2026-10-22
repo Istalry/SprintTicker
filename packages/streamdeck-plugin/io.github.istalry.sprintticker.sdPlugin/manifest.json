@@ -4,7 +4,7 @@
   "Name": "SprintTicker",
   "Version": "0.1.0.0",
   "Author": "Istalry",
-  "Description": "Keys that drive SprintTicker's running session: pause, end, switch task, start a favourite, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
+  "Description": "Keys that drive SprintTicker's running session: pause, pick a task, end it, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
   "URL": "https://github.com/Istalry/SprintTicker",
   "Icon": "imgs/plugin",
   "Category": "SprintTicker",
@@ -27,7 +27,7 @@
     {
       "UUID": "io.github.istalry.sprintticker.session",
       "Name": "Session",
-      "Tooltip": "The running task and its time. Pauses it, resumes it, or opens the task picker when nothing runs.",
+      "Tooltip": "The running task and its time. A press pauses or resumes it, or opens the task picker when nothing runs; held, it opens the task picker.",
       "Icon": "imgs/actions/session",
       "Controllers": [
         "Keypad"
@@ -97,43 +97,6 @@
       ]
     },
     {
-      "UUID": "io.github.istalry.sprintticker.switch",
-      "Name": "Switch task",
-      "Tooltip": "Brings SprintTicker forward with its task picker open.",
-      "Icon": "imgs/actions/switch",
-      "Controllers": [
-        "Keypad"
-      ],
-      "SupportedInMultiActions": false,
-      "SupportedInKeyLogicActions": false,
-      "UserTitleEnabled": false,
-      "States": [
-        {
-          "Image": "imgs/keys/switch",
-          "ShowTitle": false
-        }
-      ]
-    },
-    {
-      "UUID": "io.github.istalry.sprintticker.favourite",
-      "Name": "Favourite task",
-      "Tooltip": "Starts the task you choose for this key.",
-      "Icon": "imgs/actions/favourite",
-      "Controllers": [
-        "Keypad"
-      ],
-      "PropertyInspectorPath": "ui/favourite.html",
-      "SupportedInMultiActions": false,
-      "SupportedInKeyLogicActions": false,
-      "UserTitleEnabled": false,
-      "States": [
-        {
-          "Image": "imgs/keys/favourite",
-          "ShowTitle": false
-        }
-      ]
-    },
-    {
       "UUID": "io.github.istalry.sprintticker.yes",
       "Name": "Yes",
       "Tooltip": "Yes to what SprintTicker is asking: join the stand-up, wrap up the day, resume a task. Dimmed when nothing is asked.",
@@ -165,24 +128,6 @@
       "States": [
         {
           "Image": "imgs/keys/no",
-          "ShowTitle": false
-        }
-      ]
-    },
-    {
-      "UUID": "io.github.istalry.sprintticker.away",
-      "Name": "Away",
-      "Tooltip": "Sets you away, and back.",
-      "Icon": "imgs/actions/away",
-      "Controllers": [
-        "Keypad"
-      ],
-      "SupportedInMultiActions": false,
-      "SupportedInKeyLogicActions": false,
-      "UserTitleEnabled": false,
-      "States": [
-        {
-          "Image": "imgs/keys/away",
           "ShowTitle": false
         }
       ]

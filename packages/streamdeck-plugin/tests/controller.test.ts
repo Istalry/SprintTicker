@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DeckRequest, DeckStateMessage } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from '../src/app-link';
-import { CONFIRM_WINDOW_MS, DeckController, KeyHandle, LinkLike, TICK_MS } from '../src/controller';
+import { CONFIRM_WINDOW_MS, DeckController, KeyHandle, LONG_PRESS_MS, LinkLike, TICK_MS } from '../src/controller';
 import type { LinkStatus } from '../src/faces';
 import { FakeClock } from './support/fake-clock';
 import { session, stateMessage } from './support/states';
@@ -77,6 +77,13 @@ describe('DeckController', () => {
   });
 
   const tracking = (overrides = {}) => stateMessage({ session: session(overrides) });
+  /** A press and its release, at once: a tap. */
+  const tap = async (id: string) => {
+    await controller.keyDown(id);
+    await controller.keyUp(id);
+  };
+  /** Lets the promise callbacks of a held press settle. */
+  const settle = () => new Promise(resolve => setImmediate(resolve));
 
   it('Constructor_NoLink_Throws', () => {
     expect(() => new DeckController(null as unknown as LinkLike)).toThrow();
@@ -93,7 +100,7 @@ describe('DeckController', () => {
     link.push(null, 'offline');
     const key = new FakeKey('a');
     controller.appear('not-done', key);
-    await controller.press('a');
+    await tap('a');
     expect(key.alerts).toBe(1);
     expect(link.requests).toEqual([]);
   });
@@ -102,33 +109,108 @@ describe('DeckController', () => {
     link.push(tracking());
     const key = new FakeKey('a');
     controller.appear('session', key);
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([{ action: 'pause' }]);
     expect(key.alerts).toBe(0);
   });
 
   it('Press_UnknownKey_DoesNothing', async () => {
-    await controller.press('nobody');
+    await tap('nobody');
     expect(link.requests).toEqual([]);
   });
 
-  it('Press_Favourite_StartsItsTask', async () => {
+  it('KeyDown_AKeyWithoutALongPress_ActsAtOnce', async () => {
+    link.push(tracking());
+    controller.appear('not-done', new FakeKey('a'));
+    await controller.keyDown('a');
+    expect(link.requests).toEqual([{ action: 'stop' }]);
+    await controller.keyUp('a');
+    expect(link.requests).toHaveLength(1);
+  });
+
+  it('KeyUp_WithoutAKeyDown_DoesNothing', async () => {
+    link.push(tracking());
+    controller.appear('session', new FakeKey('a'));
+    await controller.keyUp('a');
+    expect(link.requests).toEqual([]);
+  });
+
+  it('Hold_SessionPastTheThreshold_OpensThePickerWhileATaskRuns', async () => {
+    link.push(tracking());
     const key = new FakeKey('a');
-    controller.appear('favourite', key, { taskId: 'T-5', taskKey: 'SPR-5' });
-    await controller.press('a');
-    expect(link.requests).toEqual([{ action: 'start', taskId: 'T-5' }]);
+    controller.appear('session', key);
+    await controller.keyDown('a');
+    clock.advance(LONG_PRESS_MS);
+    await settle();
+    // At the threshold, before the key comes up: the window is the sign.
+    expect(link.requests).toEqual([{ action: 'open-picker' }]);
+    await controller.keyUp('a');
+    expect(link.requests).toHaveLength(1);
+    expect(key.alerts).toBe(0);
+  });
+
+  it('Hold_SessionLetGoBeforeTheThreshold_Pauses', async () => {
+    link.push(tracking());
+    controller.appear('session', new FakeKey('a'));
+    await controller.keyDown('a');
+    clock.advance(LONG_PRESS_MS - 1);
+    await controller.keyUp('a');
+    clock.advance(LONG_PRESS_MS);
+    await settle();
+    expect(link.requests).toEqual([{ action: 'pause' }]);
+  });
+
+  it('Hold_SessionNothingRunning_OpensThePickerEitherWay', async () => {
+    controller.appear('session', new FakeKey('a'));
+    await tap('a');
+    await controller.keyDown('a');
+    clock.advance(LONG_PRESS_MS);
+    await settle();
+    expect(link.requests).toEqual([{ action: 'open-picker' }, { action: 'open-picker' }]);
+  });
+
+  it('Hold_SessionOffline_Alerts', async () => {
+    link.push(null, 'offline');
+    const key = new FakeKey('a');
+    controller.appear('session', key);
+    await controller.keyDown('a');
+    clock.advance(LONG_PRESS_MS);
+    await settle();
+    expect(key.alerts).toBe(1);
+    expect(link.requests).toEqual([]);
+  });
+
+  it('Hold_KeyLeavesWhileDown_NothingHappens', async () => {
+    link.push(tracking({ status: 'paused' }));
+    controller.appear('session', new FakeKey('a'));
+    await controller.keyDown('a');
+    controller.disappear('a');
+    expect(clock.pending).toBe(0);
+    await controller.keyUp('a');
+    expect(link.requests).toEqual([]);
+  });
+
+  it('Hold_TheHeldPressFails_IsLogged', async () => {
+    link.push(null, 'offline');
+    const key = new FakeKey('a');
+    key.showAlert = () => Promise.reject(new Error('socket closed'));
+    controller.appear('session', key);
+    await controller.keyDown('a');
+    clock.advance(LONG_PRESS_MS);
+    await settle();
+    expect(logs.join('\n')).toContain('A held press failed');
   });
 
   it('Press_DiscardTwiceInTheWindow_SendsAConfirmedDiscard', async () => {
     link.push(tracking());
     const key = new FakeKey('a');
     controller.appear('discard', key);
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([]);
     expect(textsOf(key.last)).toEqual(['DISCARD?', 'PRESS', 'AGAIN']);
 
     clock.advance(CONFIRM_WINDOW_MS - 1);
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([{ action: 'discard', confirmed: true }]);
     expect(textsOf(key.last)).toEqual(['DISCARD']);
   });
@@ -137,10 +219,10 @@ describe('DeckController', () => {
     link.push(tracking());
     const key = new FakeKey('a');
     controller.appear('discard', key);
-    await controller.press('a');
+    await tap('a');
     clock.advance(CONFIRM_WINDOW_MS);
     expect(textsOf(key.last)).toEqual(['DISCARD']);
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([]);
     expect(textsOf(key.last)).toEqual(['DISCARD?', 'PRESS', 'AGAIN']);
   });
@@ -149,11 +231,11 @@ describe('DeckController', () => {
     link.push(tracking());
     const key = new FakeKey('a');
     controller.appear('discard', key);
-    await controller.press('a');
+    await tap('a');
     link.push(tracking({ taskId: 'T-2', taskKey: 'SPR-2' }));
     expect(textsOf(key.last)).toEqual(['DISCARD']);
     // The next press asks about the new task rather than throwing it away.
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([]);
   });
 
@@ -161,9 +243,9 @@ describe('DeckController', () => {
     link.push(tracking());
     const key = new FakeKey('a');
     controller.appear('discard', key);
-    await controller.press('a');
+    await tap('a');
     link.push(tracking({ elapsedSeconds: 700 }));
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([{ action: 'discard', confirmed: true }]);
   });
 
@@ -173,13 +255,13 @@ describe('DeckController', () => {
     link.answer = () => ({ type: 'result', id: 'k1', ok: false, error: 'needs-confirmation', message: 'Not yours.' });
     const key = new FakeKey('a');
     controller.appear('done', key);
-    await controller.press('a');
+    await tap('a');
     expect(link.requests).toEqual([{ action: 'finish' }]);
     expect(textsOf(key.last)).toEqual(['NOT YOURS?', 'PRESS', 'AGAIN']);
     expect(key.alerts).toBe(0);
 
     link.answer = () => ({ type: 'result', id: 'k2', ok: true });
-    await controller.press('a');
+    await tap('a');
     expect(link.requests.at(-1)).toEqual({ action: 'finish', confirmed: true });
   });
 
@@ -188,7 +270,7 @@ describe('DeckController', () => {
     link.answer = () => ({ type: 'result', id: 'k1', ok: false, error: 'failed', message: 'The database is locked.' });
     const key = new FakeKey('a');
     controller.appear('not-done', key);
-    await controller.press('a');
+    await tap('a');
     expect(key.alerts).toBe(1);
     expect(logs.join('\n')).toContain('stop refused: failed -- The database is locked.');
   });
@@ -198,25 +280,25 @@ describe('DeckController', () => {
     link.answer = () => null;
     const key = new FakeKey('a');
     controller.appear('session', key);
-    await controller.press('a');
+    await tap('a');
     expect(key.alerts).toBe(1);
     expect(logs.join('\n')).toContain('pause got no answer');
   });
 
   it('Draw_StateUnchanged_SendsNoImage', () => {
     const key = new FakeKey('a');
-    controller.appear('away', key);
+    controller.appear('yes', key);
     link.push(stateMessage());
     link.push(stateMessage());
     expect(key.images).toHaveLength(1);
-    link.push(stateMessage({ mode: 'AWAY' }));
+    link.push(stateMessage({ prompt: 'standup' }));
     expect(key.images).toHaveLength(2);
   });
 
   it('Draw_ImageRefused_IsLogged', async () => {
     const key = new FakeKey('a');
     key.failDraws = true;
-    controller.appear('away', key);
+    controller.appear('yes', key);
     await Promise.resolve();
     await Promise.resolve();
     expect(logs.join('\n')).toContain('Could not draw a key');
@@ -263,32 +345,11 @@ describe('DeckController', () => {
   it('Disappear_ArmedKey_DropsItsQuestion', async () => {
     link.push(tracking());
     controller.appear('discard', new FakeKey('a'));
-    await controller.press('a');
+    await tap('a');
     expect(clock.pending).toBe(1);
     controller.disappear('a');
     expect(clock.pending).toBe(0);
     controller.disappear('a');
-  });
-
-  it('SettingsChanged_Favourite_RedrawsWithItsTask', () => {
-    const key = new FakeKey('a');
-    controller.appear('favourite', key);
-    expect(textsOf(key.last)).toEqual(['SET A', 'TASK']);
-    controller.settingsChanged('a', { taskId: 'T-5', taskKey: 'SPR-5' });
-    expect(textsOf(key.last)).toEqual(['SPR-5']);
-    controller.settingsChanged('gone', { taskId: 'T-6' });
-  });
-
-  it('ListTasks_AppAnswers_TheTasks', async () => {
-    const tasks = [{ id: 'T-1', key: 'SPR-1', title: 'Fix', projectName: 'Sprint' }];
-    link.answer = () => ({ type: 'tasks', id: 'k1', tasks });
-    await expect(controller.listTasks()).resolves.toEqual(tasks);
-    expect(link.requests).toEqual([{ action: 'list-tasks' }]);
-  });
-
-  it('ListTasks_NoAnswer_Null', async () => {
-    link.answer = () => null;
-    await expect(controller.listTasks()).resolves.toBeNull();
   });
 
   it('Dispose_StopsListeningAndTicking', () => {
@@ -298,7 +359,7 @@ describe('DeckController', () => {
     controller.dispose();
     expect(link.listeners.size).toBe(0);
     expect(clock.pending).toBe(0);
-    link.push(stateMessage({ mode: 'AWAY' }));
+    link.push(stateMessage({ prompt: 'standup' }));
     expect(key.images).toHaveLength(1);
   });
 });

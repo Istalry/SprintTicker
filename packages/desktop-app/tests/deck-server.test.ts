@@ -30,8 +30,7 @@ describe('DeckServer', () => {
         ? { taskId: 'T', taskKey, taskTitle: 'Title', isAdHoc: false, status: 'tracking', elapsedSeconds: 5, finishNeedsConfirmation: false }
         : null,
       icon: null,
-      prompt: null,
-      mode: 'WORK'
+      prompt: null
     }
   });
 
@@ -68,9 +67,7 @@ describe('DeckServer', () => {
       },
       perform: request => {
         performed.push(request);
-        return request.action === 'list-tasks'
-          ? { type: 'tasks', id: request.id, tasks: [] }
-          : { type: 'result', id: request.id, ok: true };
+        return { type: 'result', id: request.id, ok: true };
       }
     };
     http = new WebhookServer(0);
@@ -140,13 +137,6 @@ describe('DeckServer', () => {
 
       expect(backend.performed).toEqual([{ id: 'k1', action: 'pause' }]);
       expect(messages.find(m => m.type === 'result')).toEqual({ type: 'result', id: 'k1', ok: true });
-    });
-
-    it('Send_ListTasks_TheTasksAnswer', async () => {
-      const { ws, messages } = await connect();
-
-      ws.send(JSON.stringify({ id: 'k2', action: 'list-tasks' }));
-      await until(() => messages.some(m => m.type === 'tasks'));
     });
 
     it.each([

@@ -5,7 +5,6 @@ import {
   DeckResultMessage,
   DeckServerMessage,
   DeckStateMessage,
-  DeckTasksMessage,
   LOCAL_API_PORT
 } from '../../desktop-app/src/shared/deck-protocol';
 import type { LinkStatus } from './faces';
@@ -16,7 +15,7 @@ export const RECONNECT_DELAYS_MS: readonly number[] = [1000, 2000, 5000, 10000];
 /** How long a request waits for its answer before the key says it failed. */
 export const REQUEST_TIMEOUT_MS = 5000;
 
-export type DeckAnswer = DeckResultMessage | DeckTasksMessage;
+export type DeckAnswer = DeckResultMessage;
 
 /** The part of a WebSocket this uses: Node 24's own, or a test's. */
 export interface SocketLike {
@@ -166,8 +165,7 @@ export class AppLink {
         this._message = message;
         if (this._status === 'online') this.notify();
         return;
-      case 'result':
-      case 'tasks': {
+      case 'result': {
         const pending = this._pending.get(message.id);
         if (!pending) return;
         this._pending.delete(message.id);

@@ -1126,30 +1126,39 @@ Ordered; each says what has to be true first.
     something else on every screen, and a key labelled Pause must pause.
   - **Actions the user places, not a fixed layout** (revised 2026-10-22).
     The plugin declares actions, and the user drags each onto any key, as
-    often as they like, and sets it up in its property inspector -- the
-    Stream Deck app's own model. Each action's face is a pure function of
-    the state, tested without a device:
+    often as they like -- the Stream Deck app's own model. Each action's
+    face is a pure function of the state, tested without a device:
     - *Session*: the bar's screen icon, the task's key and the time; pause
-      or resume, or the window's picker with nothing running.
+      or resume, or the window's picker with nothing running. Held, the
+      picker whatever runs (revised 2026-10-22, below).
     - *Not done*, *Done*, *Discard*: the three ends. Done asks NOT YOURS?
       when `finishNeedsConfirmation` says so, and Discard always asks
       DISCARD?, each a second press on the same key.
-    - *Switch task*: the window's picker.
-    - *Favourite*: one task, picked in the property inspector from
-      `list-tasks`; lit while it runs.
     - *Yes* and *No*: the pending prompt -- the stand-up, the wrap-up (two
       presses), RESUME IT? -- and nothing, shown dimmed, when none is.
-    - *Away*: toggles it.
 
-    **A key never means two things by how long it is held** (the user,
+    **An answer never depends on how long a key is held** (the user,
     2026-10-22): a held press is too easy to get wrong, so yes and no are
     two keys, never OK held for BACK as first planned. A key may change with
     the state, as Session does, but its face always says what it will do.
-  - **A profile the plugin ships, as a default to edit**: on the Mini,
-    Session, End, Switch task, a Favourite, Yes and No. End is a folder --
-    the Stream Deck app's own -- holding Not done, Done and Discard, which
-    replaces the plan's End page that turned every key over. Installing the
-    plugin is the whole set-up; anyone with another layout in mind, or
+
+    **Tried on Stream Deck Mobile, then cut to six** (2026-10-22). The phone
+    app is a real device to the Stream Deck software, with the Mini's 3x2
+    grid. Away changed nothing on a deck; Switch task and Session read as
+    the same key; a Favourite was not worth a key. All three went, with
+    `start`, `toggle-away`, `list-tasks` and the state's `mode` -- and
+    Session's long press opens the picker, the user's own choice, so
+    switching tasks needs no key of its own. Six actions are a Mini's six
+    keys. The same test found the picker opening *behind* the app in front:
+    Windows keeps the foreground from a process the user is not using, and
+    the press reaches Stream Deck, not SprintTicker. `show()` + `focus()`,
+    `setAlwaysOnTop` and `minimize()` + `restore()` all failed with another
+    app in front; attaching to the foreground thread's input from
+    PowerShell (`ForegroundRaiser`) brought it forward, measured.
+  - **A profile the plugin ships, as a default to edit**: on the Mini, the
+    six actions, one per key, with no folder -- the End folder planned for
+    Not done, Done and Discard went with the three actions cut. Installing
+    the plugin is the whole set-up; anyone with another layout in mind, or
     another model, builds their own from the same actions.
   - **Done (2026-10-22): the app's side, which needs no device:** a WebSocket on 39123
     (`/api/v1/deck`, `ws` is shipped already) pushing the state when it
@@ -1162,10 +1171,9 @@ Ordered; each says what has to be true first.
     place the plugin imports from. As built, a prompt key answers through
     `InputDecoder` (OK, BACK), as the bar's keys do; Done and Discard are
     refused without `confirmed` when they must ask, so a plugin cannot skip
-    the second press; and a favourite whose task is gone or archived is
-    refused rather than started under an id nobody can name.
+    the second press.
   - **Done (2026-10-22): the plugin** (`packages/streamdeck-plugin`,
-    `pnpm deck:pack`). The nine actions above, with key faces in SVG drawn
+    `pnpm deck:pack`). The actions above, with key faces in SVG drawn
     from the state -- the bar's own icon on Session -- and a key showing
     OFFLINE rather than failing when SprintTicker is closed. The faces and
     presses are pure functions, tested for every kind; the controller and
@@ -1173,16 +1181,14 @@ Ordered; each says what has to be true first.
     real `DeckServer`; a package test holds the manifest to the code and to
     what the build writes, and `pnpm deck:validate` runs Elgato's validator
     in CI. The built bundle was run under a stand-in for the Stream Deck app
-    against the packaged app on a throwaway profile: registration, faces,
-    Away and back, an alert on Yes with nothing asked, the favourite's task
-    list, and every key OFFLINE once the app quit.
+    against the packaged app on a throwaway profile, then on Stream Deck
+    Mobile against the same app: registration, faces, an alert on Yes with
+    nothing asked, and every key OFFLINE once the app quit.
 
-  Blocked on a Mini, for what is left: the default profile (it is authored
-  in the Stream Deck app, on the device it is for), how fast a key face
-  changes, the profile and its folder installing on that model, and
-  reconnecting after either app restarts. Nothing stands in for the device:
-  Stream Deck 7.6 with none attached shows a default 15-key grid to edit,
-  with nothing to press (checked 2026-10-22).
+  Left: the default profile, authored in the Stream Deck app on the device
+  it is for -- Stream Deck Mobile has the Mini's grid, so it can stand in --
+  and reconnecting after either app restarts. A physical Mini only for how
+  fast its keys redraw.
 - **Personal days off.** OpenProject 17 records a user's own days off
   (`/api/v3/users/{id}/non_working_times`, the *My working times* page). The
   working calendar reads only the instance's holidays; a personal day off
@@ -1194,8 +1200,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.83 statements / 89.4 branches / 94.76 functions / 96.53 lines across 2531
-tests in 124 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.77 statements / 89.32 branches / 94.63 functions / 96.48 lines across 2530
+tests in 125 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

@@ -14,7 +14,7 @@ import { InputDecoder } from '../src/main/hardware/input-decoder';
 import type { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { DECK_ELAPSED_DRIFT_SECONDS, DECK_STATE_REFRESH_MS, DeckActionService } from '../src/main/services/deck-action-service';
-import { DeckRequest, DeckResultMessage, DeckStateMessage, DeckTasksMessage } from '../src/shared/deck-protocol';
+import { DeckRequest, DeckResultMessage, DeckStateMessage } from '../src/shared/deck-protocol';
 import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
 import { DAILY_STANDUP_TITLE } from '../src/shared/schedule-defaults';
 import { SCENE_ICONS, FRONT_ANIMATIONS } from '../src/shared/render-constants';
@@ -105,9 +105,7 @@ describe('DeckActionService', () => {
     });
 
     openPicker = vi.fn(() => true);
-    service = new DeckActionService({
-      engine, renderer, priorityEngine: priority, schedule, inputDecoder: decoder, taskRepo, settings, openPicker
-    });
+    service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker });
   });
 
   afterEach(() => {
@@ -122,8 +120,8 @@ describe('DeckActionService', () => {
   });
 
   describe('the state', () => {
-    it('GetState_NothingRunning_NoSessionNoPromptAtWork', () => {
-      expect(service.getState()).toMatchObject({ session: null, prompt: null, mode: 'WORK' });
+    it('GetState_NothingRunning_NoSessionNoIconNoPrompt', () => {
+      expect(service.getState()).toEqual({ session: null, icon: null, prompt: null });
     });
 
     it('GetState_Tracking_TheSessionAndTheBarsIcon', () => {
@@ -220,83 +218,6 @@ describe('DeckActionService', () => {
     });
   });
 
-  describe('a favourite key', () => {
-    it('Perform_StartAFavourite_TracksIt', () => {
-      expect(ask('start', { taskId: MINE.id }).ok).toBe(true);
-
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, taskKey: MINE.key, status: 'TRACKING' });
-    });
-
-    it('Perform_StartAnotherWhileTracking_SwitchesAsThePicker', () => {
-      engine.startTask(MINE.id);
-      at(9, 30);
-
-      ask('start', { taskId: MINE_IN_PROGRESS.id });
-
-      expect(engine.getCurrentSession()?.taskId).toBe(MINE_IN_PROGRESS.id);
-      expect(new WorklogRepository(db).getTodaysWorklogs()).toHaveLength(1);
-    });
-
-    it('Perform_StartTheTaskAlreadyRunning_ChangesNothing', () => {
-      const running = engine.startTask(MINE.id);
-      at(9, 30);
-
-      expect(ask('start', { taskId: MINE.id }).ok).toBe(true);
-
-      // No few-seconds worklog, no second session.
-      expect(engine.getCurrentSession()?.sessionId).toBe(running.sessionId);
-      expect(new WorklogRepository(db).getTodaysWorklogs()).toEqual([]);
-    });
-
-    it('Perform_StartTheTaskPaused_ResumesIt', () => {
-      const running = engine.startTask(MINE.id);
-      engine.pauseSession();
-
-      ask('start', { taskId: MINE.id });
-
-      expect(engine.getCurrentSession()).toMatchObject({ sessionId: running.sessionId, status: 'TRACKING' });
-    });
-
-    it('Perform_StartATaskNoLongerStored_RefusedUnknown', () => {
-      expect(refused(ask('start', { taskId: 'never-synced' }))).toBe('unknown-task');
-      expect(engine.getCurrentSession()).toBeNull();
-    });
-
-    it('Perform_StartATaskArchived_RefusedUnknown', () => {
-      // Time logged, then removed from the lists: archived, not deleted.
-      engine.startTask(MINE.id);
-      at(9, 30);
-      engine.stopSession();
-      taskRepo.deleteTask(MINE.id);
-      expect(taskRepo.isArchived(MINE.id)).toBe(true);
-
-      expect(refused(ask('start', { taskId: MINE.id }))).toBe('unknown-task');
-      expect(engine.getCurrentSession()).toBeNull();
-    });
-
-    it('Perform_ListTasks_TheWindowsListsInTheirOrder', () => {
-      const answer = service.perform({ id: 'list', action: 'list-tasks' }) as DeckTasksMessage;
-
-      // Mine in progress first, then mine to do; a teammate's is hidden by default.
-      expect(answer).toEqual({
-        type: 'tasks',
-        id: 'list',
-        tasks: [
-          { id: MINE_IN_PROGRESS.id, key: MINE_IN_PROGRESS.key, title: MINE_IN_PROGRESS.title, projectName: PROJECT.name },
-          { id: MINE.id, key: MINE.key, title: MINE.title, projectName: PROJECT.name }
-        ]
-      });
-    });
-
-    it('Perform_ListTasksWithTeammatesShown_IncludesTheirs', () => {
-      settings.setSetting('task_visibility', { unassigned: true, others: true });
-
-      const answer = service.perform({ id: 'list', action: 'list-tasks' }) as DeckTasksMessage;
-
-      expect(answer.tasks.map(t => t.id)).toEqual([MINE_IN_PROGRESS.id, MINE.id, THEIRS.id]);
-    });
-  });
-
   describe('the prompt key', () => {
     it('Perform_PromptWithNothingAsked_RefusedNoPrompt', () => {
       expect(refused(ask('prompt-yes'))).toBe('no-prompt');
@@ -350,26 +271,6 @@ describe('DeckActionService', () => {
   });
 
   describe('the other keys', () => {
-    it('Perform_ToggleAway_EntersAndLeavesAway', () => {
-      ask('toggle-away');
-      expect(priority.getUserMode()).toBe('AWAY');
-
-      ask('toggle-away');
-      expect(priority.getUserMode()).toBe('WORK');
-    });
-
-    it('Perform_ToggleAwayLeavingDuringLunchHour_GoesToLunch', () => {
-      engine.startTask(MINE.id);
-      ask('toggle-away');
-      at(12, 45);
-
-      ask('toggle-away');
-
-      // exitAwayMode, never WORK first (CLAUDE.md §5); the session stops for lunch.
-      expect(priority.getUserMode()).toBe('LUNCH');
-      expect(engine.getCurrentSession()).toBeNull();
-    });
-
     it('Perform_OpenPicker_OpensTheWindowsPicker', () => {
       expect(ask('open-picker').ok).toBe(true);
       expect(openPicker).toHaveBeenCalledTimes(1);
@@ -481,9 +382,7 @@ describe('DeckActionService', () => {
   });
 
   it('Refresh_TheStateUnreadable_PushesNothingAndWarns', () => {
-    const broken = new DeckActionService({
-      engine, renderer, priorityEngine: priority, schedule, inputDecoder: decoder, taskRepo, settings, openPicker
-    });
+    const broken = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker });
     const pushed: DeckStateMessage[] = [];
     vi.spyOn(renderer, 'getScreenIcon').mockImplementation(() => {
       throw new Error('database closed');

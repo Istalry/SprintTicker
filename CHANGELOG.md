@@ -90,18 +90,18 @@
 
 - **The app's side of a Stream Deck plugin.** A WebSocket on the app's
   local port, `/api/v1/deck`, pushes what a deck's keys show -- the session,
-  the bar's icon, a prompt waiting for an answer, the mode -- and takes the
-  keys' actions: pause, resume, the three ends of a session, a favourite
-  task, the task picker, Away, and yes or no on the stand-up, the wrap-up and
-  the resume question. Each does exactly what the window or the bar does.
+  the bar's icon, a prompt waiting for an answer -- and takes the keys'
+  actions: pause, resume, the three ends of a session, the task picker, and
+  yes or no on the stand-up, the wrap-up and the resume question. Each does exactly what the window or the bar does.
   A web page cannot open it.
 
 - **A Stream Deck plugin** (`packages/streamdeck-plugin`, `pnpm deck:pack`).
-  Nine actions to place on any key: Session (the task, its time and the
-  bar's icon; pause, resume, or the picker), Not done, Done, Discard, Switch
-  task, Favourite task (one task per key, chosen in its panel), Yes, No and
-  Away. Discard, and Done on a task no longer yours, ask on the same key
-  first. Yes and No are separate keys, dimmed while nothing is asked. Every
+  Six actions to place on any key, a Stream Deck Mini's six: Session (the
+  task, its time and the bar's icon; a press pauses or resumes, or opens the
+  task picker when nothing runs; held, it opens the picker), Not done, Done,
+  Discard, Yes and No. The picker comes to the front even though the press
+  reached Stream Deck rather than SprintTicker. Discard, and Done on a task
+  no longer yours, ask on the same key first. Yes and No are separate keys, dimmed while nothing is asked. Every
   key says OFFLINE while SprintTicker is closed. Not yet tried on a physical
   deck, and no default profile ships yet.
 

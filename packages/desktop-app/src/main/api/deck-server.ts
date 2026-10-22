@@ -9,7 +9,6 @@ import {
   DeckResultMessage,
   DeckServerMessage,
   DeckStateMessage,
-  DeckTasksMessage,
   parseDeckRequest
 } from '../../shared/deck-protocol';
 
@@ -24,7 +23,7 @@ export const DECK_MAX_CLIENTS = 4;
 export interface DeckBackend {
   getStateMessage(): DeckStateMessage;
   subscribe(listener: (message: DeckStateMessage) => void): () => void;
-  perform(request: DeckRequest): DeckResultMessage | DeckTasksMessage;
+  perform(request: DeckRequest): DeckResultMessage;
 }
 
 /**

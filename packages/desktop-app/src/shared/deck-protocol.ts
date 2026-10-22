@@ -1,4 +1,4 @@
-import { ArgumentException, ScreenIconDTO, UserMode } from './dtos';
+import { ArgumentException, ScreenIconDTO } from './dtos';
 
 /**
  * What SprintTicker and its Stream Deck plugin say to each other, over a
@@ -21,12 +21,12 @@ export const DECK_PATH = '/api/v1/deck';
 export const DECK_PROTOCOL_VERSION = 1;
 
 /**
- * Largest message the app accepts. A request is an action, an id and a task
- * id; anything near this is not a request.
+ * Largest message the app accepts. A request is an action and an id;
+ * anything near this is not a request.
  */
 export const DECK_MAX_MESSAGE_BYTES = 4 * 1024;
 
-/** Longest request id and task id accepted: both are echoed or looked up. */
+/** Longest request id accepted: it is echoed back in the answer. */
 export const DECK_MAX_ID_LENGTH = 128;
 
 /**
@@ -63,15 +63,6 @@ export interface DeckState {
   /** The icon of whatever holds the bar, as the mini timer shows it. */
   icon: ScreenIconDTO | null;
   prompt: DeckPrompt | null;
-  mode: UserMode;
-}
-
-/** A task a favourite key can be set to. */
-export interface DeckTask {
-  id: string;
-  key: string;
-  title: string;
-  projectName: string;
 }
 
 export const DECK_ACTIONS = [
@@ -83,14 +74,10 @@ export const DECK_ACTIONS = [
   'finish',
   /** Keeps nothing; always `confirmed`, since it cannot be undone. */
   'discard',
-  /** Starts `taskId` -- a favourite key. */
-  'start',
   /** Brings the window forward with its task picker open. */
   'open-picker',
   'prompt-yes',
-  'prompt-no',
-  'toggle-away',
-  'list-tasks'
+  'prompt-no'
 ] as const;
 
 export type DeckAction = (typeof DECK_ACTIONS)[number];
@@ -98,7 +85,6 @@ export type DeckAction = (typeof DECK_ACTIONS)[number];
 export interface DeckRequest {
   id: string;
   action: DeckAction;
-  taskId?: string;
   /** The second press of a question the plugin asked: NOT YOURS?, DISCARD?. */
   confirmed?: boolean;
 }
@@ -108,8 +94,6 @@ export type DeckErrorCode =
   | 'invalid-request'
   /** Nothing is running, or nothing paused, to act on. */
   | 'no-session'
-  /** No such task, or one no list shows any more. */
-  | 'unknown-task'
   /** A question must be asked first, and answered with `confirmed`. */
   | 'needs-confirmation'
   /** Nothing is waiting for an answer. */
@@ -135,13 +119,7 @@ export type DeckResultMessage =
   | { type: 'result'; id: string; ok: true }
   | { type: 'result'; id: string; ok: false; error: DeckErrorCode; message: string };
 
-export interface DeckTasksMessage {
-  type: 'tasks';
-  id: string;
-  tasks: DeckTask[];
-}
-
-export type DeckServerMessage = DeckHelloMessage | DeckStateMessage | DeckResultMessage | DeckTasksMessage;
+export type DeckServerMessage = DeckHelloMessage | DeckStateMessage | DeckResultMessage;
 
 const KNOWN_ACTIONS: ReadonlySet<string> = new Set(DECK_ACTIONS);
 
@@ -170,12 +148,6 @@ export function parseDeckRequest(raw: unknown): DeckRequest {
     throw new ArgumentException('`confirmed` is true or false.', 'confirmed');
   }
   const request: DeckRequest = { id: r.id, action };
-  if (action === 'start') {
-    if (!isShortId(r.taskId)) {
-      throw new ArgumentException(`\`start\` needs a task id of 1 to ${DECK_MAX_ID_LENGTH} characters.`, 'taskId');
-    }
-    request.taskId = r.taskId;
-  }
   if (r.confirmed === true) request.confirmed = true;
   return request;
 }

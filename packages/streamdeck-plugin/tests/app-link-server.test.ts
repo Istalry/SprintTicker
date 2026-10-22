@@ -44,9 +44,9 @@ describe('AppLink against the app', () => {
       },
       perform: request => {
         performed.push(request);
-        return request.action === 'list-tasks'
-          ? { type: 'tasks', id: request.id, tasks: [{ id: 'T-1', key: 'SPR-1', title: 'Fix', projectName: 'Sprint' }] }
-          : { type: 'result', id: request.id, ok: true };
+        return request.action === 'pause'
+          ? { type: 'result', id: request.id, ok: true }
+          : { type: 'result', id: request.id, ok: false, error: 'no-session', message: 'Nothing to act on.' };
       }
     };
     http = new WebhookServer(0);
@@ -73,18 +73,18 @@ describe('AppLink against the app', () => {
   it('State_AppPushes_TheLinkHearsIt', async () => {
     link.start();
     await until(() => link.message !== null);
-    current = stateMessage({ mode: 'AWAY' });
+    current = stateMessage({ prompt: 'standup' });
     for (const listener of listeners) listener(current);
-    await until(() => link.message?.state.mode === 'AWAY');
+    await until(() => link.message?.state.prompt === 'standup');
   });
 
   it('Request_ReachesTheAppAndComesBack', async () => {
     link.start();
     await until(() => link.status === 'online');
-    const answer = await link.request({ action: 'list-tasks' });
-    expect(answer).toMatchObject({ type: 'tasks', tasks: [{ key: 'SPR-1' }] });
+    const answer = await link.request({ action: 'discard', confirmed: true });
+    expect(answer).toMatchObject({ type: 'result', ok: false, error: 'no-session', message: 'Nothing to act on.' });
     expect(performed).toHaveLength(1);
-    expect(performed[0]).toMatchObject({ action: 'list-tasks' });
+    expect(performed[0]).toMatchObject({ action: 'discard', confirmed: true });
   });
 
   it('Press_SessionKey_PausesTheAppsSession', async () => {
@@ -94,7 +94,8 @@ describe('AppLink against the app', () => {
     const key: KeyHandle = { id: 'k', setImage: () => Promise.resolve(), showAlert: () => (alerts.push('k'), Promise.resolve()) };
     controller.appear('session', key);
     await until(() => link.message !== null);
-    await controller.press('k');
+    await controller.keyDown('k');
+    await controller.keyUp('k');
     expect(performed.map(r => r.action)).toEqual(['pause']);
     expect(alerts).toEqual([]);
     controller.dispose();

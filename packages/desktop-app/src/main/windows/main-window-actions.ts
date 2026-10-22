@@ -1,12 +1,21 @@
 import type { BrowserWindow } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
+import type { ForegroundRaiser } from './foreground-raiser';
 
-/** Brings the dashboard to the front, out of the tray or a minimised state. */
-export function revealMainWindow(win: BrowserWindow | null): boolean {
+/**
+ * Brings the dashboard to the front, out of the tray or a minimised state.
+ *
+ * `raiser` is for a caller the user is not using -- a Stream Deck key --
+ * where Windows refuses `focus()` and only flashes the taskbar. The tray
+ * and the mini timer need none: a click on them is the user's, and gives
+ * the app the foreground.
+ */
+export function revealMainWindow(win: BrowserWindow | null, raiser?: ForegroundRaiser): boolean {
   if (!win || win.isDestroyed()) return false;
   if (win.isMinimized()) win.restore();
   win.show();
   win.focus();
+  if (raiser) void raiser.raise(win.getNativeWindowHandle());
   return true;
 }
 
@@ -23,8 +32,8 @@ export function revealMainWindow(win: BrowserWindow | null): boolean {
  * `inputKey` as a key of the bar, and `ok` there would record a press nobody
  * made on it.
  */
-export function openTaskPickerInMainWindow(win: BrowserWindow | null): boolean {
-  if (!revealMainWindow(win)) return false;
+export function openTaskPickerInMainWindow(win: BrowserWindow | null, raiser?: ForegroundRaiser): boolean {
+  if (!revealMainWindow(win, raiser)) return false;
   win!.webContents.send(IPCChannel.ON_HARDWARE_INPUT_EVENT, {
     inputKey: 'app',
     actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL'

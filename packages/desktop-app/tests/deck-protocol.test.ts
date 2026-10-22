@@ -16,8 +16,7 @@ describe('Deck protocol', () => {
   describe('parseDeckRequest', () => {
     it('ParseDeckRequest_EveryKnownAction_IsAccepted', () => {
       for (const action of DECK_ACTIONS) {
-        const raw = action === 'start' ? { id: 'k1', action, taskId: 'T-1' } : { id: 'k1', action };
-        expect(parseDeckRequest(raw).action).toBe(action);
+        expect(parseDeckRequest({ id: 'k1', action }).action).toBe(action);
       }
     });
 
@@ -40,8 +39,10 @@ describe('Deck protocol', () => {
       ['an id too long', { id: 'x'.repeat(DECK_MAX_ID_LENGTH + 1), action: 'pause' }],
       ['an unknown action', { id: 'k1', action: 'format-disk' }],
       ['an inherited action name', { id: 'k1', action: 'toString' }],
-      ['start without a task', { id: 'k1', action: 'start' }],
-      ['start with a numeric task', { id: 'k1', action: 'start', taskId: 42 }],
+      // Removed with the favourite and Away keys (2026-10-22): an old plugin's request is refused, not guessed at.
+      ['the removed start', { id: 'k1', action: 'start', taskId: 'T-1' }],
+      ['the removed toggle-away', { id: 'k1', action: 'toggle-away' }],
+      ['the removed list-tasks', { id: 'k1', action: 'list-tasks' }],
       ['confirmed not a boolean', { id: 'k1', action: 'discard', confirmed: 'yes' }]
     ])('ParseDeckRequest_%s_Throws', (_label, raw) => {
       expect(() => parseDeckRequest(raw)).toThrow(ArgumentException);
@@ -57,8 +58,7 @@ describe('Deck protocol', () => {
           ? { taskId: 'T', taskKey: 'K', taskTitle: 'Title', isAdHoc: false, status, elapsedSeconds: 100, finishNeedsConfirmation: false }
           : null,
         icon: null,
-        prompt: null,
-        mode: 'WORK'
+        prompt: null
       }
     });
 

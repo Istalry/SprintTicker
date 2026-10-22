@@ -1,7 +1,7 @@
-import type { DeckRequest, DeckTask } from '../../desktop-app/src/shared/deck-protocol';
+import type { DeckRequest } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from './app-link';
-import { KeyContext, LinkStatus, faceFor, planPress, ticksWithTheClock } from './faces';
-import { FavouriteSettings, KeyKind } from './key-kinds';
+import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, ticksWithTheClock } from './faces';
+import { KeyKind } from './key-kinds';
 import { renderFace } from './svg';
 
 /**
@@ -10,6 +10,14 @@ import { renderFace } from './svg';
  * enough that a press much later is not taken as an answer.
  */
 export const CONFIRM_WINDOW_MS = 4000;
+
+/**
+ * How long Session must be held to open the picker rather than pause.
+ * Half a second: well past a tap, and short enough that holding is not a
+ * wait. The picker opens as the time is reached, without waiting for the
+ * key to come up, so the window appearing is the sign it was taken.
+ */
+export const LONG_PRESS_MS = 500;
 
 /** The clock's step for a running session's key. */
 export const TICK_MS = 1000;
@@ -42,9 +50,10 @@ export interface DeckControllerOptions {
 interface Key {
   kind: KeyKind;
   handle: KeyHandle;
-  favourite: FavouriteSettings;
   armedUntil: number | null;
   disarm: unknown;
+  /** Set while a key with a long press is down and not yet held long enough. */
+  hold: unknown;
   /** The image last sent, so an unchanged face is not sent again. */
   drawn: string | null;
 }
@@ -80,8 +89,8 @@ export class DeckController {
   }
 
   /** A key came into view: a page, a folder or a profile was shown. */
-  public appear(kind: KeyKind, handle: KeyHandle, favourite: FavouriteSettings = {}): void {
-    this._keys.set(handle.id, { kind, handle, favourite, armedUntil: null, disarm: null, drawn: null });
+  public appear(kind: KeyKind, handle: KeyHandle): void {
+    this._keys.set(handle.id, { kind, handle, armedUntil: null, disarm: null, hold: null, drawn: null });
     this.draw(handle.id);
     this.updateTicker();
   }
@@ -91,23 +100,52 @@ export class DeckController {
     const key = this._keys.get(id);
     if (!key) return;
     this.clearArm(key);
+    this.clearHold(key);
     this._keys.delete(id);
     this.updateTicker();
   }
 
-  /** A favourite's task was chosen, or changed, in its property inspector. */
-  public settingsChanged(id: string, favourite: FavouriteSettings): void {
+  /**
+   * A key went down. Most keys act now; one with a long press waits to see
+   * whether it is held ({@link LONG_PRESS_MS}) or let go first.
+   */
+  public async keyDown(id: string): Promise<void> {
     const key = this._keys.get(id);
     if (!key) return;
-    key.favourite = favourite;
-    this.draw(id);
+    if (!hasLongPress(key.kind)) {
+      await this.act(key, false);
+      return;
+    }
+    this.clearHold(key);
+    key.hold = this._setTimeout(() => {
+      key.hold = null;
+      if (this._keys.get(id) !== key) return;
+      this.act(key, true).catch(err => this._log(`[SprintTicker] A held press failed: ${String(err)}`));
+    }, LONG_PRESS_MS);
   }
 
-  /** A press: does what the key's face says. */
-  public async press(id: string): Promise<void> {
+  /** A key came up: a short press, for a key that was waiting to know. */
+  public async keyUp(id: string): Promise<void> {
     const key = this._keys.get(id);
-    if (!key) return;
-    const plan = planPress(key.kind, this.contextOf(key));
+    if (!key || key.hold === null) return;
+    this.clearHold(key);
+    await this.act(key, false);
+  }
+
+  public dispose(): void {
+    this._unsubscribe();
+    for (const key of this._keys.values()) {
+      this.clearArm(key);
+      this.clearHold(key);
+    }
+    this._keys.clear();
+    this.updateTicker();
+  }
+
+  /** Does what the key's face says. */
+  private async act(key: Key, held: boolean): Promise<void> {
+    const id = key.handle.id;
+    const plan = planPress(key.kind, this.contextOf(key), held);
     if (plan.type === 'none') {
       await key.handle.showAlert();
       return;
@@ -118,11 +156,7 @@ export class DeckController {
     }
     this.clearArm(key);
     this.draw(id);
-    const answer = await this._link.request({
-      action: plan.action,
-      ...(plan.taskId ? { taskId: plan.taskId } : {}),
-      ...(plan.confirmed ? { confirmed: true } : {})
-    });
+    const answer = await this._link.request({ action: plan.action, ...(plan.confirmed ? { confirmed: true } : {}) });
     if (answer?.type === 'result' && !answer.ok) {
       // The app asks where the plugin did not know to: the task left the
       // list since the last state. Asked here too, on the same key.
@@ -137,19 +171,6 @@ export class DeckController {
       await key.handle.showAlert();
     }
     // Done: the app pushes the state that follows, and that redraws the keys.
-  }
-
-  /** The tasks a favourite can be set to, for its property inspector; null when the app cannot say. */
-  public async listTasks(): Promise<DeckTask[] | null> {
-    const answer = await this._link.request({ action: 'list-tasks' });
-    return answer?.type === 'tasks' ? answer.tasks : null;
-  }
-
-  public dispose(): void {
-    this._unsubscribe();
-    for (const key of this._keys.values()) this.clearArm(key);
-    this._keys.clear();
-    this.updateTicker();
   }
 
   private onAppChanged(): void {
@@ -181,14 +202,18 @@ export class DeckController {
     key.armedUntil = null;
   }
 
+  private clearHold(key: Key): void {
+    if (key.hold !== null) this._clearTimeout(key.hold);
+    key.hold = null;
+  }
+
   private contextOf(key: Key): KeyContext {
     const now = this._now();
     return {
       link: this._link.status,
       message: this._link.message,
       now,
-      armed: key.armedUntil !== null && now.getTime() < key.armedUntil,
-      favourite: key.favourite
+      armed: key.armedUntil !== null && now.getTime() < key.armedUntil
     };
   }
 

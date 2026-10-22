@@ -16,11 +16,11 @@ export function session(overrides: Partial<DeckSession> = {}): DeckSession {
   };
 }
 
-/** A state message as the app sends it; nothing running, in WORK, unless told. */
+/** A state message as the app sends it; nothing running and nothing asked, unless told. */
 export function stateMessage(overrides: Partial<DeckState> = {}, at: string = STATE_AT): DeckStateMessage {
   return {
     type: 'state',
     at,
-    state: { session: null, icon: null, prompt: null, mode: 'WORK', ...overrides }
+    state: { session: null, icon: null, prompt: null, ...overrides }
   };
 }

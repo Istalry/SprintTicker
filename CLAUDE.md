@@ -229,9 +229,9 @@ what a click or a press already does.** `DeckActionService` holds no rule of
 its own, and must not grow one: ending a session is `completeSession`, shared
 with the window's IPC; a prompt is answered by OK or BACK through
 `InputDecoder`, so the wrap-up's two presses and the stand-up's switch stay
-in one place; leaving Away is `exitAwayMode`. A key with its own copy of a
-rule is the duplicated-constant hazard below, with a session at stake.
-Three more things about it:
+in one place; the picker is the tray's. A key with its own copy of a rule
+is the duplicated-constant hazard below, with a session at stake. Four more
+things about it:
 - **`Origin` is the whole defence of the socket.** A browser opens a
   cross-origin WebSocket with no CORS check, so the content-type rule that
   stops a web page's POST does not exist for an upgrade. `WebhookServer`
@@ -242,32 +242,41 @@ Three more things about it:
 - **Close the decks before the HTTP server.** An upgraded socket still counts
   as one of the server's connections, so `stop()` would wait on a deck that
   never hangs up.
+- **A window opened for the deck must be raised past Windows' foreground
+  lock.** The press reaches Stream Deck, not this app, and Windows refuses
+  the foreground to a process the user is not using: `focus()` only flashes
+  the taskbar while `isFocused()` answers true, so the picker opened behind
+  the app in front (Stream Deck Mobile, 2026-10-22). `setAlwaysOnTop` and
+  `minimize()` + `restore()` fail the same way; `ForegroundRaiser`
+  (`AttachThreadInput` from PowerShell, ~0.8 s) works. Measuring it needs
+  another app in front that the *user* chose: a process this shell starts
+  while the agent's own window has the foreground inherits the right to it,
+  and every method then passes.
 
 **The plugin itself, `packages/streamdeck-plugin`, runs inside Elgato's
 app, so nothing here sees it on a deck** -- the Unity plugin's situation.
 What a key shows and does is two pure functions (`faces.ts`), tested for
 every kind and state; `package.test.ts` holds the manifest to the code and
 to what the build writes; `pnpm deck:validate` runs Elgato's validator in
-CI. Five things about it cost time to find:
+CI. Four things about it cost time to find:
 - **`imgs/` and `bin/` are build output**, never edited and never tracked.
   The keys' default images are the faces the plugin draws, rendered at
   build time by `src/assets/write-assets.ts`, so the two cannot drift; the
   manifest's plugin icon must be PNG, which `png.ts` writes with
-  `node:zlib` rather than adding an image library.
+  `node:zlib` rather than adding an image library. The build empties
+  `imgs/` first: an image of a removed action would otherwise ship.
 - **`bin/package.json` says `"type": "module"`, and is generated too.**
   The bundle is ESM, and without it Stream Deck's Node reads `plugin.js` as
   CommonJS and fails on the first `import`.
 - **A key image goes to the SDK as base64 with its type**
   (`svgDataUrl`). It also takes a bare SVG string, but every face carries
   `#` in its colours, which a URL reading of the image takes for a fragment.
-- **The SDK answers a property inspector only once it has seen it open**
-  (`propertyInspectorDidAppear`); before that `sendToPropertyInspector`
-  sends nothing and says nothing. The favourite's page therefore asks for
-  the task list again until it is answered.
-- **A key never changes meaning with how long it is held** -- the user's
+- **An answer never depends on how long a key is held** -- the user's
   rule, 2026-10-22. A question (DISCARD?, NOT YOURS?) is asked on the same
   key and answered by pressing it again within `CONFIRM_WINDOW_MS`; yes and
-  no are separate keys. And the app refuses Done and Discard without
+  no are separate keys. The one long press is Session's, which opens the
+  picker (`hasLongPress`), also the user's choice; that key acts when it
+  comes up, every other as it goes down. And the app refuses Done and Discard without
   `confirmed` when they must ask, so the plugin cannot skip the second press
   -- when the app asks where the state had not said it would, the key arms
   from that refusal (`needs-confirmation`).

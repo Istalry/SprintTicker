@@ -87,7 +87,7 @@ describe('glyphs', () => {
   });
 
   it('RenderListIcon_IsWhiteOnNothing', () => {
-    const svg = renderListIcon('star', 20);
+    const svg = renderListIcon('check', 20);
     expect(svg).toContain('width="20" height="20"');
     expect(svg.match(/#[0-9A-Fa-f]{6}/g)).toEqual(['#FFFFFF']);
     expect(svg).not.toContain('<rect');

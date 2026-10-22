@@ -1,9 +1,7 @@
 import type { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import type { DisplayRenderer } from '../hardware/display-renderer';
 import type { InputDecoder } from '../hardware/input-decoder';
-import type { TaskRepository } from '../db/repositories/task-repository';
 import type { PriorityPreemptionEngine } from './priority-preemption-engine';
-import type { ContextScheduleService } from './context-schedule-service';
 import { completeSession } from './session-commands';
 import { ArgumentNullException, ActiveSessionDTO } from '../../shared/dtos';
 import {
@@ -14,18 +12,14 @@ import {
   DeckSession,
   DeckState,
   DeckStateMessage,
-  DeckTask,
-  DeckTasksMessage,
   deckElapsedSeconds
 } from '../../shared/deck-protocol';
 import { finishNeedsConfirmation } from '../../shared/task-left';
 import { EOD_WRAP_UP_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
-import { SettingsReader, readTaskVisibility, visibleTasks } from '../../shared/task-visibility';
-import { orderTasksForSelection } from '../../shared/task-order';
 
 /**
  * How often the state is read again while a deck is connected. Most changes
- * arrive as events -- the session, the bar's icon, the mode -- but a prompt
+ * arrive as events -- the session, the bar's icon -- but a prompt
  * taking or leaving the display has none of its own, so this bounds how long
  * the prompt key can lag the bar. One read a second, the engine's own tick.
  */
@@ -43,14 +37,11 @@ export const DECK_ELAPSED_DRIFT_SECONDS = 2;
 export interface DeckActionServiceDeps {
   engine: Pick<
     TimeTrackingEngine,
-    'getCurrentSession' | 'subscribe' | 'pauseSession' | 'resumeSession' | 'stopSession' | 'discardSession' | 'startTask' | 'getProjects' | 'getTasksForProject'
+    'getCurrentSession' | 'subscribe' | 'pauseSession' | 'resumeSession' | 'stopSession' | 'discardSession'
   >;
   renderer: Pick<DisplayRenderer, 'getScreenIcon' | 'onScreenIconChanged' | 'renderTaskCompletionConfetti' | 'renderTaskLogged'>;
-  priorityEngine: Pick<PriorityPreemptionEngine, 'getActiveLockEventName' | 'getUserMode' | 'onUserModeChanged'>;
-  schedule: Pick<ContextScheduleService, 'enterAwayMode' | 'exitAwayMode'>;
+  priorityEngine: Pick<PriorityPreemptionEngine, 'getActiveLockEventName'>;
   inputDecoder: Pick<InputDecoder, 'handleHardwareInput' | 'getEodConfirmStep'>;
-  taskRepo: Pick<TaskRepository, 'getTaskById' | 'isArchived'>;
-  settings: SettingsReader;
   /** Brings the window forward with its task picker open; false when there is no window. */
   openPicker: () => boolean;
   now?: () => Date;
@@ -85,7 +76,7 @@ export class DeckActionService {
 
   constructor(deps: DeckActionServiceDeps) {
     if (!deps) throw new ArgumentNullException('deps');
-    for (const name of ['engine', 'renderer', 'priorityEngine', 'schedule', 'inputDecoder', 'taskRepo', 'settings', 'openPicker'] as const) {
+    for (const name of ['engine', 'renderer', 'priorityEngine', 'inputDecoder', 'openPicker'] as const) {
       if (!deps[name]) throw new ArgumentNullException(name);
     }
     this._deps = deps;
@@ -94,12 +85,11 @@ export class DeckActionService {
 
   /** The state the keys show, read now. */
   public getState(): DeckState {
-    const { engine, renderer, priorityEngine } = this._deps;
+    const { engine, renderer } = this._deps;
     return {
       session: DeckActionService.toDeckSession(engine.getCurrentSession()),
       icon: renderer.getScreenIcon(),
-      prompt: this.currentPrompt(),
-      mode: priorityEngine.getUserMode()
+      prompt: this.currentPrompt()
     };
   }
 
@@ -127,12 +117,9 @@ export class DeckActionService {
    * Carries out one request. A refusal is an answer, never a throw: the
    * plugin shows it on the key that asked.
    */
-  public perform(request: DeckRequest): DeckResultMessage | DeckTasksMessage {
+  public perform(request: DeckRequest): DeckResultMessage {
     if (!request) throw new ArgumentNullException('request');
     try {
-      if (request.action === 'list-tasks') {
-        return { type: 'tasks', id: request.id, tasks: this.listTasks() };
-      }
       this.act(request);
       return { type: 'result', id: request.id, ok: true };
     } catch (err) {
@@ -152,7 +139,7 @@ export class DeckActionService {
   }
 
   private act(request: DeckRequest): void {
-    const { engine, renderer, schedule, priorityEngine } = this._deps;
+    const { engine, renderer } = this._deps;
     const session = engine.getCurrentSession();
     switch (request.action) {
       case 'pause':
@@ -182,9 +169,6 @@ export class DeckActionService {
         if (!request.confirmed) throw new DeckRefusal('needs-confirmation', 'Confirm to throw the session away.');
         engine.discardSession();
         return;
-      case 'start':
-        this.start(request.taskId!, session);
-        return;
       case 'open-picker':
         if (!this._deps.openPicker()) throw new DeckRefusal('no-window', 'The SprintTicker window is not open.');
         return;
@@ -192,35 +176,9 @@ export class DeckActionService {
       case 'prompt-no':
         this.answerPrompt(request.action === 'prompt-yes');
         return;
-      case 'toggle-away':
-        // exitAwayMode, not the window's switch to WORK: unlocked during the
-        // lunch hour it goes straight to LUNCH (CLAUDE.md §5).
-        if (priorityEngine.getUserMode() === 'AWAY') schedule.exitAwayMode();
-        else schedule.enterAwayMode();
-        return;
       default:
         throw new DeckRefusal('invalid-request', `Unknown deck action: ${String(request.action)}.`);
     }
-  }
-
-  /**
-   * A favourite key. Its task is the user's choice, as a pick in the window
-   * is, so nothing is asked; but one no list shows any more -- gone, or
-   * archived -- is refused rather than started under an id nobody can name.
-   * Pressed on the task already running, it changes nothing: switching to it
-   * would log a worklog of a few seconds and start another.
-   */
-  private start(taskId: string, session: ActiveSessionDTO | null): void {
-    const { engine, taskRepo } = this._deps;
-    const task = taskRepo.getTaskById(taskId);
-    if (!task || taskRepo.isArchived(taskId)) {
-      throw new DeckRefusal('unknown-task', 'That task is in no list any more: choose another for this key.');
-    }
-    if (session?.taskId === taskId) {
-      if (session.status === 'PAUSED') engine.resumeSession();
-      return;
-    }
-    engine.startTask(task.id);
   }
 
   /** OK or BACK on the bar, while a prompt holds it: InputDecoder decides what that means. */
@@ -241,28 +199,10 @@ export class DeckActionService {
     return null;
   }
 
-  /** The tasks a favourite can be set to: every list's, filtered and ordered as the window's. */
-  private listTasks(): DeckTask[] {
-    const { engine, settings } = this._deps;
-    const visibility = readTaskVisibility(settings);
-    const tasks: DeckTask[] = [];
-    for (const project of engine.getProjects()) {
-      const shown = orderTasksForSelection(visibleTasks(engine.getTasksForProject(project.id), visibility).visible);
-      for (const task of shown) {
-        tasks.push({ id: task.id, key: task.key, title: task.title, projectName: project.name });
-      }
-    }
-    return tasks;
-  }
-
   private startListening(): void {
-    const { engine, renderer, priorityEngine } = this._deps;
+    const { engine, renderer } = this._deps;
     const refresh = () => this.refresh();
-    this._unsubscribers = [
-      engine.subscribe(refresh),
-      renderer.onScreenIconChanged(refresh),
-      priorityEngine.onUserModeChanged(refresh)
-    ];
+    this._unsubscribers = [engine.subscribe(refresh), renderer.onScreenIconChanged(refresh)];
     this._timer = setInterval(refresh, DECK_STATE_REFRESH_MS);
     // A deck must never keep the app open at quit.
     this._timer.unref?.();

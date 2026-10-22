@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DeckPrompt } from '../../desktop-app/src/shared/deck-protocol';
-import { ACCENTS, KeyContext, faceFor, formatDuration, planPress, ticksWithTheClock } from '../src/faces';
+import { ACCENTS, KeyContext, faceFor, formatDuration, hasLongPress, planPress, ticksWithTheClock } from '../src/faces';
 import { KEY_KINDS } from '../src/key-kinds';
 import { STATE_AT, session, stateMessage } from './support/states';
 
@@ -49,11 +49,6 @@ describe('faceFor', () => {
     expect(faceFor('session', { link: 'online', message: null, now: NOW, armed: false }).lines.at(-1)).toBe('OFFLINE');
   });
 
-  it('FaceFor_FavouriteOffline_StillNamesItsTask', () => {
-    const face = faceFor('favourite', { link: 'offline', message: null, now: NOW, armed: false, favourite: { taskId: 'T-9', taskKey: 'SPR-9' } });
-    expect(face.lines).toEqual(['SPR-9', 'OFFLINE']);
-  });
-
   it('FaceFor_SessionNothingRunning_OffersToStartATask', () => {
     const face = faceFor('session', online());
     expect(face).toMatchObject({ lines: ['START', 'A TASK'], glyph: 'list', dim: false });
@@ -98,28 +93,6 @@ describe('faceFor', () => {
     expect(faceFor('discard', online(stateMessage(), { armed: true })).lines).toEqual(['DISCARD']);
   });
 
-  it('FaceFor_Switch_SaysWhatItOpensFor', () => {
-    expect(faceFor('switch', online()).lines).toEqual(['START', 'A TASK']);
-    expect(faceFor('switch', online(stateMessage({ session: session() }))).lines).toEqual(['SWITCH', 'TASK']);
-  });
-
-  it('FaceFor_FavouriteUnset_AsksToBeSet', () => {
-    expect(faceFor('favourite', online())).toMatchObject({ lines: ['SET A', 'TASK'], dim: true });
-  });
-
-  it('FaceFor_FavouriteSet_NamesItsTaskAndColoursItsState', () => {
-    const favourite = { taskId: 'T-1', taskKey: 'SPR-1', taskTitle: 'Fix the login page' };
-    const idle = faceFor('favourite', online(stateMessage(), { favourite }));
-    expect(idle).toMatchObject({ lines: ['SPR-1', 'Fix the login page'], accent: ACCENTS.blue, dim: false });
-    expect(faceFor('favourite', online(stateMessage({ session: session() }), { favourite })).accent).toBe(ACCENTS.green);
-    expect(faceFor('favourite', online(stateMessage({ session: session({ status: 'paused' }) }), { favourite })).accent).toBe(ACCENTS.amber);
-    expect(faceFor('favourite', online(stateMessage({ session: session({ taskId: 'T-2' }) }), { favourite })).accent).toBe(ACCENTS.blue);
-  });
-
-  it('FaceFor_FavouriteWithOnlyAnId_NamesTheId', () => {
-    expect(faceFor('favourite', online(stateMessage(), { favourite: { taskId: 'T-7' } })).lines).toEqual(['T-7']);
-  });
-
   it.each(['yes', 'no'] as const)('FaceFor_%s_NothingAsked_IsDimmed', kind => {
     expect(faceFor(kind, online())).toMatchObject({ lines: [kind.toUpperCase()], dim: true });
   });
@@ -134,17 +107,25 @@ describe('faceFor', () => {
     expect(faceFor('yes', ctx)).toMatchObject({ lines: yes, accent: ACCENTS.green, dim: false });
     expect(faceFor('no', ctx)).toMatchObject({ lines: no, accent: ACCENTS.red, dim: false });
   });
-
-  it('FaceFor_Away_SaysWhereAPressGoes', () => {
-    expect(faceFor('away', online()).lines).toEqual(['AWAY']);
-    expect(faceFor('away', online(stateMessage({ mode: 'AWAY' }))).lines).toEqual(['BACK', 'TO WORK']);
-  });
 });
 
 describe('planPress', () => {
   it.each(KEY_KINDS)('PlanPress_%s_Offline_DoesNothing', kind => {
     expect(planPress(kind, { link: 'offline', message: null, now: NOW, armed: false })).toEqual({ type: 'none', reason: 'offline' });
     expect(planPress(kind, { link: 'incompatible', message: stateMessage(), now: NOW, armed: false })).toEqual({ type: 'none', reason: 'offline' });
+  });
+
+  it('PlanPress_SessionHeld_OpensThePickerWhateverRuns', () => {
+    for (const message of [stateMessage(), stateMessage({ session: session() }), stateMessage({ session: session({ status: 'paused' }) })]) {
+      expect(planPress('session', online(message), true)).toEqual({ type: 'request', action: 'open-picker' });
+    }
+  });
+
+  it('PlanPress_OtherKeysHeld_SameAsATap', () => {
+    const message = stateMessage({ session: session(), prompt: 'standup' });
+    for (const kind of KEY_KINDS.filter(k => !hasLongPress(k))) {
+      expect(planPress(kind, online(message), true)).toEqual(planPress(kind, online(message)));
+    }
   });
 
   it('PlanPress_Session_PicksPausesOrResumes', () => {
@@ -181,25 +162,12 @@ describe('planPress', () => {
     expect(planPress('discard', online())).toEqual({ type: 'none', reason: 'nothing' });
   });
 
-  it('PlanPress_Switch_OpensThePicker', () => {
-    expect(planPress('switch', online())).toEqual({ type: 'request', action: 'open-picker' });
-  });
-
-  it('PlanPress_Favourite_StartsItsTaskOrSaysItIsUnset', () => {
-    expect(planPress('favourite', online(stateMessage(), { favourite: { taskId: 'T-3' } }))).toEqual({ type: 'request', action: 'start', taskId: 'T-3' });
-    expect(planPress('favourite', online())).toEqual({ type: 'none', reason: 'unset' });
-  });
-
   it('PlanPress_YesAndNo_AnswerOnlyWhatIsAsked', () => {
     expect(planPress('yes', online())).toEqual({ type: 'none', reason: 'nothing' });
     expect(planPress('no', online())).toEqual({ type: 'none', reason: 'nothing' });
     const asked = online(stateMessage({ prompt: 'standup' }));
     expect(planPress('yes', asked)).toEqual({ type: 'request', action: 'prompt-yes' });
     expect(planPress('no', asked)).toEqual({ type: 'request', action: 'prompt-no' });
-  });
-
-  it('PlanPress_Away_Toggles', () => {
-    expect(planPress('away', online())).toEqual({ type: 'request', action: 'toggle-away' });
   });
 
   it('PlanPress_YesAndNo_NeverTheSameAction', () => {
@@ -217,5 +185,12 @@ describe('planPress', () => {
 describe('ticksWithTheClock', () => {
   it('TicksWithTheClock_OnlyTheSessionKey', () => {
     expect(KEY_KINDS.filter(ticksWithTheClock)).toEqual(['session']);
+  });
+});
+
+describe('hasLongPress', () => {
+  it('HasLongPress_OnlyTheSessionKey', () => {
+    // Never yes or no: an answer must not depend on how long a key is held.
+    expect(KEY_KINDS.filter(hasLongPress)).toEqual(['session']);
   });
 });

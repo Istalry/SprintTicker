@@ -30,6 +30,7 @@ import { DeckServer } from './api/deck-server';
 import { DeckActionService } from './services/deck-action-service';
 import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
 import { openTaskPickerInMainWindow } from './windows/main-window-actions';
+import { ForegroundRaiser } from './windows/foreground-raiser';
 import { ProviderManager } from './providers/provider-manager';
 
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
@@ -382,15 +383,15 @@ async function startApplication(): Promise<void> {
   // The Stream Deck plugin's socket, on the same port. After the registry:
   // a prompt key answers through InputDecoder, whose answers the registry
   // routes to the ceremonies.
+  // A key press reaches Stream Deck, not this app, so Windows would keep
+  // the window behind whatever is in front: the raiser asks for it.
+  const foregroundRaiser = new ForegroundRaiser();
   deckServer = new DeckServer(new DeckActionService({
     engine,
     renderer,
     priorityEngine,
-    schedule: contextScheduleService,
     inputDecoder,
-    taskRepo,
-    settings: settingsRepo,
-    openPicker: () => openTaskPickerInMainWindow(mainWindow)
+    openPicker: () => openTaskPickerInMainWindow(mainWindow, foregroundRaiser)
   }));
   const deck = deckServer;
   webhookServer.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));

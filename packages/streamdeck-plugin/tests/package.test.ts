@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PLUGIN_DIR_NAME, pluginAssets } from '../src/assets/write-assets';
-import { KEY_KINDS, LIST_TASKS_MESSAGE, PLUGIN_UUID, actionUuid, kindOfUuid, parseFavourite } from '../src/key-kinds';
+import { KEY_KINDS, PLUGIN_UUID, actionUuid, kindOfUuid } from '../src/key-kinds';
 
 /**
  * The plugin's folder against the code: Stream Deck reads the manifest, the
@@ -89,17 +89,10 @@ describe('manifest', () => {
     expect(JSON.parse(assets.get('bin/package.json') as string)).toEqual({ type: 'module' });
   });
 
-  it('Manifest_PropertyInspector_OnlyTheFavouritesAndItExists', () => {
-    const inspectors = manifest.Actions.filter(a => a.PropertyInspectorPath);
-    expect(inspectors.map(a => kindOfUuid(a.UUID))).toEqual(['favourite']);
-    expect(existsSync(path.join(PLUGIN_DIR, inspectors[0].PropertyInspectorPath!))).toBe(true);
-  });
-
-  it('PropertyInspector_AsksForTasks_WithTheMessageThePluginAnswers', () => {
-    const html = readFileSync(path.join(PLUGIN_DIR, 'ui', 'favourite.html'), 'utf8');
-    expect(html).toContain(`payload: { request: '${LIST_TASKS_MESSAGE}' }`);
-    // Nothing fetched from the network: an inspector runs inside Stream Deck.
-    expect(html).not.toMatch(/<(script|link)[^>]+(src|href)=/);
+  it('Manifest_NoPropertyInspector', () => {
+    // No key has settings: nothing to set up beyond placing it.
+    expect(manifest.Actions.filter(a => a.PropertyInspectorPath)).toEqual([]);
+    expect(existsSync(path.join(PLUGIN_DIR, 'ui'))).toBe(false);
   });
 });
 
@@ -111,17 +104,5 @@ describe('key kinds', () => {
   it('KindOfUuid_Foreign_Null', () => {
     expect(kindOfUuid('com.elgato.streamdeck.system.hotkey')).toBeNull();
     expect(kindOfUuid(`${PLUGIN_UUID}.dial`)).toBeNull();
-  });
-
-  it('ParseFavourite_Settings_KeepsTheStrings', () => {
-    expect(parseFavourite({ taskId: 'T-1', taskKey: 'SPR-1', taskTitle: 'Fix', extra: 1 })).toEqual({ taskId: 'T-1', taskKey: 'SPR-1', taskTitle: 'Fix' });
-  });
-
-  it.each([null, undefined, 'T-1', 7])('ParseFavourite_%s_Empty', raw => {
-    expect(parseFavourite(raw)).toEqual({});
-  });
-
-  it('ParseFavourite_NonStringsAndEmpties_Dropped', () => {
-    expect(parseFavourite({ taskId: 42, taskKey: '', taskTitle: 'Fix' })).toEqual({ taskTitle: 'Fix' });
   });
 });

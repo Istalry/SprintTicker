@@ -9,7 +9,10 @@
 export const PLUGIN_UUID = 'io.github.istalry.sprintticker';
 
 export const KEY_KINDS = [
-  /** The running session: pause or resume it, or pick a task when none runs. */
+  /**
+   * The running session: a press pauses or resumes it, or opens the task
+   * picker when nothing runs; held, it opens the picker whatever runs.
+   */
   'session',
   /** Ends the session, task left open. */
   'not-done',
@@ -17,16 +20,10 @@ export const KEY_KINDS = [
   'done',
   /** Keeps nothing; always asks first. */
   'discard',
-  /** Opens the window's task picker. */
-  'switch',
-  /** Starts one task, chosen per key. */
-  'favourite',
   /** Yes to the prompt holding the bar. */
   'yes',
   /** No to it. Never the same key as yes, whatever the press length. */
-  'no',
-  /** Away, and back. */
-  'away'
+  'no'
 ] as const;
 
 export type KeyKind = (typeof KEY_KINDS)[number];
@@ -41,34 +38,4 @@ export function kindOfUuid(uuid: string): KeyKind | null {
   if (!uuid.startsWith(prefix)) return null;
   const kind = uuid.slice(prefix.length);
   return (KEY_KINDS as readonly string[]).includes(kind) ? (kind as KeyKind) : null;
-}
-
-/**
- * What the favourite's property inspector sends: the one request it makes.
- * Kept here rather than beside the SDK's actions so a test can hold
- * `ui/favourite.html` to it without loading the SDK.
- */
-export const LIST_TASKS_MESSAGE = 'list-tasks';
-
-/** A favourite key's settings, kept by Stream Deck per key. */
-export interface FavouriteSettings {
-  taskId?: string;
-  /** Kept with the id so the key can still name its task while the app is closed. */
-  taskKey?: string;
-  taskTitle?: string;
-}
-
-/**
- * A favourite's settings from what Stream Deck hands back: whatever the
- * property inspector wrote, or an older version of it. Anything not a string
- * is dropped.
- */
-export function parseFavourite(raw: unknown): FavouriteSettings {
-  if (typeof raw !== 'object' || raw === null) return {};
-  const r = raw as Record<string, unknown>;
-  const settings: FavouriteSettings = {};
-  for (const name of ['taskId', 'taskKey', 'taskTitle'] as const) {
-    if (typeof r[name] === 'string' && r[name]) settings[name] = r[name];
-  }
-  return settings;
 }

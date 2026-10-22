@@ -644,18 +644,21 @@ WebSocket handshakes go through it too (`onUpgrade`), screened for an
 
 The app's side of the Stream Deck plugin: a WebSocket at `/api/v1/deck` on
 the same port, and the service behind it. The service reads the state the
-keys show -- the session, the bar's screen icon, the prompt holding the bar,
-the mode -- and pushes it only when it changes, so the deck does not hear the
-engine's tick. It listens to the engine, the renderer's icon and the mode,
-and reads again once a second while a deck is connected, because a prompt
+keys show -- the session, the bar's screen icon, the prompt holding the bar
+-- and pushes it only when it changes, so the deck does not hear the
+engine's tick. It listens to the engine and the renderer's icon, and reads
+again once a second while a deck is connected, because a prompt
 taking the display has no event of its own.
 
 Every action is something the app already does, called the same way: ending
 a session is `completeSession` (`session-commands.ts`), shared with the
 window's `COMPLETE_SESSION`; a prompt is answered by OK or BACK through
 `InputDecoder.handleHardwareInput`, so the wrap-up's two presses and the
-stand-up's switch stay where the bar's keys reach them; leaving Away is
-`exitAwayMode`. It never draws on the bar itself. The protocol is in
+stand-up's switch stay where the bar's keys reach them; the picker is the
+tray's `openTaskPickerInMainWindow`, with a `ForegroundRaiser` that gets the
+window past Windows' foreground lock -- a key press reaches Stream Deck, not
+the app, and `focus()` alone only flashes the taskbar. It never draws on the
+bar itself. The protocol is in
 `src/shared/deck-protocol.ts`; [API reference](API.md#the-stream-deck-socket).
 
 ---
@@ -805,7 +808,8 @@ modifies neither your scenes nor your project code.
 `packages/streamdeck-plugin` is a plugin for Elgato's Stream Deck app, built
 on its SDK (`@elgato/streamdeck` 3) and bundled by Vite into one ESM file that
 Stream Deck runs on its own Node 24. Elgato's app keeps the device; the plugin
-only declares actions, which the user places on any key.
+only declares six actions, which the user places on any key: Session, Not
+done, Done, Discard, Yes and No -- a Mini's six keys.
 
 ```
 Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──► AppLink ◄──► ws://127.0.0.1:39123/api/v1/deck
@@ -823,8 +827,12 @@ Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──►
   is sent only when it differs from the last one sent.
 - **A question is asked on the key that will answer it.** Discard, and Done
   on a task no longer the user's, arm on the first press and act on a second
-  within four seconds; another task starting withdraws the question. No key
-  means two things by how long it is held.
+  within four seconds; another task starting withdraws the question.
+- **One key has a long press: Session.** Held `LONG_PRESS_MS` (500 ms), it
+  opens the picker at once, without waiting for the key to come up; let go
+  sooner, it pauses or resumes. It acts when the key comes up, every other
+  key as it goes down. Never yes or no: an answer does not depend on how
+  long a key is held.
 - **The line to the app reconnects by itself** (1, 2, 5, then every 10 s),
   and every key shows OFFLINE until it is back. A hello with another
   protocol version keeps the line open but makes every key say UPDATE APP.
@@ -889,7 +897,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 9. Testing
 
-Vitest, 2531 tests across 124 files, in two projects: `main` in Node for
+Vitest, 2530 tests across 125 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
@@ -905,7 +913,7 @@ one page cannot fail the way production failed.
 
 The animation studio has its own suite, 113 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
-Stream Deck plugin, 169 tests across 7 files (`pnpm test:deck`), which also
+Stream Deck plugin, 149 tests across 7 files (`pnpm test:deck`), which also
 runs its link against the app's real `DeckServer` over loopback.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and

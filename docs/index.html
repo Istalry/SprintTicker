@@ -1313,10 +1313,11 @@
       works beside the bar or without one, and leaves the rest of your deck alone.
       There is no release of it yet: build it from the source with <code>pnpm deck:pack</code>
       and double-click the <code>.streamDeckPlugin</code> file that lands in
-      <code>packages/streamdeck-plugin/dist/</code>. It has not yet been tried on a physical
-      deck.</p>
-      <p>Its actions are listed under <strong>SprintTicker</strong> in the Stream Deck app. Drag
-      each onto any key, as many times as you like:</p>
+      <code>packages/streamdeck-plugin/dist/</code>. It has been tried on Stream Deck Mobile,
+      not yet on a physical deck.</p>
+      <p>Its six actions are listed under <strong>SprintTicker</strong> in the Stream Deck app --
+      as many as a Stream Deck Mini has keys. Drag each onto any key, as many times
+      as you like:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1328,7 +1329,7 @@
       <tbody><tr>
       <td align="left"><strong>Session</strong></td>
       <td align="left">the task, its time and the bar&#39;s icon; PAUSED when paused</td>
-      <td align="left">pauses or resumes; with nothing running, opens the task picker</td>
+      <td align="left">pauses or resumes; with nothing running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker whatever runs</td>
       </tr>
       <tr>
       <td align="left"><strong>Not done</strong></td>
@@ -1346,24 +1347,9 @@
       <td align="left">throws the session away, nothing logged</td>
       </tr>
       <tr>
-      <td align="left"><strong>Switch task</strong></td>
-      <td align="left">SWITCH TASK</td>
-      <td align="left">brings the window forward with its task picker</td>
-      </tr>
-      <tr>
-      <td align="left"><strong>Favourite task</strong></td>
-      <td align="left">the task you chose</td>
-      <td align="left">starts that task</td>
-      </tr>
-      <tr>
       <td align="left"><strong>Yes</strong> / <strong>No</strong></td>
       <td align="left">the answer to the question waiting</td>
       <td align="left">joins or skips the stand-up, wraps up the day or not, resumes a task or leaves it</td>
-      </tr>
-      <tr>
-      <td align="left"><strong>Away</strong></td>
-      <td align="left">AWAY, or BACK TO WORK</td>
-      <td align="left">sets you away, and back</td>
       </tr>
       </tbody></table></div>
       <ul>
@@ -1372,13 +1358,10 @@
       YOURS?</strong>, when the task is no longer yours. Waiting, or another task
       starting, takes the question back.</li>
       <li><strong>Yes and No are two keys</strong>, and neither changes meaning with how long you
-      hold it. They are dimmed while nothing is asked. The wrap-up asks twice, as
-      on the bar: Yes, then <strong>CONFIRM WRAP-UP</strong>.</li>
-      <li><strong>A Favourite is set in its panel.</strong> Click the key in the Stream Deck app
-      and pick a task from the list SprintTicker sends. The key keeps the task&#39;s
-      name, so it still reads while SprintTicker is closed. A task that has left
-      every list stays chosen, marked as no longer listed, and is refused when
-      pressed.</li>
+      hold it. Session is the one key with a long press: held, it opens the task
+      picker -- to switch tasks without ending the one running. Yes and No are
+      dimmed while nothing is asked. The wrap-up asks twice, as on the bar: Yes,
+      then <strong>CONFIRM WRAP-UP</strong>.</li>
       <li><strong>OFFLINE on every key</strong> means the plugin cannot reach SprintTicker: start
       it, and the keys come back by themselves within ten seconds. <strong>UPDATE APP</strong>
       means SprintTicker and the plugin are of different versions -- update
@@ -2295,17 +2278,20 @@
       <h4><code>DeckServer</code> and <code>DeckActionService</code> — <code>src/main/api/</code>, <code>src/main/services/</code></h4>
       <p>The app&#39;s side of the Stream Deck plugin: a WebSocket at <code>/api/v1/deck</code> on
       the same port, and the service behind it. The service reads the state the
-      keys show -- the session, the bar&#39;s screen icon, the prompt holding the bar,
-      the mode -- and pushes it only when it changes, so the deck does not hear the
-      engine&#39;s tick. It listens to the engine, the renderer&#39;s icon and the mode,
-      and reads again once a second while a deck is connected, because a prompt
+      keys show -- the session, the bar&#39;s screen icon, the prompt holding the bar
+      -- and pushes it only when it changes, so the deck does not hear the
+      engine&#39;s tick. It listens to the engine and the renderer&#39;s icon, and reads
+      again once a second while a deck is connected, because a prompt
       taking the display has no event of its own.</p>
       <p>Every action is something the app already does, called the same way: ending
       a session is <code>completeSession</code> (<code>session-commands.ts</code>), shared with the
       window&#39;s <code>COMPLETE_SESSION</code>; a prompt is answered by OK or BACK through
       <code>InputDecoder.handleHardwareInput</code>, so the wrap-up&#39;s two presses and the
-      stand-up&#39;s switch stay where the bar&#39;s keys reach them; leaving Away is
-      <code>exitAwayMode</code>. It never draws on the bar itself. The protocol is in
+      stand-up&#39;s switch stay where the bar&#39;s keys reach them; the picker is the
+      tray&#39;s <code>openTaskPickerInMainWindow</code>, with a <code>ForegroundRaiser</code> that gets the
+      window past Windows&#39; foreground lock -- a key press reaches Stream Deck, not
+      the app, and <code>focus()</code> alone only flashes the taskbar. It never draws on the
+      bar itself. The protocol is in
       <code>src/shared/deck-protocol.ts</code>; <a href="API.md#the-stream-deck-socket">API reference</a>.</p>
       <hr>
       <h3 id="architecture-data">4. Data</h3>
@@ -2465,7 +2451,8 @@
       <p><code>packages/streamdeck-plugin</code> is a plugin for Elgato&#39;s Stream Deck app, built
       on its SDK (<code>@elgato/streamdeck</code> 3) and bundled by Vite into one ESM file that
       Stream Deck runs on its own Node 24. Elgato&#39;s app keeps the device; the plugin
-      only declares actions, which the user places on any key.</p>
+      only declares six actions, which the user places on any key: Session, Not
+      done, Done, Discard, Yes and No -- a Mini&#39;s six keys.</p>
       <pre><code>Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──► AppLink ◄──► ws://127.0.0.1:39123/api/v1/deck
                                                    │   faces.ts: state ─► face, press ─► request
                                                    └─► svg.ts: face ─► key image
@@ -2481,8 +2468,12 @@
       is sent only when it differs from the last one sent.</li>
       <li><strong>A question is asked on the key that will answer it.</strong> Discard, and Done
       on a task no longer the user&#39;s, arm on the first press and act on a second
-      within four seconds; another task starting withdraws the question. No key
-      means two things by how long it is held.</li>
+      within four seconds; another task starting withdraws the question.</li>
+      <li><strong>One key has a long press: Session.</strong> Held <code>LONG_PRESS_MS</code> (500 ms), it
+      opens the picker at once, without waiting for the key to come up; let go
+      sooner, it pauses or resumes. It acts when the key comes up, every other
+      key as it goes down. Never yes or no: an answer does not depend on how
+      long a key is held.</li>
       <li><strong>The line to the app reconnects by itself</strong> (1, 2, 5, then every 10 s),
       and every key shows OFFLINE until it is back. A hello with another
       protocol version keeps the line open but makes every key say UPDATE APP.</li>
@@ -2539,7 +2530,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">9. Testing</h3>
-      <p>Vitest, 2531 tests across 124 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2530 tests across 125 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2553,7 +2544,7 @@
       one page cannot fail the way production failed.</p>
       <p>The animation studio has its own suite, 113 tests across 6 files, run by
       <code>pnpm test</code> after the app&#39;s and on its own by <code>pnpm test:studio</code>. So has the
-      Stream Deck plugin, 169 tests across 7 files (<code>pnpm test:deck</code>), which also
+      Stream Deck plugin, 149 tests across 7 files (<code>pnpm test:deck</code>), which also
       runs its link against the app&#39;s real <code>DeckServer</code> over loopback.</p>
       <p>What the suite structurally <strong>cannot</strong> see: application startup, IPC wiring, and
       anything touching real hardware. Those need the app actually running — read its
@@ -2989,7 +2980,7 @@
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;state&#39;, state, at }</code></td>
-      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>) or null, the bar&#39;s screen <code>icon</code>, the <code>prompt</code> waiting for an answer, and the user&#39;s <code>mode</code>. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
+      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>) or null, the bar&#39;s screen <code>icon</code>, and the <code>prompt</code> waiting for an answer. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;result&#39;, id, ok: true }</code></td>
@@ -2997,15 +2988,13 @@
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;result&#39;, id, ok: false, error, message }</code></td>
-      <td align="left">A request refused or failed; <code>error</code> is one of <code>invalid-request</code>, <code>no-session</code>, <code>unknown-task</code>, <code>needs-confirmation</code>, <code>no-prompt</code>, <code>no-window</code>, <code>failed</code></td>
-      </tr>
-      <tr>
-      <td align="left"><code>{ type: &#39;tasks&#39;, id, tasks: [{ id, key, title, projectName }] }</code></td>
-      <td align="left">The answer to <code>list-tasks</code></td>
+      <td align="left">A request refused or failed; <code>error</code> is one of <code>invalid-request</code>, <code>no-session</code>, <code>needs-confirmation</code>, <code>no-prompt</code>, <code>no-window</code>, <code>failed</code></td>
       </tr>
       </tbody></table></div>
-      <p><strong>From the plugin</strong>, <code>{ id, action, taskId?, confirmed? }</code>, <code>id</code> 1 to 128
-      characters. Unknown fields are dropped.</p>
+      <p><strong>From the plugin</strong>, <code>{ id, action, confirmed? }</code>, <code>id</code> 1 to 128
+      characters. Unknown fields are dropped, and an unknown action is refused as
+      <code>invalid-request</code> -- <code>start</code>, <code>toggle-away</code> and <code>list-tasks</code> among them,
+      removed with the keys that used them (2026-10-22).</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -3035,29 +3024,14 @@
       <td align="left">No session; or <code>confirmed</code> is not true -- always asked</td>
       </tr>
       <tr>
-      <td align="left"><code>start</code></td>
-      <td align="left">Starts <code>taskId</code>, a favourite key. On the task already running it does nothing, or resumes it if paused</td>
-      <td align="left">No such task, or archived (<code>unknown-task</code>)</td>
-      </tr>
-      <tr>
       <td align="left"><code>open-picker</code></td>
-      <td align="left">Brings the window forward with its task picker</td>
+      <td align="left">Brings the window forward with its task picker -- to the front, past Windows&#39; foreground lock (<code>ForegroundRaiser</code>), since the press reached Stream Deck and not the app</td>
       <td align="left">No window</td>
       </tr>
       <tr>
       <td align="left"><code>prompt-yes</code>, <code>prompt-no</code></td>
       <td align="left">OK or BACK on the bar while a prompt holds it: the stand-up (<code>standup</code>), the wrap-up (<code>wrap-up</code>, then <code>wrap-up-confirm</code> after the first yes), the resume question (<code>resume</code>)</td>
       <td align="left">No prompt holds the bar</td>
-      </tr>
-      <tr>
-      <td align="left"><code>toggle-away</code></td>
-      <td align="left">Away, or back from it -- into Lunch during the lunch hour</td>
-      <td align="left"></td>
-      </tr>
-      <tr>
-      <td align="left"><code>list-tasks</code></td>
-      <td align="left">Every task the window&#39;s lists show, in their order</td>
-      <td align="left"></td>
       </tr>
       </tbody></table></div>
       <p>A prompt is reported only while it holds the bar&#39;s display: covered by a
