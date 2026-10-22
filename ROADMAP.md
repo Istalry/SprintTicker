@@ -1422,6 +1422,11 @@ already measures.
   only at build time with input from this repository: braces (Tailwind 3's
   globbing), http-cache-semantics and sprintf-js (electron-builder's
   `@electron/get`). They are recorded beside the overrides.
+- [x] **Nine more advisories** (2026-10-22): Electron 44.9.3 for its
+  WebHID/WebUSB permission check, Vite 8.3.5 for six in its dev server and
+  `launch-editor`, and follow-redirects 1.16.1 by override, under `wait-on`. The three above still have no fixed release;
+  `pnpm audit` now calls http-cache-semantics 4.3.0 patched, but a diff of
+  the two releases shows max-stale handled as before.
 - [ ] **Tailwind 3 -> 4.** It drops postcss-selector-parser and the
   chokidar/micromatch chain that carries braces, so it retires one override
   and one open alert. A renderer change of its own, measured the same way:

@@ -125,6 +125,15 @@
   compared: byte-identical. Three more -- braces, http-cache-semantics and
   sprintf-js, under Tailwind and electron-builder -- have no fixed release
   yet; `pnpm-workspace.yaml` records why each is out of reach.
+- **Electron 44.9.3, Vite 8.3.5 and follow-redirects 1.16.1.** Electron
+  could check a WebHID or WebUSB permission against the wrong origin
+  (GHSA-fw47-9c62-h3vw); the app requests neither, but the fix ships in the
+  installed app. Vite 8.3.5 fixes six advisories in the dev server -- three
+  of its own about files outside `server.fs.allow` and cross-origin
+  scripts, and three in the `launch-editor` behind its error overlay.
+  follow-redirects, under `wait-on` in `pnpm dev`, could pass an
+  authorization header to another origin on a redirect. The three without a
+  fixed release stay open.
 - **Each worklog sent keeps the provider's id for it** (migration 8), the
   groundwork for correcting a worklog already sent. Queued sends are tied to
   the worklog they carry; those from before are tied where the match is
