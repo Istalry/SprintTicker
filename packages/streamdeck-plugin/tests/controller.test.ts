@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DeckRequest, DeckStateMessage } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from '../src/app-link';
-import { CONFIRM_WINDOW_MS, DeckController, KeyHandle, LONG_PRESS_MS, LinkLike, TICK_MS } from '../src/controller';
+import { CONFIRM_WINDOW_MS, DeckController, KeyHandle, LONG_PRESS_MS, LinkLike, ONE_SHOT_FRAME_MS, ONE_SHOT_STEPS, TICK_MS } from '../src/controller';
 import type { LinkStatus } from '../src/faces';
 import { FakeClock } from './support/fake-clock';
 import { session, stateMessage } from './support/states';
@@ -93,7 +93,7 @@ describe('DeckController', () => {
     link.push(null, 'offline');
     const key = new FakeKey('a');
     controller.appear('session', key);
-    expect(textsOf(key.last)).toEqual(['SESSION', 'OFFLINE']);
+    expect(textsOf(key.last)).toEqual(['SESSION', 'offline']);
   });
 
   it('Press_Offline_AlertsAndSendsNothing', async () => {
@@ -207,7 +207,7 @@ describe('DeckController', () => {
     controller.appear('discard', key);
     await tap('a');
     expect(link.requests).toEqual([]);
-    expect(textsOf(key.last)).toEqual(['DISCARD?', 'PRESS', 'AGAIN']);
+    expect(textsOf(key.last)).toEqual(['DISCARD?', 'press again']);
 
     clock.advance(CONFIRM_WINDOW_MS - 1);
     await tap('a');
@@ -224,7 +224,7 @@ describe('DeckController', () => {
     expect(textsOf(key.last)).toEqual(['DISCARD']);
     await tap('a');
     expect(link.requests).toEqual([]);
-    expect(textsOf(key.last)).toEqual(['DISCARD?', 'PRESS', 'AGAIN']);
+    expect(textsOf(key.last)).toEqual(['DISCARD?', 'press again']);
   });
 
   it('Arm_AnotherTaskStarts_TheQuestionIsWithdrawn', async () => {
@@ -257,7 +257,7 @@ describe('DeckController', () => {
     controller.appear('done', key);
     await tap('a');
     expect(link.requests).toEqual([{ action: 'finish' }]);
-    expect(textsOf(key.last)).toEqual(['NOT YOURS?', 'PRESS', 'AGAIN']);
+    expect(textsOf(key.last)).toEqual(['NOT YOURS', 'press again']);
     expect(key.alerts).toBe(0);
 
     link.answer = () => ({ type: 'result', id: 'k2', ok: true });
@@ -361,5 +361,99 @@ describe('DeckController', () => {
     expect(clock.pending).toBe(0);
     link.push(stateMessage({ prompt: 'standup' }));
     expect(key.images).toHaveLength(1);
+  });
+  describe('one-shots', () => {
+    const PLAY_MS = ONE_SHOT_FRAME_MS * (ONE_SHOT_STEPS + 1);
+
+    it('Press_Done_PlaysItsFramesThenRestsOnTheStateThatFollowed', async () => {
+      link.push(tracking());
+      const key = new FakeKey('a');
+      controller.appear('done', key);
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'finish' }]);
+      const first = key.images.length;
+
+      // The session ends while the check draws: the frames are not cut.
+      link.push(stateMessage());
+      clock.advance(ONE_SHOT_FRAME_MS * ONE_SHOT_STEPS);
+      expect(key.images.length - first).toBe(ONE_SHOT_STEPS);
+      expect(textsOf(key.last)).toEqual(['DONE']);
+      expect(key.last).toContain('stroke="#22C55E"');
+
+      clock.advance(ONE_SHOT_FRAME_MS);
+      // At rest on what the state is now: nothing to finish, grey.
+      expect(key.last).not.toContain('#22C55E');
+      expect(clock.pending).toBe(0);
+    });
+
+    it.each(['not-done', 'discard'] as const)('Press_%s_PlaysAOneShot', async kind => {
+      link.push(tracking());
+      const key = new FakeKey('a');
+      controller.appear(kind, key);
+      await tap('a');
+      if (kind === 'discard') await tap('a');
+      const before = key.images.length;
+      clock.advance(PLAY_MS);
+      expect(key.images.length).toBeGreaterThan(before);
+      expect(clock.pending).toBe(0);
+    });
+
+    it('Press_Pause_PlaysNothing', async () => {
+      link.push(stateMessage({ session: session({ status: 'paused' }) }));
+      const key = new FakeKey('a');
+      controller.appear('session', key);
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'resume' }]);
+      expect(clock.pending).toBe(0);
+    });
+
+    it('Question_Arrives_YesAndNoPlayOnceThenRest', () => {
+      const yes = new FakeKey('y');
+      const no = new FakeKey('n');
+      const done = new FakeKey('d');
+      controller.appear('yes', yes);
+      controller.appear('no', no);
+      controller.appear('done', done);
+      link.push(tracking());
+      const drawnDone = done.images.length;
+
+      link.push(stateMessage({ session: session(), prompt: 'standup' }));
+      clock.advance(PLAY_MS);
+      for (const key of [yes, no]) {
+        expect(key.images.length).toBeGreaterThanOrEqual(ONE_SHOT_STEPS + 1);
+        expect(textsOf(key.last)[1]).toBe('stand-up');
+      }
+      expect(done.images.length).toBe(drawnDone);
+
+      // The same question pushed again is not a new one.
+      const drawnYes = yes.images.length;
+      link.push(stateMessage({ session: session({ elapsedSeconds: 700 }), prompt: 'standup' }));
+      expect(clock.pending).toBe(0);
+      expect(yes.images.length).toBe(drawnYes);
+    });
+
+    it('Question_AppGoneAndBack_PlaysAgain', () => {
+      const yes = new FakeKey('y');
+      controller.appear('yes', yes);
+      link.push(stateMessage({ prompt: 'wrap-up' }));
+      clock.advance(PLAY_MS);
+      link.push(null, 'offline');
+      const drawn = yes.images.length;
+      link.push(stateMessage({ prompt: 'wrap-up' }));
+      clock.advance(PLAY_MS);
+      expect(yes.images.length - drawn).toBeGreaterThan(1);
+    });
+
+    it('Disappear_WhilePlaying_StopsItsFrames', async () => {
+      link.push(tracking());
+      const key = new FakeKey('a');
+      controller.appear('not-done', key);
+      await tap('a');
+      controller.disappear('a');
+      const drawn = key.images.length;
+      clock.advance(PLAY_MS);
+      expect(key.images.length).toBe(drawn);
+      expect(clock.pending).toBe(0);
+    });
   });
 });

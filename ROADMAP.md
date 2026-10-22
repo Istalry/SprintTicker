@@ -1205,18 +1205,30 @@ Ordered; each says what has to be true first.
 
   Left: checking it at a real sign-in with the installed build and with
   the portable exe. It writes the real Run key, so it waits for the user.
-- **Stream Deck: better faces, and animated ones** (asked 2026-10-22). Two
-  different things answer to "animated icons", and only the first is ours
-  to draw:
+- **Stream Deck: better faces, and animated ones** (asked 2026-10-22).
+  **Faces and one-shots built 2026-10-22**: the user chose "Tile" over the
+  shipped faces and an LED-panel look, on a design canvas comparing nine
+  states, and Done, Not done, Discard, Yes and No play a half-second
+  one-shot. Left: the Session key playing the bar's icon as the bar does,
+  which needs the app to send the icon's frames -- the stopwatch steps once
+  a second, so with the clock it already redraws it costs nothing more --
+  and a look at the keys on a physical deck. Two different things answer
+  to "animated icons", and only the first is ours to draw:
   - **The plugin's own keys.** Their images are what `setImage` sends, so an
     animation is the plugin's to play. Elgato's guidance for animated icons
     is 144 x 144, GIF or WebP, 10 to 20 fps, five seconds at most and under
-    1 MB each. What is not known is whether `setImage` plays an animated GIF
-    or WebP handed to it as a data URL, or shows its first frame: measure it
-    on Stream Deck Mobile first. If it plays, an animation costs one message
-    per state change, as a static face does today. If it does not, the
-    fallback is redrawing frames from the plugin, a message per frame per
-    key -- worth it only for one key at a time, and only while it moves.
+    1 MB each. **Measured on Stream Deck Mobile (2026-10-22), with a
+    throwaway probe plugin: `setImage` never animates.** An animated GIF,
+    an animated WebP, SVG with SMIL and SVG with CSS keyframes all showed
+    their first frame. Only the manifest's own state image plays as a GIF
+    -- on the device, frozen in the Stream Deck app's window -- and
+    `setImage` with no image brings it back, still playing. Frames sent
+    from the plugin do play: asked for 15 fps, a Node `setInterval`
+    delivered about 13 (365 PNG frames in 28.3 s, 211 SVG in 16.4 s), and
+    the motion read as smooth on the phone. So a face that changes with the
+    state can move only by the plugin redrawing it, a message per frame --
+    worth it for one key at a time, and only while it moves; a manifest GIF
+    suits only a face that never carries live text.
   - **An icon pack** (`.streamDeckIconPack`, made with Elgato's Icon Pack
     Man): icons a user picks from the Icon Library for *any* key. A user
     image set on one of our keys hides what the plugin draws, so a pack

@@ -849,8 +849,19 @@ Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──►
   key as it goes down. Never yes or no: an answer does not depend on how
   long a key is held.
 - **The line to the app reconnects by itself** (1, 2, 5, then every 10 s),
-  and every key shows OFFLINE until it is back. A hello with another
-  protocol version keeps the line open but makes every key say UPDATE APP.
+  and every key turns grey and says offline until it is back. A hello with
+  another protocol version keeps the line open but makes every key say
+  update app.
+- **A face has a tone**: `ready` (its glyph in colour), `idle` (grey,
+  nothing to do) or `ask` (filled, waiting on the user). `renderFace` lays
+  out the session, a filled key and the rest from that alone.
+- **A one-shot is frames, not an animated image.** `setImage` shows the
+  first frame of a GIF, a WebP or an animated SVG (measured on Stream Deck
+  Mobile), so `DeckController.play` sends six static images 100 ms apart,
+  each drawn at a `progress` the renderer turns into a part-drawn stroke or
+  a moved part. The state's redraws of that key wait for the end, and a key
+  arming for a question stops it. A press on Done, Not done or Discard plays
+  (`playsOnPress`), and so do Yes and No when a question arrives.
 - **The build writes the manifest's images**: each key's default face is the
   plugin's own offline face, rendered at build time, so the two cannot
   disagree.
@@ -928,7 +939,7 @@ one page cannot fail the way production failed.
 
 The animation studio has its own suite, 113 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
-Stream Deck plugin, 149 tests across 7 files (`pnpm test:deck`), which also
+Stream Deck plugin, 173 tests across 7 files (`pnpm test:deck`), which also
 runs its link against the app's real `DeckServer` over loopback.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and

@@ -303,7 +303,7 @@ A plugin for Elgato's Stream Deck app puts the session on keys you place
 yourself: the running task and its time, pause and resume, the task picker,
 the three ends of a session, and yes or no to the stand-up, the wrap-up and
 the resume question -- six actions, a Stream Deck Mini's six keys. It talks to the app on
-this machine, and every key says OFFLINE while SprintTicker is closed. See
+this machine, and every key turns grey while SprintTicker is closed. See
 [the plugin](#-stream-deck-plugin) below. Not yet tried on a physical deck.
 
 ### 📅 Ceremonies and schedules
@@ -493,7 +493,7 @@ pnpm test:coverage
 `pnpm test` runs 2555 tests across 127 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
-113 across 6 files, then the Stream Deck plugin's 149 across 7;
+113 across 6 files, then the Stream Deck plugin's 173 across 7;
 `pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.

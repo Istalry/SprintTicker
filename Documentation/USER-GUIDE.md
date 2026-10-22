@@ -715,24 +715,31 @@ as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task, its time and the bar's icon; PAUSED when paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
+| **Session** | the task, its time and the bar's icon, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
 | **Not done** | NOT DONE | ends the session and logs its time; the task stays open |
 | **Done** | DONE | ends it and marks the task done |
 | **Discard** | DISCARD | throws the session away, nothing logged |
 | **Yes** / **No** | the answer to the question waiting | joins or skips the stand-up, wraps up the day or not, resumes a task or leaves it |
 
-- **Discard asks first, on the same key.** It turns into **DISCARD?**; press
-  it again within four seconds to go ahead. Done does the same, **NOT
-  YOURS?**, when the task is no longer yours. Waiting, or another task
+- **A key's colour says what it does.** A coloured glyph can be pressed; a
+  grey key has nothing to do; a key filled with colour is waiting on you --
+  a question, or a second press.
+- **Discard asks first, on the same key.** It fills red, **DISCARD?**; press
+  it again within four seconds to go ahead. Done does the same, filled amber,
+  **NOT YOURS**, when the task is no longer yours. Waiting, or another task
   starting, takes the question back.
+- **Keys move a little when something happens.** Done's check draws itself,
+  Discard's bin lifts its lid and Not done's square presses in when you press
+  them; Yes and No draw their mark when a question arrives. Half a second,
+  then they rest.
 - **Yes and No are two keys**, and neither changes meaning with how long you
   hold it. Session is the one key with a long press: held, it opens the task
   picker -- to switch tasks without ending the one running. Yes and No are
-  dimmed while nothing is asked. The wrap-up asks twice, as on the bar: Yes,
-  then **CONFIRM WRAP-UP**.
-- **OFFLINE on every key** means the plugin cannot reach SprintTicker: start
-  it, and the keys come back by themselves within ten seconds. **UPDATE APP**
-  means SprintTicker and the plugin are of different versions -- update
+  grey while nothing is asked. The wrap-up asks twice, as on the bar: Yes,
+  then **CONFIRM**.
+- **offline under every key** means the plugin cannot reach SprintTicker:
+  start it, and the keys come back by themselves within ten seconds. **update
+  app** means SprintTicker and the plugin are of different versions -- update
   whichever is older.
 
 ---

@@ -1,6 +1,6 @@
 import type { DeckRequest } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from './app-link';
-import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, ticksWithTheClock } from './faces';
+import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, playsOnPress, playsOnQuestion, ticksWithTheClock } from './faces';
 import { KeyKind } from './key-kinds';
 import { renderFace } from './svg';
 
@@ -21,6 +21,15 @@ export const LONG_PRESS_MS = 500;
 
 /** The clock's step for a running session's key. */
 export const TICK_MS = 1000;
+
+/**
+ * A one-shot: this many steps after its first frame, one every
+ * {@link ONE_SHOT_FRAME_MS} -- six images in half a second, then the key
+ * rests on the state. Ten a second is what Stream Deck Mobile was measured
+ * keeping up with (about 13 delivered of 15 asked, 2026-10-22).
+ */
+export const ONE_SHOT_STEPS = 5;
+export const ONE_SHOT_FRAME_MS = 100;
 
 /** One key on a deck, as the SDK gives it: an id and what can be done to it. */
 export interface KeyHandle {
@@ -56,6 +65,8 @@ interface Key {
   hold: unknown;
   /** The image last sent, so an unchanged face is not sent again. */
   drawn: string | null;
+  /** Set while a one-shot plays: the state's redraws wait for its end. */
+  playing: unknown;
 }
 
 /**
@@ -75,6 +86,7 @@ export class DeckController {
   private readonly _unsubscribe: () => void;
   private _ticker: unknown = null;
   private _lastTaskId: string | null = null;
+  private _lastPrompt: string | null = null;
 
   constructor(link: LinkLike, options: DeckControllerOptions = {}) {
     if (!link) throw new Error('A deck controller needs a link to the app.');
@@ -90,7 +102,7 @@ export class DeckController {
 
   /** A key came into view: a page, a folder or a profile was shown. */
   public appear(kind: KeyKind, handle: KeyHandle): void {
-    this._keys.set(handle.id, { kind, handle, armedUntil: null, disarm: null, hold: null, drawn: null });
+    this._keys.set(handle.id, { kind, handle, armedUntil: null, disarm: null, hold: null, drawn: null, playing: null });
     this.draw(handle.id);
     this.updateTicker();
   }
@@ -101,6 +113,7 @@ export class DeckController {
     if (!key) return;
     this.clearArm(key);
     this.clearHold(key);
+    this.stopPlaying(key);
     this._keys.delete(id);
     this.updateTicker();
   }
@@ -137,6 +150,7 @@ export class DeckController {
     for (const key of this._keys.values()) {
       this.clearArm(key);
       this.clearHold(key);
+      this.stopPlaying(key);
     }
     this._keys.clear();
     this.updateTicker();
@@ -155,7 +169,8 @@ export class DeckController {
       return;
     }
     this.clearArm(key);
-    this.draw(id);
+    if (playsOnPress(plan.action)) this.play(key);
+    else this.draw(id);
     const answer = await this._link.request({ action: plan.action, ...(plan.confirmed ? { confirmed: true } : {}) });
     if (answer?.type === 'result' && !answer.ok) {
       // The app asks where the plugin did not know to: the task left the
@@ -181,12 +196,21 @@ export class DeckController {
       for (const key of this._keys.values()) this.clearArm(key);
       this._lastTaskId = taskId;
     }
+    // A question arriving is the yes and no keys' event.
+    const prompt = this._link.status === 'online' ? (this._link.message?.state.prompt ?? null) : null;
+    if (prompt !== null && prompt !== this._lastPrompt) {
+      for (const key of this._keys.values()) if (playsOnQuestion(key.kind)) this.play(key);
+    }
+    this._lastPrompt = prompt;
     for (const id of this._keys.keys()) this.draw(id);
     this.updateTicker();
   }
 
   private arm(key: Key): void {
     this.clearArm(key);
+    // A question outranks a one-shot: Done's check may still be drawing
+    // when the app answers that it must ask first.
+    this.stopPlaying(key);
     key.armedUntil = this._now().getTime() + CONFIRM_WINDOW_MS;
     key.disarm = this._setTimeout(() => {
       key.disarm = null;
@@ -219,11 +243,42 @@ export class DeckController {
 
   private draw(id: string): void {
     const key = this._keys.get(id);
-    if (!key) return;
-    const svg = renderFace(faceFor(key.kind, this.contextOf(key)));
+    if (!key || key.playing !== null) return;
+    this.send(key, renderFace(faceFor(key.kind, this.contextOf(key))));
+  }
+
+  private send(key: Key, svg: string): void {
     if (svg === key.drawn) return;
     key.drawn = svg;
     key.handle.setImage(svg).catch(err => this._log(`[SprintTicker] Could not draw a key: ${String(err)}`));
+  }
+
+  /**
+   * Plays the key's one-shot on the face it shows now, then lets it rest on
+   * whatever the state has become meanwhile. Frames, not an animated image:
+   * Stream Deck shows only the first frame of one (2026-10-22).
+   */
+  private play(key: Key): void {
+    this.stopPlaying(key);
+    const face = faceFor(key.kind, this.contextOf(key));
+    let step = 0;
+    const next = (): void => {
+      if (this._keys.get(key.handle.id) !== key) return;
+      if (step > ONE_SHOT_STEPS) {
+        key.playing = null;
+        this.draw(key.handle.id);
+        return;
+      }
+      this.send(key, renderFace({ ...face, progress: step / ONE_SHOT_STEPS }));
+      step++;
+      key.playing = this._setTimeout(next, ONE_SHOT_FRAME_MS);
+    };
+    next();
+  }
+
+  private stopPlaying(key: Key): void {
+    if (key.playing !== null) this._clearTimeout(key.playing);
+    key.playing = null;
   }
 
   /** Ticks while a session runs and a key shows its time; idles otherwise. */

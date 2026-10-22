@@ -276,6 +276,14 @@ CI. Five things about it cost time to find:
 - **A key image goes to the SDK as base64 with its type**
   (`svgDataUrl`). It also takes a bare SVG string, but every face carries
   `#` in its colours, which a URL reading of the image takes for a fragment.
+  **And `setImage` never animates**: an animated GIF or WebP, or SVG with
+  SMIL or CSS animation, shows its first frame (Stream Deck Mobile,
+  2026-10-22). Only a manifest state image plays as a GIF, and only on the
+  device. A face that moves is the plugin sending frames, which worked at
+  about 13 fps: `DeckController.play`, whose frames hold off the state's
+  redraws of that key until they end -- so anything that must show at once
+  on a playing key, as a question arming it does, stops the one-shot
+  first.
 - **An answer never depends on how long a key is held** -- the user's
   rule, 2026-10-22. A question (DISCARD?, NOT YOURS?) is asked on the same
   key and answered by pressing it again within `CONFIRM_WINDOW_MS`; yes and

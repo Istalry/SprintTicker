@@ -30,20 +30,38 @@ export interface KeyContext {
   armed: boolean;
 }
 
-export type Glyph = 'play' | 'pause' | 'stop' | 'check' | 'trash' | 'list' | 'yes' | 'no' | 'timer' | 'unplugged';
+export type Glyph = 'play' | 'pause' | 'stop' | 'check' | 'trash' | 'list' | 'yes' | 'no' | 'timer';
+
+/**
+ * What a key's look says about it, the design the user chose on Stream
+ * Deck Mobile (2026-10-22, "Tile"): the colour is the state.
+ */
+export type Tone =
+  /** It can be pressed: the glyph in its colour, the title in white. */
+  | 'ready'
+  /** Nothing to do, or the app is not there: all of it grey. */
+  | 'idle'
+  /** It waits on you -- a question, or a second press: the key filled. */
+  | 'ask';
 
 export interface Face {
-  /** Up to three short lines, top to bottom. */
-  lines: string[];
-  /** A time in large digits, under the lines. */
+  /** One large line: what the key does, or the running task. */
+  title: string;
+  /** One small line under it: what a question's answer means, or why a key is grey. */
+  hint?: string;
+  /** A time in large digits under the title; a key with one is laid out as the session. */
   big?: string;
-  /** Border and label colour, `#RRGGBB`. */
+  /** The glyph's colour, the fill of an `ask`, the time's and the session's band. */
   accent: string;
   glyph: Glyph;
   /** The bar's own icon, 16x16, drawn in place of the glyph. */
   pixels?: (string | null)[][];
-  /** Nothing to do right now: drawn faded. */
-  dim: boolean;
+  tone: Tone;
+  /**
+   * Part-way through the glyph's one-shot, 0 to 1 (see `svg.ts`); absent
+   * when it rests. Set by the controller for the frames it plays.
+   */
+  progress?: number;
 }
 
 export type PressPlan =
@@ -63,16 +81,17 @@ export const ACCENTS = {
 } as const;
 
 /** What each kind is called on its face when there is nothing more to say. */
-const NAMES: Record<KeyKind, string[]> = {
-  session: ['SESSION'],
-  'not-done': ['NOT', 'DONE'],
-  done: ['DONE'],
-  discard: ['DISCARD'],
-  yes: ['YES'],
-  no: ['NO']
+const NAMES: Record<KeyKind, string> = {
+  session: 'SESSION',
+  'not-done': 'NOT DONE',
+  done: 'DONE',
+  discard: 'DISCARD',
+  yes: 'YES',
+  no: 'NO'
 };
 
-const GLYPHS: Record<KeyKind, Glyph> = {
+/** Each kind's glyph, which it keeps grey while it has nothing to do. */
+export const GLYPHS: Record<KeyKind, Glyph> = {
   session: 'timer',
   'not-done': 'stop',
   done: 'check',
@@ -81,13 +100,16 @@ const GLYPHS: Record<KeyKind, Glyph> = {
   no: 'no'
 };
 
-/** What yes and no say on each prompt. */
-const PROMPT_LINES: Record<DeckPrompt, { yes: string[]; no: string[] }> = {
-  standup: { yes: ['JOIN', 'STAND-UP'], no: ['SKIP', 'STAND-UP'] },
-  'wrap-up': { yes: ['WRAP', 'UP'], no: ['NOT', 'NOW'] },
-  'wrap-up-confirm': { yes: ['CONFIRM', 'WRAP-UP'], no: ['NOT', 'NOW'] },
-  resume: { yes: ['RESUME', 'IT'], no: ['LEAVE', 'IT'] }
+/** What yes and no say on each prompt: the answer, and what it means. */
+const PROMPTS: Record<DeckPrompt, Record<'yes' | 'no', [title: string, hint: string]>> = {
+  standup: { yes: ['JOIN', 'stand-up'], no: ['SKIP', 'stand-up'] },
+  'wrap-up': { yes: ['WRAP UP', 'end the day'], no: ['NOT NOW', 'keep going'] },
+  'wrap-up-confirm': { yes: ['CONFIRM', 'wrap-up'], no: ['NOT NOW', 'keep going'] },
+  resume: { yes: ['RESUME', 'the task'], no: ['LEAVE IT', 'stopped'] }
 };
+
+/** The hint of a key waiting for its second press. */
+export const PRESS_AGAIN = 'press again';
 
 /** `1:24:10`, or `24:10` under an hour. */
 export function formatDuration(totalSeconds: number): string {
@@ -103,51 +125,47 @@ function sessionOf(ctx: KeyContext): DeckSession | null {
   return ctx.message?.state.session ?? null;
 }
 
+/** A key with nothing to do: its own glyph and name, grey. */
+function idle(kind: KeyKind, hint?: string): Face {
+  return { title: NAMES[kind], ...(hint ? { hint } : {}), accent: ACCENTS.grey, glyph: GLYPHS[kind], tone: 'idle' };
+}
+
 /** The face of a key of `kind`. */
 export function faceFor(kind: KeyKind, ctx: KeyContext): Face {
-  if (ctx.link !== 'online' || !ctx.message) {
-    // The key keeps its own look, faded, so a deck laid out while the app is
-    // closed still reads; the bottom line says why nothing works.
-    return {
-      lines: [...NAMES[kind], ctx.link === 'incompatible' ? 'UPDATE APP' : 'OFFLINE'],
-      accent: ACCENTS.grey,
-      glyph: ctx.link === 'incompatible' ? GLYPHS[kind] : 'unplugged',
-      dim: true
-    };
-  }
+  // The key keeps its own glyph and name while the app is away, so a deck
+  // laid out with SprintTicker closed still reads; the hint says why.
+  if (ctx.link !== 'online' || !ctx.message) return idle(kind, ctx.link === 'incompatible' ? 'update app' : 'offline');
 
   const { state } = ctx.message;
   const session = sessionOf(ctx);
   switch (kind) {
     case 'session': {
-      if (!session) return { lines: ['START', 'A TASK'], accent: ACCENTS.blue, glyph: 'list', dim: false };
+      if (!session) return { title: 'START', hint: 'pick a task', accent: ACCENTS.blue, glyph: 'list', tone: 'ready' };
       const tracking = session.status === 'tracking';
       return {
-        lines: tracking ? [session.taskKey] : [session.taskKey, 'PAUSED'],
+        title: session.taskKey,
         big: formatDuration(deckElapsedSeconds(ctx.message, ctx.now)),
         accent: tracking ? ACCENTS.green : ACCENTS.amber,
         glyph: tracking ? 'play' : 'pause',
         ...(state.icon ? { pixels: state.icon.pixels } : {}),
-        dim: false
+        tone: 'ready'
       };
     }
     case 'not-done':
-      return { lines: NAMES['not-done'], accent: ACCENTS.blue, glyph: 'stop', dim: !session };
+      return session ? { title: NAMES['not-done'], accent: ACCENTS.blue, glyph: 'stop', tone: 'ready' } : idle(kind);
     case 'done':
-      if (session && ctx.armed) return { lines: ['NOT YOURS?', 'PRESS', 'AGAIN'], accent: ACCENTS.amber, glyph: 'check', dim: false };
-      return { lines: NAMES.done, accent: ACCENTS.green, glyph: 'check', dim: !session };
+      if (!session) return idle(kind);
+      if (ctx.armed) return { title: 'NOT YOURS', hint: PRESS_AGAIN, accent: ACCENTS.amber, glyph: 'check', tone: 'ask' };
+      return { title: NAMES.done, accent: ACCENTS.green, glyph: 'check', tone: 'ready' };
     case 'discard':
-      if (session && ctx.armed) return { lines: ['DISCARD?', 'PRESS', 'AGAIN'], accent: ACCENTS.red, glyph: 'trash', dim: false };
-      return { lines: NAMES.discard, accent: ACCENTS.red, glyph: 'trash', dim: !session };
+      if (!session) return idle(kind);
+      if (ctx.armed) return { title: 'DISCARD?', hint: PRESS_AGAIN, accent: ACCENTS.red, glyph: 'trash', tone: 'ask' };
+      return { title: NAMES.discard, accent: ACCENTS.red, glyph: 'trash', tone: 'ready' };
     case 'yes':
     case 'no': {
-      if (!state.prompt) return { lines: NAMES[kind], accent: ACCENTS.grey, glyph: GLYPHS[kind], dim: true };
-      return {
-        lines: PROMPT_LINES[state.prompt][kind],
-        accent: kind === 'yes' ? ACCENTS.green : ACCENTS.red,
-        glyph: GLYPHS[kind],
-        dim: false
-      };
+      if (!state.prompt) return idle(kind);
+      const [title, hint] = PROMPTS[state.prompt][kind];
+      return { title, hint, accent: kind === 'yes' ? ACCENTS.green : ACCENTS.red, glyph: GLYPHS[kind], tone: 'ask' };
     }
   }
 }
@@ -193,4 +211,18 @@ export function hasLongPress(kind: KeyKind): boolean {
 /** Kinds whose face moves with the clock: redrawn each second while a session runs. */
 export function ticksWithTheClock(kind: KeyKind): boolean {
   return kind === 'session';
+}
+
+/**
+ * Whether a press that sends `action` plays its key's one-shot -- the
+ * check drawing itself, the bin's lid, the stop square: the press is the
+ * event, so the key answers at once, before the app does.
+ */
+export function playsOnPress(action: DeckAction): boolean {
+  return action === 'finish' || action === 'discard' || action === 'stop';
+}
+
+/** Kinds that play their one-shot when a question arrives: its answers. */
+export function playsOnQuestion(kind: KeyKind): boolean {
+  return kind === 'yes' || kind === 'no';
 }

@@ -109,8 +109,12 @@
   task picker when nothing runs; held, it opens the picker), Not done, Done,
   Discard, Yes and No. The picker comes to the front even though the press
   reached Stream Deck rather than SprintTicker. Discard, and Done on a task
-  no longer yours, ask on the same key first. Yes and No are separate keys, dimmed while nothing is asked. Every
-  key says OFFLINE while SprintTicker is closed. Not yet tried on a physical
+  no longer yours, ask on the same key first. Yes and No are separate keys,
+  grey while nothing is asked. A key's colour is its state: a coloured glyph
+  can be pressed, a grey key has nothing to do, a filled key waits on you.
+  Done, Not done and Discard play a short movement of their glyph when
+  pressed, and Yes and No when a question arrives. Every key turns grey and
+  says offline while SprintTicker is closed. Not yet tried on a physical
   deck, and no default profile ships yet.
 
 ### Changed

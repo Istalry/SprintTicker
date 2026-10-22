@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DeckPrompt } from '../../desktop-app/src/shared/deck-protocol';
-import { ACCENTS, KeyContext, faceFor, formatDuration, hasLongPress, planPress, ticksWithTheClock } from '../src/faces';
+import { ACCENTS, GLYPHS, KeyContext, PRESS_AGAIN, faceFor, formatDuration, hasLongPress, planPress, playsOnPress, playsOnQuestion, ticksWithTheClock } from '../src/faces';
 import { KEY_KINDS } from '../src/key-kinds';
 import { STATE_AT, session, stateMessage } from './support/states';
 
@@ -30,41 +30,36 @@ describe('formatDuration', () => {
 });
 
 describe('faceFor', () => {
-  it.each(KEY_KINDS)('FaceFor_%s_Offline_FadedAndSaysOffline', kind => {
+  it.each(KEY_KINDS)('FaceFor_%s_Offline_ItsOwnGlyphGreyAndSaysOffline', kind => {
     const face = faceFor(kind, { link: 'offline', message: null, now: NOW, armed: false });
-    expect(face.dim).toBe(true);
-    expect(face.accent).toBe(ACCENTS.grey);
-    expect(face.glyph).toBe('unplugged');
-    expect(face.lines.at(-1)).toBe('OFFLINE');
+    expect(face).toMatchObject({ tone: 'idle', glyph: GLYPHS[kind], hint: 'offline' });
   });
 
-  it.each(KEY_KINDS)('FaceFor_%s_Incompatible_SaysUpdateAppWithItsOwnGlyph', kind => {
+  it.each(KEY_KINDS)('FaceFor_%s_Incompatible_SaysUpdateApp', kind => {
     const face = faceFor(kind, { link: 'incompatible', message: null, now: NOW, armed: false });
-    expect(face.dim).toBe(true);
-    expect(face.glyph).not.toBe('unplugged');
-    expect(face.lines.at(-1)).toBe('UPDATE APP');
+    expect(face).toMatchObject({ tone: 'idle', glyph: GLYPHS[kind], hint: 'update app' });
   });
 
   it('FaceFor_OnlineButNoStateYet_IsOffline', () => {
-    expect(faceFor('session', { link: 'online', message: null, now: NOW, armed: false }).lines.at(-1)).toBe('OFFLINE');
+    expect(faceFor('session', { link: 'online', message: null, now: NOW, armed: false }).hint).toBe('offline');
   });
 
   it('FaceFor_SessionNothingRunning_OffersToStartATask', () => {
     const face = faceFor('session', online());
-    expect(face).toMatchObject({ lines: ['START', 'A TASK'], glyph: 'list', dim: false });
+    expect(face).toMatchObject({ title: 'START', hint: 'pick a task', glyph: 'list', tone: 'ready' });
     expect(face.big).toBeUndefined();
   });
 
   it('FaceFor_SessionTracking_GreenWithTheTimeSinceTheState', () => {
     const later = new Date(Date.parse(STATE_AT) + 15_000);
     const face = faceFor('session', online(stateMessage({ session: session({ elapsedSeconds: 600 }) }), { now: later }));
-    expect(face).toMatchObject({ lines: ['SPR-1'], big: '10:15', accent: ACCENTS.green, glyph: 'play', dim: false });
+    expect(face).toMatchObject({ title: 'SPR-1', big: '10:15', accent: ACCENTS.green, glyph: 'play', tone: 'ready' });
   });
 
   it('FaceFor_SessionPaused_AmberAndTheTimeStands', () => {
     const later = new Date(Date.parse(STATE_AT) + 15_000);
     const face = faceFor('session', online(stateMessage({ session: session({ status: 'paused' }) }), { now: later }));
-    expect(face).toMatchObject({ lines: ['SPR-1', 'PAUSED'], big: '10:00', accent: ACCENTS.amber, glyph: 'pause' });
+    expect(face).toMatchObject({ title: 'SPR-1', big: '10:00', accent: ACCENTS.amber, glyph: 'pause' });
   });
 
   it('FaceFor_SessionWithTheBarsIcon_DrawsItsPixels', () => {
@@ -73,39 +68,60 @@ describe('faceFor', () => {
     expect(face.pixels).toBe(pixels);
   });
 
-  it.each(['not-done', 'done', 'discard'] as const)('FaceFor_%s_NoSession_IsDimmed', kind => {
-    expect(faceFor(kind, online()).dim).toBe(true);
-    expect(faceFor(kind, online(stateMessage({ session: session() }))).dim).toBe(false);
+  it.each(['not-done', 'done', 'discard'] as const)('FaceFor_%s_NoSession_IsGrey', kind => {
+    expect(faceFor(kind, online()).tone).toBe('idle');
+    expect(faceFor(kind, online(stateMessage({ session: session() }))).tone).toBe('ready');
   });
 
-  it('FaceFor_DoneArmed_AsksToPressAgain', () => {
+  it('FaceFor_DoneArmed_FilledAmberAndAsksToPressAgain', () => {
     const face = faceFor('done', online(stateMessage({ session: session() }), { armed: true }));
-    expect(face.lines).toEqual(['NOT YOURS?', 'PRESS', 'AGAIN']);
-    expect(face.accent).toBe(ACCENTS.amber);
+    expect(face).toMatchObject({ title: 'NOT YOURS', hint: PRESS_AGAIN, accent: ACCENTS.amber, tone: 'ask' });
   });
 
-  it('FaceFor_DiscardArmed_AsksToPressAgain', () => {
+  it('FaceFor_DiscardArmed_FilledRedAndAsksToPressAgain', () => {
     const face = faceFor('discard', online(stateMessage({ session: session() }), { armed: true }));
-    expect(face.lines).toEqual(['DISCARD?', 'PRESS', 'AGAIN']);
+    expect(face).toMatchObject({ title: 'DISCARD?', hint: PRESS_AGAIN, accent: ACCENTS.red, tone: 'ask' });
   });
 
   it('FaceFor_ArmedWithoutASession_AsksNothing', () => {
-    expect(faceFor('discard', online(stateMessage(), { armed: true })).lines).toEqual(['DISCARD']);
+    expect(faceFor('discard', online(stateMessage(), { armed: true }))).toMatchObject({ title: 'DISCARD', tone: 'idle' });
   });
 
-  it.each(['yes', 'no'] as const)('FaceFor_%s_NothingAsked_IsDimmed', kind => {
-    expect(faceFor(kind, online())).toMatchObject({ lines: [kind.toUpperCase()], dim: true });
+  it.each(['yes', 'no'] as const)('FaceFor_%s_NothingAsked_IsGrey', kind => {
+    expect(faceFor(kind, online())).toMatchObject({ title: kind.toUpperCase(), tone: 'idle' });
   });
 
-  it.each<[DeckPrompt, string[], string[]]>([
-    ['standup', ['JOIN', 'STAND-UP'], ['SKIP', 'STAND-UP']],
-    ['wrap-up', ['WRAP', 'UP'], ['NOT', 'NOW']],
-    ['wrap-up-confirm', ['CONFIRM', 'WRAP-UP'], ['NOT', 'NOW']],
-    ['resume', ['RESUME', 'IT'], ['LEAVE', 'IT']]
-  ])('FaceFor_YesAndNo_%sAsked_SayTheirAnswer', (prompt, yes, no) => {
+  it.each<[DeckPrompt, [string, string], [string, string]]>([
+    ['standup', ['JOIN', 'stand-up'], ['SKIP', 'stand-up']],
+    ['wrap-up', ['WRAP UP', 'end the day'], ['NOT NOW', 'keep going']],
+    ['wrap-up-confirm', ['CONFIRM', 'wrap-up'], ['NOT NOW', 'keep going']],
+    ['resume', ['RESUME', 'the task'], ['LEAVE IT', 'stopped']]
+  ])('FaceFor_YesAndNo_%sAsked_FilledWithTheirAnswer', (prompt, [yesTitle, yesHint], [noTitle, noHint]) => {
     const ctx = online(stateMessage({ prompt }));
-    expect(faceFor('yes', ctx)).toMatchObject({ lines: yes, accent: ACCENTS.green, dim: false });
-    expect(faceFor('no', ctx)).toMatchObject({ lines: no, accent: ACCENTS.red, dim: false });
+    expect(faceFor('yes', ctx)).toMatchObject({ title: yesTitle, hint: yesHint, accent: ACCENTS.green, tone: 'ask' });
+    expect(faceFor('no', ctx)).toMatchObject({ title: noTitle, hint: noHint, accent: ACCENTS.red, tone: 'ask' });
+  });
+
+  it.each(KEY_KINDS)('FaceFor_%s_EveryState_TitleFitsTheKey', kind => {
+    // A title is one line; ten capitals is what the smallest size holds.
+    const states = [
+      online(),
+      online(stateMessage({ session: session() })),
+      online(stateMessage({ session: session() }), { armed: true }),
+      ...(['standup', 'wrap-up', 'wrap-up-confirm', 'resume'] as const).map(prompt => online(stateMessage({ session: session(), prompt })))
+    ];
+    for (const ctx of states) expect(faceFor(kind, ctx).title.length).toBeLessThanOrEqual(10);
+  });
+});
+
+describe('one-shots', () => {
+  it('PlaysOnPress_TheEnds_PlayAndTheRestDoNot', () => {
+    expect(['finish', 'discard', 'stop'].every(a => playsOnPress(a as never))).toBe(true);
+    expect(['pause', 'resume', 'open-picker', 'prompt-yes', 'prompt-no'].some(a => playsOnPress(a as never))).toBe(false);
+  });
+
+  it('PlaysOnQuestion_OnlyTheAnswers', () => {
+    expect(KEY_KINDS.filter(playsOnQuestion)).toEqual(['yes', 'no']);
   });
 });
 
