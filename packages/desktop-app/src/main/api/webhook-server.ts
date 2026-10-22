@@ -1,5 +1,10 @@
 import http, { Server, IncomingMessage, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
+import type { Duplex } from 'stream';
+import { LOCAL_API_PORT } from '../../shared/deck-protocol';
+
+/** Takes over a connection asking to become a WebSocket, once screened. */
+export type UpgradeHandler = (req: IncomingMessage, socket: Duplex, head: Buffer) => void;
 
 export interface UnityCompilePayload {
   instanceId?: string;
@@ -80,7 +85,7 @@ export const UNITY_CONSOLE_THROTTLE_MS = 3000;
 
 /**
  * Embedded HTTP server on 127.0.0.1:39123, receiving webhooks from the Unity
- * Editor plugin.
+ * Editor plugin, and the Stream Deck plugin's WebSocket (see DeckServer).
  *
  * Loopback is not a security boundary. Any page in any browser on this machine
  * can POST here, and this API can drive the hardware and inject input events,
@@ -97,14 +102,53 @@ export class WebhookServer {
   private consoleCallbacks: Set<(payload: UnityConsolePayload) => void> = new Set();
   private heartbeatCallbacks: Set<(payload: UnityHeartbeatPayload) => void> = new Set();
   private inputCallbacks: Set<(key: string) => void> = new Set();
+  private readonly upgradeHandlers = new Map<string, UpgradeHandler>();
 
-  constructor(port: number = 39123) {
+  constructor(port: number = LOCAL_API_PORT) {
     this.port = port;
     // One listener. A second server was opened unconditionally on port 8080 --
     // a far more commonly probed port -- doubling the exposed surface for an
     // address nothing in this repository, its documentation or the Unity plugin
     // ever referenced.
     this.server = http.createServer((req, res) => this.handleRequest(req, res));
+    this.server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => this.handleUpgrade(req, socket, head));
+  }
+
+  /**
+   * Hands WebSocket handshakes for `path` to `handler` -- the Stream Deck's.
+   * One handler per path; the query string is not part of it.
+   */
+  public onUpgrade(path: string, handler: UpgradeHandler): void {
+    if (!path.startsWith('/')) throw new Error(`An upgrade path starts with '/': ${path}`);
+    this.upgradeHandlers.set(path, handler);
+  }
+
+  /**
+   * Screens a WebSocket handshake as {@link screenRequest} screens a POST,
+   * and harder: a browser opens a cross-origin WebSocket without any CORS
+   * preflight, so the content-type check that stops a page's POST does not
+   * exist here, and the `Origin` header is the whole of the defence. Every
+   * browser sends it on a WebSocket handshake; native clients do not.
+   */
+  private handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
+    // A client that resets mid-handshake would otherwise raise an unhandled
+    // 'error' and take the main process down.
+    socket.on('error', err => console.warn('[Webhook] Upgrade socket error:', err.message));
+    if (req.headers.origin) {
+      WebhookServer.refuseUpgrade(socket, 403, 'Forbidden');
+      return;
+    }
+    const path = (req.url || '/').split('?')[0];
+    const handler = this.upgradeHandlers.get(path);
+    if (!handler) {
+      WebhookServer.refuseUpgrade(socket, 404, 'Not Found');
+      return;
+    }
+    handler(req, socket, head);
+  }
+
+  private static refuseUpgrade(socket: Duplex, status: number, reason: string): void {
+    socket.end(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
   }
 
   /// <summary>

@@ -1134,7 +1134,7 @@ Ordered; each says what has to be true first.
     `finishNeedsConfirmation` says so, and Discard asks DISCARD?, each a
     second press. The layout is a pure function of the state, tested without
     a device.
-  - **The app's side, which needs no device:** a WebSocket on 39123
+  - **Done (2026-10-22): the app's side, which needs no device:** a WebSocket on 39123
     (`/api/v1/deck`, `ws` is shipped already) pushing the state when it
     changes -- the plugin ticks the time itself -- and taking `{ action,
     taskId? }`, validated, into a `DeckActionService` that calls what the
@@ -1142,7 +1142,11 @@ Ordered; each says what has to be true first.
     bar's display. No token, as for Unity's webhooks; a handshake carrying an
     `Origin` is refused, since a browser opens a cross-origin WebSocket
     without CORS. The protocol lives in `shared/deck-protocol.ts`, the one
-    place the plugin imports from.
+    place the plugin imports from. As built, a prompt key answers through
+    `InputDecoder` (OK, BACK), as the bar's keys do; Done and Discard are
+    refused without `confirmed` when they must ask, so a plugin cannot skip
+    the second press; and a favourite whose task is gone or archived is
+    refused rather than started under an id nobody can name.
   - **Then the plugin** (`packages/streamdeck-plugin`, made with
     `@elgato/cli`): key faces in SVG from the shared bitmaps, a key showing
     the app offline rather than failing when SprintTicker is closed, tests
@@ -1165,8 +1169,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.71 statements / 89.2 branches / 94.49 functions / 96.4 lines across 2456
-tests in 121 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.83 statements / 89.4 branches / 94.76 functions / 96.53 lines across 2531
+tests in 124 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

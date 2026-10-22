@@ -217,6 +217,25 @@ assembly or an asset without its `.meta`. Two more things follow:
   `dist-electron/win-unpacked/packages/unity-plugin` -- so a change reaches
   the editors at their next compile once that folder has it.
 
+**The Stream Deck plugin reaches the app over a WebSocket, and a key does
+what a click or a press already does.** `DeckActionService` holds no rule of
+its own, and must not grow one: ending a session is `completeSession`, shared
+with the window's IPC; a prompt is answered by OK or BACK through
+`InputDecoder`, so the wrap-up's two presses and the stand-up's switch stay
+in one place; leaving Away is `exitAwayMode`. A key with its own copy of a
+rule is the duplicated-constant hazard below, with a session at stake.
+Three more things about it:
+- **`Origin` is the whole defence of the socket.** A browser opens a
+  cross-origin WebSocket with no CORS check, so the content-type rule that
+  stops a web page's POST does not exist for an upgrade. `WebhookServer`
+  refuses any handshake carrying an `Origin` before a handler sees it.
+- **The protocol is `shared/deck-protocol.ts`, and nothing else.** The plugin
+  is built apart from the app and imports that file alone; a message shape
+  kept in two places would drift with nothing failing.
+- **Close the decks before the HTTP server.** An upgraded socket still counts
+  as one of the server's connections, so `stop()` would wait on a deck that
+  never hangs up.
+
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification
 defaults and the priority rules, and which one won depended on process start

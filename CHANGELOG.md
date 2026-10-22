@@ -88,6 +88,14 @@
   and not retried. OpenProject's write carries the work package's lock
   version, so an assignee set meanwhile is never overwritten.
 
+- **The app's side of a Stream Deck plugin.** A WebSocket on the app's
+  local port, `/api/v1/deck`, pushes what a deck's keys show -- the session,
+  the bar's icon, a prompt waiting for an answer, the mode -- and takes the
+  keys' actions: pause, resume, the three ends of a session, a favourite
+  task, the task picker, Away, and yes or no on the stand-up, the wrap-up and
+  the resume question. Each does exactly what the window or the bar does.
+  A web page cannot open it. The plugin itself comes next.
+
 ### Changed
 
 - **The stand-up's icon is animated.** The three people at the table take

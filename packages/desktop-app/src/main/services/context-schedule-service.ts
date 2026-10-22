@@ -290,6 +290,22 @@ export class ContextScheduleService {
     this._priorityEngine.releaseActiveLock('standupPromptPriority');
   }
 
+  /**
+   * The answers to this service's prompts among the actions InputDecoder
+   * decodes: after lunch, resume a task that is no longer the user's?; and
+   * OK on the stand-up's prompt. The bar's keys and the Stream Deck's both
+   * reach the decoder, and the decoder reaches this; anything else is not
+   * this service's to answer.
+   */
+  public answerFromBar(action: string): void {
+    if (action === 'CONFIRM_RESUME_PROMPT' || action === 'DISMISS_RESUME_PROMPT') {
+      this.answerResumePrompt(action === 'CONFIRM_RESUME_PROMPT');
+    }
+    if (action === 'CONFIRM_STANDUP_PROMPT') {
+      this.joinStandup();
+    }
+  }
+
   /// <summary>
   /// The week just over, until the user has seen it; null otherwise.
   /// </summary>

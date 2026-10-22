@@ -31,6 +31,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
+import { ContextScheduleService } from '../src/main/services/context-schedule-service';
 import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
@@ -70,6 +71,12 @@ describe('IPC handlers', () => {
   };
   const invoke = (channel: string, payload?: unknown) => handler(channel)({}, payload);
   const sentOn = (channel: string) => sent.filter(s => s.channel === channel).map(s => s.payload);
+
+  /**
+   * A stand-in schedule service that routes the bar's answers as the real
+   * one does, to the methods the test spies on.
+   */
+  const barAnswering = <T extends object>(stub: T) => ({ ...stub, answerFromBar: ContextScheduleService.prototype.answerFromBar });
 
   const build = (extra: Record<string, unknown> = {}) => {
     electron.ipcMain.handle.mockClear();
@@ -146,7 +153,7 @@ describe('IPC handlers', () => {
     ])('HardwareAction_%sOnTheResumeQuestion_AnswersIt', (key, resume) => {
       // The decoder only says which answer; the schedule service owns the question.
       const answerResumePrompt = vi.fn().mockReturnValue(true);
-      build({ contextScheduleService: { answerResumePrompt } });
+      build({ contextScheduleService: barAnswering({ answerResumePrompt }) });
       vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue(RESUME_PROMPT_EVENT);
       decoder.setPriorityEngine(priorityEngine);
 
@@ -157,7 +164,7 @@ describe('IPC handlers', () => {
 
     it('HardwareAction_OkOnTheStandupPrompt_JoinsIt', () => {
       const joinStandup = vi.fn();
-      build({ contextScheduleService: { joinStandup } });
+      build({ contextScheduleService: barAnswering({ joinStandup }) });
       vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue('standupPromptPriority');
       decoder.setPriorityEngine(priorityEngine);
 
@@ -168,7 +175,7 @@ describe('IPC handlers', () => {
 
     it('HardwareAction_BackOnTheStandupPrompt_DoesNotJoin', () => {
       const joinStandup = vi.fn();
-      build({ contextScheduleService: { joinStandup } });
+      build({ contextScheduleService: barAnswering({ joinStandup }) });
       vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue('standupPromptPriority');
       decoder.setPriorityEngine(priorityEngine);
 

@@ -139,7 +139,8 @@ which the window applies too, so it refuses exactly what main refuses.
 **Source:** `src/main/api/webhook-server.ts`
 
 `http://127.0.0.1:39123`, bound to loopback and never reachable from the
-network. It exists for the Unity Editor plugin.
+network. It exists for the Unity Editor plugin, and carries the Stream Deck
+plugin's WebSocket (below).
 
 ### Routes
 
@@ -174,6 +175,52 @@ Responses are JSON. `200 { status: 'ACCEPTED' }` on success,
 **This is not authentication.** Any local program can still call this API. What
 the checks close is the path from a web page you happen to be visiting to your
 hardware. `pnpm verify:packed` asserts all of it against a real packaged build.
+
+### The Stream Deck socket
+
+**Source:** `src/main/api/deck-server.ts`, `src/main/services/deck-action-service.ts`;
+the protocol is `src/shared/deck-protocol.ts`, the one file the plugin imports.
+
+`ws://127.0.0.1:39123/api/v1/deck`. The app pushes the state when it
+changes; the plugin sends requests and gets one answer for each. A handshake
+is refused before the upgrade when:
+
+| Rule | Response | Why |
+| :--- | :--- | :--- |
+| An `Origin` header is present | `403` | A browser opens a cross-origin WebSocket with no CORS check at all, so the content-type rule that stops a page's POST does not exist here: this header is the whole defence |
+| Another path | `404` | |
+| Four decks already connected | `503` | One is the case; a few cover a plugin restarting before its old socket closed |
+
+A message over 4 KB closes the socket (1009). No token, as for Unity's routes.
+
+**From the app**, as JSON text:
+
+| Message | When |
+| :--- | :--- |
+| `{ type: 'hello', protocol: 1 }` | First, on every connection |
+| `{ type: 'state', state, at }` | On connection, then on each change: the session (`taskId`, `taskKey`, `taskTitle`, `isAdHoc`, `status: 'tracking' \| 'paused'`, `elapsedSeconds`, `finishNeedsConfirmation`) or null, the bar's screen `icon`, the `prompt` waiting for an answer, and the user's `mode`. Never once a second: `at` is when `elapsedSeconds` was read, and the plugin counts on from it (`deckElapsedSeconds`). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity |
+| `{ type: 'result', id, ok: true }` | A request done |
+| `{ type: 'result', id, ok: false, error, message }` | A request refused or failed; `error` is one of `invalid-request`, `no-session`, `unknown-task`, `needs-confirmation`, `no-prompt`, `no-window`, `failed` |
+| `{ type: 'tasks', id, tasks: [{ id, key, title, projectName }] }` | The answer to `list-tasks` |
+
+**From the plugin**, `{ id, action, taskId?, confirmed? }`, `id` 1 to 128
+characters. Unknown fields are dropped.
+
+| `action` | Does what | Refused when |
+| :--- | :--- | :--- |
+| `pause`, `resume` | What the mini timer's buttons do | Nothing tracking, or nothing paused |
+| `stop` | Ends the session, task left open -- the window's Not done, with LOGGED on the bar | No session |
+| `finish` | Ends it and marks the task done, with DONE! | No session; or the task left the user's list and `confirmed` is not true (NOT YOURS?) |
+| `discard` | Keeps nothing | No session; or `confirmed` is not true -- always asked |
+| `start` | Starts `taskId`, a favourite key. On the task already running it does nothing, or resumes it if paused | No such task, or archived (`unknown-task`) |
+| `open-picker` | Brings the window forward with its task picker | No window |
+| `prompt-yes`, `prompt-no` | OK or BACK on the bar while a prompt holds it: the stand-up (`standup`), the wrap-up (`wrap-up`, then `wrap-up-confirm` after the first yes), the resume question (`resume`) | No prompt holds the bar |
+| `toggle-away` | Away, or back from it -- into Lunch during the lunch hour | |
+| `list-tasks` | Every task the window's lists show, in their order | |
+
+A prompt is reported only while it holds the bar's display: covered by a
+banner, the bar's own OK would answer the banner, and the deck answers what
+the bar would.
 
 ---
 

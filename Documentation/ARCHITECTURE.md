@@ -50,7 +50,7 @@ traps.
 │            │                                                             │
 │      Repositories ──> DatabaseConnection ──> better-sqlite3              │
 │                                                                          │
-│   WebhookServer (127.0.0.1:39123) <── Unity Editor plugin                │
+│   WebhookServer (127.0.0.1:39123) <── Unity Editor plugin, Stream Deck   │
 └──────────────────────────────────┬───────────────────────────────────────┘
                                    │ HTTP
                           ┌──────────────────────┐
@@ -637,6 +637,26 @@ The service cannot tell the two apart, and does not need to.
 
 An HTTP server on `127.0.0.1:39123` for the Unity Editor plugin. See the
 [API reference](API.md#local-http-api) for routes and the screening rules.
+WebSocket handshakes go through it too (`onUpgrade`), screened for an
+`Origin` before any handler sees them.
+
+### `DeckServer` and `DeckActionService` — `src/main/api/`, `src/main/services/`
+
+The app's side of the Stream Deck plugin: a WebSocket at `/api/v1/deck` on
+the same port, and the service behind it. The service reads the state the
+keys show -- the session, the bar's screen icon, the prompt holding the bar,
+the mode -- and pushes it only when it changes, so the deck does not hear the
+engine's tick. It listens to the engine, the renderer's icon and the mode,
+and reads again once a second while a deck is connected, because a prompt
+taking the display has no event of its own.
+
+Every action is something the app already does, called the same way: ending
+a session is `completeSession` (`session-commands.ts`), shared with the
+window's `COMPLETE_SESSION`; a prompt is answered by OK or BACK through
+`InputDecoder.handleHardwareInput`, so the wrap-up's two presses and the
+stand-up's switch stay where the bar's keys reach them; leaving Away is
+`exitAwayMode`. It never draws on the bar itself. The protocol is in
+`src/shared/deck-protocol.ts`; [API reference](API.md#the-stream-deck-socket).
 
 ---
 
@@ -832,7 +852,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2456 tests across 121 files, in two projects: `main` in Node for
+Vitest, 2531 tests across 124 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

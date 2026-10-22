@@ -2206,7 +2206,24 @@
       The service cannot tell the two apart, and does not need to.</p>
       <h4><code>WebhookServer</code> — <code>src/main/api/</code></h4>
       <p>An HTTP server on <code>127.0.0.1:39123</code> for the Unity Editor plugin. See the
-      <a href="API.md#local-http-api">API reference</a> for routes and the screening rules.</p>
+      <a href="API.md#local-http-api">API reference</a> for routes and the screening rules.
+      WebSocket handshakes go through it too (<code>onUpgrade</code>), screened for an
+      <code>Origin</code> before any handler sees them.</p>
+      <h4><code>DeckServer</code> and <code>DeckActionService</code> — <code>src/main/api/</code>, <code>src/main/services/</code></h4>
+      <p>The app&#39;s side of the Stream Deck plugin: a WebSocket at <code>/api/v1/deck</code> on
+      the same port, and the service behind it. The service reads the state the
+      keys show -- the session, the bar&#39;s screen icon, the prompt holding the bar,
+      the mode -- and pushes it only when it changes, so the deck does not hear the
+      engine&#39;s tick. It listens to the engine, the renderer&#39;s icon and the mode,
+      and reads again once a second while a deck is connected, because a prompt
+      taking the display has no event of its own.</p>
+      <p>Every action is something the app already does, called the same way: ending
+      a session is <code>completeSession</code> (<code>session-commands.ts</code>), shared with the
+      window&#39;s <code>COMPLETE_SESSION</code>; a prompt is answered by OK or BACK through
+      <code>InputDecoder.handleHardwareInput</code>, so the wrap-up&#39;s two presses and the
+      stand-up&#39;s switch stay where the bar&#39;s keys reach them; leaving Away is
+      <code>exitAwayMode</code>. It never draws on the bar itself. The protocol is in
+      <code>src/shared/deck-protocol.ts</code>; <a href="API.md#the-stream-deck-socket">API reference</a>.</p>
       <hr>
       <h3 id="architecture-data">4. Data</h3>
       <p>Everything lives in one SQLite file at
@@ -2407,7 +2424,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2456 tests across 121 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2531 tests across 124 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2731,7 +2748,8 @@
       <h3 id="api-local-http-api">Local HTTP API</h3>
       <p><strong>Source:</strong> <code>src/main/api/webhook-server.ts</code></p>
       <p><code>http://127.0.0.1:39123</code>, bound to loopback and never reachable from the
-      network. It exists for the Unity Editor plugin.</p>
+      network. It exists for the Unity Editor plugin, and carries the Stream Deck
+      plugin&#39;s WebSocket (below).</p>
       <h4>Routes</h4>
       <div class="table-wrap"><table>
       <thead>
@@ -2809,6 +2827,125 @@
       <p><strong>This is not authentication.</strong> Any local program can still call this API. What
       the checks close is the path from a web page you happen to be visiting to your
       hardware. <code>pnpm verify:packed</code> asserts all of it against a real packaged build.</p>
+      <h4>The Stream Deck socket</h4>
+      <p><strong>Source:</strong> <code>src/main/api/deck-server.ts</code>, <code>src/main/services/deck-action-service.ts</code>;
+      the protocol is <code>src/shared/deck-protocol.ts</code>, the one file the plugin imports.</p>
+      <p><code>ws://127.0.0.1:39123/api/v1/deck</code>. The app pushes the state when it
+      changes; the plugin sends requests and gets one answer for each. A handshake
+      is refused before the upgrade when:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Rule</th>
+      <th align="left">Response</th>
+      <th align="left">Why</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">An <code>Origin</code> header is present</td>
+      <td align="left"><code>403</code></td>
+      <td align="left">A browser opens a cross-origin WebSocket with no CORS check at all, so the content-type rule that stops a page&#39;s POST does not exist here: this header is the whole defence</td>
+      </tr>
+      <tr>
+      <td align="left">Another path</td>
+      <td align="left"><code>404</code></td>
+      <td align="left"></td>
+      </tr>
+      <tr>
+      <td align="left">Four decks already connected</td>
+      <td align="left"><code>503</code></td>
+      <td align="left">One is the case; a few cover a plugin restarting before its old socket closed</td>
+      </tr>
+      </tbody></table></div>
+      <p>A message over 4 KB closes the socket (1009). No token, as for Unity&#39;s routes.</p>
+      <p><strong>From the app</strong>, as JSON text:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Message</th>
+      <th align="left">When</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>{ type: &#39;hello&#39;, protocol: 1 }</code></td>
+      <td align="left">First, on every connection</td>
+      </tr>
+      <tr>
+      <td align="left"><code>{ type: &#39;state&#39;, state, at }</code></td>
+      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>) or null, the bar&#39;s screen <code>icon</code>, the <code>prompt</code> waiting for an answer, and the user&#39;s <code>mode</code>. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
+      </tr>
+      <tr>
+      <td align="left"><code>{ type: &#39;result&#39;, id, ok: true }</code></td>
+      <td align="left">A request done</td>
+      </tr>
+      <tr>
+      <td align="left"><code>{ type: &#39;result&#39;, id, ok: false, error, message }</code></td>
+      <td align="left">A request refused or failed; <code>error</code> is one of <code>invalid-request</code>, <code>no-session</code>, <code>unknown-task</code>, <code>needs-confirmation</code>, <code>no-prompt</code>, <code>no-window</code>, <code>failed</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>{ type: &#39;tasks&#39;, id, tasks: [{ id, key, title, projectName }] }</code></td>
+      <td align="left">The answer to <code>list-tasks</code></td>
+      </tr>
+      </tbody></table></div>
+      <p><strong>From the plugin</strong>, <code>{ id, action, taskId?, confirmed? }</code>, <code>id</code> 1 to 128
+      characters. Unknown fields are dropped.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left"><code>action</code></th>
+      <th align="left">Does what</th>
+      <th align="left">Refused when</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>pause</code>, <code>resume</code></td>
+      <td align="left">What the mini timer&#39;s buttons do</td>
+      <td align="left">Nothing tracking, or nothing paused</td>
+      </tr>
+      <tr>
+      <td align="left"><code>stop</code></td>
+      <td align="left">Ends the session, task left open -- the window&#39;s Not done, with LOGGED on the bar</td>
+      <td align="left">No session</td>
+      </tr>
+      <tr>
+      <td align="left"><code>finish</code></td>
+      <td align="left">Ends it and marks the task done, with DONE!</td>
+      <td align="left">No session; or the task left the user&#39;s list and <code>confirmed</code> is not true (NOT YOURS?)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>discard</code></td>
+      <td align="left">Keeps nothing</td>
+      <td align="left">No session; or <code>confirmed</code> is not true -- always asked</td>
+      </tr>
+      <tr>
+      <td align="left"><code>start</code></td>
+      <td align="left">Starts <code>taskId</code>, a favourite key. On the task already running it does nothing, or resumes it if paused</td>
+      <td align="left">No such task, or archived (<code>unknown-task</code>)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>open-picker</code></td>
+      <td align="left">Brings the window forward with its task picker</td>
+      <td align="left">No window</td>
+      </tr>
+      <tr>
+      <td align="left"><code>prompt-yes</code>, <code>prompt-no</code></td>
+      <td align="left">OK or BACK on the bar while a prompt holds it: the stand-up (<code>standup</code>), the wrap-up (<code>wrap-up</code>, then <code>wrap-up-confirm</code> after the first yes), the resume question (<code>resume</code>)</td>
+      <td align="left">No prompt holds the bar</td>
+      </tr>
+      <tr>
+      <td align="left"><code>toggle-away</code></td>
+      <td align="left">Away, or back from it -- into Lunch during the lunch hour</td>
+      <td align="left"></td>
+      </tr>
+      <tr>
+      <td align="left"><code>list-tasks</code></td>
+      <td align="left">Every task the window&#39;s lists show, in their order</td>
+      <td align="left"></td>
+      </tr>
+      </tbody></table></div>
+      <p>A prompt is reported only while it holds the bar&#39;s display: covered by a
+      banner, the bar&#39;s own OK would answer the banner, and the deck answers what
+      the bar would.</p>
       <hr>
       <h3 id="api-itaskprovider"><code>ITaskProvider</code></h3>
       <p><strong>Source:</strong> <code>src/main/providers/task-provider-interface.ts</code></p>

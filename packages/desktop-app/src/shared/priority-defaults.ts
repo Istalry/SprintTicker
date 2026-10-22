@@ -30,6 +30,10 @@ export const BAR_MENU_EVENT = 'menuPriority';
 /** "Resume it anyway?", asked after lunch about a task no longer the user's. */
 export const RESUME_PROMPT_EVENT = 'resumePromptPriority';
 
+/** The stand-up's prompt, and the end-of-day wrap-up's: the prompts a Stream Deck key answers. */
+export const STANDUP_PROMPT_EVENT = 'standupPromptPriority';
+export const EOD_WRAP_UP_EVENT = 'eodWrapUpPriority';
+
 export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
   {
     id: 'away_mode',
@@ -57,7 +61,7 @@ export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
   },
   {
     id: 'eod_wrapup',
-    eventName: 'eodWrapUpPriority',
+    eventName: EOD_WRAP_UP_EVENT,
     priority: 80,
     actionOnWork: 'DISPLAY',
     actionOnLunch: 'SUPPRESS',
@@ -73,7 +77,7 @@ export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
   },
   {
     id: 'standup_prompt',
-    eventName: 'standupPromptPriority',
+    eventName: STANDUP_PROMPT_EVENT,
     priority: 75,
     actionOnWork: 'DISPLAY',
     actionOnLunch: 'SUPPRESS',

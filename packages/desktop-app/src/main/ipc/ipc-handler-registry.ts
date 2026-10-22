@@ -42,6 +42,7 @@ import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
+import { completeSession } from '../services/session-commands';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -225,19 +226,10 @@ export class IPCHandlerRegistry {
       return this.engine.resumeSession();
     });
 
-    ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string; markDone?: boolean }) => {
-      const res = this.engine.stopSession(payload.comment, payload.markDone);
-      // Only when something was stopped: with no session there is nothing to
-      // celebrate or log, and the scene would take the display for nothing.
-      if (res.success) {
-        if (payload.markDone) {
-          this.renderer.renderTaskCompletionConfetti();
-        } else {
-          this.renderer.renderTaskLogged();
-        }
-      }
-      return res;
-    });
+    // Shared with the Stream Deck, so a key ends a session as a click does.
+    ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string; markDone?: boolean }) =>
+      completeSession(this.engine, this.renderer, payload.comment, payload.markDone)
+    );
 
     // Keeps nothing: no worklog, nothing sent, no scene on the bar. The
     // window asks for confirmation before calling this.
@@ -1139,12 +1131,7 @@ export class IPCHandlerRegistry {
     // confirmation took one START, and ran the wrap-up -- shutdown included,
     // when ticked -- on a single press.
     this.inputDecoder.registerActionHandler((action: string, inputKey: string) => {
-      if (action === 'CONFIRM_RESUME_PROMPT' || action === 'DISMISS_RESUME_PROMPT') {
-        this.contextScheduleService.answerResumePrompt(action === 'CONFIRM_RESUME_PROMPT');
-      }
-      if (action === 'CONFIRM_STANDUP_PROMPT') {
-        this.contextScheduleService.joinStandup();
-      }
+      this.contextScheduleService.answerFromBar(action);
       this.broadcast(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
     });
   }

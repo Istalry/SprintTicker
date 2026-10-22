@@ -26,6 +26,10 @@ import { APP_USER_MODEL_ID } from './app-identity';
 import { BitmapIconId } from '../shared/dtos';
 import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
 import { WebhookServer } from './api/webhook-server';
+import { DeckServer } from './api/deck-server';
+import { DeckActionService } from './services/deck-action-service';
+import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
+import { openTaskPickerInMainWindow } from './windows/main-window-actions';
 import { ProviderManager } from './providers/provider-manager';
 
 import { PriorityPreemptionEngine } from './services/priority-preemption-engine';
@@ -50,6 +54,7 @@ let inputDecoder: InputDecoder | null = null;
 let renderer: DisplayRenderer | null = null;
 let unityInjectorService: UnityInjectorService | null = null;
 let webhookServer: WebhookServer | null = null;
+let deckServer: DeckServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
 let windowsNotificationService: WindowsNotificationListenerService | null = null;
@@ -251,9 +256,9 @@ async function startApplication(): Promise<void> {
   inputDecoder = new InputDecoder(driver, engine, settingsRepo);
 
   // 4. Initialize the local webhook server
-  webhookServer = new WebhookServer(39123);
+  webhookServer = new WebhookServer(LOCAL_API_PORT);
   await webhookServer.start();
-  console.log('[Main] Webhook server listening on http://127.0.0.1:39123');
+  console.log(`[Main] Webhook server listening on http://127.0.0.1:${LOCAL_API_PORT}`);
 
   webhookServer.onInputEvent(key => {
     if (driver) {
@@ -373,6 +378,22 @@ async function startApplication(): Promise<void> {
   });
   ipcRegistry.registerAllHandlers();
   scheduleUpdateChecks();
+
+  // The Stream Deck plugin's socket, on the same port. After the registry:
+  // a prompt key answers through InputDecoder, whose answers the registry
+  // routes to the ceremonies.
+  deckServer = new DeckServer(new DeckActionService({
+    engine,
+    renderer,
+    priorityEngine,
+    schedule: contextScheduleService,
+    inputDecoder,
+    taskRepo,
+    settings: settingsRepo,
+    openPicker: () => openTaskPickerInMainWindow(mainWindow)
+  }));
+  const deck = deckServer;
+  webhookServer.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));
 
   // 6. Create Window & Render Initial State
   createWindow();
@@ -499,6 +520,11 @@ app.on('will-quit', event => {
       }
       if (engine) {
         engine.dispose();
+      }
+      // The decks first: their sockets count as the HTTP server's
+      // connections, and its stop would wait on them.
+      if (deckServer) {
+        await deckServer.close();
       }
       if (webhookServer) {
         await webhookServer.stop();
