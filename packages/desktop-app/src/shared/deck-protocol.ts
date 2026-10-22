@@ -1,4 +1,4 @@
-import { ArgumentException, ScreenIconDTO } from './dtos';
+import { ArgumentException } from './dtos';
 
 /**
  * What SprintTicker and its Stream Deck plugin say to each other, over a
@@ -58,10 +58,43 @@ export interface DeckSession {
   finishNeedsConfirmation: boolean;
 }
 
+/**
+ * How often an icon's motion is sampled for a key, and the most a key is
+ * redrawn for it: `setImage` never plays an animated image (Stream Deck
+ * Mobile, 2026-10-22), so a moving icon is the plugin sending frames, and
+ * ten a second is what the phone was measured keeping up with.
+ */
+export const DECK_ICON_FPS = 10;
+
+/** Bounds on a motion, so a state message stays a few kilobytes. */
+export const DECK_MAX_ICON_POSES = 64;
+export const DECK_MAX_ICON_STEPS = 600;
+
+/**
+ * The motion of the bar's icon, as the bar plays it: its distinct poses,
+ * and which one each step shows. Sent once with the icon, so the plugin
+ * plays it with no message per frame; most icons have a handful of poses.
+ */
+export interface DeckIconMotion {
+  /** Steps a second, at most {@link DECK_ICON_FPS}. */
+  fps: number;
+  /** Each pose as the icon's pixels: 16 rows of `#RRGGBB`, or null for an unlit LED. */
+  poses: (string | null)[][][];
+  /** Which pose each step shows, in play order; it loops. */
+  sequence: number[];
+}
+
+/** The icon of whatever holds the bar, as the mini timer shows it; with its motion when it moves. */
+export interface DeckIcon {
+  pixels: (string | null)[][];
+  label: string;
+  /** Absent for a still icon -- and from an app older than this field, which still works. */
+  motion?: DeckIconMotion;
+}
+
 export interface DeckState {
   session: DeckSession | null;
-  /** The icon of whatever holds the bar, as the mini timer shows it. */
-  icon: ScreenIconDTO | null;
+  icon: DeckIcon | null;
   prompt: DeckPrompt | null;
 }
 
@@ -162,4 +195,28 @@ export function deckElapsedSeconds(message: DeckStateMessage, now: Date): number
   if (session.status !== 'tracking') return session.elapsedSeconds;
   const since = Math.floor((now.getTime() - Date.parse(message.at)) / 1000);
   return session.elapsedSeconds + Math.max(0, since);
+}
+
+/** Whether a motion can be played as it came: bounded, and every step names a pose. */
+export function isPlayableMotion(motion: unknown): motion is DeckIconMotion {
+  if (!motion || typeof motion !== 'object') return false;
+  const { fps, poses, sequence } = motion as Partial<DeckIconMotion>;
+  return (
+    typeof fps === 'number' && fps > 0 && fps <= DECK_ICON_FPS &&
+    Array.isArray(poses) && poses.length > 0 && poses.length <= DECK_MAX_ICON_POSES && poses.every(Array.isArray) &&
+    Array.isArray(sequence) && sequence.length > 0 && sequence.length <= DECK_MAX_ICON_STEPS &&
+    sequence.every(i => Number.isInteger(i) && i >= 0 && i < poses.length)
+  );
+}
+
+/**
+ * The icon's pixels at `now`: its pose of the moment when it moves, its
+ * still pixels otherwise. Read from the wall clock, so every key and every
+ * redraw agree without keeping a frame count.
+ */
+export function deckIconPixels(icon: DeckIcon, now: Date): (string | null)[][] {
+  const motion = icon.motion;
+  if (!isPlayableMotion(motion)) return icon.pixels;
+  const step = Math.floor(now.getTime() / (1000 / motion.fps)) % motion.sequence.length;
+  return motion.poses[motion.sequence[step]];
 }

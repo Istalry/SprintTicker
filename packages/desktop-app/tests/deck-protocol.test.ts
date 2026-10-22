@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   DECK_ACTIONS,
+  DECK_ICON_FPS,
+  DECK_MAX_ICON_POSES,
+  DECK_MAX_ICON_STEPS,
   DECK_MAX_ID_LENGTH,
   DeckStateMessage,
   deckElapsedSeconds,
+  deckIconPixels,
+  isPlayableMotion,
   parseDeckRequest
 } from '../src/shared/deck-protocol';
 import { ArgumentException } from '../src/shared/dtos';
@@ -77,5 +82,40 @@ describe('Deck protocol', () => {
     it('DeckElapsedSeconds_ClockBehindTheState_NeverCountsBack', () => {
       expect(deckElapsedSeconds(message('tracking'), new Date('2026-10-22T09:59:00.000Z'))).toBe(100);
     });
+  });
+});
+
+describe('icon motion', () => {
+  const pose = (colour: string) => [[colour]];
+  const motion = { fps: 10, poses: [pose('#111111'), pose('#222222')], sequence: [0, 0, 1] };
+  const icon = { pixels: pose('#000001'), label: 'MG-12', motion };
+
+  it('IsPlayableMotion_Bounded_AndEveryStepNamesAPose', () => {
+    expect(isPlayableMotion(motion)).toBe(true);
+    for (const broken of [
+      null,
+      'motion',
+      { ...motion, fps: 0 },
+      { ...motion, fps: DECK_ICON_FPS + 1 },
+      { ...motion, poses: [] },
+      { ...motion, poses: [pose('#111111'), 'x'] },
+      { ...motion, sequence: [] },
+      { ...motion, sequence: [0, 2] },
+      { ...motion, sequence: [0, 0.5] },
+      { ...motion, sequence: Array(DECK_MAX_ICON_STEPS + 1).fill(0) },
+      { ...motion, poses: Array(DECK_MAX_ICON_POSES + 1).fill(pose('#111111')) }
+    ]) {
+      expect(isPlayableMotion(broken)).toBe(false);
+    }
+  });
+
+  it('DeckIconPixels_StepsByTheWallClock', () => {
+    // 100 ms a step: 0, 0, 1, then round again.
+    expect([0, 150, 250, 350].map(ms => deckIconPixels(icon, new Date(ms)))).toEqual([pose('#111111'), pose('#111111'), pose('#222222'), pose('#111111')]);
+  });
+
+  it('DeckIconPixels_StillOrUnplayable_TheStillPixels', () => {
+    expect(deckIconPixels({ pixels: pose('#000001'), label: 'x' }, new Date(0))).toEqual(pose('#000001'));
+    expect(deckIconPixels({ ...icon, motion: { ...motion, sequence: [5] } }, new Date(0))).toEqual(pose('#000001'));
   });
 });

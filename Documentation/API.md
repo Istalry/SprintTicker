@@ -112,7 +112,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | `priority:on-user-mode-updated` | **Event** |
 | `display:get-state` | Current frame, for the emulator |
 | `display:on-state-updated` | **Event** |
-| `display:get-screen-icon` | The icon of the screen on the bar, for the mini timer: `{ pixels, label }`, a 16x16 bitmap and the screen's top row or scene title, or `null` while the firmware's clock shows |
+| `display:get-screen-icon` | The icon of the screen on the bar, for the mini timer: `{ pixels, label, animation? }`, a 16x16 bitmap, the screen's top row or scene title, and the `.anim` the bar plays over it when it moves; or `null` while the firmware's clock shows |
 | `display:on-screen-icon` | **Event**, to every window, only when the icon changes -- the tracker's tick and a scene's frames do not move it |
 | `display:set-color-theme`, `display:trigger-confetti-burst` | Display options. `display:trigger-confetti-burst` plays DONE! alone, for the debug panel |
 | `display:preview-screen` | Draws one **real** screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting |
@@ -199,7 +199,7 @@ A message over 4 KB closes the socket (1009). No token, as for Unity's routes.
 | Message | When |
 | :--- | :--- |
 | `{ type: 'hello', protocol: 1 }` | First, on every connection |
-| `{ type: 'state', state, at }` | On connection, then on each change: the session (`taskId`, `taskKey`, `taskTitle`, `isAdHoc`, `status: 'tracking' \| 'paused'`, `elapsedSeconds`, `finishNeedsConfirmation`) or null, the bar's screen `icon`, and the `prompt` waiting for an answer. Never once a second: `at` is when `elapsedSeconds` was read, and the plugin counts on from it (`deckElapsedSeconds`). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity |
+| `{ type: 'state', state, at }` | On connection, then on each change: the session (`taskId`, `taskKey`, `taskTitle`, `isAdHoc`, `status: 'tracking' \| 'paused'`, `elapsedSeconds`, `finishNeedsConfirmation`) or null, the bar's screen `icon` (`pixels`, `label`, and `motion` while it moves: `{ fps, poses, sequence }`, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the `prompt` waiting for an answer. Never once a second: `at` is when `elapsedSeconds` was read, and the plugin counts on from it (`deckElapsedSeconds`). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity |
 | `{ type: 'result', id, ok: true }` | A request done |
 | `{ type: 'result', id, ok: false, error, message }` | A request refused or failed; `error` is one of `invalid-request`, `no-session`, `needs-confirmation`, `no-prompt`, `no-window`, `failed` |
 

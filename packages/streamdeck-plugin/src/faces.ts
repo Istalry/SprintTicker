@@ -1,5 +1,5 @@
 import type { DeckAction, DeckPrompt, DeckSession, DeckStateMessage } from '../../desktop-app/src/shared/deck-protocol';
-import { deckElapsedSeconds } from '../../desktop-app/src/shared/deck-protocol';
+import { deckElapsedSeconds, deckIconPixels, isPlayableMotion } from '../../desktop-app/src/shared/deck-protocol';
 import type { KeyKind } from './key-kinds';
 
 /**
@@ -147,7 +147,8 @@ export function faceFor(kind: KeyKind, ctx: KeyContext): Face {
         big: formatDuration(deckElapsedSeconds(ctx.message, ctx.now)),
         accent: tracking ? ACCENTS.green : ACCENTS.amber,
         glyph: tracking ? 'play' : 'pause',
-        ...(state.icon ? { pixels: state.icon.pixels } : {}),
+        // The bar's icon as the bar plays it, its pose read off the clock.
+        ...(state.icon ? { pixels: deckIconPixels(state.icon, ctx.now) } : {}),
         tone: 'ready'
       };
     }
@@ -211,6 +212,20 @@ export function hasLongPress(kind: KeyKind): boolean {
 /** Kinds whose face moves with the clock: redrawn each second while a session runs. */
 export function ticksWithTheClock(kind: KeyKind): boolean {
   return kind === 'session';
+}
+
+/**
+ * How often a key that ticks with the clock is redrawn in this state, or
+ * null when nothing on it moves: each second while a session runs, and at
+ * the icon's own rate while the bar's icon moves -- paused too, since the
+ * paused stopwatch blinks. A redraw that changes nothing sends nothing.
+ */
+export function tickPeriodMs(message: DeckStateMessage | null, second: number): number | null {
+  const session = message?.state.session;
+  if (!session) return null;
+  const motion = message.state.icon?.motion;
+  if (isPlayableMotion(motion)) return Math.round(1000 / motion.fps);
+  return session.status === 'tracking' ? second : null;
 }
 
 /**

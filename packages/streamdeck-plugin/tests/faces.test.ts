@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DeckPrompt } from '../../desktop-app/src/shared/deck-protocol';
-import { ACCENTS, GLYPHS, KeyContext, PRESS_AGAIN, faceFor, formatDuration, hasLongPress, planPress, playsOnPress, playsOnQuestion, ticksWithTheClock } from '../src/faces';
+import { ACCENTS, GLYPHS, KeyContext, PRESS_AGAIN, faceFor, formatDuration, hasLongPress, planPress, playsOnPress, playsOnQuestion, tickPeriodMs, ticksWithTheClock } from '../src/faces';
 import { KEY_KINDS } from '../src/key-kinds';
 import { STATE_AT, session, stateMessage } from './support/states';
 
@@ -208,5 +208,30 @@ describe('hasLongPress', () => {
   it('HasLongPress_OnlyTheSessionKey', () => {
     // Never yes or no: an answer must not depend on how long a key is held.
     expect(KEY_KINDS.filter(hasLongPress)).toEqual(['session']);
+  });
+});
+
+describe("the bar's icon in motion", () => {
+  const still = [['#000001']];
+  const motion = { fps: 10, poses: [[['#111111']], [['#222222']]], sequence: [0, 1] };
+  const moving = (status: 'tracking' | 'paused' = 'tracking') =>
+    stateMessage({ session: session({ status }), icon: { pixels: still, label: 'SPR-1', motion } });
+
+  it('FaceFor_SessionWithAMovingIcon_ThePoseOfTheMoment', () => {
+    const at = (ms: number) => faceFor('session', online(moving(), { now: new Date(ms) })).pixels;
+    expect([at(0), at(100), at(200)]).toEqual([[['#111111']], [['#222222']], [['#111111']]]);
+  });
+
+  it('TickPeriodMs_ByWhatMoves', () => {
+    expect(tickPeriodMs(null, 1000)).toBeNull();
+    expect(tickPeriodMs(stateMessage(), 1000)).toBeNull();
+    expect(tickPeriodMs(stateMessage({ session: session() }), 1000)).toBe(1000);
+    expect(tickPeriodMs(stateMessage({ session: session({ status: 'paused' }) }), 1000)).toBeNull();
+    // The paused stopwatch blinks: a moving icon ticks paused too.
+    expect(tickPeriodMs(moving('paused'), 1000)).toBe(100);
+    expect(tickPeriodMs(moving(), 1000)).toBe(100);
+    // A motion that cannot be played is no motion.
+    const broken = stateMessage({ session: session(), icon: { pixels: still, label: 'x', motion: { ...motion, sequence: [7] } } });
+    expect(tickPeriodMs(broken, 1000)).toBe(1000);
   });
 });

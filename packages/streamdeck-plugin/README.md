@@ -16,7 +16,7 @@ Deck's list: drag each onto any key, as many times as you like.
 
 | Action | Shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task's key and its time, the bar's icon, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. Held half a second, opens the task picker whatever runs |
+| **Session** | the task's key and its time, the bar's icon moving as on the bar, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. Held half a second, opens the task picker whatever runs |
 | **Not done** | NOT DONE | ends the session, logs its time; the task stays open |
 | **Done** | DONE | ends it and marks the task done |
 | **Discard** | DISCARD | throws the session away -- asks first |
@@ -70,7 +70,8 @@ io.github.istalry.sprintticker` reloads it after a build.
   glyphs part-way through their one-shots.
 - `src/controller.ts` -- the keys on the deck: draws each from the state,
   only when its image changes; ticks the session's time once a second, only
-  while one runs; arms and disarms the keys that ask first; tells Session's
+  while one runs, and faster while the bar's icon moves (its `motion`, a
+  pose a step, read off the clock); arms and disarms the keys that ask first; tells Session's
   long press from a tap; plays a one-shot as six images, holding the
   state's redraws of that key until it ends.
 - `src/app-link.ts` -- the line to the app: reconnects with backoff while it

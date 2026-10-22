@@ -451,7 +451,7 @@ export class DisplayRenderer {
 
   private setScreenIcon(icon: ScreenIconDTO | null): void {
     const current = this.screenIcon;
-    if (icon === current || (icon && current && icon.pixels === current.pixels && icon.label === current.label)) return;
+    if (icon === current || (icon && current && icon.pixels === current.pixels && icon.label === current.label && icon.animation === current.animation)) return;
     this.screenIcon = icon;
     for (const callback of this.screenIconCallbacks) {
       callback(icon);
@@ -711,7 +711,7 @@ export class DisplayRenderer {
   ): void {
     this.canvas.clear();
     this.frameIcon = animatedIcon ? ANIMATED_ICONS[animatedIcon] ?? null : null;
-    this.frameScreenIcon = { pixels: iconBitmap, label: row0Text };
+    this.frameScreenIcon = { pixels: iconBitmap, label: row0Text, ...(this.frameIcon ? { animation: this.frameIcon } : {}) };
     // Draw 16×16 icon, centered vertically in the 16px display height
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
     this.canvas.drawBitmap(iconBitmap, 0, 0, layout.ICON_SIZE, layout.ICON_SIZE);
@@ -1238,7 +1238,7 @@ export class DisplayRenderer {
         isStandup && isTracking ? 'meeting' : isPaused ? 'stopwatch_paused' : session ? 'stopwatch' : 'stopwatch_idle';
       this.canvas.drawBitmap(getBitmapById(icon), 0, 0, 16, 16);
       this.frameIcon = ANIMATED_ICONS[icon] ?? null;
-      this.frameScreenIcon = { pixels: getBitmapById(icon), label: titleText };
+      this.frameScreenIcon = { pixels: getBitmapById(icon), label: titleText, ...(this.frameIcon ? { animation: this.frameIcon } : {}) };
 
       if (isPaused) {
         this.paintPausedRows(titleText, timerText, row0Color);

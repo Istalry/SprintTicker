@@ -715,7 +715,7 @@ as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task, its time and the bar's icon, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
+| **Session** | the task, its time and the bar's icon, moving as it does on the bar, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
 | **Not done** | NOT DONE | ends the session and logs its time; the task stays open |
 | **Done** | DONE | ends it and marks the task done |
 | **Discard** | DISCARD | throws the session away, nothing logged |

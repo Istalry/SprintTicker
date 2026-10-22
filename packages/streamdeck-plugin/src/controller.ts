@@ -1,6 +1,6 @@
 import type { DeckRequest } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from './app-link';
-import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, playsOnPress, playsOnQuestion, ticksWithTheClock } from './faces';
+import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, playsOnPress, playsOnQuestion, tickPeriodMs, ticksWithTheClock } from './faces';
 import { KeyKind } from './key-kinds';
 import { renderFace } from './svg';
 
@@ -85,6 +85,7 @@ export class DeckController {
   private readonly _log: (message: string) => void;
   private readonly _unsubscribe: () => void;
   private _ticker: unknown = null;
+  private _tickerPeriod: number | null = null;
   private _lastTaskId: string | null = null;
   private _lastPrompt: string | null = null;
 
@@ -281,17 +282,20 @@ export class DeckController {
     key.playing = null;
   }
 
-  /** Ticks while a session runs and a key shows its time; idles otherwise. */
+  /**
+   * Ticks while a key shows something that moves -- the session's time, the
+   * bar's icon -- at the rate it moves; idles otherwise.
+   */
   private updateTicker(): void {
-    const running = this._link.message?.state.session?.status === 'tracking';
-    const needed = running && [...this._keys.values()].some(key => ticksWithTheClock(key.kind));
-    if (needed && this._ticker === null) {
-      this._ticker = this._setInterval(() => {
-        for (const [id, key] of this._keys) if (ticksWithTheClock(key.kind)) this.draw(id);
-      }, TICK_MS);
-    } else if (!needed && this._ticker !== null) {
-      this._clearInterval(this._ticker);
-      this._ticker = null;
-    }
+    const shown = [...this._keys.values()].some(key => ticksWithTheClock(key.kind));
+    const period = shown && this._link.status === 'online' ? tickPeriodMs(this._link.message, TICK_MS) : null;
+    if (period === this._tickerPeriod) return;
+    if (this._ticker !== null) this._clearInterval(this._ticker);
+    this._ticker = null;
+    this._tickerPeriod = period;
+    if (period === null) return;
+    this._ticker = this._setInterval(() => {
+      for (const [id, key] of this._keys) if (ticksWithTheClock(key.kind)) this.draw(id);
+    }, period);
   }
 }

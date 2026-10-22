@@ -1209,10 +1209,10 @@ Ordered; each says what has to be true first.
   **Faces and one-shots built 2026-10-22**: the user chose "Tile" over the
   shipped faces and an LED-panel look, on a design canvas comparing nine
   states, and Done, Not done, Discard, Yes and No play a half-second
-  one-shot. Left: the Session key playing the bar's icon as the bar does,
-  which needs the app to send the icon's frames -- the stopwatch steps once
-  a second, so with the clock it already redraws it costs nothing more --
-  and a look at the keys on a physical deck. Two different things answer
+  one-shot. The Session key plays the bar's icon as the bar does, from
+  the icon's own frames (built the same day): about one image a second for
+  the stopwatch, which steps once a second, and up to ten for the gear.
+  Left: a look at the keys on a physical deck. Two different things answer
   to "animated icons", and only the first is ours to draw:
   - **The plugin's own keys.** Their images are what `setImage` sends, so an
     animation is the plugin's to play. Elgato's guidance for animated icons
@@ -1254,8 +1254,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.81 statements / 89.38 branches / 94.68 functions / 96.5 lines across 2555
-tests in 127 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.87 statements / 89.51 branches / 94.67 functions / 96.54 lines across 2597
+tests in 129 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

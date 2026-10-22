@@ -1336,7 +1336,7 @@
       </thead>
       <tbody><tr>
       <td align="left"><strong>Session</strong></td>
-      <td align="left">the task, its time and the bar&#39;s icon, under a band: green while tracking, amber while paused</td>
+      <td align="left">the task, its time and the bar&#39;s icon, moving as it does on the bar, under a band: green while tracking, amber while paused</td>
       <td align="left">pauses or resumes; with nothing running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker whatever runs</td>
       </tr>
       <tr>
@@ -2510,6 +2510,16 @@
       <li><strong>A face has a tone</strong>: <code>ready</code> (its glyph in colour), <code>idle</code> (grey,
       nothing to do) or <code>ask</code> (filled, waiting on the user). <code>renderFace</code> lays
       out the session, a filled key and the rest from that alone.</li>
+      <li><strong>The Session key moves as the bar&#39;s icon does.</strong> The renderer names the
+      <code>.anim</code> beside the screen icon (<code>ScreenIconDTO.animation</code>), and
+      <code>DeckIconMotions</code> reads that animation&#39;s frames once -- <code>decodePng</code>, a
+      small decoder of the 8-bit PNGs in <code>Animations/</code> -- samples them at
+      10 fps and keeps each pose once (<code>iconMotionFrom</code>). The state carries the
+      poses and their order, never the file name; the plugin picks the pose of
+      the moment from the wall clock (<code>deckIconPixels</code>) and redraws at the
+      motion&#39;s rate, sending only what changed: about once a second for the
+      stopwatch, ten times for the gear. A motion read after its icon pushes
+      the state again; one that fails leaves the still icon.</li>
       <li><strong>A one-shot is frames, not an animated image.</strong> <code>setImage</code> shows the
       first frame of a GIF, a WebP or an animated SVG (measured on Stream Deck
       Mobile), so <code>DeckController.play</code> sends six static images 100 ms apart,
@@ -2570,7 +2580,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">9. Testing</h3>
-      <p>Vitest, 2555 tests across 127 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2597 tests across 129 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2584,7 +2594,7 @@
       one page cannot fail the way production failed.</p>
       <p>The animation studio has its own suite, 113 tests across 6 files, run by
       <code>pnpm test</code> after the app&#39;s and on its own by <code>pnpm test:studio</code>. So has the
-      Stream Deck plugin, 173 tests across 7 files (<code>pnpm test:deck</code>), which also
+      Stream Deck plugin, 179 tests across 7 files (<code>pnpm test:deck</code>), which also
       runs its link against the app&#39;s real <code>DeckServer</code> over loopback.</p>
       <p>What the suite structurally <strong>cannot</strong> see: application startup, IPC wiring, and
       anything touching real hardware. Those need the app actually running — read its
@@ -2828,7 +2838,7 @@
       </tr>
       <tr>
       <td align="left"><code>display:get-screen-icon</code></td>
-      <td align="left">The icon of the screen on the bar, for the mini timer: <code>{ pixels, label }</code>, a 16x16 bitmap and the screen&#39;s top row or scene title, or <code>null</code> while the firmware&#39;s clock shows</td>
+      <td align="left">The icon of the screen on the bar, for the mini timer: <code>{ pixels, label, animation? }</code>, a 16x16 bitmap, the screen&#39;s top row or scene title, and the <code>.anim</code> the bar plays over it when it moves; or <code>null</code> while the firmware&#39;s clock shows</td>
       </tr>
       <tr>
       <td align="left"><code>display:on-screen-icon</code></td>
@@ -3024,7 +3034,7 @@
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;state&#39;, state, at }</code></td>
-      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>) or null, the bar&#39;s screen <code>icon</code>, and the <code>prompt</code> waiting for an answer. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
+      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>) or null, the bar&#39;s screen <code>icon</code> (<code>pixels</code>, <code>label</code>, and <code>motion</code> while it moves: <code>{ fps, poses, sequence }</code>, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the <code>prompt</code> waiting for an answer. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;result&#39;, id, ok: true }</code></td>

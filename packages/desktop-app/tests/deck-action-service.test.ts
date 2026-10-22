@@ -17,7 +17,7 @@ import { DECK_ELAPSED_DRIFT_SECONDS, DECK_STATE_REFRESH_MS, DeckActionService } 
 import { DeckRequest, DeckResultMessage, DeckStateMessage } from '../src/shared/deck-protocol';
 import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
 import { DAILY_STANDUP_TITLE } from '../src/shared/schedule-defaults';
-import { SCENE_ICONS, FRONT_ANIMATIONS } from '../src/shared/render-constants';
+import { SCENE_ICONS, FRONT_ANIMATIONS, ANIMATED_ICONS } from '../src/shared/render-constants';
 import { TaskOwnership } from '../src/shared/task-ownership';
 import { TaskDTO } from '../src/shared/dtos';
 
@@ -117,6 +117,66 @@ describe('DeckActionService', () => {
     db.close();
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  describe('the icon in motion', () => {
+    const MOTION = { fps: 10, poses: [[['#22C55E']], [['#10B981']]], sequence: [0, 1] };
+
+    /** The motions, read or not yet as the test says. */
+    const motions = (read: boolean) => {
+      const listeners = new Set<() => void>();
+      const fake = {
+        read,
+        get: vi.fn((_name: string) => (fake.read ? MOTION : null)),
+        onLoaded: (listener: () => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        loaded: () => {
+          fake.read = true;
+          for (const listener of listeners) listener();
+        }
+      };
+      return fake;
+    };
+
+    it('GetState_IconThatMoves_CarriesItsMotionAndNotItsFileName', () => {
+      const iconMotions = motions(true);
+      service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, iconMotions });
+      engine.startTask(MINE.id);
+      renderer.renderActiveSession(engine.getCurrentSession());
+
+      const icon = service.getState().icon!;
+      expect(iconMotions.get).toHaveBeenCalledWith(ANIMATED_ICONS.stopwatch);
+      expect(icon.motion).toBe(MOTION);
+      expect(icon).not.toHaveProperty('animation');
+    });
+
+    it('GetState_NoMotions_TheIconStill', () => {
+      engine.startTask(MINE.id);
+      renderer.renderActiveSession(engine.getCurrentSession());
+      const icon = service.getState().icon!;
+      expect(icon).not.toHaveProperty('motion');
+      expect(icon).not.toHaveProperty('animation');
+    });
+
+    it('Subscribe_MotionReadAfterTheIcon_PushesTheStateAgain', () => {
+      const iconMotions = motions(false);
+      service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, iconMotions });
+      engine.startTask(MINE.id);
+      renderer.renderActiveSession(engine.getCurrentSession());
+      const heard: DeckStateMessage[] = [];
+      service.subscribe(message => heard.push(message));
+      expect(heard.at(-1)?.state.icon?.motion).toBeUndefined();
+
+      iconMotions.loaded();
+      expect(heard.at(-1)?.state.icon?.motion).toBe(MOTION);
+      const pushed = heard.length;
+
+      // And not again each second: the motion is in the signature as a yes.
+      vi.advanceTimersByTime(DECK_STATE_REFRESH_MS * 3);
+      expect(heard).toHaveLength(pushed);
+    });
   });
 
   describe('the state', () => {

@@ -28,6 +28,8 @@ import { WindowsNotificationListenerService } from './services/windows-notificat
 import { WebhookServer } from './api/webhook-server';
 import { DeckServer } from './api/deck-server';
 import { DeckActionService } from './services/deck-action-service';
+import { DeckIconMotions } from './services/deck-icon-motion';
+import { defaultAnimationsDir, loadAnimationSequence } from './hardware/animation-sequence';
 import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
 import { openTaskPickerInMainWindow } from './windows/main-window-actions';
 import { ForegroundRaiser } from './windows/foreground-raiser';
@@ -417,7 +419,9 @@ async function startApplication(): Promise<void> {
     renderer,
     priorityEngine,
     inputDecoder,
-    openPicker: () => openTaskPickerInMainWindow(mainWindow, foregroundRaiser)
+    openPicker: () => openTaskPickerInMainWindow(mainWindow, foregroundRaiser),
+    // The Session key moves as the bar's icon does, from the same frames.
+    iconMotions: new DeckIconMotions(name => loadAnimationSequence(defaultAnimationsDir(), name))
   }));
   const deck = deckServer;
   webhookServer.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));

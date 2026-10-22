@@ -113,7 +113,9 @@
   grey while nothing is asked. A key's colour is its state: a coloured glyph
   can be pressed, a grey key has nothing to do, a filled key waits on you.
   Done, Not done and Discard play a short movement of their glyph when
-  pressed, and Yes and No when a question arrives. Every key turns grey and
+  pressed, and Yes and No when a question arrives. The Session key plays
+  the bar's icon as the bar does -- the stopwatch stepping round, the gear
+  turning during a compile. Every key turns grey and
   says offline while SprintTicker is closed. Not yet tried on a physical
   deck, and no default profile ships yet.
 

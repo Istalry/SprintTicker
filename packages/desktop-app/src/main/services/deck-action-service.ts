@@ -3,9 +3,11 @@ import type { DisplayRenderer } from '../hardware/display-renderer';
 import type { InputDecoder } from '../hardware/input-decoder';
 import type { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { completeSession } from './session-commands';
-import { ArgumentNullException, ActiveSessionDTO } from '../../shared/dtos';
+import type { DeckIconMotions } from './deck-icon-motion';
+import { ArgumentNullException, ActiveSessionDTO, ScreenIconDTO } from '../../shared/dtos';
 import {
   DeckErrorCode,
+  DeckIcon,
   DeckPrompt,
   DeckRequest,
   DeckResultMessage,
@@ -44,6 +46,11 @@ export interface DeckActionServiceDeps {
   inputDecoder: Pick<InputDecoder, 'handleHardwareInput' | 'getEodConfirmStep'>;
   /** Brings the window forward with its task picker open; false when there is no window. */
   openPicker: () => boolean;
+  /**
+   * The bar's icons in motion, so the Session key moves as the bar does.
+   * Without it every icon is sent still.
+   */
+  iconMotions?: Pick<DeckIconMotions, 'get' | 'onLoaded'>;
   now?: () => Date;
 }
 
@@ -88,7 +95,7 @@ export class DeckActionService {
     const { engine, renderer } = this._deps;
     return {
       session: DeckActionService.toDeckSession(engine.getCurrentSession()),
-      icon: renderer.getScreenIcon(),
+      icon: this.toDeckIcon(renderer.getScreenIcon()),
       prompt: this.currentPrompt()
     };
   }
@@ -203,6 +210,8 @@ export class DeckActionService {
     const { engine, renderer } = this._deps;
     const refresh = () => this.refresh();
     this._unsubscribers = [engine.subscribe(refresh), renderer.onScreenIconChanged(refresh)];
+    // A motion read for the first time arrives after the icon it belongs to.
+    if (this._deps.iconMotions) this._unsubscribers.push(this._deps.iconMotions.onLoaded(refresh));
     this._timer = setInterval(refresh, DECK_STATE_REFRESH_MS);
     // A deck must never keep the app open at quit.
     this._timer.unref?.();
@@ -246,9 +255,22 @@ export class DeckActionService {
     }
   }
 
+  /**
+   * The icon as the deck gets it: the name of its `.anim` stays here, and
+   * its motion goes instead, once read.
+   */
+  private toDeckIcon(icon: ScreenIconDTO | null): DeckIcon | null {
+    if (!icon) return null;
+    const motion = icon.animation ? this._deps.iconMotions?.get(icon.animation) ?? null : null;
+    return { pixels: icon.pixels, label: icon.label, ...(motion ? { motion } : {}) };
+  }
+
   private static signatureOf(state: DeckState): string {
     const session = state.session ? { ...state.session, elapsedSeconds: 0 } : null;
-    return JSON.stringify({ ...state, session });
+    // A motion is the same for the same icon: whether there is one is all
+    // that can change, and the poses would be kilobytes to compare each second.
+    const icon = state.icon ? { ...state.icon, motion: Boolean(state.icon.motion) } : null;
+    return JSON.stringify({ ...state, session, icon });
   }
 
   private static toDeckSession(session: ActiveSessionDTO | null): DeckSession | null {

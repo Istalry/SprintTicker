@@ -456,4 +456,48 @@ describe('DeckController', () => {
       expect(clock.pending).toBe(0);
     });
   });
+  describe("the bar's icon in motion", () => {
+    const motion = { fps: 10, poses: [[['#111111']], [['#222222']]], sequence: [0, 0, 0, 0, 0, 1, 1, 1, 1, 1] };
+    const moving = (status: 'tracking' | 'paused' = 'tracking') =>
+      stateMessage({ session: session({ status }), icon: { pixels: [['#000001']], label: 'SPR-1', motion } });
+
+    it('Ticker_IconMoves_RedrawsAtItsRateButSendsOnlyWhatChanged', () => {
+      link.push(moving());
+      const key = new FakeKey('a');
+      controller.appear('session', key);
+      const first = key.images.length;
+      clock.advance(1000);
+      // Ten ticks in the second; the pose changed twice and the time once.
+      expect(key.images.length - first).toBeGreaterThanOrEqual(2);
+      expect(key.images.length - first).toBeLessThanOrEqual(3);
+      // Never the same image twice in a row: a tick that changes nothing sends nothing.
+      expect(key.images.every((image, i) => i === 0 || image !== key.images[i - 1])).toBe(true);
+    });
+
+    it('Ticker_PausedWithAMovingIcon_KeepsTicking', () => {
+      link.push(moving('paused'));
+      controller.appear('session', new FakeKey('a'));
+      expect(clock.pending).toBe(1);
+    });
+
+    it('Ticker_IconStopsMoving_BackToOnceASecond', () => {
+      link.push(moving());
+      const key = new FakeKey('a');
+      controller.appear('session', key);
+      link.push(tracking());
+      const drawn = key.images.length;
+      clock.advance(999);
+      expect(key.images.length).toBe(drawn);
+      clock.advance(1);
+      expect(key.images.length).toBe(drawn + 1);
+      expect(clock.pending).toBe(1);
+    });
+
+    it('Ticker_AppGone_Stops', () => {
+      link.push(moving());
+      controller.appear('session', new FakeKey('a'));
+      link.push(null, 'offline');
+      expect(clock.pending).toBe(0);
+    });
+  });
 });

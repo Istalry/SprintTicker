@@ -283,7 +283,10 @@ CI. Five things about it cost time to find:
   about 13 fps: `DeckController.play`, whose frames hold off the state's
   redraws of that key until they end -- so anything that must show at once
   on a playing key, as a question arming it does, stops the one-shot
-  first.
+  first. The Session key's moving icon is frames too, read by the app from
+  `Animations/` and sent once as poses: **those frames are opaque black
+  around the icon**, an unlit LED on the bar and a dark square on a key, so
+  `framePixels` reads pure black as nothing.
 - **An answer never depends on how long a key is held** -- the user's
   rule, 2026-10-22. A question (DISCARD?, NOT YOURS?) is asked on the same
   key and answered by pressing it again within `CONFIRM_WINDOW_MS`; yes and

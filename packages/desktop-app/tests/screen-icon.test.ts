@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
-import { FRONT_ANIMATIONS, SCENE_ICONS } from '../src/shared/render-constants';
+import { ANIMATED_ICONS, FRONT_ANIMATIONS, SCENE_ICONS } from '../src/shared/render-constants';
 import {
   BURGER_16X16_BITMAP, CHECKMARK_16X16_BITMAP, COFFEE_16X16_BITMAP, COMPILING_16X16_BITMAP, MEETING_16X16_BITMAP,
   MOON_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP, getBitmapById
@@ -46,16 +46,18 @@ describe('the screen icon', () => {
 
   it('RenderActiveSession_EachState_IsTheStopwatchItShows', () => {
     renderer.renderActiveSession(session());
-    expect(renderer.getScreenIcon()).toEqual({ pixels: STOPWATCH_16X16_BITMAP, label: 'SPR-142: Rework the pause menu' });
+    // With the .anim the bar plays over it, which the Stream Deck plays too.
+    expect(renderer.getScreenIcon()).toEqual({ pixels: STOPWATCH_16X16_BITMAP, label: 'SPR-142: Rework the pause menu', animation: ANIMATED_ICONS.stopwatch });
 
     renderer.renderActiveSession(session({ status: 'PAUSED' }));
     expect(renderer.getScreenIcon()?.pixels).toBe(STOPWATCH_PAUSED_16X16_BITMAP);
+    expect(renderer.getScreenIcon()?.animation).toBe(ANIMATED_ICONS.stopwatch_paused);
   });
 
   it('RenderActiveSession_StandUpRunning_IsTheMeeting', () => {
     renderer.renderActiveSession(session({ taskTitle: 'Daily Standup', isAdHoc: true }));
 
-    expect(renderer.getScreenIcon()).toEqual({ pixels: MEETING_16X16_BITMAP, label: 'Daily Standup' });
+    expect(renderer.getScreenIcon()).toEqual({ pixels: MEETING_16X16_BITMAP, label: 'Daily Standup', animation: ANIMATED_ICONS.meeting });
   });
 
   it('RenderActiveSession_EverySecond_ToldOnce', () => {

@@ -569,6 +569,11 @@ export interface DisplayElementDTO {
 export interface ScreenIconDTO {
   pixels: (string | null)[][];
   label: string;
+  /**
+   * The `.anim` the bar plays over these pixels (`ANIMATED_ICONS`), when the
+   * icon moves: the Stream Deck plays the same motion from its frames.
+   */
+  animation?: string;
 }
 
 export interface HardwareDisplayStateDTO {

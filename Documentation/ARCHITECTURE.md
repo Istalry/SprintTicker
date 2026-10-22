@@ -855,6 +855,16 @@ Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──►
 - **A face has a tone**: `ready` (its glyph in colour), `idle` (grey,
   nothing to do) or `ask` (filled, waiting on the user). `renderFace` lays
   out the session, a filled key and the rest from that alone.
+- **The Session key moves as the bar's icon does.** The renderer names the
+  `.anim` beside the screen icon (`ScreenIconDTO.animation`), and
+  `DeckIconMotions` reads that animation's frames once -- `decodePng`, a
+  small decoder of the 8-bit PNGs in `Animations/` -- samples them at
+  10 fps and keeps each pose once (`iconMotionFrom`). The state carries the
+  poses and their order, never the file name; the plugin picks the pose of
+  the moment from the wall clock (`deckIconPixels`) and redraws at the
+  motion's rate, sending only what changed: about once a second for the
+  stopwatch, ten times for the gear. A motion read after its icon pushes
+  the state again; one that fails leaves the still icon.
 - **A one-shot is frames, not an animated image.** `setImage` shows the
   first frame of a GIF, a WebP or an animated SVG (measured on Stream Deck
   Mobile), so `DeckController.play` sends six static images 100 ms apart,
@@ -923,7 +933,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 9. Testing
 
-Vitest, 2555 tests across 127 files, in two projects: `main` in Node for
+Vitest, 2597 tests across 129 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
@@ -939,7 +949,7 @@ one page cannot fail the way production failed.
 
 The animation studio has its own suite, 113 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
-Stream Deck plugin, 173 tests across 7 files (`pnpm test:deck`), which also
+Stream Deck plugin, 179 tests across 7 files (`pnpm test:deck`), which also
 runs its link against the app's real `DeckServer` over loopback.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and
