@@ -746,6 +746,16 @@ export class ArgumentException extends Error {
  * never did (audit F-18), so the failure case is deliberately a first-class
  * state here rather than something the UI infers from silence.
  */
+/**
+ * Starting SprintTicker with Windows, as Windows reports it. Unavailable in
+ * `pnpm dev`, whose executable is a bare Electron, and off Windows.
+ */
+export interface LaunchAtLoginStatusDTO {
+  enabled: boolean;
+  available: boolean;
+  reason: 'not-windows' | 'not-packaged' | null;
+}
+
 export type UpdateStatusDTO =
   | { status: 'disabled'; currentVersion: string }
   | { status: 'up-to-date'; currentVersion: string }

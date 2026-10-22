@@ -45,6 +45,7 @@ import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONF
 import { DeviceConfigDTO, ScheduleSettingsDTO } from '../shared/dtos';
 import { normalizeScheduleSettings } from '../shared/schedule-defaults';
 import { UpdateChecker } from './updater/update-checker';
+import { LaunchAtLoginService, launchedHidden } from './services/launch-at-login';
 import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
 let mainWindow: BrowserWindow | null = null;
@@ -74,6 +75,8 @@ if (!gotTheLock) {
   app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      // Started hidden at login, the window has never been shown.
+      mainWindow.show();
       mainWindow.focus();
     }
   });
@@ -160,8 +163,15 @@ const PROVIDER_BANNER_ICONS: Partial<Record<string, BitmapIconId>> = {
   jira: 'jira'
 };
 
-const createWindow = (): void => {
+/**
+ * The login item starts the app with `--hidden`: no window over whatever the
+ * user opens first, only the tray, the bar and the mini timer. The window is
+ * made all the same -- closing it is what quits the app -- and the tray, or
+ * starting the app again, shows it.
+ */
+const createWindow = (hidden: boolean = false): void => {
   mainWindow = new BrowserWindow({
+    show: !hidden,
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -344,6 +354,21 @@ async function startApplication(): Promise<void> {
   // a dev run cannot disagree about what is installed.
   updateChecker = new UpdateChecker(app.getVersion(), settingsRepo);
 
+  // Starting with Windows. Brought up to date while still enabled: an entry
+  // from an earlier version opened the window at every login.
+  const launchAtLogin = new LaunchAtLoginService(app, {
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+    execPath: process.execPath,
+    portableExecutable: process.env.PORTABLE_EXECUTABLE_FILE
+  });
+  try {
+    launchAtLogin.refresh();
+  } catch (err) {
+    // The registry refusing a write leaves the entry as it was, which still starts the app.
+    console.warn('[Main] Could not bring the startup entry up to date:', err);
+  }
+
   miniWindowManager = new MiniWindowManager({ createWindow: createMiniWindow, screen, settings: settingsRepo });
 
   ipcRegistry = new IPCHandlerRegistry({
@@ -375,6 +400,7 @@ async function startApplication(): Promise<void> {
     providerManager,
     syncWorker: engine.getSyncWorker(),
     updateChecker,
+    launchAtLogin,
     webhookServer
   });
   ipcRegistry.registerAllHandlers();
@@ -397,9 +423,9 @@ async function startApplication(): Promise<void> {
   webhookServer.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));
 
   // 6. Create Window & Render Initial State
-  createWindow();
+  createWindow(launchedHidden(process.argv));
   if (mainWindow && engine) {
-    trayManager = new TrayManager(mainWindow, engine, miniWindowManager);
+    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin);
     trayManager.initialize();
   }
   miniWindowManager.restore();

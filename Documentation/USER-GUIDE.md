@@ -561,8 +561,8 @@ the table working as configured, not a bug. Move the rows if you disagree.
 
 ### 🩺 Device Diagnostics
 
-Connection status, battery, firmware, the update setting, and the animation
-debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
+Connection status, battery, firmware, starting with Windows, the update
+setting, and the animation debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
 live, drawn through the real renderer.
 
 <p align="center">
@@ -584,6 +584,15 @@ your device needs one, an API token:
 restart. Watch the connection status at the top of the window to see whether the
 new address answered; saving means the setting was stored, not that the bar
 replied. **Reset to USB default** puts the address back to `10.0.4.20`.
+
+🚀 **Start with Windows** starts SprintTicker when you sign in, in the tray,
+with no window over whatever you open first. The tray icon, the bar and the
+mini timer work as usual; open the window from the tray, or by starting
+SprintTicker again. The same switch is in the tray menu, and Windows lists
+the entry under *Settings → Apps → Startup*: turned off there, it reads off
+here too. The portable build registers the file you ran, so move it and
+switch it on again from the new place. A build run from source
+(`pnpm dev`) shows the switch greyed out.
 
 ---
 

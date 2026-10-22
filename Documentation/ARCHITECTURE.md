@@ -106,6 +106,21 @@ still reach the dashboard alone. Picking a task from the tray or the mini timer
 goes through `openTaskPickerInMainWindow`, which sends the picker's hardware
 action on `input:on-hardware-event`.
 
+**Starting with Windows** is `LaunchAtLoginService`
+(`src/main/services/launch-at-login.ts`), behind both the switch in Device &
+Logs and the tray's checkbox; the tray rebuilds its menu from the service's
+notification. It keeps no state: every read asks Windows
+(`getLoginItemSettings(...).executableWillLaunchAtLogin`), because the
+Startup apps page can switch the entry off with no event the app hears. The
+entry is the Run value named by the AppUserModelID, and it carries
+`--hidden`: a run started with it makes the dashboard with `show: false`.
+The window is made all the same, since closing it is what quits the app.
+The path is `PORTABLE_EXECUTABLE_FILE` when the portable stub sets it, or
+`process.execPath`. At startup `refresh()` rewrites an entry that is still
+enabled, which upgrades one written without `--hidden`, but never one
+switched off: a write approves it again. Unpackaged, the service writes
+nothing and says why (`reason: 'not-packaged'`).
+
 The mini timer's icon is the bar's. `DisplayRenderer` keeps the icon of the
 frame it paints (`frameScreenIcon`, beside `frameIcon` and consumed with it in
 `transmitFrame`): the bitmap a screen draws at the left, with its top row as
@@ -897,7 +912,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 9. Testing
 
-Vitest, 2530 tests across 125 files, in two projects: `main` in Node for
+Vitest, 2555 tests across 127 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

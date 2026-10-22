@@ -9,6 +9,7 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { app, Menu, BrowserWindow, nativeImage } from 'electron';
 import fs from 'fs';
 import { IPCChannel } from '../src/shared/ipc-channels';
+import { LaunchAtLoginService } from '../src/main/services/launch-at-login';
 
 // Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
 let lastMockTray: { setToolTip: ReturnType<typeof vi.fn>; setContextMenu: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> } | null = null;
@@ -17,8 +18,6 @@ vi.mock('electron', () => {
   return {
     app: {
       isPackaged: false,
-      getLoginItemSettings: () => ({ openAtLogin: false }),
-      setLoginItemSettings: vi.fn(),
       quit: vi.fn()
     },
     Menu: {
@@ -89,8 +88,6 @@ describe('TrayManager Unit Tests', () => {
     expect(mockWindow.show).toHaveBeenCalled();
     expect(mockWindow.focus).toHaveBeenCalled();
 
-    manager.setAutoStart(true);
-
     // Trigger active task session to test tooltip update
     engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
     engine.pauseSession();
@@ -144,18 +141,6 @@ describe('TrayManager Unit Tests', () => {
       args => args[0].startsWith('SprintTicker: TRACKING')
     );
     expect(hasTrackingTooltip).toBe(true);
-    manager.destroy();
-  });
-
-  it('TrayManager_SetAutoStart_CallsLoginItemSettings', () => {
-    const manager = new TrayManager(mockWindow, engine);
-    manager.initialize();
-    manager.setAutoStart(false);
-
-    // app is the vi.fn() mock from vi.mock('electron')
-    expect(vi.mocked(app).setLoginItemSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ openAtLogin: false })
-    );
     manager.destroy();
   });
 
@@ -312,14 +297,73 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_StartupCheckbox_PassesTheCheckedStateThrough', () => {
+    const EXE = 'C:\\SprintTicker\\SprintTicker.exe';
+
+    /** A login item held in memory, answering as Electron does on Windows. */
+    function launchAtLogin(isPackaged = true) {
+      let entry = false;
+      const api = {
+        getLoginItemSettings: vi.fn(() => ({ executableWillLaunchAtLogin: entry })),
+        setLoginItemSettings: vi.fn((s: { openAtLogin: boolean }) => { entry = s.openAtLogin; })
+      };
+      const service = new LaunchAtLoginService(api, { platform: 'win32', isPackaged, execPath: EXE });
+      return { api, service };
+    }
+
+    it('TrayManager_ContextMenu_StartWithWindows_WritesTheHiddenLoginItem', () => {
+      const { api, service } = launchAtLogin();
+      const manager = new TrayManager(mockWindow, engine, undefined, service);
+      manager.initialize();
+      expect(template.find(i => i.label === 'Start with Windows')?.checked).toBe(false);
+
+      click('Start with Windows', { checked: true });
+
+      expect(api.setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true, path: EXE, args: ['--hidden'] });
+      expect(template.find(i => i.label === 'Start with Windows')?.checked).toBe(true);
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_StartWithWindows_FollowsASwitchThrownInTheWindow', () => {
+      // The window's card goes through the same service; the menu is
+      // rebuilt from its notification, or the tray would show the old state.
+      const { service } = launchAtLogin();
+      const manager = new TrayManager(mockWindow, engine, undefined, service);
+      manager.initialize();
+
+      service.setEnabled(true);
+
+      expect(template.find(i => i.label === 'Start with Windows')?.checked).toBe(true);
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_StartWithWindows_NotPackaged_OffersNoEntry', () => {
+      // From `pnpm dev` the entry would start a bare electron.exe at login.
+      const { service } = launchAtLogin(false);
+      const manager = new TrayManager(mockWindow, engine, undefined, service);
+      manager.initialize();
+
+      expect(template.some(i => i.label === 'Start with Windows')).toBe(false);
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_NoLaunchAtLoginService_OffersNoEntry', () => {
       const manager = new TrayManager(mockWindow, engine);
       manager.initialize();
 
-      click('Start with Windows Startup', { checked: true });
-
-      expect(vi.mocked(app).setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true });
+      expect(template.some(i => i.label === 'Start with Windows')).toBe(false);
       manager.destroy();
+    });
+
+    it('TrayManager_Destroy_StopsFollowingTheLoginItem', () => {
+      const { service } = launchAtLogin();
+      const manager = new TrayManager(mockWindow, engine, undefined, service);
+      manager.initialize();
+      manager.destroy();
+      const builds = vi.mocked(Menu.buildFromTemplate).mock.calls.length;
+
+      service.setEnabled(true);
+
+      expect(vi.mocked(Menu.buildFromTemplate).mock.calls.length).toBe(builds);
     });
   });
 

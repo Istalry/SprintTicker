@@ -158,6 +158,9 @@ export enum IPCChannel {
   GET_TASK_VISIBILITY = 'tasks:get-visibility',
   SET_TASK_VISIBILITY = 'tasks:set-visibility',
   ON_TASK_VISIBILITY = 'tasks:on-visibility',
+  /** Starting with Windows: Windows' own answer, and the switch. */
+  GET_LAUNCH_AT_LOGIN = 'app:get-launch-at-login',
+  SET_LAUNCH_AT_LOGIN = 'app:set-launch-at-login',
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',

@@ -248,6 +248,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     onTaskVisibility: subscribe('onTaskVisibility'),
     getUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     setUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
+    getLaunchAtLogin: vi.fn().mockResolvedValue({ enabled: false, available: true, reason: null }),
+    setLaunchAtLogin: vi.fn(async (enabled: boolean) => ({ enabled, available: true, reason: null })),
     openReleasePage: vi.fn().mockResolvedValue(true),
     openTaskPage: vi.fn().mockResolvedValue(true),
     onUpdateStatus: subscribe('onUpdateStatus'),

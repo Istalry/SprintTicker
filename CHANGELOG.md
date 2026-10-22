@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Start with Windows, in the window.** Device & Logs has a *Start with
+  Windows* switch, and so does the tray menu; both read what Windows will
+  do, so one switched off in Windows' Startup apps reads off. Started that
+  way, SprintTicker opens in the tray with no window over what you open
+  first. The portable build registers the file you ran rather than its
+  temporary copy, and an entry made by an earlier version is brought up to
+  date at the next start. Not offered from `pnpm dev`.
+
 - **The mini timer shows the bar's icon.** Beside the timer, the icon of
   whatever holds the bar: the stopwatch, Unity's gear or hammer, the
   stand-up's meeting, an app's icon during its notification, the burger at

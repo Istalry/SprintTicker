@@ -153,6 +153,10 @@ to you; one someone took meanwhile stays theirs, and you are told who has it.
 ↗️ **Open on the provider**: an arrow beside a task opens it on Jira or
 OpenProject in the browser, from the session, the task list or Work History.
 
+🚀 **Start with Windows**, a switch in Device & Logs and in the tray: at
+sign-in SprintTicker starts in the tray, with no window. It reads what
+Windows will do, so an entry switched off in Windows' Startup apps reads off.
+
 ### 🔷 OpenProject integration
 
 Fetches projects and work packages over the REST API v3, updates a work
@@ -486,7 +490,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2530 tests across 125 files for the app -- the main and shared
+`pnpm test` runs 2555 tests across 127 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
 113 across 6 files, then the Stream Deck plugin's 149 across 7;

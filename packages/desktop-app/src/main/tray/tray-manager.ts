@@ -4,6 +4,7 @@ import fs from 'fs';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow, revealMainWindow } from '../windows/main-window-actions';
+import type { LaunchAtLoginService } from '../services/launch-at-login';
 
 /**
  * System Tray Manager handling desktop tray lifecycle, status tooltip badges,
@@ -12,14 +13,22 @@ import { openTaskPickerInMainWindow, revealMainWindow } from '../windows/main-wi
 export class TrayManager {
   private tray: Tray | null = null;
   private readonly unsubscribeMiniWindow?: () => void;
+  private readonly unsubscribeLaunchAtLogin?: () => void;
   private mainWindow: BrowserWindow;
   private engine: TimeTrackingEngine;
 
-  constructor(mainWindow: BrowserWindow, engine: TimeTrackingEngine, private readonly miniWindow?: MiniWindowController) {
+  constructor(
+    mainWindow: BrowserWindow,
+    engine: TimeTrackingEngine,
+    private readonly miniWindow?: MiniWindowController,
+    private readonly launchAtLogin?: LaunchAtLoginService
+  ) {
     this.mainWindow = mainWindow;
     this.engine = engine;
     // The checkbox mirrors the window however it was opened or closed.
     this.unsubscribeMiniWindow = this.miniWindow?.subscribe(() => this.updateContextMenu());
+    // And the startup one follows the switch in the window.
+    this.unsubscribeLaunchAtLogin = this.launchAtLogin?.subscribe(() => this.updateContextMenu());
   }
 
   public initialize(): void {
@@ -56,15 +65,6 @@ export class TrayManager {
 
   public restoreWindow(): void {
     revealMainWindow(this.mainWindow);
-  }
-
-  public setAutoStart(enabled: boolean): void {
-    // `openAsHidden` used to be passed here and was removed in Electron 44.
-    // No behaviour is lost: it was macOS-only, and this application is
-    // Windows-only, so it never did anything. Starting minimised to the tray
-    // on Windows means passing `args: ['--hidden']` and handling that flag at
-    // startup -- a feature, not a flag to restore.
-    app.setLoginItemSettings({ openAtLogin: enabled });
   }
 
   private updateStatusTooltip(): void {
@@ -115,13 +115,21 @@ export class TrayManager {
           }]
         : []),
       { type: 'separator' },
-      {
-        label: 'Start with Windows Startup',
-        type: 'checkbox',
-        checked: app.getLoginItemSettings().openAtLogin,
-        click: menuItem => this.setAutoStart(menuItem.checked)
-      },
-      { type: 'separator' },
+      // Read from Windows each time the menu is built: the user can switch it
+      // off in Windows' own Startup apps, which sends no event.
+      ...(this.launchAtLogin?.getStatus().available
+        ? [
+            {
+              label: 'Start with Windows',
+              type: 'checkbox' as const,
+              checked: this.launchAtLogin.getStatus().enabled,
+              click: (menuItem: Electron.MenuItem) => {
+                this.launchAtLogin?.setEnabled(menuItem.checked);
+              }
+            },
+            { type: 'separator' as const }
+          ]
+        : []),
       {
         label: 'Quit Application',
         click: () => {
@@ -136,6 +144,7 @@ export class TrayManager {
 
   public destroy(): void {
     this.unsubscribeMiniWindow?.();
+    this.unsubscribeLaunchAtLogin?.();
     if (this.tray) {
       this.tray.destroy();
       this.tray = null;

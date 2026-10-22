@@ -1185,29 +1185,26 @@ Ordered; each says what has to be true first.
   it is for -- Stream Deck Mobile has the Mini's grid, so it can stand in --
   and reconnecting after either app restarts. A physical Mini only for how
   fast its keys redraw.
-- **Start with Windows, as a setting** (asked 2026-10-22). It half exists:
-  the tray menu has *Start with Windows Startup*, which calls
-  `app.setLoginItemSettings({ openAtLogin })`, but nothing else says so --
-  no setting in the window, no line in the user guide -- and three things
-  are missing:
-  - **A switch in the window**, reading the login item back rather than
-    keeping a copy of its own: Windows' Startup apps page can turn it off
-    behind the app's back.
-  - **Starting in the tray.** At login the window opens over whatever the
-    user starts first. Register with `args: ['--hidden']` and skip showing
-    the window when that flag is present; the tray, the bar and the mini
-    timer work without it. `openAsHidden` was macOS-only and is gone in
-    Electron 44 (see `tray-manager.ts`).
-  - **The portable build.** It unpacks itself into a temporary folder on
-    each run, so `process.execPath` -- what the login item registers by
-    default -- names a folder that is gone at the next login.
-    electron-builder's portable stub passes the real file in
-    `PORTABLE_EXECUTABLE_FILE`; register that as `path`. Check it with the
-    packaged portable exe, not `pnpm dev`, whose login item would start a
-    bare Electron.
+- **Start with Windows, as a setting** (asked 2026-10-22). **Built
+  2026-10-22** (`LaunchAtLoginService`). The tray's old *Start with Windows
+  Startup* item wrote the login item and read it back from `openAtLogin`,
+  which was never true for it; nothing else mentioned it. Now:
+  - **A switch in Device & Logs**, beside the tray's, both reading Windows'
+    own answer (`executableWillLaunchAtLogin`): its Startup apps page can
+    turn the entry off behind the app's back. The window reads it again
+    whenever it regains focus.
+  - **Starting in the tray.** The entry carries `--hidden`, and a run with
+    it makes the window without showing it; the tray, a second launch and
+    the prompts show it. An enabled entry from an earlier version, which
+    opened the window at every login, is rewritten at startup.
+  - **The portable build** registers `PORTABLE_EXECUTABLE_FILE`, the file
+    the user ran, since `process.execPath` names a temporary folder gone
+    by the next login.
+  - **Not from `pnpm dev`**, where the entry would start a bare
+    electron.exe: the switch is shown disabled and says why.
 
-  Blocked on nothing. Tests take the login-item calls injected, like every
-  service that touches the machine (CLAUDE.md §6).
+  Left: checking it at a real sign-in with the installed build and with
+  the portable exe. It writes the real Run key, so it waits for the user.
 - **Stream Deck: better faces, and animated ones** (asked 2026-10-22). Two
   different things answer to "animated icons", and only the first is ours
   to draw:
@@ -1245,8 +1242,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.77 statements / 89.32 branches / 94.63 functions / 96.48 lines across 2530
-tests in 125 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.81 statements / 89.38 branches / 94.68 functions / 96.5 lines across 2555
+tests in 127 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

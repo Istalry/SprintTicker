@@ -3,6 +3,7 @@ import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, Al
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
+import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
 import { DeviceConfigDTO } from '../../../shared/dtos';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { formatClockTime } from '../../utils/formatters';
@@ -554,6 +555,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
       </div>
 
       </>)}
+
+      <LaunchAtLoginCard />
 
       <UpdateSettingsCard />
 

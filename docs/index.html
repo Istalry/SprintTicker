@@ -1139,8 +1139,8 @@
       <p>With the shipped ordering, notifications do not interrupt Lunch or Away. That is
       the table working as configured, not a bug. Move the rows if you disagree.</p>
       <h4>🩺 Device Diagnostics</h4>
-      <p>Connection status, battery, firmware, the update setting, and the animation
-      debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
+      <p>Connection status, battery, firmware, starting with Windows, the update
+      setting, and the animation debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
       live, drawn through the real renderer.</p>
       <p align="center">
         <img src="images/app-device.png" width="80%" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, and Display Health">
@@ -1159,6 +1159,14 @@
       restart. Watch the connection status at the top of the window to see whether the
       new address answered; saving means the setting was stored, not that the bar
       replied. <strong>Reset to USB default</strong> puts the address back to <code>10.0.4.20</code>.</p>
+      <p>🚀 <strong>Start with Windows</strong> starts SprintTicker when you sign in, in the tray,
+      with no window over whatever you open first. The tray icon, the bar and the
+      mini timer work as usual; open the window from the tray, or by starting
+      SprintTicker again. The same switch is in the tray menu, and Windows lists
+      the entry under <em>Settings → Apps → Startup</em>: turned off there, it reads off
+      here too. The portable build registers the file you ran, so move it and
+      switch it on again from the new place. A build run from source
+      (<code>pnpm dev</code>) shows the switch greyed out.</p>
       <hr>
       <h3 id="guide-the-bar-itself">💡 The bar itself</h3>
       <h4>🖼️ What it shows</h4>
@@ -1670,6 +1678,20 @@
       still reach the dashboard alone. Picking a task from the tray or the mini timer
       goes through <code>openTaskPickerInMainWindow</code>, which sends the picker&#39;s hardware
       action on <code>input:on-hardware-event</code>.</p>
+      <p><strong>Starting with Windows</strong> is <code>LaunchAtLoginService</code>
+      (<code>src/main/services/launch-at-login.ts</code>), behind both the switch in Device &amp;
+      Logs and the tray&#39;s checkbox; the tray rebuilds its menu from the service&#39;s
+      notification. It keeps no state: every read asks Windows
+      (<code>getLoginItemSettings(...).executableWillLaunchAtLogin</code>), because the
+      Startup apps page can switch the entry off with no event the app hears. The
+      entry is the Run value named by the AppUserModelID, and it carries
+      <code>--hidden</code>: a run started with it makes the dashboard with <code>show: false</code>.
+      The window is made all the same, since closing it is what quits the app.
+      The path is <code>PORTABLE_EXECUTABLE_FILE</code> when the portable stub sets it, or
+      <code>process.execPath</code>. At startup <code>refresh()</code> rewrites an entry that is still
+      enabled, which upgrades one written without <code>--hidden</code>, but never one
+      switched off: a write approves it again. Unpackaged, the service writes
+      nothing and says why (<code>reason: &#39;not-packaged&#39;</code>).</p>
       <p>The mini timer&#39;s icon is the bar&#39;s. <code>DisplayRenderer</code> keeps the icon of the
       frame it paints (<code>frameScreenIcon</code>, beside <code>frameIcon</code> and consumed with it in
       <code>transmitFrame</code>): the bitmap a screen draws at the left, with its top row as
@@ -2530,7 +2552,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">9. Testing</h3>
-      <p>Vitest, 2530 tests across 125 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2555 tests across 127 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2846,6 +2868,10 @@
       <tr>
       <td align="left">App</td>
       <td align="left"><code>app:get-system-locale</code> -- Windows&#39; regional format (<code>en-BE</code>, <code>fr-FR</code>), read once by the renderer at startup to format times</td>
+      </tr>
+      <tr>
+      <td align="left">Start with Windows</td>
+      <td align="left"><code>app:get-launch-at-login</code> answers <code>{ enabled, available, reason }</code>, read from Windows each time; <code>app:set-launch-at-login</code> takes a boolean, refuses anything else, and answers the state Windows then reports. <code>available: false</code> with <code>reason</code> <code>not-packaged</code> (a development run, which would register a bare electron.exe) or <code>not-windows</code> writes nothing</td>
       </tr>
       <tr>
       <td align="left">Mini timer</td>

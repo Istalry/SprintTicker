@@ -847,6 +847,16 @@ them are traps:
 - **Async Electron lifecycle handlers do not work.** Electron does not await
   `will-quit`, so an `async` handler's teardown after the first `await` never
   runs. Use `preventDefault()` + `app.exit(0)`.
+- **A login item is read back, never remembered, and `openAtLogin` is not
+  the answer.** Measured on Electron 44 (2026-10-22): `openAtLogin` stayed
+  false with the Run value present; `executableWillLaunchAtLogin` is true
+  while it exists and false once Windows' Startup apps switch it off.
+  `launchItems[].args` reads `[]` while the value carries `--hidden`. And
+  any write approves the entry again, undoing that switch-off -- so
+  `LaunchAtLoginService.refresh()` rewrites only an entry still enabled.
+  Register `PORTABLE_EXECUTABLE_FILE` when it is set (the portable build's
+  `execPath` is a temp folder gone by the next login), and nothing from
+  `pnpm dev`, whose `execPath` is a bare electron.exe.
 
 ### Naming
 

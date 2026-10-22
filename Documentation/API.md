@@ -130,6 +130,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | Diagnostics | `diagnostics:export-logs` |
 | Updates | `updates:check`, `updates:get-enabled`, `updates:set-enabled`, `updates:open-release-page`, `updates:on-status` |
 | App | `app:get-system-locale` -- Windows' regional format (`en-BE`, `fr-FR`), read once by the renderer at startup to format times |
+| Start with Windows | `app:get-launch-at-login` answers `{ enabled, available, reason }`, read from Windows each time; `app:set-launch-at-login` takes a boolean, refuses anything else, and answers the state Windows then reports. `available: false` with `reason` `not-packaged` (a development run, which would register a bare electron.exe) or `not-windows` writes nothing |
 | Mini timer | `mini:toggle` (answers whether it is open afterwards), `mini:is-open`, `mini:on-visibility` (**Event**, to every window, however it was opened or closed), `mini:open-task-picker` (brings the dashboard forward with the picker open; `false` if there is no dashboard) |
 
 ---

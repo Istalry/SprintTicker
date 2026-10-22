@@ -44,6 +44,7 @@ import type {
   OpStatusDTO,
   DeviceConfigDTO,
   UpdateStatusDTO,
+  LaunchAtLoginStatusDTO,
   ProviderSyncResult,
   SyncQueueSnapshotDTO,
   ProjectsUpdatedPayload,
@@ -226,6 +227,13 @@ export interface IElectronAPI {
   onTaskVisibility: (callback: (visibility: TaskVisibility) => void) => () => void;
   getUpdateCheckEnabled: () => Promise<boolean>;
   setUpdateCheckEnabled: (enabled: boolean) => Promise<boolean>;
+  /**
+   * Whether Windows starts SprintTicker at login, read back from Windows
+   * each time: its Startup apps page can switch it off behind the app.
+   */
+  getLaunchAtLogin: () => Promise<LaunchAtLoginStatusDTO>;
+  /** Resolves the state Windows reports after the change. */
+  setLaunchAtLogin: (enabled: boolean) => Promise<LaunchAtLoginStatusDTO>;
   openReleasePage: (url: string) => Promise<boolean>;
   /**
    * Opens the task's page on the provider it came from, in the browser. Main

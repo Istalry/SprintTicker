@@ -33,6 +33,7 @@ import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { ContextScheduleService } from '../src/main/services/context-schedule-service';
 import { IPCHandlerRegistry } from '../src/main/ipc/ipc-handler-registry';
+import { LaunchAtLoginService } from '../src/main/services/launch-at-login';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import type { PriorityRule, UpdateStatusDTO } from '../src/shared/dtos';
@@ -659,6 +660,40 @@ describe('IPC handlers', () => {
       registry.broadcastUpdateStatus(status);
 
       expect(sentOn(IPCChannel.ON_UPDATE_STATUS)).toEqual([status]);
+    });
+  });
+
+  describe('start with Windows', () => {
+    const service = () => {
+      let entry = false;
+      const api = {
+        getLoginItemSettings: vi.fn(() => ({ executableWillLaunchAtLogin: entry })),
+        setLoginItemSettings: vi.fn((s: { openAtLogin: boolean }) => { entry = s.openAtLogin; })
+      };
+      return { api, launchAtLogin: new LaunchAtLoginService(api, { platform: 'win32', isPackaged: true, execPath: 'C:\\App\\SprintTicker.exe' }) };
+    };
+
+    it('LaunchAtLogin_NoService_SaysUnavailableAndWritesNothing', async () => {
+      await expect(invoke(IPCChannel.GET_LAUNCH_AT_LOGIN)).resolves.toEqual({ enabled: false, available: false, reason: null });
+      await expect(invoke(IPCChannel.SET_LAUNCH_AT_LOGIN, true)).resolves.toEqual({ enabled: false, available: false, reason: null });
+    });
+
+    it('LaunchAtLogin_Set_AnswersWhatWindowsThenReports', async () => {
+      const { api, launchAtLogin } = service();
+      build({ launchAtLogin });
+
+      await expect(invoke(IPCChannel.SET_LAUNCH_AT_LOGIN, true)).resolves.toEqual({ enabled: true, available: true, reason: null });
+      await expect(invoke(IPCChannel.GET_LAUNCH_AT_LOGIN)).resolves.toEqual({ enabled: true, available: true, reason: null });
+      expect(api.setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true, path: 'C:\\App\\SprintTicker.exe', args: ['--hidden'] });
+    });
+
+    it('LaunchAtLogin_SetNotABoolean_RefusesAndWritesNothing', async () => {
+      // "false" as a string is truthy: passed through, it would switch it on.
+      const { api, launchAtLogin } = service();
+      build({ launchAtLogin });
+
+      await expect(invoke(IPCChannel.SET_LAUNCH_AT_LOGIN, 'false')).rejects.toThrow(/on or off/);
+      expect(api.setLoginItemSettings).not.toHaveBeenCalled();
     });
   });
 });

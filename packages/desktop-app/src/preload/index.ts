@@ -239,6 +239,8 @@ const electronAPI: IElectronAPI = {
   getUpdateCheckEnabled: () => ipcRenderer.invoke(IPCChannel.GET_UPDATE_CHECK_ENABLED),
   setUpdateCheckEnabled: (enabled: boolean) =>
     ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),
+  getLaunchAtLogin: () => ipcRenderer.invoke(IPCChannel.GET_LAUNCH_AT_LOGIN),
+  setLaunchAtLogin: (enabled: boolean) => ipcRenderer.invoke(IPCChannel.SET_LAUNCH_AT_LOGIN, enabled),
   openReleasePage: (url: string) => ipcRenderer.invoke(IPCChannel.OPEN_RELEASE_PAGE, url),
   openTaskPage: (taskId: string) => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PAGE, taskId),
   onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => {

@@ -24,12 +24,13 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO } from '../../shared/dtos';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
+import { LaunchAtLoginService } from '../services/launch-at-login';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
@@ -57,6 +58,9 @@ import { completeSession } from '../services/session-commands';
  * also removes the pressure to append rather than insert -- `providerManager`
  * had been added last purely because it was the cheapest place to put it.
  */
+/** What the switch reads with no service behind it: a registry built without one, in tests. */
+const LAUNCH_AT_LOGIN_UNAVAILABLE: LaunchAtLoginStatusDTO = { enabled: false, available: false, reason: null };
+
 export interface IPCHandlerRegistryDeps {
   engine: TimeTrackingEngine;
   taskRepo: TaskRepository;
@@ -87,6 +91,8 @@ export interface IPCHandlerRegistryDeps {
   providerManager?: ProviderManager;
   syncWorker?: OfflineSyncWorker;
   updateChecker?: UpdateChecker;
+  /** Starting with Windows; without it, the switch reads unavailable. */
+  launchAtLogin?: LaunchAtLoginService;
   /** Asks open Unity Editors to save; defaults to the real HTTP call. */
   saveUnityScenes?: UnitySceneSaver;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
@@ -106,6 +112,7 @@ function isWorklogCorrection(value: unknown): value is WorklogCorrectionDTO {
 
 export class IPCHandlerRegistry {
   private updateChecker?: UpdateChecker;
+  private launchAtLogin?: LaunchAtLoginService;
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
   private projectRepo: ProjectRepository;
@@ -155,6 +162,7 @@ export class IPCHandlerRegistry {
       providerManager,
       syncWorker,
       updateChecker,
+      launchAtLogin,
       webhookServer
     } = deps;
 
@@ -163,6 +171,7 @@ export class IPCHandlerRegistry {
     this.providerManager = providerManager;
     this.syncWorker = syncWorker;
     this.updateChecker = updateChecker;
+    this.launchAtLogin = launchAtLogin;
     // Bound to the settings repository's connection rather than the
     // DatabaseConnection singleton, which would open a second, on-disk database
     // even when the caller supplied an in-memory one.
@@ -1057,6 +1066,15 @@ export class IPCHandlerRegistry {
       this.settingsRepo.setSetting(TASK_VISIBILITY_KEY, stored);
       this.broadcast(IPCChannel.ON_TASK_VISIBILITY, stored);
       return stored;
+    });
+
+    ipcMain.handle(IPCChannel.GET_LAUNCH_AT_LOGIN, async () => {
+      return this.launchAtLogin ? this.launchAtLogin.getStatus() : LAUNCH_AT_LOGIN_UNAVAILABLE;
+    });
+
+    ipcMain.handle(IPCChannel.SET_LAUNCH_AT_LOGIN, async (_event, enabled: unknown) => {
+      if (typeof enabled !== 'boolean') throw new ArgumentException('Starting with Windows is on or off.', 'enabled');
+      return this.launchAtLogin ? this.launchAtLogin.setEnabled(enabled) : LAUNCH_AT_LOGIN_UNAVAILABLE;
     });
 
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {
