@@ -47,7 +47,11 @@ pnpm deck:pack       # build, then dist/io.github.istalry.sprintticker.streamDec
 pnpm test:deck       # the tests
 ```
 
-Double-click the `.streamDeckPlugin` file to install it. While working on the
+Double-click the `.streamDeckPlugin` file to install it. **Stream Deck
+installs a pack only over an older version**: one with the version already
+installed is refused as "already installed", and the old code keeps running.
+Raise `version` in `package.json` and `Version` in the manifest together --
+the package test holds them equal -- before packing a change to try. While working on the
 plugin, `npx streamdeck link io.github.istalry.sprintticker.sdPlugin` (in this
 folder, with developer mode on: `npx streamdeck dev`) installs the folder
 itself instead, and `npx streamdeck restart

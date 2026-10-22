@@ -683,8 +683,6 @@ looping idle animations.
    - The generator refuses a missing character, a duplicate glyph or a blank
      edge column, and `fonts:check` runs in CI.
    - Row 1 now truncates by width with `…`, like row 0.
-   - **Not yet judged on the LEDs.** Run `pnpm probe:busybar --font-sheet` and
-     look at the bar. A glyph that reads badly is a one-line edit to its sheet.
    - A large display face for the animation scenes belongs with the studio
      (item 3), which is its only user, rather than here.
 3. ~~**An animation studio as its own package**~~ -- done (2026-09-29):
@@ -873,8 +871,6 @@ the device a timestamp.
   - `pnpm probe:busybar` covers hardware `.anim` playback at the pixel level,
     which catches the *symptom* against real hardware. It is a backstop, not a
     substitute: it only runs when someone runs it.
-  - **Not yet run against a real bar.** Verify with `pnpm dev` and the console,
-    per the section below.
 
 - [x] **`CountdownElement` is probed, and it is a layout exercise, not a
   rewrite** (2026-09-09). `pnpm probe:busybar` now draws one, reads the panel
@@ -1189,6 +1185,55 @@ Ordered; each says what has to be true first.
   it is for -- Stream Deck Mobile has the Mini's grid, so it can stand in --
   and reconnecting after either app restarts. A physical Mini only for how
   fast its keys redraw.
+- **Start with Windows, as a setting** (asked 2026-10-22). It half exists:
+  the tray menu has *Start with Windows Startup*, which calls
+  `app.setLoginItemSettings({ openAtLogin })`, but nothing else says so --
+  no setting in the window, no line in the user guide -- and three things
+  are missing:
+  - **A switch in the window**, reading the login item back rather than
+    keeping a copy of its own: Windows' Startup apps page can turn it off
+    behind the app's back.
+  - **Starting in the tray.** At login the window opens over whatever the
+    user starts first. Register with `args: ['--hidden']` and skip showing
+    the window when that flag is present; the tray, the bar and the mini
+    timer work without it. `openAsHidden` was macOS-only and is gone in
+    Electron 44 (see `tray-manager.ts`).
+  - **The portable build.** It unpacks itself into a temporary folder on
+    each run, so `process.execPath` -- what the login item registers by
+    default -- names a folder that is gone at the next login.
+    electron-builder's portable stub passes the real file in
+    `PORTABLE_EXECUTABLE_FILE`; register that as `path`. Check it with the
+    packaged portable exe, not `pnpm dev`, whose login item would start a
+    bare Electron.
+
+  Blocked on nothing. Tests take the login-item calls injected, like every
+  service that touches the machine (CLAUDE.md §6).
+- **Stream Deck: better faces, and animated ones** (asked 2026-10-22). Two
+  different things answer to "animated icons", and only the first is ours
+  to draw:
+  - **The plugin's own keys.** Their images are what `setImage` sends, so an
+    animation is the plugin's to play. Elgato's guidance for animated icons
+    is 144 x 144, GIF or WebP, 10 to 20 fps, five seconds at most and under
+    1 MB each. What is not known is whether `setImage` plays an animated GIF
+    or WebP handed to it as a data URL, or shows its first frame: measure it
+    on Stream Deck Mobile first. If it plays, an animation costs one message
+    per state change, as a static face does today. If it does not, the
+    fallback is redrawing frames from the plugin, a message per frame per
+    key -- worth it only for one key at a time, and only while it moves.
+  - **An icon pack** (`.streamDeckIconPack`, made with Elgato's Icon Pack
+    Man): icons a user picks from the Icon Library for *any* key. A user
+    image set on one of our keys hides what the plugin draws, so a pack
+    would dress other keys, not ours. A separate deliverable, and not needed
+    for the first.
+
+  What to animate is a design pass of its own, judged on the Mobile grid:
+  the Session key already shows the bar's 16x16 icon of the moment, and the
+  bar's animated icons -- the stopwatch's hand, the stand-up's speakers --
+  are our own work, drawn in the studio, so a key can play the same motion
+  the bar does. Every frame is drawn from scratch, never traced
+  (`packages/anim-studio/STYLE-GUIDE.md`). The static faces need the same
+  pass: their glyphs and text sizes were set before any key was seen on a
+  device.
 - **Personal days off.** OpenProject 17 records a user's own days off
   (`/api/v3/users/{id}/non_working_times`, the *My working times* page). The
   working calendar reads only the instance's holidays; a personal day off

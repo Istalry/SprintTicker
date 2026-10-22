@@ -258,13 +258,18 @@ app, so nothing here sees it on a deck** -- the Unity plugin's situation.
 What a key shows and does is two pure functions (`faces.ts`), tested for
 every kind and state; `package.test.ts` holds the manifest to the code and
 to what the build writes; `pnpm deck:validate` runs Elgato's validator in
-CI. Four things about it cost time to find:
+CI. Five things about it cost time to find:
 - **`imgs/` and `bin/` are build output**, never edited and never tracked.
   The keys' default images are the faces the plugin draws, rendered at
   build time by `src/assets/write-assets.ts`, so the two cannot drift; the
   manifest's plugin icon must be PNG, which `png.ts` writes with
   `node:zlib` rather than adding an image library. The build empties
   `imgs/` first: an image of a removed action would otherwise ship.
+- **A pack installs only over an older version.** Stream Deck answers one
+  with the installed `Version` "already installed" and keeps running the old
+  code, with nothing else saying so (2026-10-22). Raise the version -- the
+  manifest's and `package.json`'s, held equal by `package.test.ts` --
+  before handing over a pack to try, or use `streamdeck link` while working.
 - **`bin/package.json` says `"type": "module"`, and is generated too.**
   The bundle is ESM, and without it Stream Deck's Node reads `plugin.js` as
   CommonJS and fails on the first `import`.
