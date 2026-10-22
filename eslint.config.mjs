@@ -248,6 +248,57 @@ export default tseslint.config(
   },
 
   {
+    // The Stream Deck plugin. It runs as its own Node process under Stream
+    // Deck, which logs and restarts it on a crash -- every key on the deck
+    // goes blank meanwhile -- so floating promises are errors, as in main.
+    // It shares the app's protocol module and nothing else of the app: its
+    // bundle is copied into Stream Deck's plugins folder, where electron,
+    // better-sqlite3 and React are not.
+    files: ['packages/streamdeck-plugin/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: ['./packages/streamdeck-plugin/tsconfig.json'],
+        tsconfigRootDir: import.meta.dirname
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/desktop-app/src/main/**', '**/desktop-app/src/renderer/**', '**/desktop-app/src/preload/**', 'electron', 'react'],
+              message: 'The Stream Deck plugin may import only from desktop-app/src/shared/. See packages/streamdeck-plugin/README.md.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
+    // Its tests run the plugin's link against the app's real socket server,
+    // which lives in main; the renderer and Electron stay out of reach.
+    files: ['packages/streamdeck-plugin/tests/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/desktop-app/src/renderer/**', 'electron', 'react'],
+              message: 'The plugin tests may use the app socket server, never the renderer or Electron.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
     // Tests may reach into either process to build fixtures.
     files: ['packages/desktop-app/tests/**/*.ts', 'packages/desktop-app/tests/**/*.tsx'],
     rules: {

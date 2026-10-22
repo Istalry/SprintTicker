@@ -293,6 +293,15 @@ discovers installed Unity projects and manages plugin injection.
   <img src="docs/images/app-unity.png" width="70%" alt="Unity Engine panel: connected editors, compile state, alert settings">
 </p>
 
+### 🎹 Stream Deck
+
+A plugin for Elgato's Stream Deck app puts the session on keys you place
+yourself: the running task and its time, pause and resume, the three ends of
+a session, the task picker, a favourite task per key, Away, and yes or no to
+the stand-up, the wrap-up and the resume question. It talks to the app on
+this machine, and every key says OFFLINE while SprintTicker is closed. See
+[the plugin](#-stream-deck-plugin) below. Not yet tried on a physical deck.
+
 ### 📅 Ceremonies and schedules
 
 Configurable working hours, lunch and away detection, a standup prompt whose
@@ -480,7 +489,8 @@ pnpm test:coverage
 `pnpm test` runs 2531 tests across 124 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
-113 across 6 files; `pnpm test:studio` runs only the latter. `pnpm test:coverage` enforces a
+113 across 6 files, then the Stream Deck plugin's 169 across 7;
+`pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.
 
@@ -605,6 +615,23 @@ without modifying your scenes or project code.
 
 ---
 
+## 🎹 Stream Deck plugin
+
+`packages/streamdeck-plugin` is a plugin for Elgato's Stream Deck app (7.1 or
+later, Windows). Build it and install it:
+
+```bash
+pnpm deck:pack   # dist/io.github.istalry.sprintticker.streamDeckPlugin
+```
+
+Double-click the file it writes, then drag the **SprintTicker** actions onto
+keys. Its [README](packages/streamdeck-plugin/README.md) lists the actions and
+what each key shows; the protocol it speaks is in
+[API.md](Documentation/API.md#the-stream-deck-socket). `pnpm deck:validate`
+builds it and runs Elgato's own validator on it, as CI does.
+
+---
+
 ## 🧰 Tools
 
 - **Animation studio** — `pnpm studio` serves a scene editor at
@@ -668,7 +695,8 @@ SprintTicker/
 ├── packages/
 │   ├── desktop-app/       # Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + SQLite
 │   ├── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
-│   └── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
+│   ├── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
+│   └── streamdeck-plugin/ # Elgato Stream Deck plugin (pnpm deck:pack)
 ├── Animations/            # Our full-screen animations: PNG frames (LFS) + .anim
 ├── Documentation/         # User guide, architecture, API reference, hardware guide
 ├── docs/                  # Generated: those three as one page (GitHub Pages)

@@ -94,7 +94,16 @@
   keys' actions: pause, resume, the three ends of a session, a favourite
   task, the task picker, Away, and yes or no on the stand-up, the wrap-up and
   the resume question. Each does exactly what the window or the bar does.
-  A web page cannot open it. The plugin itself comes next.
+  A web page cannot open it.
+
+- **A Stream Deck plugin** (`packages/streamdeck-plugin`, `pnpm deck:pack`).
+  Nine actions to place on any key: Session (the task, its time and the
+  bar's icon; pause, resume, or the picker), Not done, Done, Discard, Switch
+  task, Favourite task (one task per key, chosen in its panel), Yes, No and
+  Away. Discard, and Done on a task no longer yours, ask on the same key
+  first. Yes and No are separate keys, dimmed while nothing is asked. Every
+  key says OFFLINE while SprintTicker is closed. Not yet tried on a physical
+  deck, and no default profile ships yet.
 
 ### Changed
 

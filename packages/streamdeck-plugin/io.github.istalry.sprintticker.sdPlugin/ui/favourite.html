@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Favourite task</title>
+  <style>
+    /* Close to the Stream Deck app's own inspector, without its library:
+       nothing here is fetched from the network. */
+    body { margin: 0; padding: 12px 14px; background: #2d2d2d; color: #d8d8d8; font: 12px "Segoe UI", Arial, sans-serif; }
+    label { display: block; margin-bottom: 6px; color: #9a9a9a; }
+    select { width: 100%; padding: 5px 6px; background: #3d3d3d; color: #d8d8d8; border: 1px solid #4a4a4a; border-radius: 3px; font: inherit; }
+    button { margin-top: 10px; padding: 4px 10px; background: #3d3d3d; color: #d8d8d8; border: 1px solid #4a4a4a; border-radius: 3px; font: inherit; cursor: pointer; }
+    button:hover { background: #4a4a4a; }
+    #status { margin-top: 10px; color: #9a9a9a; line-height: 1.4; }
+    #status.warn { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <label for="task">Task this key starts</label>
+  <select id="task" disabled>
+    <option>Loading the tasks…</option>
+  </select>
+  <button id="refresh" type="button">Refresh the list</button>
+  <div id="status"></div>
+
+  <script>
+    // The classic property inspector API: Stream Deck calls this global with
+    // the socket to use. The tasks come from the plugin, which asks
+    // SprintTicker; the choice is saved as this key's settings, with the
+    // task's key and title so the key can name it while the app is closed.
+    let socket = null;
+    let inspectorUuid = '';
+    let actionUuid = '';
+    let settings = {};
+    const select = document.getElementById('task');
+    const statusLine = document.getElementById('status');
+
+    function send(message) {
+      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+    }
+
+    // The plugin can answer this page only once Stream Deck has told it the
+    // page is open, and nothing says which of the two arrives first: a
+    // question with no answer is asked again, a few times.
+    const ASK_AGAIN_MS = 1500;
+    const MAX_ASKS = 3;
+    let asks = 0;
+    let askTimer = null;
+
+    function askForTasks() {
+      select.disabled = true;
+      statusLine.textContent = '';
+      statusLine.className = '';
+      asks = 0;
+      ask();
+    }
+
+    function ask() {
+      clearTimeout(askTimer);
+      if (asks >= MAX_ASKS) {
+        showStatus('The plugin did not answer. Close this panel and open it again.', true);
+        return;
+      }
+      asks++;
+      send({ event: 'sendToPlugin', action: actionUuid, context: inspectorUuid, payload: { request: 'list-tasks' } });
+      askTimer = setTimeout(ask, ASK_AGAIN_MS);
+    }
+
+    function showStatus(text, warn) {
+      statusLine.textContent = text;
+      statusLine.className = warn ? 'warn' : '';
+    }
+
+    function fillTasks(tasks) {
+      select.textContent = '';
+      const none = document.createElement('option');
+      none.value = '';
+      none.textContent = '— Choose a task —';
+      select.appendChild(none);
+
+      const byProject = new Map();
+      for (const task of tasks) {
+        if (!byProject.has(task.projectName)) byProject.set(task.projectName, []);
+        byProject.get(task.projectName).push(task);
+      }
+      let found = false;
+      for (const [projectName, projectTasks] of byProject) {
+        const group = document.createElement('optgroup');
+        group.label = projectName;
+        for (const task of projectTasks) {
+          const option = document.createElement('option');
+          option.value = task.id;
+          option.textContent = `${task.key} — ${task.title}`;
+          option.dataset.key = task.key;
+          option.dataset.title = task.title;
+          if (task.id === settings.taskId) { option.selected = true; found = true; }
+          group.appendChild(option);
+        }
+        select.appendChild(group);
+      }
+      // A task chosen before that no list shows any more: kept, and said.
+      if (settings.taskId && !found) {
+        const kept = document.createElement('option');
+        kept.value = settings.taskId;
+        kept.textContent = `${settings.taskKey || settings.taskId} (no longer listed)`;
+        kept.selected = true;
+        select.appendChild(kept);
+        showStatus('The task chosen for this key is in no list any more: pressing it will be refused.', true);
+      }
+      select.disabled = false;
+    }
+
+    select.addEventListener('change', () => {
+      const option = select.selectedOptions[0];
+      settings = option && option.value
+        ? { taskId: option.value, taskKey: option.dataset.key || option.value, taskTitle: option.dataset.title || '' }
+        : {};
+      send({ event: 'setSettings', context: inspectorUuid, payload: settings });
+    });
+    document.getElementById('refresh').addEventListener('click', askForTasks);
+
+    // Called by Stream Deck, never by this page.
+    function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info, actionInfo) {
+      inspectorUuid = uuid;
+      const action = JSON.parse(actionInfo);
+      actionUuid = action.action;
+      settings = (action.payload && action.payload.settings) || {};
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        send({ event: registerEvent, uuid });
+        askForTasks();
+      };
+      socket.onmessage = event => {
+        const message = JSON.parse(event.data);
+        if (message.event === 'sendToPropertyInspector' && message.payload && 'tasks' in message.payload) {
+          clearTimeout(askTimer);
+          if (Array.isArray(message.payload.tasks)) {
+            fillTasks(message.payload.tasks);
+            if (message.payload.tasks.length === 0) showStatus('SprintTicker lists no tasks yet.', false);
+          } else {
+            select.textContent = '';
+            const option = document.createElement('option');
+            option.textContent = settings.taskKey ? `${settings.taskKey} (saved)` : 'SprintTicker is not running';
+            select.appendChild(option);
+            select.disabled = true;
+            showStatus('Start SprintTicker to choose a task, then refresh.', true);
+          }
+        } else if (message.event === 'didReceiveSettings' && message.payload) {
+          settings = message.payload.settings || {};
+        }
+      };
+    }
+  </script>
+</body>
+</html>

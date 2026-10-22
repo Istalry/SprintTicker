@@ -14,6 +14,7 @@ first launch.
 | 🏁 [First run](#-first-run) | the setup wizard, with or without a bar, and the mini timer |
 | 🗂️ [The panels](#-the-panels) | the nine tabs of the window, one by one |
 | 💡 [The bar itself](#-the-bar-itself) | every screen the bar shows, and its buttons |
+| 🎹 [A Stream Deck](#-a-stream-deck) | the session on keys you place yourself |
 | 🩺 [Troubleshooting](#-troubleshooting) | when something does not do what it should |
 | 🔐 [Your data](#-your-data) | where it lives, and what leaves your machine |
 
@@ -687,6 +688,48 @@ The bar's buttons answer the wrap-up only while the bar shows its prompt. The
 something ranked above the wrap-up holds the bar -- Lunch, in the shipped
 ordering -- the buttons keep doing what that screen says, and the wrap-up is
 confirmed in the window.
+
+---
+
+## 🎹 A Stream Deck
+
+SprintTicker has a plugin for Elgato's Stream Deck app (7.1 or later). It
+works beside the bar or without one, and leaves the rest of your deck alone.
+There is no release of it yet: build it from the source with `pnpm deck:pack`
+and double-click the `.streamDeckPlugin` file that lands in
+`packages/streamdeck-plugin/dist/`. It has not yet been tried on a physical
+deck.
+
+Its actions are listed under **SprintTicker** in the Stream Deck app. Drag
+each onto any key, as many times as you like:
+
+| Action | The key shows | A press |
+| :--- | :--- | :--- |
+| **Session** | the task, its time and the bar's icon; PAUSED when paused | pauses or resumes; with nothing running, opens the task picker |
+| **Not done** | NOT DONE | ends the session and logs its time; the task stays open |
+| **Done** | DONE | ends it and marks the task done |
+| **Discard** | DISCARD | throws the session away, nothing logged |
+| **Switch task** | SWITCH TASK | brings the window forward with its task picker |
+| **Favourite task** | the task you chose | starts that task |
+| **Yes** / **No** | the answer to the question waiting | joins or skips the stand-up, wraps up the day or not, resumes a task or leaves it |
+| **Away** | AWAY, or BACK TO WORK | sets you away, and back |
+
+- **Discard asks first, on the same key.** It turns into **DISCARD?**; press
+  it again within four seconds to go ahead. Done does the same, **NOT
+  YOURS?**, when the task is no longer yours. Waiting, or another task
+  starting, takes the question back.
+- **Yes and No are two keys**, and neither changes meaning with how long you
+  hold it. They are dimmed while nothing is asked. The wrap-up asks twice, as
+  on the bar: Yes, then **CONFIRM WRAP-UP**.
+- **A Favourite is set in its panel.** Click the key in the Stream Deck app
+  and pick a task from the list SprintTicker sends. The key keeps the task's
+  name, so it still reads while SprintTicker is closed. A task that has left
+  every list stays chosen, marked as no longer listed, and is refused when
+  pressed.
+- **OFFLINE on every key** means the plugin cannot reach SprintTicker: start
+  it, and the keys come back by themselves within ten seconds. **UPDATE APP**
+  means SprintTicker and the plugin are of different versions -- update
+  whichever is older.
 
 ---
 

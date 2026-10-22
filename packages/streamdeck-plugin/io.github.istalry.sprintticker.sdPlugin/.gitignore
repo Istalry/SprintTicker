@@ -1,0 +1,5 @@
+# Built by `pnpm --filter @sprintticker/streamdeck-plugin build`.
+bin/
+imgs/
+# Written by the SDK while the plugin runs.
+logs/

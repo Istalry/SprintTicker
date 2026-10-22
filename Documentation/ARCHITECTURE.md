@@ -800,7 +800,44 @@ modifies neither your scenes nor your project code.
 
 ---
 
-## 7. Animation studio
+## 7. Stream Deck plugin
+
+`packages/streamdeck-plugin` is a plugin for Elgato's Stream Deck app, built
+on its SDK (`@elgato/streamdeck` 3) and bundled by Vite into one ESM file that
+Stream Deck runs on its own Node 24. Elgato's app keeps the device; the plugin
+only declares actions, which the user places on any key.
+
+```
+Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──► AppLink ◄──► ws://127.0.0.1:39123/api/v1/deck
+                                             │   faces.ts: state ─► face, press ─► request
+                                             └─► svg.ts: face ─► key image
+```
+
+- **What a key shows and what a press does are pure functions** of the
+  app's last state (`faceFor`, `planPress` in `faces.ts`), so every kind is
+  tested in every state without a device or the SDK. The SDK's classes in
+  `actions.ts` pass events on and decide nothing.
+- **The app pushes; the plugin ticks.** A state carries the session's
+  elapsed time and when it was read, so the Session key redraws its clock
+  each second from that alone, and only while a session runs. A key image
+  is sent only when it differs from the last one sent.
+- **A question is asked on the key that will answer it.** Discard, and Done
+  on a task no longer the user's, arm on the first press and act on a second
+  within four seconds; another task starting withdraws the question. No key
+  means two things by how long it is held.
+- **The line to the app reconnects by itself** (1, 2, 5, then every 10 s),
+  and every key shows OFFLINE until it is back. A hello with another
+  protocol version keeps the line open but makes every key say UPDATE APP.
+- **The build writes the manifest's images**: each key's default face is the
+  plugin's own offline face, rendered at build time, so the two cannot
+  disagree.
+
+It imports only from `desktop-app/src/shared/`: the protocol is
+`deck-protocol.ts`, one module for both sides.
+
+---
+
+## 8. Animation studio
 
 `packages/anim-studio` is a development tool, not part of the app: nothing in it
 ships, and the app never imports it. It produces the frame sets the app plays.
@@ -850,7 +887,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ---
 
-## 8. Testing
+## 9. Testing
 
 Vitest, 2531 tests across 124 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
@@ -867,7 +904,9 @@ page of everything and clamp the page size server-side — a harness that fits o
 one page cannot fail the way production failed.
 
 The animation studio has its own suite, 113 tests across 6 files, run by
-`pnpm test` after the app's and on its own by `pnpm test:studio`.
+`pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
+Stream Deck plugin, 169 tests across 7 files (`pnpm test:deck`), which also
+runs its link against the app's real `DeckServer` over loopback.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and
 anything touching real hardware. Those need the app actually running — read its

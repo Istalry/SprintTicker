@@ -9,13 +9,14 @@ and invisible in the source.
 
 ## 1. What this is
 
-A pnpm workspace with three packages:
+A pnpm workspace with four packages:
 
 | Package | What it is |
 | :--- | :--- |
 | `packages/desktop-app` | Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
 | `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. Its scripts compile only because `.asmdef` files own them (see below). |
 | `packages/anim-studio` | The animation scene editor (`pnpm studio`): Vite + plain TypeScript, no React, no Electron. A development tool; nothing in it ships. |
+| `packages/streamdeck-plugin` | A plugin for Elgato's Stream Deck app (`io.github.istalry.sprintticker.sdPlugin`): Node 24 + `@elgato/streamdeck` 3, bundled by Vite. Keys that drive the session over the app's WebSocket. Ships on its own, as a `.streamDeckPlugin`. |
 
 The desktop app tracks time against tasks, drives a physical BUSY Bar LED
 display over USB, and mirrors Windows notifications onto it.
@@ -25,15 +26,18 @@ display over USB, and mirrors Windows notifications onto it.
 ```bash
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
-pnpm test             # vitest run, the app then the studio
+pnpm test             # vitest run, the app, the studio, then the Stream Deck plugin
 pnpm test:studio      # the studio's tests only; no native module involved
+pnpm test:deck        # the Stream Deck plugin's tests only; no native module either
 pnpm test:coverage    # floor: 92% stmts / 93.5% lines / 90% funcs / 85% branches
                       # a ratchet -- raise it, never lower it to make a run pass
-pnpm typecheck        # main, renderer and renderer-test tsconfigs, then the studio
+pnpm typecheck        # main, renderer and renderer-test tsconfigs, the studio, the plugin
 pnpm lint             # 0 errors expected; renderer floating-promise warnings are known
 pnpm package:win      # electron-builder, unsigned
 pnpm editor           # pixel editor for 16x16 bitmaps
 pnpm studio           # animation studio on http://127.0.0.1:5180
+pnpm deck:validate    # build the Stream Deck plugin, run Elgato's validator on it -- in CI
+pnpm deck:pack        # build it into dist/*.streamDeckPlugin
 pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/fonts/
 pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
 pnpm fonts:preview "text"   # print text in every font, in the terminal
@@ -144,7 +148,10 @@ and raising it is part of the Electron upgrade, never a PR of its own.
 
 **Never name a script `clean`.** pnpm 11 has a built-in `pnpm clean`, which
 deletes `node_modules`, and a built-in shadows a script of the same name. The
-build's step is `clean:dist`, invoked as `pnpm run clean:dist`.
+build's step is `clean:dist`, invoked as `pnpm run clean:dist`. **Nor `pack`**:
+`pnpm --filter <plugin> pack` ran pnpm's own and left an npm tarball at the
+repository root (2026-10-22), so the plugin's is `pack:plugin`, reached
+through the root's `deck:pack`.
 
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and
@@ -235,6 +242,35 @@ Three more things about it:
 - **Close the decks before the HTTP server.** An upgraded socket still counts
   as one of the server's connections, so `stop()` would wait on a deck that
   never hangs up.
+
+**The plugin itself, `packages/streamdeck-plugin`, runs inside Elgato's
+app, so nothing here sees it on a deck** -- the Unity plugin's situation.
+What a key shows and does is two pure functions (`faces.ts`), tested for
+every kind and state; `package.test.ts` holds the manifest to the code and
+to what the build writes; `pnpm deck:validate` runs Elgato's validator in
+CI. Five things about it cost time to find:
+- **`imgs/` and `bin/` are build output**, never edited and never tracked.
+  The keys' default images are the faces the plugin draws, rendered at
+  build time by `src/assets/write-assets.ts`, so the two cannot drift; the
+  manifest's plugin icon must be PNG, which `png.ts` writes with
+  `node:zlib` rather than adding an image library.
+- **`bin/package.json` says `"type": "module"`, and is generated too.**
+  The bundle is ESM, and without it Stream Deck's Node reads `plugin.js` as
+  CommonJS and fails on the first `import`.
+- **A key image goes to the SDK as base64 with its type**
+  (`svgDataUrl`). It also takes a bare SVG string, but every face carries
+  `#` in its colours, which a URL reading of the image takes for a fragment.
+- **The SDK answers a property inspector only once it has seen it open**
+  (`propertyInspectorDidAppear`); before that `sendToPropertyInspector`
+  sends nothing and says nothing. The favourite's page therefore asks for
+  the task list again until it is answered.
+- **A key never changes meaning with how long it is held** -- the user's
+  rule, 2026-10-22. A question (DISCARD?, NOT YOURS?) is asked on the same
+  key and answered by pressing it again within `CONFIRM_WINDOW_MS`; yes and
+  no are separate keys. And the app refuses Done and Discard without
+  `confirmed` when they must ask, so the plugin cannot skip the second press
+  -- when the app asks where the state had not said it would, the key arms
+  from that refusal (`needs-confirmation`).
 
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification

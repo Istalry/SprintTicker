@@ -64,6 +64,16 @@ jobs:
       - name: Animation studio tests
         run: pnpm test:studio
 
+      # The Stream Deck plugin's the same: pure TypeScript, with the app's
+      # socket server as its one dependency on the app, and that is plain
+      # Node. The build writes the images its manifest names, and Elgato's
+      # own validator checks the folder Stream Deck would install.
+      - name: Stream Deck plugin tests
+        run: pnpm test:deck
+
+      - name: Stream Deck plugin builds and validates
+        run: pnpm deck:validate
+
   # Windows, because that is the only platform this app targets: the
   # notification listener drives PowerShell and several code paths are gated on
   # process.platform === 'win32'. Running these on ubuntu would measure a

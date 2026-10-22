@@ -1,0 +1,23 @@
+{
+  "name": "@sprintticker/streamdeck-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "SprintTicker's plugin for Elgato's Stream Deck app: keys that drive the running session",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && vite build -c vite.assets.config.ts && node build/write-assets.js",
+    "validate": "streamdeck validate io.github.istalry.sprintticker.sdPlugin",
+    "pack:plugin": "pnpm run build && streamdeck pack io.github.istalry.sprintticker.sdPlugin -o dist --force",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@elgato/cli": "^1.10.3",
+    "@elgato/streamdeck": "^3.0.3",
+    "@types/node": "^24.19.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.3"
+  }
+}
