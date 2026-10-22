@@ -27,9 +27,14 @@ jobs:
       # lfs: true is mandatory here and nowhere else. electron-builder copies
       # Animations/ verbatim into extraResources, so without LFS this job
       # succeeds and ships ~1,800 130-byte pointer files. Nothing errors.
+      #
+      # fetch-depth: 0 for the tags: the Stream Deck check below compares
+      # against the release before this one, found among them. LFS still
+      # downloads for the checked-out commit only.
       - uses: actions/checkout@v7
         with:
           lfs: true
+          fetch-depth: 0
 
       # LFS bandwidth, not storage, is the binding constraint: the free tier
       # allows 1 GB of downloads per month and this checkout is ~15 MB, so an
@@ -83,6 +88,48 @@ jobs:
           fi
           echo "Animations/ resolved: $(find Animations -name '*.png' | wc -l) frames"
 
+      # The plugin ships beside the installer, under its own version: the
+      # user keeps the two apart so the plugin can move on its own. Named
+      # for the release, since the pack's own name is the plugin's UUID.
+      - name: Pack the Stream Deck plugin
+        shell: bash
+        run: |
+          pnpm deck:pack
+          version=$(node -p "require('./packages/streamdeck-plugin/package.json').version")
+          cp packages/streamdeck-plugin/dist/io.github.istalry.sprintticker.streamDeckPlugin             "packages/streamdeck-plugin/dist/SprintTicker-StreamDeck-${version}.streamDeckPlugin"
+
+      # Stream Deck installs a pack only over an older version, and answers
+      # one at the same version "already installed" while the old code keeps
+      # running. So a plugin that changed since the previous release must
+      # carry a higher version; scripts/check-deck-release.js compares the two
+      # packs. Before the app's build, which is the slow part.
+      - name: Check the Stream Deck plugin's version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous=$(git tag --list 'v*' --sort=-v:refname --merged HEAD | grep -v -x -F "${GITHUB_REF_NAME}" | head -1 || true)
+          work="${RUNNER_TEMP}/deck-release"
+          mkdir -p "${work}/previous" "${work}/new"
+          unzip -q packages/streamdeck-plugin/dist/io.github.istalry.sprintticker.streamDeckPlugin -d "${work}/new"
+          if [ -z "${previous}" ]; then
+            echo "No earlier release; nothing to compare."
+            exit 0
+          fi
+          # A release without a pack is one from before the plugin shipped:
+          # nobody installed it from there.
+          if ! gh release download "${previous}" --pattern 'SprintTicker-StreamDeck-*.streamDeckPlugin' --dir "${work}/download"; then
+            if gh release view "${previous}" > /dev/null; then
+              echo "Release ${previous} has no Stream Deck pack; nothing to compare."
+              exit 0
+            fi
+            echo "::error::Could not read release ${previous} to compare the Stream Deck plugin with."
+            exit 1
+          fi
+          unzip -q "${work}"/download/*.streamDeckPlugin -d "${work}/previous"
+          node scripts/check-deck-release.js "${work}/previous" "${work}/new"
+
       # Unsigned. electron-builder reads CSC_LINK / CSC_KEY_PASSWORD from the
       # environment and builds unsigned when they are absent, so adding two
       # repository secrets is the entire change on the day a certificate
@@ -123,7 +170,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          assets=(SprintTicker-*-setup.exe SprintTicker-*-portable.exe latest.yml)
+          assets=(SprintTicker-*-setup.exe SprintTicker-*-portable.exe latest.yml ../../streamdeck-plugin/dist/SprintTicker-StreamDeck-*.streamDeckPlugin)
           # Idempotent: re-running a tag build after a transient failure should
           # replace the assets, not fail because the draft already exists.
           if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
@@ -146,5 +193,6 @@ jobs:
           path: |
             packages/desktop-app/dist-electron/*.exe
             packages/desktop-app/dist-electron/latest.yml
+            packages/streamdeck-plugin/dist/SprintTicker-StreamDeck-*.streamDeckPlugin
           retention-days: 14
           if-no-files-found: error

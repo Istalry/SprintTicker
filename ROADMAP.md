@@ -1211,7 +1211,15 @@ Ordered; each says what has to be true first.
   states, and Done, Not done, Discard, Yes and No play a half-second
   one-shot. The Session key plays the bar's icon as the bar does, from
   the icon's own frames (built the same day): about one image a second for
-  the stopwatch, which steps once a second, and up to ten for the gear.
+  the stopwatch, which steps once a second, and up to ten for the gear --
+  seen moving on Stream Deck Mobile the same day, banners included: the
+  user kept the key a mirror of the bar, a notification's icon and all.
+  **Releases carry the pack** (2026-10-22), as
+  `SprintTicker-StreamDeck-<version>.streamDeckPlugin` beside the
+  installer. Its version stays its own, the user's choice so that it can
+  move apart from the app; `build-windows.yml` compares the new pack with
+  the previous release's (`scripts/check-deck-release.js`) and refuses a
+  tag whose plugin changed at the same version. Not run on a tag yet.
   Left: a look at the keys on a physical deck. Two different things answer
   to "animated icons", and only the first is ours to draw:
   - **The plugin's own keys.** Their images are what `setImage` sends, so an

@@ -56,7 +56,12 @@ Double-click the `.streamDeckPlugin` file to install it. **Stream Deck
 installs a pack only over an older version**: one with the version already
 installed is refused as "already installed", and the old code keeps running.
 Raise `version` in `package.json` and `Version` in the manifest together --
-the package test holds them equal -- before packing a change to try. While working on the
+the package test holds them equal -- before packing a change to try. The
+version is the plugin's own, apart from the app's. A release attaches the
+pack as `SprintTicker-StreamDeck-<version>.streamDeckPlugin`, and
+`build-windows.yml` first compares it with the previous release's
+(`scripts/check-deck-release.js`): changed at the same version, the tag is
+refused. While working on the
 plugin, `npx streamdeck link io.github.istalry.sprintticker.sdPlugin` (in this
 folder, with developer mode on: `npx streamdeck dev`) installs the folder
 itself instead, and `npx streamdeck restart

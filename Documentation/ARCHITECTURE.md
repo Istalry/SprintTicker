@@ -949,7 +949,7 @@ one page cannot fail the way production failed.
 
 The animation studio has its own suite, 113 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
-Stream Deck plugin, 179 tests across 7 files (`pnpm test:deck`), which also
+Stream Deck plugin, 195 tests across 8 files (`pnpm test:deck`), which also
 runs its link against the app's real `DeckServer` over loopback.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and

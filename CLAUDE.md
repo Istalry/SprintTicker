@@ -270,6 +270,12 @@ CI. Five things about it cost time to find:
   code, with nothing else saying so (2026-10-22). Raise the version -- the
   manifest's and `package.json`'s, held equal by `package.test.ts` --
   before handing over a pack to try, or use `streamdeck link` while working.
+  The version is the plugin's own, never the app's (the user's choice,
+  2026-10-22), so no tag raises it: `build-windows.yml` unzips the previous
+  release's pack and the new one and refuses the tag when they differ at
+  the same version (`scripts/check-deck-release.js`). Pack against pack:
+  `streamdeck pack` leaves out `plugin.js.map`, so the built folder never
+  matches. A dependency that changes the bundle counts as a change.
 - **`bin/package.json` says `"type": "module"`, and is generated too.**
   The bundle is ESM, and without it Stream Deck's Node reads `plugin.js` as
   CommonJS and fails on the first `import`.

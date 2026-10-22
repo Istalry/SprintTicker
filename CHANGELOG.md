@@ -117,7 +117,9 @@
   the bar's icon as the bar does -- the stopwatch stepping round, the gear
   turning during a compile. Every key turns grey and
   says offline while SprintTicker is closed. Not yet tried on a physical
-  deck, and no default profile ships yet.
+  deck, and no default profile ships yet. Each release carries the plugin
+  beside the installer, as `SprintTicker-StreamDeck-<version>.streamDeckPlugin`,
+  under a version of its own.
 
 ### Changed
 

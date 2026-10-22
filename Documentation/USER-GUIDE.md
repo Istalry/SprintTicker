@@ -704,10 +704,12 @@ confirmed in the window.
 
 SprintTicker has a plugin for Elgato's Stream Deck app (7.1 or later). It
 works beside the bar or without one, and leaves the rest of your deck alone.
-There is no release of it yet: build it from the source with `pnpm deck:pack`
-and double-click the `.streamDeckPlugin` file that lands in
-`packages/streamdeck-plugin/dist/`. It has been tried on Stream Deck Mobile,
-not yet on a physical deck.
+Releases carry it beside the installer, from the first one after 1.2.1, as
+`SprintTicker-StreamDeck-<version>.streamDeckPlugin`: double-click it. Its
+version is its own, not the app's. Before that release, build it from the
+source with `pnpm deck:pack` and double-click the `.streamDeckPlugin` file
+that lands in `packages/streamdeck-plugin/dist/`. It has been tried on Stream
+Deck Mobile, not yet on a physical deck.
 
 Its six actions are listed under **SprintTicker** in the Stream Deck app --
 as many as a Stream Deck Mini has keys. Drag each onto any key, as many times
@@ -715,7 +717,7 @@ as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task, its time and the bar's icon, moving as it does on the bar, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
+| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
 | **Not done** | NOT DONE | ends the session and logs its time; the task stays open |
 | **Done** | DONE | ends it and marks the task done |
 | **Discard** | DISCARD | throws the session away, nothing logged |

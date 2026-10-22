@@ -493,7 +493,7 @@ pnpm test:coverage
 `pnpm test` runs 2597 tests across 129 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
-113 across 6 files, then the Stream Deck plugin's 179 across 7;
+113 across 6 files, then the Stream Deck plugin's 195 across 8;
 `pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.
@@ -629,7 +629,10 @@ pnpm deck:pack   # dist/io.github.istalry.sprintticker.streamDeckPlugin
 ```
 
 Double-click the file it writes, then drag the **SprintTicker** actions onto
-keys. Its [README](packages/streamdeck-plugin/README.md) lists the actions and
+keys. Releases attach it beside the installer as
+`SprintTicker-StreamDeck-<version>.streamDeckPlugin`, under a version of its
+own; the release workflow refuses a tag whose plugin changed while that
+version did not, since Stream Deck would keep the old one. Its [README](packages/streamdeck-plugin/README.md) lists the actions and
 what each key shows; the protocol it speaks is in
 [API.md](Documentation/API.md#the-stream-deck-socket). `pnpm deck:validate`
 builds it and runs Elgato's own validator on it, as CI does.
