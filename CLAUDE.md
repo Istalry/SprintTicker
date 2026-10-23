@@ -1197,6 +1197,7 @@ Which document depends on what moved:
 | Anything at all worth a release note | `CHANGELOG.md` § Unreleased |
 | The plan, or an item finished or abandoned | `ROADMAP.md` |
 | A trap, a constraint, or a rule the next agent must not break | this file |
+| What a provider server must offer | `Documentation/PROVIDER-API.md`, **before** the client or the fake server |
 
 **`docs/index.html` is generated — never edit it.** It is the three documents
 above rendered into one page for GitHub Pages by `scripts/build-docs.js`:

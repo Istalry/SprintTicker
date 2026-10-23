@@ -1110,6 +1110,20 @@ cup and a moon taken from their scenes' sprites.
 
 Ordered; each says what has to be true first.
 
+- **A provider for any server that implements a published contract**
+  (planned 2026-10-23). A team is building its own time-tracking and
+  planning server, and rather than an adapter for that one server, the
+  contract is SprintTicker's: [`PROVIDER-API.md`](Documentation/PROVIDER-API.md),
+  drafted the same day. It asks only what SprintTicker already asks of Jira
+  and OpenProject -- the rule of entry, its section 1 -- and fixes what those
+  two cannot give: a worklog send that is idempotent on the client's
+  reference, a status the server maps itself, an assignment checked and
+  written in one step. Built in the order of its section 10: a fake server
+  and a conformance check (`pnpm provider:check`) first, then the
+  `custom-server` provider and its settings. Decided with the user: the
+  contract lives in this public repository; a private mirror only for a
+  need that fails the rule of entry, cannot be done on the server, and is
+  wanted anyway. First, the server's builders read the draft.
 - **Stream Deck Mini, as an alternative to the bar** (planned 2026-10-16,
   revised 2026-10-22). The target is the six-key Mini: no dial, no screen,
   80x80 keys -- but the actions work on any Stream Deck. Decided:

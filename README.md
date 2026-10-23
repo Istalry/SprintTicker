@@ -739,6 +739,9 @@ never `docs/index.html`, and CI fails the build if the two have drifted.
 
 **Reference:**
 
+- [**Provider API**](Documentation/PROVIDER-API.md) — the contract a
+  task-tracking server implements to become a SprintTicker provider, beside
+  Jira and OpenProject. A draft: the provider that reads it is not built yet.
 - [BUSY Bar API & Display Technical Developer Guide](Documentation/BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md)
   — the display contract, written for this project.
 - [Hardware samples](Documentation/hardware-samples/) — captured device payloads.
