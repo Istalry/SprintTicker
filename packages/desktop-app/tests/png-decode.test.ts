@@ -68,8 +68,11 @@ describe('decodePng', () => {
   });
 
   it('DecodePng_ARealIconFrame_IsSixteenSquare', () => {
-    // As Pillow writes them, with whatever filters it chose.
-    const frame = path.join(__dirname, '../../../Animations/icon_stopwatch_16x16/icon_stopwatch_16x16/frame_00000.png');
+    // As Pillow writes them, with whatever filters it chose. A copy of the
+    // stopwatch's first frame, not the file in Animations/: those are Git LFS
+    // objects, and the quality workflow checks out without LFS, where each is
+    // a 130-byte pointer.
+    const frame = path.join(__dirname, 'fixtures/icon-stopwatch-frame-0.png');
     const { width, height, rgba } = decodePng(fs.readFileSync(frame));
     expect([width, height, rgba.length]).toEqual([16, 16, 1024]);
   });

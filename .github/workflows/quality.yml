@@ -88,7 +88,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          lfs: false # tests read Animations/ file names, meta.json and .anim -- none of them LFS
+          lfs: false # tests read Animations/ file names, meta.json and .anim, none of them LFS; the few that decode frames skip on a pointer
 
       - uses: pnpm/action-setup@v6
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'fs';
 import path from 'path';
 import { DeckIconMotions, framePixels, iconMotionFrom } from '../src/main/services/deck-icon-motion';
 import { encodeMatrixToPng } from '../src/main/hardware/pixel-matrix-to-png';
@@ -8,6 +9,18 @@ import { ANIMATED_ICONS } from '../src/shared/render-constants';
 import { DECK_ICON_FPS, DECK_MAX_ICON_POSES, isPlayableMotion } from '../src/shared/deck-protocol';
 
 const ANIMATIONS = path.join(__dirname, '../../../Animations');
+
+/**
+ * The real animations are read only where their frames are there. They are
+ * Git LFS objects, and the quality workflow checks out without LFS -- LFS
+ * bandwidth is the binding quota -- so there each frame is a 130-byte pointer
+ * and these tests would only measure that. Every machine with LFS runs them.
+ */
+const FRAMES_PRESENT = !fs
+  .readFileSync(path.join(ANIMATIONS, 'icon_stopwatch_16x16/icon_stopwatch_16x16/frame_00000.png'))
+  .subarray(0, 40)
+  .toString('latin1')
+  .startsWith('version https://git-lfs');
 
 /** A 16x16 frame lit in one colour at one pixel, black elsewhere. */
 const frame = (x: number, colour = '#22C55E') =>
@@ -46,7 +59,7 @@ describe('iconMotionFrom', () => {
     expect(iconMotionFrom(animation)).toBeNull();
   });
 
-  it('IconMotionFrom_TheBarsStopwatch_ThirteenPosesStartingOnItsStillIcon', async () => {
+  it.skipIf(!FRAMES_PRESENT)('IconMotionFrom_TheBarsStopwatch_ThirteenPosesStartingOnItsStillIcon', async () => {
     const animation = await loadAnimationSequence(ANIMATIONS, ANIMATED_ICONS.stopwatch!);
     const motion = iconMotionFrom(animation!)!;
     // One step a second round a twelve-second turn, and one beat more.
@@ -56,7 +69,7 @@ describe('iconMotionFrom', () => {
     expect(motion.poses[motion.sequence[0]]).toEqual(STOPWATCH_16X16_BITMAP);
   });
 
-  it.each(Object.entries(ANIMATED_ICONS))('IconMotionFrom_%s_FitsTheProtocol', async (_id, name) => {
+  it.skipIf(!FRAMES_PRESENT).each(Object.entries(ANIMATED_ICONS))('IconMotionFrom_%s_FitsTheProtocol', async (_id, name) => {
     const animation = await loadAnimationSequence(ANIMATIONS, name!);
     const motion = iconMotionFrom(animation!);
     expect(motion === null || isPlayableMotion(motion)).toBe(true);

@@ -952,6 +952,15 @@ interfaces, `PascalCase` methods).
   `display-handback.test.ts`, on the same `Desk` (`tests/support/desk.ts`).
   A seed shows the bug; only a script keeps it shown once the generator's
   weights change. Check the case fails on the code before the fix.
+- **CI's tests see no animation frame.** The PNGs in `Animations/` are Git
+  LFS objects and the quality workflow checks out without LFS (its bandwidth
+  is the binding quota), so there each is a 130-byte pointer under the right
+  name. A test reads names, `meta.json`, the `.anim` or the studio's scene;
+  one that must decode real frames skips on a pointer (`FRAMES_PRESENT` in
+  `deck-icon-motion.test.ts`) and runs on every machine with LFS, and a
+  decoder test takes a copied frame from `tests/fixtures/`. The first tests
+  that read the frames passed locally and failed the 1.3.0 push with
+  `Not a PNG`.
 
 ### Comments
 

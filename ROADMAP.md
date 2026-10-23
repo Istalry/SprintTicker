@@ -1219,7 +1219,8 @@ Ordered; each says what has to be true first.
   installer. Its version stays its own, the user's choice so that it can
   move apart from the app; `build-windows.yml` compares the new pack with
   the previous release's (`scripts/check-deck-release.js`) and refuses a
-  tag whose plugin changed at the same version. Not run on a tag yet.
+  tag whose plugin changed at the same version. First run on v1.3.0
+  (2026-10-23): green, with no earlier pack to compare.
   **The 1.3.0 candidate ran on the real bar on 2026-10-23** (firmware
   1.2.4, packaged build on a database copy), driven from Stream Deck
   Mobile: pause and resume, Done to DONE! and the clock, the stand-up's
