@@ -1220,6 +1220,15 @@ Ordered; each says what has to be true first.
   move apart from the app; `build-windows.yml` compares the new pack with
   the previous release's (`scripts/check-deck-release.js`) and refuses a
   tag whose plugin changed at the same version. Not run on a tag yet.
+  **The 1.3.0 candidate ran on the real bar on 2026-10-23** (firmware
+  1.2.4, packaged build on a database copy), driven from Stream Deck
+  Mobile: pause and resume, Done to DONE! and the clock, the stand-up's
+  Yes to the meeting table; and, from the window, an ad-hoc task under its
+  name alone, the joined stand-up's icon playing on the device, and lunch
+  with a task running -- the sandwich alone, the task back after it.
+  Upload median 33 ms, nothing skipped, no hang. The LOGGED scene at the
+  stand-up's end is covered at once by the task it resumes; the user
+  kept it so.
   Left: a look at the keys on a physical deck. Two different things answer
   to "animated icons", and only the first is ours to draw:
   - **The plugin's own keys.** Their images are what `setImage` sends, so an

@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 — 2026-10-23
+
+Time that is right, and a second way to drive it. A session across midnight
+is now logged under each day, and one forgotten overnight is asked about
+rather than billed. A worklog already sent can be corrected or deleted, a
+send whose answer was lost is not logged twice, and time goes to the provider
+its task came from -- never to Jira for an ad-hoc task. The stand-up switches
+the timer to itself and back to your task after it, and working days and
+holidays keep the ceremonies quiet on days off. The task lists show work
+nobody has taken and teammates' tasks in progress, and starting an unassigned
+task takes it. Lunch now starts when Windows is locked or a task runs, and
+never undoes what you do. Beside the bar, a Stream Deck plugin puts the
+session on six keys, attached to the release, and the app can start with
+Windows in the tray.
 
 ### Added
 

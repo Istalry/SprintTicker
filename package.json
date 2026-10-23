@@ -1,6 +1,6 @@
 {
   "name": "sprintticker-monorepo",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "private": true,
   "license": "MIT",
   "description": "SprintTicker monorepo: the desktop application, its Unity Editor and Stream Deck plugins and the animation studio",

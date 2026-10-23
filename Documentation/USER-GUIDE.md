@@ -704,7 +704,7 @@ confirmed in the window.
 
 SprintTicker has a plugin for Elgato's Stream Deck app (7.1 or later). It
 works beside the bar or without one, and leaves the rest of your deck alone.
-Releases carry it beside the installer, from the first one after 1.2.1, as
+Releases carry it beside the installer, from 1.3.0 on, as
 `SprintTicker-StreamDeck-<version>.streamDeckPlugin`: double-click it. Its
 version is its own, not the app's. Before that release, build it from the
 source with `pnpm deck:pack` and double-click the `.streamDeckPlugin` file
