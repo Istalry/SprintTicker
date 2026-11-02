@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Fifteen more advisories patched in development tools**, none of
+  them in the installed app, all by overrides within their majors: undici
+  8.12.2, 7.30.1 and 6.29.1 (eight advisories, under jsdom, Electron's
+  download at install, and node-gyp), fast-uri 3.1.9 (four, under
+  electron-builder's and the Stream Deck CLI's manifest validation),
+  follow-redirects 1.16.2 and joi 18.3.1 (under `wait-on` in `pnpm dev`) and
+  zod 4.6.6 (under the React hooks lint rules). Two stay open, recorded in
+  `pnpm-workspace.yaml`: zod 3, inside the Stream Deck plugin through
+  Elgato's own library, has no fixed 3.x release, and minimatch is fixed
+  only in a new major four of its users have not adopted.
+
 ## 1.3.0 — 2026-10-23
 
 Time that is right, and a second way to drive it. A session across midnight

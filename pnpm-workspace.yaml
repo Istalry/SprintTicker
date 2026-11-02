@@ -15,12 +15,12 @@ allowBuilds:
 
 # Transitive security patches.
 #
-# Every entry here is a build-time or test-time dependency several levels down,
-# reachable only through electron-builder, tailwind/postcss or eslint. None of
-# them ship inside the application -- the eight runtime dependencies carry no
-# advisories. They are pinned rather than waited on because the parents release
-# on their own schedule and a lockfile that reports clean is worth more than one
-# carrying seven findings nobody reads any more.
+# Every entry here is a build-time, dev-time or test-time dependency several
+# levels down, reachable only through the packaging, the dev server, the tests
+# or the linter. None of them ship inside the application -- its runtime
+# dependencies carry no advisories. They are pinned rather than waited on
+# because the parents release on their own schedule and a lockfile that reports
+# clean is worth more than one carrying findings nobody reads any more.
 #
 # Each is pinned inside its existing major, so no parent gets a version it did
 # not ask for. Remove an entry once its parent has moved past it on its own.
@@ -41,8 +41,12 @@ overrides:
   brace-expansion@2: '^2.1.7'
 
   # <3.1.8: inconsistent host case normalisation through percent-encoding.
-  # Via ajv, inside electron-builder's config validation.
-  fast-uri@3: '^3.1.8'
+  # <3.1.9: four more in URI parsing -- a percent-encoded scheme, WHATWG host
+  # canonicalisation, a colon in a first segment, relative path equivalence
+  # (GHSA-w74x-v6f9-j3xg, -wjr9-j795-jxcr, -333x-w4r6-6crp, -xhq7-xmqj-769h).
+  # Via ajv, inside electron-builder's config validation and @elgato/cli's
+  # manifest validation.
+  fast-uri@3: '^3.1.9'
 
   # <4.3.1: quadratic CPU in !!omap resolution, CVE-2026-59870. Via
   # @eslint/eslintrc, so it leaves with the ESLint 9 migration.
@@ -72,12 +76,35 @@ overrides:
   # 1.16.0: two ways for an authorization header to follow a cross-origin
   # redirect -- array-form headers, GHSA-q3jh-wrc6-jgq8, and an unescaped
   # sensitiveHeaders pattern, GHSA-8r9p-f939-6h3c. Via axios under wait-on,
-  # which waits for the dev server in `pnpm dev`.
-  follow-redirects@1: '^1.16.1'
+  # which waits for the dev server in `pnpm dev`. <=1.16.1: a sensitiveHeaders
+  # array from another realm is discarded, GHSA-mrwp-f3q8-3g9p.
+  follow-redirects@1: '^1.16.2'
 
-  # Three more advisories have no fixed release to pin, so they stay open on
-  # purpose (2026-10-15). Each is reachable only at build time, and none can be
-  # fed input from outside this repository:
+  # <18.3.1: quadratic split in string().email({ multiple: true }),
+  # GHSA-4528-x5fx-h6hg. Via the same wait-on, validating its own options.
+  joi@18: '^18.3.1'
+
+  # Undici, one advisory family across three majors (2026-10-15 releases): TLS
+  # options dropped in Agent, cross-origin redirects poisoning the cache, a TLS
+  # 1.2 renegotiation, excessive content-encodings, the decompress interceptor,
+  # PONG buffering, the EventSource parser and SRI algorithm case
+  # (GHSA-2m5v-pch6-74hx, -4w7w-5xrc-9h26, -qrxm-fqhp-jwvm, -xjj6-f33q-929c,
+  # -55wc-3pg8-jfw6, -9fm3-97px-rjf6, -4qv8-2p9j-2685, -f72v-6w45-q472).
+  #  - 8.x: via jsdom, the renderer tests' DOM.
+  #  - 7.x: via electron's @electron/get, which downloads Electron at install.
+  #  - 6.x: via node-gyp under @electron/rebuild, which never runs here
+  #    (`npmRebuild: false`, CLAUDE.md section 2).
+  undici@8: '^8.12.2'
+  undici@7: '^7.30.1'
+  undici@6: '^6.29.1'
+
+  # <4.6.6: oversized constrained collections exhaust memory while validating,
+  # GHSA-mrhx-c7xc-m3w5. Via eslint-plugin-react-hooks, so only in `pnpm lint`.
+  zod@4: '^4.6.6'
+
+  # More advisories have no fixed release to pin, so they stay open on
+  # purpose (2026-10-15). Each is reachable only at build time, unless said
+  # otherwise, and none can be fed input from outside this repository:
   #  - braces <=3.0.3, GHSA-vfj7-8cjw-p6xm, deep nesting exhausts the stack. Via
   #    tailwindcss 3 (chokidar, micromatch), expanding our own content globs.
   #  - http-cache-semantics <=4.2.0, GHSA-ch52-4w7c-c8xp, max-stale serves one
@@ -89,3 +116,12 @@ overrides:
   #  - sprintf-js <=1.1.3, GHSA-hp3w-g68c-fv3c, an unbounded precision throws.
   #    Via roarr, the logger inside the same @electron/get, which formats its
   #    own messages.
+  #  - zod 3.x, GHSA-mrhx-c7xc-m3w5 above, fixed only in 4.6.6, whose API is
+  #    not 3's (2026-11-02). Via @elgato/utils, still on ^3.25 in 0.6.2, and so
+  #    inside the Stream Deck plugin's bundle -- the one entry here that ships.
+  #    What it validates there comes from the Stream Deck app on the same
+  #    machine. Drop it when @elgato/utils moves to zod 4.
+  #  - minimatch <11.0.1, GHSA-g3hv-75wg-m249, globparts amplification.
+  #    Fixed only in 11, released 2026-10-27, while eslint, electron-builder
+  #    and their kin ask for 3, 5, 9 and 10: four majors forced across, for
+  #    globs this repository writes itself (2026-11-02).

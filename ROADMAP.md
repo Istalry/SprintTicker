@@ -1548,6 +1548,14 @@ already measures.
   `launch-editor`, and follow-redirects 1.16.1 by override, under `wait-on`. The three above still have no fixed release;
   `pnpm audit` now calls http-cache-semantics 4.3.0 patched, but a diff of
   the two releases shows max-stale handled as before.
+- [x] **Fifteen advisories** (2026-11-02), Dependabot's and `pnpm audit`'s, by
+  overrides within their majors: undici on three majors, fast-uri,
+  follow-redirects, joi and the zod 4 under the lint rules. Two stay open:
+  zod 3, which ships in the Stream Deck plugin through `@elgato/utils` and
+  has no fixed 3.x, and minimatch, fixed only in 11 while its users ask for
+  3, 5, 9 and 10.
+- [ ] **zod 3 in the Stream Deck plugin.** Leaves when `@elgato/utils` moves
+  to zod 4; its input is the Stream Deck app on the same machine.
 - [ ] **Tailwind 3 -> 4.** It drops postcss-selector-parser and the
   chokidar/micromatch chain that carries braces, so it retires one override
   and one open alert. A renderer change of its own, measured the same way:
