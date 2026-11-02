@@ -14,6 +14,9 @@
   `pnpm-workspace.yaml`: zod 3, inside the Stream Deck plugin through
   Elgato's own library, has no fixed 3.x release, and minimatch is fixed
   only in a new major four of its users have not adopted.
+- **Stream Deck plugin 0.4.1**, rebuilt on Elgato's SDK 3.0.4. Nothing new on
+  the keys; the version moves because the bundle did, so that Stream Deck
+  installs it over 0.4.0 rather than keeping the old one.
 
 ## 1.3.0 — 2026-10-23
 
