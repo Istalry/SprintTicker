@@ -50,7 +50,10 @@ describe('Work History corrections', () => {
     // The start is untouched to the millisecond: its field was left alone.
     expect(bridge.api.updateWorklog).toHaveBeenCalledWith('w1', { durationSeconds: 2 * 3600 + 30 * 60, startedAtUtc: START, comment: 'Pairing' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(2);
+    // Waited for, not read at once: the dialog leaves at the commit, and the
+    // re-read is the effect React runs after it. Under a loaded CI runner the
+    // assertion landed in between (PR #22, 2026-11-02).
+    await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(2));
   });
 
   it('Correct_CommentOnly_KeepsTheSeconds', async () => {
