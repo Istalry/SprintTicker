@@ -10,7 +10,8 @@
   animation in both formats, reads the bar's firmware version, and sends the
   one it reads -- again after the bar restarts on an update. A version it
   cannot read gets no animation files: scenes play frame by frame from the
-  app and icons stay still. Not yet tried on a bar running 1.3. The
+  app and icons stay still. Checked on a bar running 1.3.1 with the
+  hardware probe, which read the version and played a 1.3 file. The
   animation studio exports both formats and plays its preview in the bar's,
   and the hardware probe checks the bar in its own. The 1.3 files are about
   a fifteenth of the size for scenes, so they upload faster. Firmware 1.3.1

@@ -406,8 +406,8 @@ app depends on, and says which newer fields the device accepts. It draws only
 under its own `application_name`, sends no `rectangle` elements — a wrong colour
 count there reboots the device, and no probe is worth that — and removes what it
 drew. Close the app first, or its priority-95 claim turns into 409s that mean
-only that the app owns the display. Last run: **firmware 1.2.4, all checks
-passing** (2026-09-30). **`--compositing` still removes animations by id**,
+only that the app owns the display. Last run: **firmware 1.3.1, all checks
+passing**, the animation check on a `bicycle1` file (2026-11-04). **`--compositing` still removes animations by id**,
 the operation that hangs the bar now and then (below): run it knowing that,
 and expect to restart the bar. The teardown soak takes the flags that
 measured it -- `--rounds <n>`, `--icon <name>`, `--reupload`,
@@ -578,7 +578,8 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     (500 ms) after the last removal, and closes the screen on the animations
     alone, which it never removes. That is the release `pnpm probe:busybar
     --teardown-soak --park` ran 100 times in a row on firmware 1.2.4
-    (2026-10-07); it costs about half a second of black between the frame
+    (2026-10-07), and again on 1.3.1 with its `bicycle1` files, uploads flat
+    at 20-60 ms throughout (2026-11-04); it costs about half a second of black between the frame
     leaving and the firmware's clock. A close with no wait after a removal
     has not been measured, so do not shorten the wait without re-running
     that soak -- deliberately, alone. On a panel the driver cannot vouch for

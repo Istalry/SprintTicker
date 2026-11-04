@@ -653,7 +653,8 @@ So the app never empties the panel to change screens:
 | Release for the idle clock, and quit | `clearDisplay`, one at a time: the images beside any animation removed by id, `ANIMATION_TEARDOWN_SETTLE_MS` after the last removal, then the full DELETE on the animations alone |
 
 That last row is the only close left. `pnpm probe:busybar --teardown-soak
---park` ran it 100 times in a row on firmware 1.2.4 (2026-10-07). A close
+--park` ran it 100 times in a row on firmware 1.2.4 (2026-10-07), and again
+on 1.3.1 (2026-11-04). A close
 without the 500 ms pause after a removal has not been measured: re-run that
 soak before changing the pause.
 
