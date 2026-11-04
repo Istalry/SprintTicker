@@ -1315,7 +1315,7 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.98 statements / 89.65 branches / 94.71 functions / 96.63 lines across 2701
+**94.99 statements / 89.68 branches / 94.71 functions / 96.63 lines across 2704
 tests in 130 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

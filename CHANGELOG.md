@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.4.0 — 2026-11-04
+
+Ready for BUSY Bar firmware 1.3. Firmware 1.3 reads its animations in a new
+format, and shows an error icon in place of every animated icon and scene
+SprintTicker 1.3.0 sends it; 1.4.0 sends each bar the format its firmware
+reads, so update SprintTicker before the bar. Checked on a bar updated to
+1.3.1: the probe, an animation playing in the new format, and the screen
+release the app makes, a hundred times in a row. Firmware 1.3.1 does not fix
+the freeze when an animation is removed, so every way around it stays.
+Notifications from PowerToys, VS Code and Unity Hub now show their app's
+icon rather than a bell.
 
 ### Added
 
