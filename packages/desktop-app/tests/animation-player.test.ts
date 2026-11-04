@@ -62,7 +62,9 @@ describe('AnimationPlayer Unit Tests', () => {
       sendDisplayPayload: vi.fn().mockResolvedValue('drawn'),
       clearDisplay: vi.fn().mockResolvedValue('cleared'),
       removeDisplayElements: vi.fn().mockResolvedValue(undefined),
-      shownElementIds: vi.fn().mockReturnValue([])
+      shownElementIds: vi.fn().mockReturnValue([]),
+      // Firmware 1.2 unless a test says otherwise.
+      getAnimationFormat: vi.fn().mockReturnValue(0)
     } as unknown as BusyBarDriver;
     player = new AnimationPlayer(driver, '/mock/animations');
     vi.useFakeTimers();
@@ -205,6 +207,7 @@ describe('AnimationPlayer Unit Tests', () => {
       vi.spyOn(fs, 'readdirSync').mockReturnValue(['frame_0.png', 'frame_1.png'] as never);
       vi.spyOn(fs, 'readFileSync').mockImplementation((p: unknown) => {
         if (String(p).includes('meta.json')) return JSON.stringify({ fps: 20 });
+        if (String(p).endsWith('.v1.anim')) return Buffer.from('mock_v1_binary');
         return Buffer.from('mock_binary');
       });
     };
@@ -231,6 +234,44 @@ describe('AnimationPlayer Unit Tests', () => {
       // The device owns playback; streaming as well would be two sources
       // drawing the same element.
       expect(driver.sendPixelFrame).not.toHaveBeenCalled();
+    });
+
+    it('Play_FirmwareReadsFormat1_UploadsTheV1FileUnderTheDeviceName', async () => {
+      withAnimFile();
+      (driver.getAnimationFormat as ReturnType<typeof vi.fn>).mockReturnValue(1);
+
+      await player.play('hw_anim');
+      await settle();
+
+      // Firmware 1.3 reads only `bicycle1`; the name on the device is unchanged.
+      expect(driver.uploadAsset).toHaveBeenCalledWith(expect.any(String), 'hw_anim.anim', Buffer.from('mock_v1_binary'));
+      expect(driver.sendPixelFrame).not.toHaveBeenCalled();
+    });
+
+    it('Play_FirmwareFormatUnknown_StreamsFramesAndUploadsNothing', async () => {
+      // A file in the wrong format is drawn as the firmware's load-error icon
+      // with a 200, so a bar of unknown firmware gets the frames instead.
+      withAnimFile();
+      (driver.getAnimationFormat as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+      await player.play('hw_anim');
+      await settle();
+
+      expect(driver.uploadAsset).not.toHaveBeenCalled();
+      expect(driver.sendPixelFrame).toHaveBeenCalled();
+      expect(player.isHardwareAnimationActive()).toBe(false);
+    });
+
+    it('Play_NoFileInTheBarsFormat_StreamsFramesRatherThanSendTheOther', async () => {
+      withAnimFile();
+      vi.spyOn(fs, 'existsSync').mockImplementation((p: unknown) => !String(p).endsWith('.v1.anim'));
+      (driver.getAnimationFormat as ReturnType<typeof vi.fn>).mockReturnValue(1);
+
+      await player.play('hw_anim');
+      await settle();
+
+      expect(driver.uploadAsset).not.toHaveBeenCalled();
+      expect(driver.sendPixelFrame).toHaveBeenCalled();
     });
 
     it('Play_DeviceWillNotStoreTheAnimFile_FallsBackToStreamingFrames', async () => {

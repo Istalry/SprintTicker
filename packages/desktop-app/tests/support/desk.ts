@@ -111,13 +111,18 @@ export class Desk {
   private readonly next: () => number;
   private readonly heartbeat: ReturnType<typeof setInterval>;
 
-  constructor(seed: number) {
+  /**
+   * @param firmwareVersion The bar's firmware: 1.2 and 1.3 read different
+   *   `.anim` formats, and the simulator reports a file in the wrong one.
+   */
+  constructor(seed: number, firmwareVersion = '1.2.4') {
     this.next = random(seed ^ 0x5eed);
     // Seeded too, so a replay meets the same latencies.
     this.device = new FirmwareSimulator({
       settleMs: 500,
       latencyMs: () => 2 + Math.floor(this.next() * 40),
-      timingToleranceMs: 0
+      timingToleranceMs: 0,
+      firmwareVersion
     }).install();
 
     const store = new Map<string, unknown>([

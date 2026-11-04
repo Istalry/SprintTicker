@@ -658,7 +658,26 @@ Also worth doing while this area is open:
   clear that fails because the bar is unplugged logged an error with a full
   stack; it is now one warning line. **Still to do:** the firmware report
   to Flipper, and `--compositing` in the probe, which still removes
-  animations by id.
+  animations by id. **Firmware 1.3.1 does not fix it** (2026-11-04): its
+  `canvas.c`, where removals and screen closes live, is identical to
+  1.2.4's, and its log mentions neither.
+- [ ] **Firmware 1.3: built, not yet run on a bar** (2026-11-04). 1.3 moved
+  the `.anim` signature to `bicycle1` and reads nothing else; a 1.2 file is
+  stored and drawn with 200s as a 9x9 load-error icon, which would have put
+  that icon in place of every animated icon and scene. Every animation now
+  ships in both formats, compiled by each firmware's own `seq2anim.py`, and
+  the driver sends the one the reported version reads -- none when it reads
+  none, and again after an update reboots the bar. The simulator learned the
+  rule (`animation-unloadable`), and half the stress days run on 1.3.1.
+  **Still to do, in order:** update the bar; `pnpm probe:busybar`, whose
+  animation check must pass on a `bicycle1` file; the packaged app on a
+  database copy through a Unity day and the scenes; then `--teardown-soak
+  --park`, which measured the one close the app makes, on the new firmware --
+  ask first, it can hang the bar. Also worth a probe check of its own: a
+  `bicycle0` file on 1.3 reads back as the placeholder, which is so far read
+  only from the firmware's source and tests. And 1.3.1's PR #1025 changes the
+  USB network adapter's setup for Windows 11: re-test the native driver on
+  the machine with the Code 10, with `usbipd` unbound first.
 
 ---
 
@@ -1286,8 +1305,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.87 statements / 89.51 branches / 94.67 functions / 96.54 lines across 2597
-tests in 129 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**94.98 statements / 89.65 branches / 94.71 functions / 96.63 lines across 2701
+tests in 130 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of

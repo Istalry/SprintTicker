@@ -495,6 +495,20 @@ per frame.
 Both players read animations through `animation-sequence.ts`, which owns the
 folder layout and frame ordering.
 
+**The `.anim` is chosen per bar, at upload time.** Firmware 1.2 reads only
+`bicycle0` files and 1.3 only `bicycle1`, and a file in the other format is
+drawn with a 200 as the firmware's load-error icon. So every animation is on
+disk in both (`<id>.anim`, `<id>.v1.anim`), `AnimationData.anims` holds
+whichever exist, and both players ask the driver's `getAnimationFormat()`
+before each upload: the scene on every play, the icon after every reset. The
+format comes from the version the bar reports at each ping
+(`shared/anim-format.ts`); none readable means no `.anim` -- frames for a
+scene, the static icon for an icon. The driver's upload guard refuses a file
+in another format without a request, a failed ping forgets the format until
+the next ping reads it, and a changed version makes the ledger forget every
+element (`noteRebooted`), so the files are uploaded again in the new format
+after an update rather than drawn from the old ones still stored.
+
 ### `InputDecoder` — `src/main/hardware/`
 
 Turns physical events into application actions, through a rebindable map.
@@ -887,7 +901,7 @@ It imports only from `desktop-app/src/shared/`: the protocol is
 ships, and the app never imports it. It produces the frame sets the app plays.
 
 ```
-scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.json ──► seq2anim ──► .anim
+scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.json ──► seq2anim ──► .anim, .v1.anim
                      │                          Animations/<id>/<id>/
                      └──► editor preview                                  └──► bar preview
 ```
@@ -903,8 +917,10 @@ scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.jso
   is how the official animations move (`packages/anim-studio/STYLE-GUIDE.md`).
   A sprite at rest on whole pixels renders exactly as drawn.
 - **The export lands where the app already looks.** `AnimationPlayer` reads
-  `Animations/<id>/<id>/`, prefers `<id>.anim` when present and streams the
-  PNGs otherwise, so an exported scene plays without any change to the app.
+  `Animations/<id>/<id>/`, prefers the `.anim` in the bar's format when present
+  and streams the PNGs otherwise, so an exported scene plays without any change
+  to the app. A compiled export writes one per format, each with that
+  firmware's compiler, and the bar preview asks the bar its firmware first.
   Which folder each mode plays is `FRONT_ANIMATIONS` in
   `shared/render-constants.ts`. A name with no folder behind it fails only as a
   log warning and an empty panel, so `animation-assets.test.ts` checks every
@@ -933,7 +949,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 9. Testing
 
-Vitest, 2597 tests across 129 files, in two projects: `main` in Node for
+Vitest, 2701 tests across 130 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
@@ -947,7 +963,7 @@ real instance: `scripts/fake-openproject.js` (`pnpm mock:openproject`) and
 page of everything and clamp the page size server-side — a harness that fits on
 one page cannot fail the way production failed.
 
-The animation studio has its own suite, 113 tests across 6 files, run by
+The animation studio has its own suite, 117 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
 Stream Deck plugin, 195 tests across 8 files (`pnpm test:deck`), which also
 runs its link against the app's real `DeckServer` over loopback.

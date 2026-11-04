@@ -133,7 +133,9 @@ describe('Display stress: generated event mixes against the firmware simulator',
 
   it.each(seeds)('Scenario_Seed%i_BreaksNoHardwareRule', async seed => {
     const script = generate(seed);
-    desk = new Desk(seed);
+    // Half the days on firmware 1.3, whose `.anim` files are another format.
+    const firmware = seed % 2 === 0 ? '1.2.4' : '1.3.1';
+    desk = new Desk(seed, firmware);
     await desk.connect();
 
     for (const step of script) {
@@ -152,7 +154,7 @@ describe('Display stress: generated event mixes against the firmware simulator',
       expectSettledScreen(desk);
     } catch (err) {
       throw new Error(
-        `Seed ${seed} failed. Replay with STRESS_SEED=${seed}.\n  Script:\n    ${describeScript(script)}\n\n${(err as Error).message}` +
+        `Seed ${seed} failed, on firmware ${firmware}. Replay with STRESS_SEED=${seed}.\n  Script:\n    ${describeScript(script)}\n\n${(err as Error).message}` +
           // A replay of one seed is someone reading it: give them the requests.
           (process.env.STRESS_SEED
             ? `\n\n  State after each step:\n${desk.timeline.join('\n')}\n\n  Device trace:\n${desk.device.formatTrace()}`

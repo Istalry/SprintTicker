@@ -126,7 +126,10 @@ export function mountToolbar(root: HTMLElement, store: Store, setStatus: (msg: s
     button('Export', () =>
       void run('Exporting', async () => {
         const result = await api.exportScene(store.scene, compile.checked);
-        const anim = result.animBytes === null ? '' : `, ${(result.animBytes / 1024).toFixed(0)} KB .anim`;
+        const anim =
+          result.animFiles === null
+            ? ''
+            : `, ${result.animFiles.map(f => `${f.file} ${(f.bytes / 1024).toFixed(0)} KB`).join(' and ')}`;
         return `Exported ${result.frames} frames to ${result.dir}${anim}.`;
       })
     ),
@@ -138,7 +141,7 @@ export function mountToolbar(root: HTMLElement, store: Store, setStatus: (msg: s
         writeSetting(HOST_KEY, host.value.trim());
         const result = await api.previewOnBar(store.scene, host.value.trim(), token.value);
         // The bar's refusal arrives as an answer, not an error; shown as one.
-        if (result.status >= 300) throw new Error(result.message);
+        if (result.status < 200 || result.status >= 300) throw new Error(result.message);
         return `${result.message} (${(result.bytes / 1024).toFixed(0)} KB)`;
       }), { title: 'Compile and play this scene on a real bar' }
     ),

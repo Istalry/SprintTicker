@@ -200,13 +200,14 @@ above. Two more things about it that cost time to find:
   the probe. It is typed on the studio side by `DeviceModule` in
   `server/export.ts`, since `scripts/` is untyped JavaScript; change the two
   together.
-- **`seq2anim.py` is GPL-2.0-or-later, and must stay a separate process.**
-  `scripts/busybar-anim-toolchain/` is the firmware's compiler, and the one
-  part of the repository that is not MIT. The studio, the probe and
-  `build-anims.js` call it with `execFile`, which keeps the GPL at arm's length.
-  Porting it to TypeScript, importing it, or copying the firmware's own TS port
-  would bring our code under the GPL. If you change the script, add the change
-  and its date to its header: GPL-2.0 requires a modified file to say so.
+- **`seq2anim.py` and `seq2anim_v1.py` are GPL-2.0-or-later, and must stay
+  separate processes.** `scripts/busybar-anim-toolchain/` holds the firmware's
+  compilers, one per `.anim` format (§4), and is the one part of the
+  repository that is not MIT. The studio, the probe and `build-anims.js` call
+  them with `execFile`, which keeps the GPL at arm's length. Porting one to
+  TypeScript, importing it, or copying the firmware's own TS port would bring
+  our code under the GPL. If you change a script, add the change and its date
+  to its header: GPL-2.0 requires a modified file to say so.
 
 **The Unity plugin compiles in Unity, never here, so nothing here sees it
 break.** Unity compiles no script in a package that no `.asmdef` owns, and
@@ -413,6 +414,37 @@ measured it -- `--rounds <n>`, `--icon <name>`, `--reupload`,
 `--close-with-anim`, `--park` and `--swap-in-place` -- and each is a
 deliberate risk of a hang too: ask before running one, one at a time.
 
+**The `.anim` format is the firmware's, and the wrong one fails silently.**
+The file starts with a signature, and the loader accepts exactly one:
+firmware 1.2 reads `bicycle0`, 1.3 reads `bicycle1` (interframe compression,
+about four times smaller). A file in the other format is *not refused*: the
+upload and the draw both answer 200, and the panel shows the firmware's 9×9
+load-error icon where the animation should be -- so the static icon and the
+streamed frames that stand in for a refused file never take over. Read from
+the firmware's source and its own `test_api_display_draw.py` on 2026-11-04,
+not yet seen on a bar. Four things follow:
+- **Every animation ships in every format**: `<name>.anim` (`bicycle0`) and
+  `<name>.v1.anim` (`bicycle1`), each compiled by that firmware's own
+  compiler (`node scripts/build-anims.js`, or the studio's export).
+  `animation-assets.test.ts` checks both exist and carry their signature.
+  The name on the device is `<name>.anim` either way.
+- **The driver chooses, from the version the bar reported**
+  (`getAnimationFormat`, `shared/anim-format.ts`), and its upload guard
+  refuses an `.anim` in another format without a request. A version it
+  cannot read, or none, means no `.anim` at all -- never the driver's own
+  placeholder version, `1.4.2`, which would read as 1.3.
+- **A failed ping forgets the format until the next ping reads it**, since
+  the outage may be an update; a single unanswered request does not. **A
+  changed version means the bar rebooted** (`DisplayLedger.noteRebooted`):
+  without that the ledger, keeping old elements as maybe-playing to avoid a
+  508, skipped the upload of the new format's file and drew the old one still
+  stored under the same name. Found by the simulator before any bar ran 1.3.
+- **The rule lives twice**, as `shared/anim-format.ts` for the app and the
+  studio and `scripts/lib/anim-formats.js` for the untyped tools;
+  `anim-format.test.ts` holds them equal. A firmware that moves the signature
+  again needs a third compiler, a third entry in both, and the files
+  compiled again -- diff the firmware's `scripts/seq2anim.py` between tags.
+
 It also reads the panel back and writes every frame out as a PNG (`--out <dir>`,
 default a temp directory), because the questions worth asking of a *display* are
 about layout and a status code cannot answer those. That is how the countdown
@@ -505,11 +537,14 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   unlike the 09-30 hangs below -- and ten rounds, the soak that once called
   this safe, pass by luck. So `removeDisplayElements` never sends an
   animation's id: it draws the empty animation (`blank-animation.ts`, one
-  transparent 16×16 frame, 80 bytes, compiled by `seq2anim.py` from
-  `Animations/blank_16x16/`) under the same id and layer, which is the swap
-  in place measured safe. The element stays listed, showing nothing, until
-  the screen closes. The simulator reports any removal of an animation by id
-  as `animation-removed-by-id`.
+  transparent 16×16 frame, about 80 bytes, compiled by both compilers from
+  `Animations/blank_16x16/`, sent in the bar's format) under the same id and
+  layer, which is the swap in place measured safe. The element stays listed,
+  showing nothing, until the screen closes. The simulator reports any removal
+  of an animation by id as `animation-removed-by-id`. **Firmware 1.3.1 does
+  not change this**: its `canvas.c`, where removals and screen closes live,
+  is identical to 1.2.4's (compared 2026-11-04), and nothing in its log
+  mentions either. Keep every workaround until a release says otherwise.
   - **"At rest" must be certain.** After a park whose draw got no answer the
     element may still be playing what it played before, so the next removal
     parks it again rather than skipping it.
@@ -782,6 +817,14 @@ them are traps:
   now holds `APP_USER_MODEL_ID` in `app-identity.ts` to the JSON. A packaged
   build with no shortcut at all was measured showing toasts under the right
   name and icon (2026-10-01), so the portable build is fine.
+  **Never give another shortcut that ID.** Windows takes the taskbar
+  button's icon from a shortcut carrying the window's ID, and `pnpm dev`
+  runs under the same ID as the installed app. A Start-menu `Electron.lnk`
+  made on 2026-10-02 carried it, pointing at
+  `node_modules/.pnpm/electron@44.2.0…/electron.exe`; once Electron moved
+  to 44.9.3 its target was gone, and the installed app's taskbar button
+  showed a blank page (2026-11-04). Nothing in the repository writes such
+  a shortcut, and the installer's already ties the ID to a real exe.
 - **"Sending time stopped" is told once per stop, and told late.** The
   worker parks a row on refused credentials (`auth`) silently -- only the
   queue panel showed it -- so `onSendingStopped` fires on the first such row
@@ -926,10 +969,12 @@ interfaces, `PascalCase` methods).
   `FirmwareSimulator`** (`tests/support/firmware-simulator.ts`) and ends with
   `expectClean()`. The simulator answers like firmware 1.2.4 -- merge by id,
   all-or-nothing removals, an empty element set closes the screen, 508 on an
-  upload over a playing `.anim` -- and checks every request against §4: an
-  animation removed by id, the close rules that hung the bar, colours, ASCII
-  text, fill colour counts, names, priority, the rear display. `offline` and
-  `reboot()` take the bar away; `visible()` and `isShowing()` leave out the
+  upload over a playing `.anim` -- or like 1.3.1 (`firmwareVersion`), and
+  checks every request against §4: an animation removed by id, the close
+  rules that hung the bar, an `.anim` in a format the firmware does not read
+  (`animation-unloadable`), colours, ASCII text, fill colour counts, names,
+  priority, the rear display. `offline` and `reboot()` take the bar away,
+  and `updateFirmware()` brings it back on another version; `visible()` and `isShowing()` leave out the
   animations put to rest, which stay on the panel showing nothing. A test that breaks a rule on purpose
   names it in `allow`; anything else fails with the requests that broke it.
   **A rule measured on the bar goes into the simulator**, so every display test
@@ -942,7 +987,8 @@ interfaces, `PascalCase` methods).
   causes -- the 10-05 hang was one, and a Lunch scene streaming frames after
   an outage shorter than a ping was another. A failure prints its seed and
   script; `STRESS_SEED=<seed>` replays it with the device trace, and
-  `STRESS_RUNS=2000` runs a longer campaign (about 35 s).
+  `STRESS_RUNS=2000` runs a longer campaign (about 35 s). Even seeds run on
+  firmware 1.2.4 and odd ones on 1.3.1, whose `.anim` format differs.
   Animations are read from disk once before the runs, because under fake
   timers a real file read lands at an arbitrary point of simulated time and a
   seed would not replay. Two editors are open, and every run ends by

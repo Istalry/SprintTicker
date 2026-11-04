@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { IconAnimator, IconAnimatorDriver, ICON_ELEMENT_ID } from '../src/main/hardware/icon-animator';
 import { AnimationData } from '../src/main/hardware/animation-sequence';
+import { AnimFormat } from '../src/shared/anim-format';
 import { DeviceRequestError } from '../src/main/hardware/device-errors';
 import { FRONT_LAYER_Z } from '../src/shared/device-constants';
 import { ArgumentNullException } from '../src/shared/dtos';
@@ -8,12 +9,17 @@ import { ArgumentNullException } from '../src/shared/dtos';
 const GEAR = 'icon_gear_16x16';
 const BELL = 'icon_bell_16x16';
 
-function sequence(name: string, withAnim = true): AnimationData {
+function sequence(name: string, withAnim = true, formats: AnimFormat[] = [0, 1]): AnimationData {
+  const anims: AnimationData['anims'] = {};
+  if (withAnim) {
+    if (formats.includes(0)) anims[0] = Buffer.from(`${name}.anim`);
+    if (formats.includes(1)) anims[1] = Buffer.from(`${name}.v1.anim`);
+  }
   return {
     name,
     fps: 10,
     frames: [Buffer.from(`${name}-0`), Buffer.from(`${name}-1`), Buffer.from(`${name}-2`)],
-    animBuffer: withAnim ? Buffer.from(`${name}.anim`) : undefined
+    anims
   };
 }
 
@@ -21,13 +27,16 @@ interface FakeDriver {
   uploadAsset: Mock<IconAnimatorDriver['uploadAsset']>;
   drawOverlay: Mock<IconAnimatorDriver['drawOverlay']>;
   removeDisplayElements: Mock<IconAnimatorDriver['removeDisplayElements']>;
+  getAnimationFormat: Mock<IconAnimatorDriver['getAnimationFormat']>;
 }
 
 function makeDriver(): FakeDriver {
   return {
     uploadAsset: vi.fn<IconAnimatorDriver['uploadAsset']>().mockResolvedValue(undefined),
     drawOverlay: vi.fn<IconAnimatorDriver['drawOverlay']>().mockResolvedValue('drawn'),
-    removeDisplayElements: vi.fn<IconAnimatorDriver['removeDisplayElements']>().mockResolvedValue(undefined)
+    removeDisplayElements: vi.fn<IconAnimatorDriver['removeDisplayElements']>().mockResolvedValue(undefined),
+    // Firmware 1.2 unless a test says otherwise.
+    getAnimationFormat: vi.fn<IconAnimatorDriver['getAnimationFormat']>().mockReturnValue(0)
   };
 }
 
@@ -182,6 +191,46 @@ describe('IconAnimator', () => {
 
       expect(driver.uploadAsset).not.toHaveBeenCalled();
       expect(driver.drawOverlay).not.toHaveBeenCalled();
+    });
+
+    it('Show_FirmwareReadsFormat1_UploadsTheV1FileUnderTheDeviceName', async () => {
+      driver.getAnimationFormat.mockReturnValue(1);
+
+      animator.show(GEAR);
+      await animator.settled();
+
+      // Firmware 1.3 reads only `bicycle1`; the name on the device is unchanged.
+      expect(driver.uploadAsset).toHaveBeenCalledWith('sprintticker', `${GEAR}.anim`, Buffer.from(`${GEAR}.v1.anim`));
+      expect(driver.drawOverlay.mock.calls[0][1][0]).toMatchObject({ path: `${GEAR}.anim` });
+    });
+
+    it('Show_NoFileInTheBarsFormat_StaysStaticRatherThanSendTheOther', async () => {
+      driver.getAnimationFormat.mockReturnValue(1);
+      load.mockResolvedValue(sequence(GEAR, true, [0]));
+
+      animator.show(GEAR);
+      await animator.settled();
+
+      // The other format would be drawn as the firmware's load-error icon.
+      expect(driver.uploadAsset).not.toHaveBeenCalled();
+      expect(driver.drawOverlay).not.toHaveBeenCalled();
+    });
+
+    it('Show_FirmwareFormatUnknown_SendsNothingUntilReset', async () => {
+      driver.getAnimationFormat.mockReturnValue(null);
+
+      animator.show(GEAR);
+      await animator.settled();
+      expect(driver.uploadAsset).not.toHaveBeenCalled();
+
+      // The reconnect that reads the version resets the animator.
+      driver.getAnimationFormat.mockReturnValue(1);
+      animator.reset();
+      animator.show(GEAR);
+      await animator.settled();
+
+      expect(driver.uploadAsset).toHaveBeenCalledWith('sprintticker', `${GEAR}.anim`, Buffer.from(`${GEAR}.v1.anim`));
+      expect(driver.drawOverlay).toHaveBeenCalledTimes(1);
     });
 
     it('Show_AnimationMissingFromDisk_DoesNotTouchTheDevice', async () => {

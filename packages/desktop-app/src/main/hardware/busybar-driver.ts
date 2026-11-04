@@ -8,6 +8,7 @@ import { DisplayLedger } from './display-ledger';
 import { DisplayHealthMonitor } from './display-health';
 import { SerialQueue } from './serial-queue';
 import { BLANK_ANIMATION_BYTES, BLANK_ANIMATION_FILE } from './blank-animation';
+import { AnimFormat, animFormatForFirmware, animFormatOf, animSignature } from '../../shared/anim-format';
 
 /**
  * What a display request's guard decides at the head of the display queue,
@@ -348,6 +349,20 @@ export class BusyBarDriver extends EventEmitter {
   private pingMs: number = 4;
   private batteryPercent: number = 98;
   private firmwareVersion: string = '1.4.2';
+  /**
+   * The version the bar itself last reported, or null until it has. Kept
+   * apart from `firmwareVersion`, whose placeholder is a version string too:
+   * the `.anim` format is read from this, and a placeholder that read as 1.4
+   * would send a bar of unknown firmware files it may draw as an error icon.
+   */
+  private reportedFirmwareVersion: string | null = null;
+  /**
+   * Whether that version was reported since the bar was last out of reach. A
+   * bar gone for a ping may be installing an update, which changes the
+   * `.anim` format it reads; until the ping that sees it back reads the
+   * version again -- before it asks for the redraw -- no `.anim` goes out.
+   */
+  private firmwareVersionCurrent = false;
   private wsClient: unknown | null = null;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
@@ -485,8 +500,34 @@ export class BusyBarDriver extends EventEmitter {
     const rawFirmware =
       nested('firmware').version ?? data.version ?? data.firmware_version ?? data.firmwareVersion;
     if (rawFirmware) {
-      this.firmwareVersion = String(rawFirmware);
+      const version = String(rawFirmware);
+      if (this.reportedFirmwareVersion !== null && version !== this.reportedFirmwareVersion) {
+        // Only a reboot changes it, so nothing this run drew is on the panel
+        // and the files stored are the old firmware's, perhaps in the other
+        // `.anim` format: forgotten, so they are uploaded again.
+        console.log(`[BusyBarDriver] Firmware changed from ${this.reportedFirmwareVersion} to ${version}; the bar rebooted.`);
+        this.ledger.noteRebooted();
+        this.blankAnimationStored = false;
+      }
+      this.firmwareVersion = version;
+      this.reportedFirmwareVersion = version;
+      this.firmwareVersionCurrent = true;
     }
+  }
+
+  /**
+   * The `.anim` format this bar's firmware reads, or null when that is not
+   * known: no version reported yet, or one no number can be read from.
+   *
+   * Asked before every `.anim` upload. A file in the other format is stored
+   * and drawn with a 200 and shows the firmware's load-error placeholder, so
+   * null means "send none" -- the scene streams its frames and an animated
+   * icon stays static, which is what a refused file already leads to.
+   * Under `--mock-hardware` the mock's own version answers.
+   */
+  public getAnimationFormat(): AnimFormat | null {
+    if (this.isMockMode) return animFormatForFirmware(this.firmwareVersion);
+    return this.firmwareVersionCurrent ? animFormatForFirmware(this.reportedFirmwareVersion) : null;
   }
 
   /**
@@ -922,6 +963,7 @@ export class BusyBarDriver extends EventEmitter {
     }
     const operation = `asset upload ${cleanFilename}`;
     this.requireConnected(operation);
+    this.refuseForeignAnimFormat(operation, cleanFilename, binaryData);
 
     if (this.isMockMode) {
       console.log(`[BusyBarDriver] [MOCK ASSET UPLOAD] app=${applicationName}, file=${cleanFilename}, bytes=${binaryData.byteLength}`);
@@ -942,6 +984,32 @@ export class BusyBarDriver extends EventEmitter {
         await this.uploadRequest(operation, url, binaryData);
       }
     );
+  }
+
+  /**
+   * Refuses, without a request, an `.anim` this bar's firmware cannot load.
+   *
+   * The device would store it and draw it with a 200 each, then show its
+   * load-error placeholder: firmware 1.3 reads only `bicycle1`, 1.2 only
+   * `bicycle0`. Refused here, the caller's fallback runs as for any refused
+   * upload -- frames for a scene, the static icon for an icon -- instead of an
+   * error glyph on the panel with nothing anywhere saying so. The callers pick
+   * the right file (`getAnimationFormat`); this is the guard for one that did
+   * not, as the driver is for every other rule in CLAUDE.md section 4.
+   *
+   * @throws DeviceRequestError `rejected`, when the file's signature is not
+   *   the one the firmware reads, or the firmware's format is not known.
+   */
+  private refuseForeignAnimFormat(operation: string, fileName: string, binaryData: Buffer | Uint8Array): void {
+    if (!fileName.toLowerCase().endsWith('.anim')) return;
+    const wanted = this.getAnimationFormat();
+    const given = animFormatOf(binaryData);
+    if (wanted !== null && given === wanted) return;
+    const detail =
+      wanted === null
+        ? `firmware ${this.reportedFirmwareVersion ?? 'not reported'} reads no .anim format this app knows`
+        : `firmware ${this.firmwareVersion} reads ${animSignature(wanted)}, the file is ${given === null ? 'neither format' : animSignature(given)}`;
+    throw new DeviceRequestError('rejected', operation, null, `${detail}; not sent, since the bar would draw its load-error icon`);
   }
 
   private async uploadRequest(operation: string, url: string, binaryData: Buffer | Uint8Array): Promise<void> {
@@ -1594,7 +1662,9 @@ export class BusyBarDriver extends EventEmitter {
 
     if (!this.blankAnimationStored) {
       // Skipped by the upload's own guard when an element already plays it.
-      await this.uploadAsset(applicationName, BLANK_ANIMATION_FILE, BLANK_ANIMATION_BYTES);
+      // In the bar's own format; an unknown one is refused by the upload's
+      // guard, and the animation then stays as it was.
+      await this.uploadAsset(applicationName, BLANK_ANIMATION_FILE, BLANK_ANIMATION_BYTES[this.getAnimationFormat() ?? 0]);
       this.blankAnimationStored = true;
     }
     const zIndex = this.ledger.element(applicationName, elementId)?.zIndex ?? FRONT_LAYER_Z.ICON;
@@ -1927,6 +1997,9 @@ export class BusyBarDriver extends EventEmitter {
   private notePingFailure(wasConnected: boolean, reason: string | null): void {
     this.consecutivePingFailures++;
     this.loseTrackOfDevice();
+    // Maybe an update; see `firmwareVersionCurrent`. A single request
+    // without an answer is not one, and keeps it.
+    this.firmwareVersionCurrent = false;
     const detail = reason ?? 'no answer';
 
     if (wasConnected) {
@@ -2071,9 +2144,12 @@ export class BusyBarDriver extends EventEmitter {
     // the previous host would be reported against the new one.
     this.lastTransportError = null;
     this.consecutivePingFailures = 0;
-    // Another address may be another bar, with a screen of its own.
+    // Another address may be another bar, with a screen of its own -- and a
+    // firmware of its own, which `connect()` reads again.
     this.ledger.forgetAll();
     this.blankAnimationStored = false;
+    this.reportedFirmwareVersion = null;
+    this.firmwareVersionCurrent = false;
 
     return this.connect();
   }

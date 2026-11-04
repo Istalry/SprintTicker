@@ -84,6 +84,16 @@ describe('writeSequence', () => {
     expect(fs.existsSync(path.join(dir, 'test.anim'))).toBe(true);
   });
 
+  it('WriteSequence_ExistingAnimFileOfEachFormat_IsKept', () => {
+    // The studio writes one per format; a re-export must not refuse its own.
+    const dir = path.join(work, 'seq');
+    fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, 'test.anim'), 'x');
+    fs.writeFileSync(path.join(dir, 'test.v1.anim'), 'x');
+    writeSequence(dir, sequence(1), encodePng);
+    expect(fs.existsSync(path.join(dir, 'test.v1.anim'))).toBe(true);
+  });
+
   it('WriteSequence_FrameOfWrongSize_Throws', () => {
     const bad = sequence(1);
     bad.frames[0] = new Uint8Array(3);

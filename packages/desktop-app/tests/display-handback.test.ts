@@ -458,9 +458,10 @@ describe('Display hand-back: the screen that ends gives the display to the right
     /** Long enough for the ping loop to notice the outage, and the return. */
     const PING_NOTICE_MS = 4000;
 
-    const outage = async (during: () => Promise<void>, options: { reboot?: boolean } = {}): Promise<void> => {
+    const outage = async (during: () => Promise<void>, options: { reboot?: boolean; firmware?: string } = {}): Promise<void> => {
       desk.device.offline = true;
-      if (options.reboot) desk.device.reboot();
+      if (options.firmware) desk.device.updateFirmware(options.firmware);
+      else if (options.reboot) desk.device.reboot();
       await advance(PING_NOTICE_MS);
       await during();
       desk.device.offline = false;
@@ -506,6 +507,33 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await advance(SETTLE_MS);
 
       expectSettledScreen(desk);
+    });
+
+    /**
+     * Firmware 1.3 reads only `bicycle1` files, 1.2 only `bicycle0`, and a
+     * file in the other format is drawn as a load-error icon with a 200. An
+     * update reboots the bar, and what comes back must be in the new format;
+     * the simulator reports any other as `animation-unloadable`.
+     */
+    it('BarUpdatedTo13DuringASession_TheIconComesBackInTheNewFormat', async () => {
+      await play('startTask', 500);
+
+      await outage(() => advance(1000), { firmware: '1.3.1' });
+      await advance(SETTLE_MS);
+
+      expectSettledScreen(desk);
+      expect(icon()).toBeDefined();
+      expect(desk.device.placeholders.size).toBe(0);
+    });
+
+    it('BarUpdatedTo13DuringLunch_TheSceneComesBackInTheNewFormat', async () => {
+      await play('lunchStart', 500);
+
+      await outage(() => advance(1000), { firmware: '1.3.1' });
+      await advance(SETTLE_MS);
+
+      expectSettledScreen(desk);
+      expect(desk.device.placeholders.size).toBe(0);
     });
 
     it('BarRebootsUnderABuild_TheBuildComesBack', async () => {

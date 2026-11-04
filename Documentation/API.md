@@ -588,6 +588,12 @@ request: the device would answer 508, and holds the file already. That
 includes a file an element *may* be playing, after a draw over it got no
 answer.
 
+`uploadAsset` of an `.anim` whose signature is not the one this bar's
+firmware reads throws `rejected` without a request -- see the next section.
+`getAnimationFormat()` answers which that is: `0` (`bicycle0`) for firmware
+1.2, `1` (`bicycle1`) for 1.3, or `null` while the bar has not reported a
+version the app can read, which means send no `.anim` at all.
+
 **The driver emits `reconnected` when the bar answers again after an outage**
 -- a failed ping, or any request that got no answer between two good pings --
 and when no-bar mode is turned off. It has forgotten what the panel holds and
@@ -665,6 +671,43 @@ probes, and "the bar is not there" is a normal answer for them.
 > Away animation stayed dark while the emulator played it. `.then(` is now an
 > ESLint error under `src/main/hardware/**`. Await each step so a failure names
 > the step that failed.
+
+### The `.anim` format is the firmware's
+
+An `.anim` file starts with an 8-byte signature, and the firmware's loader
+accepts exactly one: 1.2 reads `bicycle0`, 1.3 reads `bicycle1`, which added
+interframe compression and makes the files about four times smaller.
+
+> [!CAUTION]
+> **A file in the other format is not refused.** The upload stores it and the
+> draw answers 200, and the panel shows the firmware's 9×9 load-error icon
+> where the animation should be. No status code says the file was wrong, so
+> the fallbacks for a refused file -- the static icon, the streamed frames --
+> never take over. Read from the firmware's source and its own display tests
+> (1.3.1, 2026-11-04); not yet seen on a bar.
+
+So every animation ships in both formats, side by side:
+
+| On disk | Signature | Compiled by | Played on |
+| :--- | :--- | :--- | :--- |
+| `Animations/<id>/<id>/<id>.anim` | `bicycle0` | `seq2anim.py` (firmware 1.2.3's) | firmware 1.2 |
+| `Animations/<id>/<id>/<id>.v1.anim` | `bicycle1` | `seq2anim_v1.py` (firmware 1.3.1's) | firmware 1.3 |
+
+The name on the device is `<id>.anim` for both. The format is chosen from the
+version in `GET /api/status` (`firmware.version`), read again at every ping:
+
+- **A version no number can be read from, or none**, means no `.anim` is
+  sent. A scene streams its PNG frames and an animated icon stays still.
+- **A failed ping forgets the format** until the next ping reads it, since
+  the bar may have been away installing an update. That ping reads the
+  version before `reconnected` asks for the redraw.
+- **A version that changed means the bar rebooted**: nothing of the app's is
+  on the panel, and the files it holds are the old firmware's. The driver
+  forgets them, so the redraw uploads each file again in the new format
+  rather than drawing the old one stored under the same name.
+- **A firmware newer than 1.3** is assumed to read `bicycle1`. Run
+  `pnpm probe:busybar` after a release: its animation check reads the panel
+  back, and a still placeholder fails it.
 
 ### Frames
 

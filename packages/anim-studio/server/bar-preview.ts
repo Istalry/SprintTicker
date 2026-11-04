@@ -2,14 +2,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { isValidDeviceHost } from '../../desktop-app/src/shared/device-constants';
-import { DeviceModule, RenderedSequence, writeSequence } from './export';
+import { AnimFormat, animFormatForFirmware } from '../../desktop-app/src/shared/anim-format';
+import { DeviceClient, DeviceModule, RenderedSequence, writeSequence } from './export';
 
 /**
  * Plays a scene on a real bar, because an animation cannot be judged on a
  * monitor: the LEDs' brightness, bleed and colour are nothing like a screen's.
  *
  * It compiles the scene exactly as an export would and plays the `.anim` the
- * way the app does, so what is seen is what will ship.
+ * way the app does, so what is seen is what will ship -- in the format the
+ * bar's firmware reads, asked of the bar first. A file in the other format
+ * would be stored and drawn with 200s, as the firmware's load-error icon.
  */
 
 /** Its own name, so clearing the preview can never remove the app's elements. */
@@ -41,12 +44,13 @@ export interface BarTarget {
  */
 export interface PreviewDeps {
   device: DeviceModule;
-  /** Compiles a sequence folder to a `.anim` and resolves with its size. */
-  compile: (dir: string, outFile: string) => Promise<number>;
+  /** Compiles a sequence folder to a `.anim` in `format` and resolves with its size. */
+  compile: (dir: string, outFile: string, format: AnimFormat) => Promise<number>;
 }
 
 export interface PreviewResult {
   bytes: number;
+  /** The bar's answer to the step that decided it; 0 when nothing was sent. */
   status: number;
   message: string;
 }
@@ -61,12 +65,24 @@ export async function previewOnBar(target: BarTarget, sequence: RenderedSequence
   assertHost(target);
   const client = device.createDeviceClient({ host: target.host.trim(), token: target.token, timeoutMs: 15_000 });
 
+  const firmware = await firmwareOf(client);
+  const format = animFormatForFirmware(firmware);
+  if (format === null) {
+    return {
+      bytes: 0,
+      status: 0,
+      message: firmware === null
+        ? 'The bar did not say which firmware it runs, so which .anim format it reads is unknown.'
+        : `Firmware ${firmware} reads no .anim format the studio knows.`
+    };
+  }
+
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'anim-studio-'));
   try {
     const dir = path.join(work, 'seq');
     writeSequence(dir, sequence, device.encodePng);
     const animFile = path.join(work, PREVIEW_FILE);
-    const bytes = await compile(dir, animFile);
+    const bytes = await compile(dir, animFile, format);
 
     const upload = await client.request('POST', `/api/assets/upload?application_name=${STUDIO_APP}&file=${PREVIEW_FILE}`, {
       body: fs.readFileSync(animFile),
@@ -108,6 +124,22 @@ export async function previewOnBar(target: BarTarget, sequence: RenderedSequence
     return { bytes, status: draw.status, message: `Playing on ${target.host} for up to ${PREVIEW_TIMEOUT_S / 60} minutes.` };
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The firmware version the bar reports (`GET /api/status`, `firmware.version`),
+ * or null when it does not say.
+ */
+async function firmwareOf(client: DeviceClient): Promise<string | null> {
+  const status = await client.request('GET', '/api/status');
+  if (status.status < 200 || status.status >= 300) return null;
+  try {
+    const version = (JSON.parse(status.body) as { firmware?: { version?: unknown } }).firmware?.version;
+    return typeof version === 'string' ? version : null;
+  } catch {
+    // Not JSON: a bar that answers something else says nothing about its firmware.
+    return null;
   }
 }
 

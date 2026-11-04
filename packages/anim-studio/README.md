@@ -96,8 +96,11 @@ Bold 7, and it cannot import from the studio. Bold 9 lives here, in
 **Export** writes `Animations/<id>/<id>/frame_00000.png …` and `meta.json`,
 which is the layout `AnimationPlayer` and `scripts/build-anims.js` already read,
 so no other change is needed to play it. With **.anim** ticked it also compiles
-`<id>.anim` with `scripts/busybar-anim-toolchain/seq2anim.py`, which needs
-Python with Pillow and colorlog.
+the scene once per `.anim` format -- `<id>.anim` for firmware 1.2 and
+`<id>.v1.anim` for 1.3, each with that firmware's own compiler in
+`scripts/busybar-anim-toolchain/` -- which needs Python with Pillow and
+colorlog. A bar reads only its own firmware's format, and the app picks the
+file for each bar.
 
 Three safeguards:
 
@@ -116,6 +119,11 @@ Three safeguards:
 **▶ On bar** compiles the scene exactly as an export would, uploads it, and
 plays it on the front display. A monitor cannot show how the LEDs render
 brightness, bleed and colour, so this is the real test of an animation.
+
+- It asks the bar its firmware first (`GET /api/status`) and compiles in the
+  format that firmware reads. A file in the other format would be stored and
+  drawn with 200s, as the firmware's load-error icon, so a bar whose version
+  says nothing gets no file and the studio says why.
 
 - It draws under its own `application_name`, `sprintticker_studio`, so clearing
   the preview can never remove the app's elements.

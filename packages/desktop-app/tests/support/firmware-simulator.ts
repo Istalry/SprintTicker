@@ -1,6 +1,7 @@
 /**
- * A fake BUSY Bar that answers HTTP the way firmware 1.2.4 does, and checks
- * every request against the hardware contract in CLAUDE.md section 4.
+ * A fake BUSY Bar that answers HTTP the way firmware 1.2.4 does -- or 1.3.1,
+ * whose `.anim` files are another format -- and checks every request against
+ * the hardware contract in CLAUDE.md section 4.
  *
  * The screen model is the part of the firmware's canvas service (`canvas.c`)
  * that decides when the device's screen closes:
@@ -13,6 +14,8 @@
  * - Removing a playing animation by id hangs the bar now and then; this one
  *   answers, and reports it.
  * - An upload over an `.anim` an element is playing answers 508.
+ * - An `.anim` in a format the firmware does not read is stored and drawn
+ *   with 200s, and shows the load-error placeholder; this one reports it.
  *
  * Every rule a real bar was measured breaking on is a {@link RuleId}. A test
  * ends with `expectClean()`, so a code path that breaks one fails in CI
@@ -25,6 +28,7 @@
  */
 
 import { BLANK_ANIMATION_FILE } from '../../src/main/hardware/blank-animation';
+import { animFormatForFirmware, animFormatOf } from '../../src/shared/anim-format';
 
 /** The ways a request can break the hardware contract. */
 export type RuleId =
@@ -50,6 +54,13 @@ export type RuleId =
   | 'absent-element-removal'
   /** An upload over the `.anim` an element is playing: answered 508. */
   | 'upload-over-playing-anim'
+  /**
+   * An animation drawn from an `.anim` whose signature the firmware does not
+   * read: 1.2 reads `bicycle0`, 1.3 `bicycle1`. The upload and the draw both
+   * answer 200, and the panel shows the firmware's 9x9 load-error icon
+   * (its own test, `test_api_display_draw.py`, firmware 1.3.1).
+   */
+  | 'animation-unloadable'
   /** A body the firmware rejects, or one that reboots it: colours, text, fill colour counts, names, priority. */
   | 'contract';
 
@@ -83,6 +94,8 @@ export interface FirmwareSimulatorOptions {
    * Zero under fake timers.
    */
   timingToleranceMs?: number;
+  /** What `GET /api/status` reports as `firmware.version`. Default `1.2.4`. */
+  firmwareVersion?: string;
 }
 
 /** Same rule as the driver's `ASSET_FILENAME_REGEX`, restated so a drift between them is visible. */
@@ -115,6 +128,13 @@ export class FirmwareSimulator {
   public offline = false;
   /** The most display and asset requests ever in flight together. */
   public maxInFlight = 0;
+  /** Reported by `GET /api/status`; change it with {@link updateFirmware}. */
+  public firmwareVersion: string;
+  /**
+   * Elements the firmware could not load, drawing its load-error icon. A draw
+   * of a loadable file under the same id replaces it.
+   */
+  public readonly placeholders = new Set<string>();
 
   private readonly settleMs: number;
   private readonly latency: () => number;
@@ -129,12 +149,15 @@ export class FirmwareSimulator {
    */
   private everCleared = false;
   private restoreFetch: (() => void) | null = null;
+  /** The signature's format of each `.anim` stored, by file name; null for neither. */
+  private readonly animFormats = new Map<string, number | null>();
 
   constructor(options: FirmwareSimulatorOptions) {
     this.settleMs = options.settleMs;
     const latency = options.latencyMs ?? 0;
     this.latency = typeof latency === 'function' ? latency : () => latency;
     this.toleranceMs = options.timingToleranceMs ?? 2;
+    this.firmwareVersion = options.firmwareVersion ?? '1.2.4';
   }
 
   /** Replaces `globalThis.fetch` with this device until `uninstall()`. */
@@ -201,9 +224,19 @@ export class FirmwareSimulator {
    */
   public reboot(): void {
     this.elements.clear();
+    this.placeholders.clear();
     this.screenOpen = false;
     this.everCleared = false;
     this.snapshot();
+  }
+
+  /**
+   * A firmware update: the bar goes away while it installs, then reboots on
+   * the new version. The files stored before stay, in the old format.
+   */
+  public updateFirmware(version: string): void {
+    this.firmwareVersion = version;
+    this.reboot();
   }
 
   public async fetch(url: string, init?: RequestInit): Promise<Response> {
@@ -219,7 +252,11 @@ export class FirmwareSimulator {
     this.requests.push(`${label}${init?.body && typeof init.body === 'string' ? ' ' + init.body : ''}`);
 
     const isDisplay = parsed.pathname.startsWith('/api/display/draw') || parsed.pathname.startsWith('/api/assets/');
-    if (!isDisplay) return this.answer(200);
+    if (!isDisplay) {
+      // The shape `system.yaml` gives `Status`, reduced to what the driver reads.
+      if (parsed.pathname === '/api/status') return this.answer(200, { firmware: { version: this.firmwareVersion } });
+      return this.answer(200);
+    }
 
     this.inFlight++;
     this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
@@ -257,6 +294,10 @@ export class FirmwareSimulator {
         this.violate('upload-over-playing-anim', label, `${file} is playing`);
         return this.answer(508);
       }
+      if (file.toLowerCase().endsWith('.anim')) {
+        const body = init?.body;
+        this.animFormats.set(file, body instanceof Uint8Array ? animFormatOf(body) : null);
+      }
       return this.answer(200);
     }
     if (url.pathname === '/api/display/draw') {
@@ -272,7 +313,18 @@ export class FirmwareSimulator {
     this.checkDrawContract(label, payload);
     const elements = (payload.elements as Array<{ id: string; type: string; path?: string }>) ?? [];
     this.screenOpen = true;
-    for (const el of elements) this.elements.set(el.id, { type: el.type, path: el.path });
+    for (const el of elements) {
+      this.elements.set(el.id, { type: el.type, path: el.path });
+      this.placeholders.delete(el.id);
+      if (el.type === 'animation' && el.path && this.animFormats.has(el.path)) {
+        const readable = animFormatForFirmware(this.firmwareVersion);
+        const given = this.animFormats.get(el.path);
+        if (given !== readable) {
+          this.placeholders.add(el.id);
+          this.violate('animation-unloadable', label, `${el.id} plays ${el.path}, format ${String(given)}; firmware ${this.firmwareVersion} reads ${String(readable)}`);
+        }
+      }
+    }
     this.snapshot();
     return this.answer(200);
   }
@@ -294,6 +346,7 @@ export class FirmwareSimulator {
       removedTypes.push(type);
       if (type === 'animation') this.violate('animation-removed-by-id', label, `removed ${id}, a playing animation`);
       this.elements.delete(id);
+      this.placeholders.delete(id);
     }
     this.lastRemovalAt = Date.now();
     this.snapshot();
@@ -310,6 +363,7 @@ export class FirmwareSimulator {
     }
     const types = [...this.elements.values()].map(el => el.type);
     this.elements.clear();
+    this.placeholders.clear();
     this.snapshot();
     this.close(label, types, this.lastRemovalAt);
     return this.answer(200);
@@ -405,7 +459,7 @@ export class FirmwareSimulator {
     this.violations.push({ rule, request, detail, atMs: Date.now() - this.startedAt });
   }
 
-  private answer(code: number): Response {
-    return { ok: code >= 200 && code < 300, status: code, json: async () => ({}), text: async () => '' } as Response;
+  private answer(code: number, body: unknown = {}): Response {
+    return { ok: code >= 200 && code < 300, status: code, json: async () => body, text: async () => JSON.stringify(body) } as Response;
   }
 }

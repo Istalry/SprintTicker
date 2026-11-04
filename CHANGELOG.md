@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- **BUSY Bar firmware 1.3.** Firmware 1.3 stores animations in a new format
+  and reads only that one; given a file made for 1.2 it draws a small error
+  icon in its place, and says nothing. SprintTicker now carries every
+  animation in both formats, reads the bar's firmware version, and sends the
+  one it reads -- again after the bar restarts on an update. A version it
+  cannot read gets no animation files: scenes play frame by frame from the
+  app and icons stay still. Not yet tried on a bar running 1.3. The
+  animation studio exports both formats and plays its preview in the bar's,
+  and the hardware probe checks the bar in its own. The 1.3 files are about
+  a fifteenth of the size for scenes, so they upload faster. Firmware 1.3.1
+  does not fix the freeze when an animation is removed: SprintTicker keeps
+  avoiding it.
+
 ### Changed
 
 - **Fifteen more advisories patched in development tools**, none of

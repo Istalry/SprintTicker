@@ -131,6 +131,24 @@ export class DisplayLedger {
     for (const panel of this.panels.values()) panel.known = false;
   }
 
+  /**
+   * The bar certainly rebooted -- it reports another firmware version than
+   * before -- so nothing this run drew is on it, and no animation of ours is
+   * playing. What it shows instead, its own screen, is still not vouched for.
+   *
+   * `forgetAll` keeps the elements listed, because after an ordinary outage
+   * one may still be playing and an upload over it answers 508. After a
+   * firmware update that kept the upload of the new format's file from
+   * happening, and the old file still stored under the same name was drawn
+   * instead, as the firmware's load-error icon.
+   */
+  public noteRebooted(): void {
+    for (const panel of this.panels.values()) {
+      panel.elements.clear();
+      panel.known = false;
+    }
+  }
+
   public ids(applicationName: string, type?: string): string[] {
     const panel = this.panels.get(applicationName);
     if (!panel) return [];

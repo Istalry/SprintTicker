@@ -1,6 +1,6 @@
 import { BusyBarDriver, DEFAULT_DRAW_PRIORITY } from './busybar-driver';
 import { describeError, isElementAbsent } from './device-errors';
-import { AnimationData } from './animation-sequence';
+import { AnimationData, animFor } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
 import { ArgumentNullException } from '../../shared/dtos';
 
@@ -11,7 +11,10 @@ const UNKNOWN = Symbol('unknown');
 export const ICON_ELEMENT_ID = FRONT_ELEMENT_IDS.ICON;
 
 /** The slice of the driver this needs, so a test can hand it exactly that. */
-export type IconAnimatorDriver = Pick<BusyBarDriver, 'uploadAsset' | 'drawOverlay' | 'removeDisplayElements'>;
+export type IconAnimatorDriver = Pick<
+  BusyBarDriver,
+  'uploadAsset' | 'drawOverlay' | 'removeDisplayElements' | 'getAnimationFormat'
+>;
 
 export interface IconAnimatorOptions {
   /**
@@ -168,8 +171,20 @@ export class IconAnimator {
 
     const sequence = await this.sequence(target);
     if (this.desired !== target) return;
-    if (!sequence?.animBuffer) {
-      this.refuse(target, `no ${target}.anim to hand the device`);
+    // In the format the bar's firmware reads, asked now rather than when the
+    // frames were loaded: the firmware can change under a running app. With
+    // none, the static icon stays, as for an icon the device refused -- a
+    // file in the wrong format would be drawn as the firmware's load-error
+    // icon, with a 200.
+    const format = this.driver.getAnimationFormat();
+    const anim = sequence ? animFor(sequence, format) : undefined;
+    if (!anim) {
+      this.refuse(
+        target,
+        format === null
+          ? `the bar's firmware reads no .anim format this app knows, so ${target} is not sent`
+          : `no ${target}.anim in format ${format} to hand the device`
+      );
       return;
     }
 
@@ -178,7 +193,7 @@ export class IconAnimator {
     // fresh upload before the icon is written off.
     for (let attempt = 0; attempt < 2; attempt++) {
       const freshUpload = !this.uploaded.has(target);
-      if (freshUpload && !(await this.upload(target, sequence.animBuffer))) return;
+      if (freshUpload && !(await this.upload(target, anim))) return;
       if (this.desired !== target) return;
 
       try {

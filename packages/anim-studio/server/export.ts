@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { SCENE_ID_PATTERN } from '../src/model/scene';
+import type { AnimFormat } from '../../desktop-app/src/shared/anim-format';
 
 /**
  * Writes a rendered scene out as the PNG sequence `scripts/build-anims.js`
@@ -10,7 +11,9 @@ import { SCENE_ID_PATTERN } from '../src/model/scene';
  *
  * The layout is the one the app already reads, so an exported scene needs no
  * other change to play: `Animations/<id>/<id>/frame_00000.png ...` plus a
- * `meta.json`, and `<id>.anim` beside them once compiled.
+ * `meta.json`, and once compiled one `.anim` per format beside them --
+ * `<id>.anim` for firmware 1.2, `<id>.v1.anim` for 1.3 -- since a bar plays
+ * only its own firmware's (`desktop-app/src/shared/anim-format.ts`).
  */
 
 export interface RenderedSequence {
@@ -31,7 +34,7 @@ export function frameFileName(index: number): string {
   return `frame_${String(index).padStart(5, '0')}.png`;
 }
 
-const STUDIO_FILE = /^(frame_\d{5}\.png|meta\.json|[a-z0-9_-]+\.anim)$/;
+const STUDIO_FILE = /^(frame_\d{5}\.png|meta\.json|[a-z0-9_-]+(\.v\d+)?\.anim)$/;
 
 export function sequenceDir(animationsDir: string, id: string): string {
   if (!SCENE_ID_PATTERN.test(id)) throw new Error(`invalid scene id ${JSON.stringify(id)}`);
@@ -60,6 +63,20 @@ export interface DeviceClient {
 export interface DeviceModule {
   createDeviceClient(options: { host: string; token?: string; timeoutMs?: number }): DeviceClient;
   encodePng(width: number, height: number, rgba: Uint8Array): Buffer;
+}
+
+/**
+ * The part of `scripts/lib/anim-formats.js` the studio uses: which firmware
+ * compiler writes each `.anim` format. The rule for which firmware reads
+ * which format is the app's, imported from its `shared/`.
+ */
+export interface AnimFormatsModule {
+  ANIM_FORMATS: Array<{ format: AnimFormat; compiler: string }>;
+}
+
+export function loadAnimFormats(repoRoot: string): AnimFormatsModule {
+  const require = createRequire(import.meta.url);
+  return require(path.join(repoRoot, 'scripts/lib/anim-formats.js')) as AnimFormatsModule;
 }
 
 /** The shared CommonJS device helpers, loaded by absolute path so bundling cannot move them. */
@@ -120,13 +137,16 @@ export function writeSequence(dir: string, sequence: RenderedSequence, encodePng
 }
 
 /**
- * Compiles a sequence folder into a `.anim` with the firmware toolchain.
+ * Compiles a sequence folder into a `.anim` in `format`, with the firmware
+ * compiler that writes it.
  *
  * Resolves with the file's size, since that is the first thing worth knowing
  * about an animation the device might refuse.
  */
-export function compileAnim(repoRoot: string, dir: string, outFile: string): Promise<number> {
-  const script = path.join(repoRoot, 'scripts/busybar-anim-toolchain/seq2anim.py');
+export function compileAnim(repoRoot: string, dir: string, outFile: string, format: AnimFormat): Promise<number> {
+  const entry = loadAnimFormats(repoRoot).ANIM_FORMATS.find(f => f.format === format);
+  if (!entry) return Promise.reject(new Error(`no compiler for .anim format ${format}`));
+  const script = entry.compiler;
   const python = process.env.PYTHON || 'python';
   return new Promise((resolve, reject) => {
     execFile(python, [script, '-o', outFile, dir], { timeout: 120_000 }, (err, _stdout, stderr) => {

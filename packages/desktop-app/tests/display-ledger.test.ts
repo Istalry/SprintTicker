@@ -76,6 +76,28 @@ describe('DisplayLedger', () => {
     });
   });
 
+  it('ForgetAll_AnimationWasPlaying_StillCountsAsMaybePlaying', () => {
+    // After an ordinary outage it may still play, and an upload over it is a 508.
+    ledger.noteDrawn(APP, [frame, icon]);
+
+    ledger.forgetAll();
+
+    expect(ledger.isPlaying(APP, icon.path)).toBe(true);
+  });
+
+  it('NoteRebooted_AnimationWasPlaying_NothingOfOursPlaysNorIsVouchedFor', () => {
+    // A firmware update: the stored file is the old format's, and must be
+    // uploaded again rather than drawn from.
+    ledger.noteCleared(APP);
+    ledger.noteDrawn(APP, [frame, icon]);
+
+    ledger.noteRebooted();
+
+    expect(ledger.isPlaying(APP, icon.path)).toBe(false);
+    expect(ledger.ids(APP)).toEqual([]);
+    expect(ledger.isKnown(APP)).toBe(false);
+  });
+
   it('Ids_ByType_ListsOnlyThatType', () => {
     ledger.noteDrawn(APP, [frame, icon]);
 

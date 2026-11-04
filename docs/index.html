@@ -1504,6 +1504,20 @@
       it, export the logs from Device Diagnostics and look for <code>[AnimationPlayer]</code>
       lines naming the file and its size.</p>
       </details><details>
+      <summary>⬆️ <b>Updating the bar's firmware</b></summary><p> Firmware 1.3 changed how the bar
+      stores animations, and reads only its own files: a bar on 1.3 shown a file made
+      for 1.2 draws a small error icon where the animation should be, without
+      reporting anything wrong. SprintTicker carries every animation in both forms
+      and reads the bar&#39;s version to pick one, so update the app first, then the
+      bar.</p>
+      <p>After the update the bar restarts. SprintTicker notices the new version when
+      the bar answers again and sends its animations once more in the new form. If
+      the bar ever reports a version the app cannot read, the app sends no animation
+      files at all: scenes play from the app frame by frame, and icons stay still.
+      Device Diagnostics shows the version the bar reported.</p>
+      <p>An older SprintTicker on a bar updated to 1.3 shows that error icon in place
+      of every animated icon and scene. Updating the app fixes it.</p>
+      </details><details>
       <summary>🧊 <b>The bar freezes and stops answering</b></summary><p> The panel stops changing, the app
       reports the bar disconnected, and sometimes the bar restarts on its own about
       45 seconds later. On firmware 1.2.4 this is what happens when the display is
@@ -2150,6 +2164,19 @@
       </ul>
       <p>Both players read animations through <code>animation-sequence.ts</code>, which owns the
       folder layout and frame ordering.</p>
+      <p><strong>The <code>.anim</code> is chosen per bar, at upload time.</strong> Firmware 1.2 reads only
+      <code>bicycle0</code> files and 1.3 only <code>bicycle1</code>, and a file in the other format is
+      drawn with a 200 as the firmware&#39;s load-error icon. So every animation is on
+      disk in both (<code>&lt;id&gt;.anim</code>, <code>&lt;id&gt;.v1.anim</code>), <code>AnimationData.anims</code> holds
+      whichever exist, and both players ask the driver&#39;s <code>getAnimationFormat()</code>
+      before each upload: the scene on every play, the icon after every reset. The
+      format comes from the version the bar reports at each ping
+      (<code>shared/anim-format.ts</code>); none readable means no <code>.anim</code> -- frames for a
+      scene, the static icon for an icon. The driver&#39;s upload guard refuses a file
+      in another format without a request, a failed ping forgets the format until
+      the next ping reads it, and a changed version makes the ledger forget every
+      element (<code>noteRebooted</code>), so the files are uploaded again in the new format
+      after an update rather than drawn from the old ones still stored.</p>
       <h4><code>InputDecoder</code> — <code>src/main/hardware/</code></h4>
       <p>Turns physical events into application actions, through a rebindable map.</p>
       <div class="table-wrap"><table>
@@ -2539,7 +2566,7 @@
       <h3 id="architecture-animation-studio">8. Animation studio</h3>
       <p><code>packages/anim-studio</code> is a development tool, not part of the app: nothing in it
       ships, and the app never imports it. It produces the frame sets the app plays.</p>
-      <pre><code>scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.json ──► seq2anim ──► .anim
+      <pre><code>scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.json ──► seq2anim ──► .anim, .v1.anim
                            │                          Animations/&lt;id&gt;/&lt;id&gt;/
                            └──► editor preview                                  └──► bar preview
       </code></pre>
@@ -2555,8 +2582,10 @@
       is how the official animations move (<code>packages/anim-studio/STYLE-GUIDE.md</code>).
       A sprite at rest on whole pixels renders exactly as drawn.</li>
       <li><strong>The export lands where the app already looks.</strong> <code>AnimationPlayer</code> reads
-      <code>Animations/&lt;id&gt;/&lt;id&gt;/</code>, prefers <code>&lt;id&gt;.anim</code> when present and streams the
-      PNGs otherwise, so an exported scene plays without any change to the app.
+      <code>Animations/&lt;id&gt;/&lt;id&gt;/</code>, prefers the <code>.anim</code> in the bar&#39;s format when present
+      and streams the PNGs otherwise, so an exported scene plays without any change
+      to the app. A compiled export writes one per format, each with that
+      firmware&#39;s compiler, and the bar preview asks the bar its firmware first.
       Which folder each mode plays is <code>FRONT_ANIMATIONS</code> in
       <code>shared/render-constants.ts</code>. A name with no folder behind it fails only as a
       log warning and an empty panel, so <code>animation-assets.test.ts</code> checks every
@@ -2582,7 +2611,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">9. Testing</h3>
-      <p>Vitest, 2597 tests across 129 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2701 tests across 130 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2594,7 +2623,7 @@
       <code>scripts/fake-jira.js</code> (<code>pnpm mock:jira</code>). Both deliberately serve more than one
       page of everything and clamp the page size server-side — a harness that fits on
       one page cannot fail the way production failed.</p>
-      <p>The animation studio has its own suite, 113 tests across 6 files, run by
+      <p>The animation studio has its own suite, 117 tests across 6 files, run by
       <code>pnpm test</code> after the app&#39;s and on its own by <code>pnpm test:studio</code>. So has the
       Stream Deck plugin, 195 tests across 8 files (<code>pnpm test:deck</code>), which also
       runs its link against the app&#39;s real <code>DeckServer</code> over loopback.</p>
@@ -3508,6 +3537,11 @@
       request: the device would answer 508, and holds the file already. That
       includes a file an element <em>may</em> be playing, after a draw over it got no
       answer.</p>
+      <p><code>uploadAsset</code> of an <code>.anim</code> whose signature is not the one this bar&#39;s
+      firmware reads throws <code>rejected</code> without a request -- see the next section.
+      <code>getAnimationFormat()</code> answers which that is: <code>0</code> (<code>bicycle0</code>) for firmware
+      1.2, <code>1</code> (<code>bicycle1</code>) for 1.3, or <code>null</code> while the bar has not reported a
+      version the app can read, which means send no <code>.anim</code> at all.</p>
       <p><strong>The driver emits <code>reconnected</code> when the bar answers again after an outage</strong>
       -- a failed ping, or any request that got no answer between two good pings --
       and when no-bar mode is turned off. It has forgotten what the panel holds and
@@ -3591,6 +3625,57 @@
       ESLint error under <code>src/main/hardware/**</code>. Await each step so a failure names
       the step that failed.</p>
       </div>
+      <h4>The <code>.anim</code> format is the firmware&#39;s</h4>
+      <p>An <code>.anim</code> file starts with an 8-byte signature, and the firmware&#39;s loader
+      accepts exactly one: 1.2 reads <code>bicycle0</code>, 1.3 reads <code>bicycle1</code>, which added
+      interframe compression and makes the files about four times smaller.</p>
+      <div class="note trap"><span class="label">A file in the other format is not refused.</span>
+      <p>The upload stores it and the
+      draw answers 200, and the panel shows the firmware&#39;s 9×9 load-error icon
+      where the animation should be. No status code says the file was wrong, so
+      the fallbacks for a refused file -- the static icon, the streamed frames --
+      never take over. Read from the firmware&#39;s source and its own display tests
+      (1.3.1, 2026-11-04); not yet seen on a bar.</p>
+      </div>
+      <p>So every animation ships in both formats, side by side:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">On disk</th>
+      <th align="left">Signature</th>
+      <th align="left">Compiled by</th>
+      <th align="left">Played on</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>Animations/&lt;id&gt;/&lt;id&gt;/&lt;id&gt;.anim</code></td>
+      <td align="left"><code>bicycle0</code></td>
+      <td align="left"><code>seq2anim.py</code> (firmware 1.2.3&#39;s)</td>
+      <td align="left">firmware 1.2</td>
+      </tr>
+      <tr>
+      <td align="left"><code>Animations/&lt;id&gt;/&lt;id&gt;/&lt;id&gt;.v1.anim</code></td>
+      <td align="left"><code>bicycle1</code></td>
+      <td align="left"><code>seq2anim_v1.py</code> (firmware 1.3.1&#39;s)</td>
+      <td align="left">firmware 1.3</td>
+      </tr>
+      </tbody></table></div>
+      <p>The name on the device is <code>&lt;id&gt;.anim</code> for both. The format is chosen from the
+      version in <code>GET /api/status</code> (<code>firmware.version</code>), read again at every ping:</p>
+      <ul>
+      <li><strong>A version no number can be read from, or none</strong>, means no <code>.anim</code> is
+      sent. A scene streams its PNG frames and an animated icon stays still.</li>
+      <li><strong>A failed ping forgets the format</strong> until the next ping reads it, since
+      the bar may have been away installing an update. That ping reads the
+      version before <code>reconnected</code> asks for the redraw.</li>
+      <li><strong>A version that changed means the bar rebooted</strong>: nothing of the app&#39;s is
+      on the panel, and the files it holds are the old firmware&#39;s. The driver
+      forgets them, so the redraw uploads each file again in the new format
+      rather than drawing the old one stored under the same name.</li>
+      <li><strong>A firmware newer than 1.3</strong> is assumed to read <code>bicycle1</code>. Run
+      <code>pnpm probe:busybar</code> after a release: its animation check reads the panel
+      back, and a still placeholder fails it.</li>
+      </ul>
       <h4>Frames</h4>
       <p>The front display is a rasterised <strong>72×16 PNG</strong>. Every frame is an asset upload
       plus a draw — two HTTP requests. <code>transmitFrame</code> hashes the frame and skips an

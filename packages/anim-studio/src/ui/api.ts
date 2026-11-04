@@ -29,7 +29,8 @@ export async function saveScene(scene: Scene): Promise<void> {
 export interface ExportResult {
   dir: string;
   frames: number;
-  animBytes: number | null;
+  /** One per `.anim` format, when compiled. */
+  animFiles: Array<{ file: string; bytes: number }> | null;
 }
 
 export function exportScene(scene: Scene, compile: boolean): Promise<ExportResult> {
@@ -47,6 +48,7 @@ export function barDefaults(): Promise<BarDefaults> {
 
 export interface PreviewResult {
   bytes: number;
+  /** The bar's answer to the step that decided it; 0 when nothing was sent. */
   status: number;
   message: string;
 }

@@ -1,24 +1,39 @@
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { ANIM_FORMATS, AnimFormat, animFileName } from '../../shared/anim-format';
 
 /**
  * Reading an animation off disk, shared by the full-screen `AnimationPlayer`
  * and the 16x16 `IconAnimator`.
  *
  * Both read the same layout -- `Animations/<name>/<name>/`, PNG frames, a
- * `meta.json` and optionally `<name>.anim` -- and a second copy of this code
- * would be the duplicated-constant hazard in another shape: the day one of them
- * learned a new rule about frame names, the other would silently sort frames
- * the old way.
+ * `meta.json` and optionally a compiled `.anim` per format -- and a second
+ * copy of this code would be the duplicated-constant hazard in another shape:
+ * the day one of them learned a new rule about frame names, the other would
+ * silently sort frames the old way.
  */
 export interface AnimationData {
   name: string;
   fps: number;
   /** PNG-encoded frames, in play order. */
   frames: Buffer[];
-  /** The compiled `.anim`, when there is one; the device plays it itself. */
-  animBuffer?: Buffer;
+  /**
+   * The compiled `.anim` in each format there is a file for; the device plays
+   * the one its firmware reads (`shared/anim-format.ts`). Pick with
+   * {@link animFor}, never by taking whichever is there: a file in the wrong
+   * format draws the firmware's load-error placeholder, and answers 200.
+   */
+  anims: Partial<Record<AnimFormat, Buffer>>;
+}
+
+/**
+ * The `.anim` to hand a bar whose firmware reads `format`, or undefined when
+ * there is none -- no file in that format, or a firmware whose format is not
+ * known, which then gets the frames or the static icon instead.
+ */
+export function animFor(data: AnimationData, format: AnimFormat | null): Buffer | undefined {
+  return format === null ? undefined : data.anims[format];
 }
 
 /** Frames read concurrently while loading. */
@@ -114,17 +129,20 @@ export async function loadAnimationSequence(
       }
     }
 
-    let animBuffer: Buffer | undefined;
-    const animFilePath = path.join(targetDir, `${animName}.anim`);
-    if (fs.existsSync(animFilePath)) {
-      animBuffer = await fs.promises.readFile(animFilePath);
+    const anims: Partial<Record<AnimFormat, Buffer>> = {};
+    for (const format of ANIM_FORMATS) {
+      const animFilePath = path.join(targetDir, animFileName(animName, format));
+      if (fs.existsSync(animFilePath)) {
+        anims[format] = await fs.promises.readFile(animFilePath);
+      }
     }
+    const formats = Object.keys(anims);
 
     console.log(
       `[AnimationPlayer] Loaded animation '${animName}' with ${frames.length} frames at ${fps} fps` +
-        `${animBuffer ? ' (Hardware Accelerated)' : ''}`
+        `${formats.length > 0 ? ` (.anim formats ${formats.join(', ')})` : ''}`
     );
-    return { name: animName, fps, frames, animBuffer };
+    return { name: animName, fps, frames, anims };
   } catch (err) {
     console.error(`[AnimationPlayer] Error loading animation ${animName}:`, err);
     return null;

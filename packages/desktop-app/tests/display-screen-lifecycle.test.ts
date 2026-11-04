@@ -6,7 +6,7 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { ActiveSessionDTO } from '../src/shared/dtos';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
-import { BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
+import { BLANK_ANIMATION_BYTES, BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
 import { FirmwareSimulator, RuleId } from './support/firmware-simulator';
 
 // Every `.anim` read once, before the tests, then served from memory. These
@@ -413,7 +413,7 @@ describe('Front display screen lifecycle', () => {
       const playing = String(canvas.elements.get(FRONT_ELEMENT_IDS.ICON)?.path);
       const sent = requests.length;
 
-      await driver.uploadAsset(DEVICE_APPLICATION_NAME, playing, Buffer.from('anim'));
+      await driver.uploadAsset(DEVICE_APPLICATION_NAME, playing, BLANK_ANIMATION_BYTES[0]);
 
       expect(requests).toHaveLength(sent);
     });

@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { createDeviceClient, encodePng } = require('./lib/busybar-device');
+const { ANIM_FORMATS, animFileName, animFormatForFirmware } = require('./lib/anim-formats');
 
 /**
  * Checks a real BUSY Bar against the contract this app relies on, and reports
@@ -78,6 +79,20 @@ const OUT_DIR =
     ? process.argv[outFlag + 1]
     : fs.mkdtempSync(path.join(os.tmpdir(), 'busybar-probe-'));
 fs.mkdirSync(OUT_DIR, { recursive: true });
+
+/**
+ * The `.anim` format this bar's firmware reads, read off its version before
+ * any check runs: 1.2 reads `bicycle0`, 1.3 `bicycle1`, neither the other's.
+ * A file in the wrong one is stored and drawn with 200s and shows the
+ * firmware's load-error icon -- still, so the animation check would fail it,
+ * but for the wrong reason. Null when the version says nothing.
+ */
+let ANIM_FORMAT = null;
+
+/** `Animations/<name>/<name>/` and the file in this bar's format. */
+function animPath(name) {
+  return path.join(__dirname, '..', 'Animations', name, name, animFileName(name, ANIM_FORMAT));
+}
 
 const results = [];
 function record(name, status, detail) {
@@ -516,17 +531,22 @@ function framesDiffer(a, b, threshold = 24) {
   return changed;
 }
 
-/** The largest `.anim` in the repository, or null if the folder is not there. */
+/**
+ * The largest `.anim` in the repository in this bar's format, or null if the
+ * folder is not there or the format is unknown.
+ */
 function findLargestAnim() {
   const root = path.resolve(__dirname, '..', 'Animations');
-  if (!fs.existsSync(root)) return null;
+  if (!fs.existsSync(root) || ANIM_FORMAT === null) return null;
 
   const found = [];
   const walk = dir => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.anim')) found.push({ file: full, size: fs.statSync(full).size });
+      else if (entry.name === animFileName(path.basename(dir), ANIM_FORMAT)) {
+        found.push({ file: full, size: fs.statSync(full).size });
+      }
     }
   };
   walk(root);
@@ -557,7 +577,11 @@ function findLargestAnim() {
 async function probeAnimation() {
   const anim = findLargestAnim();
   if (!anim) {
-    record('Animation upload', 'skip', 'no .anim files found under Animations/');
+    record(
+      'Animation upload',
+      'skip',
+      ANIM_FORMAT === null ? 'the firmware version names no .anim format' : 'no .anim files found under Animations/'
+    );
     return;
   }
 
@@ -765,8 +789,8 @@ async function probeFontSheet() {
  * Opt-in (`--compositing`). It draws at `COMPOSITING_PRIORITY`, above the app's
  * 95, with element timeouts, so it runs with SprintTicker open: the app's own
  * draws get 409 meanwhile and resume when the probe removes its elements. The
- * test animation is generated here and compiled with the repository's
- * `seq2anim.py`, so it needs Python with Pillow.
+ * test animation is generated here and compiled with the repository's copy of
+ * the firmware compiler for this bar's format, so it needs Python with Pillow.
  */
 const COMPOSITING_PRIORITY = 100;
 const ICON = 16;
@@ -799,12 +823,9 @@ function buildIconAnim(dir) {
   }
   fs.writeFileSync(path.join(seq, 'meta.json'), JSON.stringify({ fps: 30, color_mode: 'rgb888', sections: [] }));
   const out = path.join(dir, 'probe_icon16.anim');
-  execFileSync(process.env.PYTHON || 'python', [
-    path.join(__dirname, 'busybar-anim-toolchain', 'seq2anim.py'),
-    '-o',
-    out,
-    seq
-  ]);
+  const compiler = ANIM_FORMATS.find(({ format }) => format === ANIM_FORMAT);
+  if (!compiler) throw new Error('the firmware version names no .anim format');
+  execFileSync(process.env.PYTHON || 'python', [compiler.compiler, '-o', out, seq]);
   return out;
 }
 
@@ -1228,7 +1249,11 @@ function isLfsPointer(file) {
 /** Animated icons swapped under one id, as a merge by id: no removal, no close. */
 async function probeSwapInPlaceSoak() {
   const names = ['icon_gear_16x16', 'icon_playmode_16x16'];
-  const files = names.map(name => path.join(__dirname, '..', 'Animations', name, name, `${name}.anim`));
+  if (ANIM_FORMAT === null) {
+    record('Swap-in-place soak', 'skip', 'the firmware version names no .anim format');
+    return;
+  }
+  const files = names.map(animPath);
   if (files.some(file => !fs.existsSync(file) || isLfsPointer(file))) {
     record('Swap-in-place soak', 'skip', 'an icon is missing or an LFS pointer');
     return;
@@ -1289,7 +1314,11 @@ async function probeTeardownSoak() {
   const reupload = process.argv.includes('--reupload');
   const closeWithAnim = process.argv.includes('--close-with-anim');
   const park = process.argv.includes('--park');
-  const blankFile = path.join(__dirname, '..', 'Animations', 'blank_16x16', 'blank_16x16', 'blank_16x16.anim');
+  if (ANIM_FORMAT === null) {
+    record('Teardown soak', 'skip', 'the firmware version names no .anim format');
+    return;
+  }
+  const blankFile = animPath('blank_16x16');
   // `--icon gear` soaks another icon without re-uploading it, which separates
   // the two things `--reupload` changes at once.
   const iconFlag = process.argv.indexOf('--icon');
@@ -1299,7 +1328,7 @@ async function probeTeardownSoak() {
       : reupload
         ? 'icon_gear_16x16'
         : 'icon_stopwatch_paused_16x16';
-  const iconFile = path.join(__dirname, '..', 'Animations', iconName, iconName, `${iconName}.anim`);
+  const iconFile = animPath(iconName);
   // By content, not size: this icon is a real 1.2 KB file -- pause bars
   // blinking compress to almost nothing -- which a "< 4 KB is a pointer" rule
   // skipped as if Git LFS had not been run.
@@ -1701,6 +1730,14 @@ async function main() {
       // Not fatal: the version is context for the report, not a check.
     }
     record('Firmware version', 'info', firmware);
+    ANIM_FORMAT = animFormatForFirmware(firmware);
+    record(
+      'Animation format',
+      ANIM_FORMAT === null ? 'fail' : 'info',
+      ANIM_FORMAT === null
+        ? `firmware ${firmware} names no .anim format this repository knows; the animation checks are skipped`
+        : `bicycle${ANIM_FORMAT} (${animFileName('<name>', ANIM_FORMAT)})`
+    );
   } catch (err) {
     record('Device reachable', 'fail', `${err.message}. Is the bar plugged in over USB?`);
     return;

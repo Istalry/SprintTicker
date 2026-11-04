@@ -14,14 +14,18 @@ interface Call {
 
 /**
  * A device that answers from a script, keyed by "METHOD /path-without-query",
- * and records every request. Anything unscripted answers 200.
+ * and records every request except the firmware read. Anything unscripted
+ * answers 200; `/api/status` reports `firmware`, or nothing when it is null.
  */
-function fakeDevice(answers: Record<string, number> = {}): { device: DeviceModule; calls: Call[] } {
+function fakeDevice(answers: Record<string, number> = {}, firmware: string | null = '1.2.4'): { device: DeviceModule; calls: Call[] } {
   const calls: Call[] = [];
   const device: DeviceModule = {
     createDeviceClient: ({ host }) => ({
       host,
       request: async (method, url, options): Promise<DeviceResponse> => {
+        if (method === 'GET' && url === '/api/status') {
+          return { status: 200, body: JSON.stringify(firmware === null ? {} : { firmware: { version: firmware } }) };
+        }
         calls.push({ method, path: url, body: options?.body });
         const key = `${method} ${url.split('?')[0]}`;
         return { status: answers[key] ?? 200, body: answers[key] ? 'refused' : '{}' };
@@ -32,10 +36,15 @@ function fakeDevice(answers: Record<string, number> = {}): { device: DeviceModul
   return { device, calls };
 }
 
+/** The formats asked of the compiler, in order. */
+let compiledFormats: number[] = [];
+
 function deps(device: DeviceModule): PreviewDeps {
+  compiledFormats = [];
   return {
     device,
-    compile: async (_dir, outFile) => {
+    compile: async (_dir, outFile, format) => {
+      compiledFormats.push(format);
       fs.writeFileSync(outFile, Buffer.alloc(1234));
       return 1234;
     }
@@ -62,6 +71,27 @@ describe('previewOnBar', () => {
     expect(draw.priority).toBe(PREVIEW_PRIORITY);
     // A studio closed without Stop must not leave the bar stuck on a preview.
     expect(draw.elements[0].timeout).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['1.2.4', 0],
+    ['1.3.1', 1]
+  ] as const)('PreviewOnBar_Firmware%s_CompilesFormat%s', async (firmware, format) => {
+    // A bar reads only its own firmware's format; the other is drawn as a
+    // load-error icon with a 200.
+    const { device } = fakeDevice({}, firmware);
+    await previewOnBar(TARGET, SEQUENCE, deps(device));
+    expect(compiledFormats).toEqual([format]);
+  });
+
+  it('PreviewOnBar_FirmwareUnknown_SendsNothingAndSaysWhy', async () => {
+    const { device, calls } = fakeDevice({}, null);
+    const result = await previewOnBar(TARGET, SEQUENCE, deps(device));
+
+    expect(result.status).toBe(0);
+    expect(result.message).toContain('firmware');
+    expect(calls).toEqual([]);
+    expect(compiledFormats).toEqual([]);
   });
 
   it('PreviewOnBar_UploadRefused_ReportsItAndNeverDraws', async () => {

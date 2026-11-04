@@ -332,7 +332,7 @@ reminder of the time logged.
 | **Node.js** | `>=22.12.0` (`.nvmrc` pins `24.18.0`). Vitest 5 sets this floor. |
 | **pnpm** | `>=11.0.0` (pinned to `pnpm@11.25.0` via `packageManager`) |
 | **Git LFS** | **Mandatory** — see below |
-| **Python** | Only to compile animations (`seq2anim.py`, with Pillow and colorlog). Nothing needs a C++ compiler: `better-sqlite3` ships prebuilt. |
+| **Python** | Only to compile animations (the firmware's `seq2anim.py` and `seq2anim_v1.py`, with Pillow and colorlog). Nothing needs a C++ compiler: `better-sqlite3` ships prebuilt. |
 | **Hardware** | A BUSY Bar over USB — optional; `pnpm dev:mock` covers the rest |
 
 ### 🗃️ Git LFS is mandatory
@@ -490,10 +490,10 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2597 tests across 129 files for the app -- the main and shared
+`pnpm test` runs 2701 tests across 130 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
-113 across 6 files, then the Stream Deck plugin's 195 across 8;
+117 across 6 files, then the Stream Deck plugin's 195 across 8;
 `pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.

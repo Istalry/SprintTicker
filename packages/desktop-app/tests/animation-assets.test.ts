@@ -4,6 +4,7 @@ import path from 'path';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS } from '../src/shared/render-constants';
 import { getBitmapById } from '../src/shared/pixel-bitmaps';
 import { BitmapIconId } from '../src/shared/dtos';
+import { ANIM_FORMATS, animFileName, animFormatOf } from '../src/shared/anim-format';
 
 /**
  * Every animation the app names must exist on disk, in the layout
@@ -43,10 +44,33 @@ describe('front animation assets', () => {
       expect(frames.length).toBeGreaterThan(0);
     });
 
-    it('AnimFile_NamedAnimation_HasACompiledAnimForHardwarePlayback', () => {
-      const anim = path.join(dir, `${name}.anim`);
+    it.each(ANIM_FORMATS)('AnimFile_NamedAnimation_HasACompiledAnimInFormat%s', format => {
+      // A bar plays only its firmware's format, and gets the frames or the
+      // static icon when the file in that format is missing.
+      const anim = path.join(dir, animFileName(name, format));
       expect(fs.statSync(anim).size).toBeGreaterThan(0);
     });
+  });
+});
+
+/**
+ * Each `.anim` beside the frames is in the format its name says. A file in
+ * the wrong format is not refused by the bar but drawn as its load-error
+ * icon, so a mix-up here -- the wrong compiler, a file copied over another --
+ * would show only on the hardware. `node scripts/build-anims.js` writes both.
+ */
+describe('.anim formats on disk', () => {
+  const folders = fs
+    .readdirSync(ANIMATIONS_DIR)
+    .filter(name => fs.statSync(path.join(ANIMATIONS_DIR, name)).isDirectory());
+
+  it.each(folders)('AnimFiles_%s_OneInEachFormatWithItsSignature', name => {
+    const dir = path.join(ANIMATIONS_DIR, name, name);
+    for (const format of ANIM_FORMATS) {
+      const file = path.join(dir, animFileName(name, format));
+      expect(fs.existsSync(file), `${animFileName(name, format)} is missing`).toBe(true);
+      expect(animFormatOf(fs.readFileSync(file))).toBe(format);
+    }
   });
 });
 

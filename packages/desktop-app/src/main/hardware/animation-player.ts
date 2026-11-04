@@ -2,7 +2,7 @@ import { powerSaveBlocker } from 'electron';
 import { BusyBarDriver, DEFAULT_DRAW_PRIORITY } from './busybar-driver';
 import { describeError, DrawOutcome, isElementAbsent } from './device-errors';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
-import { AnimationData, defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
+import { AnimationData, animFor, defaultAnimationsDir, loadAnimationSequence } from './animation-sequence';
 import { SerialQueue } from './serial-queue';
 
 /**
@@ -157,13 +157,20 @@ export class AnimationPlayer {
     this.isPlaying = true;
     this.frameIndex = 0;
 
+    // The file in the format this bar's firmware reads, chosen per play: a
+    // bar updated from 1.2 to 1.3 reads the other one after its reboot. None
+    // -- no such file, or a firmware whose format is not known -- streams the
+    // frames, since a file in the wrong format would be drawn as the
+    // firmware's load-error icon with a 200.
+    const deviceAnim = animFor(animData, this.driver.getAnimationFormat());
+
     // Held only while this process is the one producing frames, and only for an
     // animation that ends. A looping idle animation -- the lunch screen, the
     // away screen while the machine is locked -- used to hold it for the entire
     // break, which is precisely when the machine should be allowed to sleep.
     // With a native `.anim` the device animates on its own and nothing here
     // needs to stay awake at all.
-    const needsPowerBlocker = !animData.animBuffer && !this.loop;
+    const needsPowerBlocker = !deviceAnim && !this.loop;
     if (needsPowerBlocker && this._powerSaveBlockerId === null) {
       this._powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension');
       console.log(
@@ -177,13 +184,13 @@ export class AnimationPlayer {
     // scene played the preview at a quarter of the device's speed, so a
     // one-shot scene had barely started on screen when the bar had finished.
     // Skipping frames keeps the two in step.
-    const effectiveFps = animData.animBuffer
+    const effectiveFps = deviceAnim
       ? Math.min(animData.fps, AnimationPlayer.HARDWARE_PREVIEW_MAX_FPS)
       : animData.fps;
     const frameIntervalMs = Math.max(1, Math.floor(1000 / effectiveFps));
     const frameStride = Math.max(1, Math.round(animData.fps / effectiveFps));
 
-    if (animData.animBuffer) {
+    if (deviceAnim) {
       // Optimistic: streaming is suppressed while the device is expected to own
       // playback, and `startHardwareAnimation` clears this if it turns out not
       // to. Starting false instead would double-draw for the length of an
@@ -191,7 +198,7 @@ export class AnimationPlayer {
       this.hardwareAnimActive = true;
       // Every device call inside handles its own failure; this catch is for a
       // bug in that handling, which would otherwise be an unhandled rejection.
-      this.startHardwareAnimation(animName, animData).catch(err =>
+      this.startHardwareAnimation(animName, animData, deviceAnim).catch(err =>
         console.error(`[AnimationPlayer] Starting ${animName}.anim failed unexpectedly:`, err)
       );
     }
@@ -227,9 +234,7 @@ export class AnimationPlayer {
    * without a `.anim` already use, so a device that will not take the file is
    * degraded rather than silent.
    */
-  private async startHardwareAnimation(animName: string, animData: AnimationData): Promise<void> {
-    const buffer = animData.animBuffer;
-    if (!buffer) return;
+  private async startHardwareAnimation(animName: string, animData: AnimationData, buffer: Buffer): Promise<void> {
     const bytes = buffer.length;
     const path = `${animName}.anim`;
     // Superseded while a request was in flight; the newer animation owns the
@@ -499,9 +504,9 @@ export class AnimationPlayer {
     if (!frameBuffer) return;
 
     // Stream to hardware unless the device is genuinely playing the .anim
-    // itself. Keyed on the flag rather than on `animBuffer` alone, because
-    // having the file says nothing about whether the device accepted it.
-    if (!animData.animBuffer || !this.hardwareAnimActive) {
+    // itself. Keyed on the flag rather than on having a file, because having
+    // one says nothing about whether the device accepted it.
+    if (!this.hardwareAnimActive) {
       const ledColor = this.getLedColorCallback ? this.getLedColorCallback() : undefined;
       
       // We send the PNG buffer directly to the hardware using an image element payload.

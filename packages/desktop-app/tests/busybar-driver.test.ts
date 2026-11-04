@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BusyBarDriver, BusyBarDriverOptions, ANIMATION_TEARDOWN_SETTLE_MS, DeviceRequestError, sanitizeAsciiText, parseVarint, zigzagDecode, decodeProtobufInput, describeTransportError, isUnreachableReminderDue, DEVICE_UNREACHABLE_REMINDER_PINGS, DEVICE_PING_INTERVAL_MS } from '../src/main/hardware/busybar-driver';
 import { ArgumentException, ArgumentNullException } from '../src/shared/dtos';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../src/shared/device-constants';
-import { BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
+import { BLANK_ANIMATION_BYTES, BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
 
 /**
  * A live (non-mock) driver, connected, whose every request past the status
@@ -15,12 +15,18 @@ import { BLANK_ANIMATION_FILE } from '../src/main/hardware/blank-animation';
 async function withLiveDriver(
   respond: (url: string, init?: RequestInit) => Promise<Response> | Response,
   body: (driver: BusyBarDriver, calls: string[]) => Promise<void>,
-  options: Partial<BusyBarDriverOptions> = {}
+  options: Partial<BusyBarDriverOptions> = {},
+  /** What `/api/status` reports; null reports none. */
+  firmwareVersion: string | null = '1.2.4'
 ): Promise<void> {
   const originalFetch = globalThis.fetch;
   const calls: string[] = [];
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
-    if (url.includes('/api/status') || (url.includes('/api/display/brightness') && init?.method === 'GET')) {
+    if (url.includes('/api/status')) {
+      const report = firmwareVersion === null ? {} : { firmware: { version: firmwareVersion } };
+      return { ok: true, status: 200, json: async () => report } as Response;
+    }
+    if (url.includes('/api/display/brightness') && init?.method === 'GET') {
       return { ok: true, status: 200, json: async () => ({}) } as Response;
     }
     calls.push(`${init?.method ?? 'GET'} ${url}`);
@@ -726,7 +732,7 @@ describe('BusyBarDriver failure reporting', () => {
 
   it('UploadAsset_PayloadTooLarge_ThrowsTooLarge', async () => {
     await withLiveDriver(() => status(413), async driver => {
-      await expect(driver.uploadAsset('app1', 'big.anim', Buffer.alloc(8))).rejects.toMatchObject({
+      await expect(driver.uploadAsset('app1', 'big.anim', BLANK_ANIMATION_BYTES[0])).rejects.toMatchObject({
         kind: 'too_large',
         status: 413
       });
@@ -958,6 +964,83 @@ describe('BusyBarDriver failure reporting', () => {
       await withLiveDriver(() => status(200), async driver => {
         await expect(driver.drawOverlay('sprintticker', [])).rejects.toBeInstanceOf(ArgumentNullException);
       });
+    });
+  });
+
+  /**
+   * Firmware 1.3 reads only `bicycle1` files and 1.2 only `bicycle0`, and a
+   * file in the other format is stored and drawn with 200s -- as the
+   * firmware's load-error icon. Nothing the device answers says so.
+   */
+  describe('.anim format', () => {
+    it.each([
+      ['1.2.4', 0],
+      ['1.3.1', 1],
+      ['1.3.0-rc', 1],
+      ['dev-build', null]
+    ] as const)('GetAnimationFormat_Firmware%s_Is%s', async (version, format) => {
+      await withLiveDriver(() => status(200), async driver => {
+        expect(driver.getAnimationFormat()).toBe(format);
+      }, {}, version);
+    });
+
+    it('GetAnimationFormat_NoVersionReported_IsNullNotThePlaceholdersFormat', async () => {
+      // The driver's own placeholder version reads as 1.4; taken for the
+      // bar's, it would send files the bar may draw as an error icon.
+      await withLiveDriver(() => status(200), async driver => {
+        expect(driver.getAnimationFormat()).toBeNull();
+      }, {}, null);
+    });
+
+    it('UploadAsset_AnimInTheOtherFormat_IsRefusedWithoutARequest', async () => {
+      await withLiveDriver(() => status(200), async (driver, calls) => {
+        await expect(driver.uploadAsset('app1', 'gear.anim', BLANK_ANIMATION_BYTES[0])).rejects.toMatchObject({
+          kind: 'rejected',
+          status: null
+        });
+        expect(calls).toEqual([]);
+      }, {}, '1.3.1');
+    });
+
+    it('UploadAsset_AnimWithFormatUnknown_IsRefusedWithoutARequest', async () => {
+      await withLiveDriver(() => status(200), async (driver, calls) => {
+        await expect(driver.uploadAsset('app1', 'gear.anim', BLANK_ANIMATION_BYTES[1])).rejects.toMatchObject({ kind: 'rejected' });
+        expect(calls).toEqual([]);
+      }, {}, null);
+    });
+
+    it('UploadAsset_AnimInTheBarsFormat_IsSent', async () => {
+      await withLiveDriver(() => status(200), async (driver, calls) => {
+        await driver.uploadAsset('app1', 'gear.anim', BLANK_ANIMATION_BYTES[1]);
+        expect(calls).toHaveLength(1);
+        expect(calls[0]).toContain('file=gear.anim');
+      }, {}, '1.3.1');
+    });
+
+    it('UploadAsset_NotAnAnim_IsSentWhateverTheFirmware', async () => {
+      await withLiveDriver(() => status(200), async (driver, calls) => {
+        await driver.uploadAsset('app1', 'frame.png', Buffer.from('png'));
+        expect(calls).toHaveLength(1);
+      }, {}, null);
+    });
+
+    it('RemoveDisplayElements_AnAnimationOnFirmware13_PutsItToRestWithTheV1Blank', async () => {
+      const uploads: Buffer[] = [];
+      await withLiveDriver(
+        (url, init) => {
+          if (url.includes('/api/assets/upload')) uploads.push(Buffer.from(init?.body as Uint8Array));
+          return status(200);
+        },
+        async driver => {
+          await driver.drawOverlay('sprintticker', [{ id: 'icon_anim', type: 'animation', path: 'gear.anim', x: 0, y: 0, z_index: 2 }]);
+          await driver.removeDisplayElements('sprintticker', ['icon_anim']);
+        },
+        {},
+        '1.3.1'
+      );
+
+      expect(uploads).toHaveLength(1);
+      expect(uploads[0].equals(BLANK_ANIMATION_BYTES[1])).toBe(true);
     });
   });
 

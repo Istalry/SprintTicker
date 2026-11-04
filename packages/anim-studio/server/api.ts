@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { DEFAULT_USB_IP } from '../../desktop-app/src/shared/device-constants';
+import { ANIM_FORMATS, animFileName } from '../../desktop-app/src/shared/anim-format';
 import { parseScene, SceneError } from '../src/model/scene';
 import { BarTarget, PreviewDeps, previewOnBar, stopPreview } from './bar-preview';
 import { compileAnim, loadDeviceModule, sequenceDir, writeSequence } from './export';
@@ -110,7 +111,7 @@ export function createStudioApi(paths: StudioPaths): StudioApi {
   const device = loadDeviceModule(paths.repoRoot);
   const previewDeps: PreviewDeps = {
     device,
-    compile: (dir, outFile) => compileAnim(paths.repoRoot, dir, outFile)
+    compile: (dir, outFile, format) => compileAnim(paths.repoRoot, dir, outFile, format)
   };
 
   async function route(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -151,11 +152,16 @@ export function createStudioApi(paths: StudioPaths): StudioApi {
       const scene = parseScene(body.scene);
       const dir = sequenceDir(paths.animationsDir, scene.id);
       const files = writeSequence(dir, renderSequence(scene), device.encodePng);
-      let animBytes: number | null = null;
+      // One `.anim` per format: a bar plays only its own firmware's.
+      let animFiles: Array<{ file: string; bytes: number }> | null = null;
       if (body.compile === true) {
-        animBytes = await compileAnim(paths.repoRoot, dir, path.join(dir, `${scene.id}.anim`));
+        animFiles = [];
+        for (const format of ANIM_FORMATS) {
+          const file = animFileName(scene.id, format);
+          animFiles.push({ file, bytes: await compileAnim(paths.repoRoot, dir, path.join(dir, file), format) });
+        }
       }
-      send(res, 200, { dir: path.relative(paths.repoRoot, dir), frames: files.length, animBytes });
+      send(res, 200, { dir: path.relative(paths.repoRoot, dir), frames: files.length, animFiles });
       return true;
     }
 

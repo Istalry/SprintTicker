@@ -909,6 +909,27 @@ lines naming the file and its size.
 </details>
 
 <details>
+<summary>⬆️ <b>Updating the bar's firmware</b></summary>
+
+ Firmware 1.3 changed how the bar
+stores animations, and reads only its own files: a bar on 1.3 shown a file made
+for 1.2 draws a small error icon where the animation should be, without
+reporting anything wrong. SprintTicker carries every animation in both forms
+and reads the bar's version to pick one, so update the app first, then the
+bar.
+
+After the update the bar restarts. SprintTicker notices the new version when
+the bar answers again and sends its animations once more in the new form. If
+the bar ever reports a version the app cannot read, the app sends no animation
+files at all: scenes play from the app frame by frame, and icons stay still.
+Device Diagnostics shows the version the bar reported.
+
+An older SprintTicker on a bar updated to 1.3 shows that error icon in place
+of every animated icon and scene. Updating the app fixes it.
+
+</details>
+
+<details>
 <summary>🧊 <b>The bar freezes and stops answering</b></summary>
 
  The panel stops changing, the app
