@@ -3644,8 +3644,9 @@
       where the animation should be. No status code says the file was wrong, so
       the fallbacks for a refused file -- the static icon, the streamed frames --
       never take over. Read from the firmware&#39;s source and its own display tests
-      (1.3.1, 2026-11-04); <code>pnpm probe:busybar</code> checks it on a real bar
-      (&quot;Animation in another format&quot;), not yet run.</p>
+      (1.3.1, 2026-11-04), and measured on a bar running 1.3.1 the same day:
+      <code>pnpm probe:busybar</code> draws the gear as <code>bicycle0</code> and reads back a 9×9
+      still at (0,0) (&quot;Animation in another format&quot;).</p>
       </div>
       <p>So every animation ships in both formats, side by side:</p>
       <div class="table-wrap"><table>

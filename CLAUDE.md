@@ -422,9 +422,9 @@ upload and the draw both answer 200, and the panel shows the firmware's 9×9
 load-error icon where the animation should be -- so the static icon and the
 streamed frames that stand in for a refused file never take over. Read from
 the firmware's source and its own `test_api_display_draw.py` on 2026-11-04;
-`pnpm probe:busybar` draws the gear in the other format and reads the panel
-back on every run ("Animation in another format"), which has not yet run on
-a bar. Four things follow:
+and seen on a bar running 1.3.1 the same day: `pnpm probe:busybar` draws the
+gear in the other format on every run ("Animation in another format"), and
+the panel read back a 9x9 still at (0,0). Four things follow:
 - **Every animation ships in every format**: `<name>.anim` (`bicycle0`) and
   `<name>.v1.anim` (`bicycle1`), each compiled by that firmware's own
   compiler (`node scripts/build-anims.js`, or the studio's export).

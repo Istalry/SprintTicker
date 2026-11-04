@@ -684,8 +684,8 @@ Also worth doing while this area is open:
   20-60 ms -- the same result as on 1.2.4. **Still to do:** a working day of
   the packaged app on 1.3.1, Unity included, before this box is ticked. The probe now checks that a file in the
   other format reads back as the placeholder ("Animation in another
-  format"), so far read only from the firmware's source and tests: run it
-  once on 1.3.1. And 1.3.1's PR #1025 changes the
+  format"), and on 1.3.1 it does: the gear as `bicycle0` drew 200 and showed
+  a 9x9 still at (0,0). And 1.3.1's PR #1025 changes the
   USB network adapter's setup for Windows 11: re-test the native driver on
   the machine with the Code 10, with `usbipd` unbound first.
 
