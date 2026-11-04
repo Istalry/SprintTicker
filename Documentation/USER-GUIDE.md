@@ -521,8 +521,13 @@ battery warning as High Priority, Discord, Gmail and Windows as Default — but
 all of it is yours to change.
 
 Each app's real icon is resolved from its MSIX manifest or Start Menu shortcut
-and downscaled to 15×15. If it picks the wrong executable — name matching is not
-perfect — set an icon override on that app.
+and downscaled to 15×15. Windows itself says which shortcut belongs to which
+app, so a shortcut named differently from its app — `PowerToys (Preview)`,
+`Visual Studio Code` — still finds the right icon. An app with no shortcut is
+matched by name, which is not perfect: if it shows the wrong icon, set an icon
+override on that app. The first notification from an app after SprintTicker
+starts shows the built-in icon while the real one is looked up; later ones
+show the app's own.
 
 **Sender only** mode shows that a message arrived without showing what it said.
 

@@ -197,51 +197,43 @@ if ($any) { Write-Output $any.FullName }
    * Maps a Win32 app to the executable behind its Start-Menu shortcut.
    *
    * Windows derives an unpackaged app's AUMID from the shortcut that launched
-   * it, so the shortcut is the way back to the binary. The authoritative link is
-   * the shortcut's `System.AppUserModel.ID` property, but reading a property
-   * store from PowerShell needs native interop, and the shell's own detail
-   * columns do not expose it. Matching the shortcut's file name against tokens
-   * taken from the AUMID gets there for the apps that matter -- Discord reports
-   * `com.squirrel.Discord.Discord` and ships `Discord.lnk` -- at a fraction of
-   * the cost, since only a matching shortcut is opened.
+   * it, so the shortcut is the way back to the binary, and the authoritative
+   * link is the shortcut's `System.AppUserModel.ID` property. The shell answers
+   * that question itself: `shell:AppsFolder` is Windows' own index of every
+   * Start-menu app by AUMID, `ParseName(<aumid>)` finds the entry in a few
+   * milliseconds, and `System.Link.TargetParsingPath` names its executable.
    *
-   * Wrong matches are possible in principle. They degrade to a plausible icon
-   * for a similarly named app rather than to anything harmful, and a per-rule
-   * icon override exists for the cases where they are not good enough.
+   * This used to match the shortcut's *file name* against tokens of the AUMID
+   * instead, on the belief that the property could not be read from
+   * PowerShell. It can, and the name match missed every app whose shortcut is
+   * not named after its id: `Microsoft.PowerToysWin32` ships
+   * `PowerToys (Preview).lnk`, `Microsoft.VisualStudioCode` ships
+   * `Visual Studio Code.lnk` (a space), `com.unity3d.unityhub` ships
+   * `Unity Hub.lnk` -- each resolved to nothing and drew the generic bell. A
+   * token found inside a longer name also picked the wrong app outright:
+   * `Windows.Defender.SecurityCenter` drew Bitdefender's icon through
+   * `*Defender*`. Measured against the real toasts in a developer's
+   * notification database on 2026-11-04.
+   *
+   * The name match stays as the fallback for an id the shell does not list,
+   * and skips any shortcut that declares a different AUMID -- that shortcut is
+   * another app's, whatever it is called.
    */
   private async resolveExecutablePath(appId: string, appName?: string): Promise<string | null> {
+    // No early return on an empty token list: the AppsFolder lookup needs only
+    // the id, and an AUMID made entirely of short or generic segments is still
+    // one Windows may know.
     const tokens = buildNameTokens(appId, appName);
-    if (tokens.length === 0) return null;
 
     const script = `
 $ErrorActionPreference = 'Stop'
+$appId = ${psLiteral(appId)}
 $tokens = @(${tokens.map(psLiteral).join(',')})
-$roots = @(
-  (Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs'),
-  (Join-Path $env:ProgramData 'Microsoft\\Windows\\Start Menu\\Programs')
-) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
-if ($roots.Count -eq 0) { return }
+$shell = New-Object -ComObject Shell.Application
 
-# Collect first, open second: reading a shortcut needs COM, so only candidates
-# whose name already matched are opened.
-$candidates = @()
-foreach ($root in $roots) {
-  foreach ($lnk in Get-ChildItem -LiteralPath $root -Filter '*.lnk' -Recurse -ErrorAction SilentlyContinue) {
-    $stem = [System.IO.Path]::GetFileNameWithoutExtension($lnk.Name)
-    foreach ($token in $tokens) {
-      if ($stem -eq $token) { $candidates += ,@(0, $lnk.FullName); break }
-      if ($stem -like ('*' + $token + '*')) { $candidates += ,@(1, $lnk.FullName); break }
-    }
-  }
-}
-if ($candidates.Count -eq 0) { return }
-
-$shell = New-Object -ComObject WScript.Shell
-foreach ($candidate in ($candidates | Sort-Object { $_[0] })) {
-  try {
-    $target = $shell.CreateShortcut($candidate[1]).TargetPath
-  } catch { continue }
-  if (-not $target -or -not (Test-Path -LiteralPath $target) -or $target -notlike '*.exe') { continue }
+# An executable worth taking an icon from, or $null.
+function Resolve-Executable($target) {
+  if (-not $target -or $target -notlike '*.exe' -or -not (Test-Path -LiteralPath $target)) { return $null }
 
   # Squirrel-packaged apps point their shortcut at the updater stub, which
   # carries a generic media icon rather than the app's own -- Discord's
@@ -257,12 +249,63 @@ foreach ($candidate in ($candidates | Sort-Object { $_[0] })) {
       $named = $inner | Where-Object { $tokens -contains [System.IO.Path]::GetFileNameWithoutExtension($_.Name) } |
         Select-Object -First 1
       if (-not $named) { $named = $inner | Sort-Object Length -Descending | Select-Object -First 1 }
-      if ($named) { $target = $named.FullName }
+      if ($named) { return $named.FullName }
     }
   }
+  return $target
+}
 
-  Write-Output $target
-  return
+# 1. Windows' own index of Start-menu apps, keyed by AUMID. A failure here is
+# not the end: the name match below may still find the shortcut, so it is
+# caught rather than allowed to stop the script.
+try {
+  $apps = $shell.Namespace('shell:AppsFolder')
+  $entry = if ($apps) { $apps.ParseName($appId) } else { $null }
+  if ($entry) {
+    $exe = Resolve-Executable $entry.ExtendedProperty('System.Link.TargetParsingPath')
+    if ($exe) { Write-Output $exe; return }
+  }
+} catch {
+  Write-Verbose "AppsFolder lookup failed: $($_.Exception.Message)"
+}
+
+# 2. Shortcut file names matched against tokens of the id.
+if ($tokens.Count -eq 0) { return }
+$roots = @(
+  (Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs'),
+  (Join-Path $env:ProgramData 'Microsoft\\Windows\\Start Menu\\Programs')
+) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+if ($roots.Count -eq 0) { return }
+
+# Collect first, open second: reading a shortcut needs COM, so only candidates
+# whose name already matched are opened. A token must be a whole word of the
+# name: inside a word, 'Defender' found 'Bitdefender VPN'.
+$candidates = @()
+foreach ($root in $roots) {
+  foreach ($lnk in Get-ChildItem -LiteralPath $root -Filter '*.lnk' -Recurse -ErrorAction SilentlyContinue) {
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($lnk.Name)
+    foreach ($token in $tokens) {
+      if ($stem -eq $token) { $candidates += ,@(0, $lnk); break }
+      if ($stem -match ('(^|[^A-Za-z0-9])' + [regex]::Escape($token) + '($|[^A-Za-z0-9])')) { $candidates += ,@(1, $lnk); break }
+    }
+  }
+}
+
+foreach ($candidate in ($candidates | Sort-Object { $_[0] })) {
+  $lnk = $candidate[1]
+  try {
+    $item = $shell.Namespace($lnk.DirectoryName).ParseName($lnk.Name)
+    if (-not $item) { continue }
+    # A shortcut that names its own AUMID belongs to that app, whatever its
+    # file is called: Bitdefender.lnk is not Windows Defender's.
+    $declared = $item.ExtendedProperty('System.AppUserModel.ID')
+    if ($declared -and $declared -ne $appId) { continue }
+    $exe = Resolve-Executable $item.ExtendedProperty('System.Link.TargetParsingPath')
+  } catch {
+    # One unreadable shortcut says nothing about the next candidate.
+    continue
+  }
+  if ($exe) { Write-Output $exe; return }
 }
 `;
 

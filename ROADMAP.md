@@ -552,6 +552,13 @@ Also worth doing while this area is open:
   notification; one line of each kind for a Claude notification settles it.
   If it is the first, the cache could be warmed from the notification history
   at startup, or persisted.
+  **The second is real for VS Code** (2026-11-04): it posts as
+  `Microsoft.VisualStudioCode`, its shortcut is `Visual Studio Code.lnk`, and
+  the resolver matched shortcuts by file name, so every one of its toasts drew
+  the bell -- as did PowerToys' and Unity Hub's. Fixed: the shortcut is now
+  found by AUMID through `shell:AppsFolder`. Claude Desktop (MSIX) resolved
+  all along. What is left is the first candidate; the log line above still
+  tells the two apart.
 - [x] **Make the driver the one guardian of the hardware rules** (started
   2026-10-07, after the 10-05 hang). Four components talk to the display, each
   with its own concurrency discipline and none aware of the others: the frame
@@ -675,9 +682,10 @@ Also worth doing while this area is open:
   play. `--teardown-soak --park --rounds 100`, the one close the app makes,
   passed all 100 rounds there with the 1.3 icon and blank, uploads flat at
   20-60 ms -- the same result as on 1.2.4. **Still to do:** a working day of
-  the packaged app on 1.3.1, Unity included, before this box is ticked. Also worth a probe check of its own: a
-  `bicycle0` file on 1.3 reads back as the placeholder, which is so far read
-  only from the firmware's source and tests. And 1.3.1's PR #1025 changes the
+  the packaged app on 1.3.1, Unity included, before this box is ticked. The probe now checks that a file in the
+  other format reads back as the placeholder ("Animation in another
+  format"), so far read only from the firmware's source and tests: run it
+  once on 1.3.1. And 1.3.1's PR #1025 changes the
   USB network adapter's setup for Windows 11: re-test the native driver on
   the machine with the Code 10, with `usbipd` unbound first.
 

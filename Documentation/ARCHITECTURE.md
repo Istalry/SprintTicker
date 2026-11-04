@@ -626,7 +626,10 @@ resumes the session does not hide that it was left running.
 
 Polls the Windows Action Center database via a PowerShell child process, and
 mirrors notifications from apps you have allowed. App icons are resolved from
-the MSIX manifest or a Start Menu shortcut and downscaled to 15×15.
+the MSIX manifest or a Start Menu shortcut and downscaled to 15×15
+(`AppIconResolver`). An unpackaged app's shortcut is found by its AUMID in the
+shell's `shell:AppsFolder`, and by file name only when the shell does not list
+it.
 
 **This is the reason the app is Windows-only in practice**, and its failures are
 silent — a listener that never starts looks exactly like an app that never

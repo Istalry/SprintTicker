@@ -93,6 +93,63 @@ describe('AppIconResolver', () => {
     expect(scripts).toContain("-Filter 'app-*'");
   });
 
+  /**
+   * A stand-in for Windows' `shell:AppsFolder`: it answers a script only when
+   * the script asks the shell for this exact AUMID, which is the one lookup
+   * that does not depend on what the shortcut file is called.
+   */
+  function appsFolderRunner(aumid: string, target: string): (script: string) => Promise<string> {
+    return async script => {
+      const asksTheShell =
+        script.includes("Namespace('shell:AppsFolder')") &&
+        script.includes('.ParseName($appId)') &&
+        script.includes(`$appId = '${aumid}'`);
+      return asksTheShell ? target : '';
+    };
+  }
+
+  it('Resolve_ShortcutNotNamedAfterItsAumid_FindsTheExecutableThroughTheAppsFolder', async () => {
+    // Measured on a real machine: `Microsoft.PowerToysWin32` ships
+    // `PowerToys (Preview).lnk`, which no token of the id matches by file
+    // name, so every PowerToys toast drew the generic bell.
+    const exe = 'C:\\Program Files\\PowerToys\\PowerToys.exe';
+    const readIcon = vi.fn().mockResolvedValue('data:image/png;base64,UFQ=');
+    const resolver = new AppIconResolver(appsFolderRunner('Microsoft.PowerToysWin32', exe), readIcon);
+
+    const result = await resolver.resolve('Microsoft.PowerToysWin32', 'PowerToysWin32');
+
+    expect(result).toBe('data:image/png;base64,UFQ=');
+    expect(readIcon).toHaveBeenCalledWith(exe);
+  });
+
+  it('Resolve_AumidWithNoUsableNameToken_StillAsksTheAppsFolder', async () => {
+    // Every segment is short or generic, so there is nothing to match a file
+    // name against. That used to return null before asking anything.
+    const exe = 'C:\\Apps\\Thing\\thing.exe';
+    const readIcon = vi.fn().mockResolvedValue('data:image/png;base64,VA==');
+    const resolver = new AppIconResolver(appsFolderRunner('com.microsoft.app', exe), readIcon);
+
+    expect(buildNameTokens('com.microsoft.app')).toEqual([]);
+    expect(await resolver.resolve('com.microsoft.app')).toBe('data:image/png;base64,VA==');
+  });
+
+  it('Resolve_NameFallback_SkipsShortcutsThatBelongToAnotherApp', async () => {
+    // `Windows.Defender.SecurityCenter` has no AppsFolder entry; matched by
+    // name, `*Defender*` drew Bitdefender's icon. A shortcut declaring its own
+    // AUMID is that app's, and a token must be a whole word of the name.
+    const runner = vi.fn().mockResolvedValue('');
+    const resolver = new AppIconResolver(runner, async () => null);
+
+    await resolver.resolve('Windows.Defender.SecurityCenter');
+
+    const script = runner.mock.calls[0][0] as string;
+    expect(script).toContain("ExtendedProperty('System.AppUserModel.ID')");
+    expect(script).toContain('$declared -ne $appId');
+    expect(script).not.toContain("-like ('*' + $token + '*')");
+    // The authoritative lookup runs before any file name is compared.
+    expect(script.indexOf('shell:AppsFolder')).toBeLessThan(script.indexOf('Get-ChildItem -LiteralPath $root'));
+  });
+
   it('Resolve_NothingFound_CachesTheMissAndDoesNotRescan', async () => {
     const runner = vi.fn().mockResolvedValue('');
     const resolver = new AppIconResolver(runner, async () => null);

@@ -13,7 +13,8 @@
   app and icons stay still. Checked on a bar running 1.3.1 with the
   hardware probe, which read the version and played a 1.3 file. The
   animation studio exports both formats and plays its preview in the bar's,
-  and the hardware probe checks the bar in its own. The 1.3 files are about
+  and the hardware probe checks the bar in its own -- and that a file in
+  the other format shows the error icon. The 1.3 files are about
   a fifteenth of the size for scenes, so they upload faster. Firmware 1.3.1
   does not fix the freeze when an animation is removed: SprintTicker keeps
   avoiding it.
@@ -33,6 +34,18 @@
 - **Stream Deck plugin 0.4.1**, rebuilt on Elgato's SDK 3.0.4. Nothing new on
   the keys; the version moves because the bundle did, so that Stream Deck
   installs it over 0.4.0 rather than keeping the old one.
+
+### Fixed
+
+- **Notifications from PowerToys, VS Code, Unity Hub and other apps showed
+  a bell instead of the app's icon.** An app installed without MSIX was
+  traced to its executable by the name of its Start-menu shortcut, so an
+  app whose shortcut is called something else -- `PowerToys (Preview)`,
+  `Visual Studio Code` -- was never found. SprintTicker now asks Windows
+  which shortcut belongs to the app. The name match that remains for apps
+  Windows does not list no longer takes another app's shortcut: on a
+  machine with Bitdefender, Windows Security's notifications showed
+  Bitdefender's icon.
 
 ## 1.3.0 — 2026-10-23
 

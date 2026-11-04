@@ -685,7 +685,8 @@ interframe compression and makes the files about four times smaller.
 > where the animation should be. No status code says the file was wrong, so
 > the fallbacks for a refused file -- the static icon, the streamed frames --
 > never take over. Read from the firmware's source and its own display tests
-> (1.3.1, 2026-11-04); not yet seen on a bar.
+> (1.3.1, 2026-11-04); `pnpm probe:busybar` checks it on a real bar
+> ("Animation in another format"), not yet run.
 
 So every animation ships in both formats, side by side:
 

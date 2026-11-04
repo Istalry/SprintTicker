@@ -421,8 +421,10 @@ about four times smaller). A file in the other format is *not refused*: the
 upload and the draw both answer 200, and the panel shows the firmware's 9×9
 load-error icon where the animation should be -- so the static icon and the
 streamed frames that stand in for a refused file never take over. Read from
-the firmware's source and its own `test_api_display_draw.py` on 2026-11-04,
-not yet seen on a bar. Four things follow:
+the firmware's source and its own `test_api_display_draw.py` on 2026-11-04;
+`pnpm probe:busybar` draws the gear in the other format and reads the panel
+back on every run ("Animation in another format"), which has not yet run on
+a bar. Four things follow:
 - **Every animation ships in every format**: `<name>.anim` (`bicycle0`) and
   `<name>.v1.anim` (`bicycle1`), each compiled by that firmware's own
   compiler (`node scripts/build-anims.js`, or the studio's export).
@@ -843,6 +845,26 @@ them are traps:
   date in the Jira profile's timezone. And every change authored by the
   user's own account id is dropped -- the app moves statuses for them, and
   each move would otherwise come back as a notification a minute later.
+
+**A mirrored toast's icon comes from the AUMID, and the shell maps it.**
+`AppIconResolver` finds an unpackaged app's executable through
+`shell:AppsFolder`: `ParseName(<aumid>)` on Windows' own index of Start-menu
+apps, then `System.Link.TargetParsingPath`, a few milliseconds. It used to
+match shortcut *file names* against tokens of the AUMID, on the belief that a
+shortcut's `System.AppUserModel.ID` could not be read from PowerShell -- it
+can, through `Shell.Application`'s `ExtendedProperty`. Every app whose
+shortcut is named otherwise drew the bell (`Microsoft.PowerToysWin32` is
+`PowerToys (Preview).lnk`, `Microsoft.VisualStudioCode` is
+`Visual Studio Code.lnk`), and a token inside a word took another app's icon
+(`Windows.Defender.SecurityCenter` drew Bitdefender's). The name match is
+kept for ids the shell does not list, on whole words only, and never on a
+shortcut that declares another AUMID. Two more things about it:
+- **Replay real AUMIDs, never invented ones.** The `PrimaryId`s in a copy of
+  `%LOCALAPPDATA%\Microsoft\Windows\Notifications\wpndatabase.db` are what
+  the listener sees; `Get-StartApps` lists which of them the shell knows.
+- **`app.getFileIcon` on a missing path returns a generic icon, not an
+  error.** The script checks the target exists before handing it over;
+  without that, a stale shortcut would look resolved.
 
 ## 6. Code standards
 

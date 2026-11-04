@@ -681,6 +681,87 @@ async function probeAnimation() {
   }
 }
 
+/** The firmware's load-error icon, from its source: 9x9. */
+const LOAD_ERROR_ICON_MAX = 9;
+/** Animates at 60 fps from its first frame, so a bar that reads it shows motion within the wait. */
+const FOREIGN_FORMAT_ICON = 'icon_gear_16x16';
+
+/**
+ * What the bar does with an `.anim` in a format its firmware does not read.
+ *
+ * The app's whole reason to choose the format per bar: read from the 1.3.1
+ * source and its own display tests, such a file is stored and drawn with 200s
+ * and shown as the firmware's 9x9 load-error icon -- so nothing an app can see
+ * says it failed, and no fallback takes over. This draws the gear in the
+ * other format and reads the panel twice. The documented answer passes; any
+ * other is reported for what it is, and means `CLAUDE.md` §4 needs rewriting.
+ * None of them breaks the app, which never sends the other format.
+ *
+ * It closes the screen on that one animation element, as the playback check
+ * above closes on its own -- never removing an animation by id.
+ */
+async function probeForeignAnimFormat() {
+  const TITLE = 'Animation in another format';
+  const other = ANIM_FORMATS.map(({ format }) => format).find(format => format !== ANIM_FORMAT);
+  if (ANIM_FORMAT === null || other === undefined) {
+    record(TITLE, 'skip', 'the bar\'s own format is unknown, so there is no "other" one');
+    return;
+  }
+  const file = path.join(__dirname, '..', 'Animations', FOREIGN_FORMAT_ICON, FOREIGN_FORMAT_ICON, animFileName(FOREIGN_FORMAT_ICON, other));
+  if (!fs.existsSync(file)) {
+    record(TITLE, 'skip', `no ${path.basename(file)} -- run node scripts/build-anims.js`);
+    return;
+  }
+  const label = `bicycle${other} on a bicycle${ANIM_FORMAT} bar`;
+  const asset = 'probe_foreign.anim';
+
+  try {
+    const up = await request('POST', `/api/assets/upload?application_name=${APP}&file=${asset}`, {
+      body: fs.readFileSync(file),
+      contentType: 'application/octet-stream',
+      timeoutMs: 30000
+    });
+    if (up.status < 200 || up.status >= 300) {
+      record(TITLE, 'info', `${label}: the upload was refused, ${up.status} ${up.body.slice(0, 60)} -- not what CLAUDE.md §4 says`);
+      return;
+    }
+
+    await clearProbeElements();
+    const res = await drawElements([
+      { id: 'probe_foreign', type: 'animation', path: asset, x: 0, y: 0, display: 'front', loop: true, section: 'default', timeout: 30 }
+    ]);
+    if (res.status < 200 || res.status >= 300) {
+      record(TITLE, 'info', `${label}: stored, then the draw was refused, ${res.status} ${res.body.slice(0, 60)} -- not what CLAUDE.md §4 says`);
+      return;
+    }
+
+    await sleep(400);
+    const first = await captureScreen('foreign-format-1');
+    await sleep(700);
+    const second = await captureScreen('foreign-format-2');
+    const ink = inkBounds(first);
+    const changed = framesDiffer(first, second);
+
+    if (!ink) {
+      record(TITLE, 'info', `${label}: stored and drawn with 200s, and the panel stayed blank. ${first.file}`);
+    } else if (changed > 0) {
+      record(TITLE, 'info', `${label}: it plays (${changed}px changed over 700ms) -- this firmware reads both formats. ${first.file}`);
+    } else if (ink.width <= LOAD_ERROR_ICON_MAX && ink.height <= LOAD_ERROR_ICON_MAX) {
+      record(
+        TITLE,
+        'pass',
+        `${label}: stored and drawn with 200s, shown as a ${ink.width}x${ink.height} still at (${ink.x},${ink.y}) -- the load-error icon, as documented. ${first.file}`
+      );
+    } else {
+      record(TITLE, 'info', `${label}: stored and drawn with 200s, shown as a ${ink.width}x${ink.height} still -- not the 9x9 icon documented. ${first.file}`);
+    }
+  } catch (err) {
+    record(TITLE, 'fail', err.message);
+  } finally {
+    await clearProbeElements();
+  }
+}
+
 /**
  * Shows every glyph of every pixel font on the bar, and checks the panel
  * shows exactly the pixels that were sent.
@@ -1855,6 +1936,7 @@ async function main() {
   // Hardware animation playback -- see probeAnimation for why this is here.
   if (!displayOwned) {
     await probeAnimation();
+    await probeForeignAnimFormat();
   } else {
     record('Animation playback', 'skip', 'display owned; re-run with the app closed');
   }

@@ -674,7 +674,9 @@ builds it and runs Elgato's own validator on it, as CI does.
   marquee speeds, particle effects, LED colours and icon rasterisation, live.
 - **Hardware contract probe** — `pnpm probe:busybar` checks a real bar: it
   reports the firmware version, verifies the calls this app depends on, and says
-  which newer fields the device accepts. Run it after a firmware release; the
+  which newer fields the device accepts -- and, by reading the panel back, that
+  an animation in the other firmware's format shows the error icon rather than
+  playing. Run it after a firmware release; the
   test suite mocks the driver and so proves what we *send*, never what the
   device does with it. Close the app first, or its priority-95 claim shows up as
   409s. `--compositing` measures whether an animated icon plays beside a text

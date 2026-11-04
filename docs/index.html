@@ -1068,8 +1068,13 @@
       battery warning as High Priority, Discord, Gmail and Windows as Default — but
       all of it is yours to change.</p>
       <p>Each app&#39;s real icon is resolved from its MSIX manifest or Start Menu shortcut
-      and downscaled to 15×15. If it picks the wrong executable — name matching is not
-      perfect — set an icon override on that app.</p>
+      and downscaled to 15×15. Windows itself says which shortcut belongs to which
+      app, so a shortcut named differently from its app — <code>PowerToys (Preview)</code>,
+      <code>Visual Studio Code</code> — still finds the right icon. An app with no shortcut is
+      matched by name, which is not perfect: if it shows the wrong icon, set an icon
+      override on that app. The first notification from an app after SprintTicker
+      starts shows the built-in icon while the real one is looked up; later ones
+      show the app&#39;s own.</p>
       <p><strong>Sender only</strong> mode shows that a message arrived without showing what it said.</p>
       <p>Notification text is redacted from logs and the diagnostics export. Launch with
       <code>--debug-notifications</code> to see it while troubleshooting.</p>
@@ -2299,7 +2304,10 @@
       <h4><code>WindowsNotificationListenerService</code> — <code>src/main/services/</code></h4>
       <p>Polls the Windows Action Center database via a PowerShell child process, and
       mirrors notifications from apps you have allowed. App icons are resolved from
-      the MSIX manifest or a Start Menu shortcut and downscaled to 15×15.</p>
+      the MSIX manifest or a Start Menu shortcut and downscaled to 15×15
+      (<code>AppIconResolver</code>). An unpackaged app&#39;s shortcut is found by its AUMID in the
+      shell&#39;s <code>shell:AppsFolder</code>, and by file name only when the shell does not list
+      it.</p>
       <p><strong>This is the reason the app is Windows-only in practice</strong>, and its failures are
       silent — a listener that never starts looks exactly like an app that never
       notifies you. Notification text is redacted from logs and from the diagnostics
@@ -3636,7 +3644,8 @@
       where the animation should be. No status code says the file was wrong, so
       the fallbacks for a refused file -- the static icon, the streamed frames --
       never take over. Read from the firmware&#39;s source and its own display tests
-      (1.3.1, 2026-11-04); not yet seen on a bar.</p>
+      (1.3.1, 2026-11-04); <code>pnpm probe:busybar</code> checks it on a real bar
+      (&quot;Animation in another format&quot;), not yet run.</p>
       </div>
       <p>So every animation ships in both formats, side by side:</p>
       <div class="table-wrap"><table>
