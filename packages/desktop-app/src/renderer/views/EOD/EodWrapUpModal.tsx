@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Moon, CheckCircle2, Power, BellOff, Clock, Zap } from 'lucide-react';
 import { localDateKey } from '../../../shared/local-date';
+import { formatHoursAndMinutes } from '../../utils/formatters';
 import { InlineRename } from '../../components/InlineRename';
 
 interface EodWrapUpModalProps {
@@ -107,12 +108,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
     return undefined;
   }, [completed, executing, confirmStep, handleExecuteEod, onClose]);
 
-  const formatDuration = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-  };
+  const formatDuration = formatHoursAndMinutes;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none font-mono">

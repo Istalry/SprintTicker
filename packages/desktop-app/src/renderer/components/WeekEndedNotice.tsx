@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { CalendarCheck, X } from 'lucide-react';
 import { WeekEndedDTO } from '../../shared/dtos';
-import { formatHoursAndMinutes } from '../utils/formatters';
+import { formatDay, formatHoursAndMinutes } from '../utils/formatters';
 
 interface WeekEndedNoticeProps {
   /** Opens Work History, where the week's worklogs are. */
   onOpenHistory: () => void;
 }
 
-/** "Mon 12 Oct", from a local date key: the user's day, not UTC's. */
-function dayLabel(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-}
+const dayLabel = formatDay;
 
 /**
  * The week just over: its days and the time logged in it, a reminder to

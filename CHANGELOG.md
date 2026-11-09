@@ -47,6 +47,13 @@
   *Show the bar's own clock when idle*, *Try the wrap-up*. Notification
   rules read Default and High Priority without their scores, and counts
   read "1 task", not "1 Task(s)".
+- **The session card, idle, offers what can be done**: Start a Task and
+  Interrupt, rather than Resume and Finish greyed out. Switch / New Task is
+  Switch Task, shown while a task runs.
+- **One format for time.** A running timer always reads `HH:MM:SS` --
+  `05:12` alone could be five hours -- and logged time `1h 05m`, `55m` or
+  `40s` everywhere, where Work History said `1h 10m 0s` and the session page
+  `0h 55m`. Days read in Windows' regional format, as the date picker does.
 
 ### Fixed
 

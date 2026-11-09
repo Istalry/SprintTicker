@@ -71,12 +71,14 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         </div>
 
         <div>
-          <div className="text-xs font-mono text-text-secondary mb-1 flex items-center gap-1">
-            <span>{session?.taskKey || 'NO TASK SELECTED'}</span>
-            {session && hasTaskPage(session.isAdHoc ? ADHOC_PROJECT_ID : session.projectId, session.providerId) && (
-              <TaskPageButton taskId={session.taskId} taskKey={session.taskKey} />
-            )}
-          </div>
+          {session && (
+            <div className="text-xs font-mono text-text-secondary mb-1 flex items-center gap-1">
+              <span>{session.taskKey}</span>
+              {hasTaskPage(session.isAdHoc ? ADHOC_PROJECT_ID : session.projectId, session.providerId) && (
+                <TaskPageButton taskId={session.taskId} taskKey={session.taskKey} />
+              )}
+            </div>
+          )}
           <h2 className="text-xl font-bold text-white tracking-tight">
             {session ? (
               <SessionTitle
@@ -85,7 +87,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
                 inputClassName="w-full bg-dark-900 border border-accent-blue rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none font-sans"
               />
             ) : (
-              'No Active Task Selected'
+              'No task running'
             )}
           </h2>
           {session?.unsorted && (
@@ -112,7 +114,16 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         </div>
 
         <div className="flex items-center space-x-3 pt-2">
-          {session?.status === 'TRACKING' ? (
+          {/* Idle, the one thing to do is start: Resume and Finish had nothing to act on. */}
+          {!session ? (
+            <button
+              onClick={onOpenTaskModal}
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-green hover:bg-emerald-600 text-dark-900 transition-all shadow-md"
+            >
+              <Play className="w-4 h-4" />
+              <span>Start a Task</span>
+            </button>
+          ) : session.status === 'TRACKING' ? (
             <button
               onClick={onPause}
               className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-amber hover:bg-amber-600 text-dark-900 transition-all shadow-md"
@@ -123,30 +134,22 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           ) : (
             <button
               onClick={onResume}
-              disabled={!session}
-              className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-md ${
-                session
-                  ? 'bg-accent-green hover:bg-emerald-600 text-dark-900'
-                  : 'bg-dark-700 text-text-secondary cursor-not-allowed'
-              }`}
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-md bg-accent-green hover:bg-emerald-600 text-dark-900"
             >
               <Play className="w-4 h-4" />
               <span>Resume</span>
             </button>
           )}
 
-          <button
-            onClick={() => setIsFinishModalOpen(true)}
-            disabled={!session}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm border transition-all ${
-              session
-                ? 'bg-dark-700 hover:bg-dark-700/80 text-white border-border-dark'
-                : 'bg-dark-700/50 text-text-secondary border-border-dark/50 cursor-not-allowed'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-accent-green" />
-            <span>Finish & Log Hours</span>
-          </button>
+          {session && (
+            <button
+              onClick={() => setIsFinishModalOpen(true)}
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm border transition-all bg-dark-700 hover:bg-dark-700/80 text-white border-border-dark"
+            >
+              <Sparkles className="w-4 h-4 text-accent-green" />
+              <span>Finish & Log Hours</span>
+            </button>
+          )}
 
           <button
             onClick={onInterrupt}
@@ -168,13 +171,15 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             </button>
           )}
 
-          <button
-            onClick={onOpenTaskModal}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue rounded-lg font-semibold text-sm border border-accent-blue/30 transition-all"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Switch / New Task</span>
-          </button>
+          {session && (
+            <button
+              onClick={onOpenTaskModal}
+              className="flex items-center space-x-2 px-5 py-2.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue rounded-lg font-semibold text-sm border border-accent-blue/30 transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Switch Task</span>
+            </button>
+          )}
         </div>
       </section>
 

@@ -1,30 +1,28 @@
 /**
- * Formats duration in total seconds to HH:MM:SS or MM:SS display string.
+ * A running timer, always `HH:MM:SS`: `05:12` alone reads as five hours
+ * twelve on a screen beside the bar's `HH:MM`, and the width no longer jumps
+ * at the hour.
  */
 export function formatSeconds(totalSeconds: number): string {
-  if (isNaN(totalSeconds) || totalSeconds < 0) {
-    return '00:00';
-  }
-
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-
+  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0;
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = Math.floor(safe % 60);
   const pad = (num: number) => num.toString().padStart(2, '0');
-
-  if (hours > 0) {
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  }
-  return `${pad(minutes)}:${pad(seconds)}`;
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
 /**
- * Formats total seconds as "Xh YYm" string for summary views.
+ * Logged time, written the same everywhere: `1h 05m`, `55m`, and `40s` for
+ * less than a minute, which would otherwise read as nothing logged.
  */
 export function formatHoursAndMinutes(totalSeconds: number): string {
-  const hrs = Math.floor((totalSeconds || 0) / 3600);
-  const mins = Math.floor(((totalSeconds || 0) % 3600) / 60);
-  return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
+  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? Math.floor(totalSeconds) : 0;
+  const hrs = Math.floor(safe / 3600);
+  const mins = Math.floor((safe % 3600) / 60);
+  if (hrs > 0) return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
+  if (mins > 0) return `${mins}m`;
+  return `${safe}s`;
 }
 
 /**
@@ -81,6 +79,12 @@ export function formatDayAndTime(date: Date): string {
   return date.toLocaleString(regionalLocale, {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   });
+}
+
+/** `Mon 9 Nov`, in the regional format, from a local date key: the user's day, not UTC's. */
+export function formatDay(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 /** "1 task", "4 tasks": a count with its noun, never "task(s)". */

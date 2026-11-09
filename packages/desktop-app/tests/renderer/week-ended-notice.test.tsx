@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { WeekEndedNotice } from '../../src/renderer/components/WeekEndedNotice';
+import { formatDay } from '../../src/renderer/utils/formatters';
 import { installElectronApi } from './electron-api-mock';
 
 const WEEK = { weekStart: '2026-10-12', weekEnd: '2026-10-16', loggedSeconds: 38 * 3600 + 20 * 60 };
@@ -25,7 +26,8 @@ describe('the week-over notice', () => {
 
     const notice = await screen.findByRole('status');
 
-    expect(notice.textContent).toMatch(/Mon 12 Oct to Fri 16 Oct/);
+    // In Windows' regional format, as every day the window shows.
+    expect(notice.textContent).toContain(`${formatDay('2026-10-12')} to ${formatDay('2026-10-16')}`);
     expect(notice.textContent).toMatch(/38h 20m/);
   });
 

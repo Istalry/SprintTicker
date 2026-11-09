@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, CheckCircle2, X, Sparkles, Trash2 } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
-import { formatDaySplit, formatSeconds } from '../utils/formatters';
+import { formatDaySplit, formatHoursAndMinutes } from '../utils/formatters';
 import { ConfirmPanel } from './ConfirmPanel';
 import { finishNeedsConfirmation } from '../../shared/task-left';
 
@@ -68,7 +68,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
               <>
                 <span className="text-accent-blue font-bold">{session.taskKey}</span> left your list since you started
                 it: reassigned, closed or moved. Your{' '}
-                <strong className="text-white">{formatSeconds(session.elapsedSeconds)}</strong> are logged either way.
+                <strong className="text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> are logged either way.
                 Mark it done anyway? Your completion transition will be applied to it.
               </>
             }
@@ -83,7 +83,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
             tone="danger"
             message={
               <>
-                <strong className="text-white">{formatSeconds(session.elapsedSeconds)}</strong> on{' '}
+                <strong className="text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> on{' '}
                 <span className="text-accent-blue font-bold">{session.taskKey}</span> will be thrown away. Nothing is
                 kept in your history and nothing is sent to your provider. This cannot be undone.
               </>
@@ -96,7 +96,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
         ) : (
           <>
             <p className="text-xs text-text-secondary">
-              Select task status upon logging <strong className="text-white">{formatSeconds(session.elapsedSeconds)}</strong> for:
+              Select task status upon logging <strong className="text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> for:
               <br />
               <span className="text-accent-blue font-bold">{session.taskTitle}</span>
             </p>

@@ -95,6 +95,34 @@ describe('ActiveTaskHeroCard', () => {
     expect(screen.queryByText('Resume')).toBeNull();
   });
 
+  it('Render_Idle_OffersStartAndInterruptOnly', () => {
+    // Resume and Finish used to show greyed out, with nothing to act on.
+    const onOpenTaskModal = vi.fn();
+    render(
+      <ActiveTaskHeroCard
+        session={null}
+        onPause={vi.fn()}
+        onResume={vi.fn()}
+        onComplete={vi.fn()}
+        onDiscard={vi.fn()}
+        onOpenTaskModal={onOpenTaskModal}
+        onInterrupt={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('No task running')).toBeTruthy();
+    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['Start a Task', 'Interrupt']);
+    fireEvent.click(screen.getByText('Start a Task'));
+    expect(onOpenTaskModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('Render_Tracking_SwitchOpensThePicker', () => {
+    card();
+
+    expect(screen.getByText('Switch Task')).toBeTruthy();
+    expect(screen.queryByText('Start a Task')).toBeNull();
+  });
+
   it('Render_Paused_OffersResumeNotPause', () => {
     card({ ...TRACKING_SESSION, status: 'PAUSED' });
 

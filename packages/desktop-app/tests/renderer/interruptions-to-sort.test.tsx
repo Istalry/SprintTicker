@@ -4,6 +4,7 @@ import { WorklogHistoryView } from '../../src/renderer/views/History/WorklogHist
 import { EodWrapUpModal } from '../../src/renderer/views/EOD/EodWrapUpModal';
 import { WorklogDTO } from '../../src/shared/dtos';
 import { localDateKey } from '../../src/shared/local-date';
+import { formatDay } from '../../src/renderer/utils/formatters';
 import { installElectronApi } from './electron-api-mock';
 
 const START = '2026-11-09T09:30:00.000Z';
@@ -76,9 +77,9 @@ describe('Work History, interruptions to sort', () => {
 
     const list = screen.getByRole('region', { name: 'Interruptions to sort' });
     expect(within(list).getByText('Interruptions to sort (1)')).toBeTruthy();
-    expect(within(list).getByText('25m 0s')).toBeTruthy();
+    expect(within(list).getByText('25m')).toBeTruthy();
     // The day it began, which the entry jumps to.
-    expect(within(list).getByRole('button', { name: localDateKey(new Date(piece.startedAtUtc)) })).toBeTruthy();
+    expect(within(list).getByRole('button', { name: formatDay(localDateKey(new Date(piece.startedAtUtc))) })).toBeTruthy();
   });
 
   it('ToSort_TheDay_JumpsToIt', async () => {
@@ -86,7 +87,7 @@ describe('Work History, interruptions to sort', () => {
     const bridge = await history([], [earlier]);
     const dateKey = localDateKey(new Date(earlier.startedAtUtc));
 
-    fireEvent.click(screen.getByRole('button', { name: dateKey }));
+    fireEvent.click(screen.getByRole('button', { name: formatDay(dateKey) }));
 
     await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenLastCalledWith(dateKey));
   });

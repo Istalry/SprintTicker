@@ -8,7 +8,7 @@ import { EditWorklogModal } from '../../components/EditWorklogModal';
 import { TaskPageButton } from '../../components/TaskPageButton';
 import { InlineRename } from '../../components/InlineRename';
 import { TaskSelectionModal } from '../../components/TaskSelectionModal';
-import { countOf, ipcErrorMessage } from '../../utils/formatters';
+import { countOf, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../../utils/formatters';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { CLOSED_WEEK_WARNING, isInClosedWeek } from '../../../shared/closed-week';
 
@@ -169,16 +169,7 @@ export const WorklogHistoryView: React.FC = () => {
     setSelectedDate(addLocalDays(selectedDate, days));
   };
 
-  // Format seconds into HH:MM:SS
-  const formatDuration = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) {
-      return `${h}h ${m}m ${s}s`;
-    }
-    return `${m}m ${s}s`;
-  };
+  const formatDuration = formatHoursAndMinutes;
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6 select-none font-mono">
@@ -253,7 +244,7 @@ export const WorklogHistoryView: React.FC = () => {
                     onClick={() => setSelectedDate(item.dateKey)}
                     className="text-text-secondary hover:text-white underline-offset-2 hover:underline"
                   >
-                    {item.dateKey}
+                    {formatDay(item.dateKey)}
                   </button>
                   <span className="font-bold text-accent-blue">{formatDuration(item.totalSeconds)}</span>
                 </div>
@@ -277,7 +268,7 @@ export const WorklogHistoryView: React.FC = () => {
           <div className="text-2xl font-bold text-white font-mono">
             {formatDuration(summary.totalSeconds)}
           </div>
-          <div className="text-[10px] text-text-secondary">Tracked on {selectedDate}</div>
+          <div className="text-[10px] text-text-secondary">Tracked on {formatDay(selectedDate)}</div>
         </div>
 
         <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-2">
@@ -331,7 +322,7 @@ export const WorklogHistoryView: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-6 text-xs text-text-secondary">
-            No work logged on {selectedDate}.
+            No work logged on {formatDay(selectedDate)}.
           </div>
         )}
       </div>
@@ -414,7 +405,7 @@ export const WorklogHistoryView: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-8 text-xs text-text-secondary">
-            No session records found for {selectedDate}.
+            No session records found for {formatDay(selectedDate)}.
           </div>
         )}
       </div>

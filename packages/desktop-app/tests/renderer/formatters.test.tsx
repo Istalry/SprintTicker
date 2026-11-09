@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { countOf, formatClockTime, setRegionalLocale } from '../../src/renderer/utils/formatters';
+import { countOf, formatClockTime, formatHoursAndMinutes, formatSeconds, setRegionalLocale } from '../../src/renderer/utils/formatters';
 
 /**
  * Times follow Windows' regional format, not the app's locale. Only en-US's
@@ -51,5 +51,30 @@ describe('countOf', () => {
 
   it('CountOf_IrregularPlural_Used', () => {
     expect(countOf(2, 'entry', 'entries')).toBe('2 entries');
+  });
+});
+
+describe('formatSeconds', () => {
+  it.each([
+    [0, '00:00:00'],
+    [312, '00:05:12'],
+    [5047, '01:24:07'],
+    [-5, '00:00:00'],
+    [Number.NaN, '00:00:00']
+  ])('FormatSeconds_%s_AlwaysHoursMinutesSeconds', (seconds, expected) => {
+    // `05:12` alone reads as five hours twelve beside the bar's HH:MM.
+    expect(formatSeconds(seconds)).toBe(expected);
+  });
+});
+
+describe('formatHoursAndMinutes', () => {
+  it.each([
+    [4200, '1h 10m'],
+    [3600, '1h 00m'],
+    [3300, '55m'],
+    [40, '40s'],
+    [0, '0s']
+  ])('FormatHoursAndMinutes_%i_OneStyleForLoggedTime', (seconds, expected) => {
+    expect(formatHoursAndMinutes(seconds)).toBe(expected);
   });
 });

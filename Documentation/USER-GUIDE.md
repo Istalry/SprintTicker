@@ -146,7 +146,8 @@ Nine tabs down the left.
 ### ▶️ Active Session
 
 The main screen. Start a task, and the bar shows it. Pause, resume, and finish
-from here.
+from here. With nothing running it offers just **Start a Task** and
+**Interrupt**; while a task runs, **Switch Task** moves to another one.
 
 <p align="center">
   <img src="../docs/images/app-session-tracking.png" width="80%" alt="Active Session: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
