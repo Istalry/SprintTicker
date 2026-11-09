@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SprintTicker redesign -- mockups (2026-11-09)</title>
+<style>
+  :root {
+    --bg: #0F0F10; --panel: #18181A; --raised: #232326; --border: #2E2E33;
+    --text: #EDEDEF; --text2: #A1A1A8; --muted: #6B6B72;
+    --primary: #E4E4E7; --select: #2A2A2E; --focus: #D4D4D8;
+    --green: #22C55E; --amber: #F59E0B; --red: #EF4444;
+    --sans: Inter, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #070708; color: var(--text); font: 14px/1.45 var(--sans); padding: 32px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { color: var(--text2); margin: 0 0 28px; max-width: 860px; }
+  .shot { margin: 0 0 44px; }
+  .shot > h2 { font-size: 15px; margin: 0 0 4px; }
+  .shot > p { color: var(--text2); margin: 0 0 12px; max-width: 860px; font-size: 13px; }
+  .frame { width: 1120px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg); }
+  .mono { font-family: var(--mono); }
+  /* header */
+  .hdr { height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 18px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .logo { font-weight: 700; letter-spacing: .02em; }
+  .led { width: 216px; height: 48px; border-radius: 6px; background: #050505; border: 1px solid var(--border); display: flex; align-items: center; padding: 0 10px; gap: 8px; font: 700 15px var(--mono); color: #8fd; }
+  .led small { color: #7ab8ff; font-size: 11px; display: block; font-weight: 600; }
+  .spacer { flex: 1; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); font-size: 13px; color: var(--text); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .chip .caret { color: var(--muted); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 500 13px var(--sans); }
+  .btn.primary { background: var(--primary); color: #111; border-color: var(--primary); font-weight: 600; }
+  .btn.ghost { background: transparent; }
+  .btn.go { background: var(--green); border-color: var(--green); color: #06140b; font-weight: 600; }
+  .btn.warn { color: var(--amber); border-color: #5a4316; background: #241c0d; }
+  .btn.danger { color: var(--red); border-color: #5b2323; background: #241010; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .status { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px #22c55e22; }
+  /* shell */
+  .shell { display: grid; grid-template-columns: 200px 1fr; min-height: 560px; }
+  .side { border-right: 1px solid var(--border); padding: 16px 10px; background: var(--panel); display: flex; flex-direction: column; gap: 2px; }
+  .nav { padding: 9px 12px; border-radius: 8px; color: var(--text2); display: flex; gap: 10px; align-items: center; }
+  .nav.on { background: var(--select); color: var(--text); font-weight: 600; }
+  .nav .ic { width: 16px; text-align: center; color: var(--muted); }
+  .nav.on .ic { color: var(--text); }
+  .side .bottom { margin-top: auto; }
+  .main { padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+  .kicker { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px; border-radius: 999px; }
+  .pill.run { color: var(--green); background: #10261a; }
+  .pill.wait { color: var(--amber); background: #2a200c; }
+  .pill.grey { color: var(--text2); background: var(--raised); }
+  .title { font-size: 20px; font-weight: 650; margin: 4px 0 2px; }
+  .key { font: 600 12px var(--mono); color: var(--text2); }
+  .timer { font: 700 44px/1 var(--mono); letter-spacing: .04em; margin: 16px 0 18px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 0 8px 8px; }
+  td { padding: 10px 8px; border-top: 1px solid var(--border); }
+  td.t { font-family: var(--mono); color: var(--text); white-space: nowrap; }
+  td.a { text-align: right; white-space: nowrap; color: var(--muted); }
+  .note { color: var(--text2); font-size: 13px; }
+  .tosort { border-color: #5a4316; }
+  .tosort .h { display: flex; justify-content: space-between; align-items: center; }
+  /* settings */
+  .settings { display: grid; grid-template-columns: 190px 1fr; gap: 22px; }
+  .sublist { display: flex; flex-direction: column; gap: 2px; }
+  .sub { padding: 8px 12px; border-radius: 8px; color: var(--text2); font-size: 13px; }
+  .sub.on { background: var(--select); color: var(--text); font-weight: 600; }
+  .sub.dim { color: var(--muted); }
+  .set { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .set:first-of-type { border-top: 0; }
+  .set .l b { display: block; font-weight: 600; }
+  .set .l span { color: var(--text2); font-size: 13px; }
+  .toggle { width: 36px; height: 20px; border-radius: 999px; background: var(--primary); position: relative; flex: none; }
+  .toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #111; }
+  .toggle.off { background: var(--raised); border: 1px solid var(--border); }
+  .toggle.off::after { left: 3px; right: auto; background: var(--muted); }
+  kbd { font: 600 12px var(--mono); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--raised); }
+  .fold { color: var(--text2); font-size: 13px; padding-top: 14px; border-top: 1px solid var(--border); }
+  /* dialogs */
+  .stage { background: #0b0b0c; padding: 40px; display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .dialog { width: 460px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px; box-shadow: 0 20px 60px #000a; }
+  .dialog h3 { margin: 0 0 4px; font-size: 17px; }
+  .search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--focus); border-radius: 10px; padding: 10px 12px; background: var(--bg); margin: 14px 0 12px; color: var(--muted); }
+  .grp { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 4px; }
+  .opt { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 8px; }
+  .opt.sel { background: var(--select); outline: 1px solid var(--focus); }
+  .opt .k { font: 600 12px var(--mono); color: var(--text2); width: 64px; }
+  .choice { display: block; width: 100%; text-align: left; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--raised); margin-top: 10px; color: var(--text); }
+  .choice b { display: block; font-size: 14px; }
+  .choice span { color: var(--text2); font-size: 13px; }
+  .choice.done { border-color: #1f5a37; }
+  .choice.discard b { color: var(--red); }
+  /* mini, tray, toast */
+  .mini { width: 480px; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 10px 0 0; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); overflow: hidden; }
+  .mini .stripe { width: 6px; align-self: stretch; background: var(--green); }
+  .mini .t { flex: 1; min-width: 0; line-height: 1.2; }
+  .mini .t .k { font: 600 11px var(--mono); color: var(--text2); }
+  .mini .t .n { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini .clock { font: 700 18px var(--mono); }
+  .mini .ib { width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; color: var(--text2); }
+  .menu { width: 250px; background: #202022; border: 1px solid var(--border); border-radius: 8px; padding: 6px; font-size: 13px; }
+  .menu div { padding: 7px 12px; border-radius: 5px; }
+  .menu .sep { height: 1px; padding: 0; margin: 5px 6px; background: var(--border); }
+  .menu .hl { background: var(--select); }
+  .toast { width: 360px; background: #202022; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 13px; }
+  .toast b { display: block; margin-bottom: 2px; }
+  .toast span { color: var(--text2); }
+  .prompt { width: 480px; border: 1px solid #5a4316; background: #1d170b; border-radius: 12px; padding: 14px 16px; }
+  .legend { display: flex; gap: 18px; margin: 0 0 30px; flex-wrap: wrap; }
+  .sw { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text2); }
+  .sw i { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); display: block; }
+</style>
+</head>
+<body>
+<div style="margin:0 0 24px;padding:14px 18px;border:1px solid #5a4316;background:#1d170b;border-radius:10px;color:#EDEDEF;font:14px Inter,system-ui,sans-serif"><b>Superseded.</b> This is the first draft of the redesign (2026-11-09, morning), kept for the record. Several of its choices were later withdrawn -- suggested tasks for interruptions, Unity -- so do not build from it. The current design is <a style="color:#F59E0B" href="Redesign-2026-11-screens.html">Redesign-2026-11-screens.html</a>, and the decisions are in <span style="font-family:monospace">Redesign-2026-11.md</span>.</div>
+
+<h1>SprintTicker redesign -- mockups</h1>
+<p class="lead">Mockups for the proposal in <span class="mono">Redesign-2026-11.md</span>. They show structure, words and palette, not finished visuals. Colour means something here: green is running, amber is waiting on you, red is danger. Everything else is grey.</p>
+
+<div class="legend">
+  <div class="sw"><i style="background:#0F0F10"></i>Background</div>
+  <div class="sw"><i style="background:#18181A"></i>Panel</div>
+  <div class="sw"><i style="background:#232326"></i>Raised</div>
+  <div class="sw"><i style="background:#2E2E33"></i>Border</div>
+  <div class="sw"><i style="background:#E4E4E7"></i>Primary action</div>
+  <div class="sw"><i style="background:#22C55E"></i>Running</div>
+  <div class="sw"><i style="background:#F59E0B"></i>Paused / waiting</div>
+  <div class="sw"><i style="background:#EF4444"></i>Danger</div>
+</div>
+
+<!-- 1. Today, tracking -->
+<section class="shot">
+  <h2>1 · Today, a task running</h2>
+  <p>Four places in the sidebar. The header carries the mode chip, End my day, the mini timer and one status dot. The session card speaks the new vocabulary, today's entries can be corrected in place, and today's interruptions to sort sit here instead of on another tab.</p>
+  <div class="frame">
+    <div class="hdr">
+      <span class="logo">SprintTicker</span>
+      <div class="led"><span>⏱</span><div><small>MG-12: Fix the lan…</small>01:24</div></div>
+      <span class="spacer"></span>
+      <span class="chip"><span class="dot"></span>Work <span class="caret">▾</span></span>
+      <span class="btn ghost">▭ Mini timer</span>
+      <span class="btn">☾ End my day</span>
+      <span class="status" title="Bar connected · everything sent"></span>
+    </div>
+    <div class="shell">
+      <div class="side">
+        <div class="nav on"><span class="ic">◷</span>Today</div>
+        <div class="nav"><span class="ic">☰</span>Tasks</div>
+        <div class="nav"><span class="ic">↺</span>History</div>
+        <div class="bottom"><div class="nav"><span class="ic">⚙</span>Settings</div></div>
+      </div>
+      <div class="main">
+        <div class="card">
+          <div class="row"><span class="pill run">● Running</span><span class="key">MG-12</span><span class="note">↗ open in Jira</span></div>
+          <div class="title">Fix the lantern glow at dusk</div>
+          <div class="timer">01:24:07</div>
+          <div class="row">
+            <span class="btn primary">❚❚ Pause</span>
+            <span class="btn">■ Stop…</span>
+            <span class="btn warn">⚡ Interrupt</span>
+            <span class="btn ghost">⇄ Switch task</span>
+          </div>
+        </div>
+        <div class="card tosort">
+          <div class="h"><div><div class="kicker" style="color:var(--amber)">To sort · 1</div><b>Interruption 10:32</b> <span class="note">· 25m · not on any task yet, so not sent</span></div>
+          <div class="row"><span class="btn sm">✎ Name it</span><span class="btn sm primary">Put on a task…</span></div></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between"><b>Today</b><span class="note">4h 10m logged · all sent</span></div>
+          <table style="margin-top:10px">
+            <tr><th>Task</th><th>Note</th><th>Time</th><th>Started</th><th></th></tr>
+            <tr><td class="t">MG-12</td><td>Fix the lantern glow at dusk</td><td class="t" style="color:var(--green)">running</td><td class="t">08:12</td><td class="a"></td></tr>
+            <tr><td class="t">PF-33</td><td>Iron and copper tables</td><td class="t">1h 10m</td><td class="t">09:29</td><td class="a">✎ &nbsp;⇄ &nbsp;🗑</td></tr>
+            <tr><td class="t">MG-15</td><td>Boids, first pass</td><td class="t">55m</td><td class="t">08:05</td><td class="a">✎ &nbsp;⇄ &nbsp;🗑</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. First run -->
+<section class="shot">
+  <h2>2 · First run, step 1 of 3</h2>
+  <p>It opens on its own the first time. One question per screen, a test before going on, and a way through without any account. It ends on Today with the picker open.</p>
+  <div class="frame">
+    <div class="stage" style="min-height:420px">
+      <div class="dialog" style="width:560px">
+        <div class="kicker">Set up · 1 of 3</div>
+        <h3>Where are your tasks?</h3>
+        <p class="note">SprintTicker times the tasks you already have, and sends the time back there.</p>
+        <span class="choice" style="outline:1px solid var(--focus)"><b>Jira</b><span>Your site, your email and an API token. We test them before going on.</span></span>
+        <span class="choice"><b>OpenProject</b><span>Your server's address and an API key.</span></span>
+        <span class="choice"><b>No account -- I'll create my own tasks</b><span>Time stays on this computer. You can add an account later in Settings.</span></span>
+        <div class="row" style="justify-content:flex-end;margin-top:18px"><span class="btn ghost">Skip setup</span><span class="btn primary">Continue</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Settings -->
+<section class="shot">
+  <h2>3 · Settings · General</h2>
+  <p>One Settings place, six groups. Each setting is a row: what it does in one sentence, the control on the right. Developer tools only appear once switched on here.</p>
+  <div class="frame">
+    <div class="hdr">
+      <span class="logo">SprintTicker</span><span class="spacer"></span>
+      <span class="chip"><span class="dot"></span>Work <span class="caret">▾</span></span>
+      <span class="btn ghost">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="status"></span>
+    </div>
+    <div class="shell">
+      <div class="side">
+        <div class="nav"><span class="ic">◷</span>Today</div>
+        <div class="nav"><span class="ic">☰</span>Tasks</div>
+        <div class="nav"><span class="ic">↺</span>History</div>
+        <div class="bottom"><div class="nav on"><span class="ic">⚙</span>Settings</div></div>
+      </div>
+      <div class="main">
+        <div class="settings">
+          <div class="sublist">
+            <div class="sub on">General</div>
+            <div class="sub">Account</div>
+            <div class="sub">My workday</div>
+            <div class="sub">BUSY Bar</div>
+            <div class="sub">Data</div>
+            <div class="sub dim">Developer</div>
+          </div>
+          <div class="card">
+            <div class="set"><div class="l"><b>Start with Windows</b><span>Opens in the tray when you sign in, with no window.</span></div><span class="toggle"></span></div>
+            <div class="set"><div class="l"><b>Interrupt shortcut</b><span>Starts an interruption from any app. <kbd>Ctrl+Alt+Shift+I</kbd> <span class="btn sm">Change</span></span></div><span class="toggle off"></span></div>
+            <div class="set"><div class="l"><b>Check for updates</b><span>Asks GitHub once a day. Up to date: 1.4.0.</span></div><span class="toggle"></span></div>
+            <div class="set"><div class="l"><b>Set up again</b><span>The first-run questions: account, bar, your day.</span></div><span class="btn sm">Run setup</span></div>
+            <div class="fold">▸ Show developer tools <span class="note">-- the display debugger, test notifications, logs. They can change the running task.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Picker and end dialog -->
+<section class="shot">
+  <h2>4 · Picking a task, and ending one</h2>
+  <p>The picker opens on a search and lists tasks grouped by project, instead of two steps. From the tray, the mini timer or the deck it opens on its own, without bringing the whole app forward. Ending uses three words everywhere: Not done, Done, Discard.</p>
+  <div class="frame">
+    <div class="stage">
+      <div class="dialog">
+        <h3>Switch task</h3>
+        <div class="search">⌕ <span>lantern</span></div>
+        <div class="grp">Moonlight Garden</div>
+        <div class="opt sel"><span class="k">MG-12</span>Fix the lantern glow at dusk <span class="pill run" style="margin-left:auto">running</span></div>
+        <div class="opt"><span class="k">MG-21</span>Lantern sway in the wind</div>
+        <div class="grp">Pixel Forge</div>
+        <div class="opt"><span class="k">PF-40</span>Lantern recipe at the anvil</div>
+        <div class="opt" style="color:var(--text2)"><span class="k">+</span>New task of my own: "lantern"</div>
+        <p class="note" style="margin:12px 0 0">↑↓ to move · Enter to start · Esc to close</p>
+      </div>
+      <div class="dialog">
+        <h3>Stop MG-12?</h3>
+        <p class="note">1h 24m is logged either way, and sent to Jira.</p>
+        <span class="choice"><b>Not done</b><span>The task stays open for later.</span></span>
+        <span class="choice done"><b style="color:var(--green)">Done</b><span>Jira moves it to "To Review".</span></span>
+        <span class="choice discard"><b>Discard</b><span>Nothing is kept or sent. Asks once more.</span></span>
+        <div class="row" style="justify-content:flex-end;margin-top:14px"><span class="btn ghost">Keep it running</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Outside the window -->
+<section class="shot">
+  <h2>5 · Outside the window: mini timer, prompt, tray, toast</h2>
+  <p>A prompt never takes the focus. The stand-up waits on the mini timer and on Today until it is answered. Without either, a toast opens SprintTicker on it. The tray speaks plainly and opens on a single click.</p>
+  <div class="frame">
+    <div class="stage" style="justify-content:flex-start;gap:36px">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="mini">
+          <span class="stripe"></span><span>⏱</span>
+          <div class="t"><div class="k">MG-12</div><div class="n">Fix the lantern glow at dusk</div></div>
+          <span class="clock">01:24:10</span>
+          <span class="ib">❚❚</span><span class="ib">■</span><span class="ib">⚡</span><span class="ib">☰</span><span class="ib">✕</span>
+        </div>
+        <div class="prompt">
+          <div class="row" style="justify-content:space-between"><div><b>Stand-up at 09:30</b><br><span class="note">MG-12 comes back when it ends.</span></div>
+          <div class="row"><span class="btn sm ghost">Snooze</span><span class="btn sm ghost">Skip</span><span class="btn sm primary">Join</span></div></div>
+        </div>
+        <div class="toast"><b>Sending time to Jira stopped</b><span>Jira refused the saved token. Click to enter it again.</span></div>
+      </div>
+      <div class="menu">
+        <div class="hl">Open SprintTicker</div>
+        <div class="sep"></div>
+        <div>Start a task…</div>
+        <div>Pause</div>
+        <div>Interrupt</div>
+        <div>End my day…</div>
+        <div class="sep"></div>
+        <div>✓ Mini timer</div>
+        <div>✓ Start with Windows</div>
+        <div class="sep"></div>
+        <div>Quit</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
