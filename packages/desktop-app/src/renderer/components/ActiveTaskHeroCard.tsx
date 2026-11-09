@@ -68,7 +68,6 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               ● {session?.status || 'IDLE'}
             </span>
           </div>
-          <span className="text-xs font-mono text-text-secondary">UTC Absolute Timestamp Engine</span>
         </div>
 
         <div>

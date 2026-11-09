@@ -8,7 +8,7 @@ import { EditWorklogModal } from '../../components/EditWorklogModal';
 import { TaskPageButton } from '../../components/TaskPageButton';
 import { InlineRename } from '../../components/InlineRename';
 import { TaskSelectionModal } from '../../components/TaskSelectionModal';
-import { ipcErrorMessage } from '../../utils/formatters';
+import { countOf, ipcErrorMessage } from '../../utils/formatters';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { CLOSED_WEEK_WARNING, isInClosedWeek } from '../../../shared/closed-week';
 
@@ -286,7 +286,7 @@ export const WorklogHistoryView: React.FC = () => {
             <CheckCircle2 className="w-4 h-4 text-accent-green" />
           </div>
           <div className="text-2xl font-bold text-white font-mono">
-            {summary.tasksCount} Task(s)
+            {countOf(summary.tasksCount, 'task')}
           </div>
           <div className="text-[10px] text-text-secondary">Itemized task logs</div>
         </div>
@@ -297,7 +297,7 @@ export const WorklogHistoryView: React.FC = () => {
             <FileText className="w-4 h-4 text-accent-purple" />
           </div>
           <div className="text-2xl font-bold text-white font-mono">
-            {worklogs.length} Session(s)
+            {countOf(worklogs.length, 'session')}
           </div>
           <div className="text-[10px] text-text-secondary">Completed tracking sessions</div>
         </div>

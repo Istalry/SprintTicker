@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { formatClockTime, setRegionalLocale } from '../../src/renderer/utils/formatters';
+import { countOf, formatClockTime, setRegionalLocale } from '../../src/renderer/utils/formatters';
 
 /**
  * Times follow Windows' regional format, not the app's locale. Only en-US's
@@ -37,5 +37,19 @@ describe('formatClockTime', () => {
 
     expect(() => formatClockTime(fivePastTwo)).not.toThrow();
     expect(formatClockTime(fivePastTwo)).toBe(fivePastTwo.toLocaleTimeString());
+  });
+});
+
+describe('countOf', () => {
+  it.each([
+    [0, '0 tasks'],
+    [1, '1 task'],
+    [4, '4 tasks']
+  ])('CountOf_%i_ReadsAsASentence', (count, expected) => {
+    expect(countOf(count, 'task')).toBe(expected);
+  });
+
+  it('CountOf_IrregularPlural_Used', () => {
+    expect(countOf(2, 'entry', 'entries')).toBe('2 entries');
   });
 });

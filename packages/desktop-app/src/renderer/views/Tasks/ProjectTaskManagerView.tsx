@@ -13,6 +13,7 @@ import { DEFAULT_TASK_VISIBILITY, visibleTasks } from '../../../shared/task-visi
 import { hasTaskPage } from '../../../shared/task-page';
 import { TaskPageButton } from '../../components/TaskPageButton';
 import { OWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
+import { countOf } from '../../utils/formatters';
 
 export const ProjectTaskManagerView: React.FC = () => {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
@@ -248,7 +249,7 @@ export const ProjectTaskManagerView: React.FC = () => {
 
       if (window.electronAPI?.importTasks) {
         await window.electronAPI.importTasks(selectedProjectId, parsedTasks);
-        setImportStatus(`Successfully imported ${parsedTasks.length} task(s)!`);
+        setImportStatus(`Imported ${countOf(parsedTasks.length, 'task')}.`);
         setTimeout(() => {
           setIsImportOpen(false);
           setImportText('');
@@ -376,7 +377,7 @@ export const ProjectTaskManagerView: React.FC = () => {
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                 {activeProject ? `Tasks under [${activeProject.key}] ${activeProject.name}` : 'Select a Project'}
               </h3>
-              <p className="text-xs text-text-secondary mt-0.5">{listedTasks.length} task(s) listed</p>
+              <p className="text-xs text-text-secondary mt-0.5">{countOf(listedTasks.length, 'task')} listed</p>
               <div className="mt-1.5">
                 <TaskVisibilityToggle visibility={visibility} onChange={setVisibility} hiddenCount={hiddenTaskCount} />
               </div>

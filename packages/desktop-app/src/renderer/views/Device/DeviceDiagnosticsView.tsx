@@ -242,12 +242,12 @@ export const DeviceDiagnosticsView: React.FC = () => {
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
         <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
           <HardDrive className="w-4 h-4 text-accent-blue" />
-          <span>Display Configuration & Debug Output Strategy</span>
+          <span>Display</span>
         </h3>
 
         <div className="space-y-3 font-mono text-xs">
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Front LED Matrix Brightness:</span>
+            <span className="text-text-secondary">Front display brightness</span>
             <span className={`font-bold ${deviceStatus.connected ? 'text-accent-blue' : 'text-text-secondary'}`}>
               {!deviceStatus.connected
                 ? 'Off (Disconnected)'
@@ -258,7 +258,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Rear OLED Brightness:</span>
+            <span className="text-text-secondary">Rear display brightness</span>
             <span className={`font-bold ${deviceStatus.connected ? 'text-accent-purple' : 'text-text-secondary'}`}>
               {!deviceStatus.connected
                 ? 'Off (Disconnected)'
@@ -269,7 +269,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Front 72×16 LED Matrix Color Theme:</span>
+            <span className="text-text-secondary">Front display color</span>
             <select
               onChange={(e) => {
                 if (window.electronAPI?.setColorTheme) {
@@ -278,10 +278,10 @@ export const DeviceDiagnosticsView: React.FC = () => {
               }}
               className="bg-dark-800 text-accent-blue font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
             >
-              <option value="emerald">Emerald Developer (#10B981)</option>
-              <option value="cyberpunk">Cyberpunk Neon (#8B5CF6)</option>
-              <option value="retro_arcade">Retro Arcade (#F59E0B)</option>
-              <option value="nordic_cyan">Nordic Cyan (#06B6D4)</option>
+              <option value="emerald">Emerald</option>
+              <option value="cyberpunk">Neon violet</option>
+              <option value="retro_arcade">Arcade amber</option>
+              <option value="nordic_cyan">Nordic cyan</option>
             </select>
           </div>
 
@@ -372,8 +372,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary flex flex-col">
-              <span>Enable Idle Hardware Clock Fallback</span>
-              <span className="text-[10px] text-dark-400">Clears app display when idle to show device native clock. LED will turn off.</span>
+              <span>Show the bar&apos;s own clock when idle</span>
+              <span className="text-[10px] text-dark-400">With no task running, SprintTicker hands the display back and the bar shows its clock.</span>
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input

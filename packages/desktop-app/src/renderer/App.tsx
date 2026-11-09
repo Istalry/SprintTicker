@@ -155,7 +155,7 @@ export const App: React.FC = () => {
             {/* Todays Completed Worklogs Table */}
             <section className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
               <h3 className="text-md font-bold text-white font-mono flex items-center justify-between">
-                <span>Today&apos;s Logged Work sessions</span>
+                <span>Today&apos;s work</span>
                 <span className="text-xs text-text-secondary font-normal">
                   Total: {formatSeconds(worklogs.reduce((acc, curr) => acc + curr.durationSeconds, 0))}
                 </span>
@@ -333,9 +333,6 @@ export const App: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation */}
         <aside className="w-64 bg-dark-800 border-r border-border-dark flex flex-col p-4 space-y-1">
-          <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider px-3 py-2">
-            Modules (&quot;1 Bar per Function&quot;)
-          </div>
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;

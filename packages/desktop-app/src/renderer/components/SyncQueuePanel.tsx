@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, RotateCcw, AlertCircle, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { SyncQueueItemDTO, SyncQueueSnapshotDTO } from '../../shared/dtos';
-import { formatClockTime, formatSeconds } from '../utils/formatters';
+import { countOf, formatClockTime, formatSeconds } from '../utils/formatters';
 
 /**
  * What the worklog sync queue holds, and why anything in it has not arrived.
@@ -64,7 +64,7 @@ export const SyncQueuePanel: React.FC = () => {
       // came to look healthy while nothing was being delivered.
       setNotice(
         result.status === 'synced'
-          ? `Synced ${result.projects} project(s) and ${result.tasks} task(s).`
+          ? `Synced ${countOf(result.projects, 'project')} and ${countOf(result.tasks, 'task')}.`
           : `Sync ${result.status}${result.reason ? `: ${result.reason}` : ''}`
       );
     } catch (err) {

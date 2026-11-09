@@ -198,7 +198,7 @@ export const CeremoniesView: React.FC = () => {
                 className="flex items-center space-x-1.5 px-3 py-2 bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue border border-accent-blue/30 rounded-lg text-xs font-semibold transition-all"
               >
                 <Play className="w-3.5 h-3.5" />
-                <span>Test Trigger Stand-Up</span>
+                <span>Try the stand-up prompt</span>
               </button>
             </div>
           </div>
@@ -310,7 +310,7 @@ export const CeremoniesView: React.FC = () => {
                 className="flex items-center space-x-1.5 px-3 py-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple border border-accent-purple/30 rounded-lg text-xs font-semibold transition-all"
               >
                 <Play className="w-3.5 h-3.5" />
-                <span>Test Trigger EOD Wrap-Up</span>
+                <span>Try the wrap-up</span>
               </button>
 
               {testStatusMessage && (

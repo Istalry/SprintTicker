@@ -83,6 +83,11 @@ export function formatDayAndTime(date: Date): string {
   });
 }
 
+/** "1 task", "4 tasks": a count with its noun, never "task(s)". */
+export function countOf(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 /**
  * The sentence main threw, without the wrapper Electron puts round a rejected
  * `invoke` -- `Error invoking remote method 'worklog:update':

@@ -13,8 +13,8 @@
   the paused menu's first choice: pause, turn the wheel two notches left,
   click.
 - **A keyboard shortcut for Interrupt**, from any app, off until you turn it
-  on in Device & Logs, where you record the chord (Ctrl+Alt+Shift+I
-  suggested). A chord another app holds is said to be inactive rather than
+  on in Device Diagnostics (Device & Logs without a bar), where you record
+  the chord (Ctrl+Alt+Shift+I suggested). A chord another app holds is said to be inactive rather than
   shown on, and a press with nothing on screen is told by a notification.
 - **Interruptions to sort.** Work History marks an interruption not named
   yet **To sort** and lists every one at the top, whatever its day, with its
@@ -38,6 +38,15 @@
   title on the session card or in the mini timer to name it. **Assign to
   Task** moves the running session to a task you pick, keeping its start, so
   the whole interruption is logged on that task and sent to its provider.
+
+### Changed
+
+- **Plainer wording in the window.** Developer labels are gone -- the
+  sidebar's "Modules" header, "UTC Absolute Timestamp Engine", "Display
+  Configuration & Debug Output Strategy" -- and settings say what they do:
+  *Show the bar's own clock when idle*, *Try the wrap-up*. Notification
+  rules read Default and High Priority without their scores, and counts
+  read "1 task", not "1 Task(s)".
 
 ### Fixed
 

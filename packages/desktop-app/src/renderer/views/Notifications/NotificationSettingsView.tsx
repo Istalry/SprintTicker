@@ -379,7 +379,7 @@ export const NotificationSettingsView: React.FC = () => {
           <div className="flex items-center justify-between bg-dark-900/50 p-3 rounded-lg border border-border-dark/40">
             <div>
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Polling Interval</h4>
-              <p className="text-[11px] text-text-secondary">Database check frequency</p>
+              <p className="text-[11px] text-text-secondary">How often Windows&apos; notifications are read</p>
             </div>
             <div className="flex items-center space-x-2">
               <input
@@ -452,7 +452,7 @@ export const NotificationSettingsView: React.FC = () => {
                       : 'bg-dark-800 text-text-secondary hover:text-white border border-border-dark'
                   }`}
                 >
-                  Default ({defaultScore})
+                  Default
                 </button>
                 <button
                   onClick={() => updateRuleMode(rule.appId, 'HIGH_PRIORITY')}
@@ -462,7 +462,7 @@ export const NotificationSettingsView: React.FC = () => {
                       : 'bg-dark-800 text-text-secondary hover:text-white border border-border-dark'
                   }`}
                 >
-                  High Priority ({highScore})
+                  High Priority
                 </button>
 
                 <button
@@ -503,7 +503,7 @@ export const NotificationSettingsView: React.FC = () => {
                   type="text"
                   value={rule.iconImagePath ?? ''}
                   onChange={e => updateRuleIcon(rule.appId, e.target.value)}
-                  placeholder="Optional: path to an image, or a 16x16 PNG from pnpm editor"
+                  placeholder="Optional: a 16×16 PNG to show instead of the app's icon"
                   className="flex-1 px-2 py-1 bg-dark-800 border border-border-dark rounded text-[10px] font-mono text-white placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-purple"
                 />
               </div>
@@ -547,9 +547,9 @@ export const NotificationSettingsView: React.FC = () => {
               onChange={e => setNewPriorityMode(e.target.value as NotificationPriorityMode)}
               className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-accent-purple font-mono"
             >
-              <option value="DONT_SHOW">Mode: Suppress (Don&apos;t Show)</option>
-              <option value="DEFAULT">Mode: Default ({defaultScore})</option>
-              <option value="HIGH_PRIORITY">Mode: High Priority ({highScore})</option>
+              <option value="DONT_SHOW">Don&apos;t Show</option>
+              <option value="DEFAULT">Default</option>
+              <option value="HIGH_PRIORITY">High Priority</option>
             </select>
             <button
               onClick={addRule}
