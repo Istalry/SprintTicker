@@ -4,6 +4,7 @@ import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
 import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
+import { InterruptShortcutCard } from '../../components/InterruptShortcutCard';
 import { DeviceConfigDTO } from '../../../shared/dtos';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { formatClockTime } from '../../utils/formatters';
@@ -557,6 +558,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
       </>)}
 
       <LaunchAtLoginCard />
+
+      <InterruptShortcutCard />
 
       <UpdateSettingsCard />
 

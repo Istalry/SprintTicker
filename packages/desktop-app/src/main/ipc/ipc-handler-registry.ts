@@ -24,7 +24,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO } from '../../shared/dtos';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
@@ -32,6 +32,8 @@ import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } f
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { LaunchAtLoginService } from '../services/launch-at-login';
+import { InterruptShortcutService } from '../services/interrupt-shortcut-service';
+import { DEFAULT_INTERRUPT_SHORTCUT, InterruptShortcutSetting } from '../../shared/interrupt-shortcut';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
@@ -60,6 +62,7 @@ import { completeSession } from '../services/session-commands';
  */
 /** What the switch reads with no service behind it: a registry built without one, in tests. */
 const LAUNCH_AT_LOGIN_UNAVAILABLE: LaunchAtLoginStatusDTO = { enabled: false, available: false, reason: null };
+const INTERRUPT_SHORTCUT_UNAVAILABLE: InterruptShortcutStatusDTO = { ...DEFAULT_INTERRUPT_SHORTCUT, registered: false, problem: null };
 
 export interface IPCHandlerRegistryDeps {
   engine: TimeTrackingEngine;
@@ -93,6 +96,7 @@ export interface IPCHandlerRegistryDeps {
   updateChecker?: UpdateChecker;
   /** Starting with Windows; without it, the switch reads unavailable. */
   launchAtLogin?: LaunchAtLoginService;
+  interruptShortcut?: InterruptShortcutService;
   /** Asks open Unity Editors to save; defaults to the real HTTP call. */
   saveUnityScenes?: UnitySceneSaver;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
@@ -113,6 +117,7 @@ function isWorklogCorrection(value: unknown): value is WorklogCorrectionDTO {
 export class IPCHandlerRegistry {
   private updateChecker?: UpdateChecker;
   private launchAtLogin?: LaunchAtLoginService;
+  private interruptShortcut?: InterruptShortcutService;
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
   private projectRepo: ProjectRepository;
@@ -163,6 +168,7 @@ export class IPCHandlerRegistry {
       syncWorker,
       updateChecker,
       launchAtLogin,
+      interruptShortcut,
       webhookServer
     } = deps;
 
@@ -172,6 +178,7 @@ export class IPCHandlerRegistry {
     this.syncWorker = syncWorker;
     this.updateChecker = updateChecker;
     this.launchAtLogin = launchAtLogin;
+    this.interruptShortcut = interruptShortcut;
     // Bound to the settings repository's connection rather than the
     // DatabaseConnection singleton, which would open a second, on-disk database
     // even when the caller supplied an in-memory one.
@@ -1104,6 +1111,21 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.SET_LAUNCH_AT_LOGIN, async (_event, enabled: unknown) => {
       if (typeof enabled !== 'boolean') throw new ArgumentException('Starting with Windows is on or off.', 'enabled');
       return this.launchAtLogin ? this.launchAtLogin.setEnabled(enabled) : LAUNCH_AT_LOGIN_UNAVAILABLE;
+    });
+
+    ipcMain.handle(IPCChannel.GET_INTERRUPT_SHORTCUT, async () => {
+      return this.interruptShortcut ? this.interruptShortcut.getStatus() : INTERRUPT_SHORTCUT_UNAVAILABLE;
+    });
+
+    ipcMain.handle(IPCChannel.SET_INTERRUPT_SHORTCUT, async (_event, setting: unknown) => {
+      if (!setting || typeof setting !== 'object') throw new ArgumentException('The shortcut is a setting.', 'setting');
+      // The service validates the fields, and refuses a chord it cannot register.
+      return this.interruptShortcut ? this.interruptShortcut.set(setting as InterruptShortcutSetting) : INTERRUPT_SHORTCUT_UNAVAILABLE;
+    });
+
+    ipcMain.handle(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, async (_event, recording: unknown) => {
+      if (typeof recording !== 'boolean') throw new ArgumentException('Recording is on or off.', 'recording');
+      return this.interruptShortcut ? this.interruptShortcut.setRecording(recording) : INTERRUPT_SHORTCUT_UNAVAILABLE;
     });
 
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {

@@ -784,6 +784,18 @@ export interface LaunchAtLoginStatusDTO {
   reason: 'not-windows' | 'not-packaged' | null;
 }
 
+/**
+ * The global shortcut for Interrupt. `enabled` is the user's choice and
+ * `registered` Windows' answer: on but not registered is a chord another
+ * app holds (`taken`), which Settings says rather than showing it working.
+ */
+export interface InterruptShortcutStatusDTO {
+  enabled: boolean;
+  accelerator: string;
+  registered: boolean;
+  problem: 'taken' | null;
+}
+
 export type UpdateStatusDTO =
   | { status: 'disabled'; currentVersion: string }
   | { status: 'up-to-date'; currentVersion: string }

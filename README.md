@@ -123,9 +123,10 @@ through `better-sqlite3` with versioned schema migrations, so upgrading never
 discards existing worklogs.
 
 **Interrupt** starts a timer at once when someone comes to your desk -- one
-click on the session card, in the mini timer or in the tray -- on a new
-task named for the time; when it ends, you are asked whether to go back to
-the task it stopped.
+click on the session card, in the mini timer or in the tray, or a keyboard
+shortcut from any app, off until you turn it on -- on a new task named for
+the time; when it ends, you are asked whether to go back to the task it
+stopped.
 
 A **mini timer**, a small always-on-top window, shows the running task and its
 time on screen, with or without a bar, beside the icon of whatever holds the

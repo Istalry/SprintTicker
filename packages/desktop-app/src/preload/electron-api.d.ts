@@ -14,6 +14,7 @@ import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../sh
 import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { DayShare } from '../shared/work-split';
 import type { TaskVisibility } from '../shared/task-visibility';
+import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -45,6 +46,7 @@ import type {
   DeviceConfigDTO,
   UpdateStatusDTO,
   LaunchAtLoginStatusDTO,
+  InterruptShortcutStatusDTO,
   ProviderSyncResult,
   SyncQueueSnapshotDTO,
   ProjectsUpdatedPayload,
@@ -254,6 +256,12 @@ export interface IElectronAPI {
   getLaunchAtLogin: () => Promise<LaunchAtLoginStatusDTO>;
   /** Resolves the state Windows reports after the change. */
   setLaunchAtLogin: (enabled: boolean) => Promise<LaunchAtLoginStatusDTO>;
+  /** The global shortcut for Interrupt, and whether Windows gave the app its chord. */
+  getInterruptShortcut: () => Promise<InterruptShortcutStatusDTO>;
+  /** Stores and registers it; rejects a chord `chordProblem` refuses. */
+  setInterruptShortcut: (setting: InterruptShortcutSetting) => Promise<InterruptShortcutStatusDTO>;
+  /** Lets go of the chord while a new one is recorded, so the press reaches the window. */
+  setInterruptShortcutRecording: (recording: boolean) => Promise<InterruptShortcutStatusDTO>;
   openReleasePage: (url: string) => Promise<boolean>;
   /**
    * Opens the task's page on the provider it came from, in the browser. Main

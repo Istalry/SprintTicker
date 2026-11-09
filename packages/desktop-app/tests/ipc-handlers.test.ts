@@ -768,4 +768,45 @@ describe('IPC handlers', () => {
       expect(api.setLoginItemSettings).not.toHaveBeenCalled();
     });
   });
+
+  describe('the Interrupt shortcut', () => {
+    const OFF = { enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null };
+    const service = () => ({
+      getStatus: vi.fn().mockReturnValue(OFF),
+      set: vi.fn((s: { enabled: boolean; accelerator: string }) => ({ ...s, registered: s.enabled, problem: null })),
+      setRecording: vi.fn().mockReturnValue(OFF)
+    });
+
+    it('InterruptShortcut_NoService_SaysOffAndRegistersNothing', async () => {
+      await expect(invoke(IPCChannel.GET_INTERRUPT_SHORTCUT)).resolves.toEqual(OFF);
+      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, { enabled: true, accelerator: 'Ctrl+Alt+Shift+I' })).resolves.toEqual(OFF);
+    });
+
+    it('InterruptShortcut_Set_AnswersTheService', async () => {
+      const interruptShortcut = service();
+      build({ interruptShortcut });
+
+      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, { enabled: true, accelerator: 'Ctrl+Shift+F9' }))
+        .resolves.toEqual({ enabled: true, accelerator: 'Ctrl+Shift+F9', registered: true, problem: null });
+      await expect(invoke(IPCChannel.GET_INTERRUPT_SHORTCUT)).resolves.toEqual(OFF);
+    });
+
+    it('InterruptShortcut_SetNotASetting_Refused', async () => {
+      const interruptShortcut = service();
+      build({ interruptShortcut });
+
+      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, 'Ctrl+Alt+Shift+I')).rejects.toThrow(/setting/);
+      expect(interruptShortcut.set).not.toHaveBeenCalled();
+    });
+
+    it('InterruptShortcut_Recording_PassedOnAsABoolean', async () => {
+      const interruptShortcut = service();
+      build({ interruptShortcut });
+
+      await invoke(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, true);
+      expect(interruptShortcut.setRecording).toHaveBeenCalledWith(true);
+      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, 'yes')).rejects.toThrow(/on or off/);
+      expect(interruptShortcut.setRecording).toHaveBeenCalledTimes(1);
+    });
+  });
 });

@@ -609,7 +609,14 @@ task has left the lists too). Interrupt (`ContextScheduleService.interrupt`,
 `session:start-interruption`, the tray's first entry) also sets aside a
 paused task, since the bar reaches it through its paused menu; the engine's
 `startInterruption` makes a new ad-hoc row every time, titled
-`Interruption HH:MM` and marked `unsorted` (migration 13). The stand-up's
+`Interruption HH:MM` and marked `unsorted` (migration 13). The optional global
+shortcut is one more caller: `InterruptShortcutService` takes Electron's
+`globalShortcut` by constructor, registers the stored chord only when the user
+turned it on (`interrupt_shortcut`), reports a chord another app holds as
+`taken`, lets go of it while the window records a new one, and unregisters at
+quit, synchronously. A press with nothing on screen -- window hidden, no mini
+timer, no bar connected -- is told by one of the app's own toasts, which the
+notification listener never mirrors to the bar. The stand-up's
 `standup_resume` entry from before is read once at start and moved over.
 While it runs, an ad-hoc session can be named (`renameAdHocSession`: the task
 row and the session's copy together, one notification) or assigned to a task

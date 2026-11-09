@@ -1,5 +1,5 @@
 import { WorklogCorrectionService } from './services/worklog-correction-service';
-import { app, BrowserWindow, Notification, powerMonitor, screen, shell } from 'electron';
+import { app, BrowserWindow, globalShortcut, Notification, powerMonitor, screen, shell } from 'electron';
 import path from 'path';
 import { LoggerInterceptor } from './diagnostics/logger-interceptor';
 
@@ -48,6 +48,7 @@ import { DeviceConfigDTO, ScheduleSettingsDTO } from '../shared/dtos';
 import { normalizeScheduleSettings } from '../shared/schedule-defaults';
 import { UpdateChecker } from './updater/update-checker';
 import { LaunchAtLoginService, launchedHidden } from './services/launch-at-login';
+import { InterruptShortcutService } from './services/interrupt-shortcut-service';
 import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
 let mainWindow: BrowserWindow | null = null;
@@ -69,6 +70,7 @@ let updateChecker: UpdateChecker | null = null;
 let updateCheckTimer: NodeJS.Timeout | null = null;
 let miniWindowManager: MiniWindowManager | null = null;
 let providerEventService: ProviderEventService | null = null;
+let interruptShortcut: InterruptShortcutService | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -299,14 +301,16 @@ async function startApplication(): Promise<void> {
     settingsRepo, webhookServer, renderer, engine, priorityEngine, () => activeDriver.isEnabled()
   );
   const bannerRenderer = renderer;
+  // The app's own toasts, which the notification listener never mirrors to the bar.
+  const toasts = new ElectronToastPresenter({
+    isSupported: () => Notification.isSupported(),
+    create: options => new Notification(options),
+    openExternal: url => shell.openExternal(url)
+  });
   providerEventService = new ProviderEventService({
     getActiveProvider: () => providerManager.getActiveProvider(),
     settings: settingsRepo,
-    toasts: new ElectronToastPresenter({
-      isSupported: () => Notification.isSupported(),
-      create: options => new Notification(options),
-      openExternal: url => shell.openExternal(url)
-    }),
+    toasts,
     bar: {
       isEnabled: () => activeDriver.isEnabled(),
       show: (banner, providerId) => {
@@ -373,6 +377,25 @@ async function startApplication(): Promise<void> {
 
   miniWindowManager = new MiniWindowManager({ createWindow: createMiniWindow, screen, settings: settingsRepo });
 
+  // Interrupt from any app, on the user's chord; off until they turn it on.
+  const schedule = contextScheduleService;
+  const minis = miniWindowManager;
+  interruptShortcut = new InterruptShortcutService({
+    shortcuts: globalShortcut,
+    settings: settingsRepo,
+    interrupt: () => {
+      if (!schedule) throw new Error('The schedule service is not running.');
+      return schedule.interrupt();
+    },
+    getCurrentSession: () => engine?.getCurrentSession() ?? null,
+    isSeen: () =>
+      (mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) ||
+      minis.isOpen() ||
+      (activeDriver.isEnabled() && activeDriver.getDeviceStatus().connected),
+    toasts
+  });
+  interruptShortcut.start();
+
   ipcRegistry = new IPCHandlerRegistry({
     engine,
     taskRepo,
@@ -408,6 +431,7 @@ async function startApplication(): Promise<void> {
     syncWorker: engine.getSyncWorker(),
     updateChecker,
     launchAtLogin,
+    interruptShortcut,
     webhookServer
   });
   ipcRegistry.registerAllHandlers();
@@ -540,6 +564,8 @@ app.on('will-quit', event => {
     console.warn('[Main] Could not record the last presence at quit:', err);
   }
   forgottenSessionService?.dispose();
+  // Synchronously too: Windows keeps a chord until the process lets go of it.
+  interruptShortcut?.dispose();
 
   void (async () => {
     try {

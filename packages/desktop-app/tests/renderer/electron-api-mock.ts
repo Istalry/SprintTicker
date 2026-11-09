@@ -261,6 +261,11 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     setUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     getLaunchAtLogin: vi.fn().mockResolvedValue({ enabled: false, available: true, reason: null }),
     setLaunchAtLogin: vi.fn(async (enabled: boolean) => ({ enabled, available: true, reason: null })),
+    getInterruptShortcut: vi.fn().mockResolvedValue({ enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null }),
+    setInterruptShortcut: vi.fn(async (setting: { enabled: boolean; accelerator: string }) => ({
+      ...setting, registered: setting.enabled, problem: null
+    })),
+    setInterruptShortcutRecording: vi.fn().mockResolvedValue({ enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null }),
     openReleasePage: vi.fn().mockResolvedValue(true),
     openTaskPage: vi.fn().mockResolvedValue(true),
     onUpdateStatus: subscribe('onUpdateStatus'),

@@ -12,6 +12,10 @@
   back to that task, in the window and on the bar. On the bar, Interrupt is
   the paused menu's first choice: pause, turn the wheel two notches left,
   click.
+- **A keyboard shortcut for Interrupt**, from any app, off until you turn it
+  on in Device & Logs, where you record the chord (Ctrl+Alt+Shift+I
+  suggested). A chord another app holds is said to be inactive rather than
+  shown on, and a press with nothing on screen is told by a notification.
 - **Interruptions to sort.** Work History marks an interruption not named
   yet **To sort** and lists every one at the top, whatever its day, with its
   time and the day it began. Click a name -- there, on any ad-hoc row, or in

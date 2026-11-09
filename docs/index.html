@@ -698,7 +698,8 @@
       stops, its time logged as usual. Interrupt is on the Active Session card, in
       the mini timer, first in the tray menu, on the Stream Deck&#39;s Interrupt key,
       and on the bar: pause the task, turn the wheel two notches left to
-      <strong>INTERRUPT</strong>, and click.</p>
+      <strong>INTERRUPT</strong>, and click. And, if you turn it on, on a keyboard shortcut
+      that works from any app -- see below.</p>
       <p>When the interruption ends -- Stop, Done, or Discard if you pressed it by
       mistake -- SprintTicker asks <strong>Back to your task?</strong>, naming it: in the window,
       and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>. Yes starts it again;
@@ -1227,6 +1228,24 @@
       here too. The portable build registers the file you ran, so move it and
       switch it on again from the new place. A build run from source
       (<code>pnpm dev</code>) shows the switch greyed out.</p>
+      <p>⌨️ <strong>Interrupt shortcut</strong> starts an
+      <a href="#-interrupt-a-timer-at-once">interruption</a> from any app, with the window
+      closed. It is off until you tick <strong>Use the shortcut</strong>. The suggested chord
+      is <strong>Ctrl+Alt+Shift+I</strong>; <strong>Change</strong> records another -- press it, then the
+      keys, or Escape to keep the old one. A chord needs Ctrl, Alt or Win: Shift
+      alone only types capitals. Avoid Ctrl+Alt without Shift on AZERTY and
+      other layouts where it is AltGr, or the shortcut takes a character you type
+      -- the card says so.</p>
+      <ul>
+      <li><strong>&quot;Not active: another app holds it&quot;</strong> means Windows gave that chord to
+      another app first. Choose another; SprintTicker tries yours again at its
+      next start.</li>
+      <li><strong>Nothing happens in an app run as administrator.</strong> Windows does not pass
+      a shortcut to SprintTicker while such a window has the focus.</li>
+      <li><strong>With the window hidden, no bar and no mini timer</strong>, a Windows
+      notification says the interruption started and which task&#39;s time was
+      logged -- otherwise nothing would show that the timer changed.</li>
+      </ul>
       <hr>
       <h3 id="guide-the-bar-itself">💡 The bar itself</h3>
       <h4>🖼️ What it shows</h4>
@@ -2377,7 +2396,14 @@
       <code>session:start-interruption</code>, the tray&#39;s first entry) also sets aside a
       paused task, since the bar reaches it through its paused menu; the engine&#39;s
       <code>startInterruption</code> makes a new ad-hoc row every time, titled
-      <code>Interruption HH:MM</code> and marked <code>unsorted</code> (migration 13). The stand-up&#39;s
+      <code>Interruption HH:MM</code> and marked <code>unsorted</code> (migration 13). The optional global
+      shortcut is one more caller: <code>InterruptShortcutService</code> takes Electron&#39;s
+      <code>globalShortcut</code> by constructor, registers the stored chord only when the user
+      turned it on (<code>interrupt_shortcut</code>), reports a chord another app holds as
+      <code>taken</code>, lets go of it while the window records a new one, and unregisters at
+      quit, synchronously. A press with nothing on screen -- window hidden, no mini
+      timer, no bar connected -- is told by one of the app&#39;s own toasts, which the
+      notification listener never mirrors to the bar. The stand-up&#39;s
       <code>standup_resume</code> entry from before is read once at start and moved over.
       While it runs, an ad-hoc session can be named (<code>renameAdHocSession</code>: the task
       row and the session&#39;s copy together, one notification) or assigned to a task
@@ -3120,6 +3146,10 @@
       <tr>
       <td align="left">App</td>
       <td align="left"><code>app:get-system-locale</code> -- Windows&#39; regional format (<code>en-BE</code>, <code>fr-FR</code>), read once by the renderer at startup to format times</td>
+      </tr>
+      <tr>
+      <td align="left">Interrupt shortcut</td>
+      <td align="left"><code>app:get-interrupt-shortcut</code> answers <code>{ enabled, accelerator, registered, problem }</code>: <code>enabled</code> is the user&#39;s choice, <code>registered</code> whether Windows gave the app the chord, <code>problem: &#39;taken&#39;</code> when it is on but another app holds it. <code>app:set-interrupt-shortcut</code> takes <code>{ enabled, accelerator }</code>, an Electron accelerator; refuses one <code>chordProblem</code> refuses (no Ctrl, Alt or Win; modifiers out of order; an unknown key), stores the rest and answers what Windows said. <code>app:set-interrupt-shortcut-recording</code> takes a boolean: true lets go of the chord while the window records a new one, false registers the stored one again</td>
       </tr>
       <tr>
       <td align="left">Start with Windows</td>

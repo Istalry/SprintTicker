@@ -198,7 +198,8 @@ the time it started -- **Interruption 14:32** -- and the task you were on
 stops, its time logged as usual. Interrupt is on the Active Session card, in
 the mini timer, first in the tray menu, on the Stream Deck's Interrupt key,
 and on the bar: pause the task, turn the wheel two notches left to
-**INTERRUPT**, and click.
+**INTERRUPT**, and click. And, if you turn it on, on a keyboard shortcut
+that works from any app -- see below.
 
 When the interruption ends -- Stop, Done, or Discard if you pressed it by
 mistake -- SprintTicker asks **Back to your task?**, naming it: in the window,
@@ -657,6 +658,23 @@ the entry under *Settings → Apps → Startup*: turned off there, it reads off
 here too. The portable build registers the file you ran, so move it and
 switch it on again from the new place. A build run from source
 (`pnpm dev`) shows the switch greyed out.
+
+⌨️ **Interrupt shortcut** starts an
+[interruption](#-interrupt-a-timer-at-once) from any app, with the window
+closed. It is off until you tick **Use the shortcut**. The suggested chord
+is **Ctrl+Alt+Shift+I**; **Change** records another -- press it, then the
+keys, or Escape to keep the old one. A chord needs Ctrl, Alt or Win: Shift
+alone only types capitals. Avoid Ctrl+Alt without Shift on AZERTY and
+other layouts where it is AltGr, or the shortcut takes a character you type
+-- the card says so.
+- **"Not active: another app holds it"** means Windows gave that chord to
+  another app first. Choose another; SprintTicker tries yours again at its
+  next start.
+- **Nothing happens in an app run as administrator.** Windows does not pass
+  a shortcut to SprintTicker while such a window has the focus.
+- **With the window hidden, no bar and no mini timer**, a Windows
+  notification says the interruption started and which task's time was
+  logged -- otherwise nothing would show that the timer changed.
 
 ---
 

@@ -955,6 +955,12 @@ shortcut that declares another AUMID. Two more things about it:
 - **Async Electron lifecycle handlers do not work.** Electron does not await
   `will-quit`, so an `async` handler's teardown after the first `await` never
   runs. Use `preventDefault()` + `app.exit(0)`.
+- **A global shortcut is let go of while a chord is recorded.** Windows
+  hands a registered chord to its owner and never to the focused window,
+  so recording the current chord again would start an interruption instead
+  (`InterruptShortcutService.setRecording`). `register` answering false is
+  another app holding the chord: Settings says `taken`, never on. And the
+  shortcut's toast is the app's own, so the listener does not mirror it.
 - **A login item is read back, never remembered, and `openAtLogin` is not
   the answer.** Measured on Electron 44 (2026-10-22): `openAtLogin` stayed
   false with the Run value present; `executableWillLaunchAtLogin` is true
