@@ -573,7 +573,9 @@ session drops the entry. The restart is queued as a microtask, because it is
 made from the engine's listener: started there, the listeners after this one
 would still be handed the ended session, and the renderer would draw the idle
 clock over the restarted task. A stand-up stopped by lunch hands lunch the task
-before it, not the meeting.
+before it, not the meeting. The wrap-up stops the session through
+`stopForWrapUp`, which drops every stored restart first: stopped from the IPC
+handler, a stand-up running at wrap-up time restarted its task overnight.
 
 Only working days have ceremonies. `WorkingCalendar` answers which days are:
 the schedule's `workingDays` (Monday to Friday by default, never empty), less

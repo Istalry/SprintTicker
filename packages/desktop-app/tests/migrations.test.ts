@@ -644,4 +644,29 @@ describe('Schema Migrations', () => {
       ).toThrow(/CHECK/);
     });
   });
+
+  describe('migration 13: an interruption waits to be sorted', () => {
+    it('Migration013_ExistingTasks_AreSorted', () => {
+      // Every row so far was named by someone: nothing waits to be sorted.
+      for (const migration of MIGRATIONS.filter(m => m.version <= 12)) migration.up(db);
+      db.pragma('user_version = 12');
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, created_at_utc) VALUES ('adhoc_1', 'ADHOC', 'MISC-1', 'Call', 'done', '2026-01-01T00:00:00.000Z')"
+      ).run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT unsorted FROM tasks').all()).toEqual([{ unsorted: 0 }]);
+    });
+
+    it('Migration013_FromThenOn_OnlyZeroOrOne', () => {
+      runMigrations(db);
+
+      expect(() =>
+        db.prepare(
+          "INSERT INTO tasks (id, project_id, key, title, status, unsorted, created_at_utc) VALUES ('t1', 'p1', 'A-1', 'One', 'todo', 2, '2026-01-01T00:00:00.000Z')"
+        ).run()
+      ).toThrow(/CHECK/);
+    });
+  });
 });

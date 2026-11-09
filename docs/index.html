@@ -987,7 +987,8 @@
       the stopwatch, taking turns to speak, so you can see the prompt has gone and
       the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
       again, by the same rules as after lunch: once, that day, and only if you have
-      not started something else meanwhile. A task that left your list during the
+      not started something else meanwhile, and never when the end-of-day wrap-up
+      is what stopped it. A task that left your list during the
       meeting is asked about first: <strong>Resume after the stand-up?</strong> in the window,
       <strong>NOT YOURS / RESUME IT?</strong> on the bar. <strong>Dismiss</strong>, BACK, or leaving the prompt
       alone keeps your task running.</p>
@@ -2259,7 +2260,9 @@
       made from the engine&#39;s listener: started there, the listeners after this one
       would still be handed the ended session, and the renderer would draw the idle
       clock over the restarted task. A stand-up stopped by lunch hands lunch the task
-      before it, not the meeting.</p>
+      before it, not the meeting. The wrap-up stops the session through
+      <code>stopForWrapUp</code>, which drops every stored restart first: stopped from the IPC
+      handler, a stand-up running at wrap-up time restarted its task overnight.</p>
       <p>Only working days have ceremonies. <code>WorkingCalendar</code> answers which days are:
       the schedule&#39;s <code>workingDays</code> (Monday to Friday by default, never empty), less
       the holidays the provider lists (<code>getNonWorkingDays</code>). Those are read at most

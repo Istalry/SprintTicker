@@ -291,6 +291,22 @@ export class ContextScheduleService {
   }
 
   /**
+   * Ends the day's session for the wrap-up, and every restart waiting on it.
+   *
+   * The restarts are dropped first: the stop's listeners are what restart a
+   * task, and the day's end is not the stand-up's. The wrap-up used to stop
+   * the session from the IPC handler, so a stand-up still running at wrap-up
+   * time brought the task before it back -- to run all night.
+   */
+  public stopForWrapUp(): void {
+    this._standupSessionId = null;
+    this.forgetStandupResume();
+    this.forgetLunchResume();
+    if (this._resumePrompt) this.closeResumePrompt();
+    if (this._engine.getCurrentSession()) this._engine.stopSession(WORKLOG_COMMENTS.WRAP_UP);
+  }
+
+  /**
    * The answers to this service's prompts among the actions InputDecoder
    * decodes: after lunch, resume a task that is no longer the user's?; and
    * OK on the stand-up's prompt. The bar's keys and the Stream Deck's both

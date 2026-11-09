@@ -486,6 +486,19 @@ const M012_TASK_OWNERSHIP = `
   ALTER TABLE tasks ADD COLUMN assignee_name TEXT;
 `;
 
+/**
+ * Migration 13: an interruption's task waits to be sorted.
+ *
+ * Interrupt starts a timer at once on a new ad-hoc task with a name the app
+ * makes up, so the user can name it, or move its time to a real task,
+ * afterwards. History and the wrap-up list the ones still waiting; a title
+ * pattern would have hidden that meaning in a string the user may type.
+ * Every existing row was named by someone, so 0 is the truth for them.
+ */
+const M013_TASK_UNSORTED = `
+  ALTER TABLE tasks ADD COLUMN unsorted INTEGER NOT NULL DEFAULT 0 CHECK (unsorted IN (0, 1));
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -499,7 +512,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 9, name: 'session-provider', up: db => db.exec(M009_SESSION_PROVIDER) },
   { version: 10, name: 'project-key-not-unique', up: db => db.exec(M010_PROJECT_KEY_NOT_UNIQUE) },
   { version: 11, name: 'send-attempts', up: db => db.exec(M011_SEND_ATTEMPTS) },
-  { version: 12, name: 'task-ownership', up: db => db.exec(M012_TASK_OWNERSHIP) }
+  { version: 12, name: 'task-ownership', up: db => db.exec(M012_TASK_OWNERSHIP) },
+  { version: 13, name: 'task-unsorted', up: db => db.exec(M013_TASK_UNSORTED) }
 ];
 
 /** Schema version a fully migrated database reports. */

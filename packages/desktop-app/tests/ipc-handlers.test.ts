@@ -371,6 +371,19 @@ describe('IPC handlers', () => {
       expect(engine.getCurrentSession()).toBeNull();
     });
 
+    it('WrapUp_DuringTheStandup_RestartsNothingOvernight', async () => {
+      // The stand-up's end restarts the task it stopped -- but the day's end
+      // is not the meeting's: the task restarted then ran all night.
+      engine.startTask('', true, 'Writing the spec');
+      await invoke(IPCChannel.JOIN_STANDUP);
+
+      await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, {});
+      await Promise.resolve();
+
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(settingsRepo.getSetting('standup_resume', 'unset')).toBeNull();
+    });
+
     it('CancelWrapUp_OnTheBar_TheScreenBehindItIsDrawnOnce', async () => {
       // The release hands the display back itself; drawing the session after
       // it drew idle twice -- two clears of the device's screen, the shape

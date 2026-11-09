@@ -5,6 +5,7 @@
 export const WORKLOG_COMMENTS = {
   DEFAULT: 'Completed session via SprintTicker',
   SWITCHED_TASK: 'Auto-completed due to new task start',
+  INTERRUPTED: 'Stopped for an interruption',
   BAR_STOP: 'Stopped via BUSY Bar Paused Menu',
   BAR_FINISH: 'Completed via BUSY Bar Paused Menu',
   BAR_FINISH_CONFIRMED: 'Completed via BUSY Bar after confirming',

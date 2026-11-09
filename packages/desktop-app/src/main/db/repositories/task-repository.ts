@@ -1,8 +1,8 @@
 import type Database from 'better-sqlite3';
 import { DatabaseConnection } from '../database-connection';
-import { createId, IdPrefix } from '../id-generator';
+import { createId, IdPrefix, isAdHocTaskId } from '../id-generator';
 import { TOMBSTONE_PROJECT_ID } from '../migrations';
-import { TaskDTO } from '../../../shared/dtos';
+import { ArgumentException, TaskDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
 import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownership';
 
@@ -12,7 +12,7 @@ import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownershi
  */
 const TASK_COLUMNS =
   'id, project_id as projectId, key, title, status, priority_rank as priorityRank, description, ' +
-  'ownership, assignee_name as assigneeName';
+  'ownership, assignee_name as assigneeName, unsorted';
 
 /** A `tasks` row as TASK_COLUMNS reads it. */
 interface TaskRow {
@@ -25,6 +25,7 @@ interface TaskRow {
   description: string | null;
   ownership: string | null;
   assigneeName: string | null;
+  unsorted: number | null;
 }
 
 /** True for a `tasks` row that some worklog references. */
@@ -180,6 +181,7 @@ export class TaskRepository {
     const ownership = parseTaskOwnership(row.ownership);
     if (ownership !== TaskOwnership.MINE) task.ownership = ownership;
     if (row.assigneeName && ownership === TaskOwnership.OTHER) task.assigneeName = row.assigneeName;
+    if (row.unsorted === 1) task.unsorted = true;
     return task;
   }
 
@@ -245,8 +247,12 @@ export class TaskRepository {
 
   /**
    * Creates a custom ad-hoc task, shown under `adHocKey` (the configured ad-hoc key).
+   *
+   * `unsorted` for an interruption's task, whose name the app made up: it
+   * waits for the user to name it or move its time (migration 13). Never
+   * written by `saveTask`, so a later save of the row keeps it.
    */
-  public createAdHocTask(customTitle: string, adHocKey: string = 'MISC-1'): TaskDTO {
+  public createAdHocTask(customTitle: string, adHocKey: string = 'MISC-1', unsorted: boolean = false): TaskDTO {
     if (!customTitle) {
       throw new Error('Custom title is required for ad-hoc task creation');
     }
@@ -261,7 +267,30 @@ export class TaskRepository {
     };
 
     this.saveTask(adHocTask);
+    if (unsorted) {
+      this.dbConn.getDb().prepare('UPDATE tasks SET unsorted = 1 WHERE id = ?').run(taskId);
+      adHocTask.unsorted = true;
+    }
     return adHocTask;
+  }
+
+  /**
+   * Names an ad-hoc task, and so every worklog on it in History, which reads
+   * the title from the row. Clears the unsorted mark: the user has named it.
+   *
+   * @throws ArgumentException for a task that is not ad-hoc, or an empty name.
+   */
+  public renameAdHocTask(taskId: string, title: string): void {
+    if (!taskId || !isAdHocTaskId(taskId)) throw new ArgumentException(`${String(taskId)} is not an ad-hoc task.`, 'taskId');
+    if (!title || !title.trim()) throw new ArgumentException('An ad-hoc task needs a name.', 'title');
+    this.dbConn.getDb().prepare('UPDATE tasks SET title = ?, unsorted = 0 WHERE id = ?').run(title.trim(), taskId);
+  }
+
+  /** The ad-hoc tasks still waiting to be named or assigned, oldest first. */
+  public getUnsortedTasks(): TaskDTO[] {
+    return this.dbConn.getDb().prepare<[], TaskRow>(
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE unsorted = 1 AND archived_at_utc IS NULL ORDER BY created_at_utc ASC`
+    ).all().map(r => TaskRepository.toDto(r));
   }
 
   /**

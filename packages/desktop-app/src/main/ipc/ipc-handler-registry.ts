@@ -42,7 +42,6 @@ import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibili
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
-import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import { completeSession } from '../services/session-commands';
 
 /**
@@ -537,10 +536,9 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
-      const activeSession = this.engine.getCurrentSession();
-      if (activeSession) {
-        this.engine.stopSession(WORKLOG_COMMENTS.WRAP_UP);
-      }
+      // Through the schedule service, which drops the restarts first: a
+      // stand-up ended by the wrap-up must not bring its task back overnight.
+      this.contextScheduleService.stopForWrapUp();
 
       // 1. Ask open Unity Editors to save their scenes
       const savedUnityScenes = await this.saveUnityScenes();

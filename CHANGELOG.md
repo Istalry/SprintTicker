@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The wrap-up could restart a task overnight.** Joining the stand-up
+  stops the task you were on and brings it back when the stand-up ends. A
+  stand-up still running at the end-of-day wrap-up ended there -- and the
+  task before it came back, running until the next morning. The wrap-up now
+  drops every restart waiting on the session before it stops it.
+
 ## 1.4.0 — 2026-11-04
 
 Ready for BUSY Bar firmware 1.3. Firmware 1.3 reads its animations in a new

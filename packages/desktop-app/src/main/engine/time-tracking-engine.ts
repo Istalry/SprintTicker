@@ -18,6 +18,7 @@ import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
 import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
 import { hasTaskPage } from '../../shared/task-page';
+import { interruptionTitle } from '../../shared/interruption';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -303,6 +304,25 @@ export class TimeTrackingEngine extends EventEmitter {
   public startNamedAdHocTask(title: string): ActiveSessionDTO {
     if (!title) throw new ArgumentException('An ad-hoc task needs a name.', 'title');
     return this.startTask(this._taskRepo.findAdHocTaskByTitle(title)?.id ?? '', true, title);
+  }
+
+  /**
+   * Starts an interruption: a new ad-hoc task under the name the app makes up
+   * for it, marked unsorted until the user names it or moves its time
+   * (migration 13). Never an existing row -- two interruptions are two
+   * things to sort, unlike the stand-up's one task a day.
+   *
+   * The session running is logged as any start logs it, under its own
+   * comment. Bringing it back afterwards is the schedule service's
+   * (`ContextScheduleService.interrupt`), which is the one caller.
+   */
+  public startInterruption(at: Date = new Date()): ActiveSessionDTO {
+    if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
+      this.stopSession(WORKLOG_COMMENTS.INTERRUPTED);
+    }
+    const title = interruptionTitle(at);
+    const task = this._taskRepo.createAdHocTask(title, this.adHocTaskKey(), true);
+    return this.startTask(task.id, true, title);
   }
 
   /// <summary>

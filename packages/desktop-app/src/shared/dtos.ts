@@ -79,6 +79,11 @@ export interface TaskDTO {
   ownership?: TaskOwnershipValue;
   /** The assignee's display name, on a task that is someone else's. */
   assigneeName?: string;
+  /**
+   * An interruption's ad-hoc task, still under the name the app made up:
+   * waiting for the user to name it or move its time to a task (migration 13).
+   */
+  unsorted?: true;
 }
 
 export interface OpStatusDTO {
@@ -252,8 +257,17 @@ export interface WeekEndedDTO {
 export interface ResumePromptDTO {
   taskKey: string;
   taskTitle: string;
-  /** What stopped the task: lunch, or the stand-up it was switched away for. */
-  after: 'lunch' | 'standup';
+  /**
+   * What stopped the task: lunch, the stand-up it was switched away for, or
+   * an interruption -- which asks every time, not only for a task that left
+   * the user's lists.
+   */
+  after: 'lunch' | 'standup' | 'interruption';
+  /**
+   * After an interruption, the task has also left the user's lists. Lunch
+   * and the stand-up ask only then, so for them it goes without saying.
+   */
+  unlisted?: true;
 }
 
 /** A pause of a session, closed: from when to when. */

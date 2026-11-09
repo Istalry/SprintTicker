@@ -5,7 +5,8 @@ import { ConfirmPanel } from './ConfirmPanel';
 /**
  * "Resume it anyway?", asked when lunch or the stand-up ends and the task it
  * stopped has left the user's lists meanwhile -- reassigned, closed or moved.
- * It is not restarted without asking.
+ * It is not restarted without asking. After an interruption it is asked every
+ * time: "Back to your task?".
  *
  * Follows main rather than owning the question: the bar asks it too, and an
  * answer there closes it here. Read once on mount as well, for a window opened
@@ -25,6 +26,12 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
 
   if (!prompt) return null;
   const standup = prompt.after === 'standup';
+  const task = (
+    <>
+      <span className="text-accent-blue font-bold">{prompt.taskKey}</span>
+      {prompt.taskTitle && <> ({prompt.taskTitle})</>}
+    </>
+  );
 
   const answer = (resume: boolean) => {
     setPrompt(null);
@@ -36,13 +43,22 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
       <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
         <ConfirmPanel
-          title={standup ? 'Resume after the stand-up?' : 'Resume after lunch?'}
+          title={
+            prompt.after === 'interruption' ? 'Back to your task?' : standup ? 'Resume after the stand-up?' : 'Resume after lunch?'
+          }
           message={
-            <>
-              {standup ? 'The stand-up' : 'Lunch'} stopped <span className="text-accent-blue font-bold">{prompt.taskKey}</span>
-              {prompt.taskTitle && <> ({prompt.taskTitle})</>}, and it is no longer assigned to you: it was
-              reassigned, closed or moved {standup ? 'meanwhile' : 'over the break'}. Resume tracking it anyway?
-            </>
+            prompt.after === 'interruption' ? (
+              <>
+                The interruption stopped {task}.
+                {prompt.unlisted && <> It is no longer assigned to you: it was reassigned, closed or moved meanwhile.</>}
+                {' '}Resume tracking it?
+              </>
+            ) : (
+              <>
+                {standup ? 'The stand-up' : 'Lunch'} stopped {task}, and it is no longer assigned to you: it was
+                reassigned, closed or moved {standup ? 'meanwhile' : 'over the break'}. Resume tracking it anyway?
+              </>
+            )
           }
           confirmLabel="Resume it"
           cancelLabel="Leave it"

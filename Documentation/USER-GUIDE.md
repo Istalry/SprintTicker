@@ -444,7 +444,8 @@ day. The bar then shows its timer, with three people at a table in place of
 the stopwatch, taking turns to speak, so you can see the prompt has gone and
 the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
 again, by the same rules as after lunch: once, that day, and only if you have
-not started something else meanwhile. A task that left your list during the
+not started something else meanwhile, and never when the end-of-day wrap-up
+is what stopped it. A task that left your list during the
 meeting is asked about first: **Resume after the stand-up?** in the window,
 **NOT YOURS / RESUME IT?** on the bar. **Dismiss**, BACK, or leaving the prompt
 alone keeps your task running.
