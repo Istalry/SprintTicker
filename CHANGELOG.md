@@ -35,6 +35,13 @@
   stand-up still running at the end-of-day wrap-up ended there -- and the
   task before it came back, running until the next morning. The wrap-up now
   drops every restart waiting on the session before it stops it.
+- **A deleted worklog could stay in Jira or OpenProject.** When a send's
+  answer was lost -- a timeout, a dropped connection -- the entry may exist
+  at the provider while the worklog still reads as unsent. Deleting it then
+  sends a deletion that finds the entry by its marker. But if the worklog
+  had been corrected first, or "Retry failed" pressed, or its first send
+  refused for credentials, SprintTicker took it for one never sent and
+  deleted it here only. It now goes by whether a send was ever attempted.
 
 ## 1.4.0 — 2026-11-04
 

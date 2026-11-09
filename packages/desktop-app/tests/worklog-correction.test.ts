@@ -179,6 +179,56 @@ describe('Correcting a worklog', () => {
       expect(remote.entries.size).toBe(0);
       expect(remote.provider.logTime).not.toHaveBeenCalled();
     });
+
+    // Correcting an unsent row restores its retry budget (`retry_count` 0),
+    // and so does "retry failed worklogs": neither says the row was never
+    // sent. Only `send_attempts` does, and it is never reset.
+    const attemptedAndLost = (): string => {
+      const send = logged('w1');
+      remote.entries.set('77', { taskId: 'T-1', durationSeconds: 2 * HOUR, startedAtUtc: START, comment: `Pairing ${syncMarker(send)}`, isAdHoc: false });
+      worklogs.claimSyncItem(send);
+      worklogs.releaseSyncItemAfterFailure(send, 'socket hang up', 0, 1);
+      return send;
+    };
+
+    it('Remove_SendAttemptedAndLostThenCorrected_DeletesWhateverTheAttemptMade', async () => {
+      const send = attemptedAndLost();
+      service.correct('w1', fix(HOUR));
+      expect(worklogs.getSyncItem(send)).toMatchObject({ retryCount: 0, sendAttempts: 1 });
+
+      service.remove('w1');
+      await worker.processPendingQueue();
+
+      expect(remote.entries.size).toBe(0);
+      expect(remote.provider.logTime).not.toHaveBeenCalled();
+    });
+
+    it('Remove_SendAttemptedAndLostThenRequeued_DeletesWhateverTheAttemptMade', async () => {
+      const send = attemptedAndLost();
+      expect(worklogs.getSyncItem(send)?.status).toBe('FAILED');
+      worker.requeueFailedWorklogs();
+      expect(worklogs.getSyncItem(send)).toMatchObject({ retryCount: 0, sendAttempts: 1 });
+
+      service.remove('w1');
+      await worker.processPendingQueue();
+
+      expect(remote.entries.size).toBe(0);
+      expect(remote.provider.logTime).not.toHaveBeenCalled();
+    });
+
+    it('Remove_SendParkedOnItsFirstAttempt_StillLooksForAnEntry', async () => {
+      // Parking keeps the retry budget, so a row refused on its first claim
+      // still reads retry_count 0 -- with an attempt behind it all the same.
+      const send = logged('w1');
+      worklogs.claimSyncItem(send);
+      worklogs.parkSyncItemAsFailed(send, 'HTTP 401 - credentials refused');
+
+      service.remove('w1');
+      await worker.processPendingQueue();
+
+      expect(remote.provider.findWorklog).toHaveBeenCalled();
+      expect(remote.provider.logTime).not.toHaveBeenCalled();
+    });
   });
 
   describe('one sent', () => {

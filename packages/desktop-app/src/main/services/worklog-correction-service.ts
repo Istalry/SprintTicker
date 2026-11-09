@@ -97,7 +97,10 @@ export class WorklogCorrectionService {
       if (!send) return false;
 
       for (const stale of this._worklogs.getUnsentCorrectionsOf(worklogId)) this._worklogs.dropUnsentSyncItem(stale.id);
-      const neverAttempted = send.retryCount === 0;
+      // `send_attempts`, never `retry_count`: the budget is reset on purpose
+      // by a correction of this very row and by "retry failed", and parking
+      // leaves it alone, so a row with an attempt behind it can read 0 there.
+      const neverAttempted = send.sendAttempts === 0;
       if (this._worklogs.dropUnsentSyncItem(send.id) && neverAttempted) return false;
       // Dropped after an attempt, or claimed or delivered: the entry may
       // exist. An attempt whose answer was lost can have made it, so the
