@@ -548,6 +548,13 @@ otherwise stays -- across a restart too -- until you do. Missed the wrap-up
 the week at its first check instead, and a week closes once, whatever happens.
 A week you did not work at all closes without a notice.
 
+**Time in a closed week asks first.** Closing a week locks nothing, but its
+timesheet may be in by then, or approved. So moving a worklog of a closed week
+asks before the task picker opens, and correcting or deleting one says so in
+the dialog before you save -- a correction that moves the start into a closed
+week too. A locked timesheet may refuse the change at Jira or OpenProject; the
+sync queue then shows why.
+
 ### 🔔 Notifications
 
 Which applications may reach the bar. **Nothing is mirrored until you allow it.**

@@ -403,6 +403,11 @@ export class ContextScheduleService {
     }
   }
 
+  /** The Monday of the last week closed, or null before the first close. */
+  public getLastWeekClosed(): string | null {
+    return this._settingsRepo.getSetting<string | null>(ContextScheduleService.LAST_WEEK_CLOSED_KEY, null);
+  }
+
   /// <summary>
   /// The week just over, until the user has seen it; null otherwise.
   /// </summary>

@@ -197,6 +197,12 @@ describe('IPC handlers', () => {
       expect(await invoke(IPCChannel.DISMISS_WEEK_ENDED)).toBe(true);
       expect(dismissWeekEnded).toHaveBeenCalledTimes(1);
     });
+
+    it('LastWeekClosed_ReadThroughTheScheduleService', async () => {
+      build({ contextScheduleService: { getLastWeekClosed: vi.fn().mockReturnValue('2026-11-02') } });
+
+      expect(await invoke(IPCChannel.GET_LAST_WEEK_CLOSED)).toBe('2026-11-02');
+    });
   });
 
   describe('the stand-up', () => {

@@ -624,6 +624,7 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.GET_WEEK_ENDED, async () => this.contextScheduleService.getWeekEnded());
+    ipcMain.handle(IPCChannel.GET_LAST_WEEK_CLOSED, async () => this.contextScheduleService.getLastWeekClosed());
 
     ipcMain.handle(IPCChannel.DISMISS_WEEK_ENDED, async () => {
       this.contextScheduleService.dismissWeekEnded();

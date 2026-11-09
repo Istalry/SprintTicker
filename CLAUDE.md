@@ -831,7 +831,10 @@ changing it:
   them. **A week closes once** (`last_week_closed`), at the wrap-up of its
   last working day or at the next working day's first check -- anything that
   acts on the close (a timesheet submission) hangs off `onWeekEnded` and
-  inherits that guarantee rather than keeping its own.
+  inherits that guarantee rather than keeping its own. Changing time in a
+  closed week -- a move, a correction, a deletion -- warns first and never
+  refuses (the user's choice, 2026-11-09): `isInClosedWeek` in
+  `shared/closed-week.ts`, read by the window.
 
 The app posts toasts of its own (`ProviderEventService`), and two things about
 them are traps:

@@ -1084,6 +1084,12 @@
       (a day off you had not entered, the laptop shut)? The next working day closes
       the week at its first check instead, and a week closes once, whatever happens.
       A week you did not work at all closes without a notice.</p>
+      <p><strong>Time in a closed week asks first.</strong> Closing a week locks nothing, but its
+      timesheet may be in by then, or approved. So moving a worklog of a closed week
+      asks before the task picker opens, and correcting or deleting one says so in
+      the dialog before you save -- a correction that moves the start into a closed
+      week too. A locked timesheet may refuse the change at Jira or OpenProject; the
+      sync queue then shows why.</p>
       <h4>🔔 Notifications</h4>
       <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p align="center">
@@ -3085,7 +3091,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:get-week-ended</code>, <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>

@@ -158,6 +158,8 @@ export interface IElectronAPI {
   joinStandup: () => Promise<boolean>;
   /** The week just over, until dismissed; null otherwise. */
   getWeekEnded: () => Promise<WeekEndedDTO | null>;
+  /** The Monday of the last week closed, or null: time up to its Sunday asks before it is changed. */
+  getLastWeekClosed: () => Promise<string | null>;
   dismissWeekEnded: () => Promise<boolean>;
   /** Pushed when a week closes, and null once it is dismissed anywhere. */
   onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => () => void;

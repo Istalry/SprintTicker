@@ -20,6 +20,9 @@
   it: deleted at Jira or OpenProject where it was, then created on the new
   task, through the sync queue, so the time is never on both. **Assign** on
   an interruption to sort moves all of its time at once, named after it.
+- **Time in a closed week asks first.** Moving, correcting or deleting a
+  worklog of a week already closed warns that its timesheet may be in, or
+  approved, before anything changes.
 - **Stream Deck plugin 0.5.0: Interrupt, and three answer keys.** The deck's
   layout is now Session, **Interrupt**, and **Answer A, B and C**, which show
   whichever answers apply: A is DONE, or yes to a question waiting; B is NOT

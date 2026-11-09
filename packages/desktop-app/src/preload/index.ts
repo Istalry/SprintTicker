@@ -139,6 +139,7 @@ const electronAPI: IElectronAPI = {
   cancelStandupPrompt: () => ipcRenderer.invoke(IPCChannel.CANCEL_STANDUP_PROMPT),
   joinStandup: () => ipcRenderer.invoke(IPCChannel.JOIN_STANDUP),
   getWeekEnded: () => ipcRenderer.invoke(IPCChannel.GET_WEEK_ENDED),
+  getLastWeekClosed: () => ipcRenderer.invoke(IPCChannel.GET_LAST_WEEK_CLOSED),
   dismissWeekEnded: () => ipcRenderer.invoke(IPCChannel.DISMISS_WEEK_ENDED),
   onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, week: WeekEndedDTO | null) => callback(week);

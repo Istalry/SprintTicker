@@ -9,6 +9,8 @@ import { TaskPageButton } from '../../components/TaskPageButton';
 import { InlineRename } from '../../components/InlineRename';
 import { TaskSelectionModal } from '../../components/TaskSelectionModal';
 import { ipcErrorMessage } from '../../utils/formatters';
+import { ConfirmPanel } from '../../components/ConfirmPanel';
+import { CLOSED_WEEK_WARNING, isInClosedWeek } from '../../../shared/closed-week';
 
 /** One interruption still to sort: its task, and the time logged on it. */
 interface ToSort {
@@ -83,7 +85,10 @@ export const WorklogHistoryView: React.FC = () => {
   const [unsorted, setUnsorted] = useState<WorklogDTO[]>([]);
   // The worklogs whose task is being picked, and the label of what moves.
   const [moving, setMoving] = useState<{ worklogIds: string[]; label: string } | null>(null);
+  // A move of closed-week time, waiting for the user to say go on.
+  const [askingMove, setAskingMove] = useState<{ worklogIds: string[]; label: string } | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
   const toSort = groupToSort(unsorted);
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
@@ -115,6 +120,24 @@ export const WorklogHistoryView: React.FC = () => {
     );
     return () => { current = false; };
   }, [revision]);
+
+  useEffect(() => {
+    let current = true;
+    const read = window.electronAPI?.getLastWeekClosed;
+    if (!read) return undefined;
+    read().then(
+      monday => { if (current) setLastWeekClosed(monday); },
+      err => console.error('[WorklogHistoryView] Failed to read the last week closed:', err)
+    );
+    return () => { current = false; };
+  }, [revision]);
+
+  /** Opens the picker for these worklogs -- after asking, when any is closed-week time. */
+  const startMove = (logs: WorklogDTO[], label: string) => {
+    const request = { worklogIds: logs.map(log => log.id), label };
+    if (logs.some(log => isInClosedWeek(log.startedAtUtc, lastWeekClosed))) setAskingMove(request);
+    else setMoving(request);
+  };
 
   /**
    * Moves the worklogs to the task picked, one after the other: each is its
@@ -219,10 +242,7 @@ export const WorklogHistoryView: React.FC = () => {
                     type="button"
                     aria-label={`Assign ${item.title} to a task`}
                     title="Assign to a task: its time goes to that task's provider"
-                    onClick={() => setMoving({
-                      worklogIds: unsorted.filter(log => log.taskId === item.taskId).map(log => log.id),
-                      label: item.title
-                    })}
+                    onClick={() => startMove(unsorted.filter(log => log.taskId === item.taskId), item.title)}
                     className="flex items-center gap-1 px-2 py-0.5 border border-border-dark rounded text-text-secondary hover:text-white hover:border-accent-blue"
                   >
                     <Link2 className="w-3.5 h-3.5" />
@@ -376,7 +396,7 @@ export const WorklogHistoryView: React.FC = () => {
                   <button
                     aria-label={`Move ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))} to another task`}
                     title="Move to another task"
-                    onClick={() => setMoving({ worklogIds: [log.id], label: log.taskTitle ?? log.taskKey ?? log.taskId })}
+                    onClick={() => startMove([log], log.taskTitle ?? log.taskKey ?? log.taskId)}
                     className="p-1 text-text-secondary hover:text-white hover:bg-dark-700 rounded transition-colors"
                   >
                     <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -399,6 +419,21 @@ export const WorklogHistoryView: React.FC = () => {
         )}
       </div>
 
+      {askingMove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
+          <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
+            <ConfirmPanel
+              title="Move time from a closed week?"
+              message={<><strong className="text-white">{askingMove.label}</strong>. {CLOSED_WEEK_WARNING}</>}
+              confirmLabel="Choose a task"
+              cancelLabel="Back"
+              onConfirm={() => { setMoving(askingMove); setAskingMove(null); }}
+              onCancel={() => setAskingMove(null)}
+            />
+          </div>
+        </div>
+      )}
+
       <TaskSelectionModal
         isOpen={moving !== null}
         mode="move"
@@ -412,6 +447,7 @@ export const WorklogHistoryView: React.FC = () => {
           key={`${editing.worklog.id}-${editing.mode}`}
           worklog={editing.worklog}
           mode={editing.mode}
+          lastWeekClosed={lastWeekClosed}
           onClose={() => setEditing(null)}
           onDone={() => {
             setEditing(null);

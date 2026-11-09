@@ -193,6 +193,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     cancelStandupPrompt: vi.fn().mockResolvedValue(true),
     joinStandup: vi.fn().mockResolvedValue(true),
     getWeekEnded: vi.fn().mockResolvedValue(null),
+    getLastWeekClosed: vi.fn().mockResolvedValue(null),
     dismissWeekEnded: vi.fn().mockResolvedValue(true),
     onWeekEnded: subscribe('onWeekEnded'),
     triggerEodPrompt: vi.fn().mockResolvedValue({ success: true }),

@@ -179,6 +179,79 @@ describe('Work History, moving time to another task', () => {
   });
 });
 
+describe('Work History, time in a closed week', () => {
+  // START is Monday 9 November, 09:30 UTC: closed when the 9th's week is.
+  const CLOSED = '2026-11-09';
+
+  it('Move_ClosedWeekTime_AsksFirst_BackChangesNothing', async () => {
+    const bridge = installElectronApi({
+      getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
+      getLastWeekClosed: vi.fn().mockResolvedValue(CLOSED)
+    });
+    render(<WorklogHistoryView />);
+    await waitFor(() => expect(bridge.api.getLastWeekClosed).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+
+    const question = screen.getByRole('alertdialog', { name: 'Move time from a closed week?' });
+    expect(question.textContent).toMatch(/timesheet/);
+    fireEvent.click(within(question).getByRole('button', { name: 'Back' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('heading', { name: /Move to a Task/ })).toBeNull();
+  });
+
+  it('Move_ClosedWeekTime_GoOn_OpensThePicker', async () => {
+    installElectronApi({
+      getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
+      getLastWeekClosed: vi.fn().mockResolvedValue(CLOSED)
+    });
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose a task' }));
+
+    expect(await screen.findByRole('heading', { name: /Move to a Task/ })).toBeTruthy();
+  });
+
+  it('Move_ThisWeeksTime_AsksNothing', async () => {
+    installElectronApi({
+      getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
+      getLastWeekClosed: vi.fn().mockResolvedValue('2026-11-02')
+    });
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+
+    expect(await screen.findByRole('heading', { name: /Move to a Task/ })).toBeTruthy();
+    expect(screen.queryByRole('alertdialog', { name: 'Move time from a closed week?' })).toBeNull();
+  });
+
+  it.each([['Correct'], ['Delete']])('%s_ClosedWeekTime_SaysSoBeforeSaving', async action => {
+    const bridge = installElectronApi({
+      getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
+      getLastWeekClosed: vi.fn().mockResolvedValue(CLOSED)
+    });
+    render(<WorklogHistoryView />);
+    await waitFor(() => expect(bridge.api.getLastWeekClosed).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`${action} MG-12`) }));
+
+    expect(screen.getByRole('note').textContent).toMatch(/week already closed/);
+  });
+
+  it('Correct_ThisWeeksTime_NoNote', async () => {
+    installElectronApi({
+      getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
+      getLastWeekClosed: vi.fn().mockResolvedValue(null)
+    });
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Correct MG-12/ }));
+
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+});
+
 describe('the wrap-up, interruptions to sort', () => {
   const summary = (items: Array<Record<string, unknown>>) => ({ date: '2026-11-09', totalSeconds: 900, tasksCount: items.length, items });
 

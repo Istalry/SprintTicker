@@ -78,6 +78,7 @@ export enum IPCChannel {
   CANCEL_STANDUP_PROMPT = 'schedule:cancel-standup-prompt',
   JOIN_STANDUP = 'schedule:join-standup',
   GET_WEEK_ENDED = 'schedule:get-week-ended',
+  GET_LAST_WEEK_CLOSED = 'schedule:get-last-week-closed',
   DISMISS_WEEK_ENDED = 'schedule:dismiss-week-ended',
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',

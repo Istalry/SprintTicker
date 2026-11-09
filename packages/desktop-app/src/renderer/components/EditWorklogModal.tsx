@@ -4,6 +4,7 @@ import { WorklogDTO } from '../../shared/dtos';
 import { checkWorklogCorrection, WORKLOG_COMMENT_MAX_CHARS, WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import { formatDayAndTime, formatHoursAndMinutes, formatHoursMinutes, ipcErrorMessage } from '../utils/formatters';
 import { ConfirmPanel } from './ConfirmPanel';
+import { CLOSED_WEEK_WARNING, isInClosedWeek } from '../../shared/closed-week';
 
 /** `YYYY-MM-DDTHH:MM` in local time, as a datetime-local input holds it. */
 function toLocalInput(date: Date): string {
@@ -21,6 +22,8 @@ function reachNote(worklog: WorklogDTO): string {
 interface EditWorklogModalProps {
   worklog: WorklogDTO;
   mode: 'edit' | 'delete';
+  /** The Monday of the last week closed: time up to its Sunday is warned about. */
+  lastWeekClosed?: string | null;
   onClose: () => void;
   /** Called once main has accepted the change. */
   onDone: () => void;
@@ -35,7 +38,7 @@ interface EditWorklogModalProps {
  * fields are left alone, so fixing a comment does not also shave the
  * duration or move the start to the minute.
  */
-export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mode, onClose, onDone }) => {
+export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mode, lastWeekClosed = null, onClose, onDone }) => {
   const initialHours = Math.floor(worklog.durationSeconds / 3600);
   const initialMinutes = Math.floor((worklog.durationSeconds % 3600) / 60);
   const initialStart = toLocalInput(new Date(worklog.startedAtUtc));
@@ -66,6 +69,12 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
   const fieldsValid = Number.isInteger(h) && Number.isInteger(m) && h >= 0 && m >= 0 && m < 60;
   const refusal = fieldsValid ? checkWorklogCorrection(correction, now) : 'Hours and minutes must be whole numbers, minutes under 60.';
   const endsAt = refusal ? null : new Date(Date.parse(correction.startedAtUtc) + durationSeconds * 1000);
+  // Where it is, or where the correction would put it.
+  const closedWeek = isInClosedWeek(worklog.startedAtUtc, lastWeekClosed) ||
+    (correction.startedAtUtc !== '' && isInClosedWeek(correction.startedAtUtc, lastWeekClosed));
+  const closedWeekNote = closedWeek && (
+    <p role="note" className="text-[11px] text-accent-amber leading-relaxed">{CLOSED_WEEK_WARNING}</p>
+  );
 
   const run = (call: () => Promise<unknown>) => {
     setBusy(true);
@@ -107,6 +116,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
               onConfirm={() => run(() => window.electronAPI.deleteWorklog(worklog.id))}
               onCancel={onClose}
             />
+            {closedWeekNote}
             {error && <p role="alert" className="text-xs text-accent-red">{error}</p>}
           </>
         ) : (
@@ -169,6 +179,8 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
               {endsAt && <>Ends at {formatHoursMinutes(endsAt)}. </>}
               {reachNote(worklog)} To put it on another task, use Move on its row in Work History.
             </p>
+
+            {closedWeekNote}
 
             {(refusal || error) && (
               <p role="alert" className="text-xs text-accent-red">{error ?? refusal}</p>
