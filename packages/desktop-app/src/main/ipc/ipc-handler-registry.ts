@@ -25,6 +25,7 @@ import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO } from '../../shared/dtos';
+import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
@@ -226,6 +227,17 @@ export class IPCHandlerRegistry {
       return this.engine.startTask(payload.taskId, payload.isAdHoc, payload.customTitle);
     });
 
+    // The schedule service's, not the engine's: it sets the task running aside
+    // to ask about when the interruption ends, as the stand-up does.
+    ipcMain.handle(IPCChannel.START_INTERRUPTION, async () => this.contextScheduleService.interrupt());
+
+    ipcMain.handle(IPCChannel.RENAME_SESSION, async (_event, title: unknown) => this.engine.renameAdHocSession(checkAdHocTitle(title)));
+
+    ipcMain.handle(IPCChannel.ASSIGN_SESSION, async (_event, taskId: unknown) => {
+      if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('Assigning needs a task id.', 'taskId');
+      return this.engine.assignSessionToTask(taskId);
+    });
+
     ipcMain.handle(IPCChannel.PAUSE_SESSION, async () => {
       return this.engine.pauseSession();
     });
@@ -369,6 +381,13 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.IMPORT_TASKS, async (_event, payload: { projectId: string; tasks: Array<{ key: string; title: string; status?: 'todo' | 'in_progress' | 'done' }> }) => {
       return this.taskRepo.importTasks(payload.projectId, payload.tasks);
+    });
+
+    ipcMain.handle(IPCChannel.GET_UNSORTED_WORKLOGS, async () => this.worklogRepo.getUnsortedWorklogs());
+
+    ipcMain.handle(IPCChannel.RENAME_AD_HOC_TASK, async (_event, taskId: unknown, title: unknown) => {
+      if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('A task id is required.', 'taskId');
+      this.engine.renameAdHocTask(taskId, checkAdHocTitle(title));
     });
 
     ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, payload: string | Record<string, string> | unknown) => {
@@ -1036,6 +1055,7 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.MINI_TOGGLE, async (): Promise<boolean> => this.miniWindow?.toggle() ?? false);
     ipcMain.handle(IPCChannel.MINI_IS_OPEN, async (): Promise<boolean> => this.miniWindow?.isOpen() ?? false);
     ipcMain.handle(IPCChannel.OPEN_TASK_PICKER, async (): Promise<boolean> => openTaskPickerInMainWindow(this.getWindow()));
+    ipcMain.handle(IPCChannel.OPEN_ASSIGN_PICKER, async (): Promise<boolean> => openTaskPickerInMainWindow(this.getWindow(), undefined, 'assign'));
     this.miniWindow?.subscribe(open => this.broadcast(IPCChannel.ON_MINI_VISIBILITY, open));
 
     ipcMain.handle(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS, async (): Promise<boolean> =>

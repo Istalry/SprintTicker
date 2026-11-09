@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
+import { Play, Pause, RefreshCw, Sparkles, AlertTriangle, Zap, Link2 } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
 import { formatSeconds } from '../utils/formatters';
@@ -8,6 +8,8 @@ import { taskLeftLabel } from '../../shared/task-left';
 import { hasTaskPage } from '../../shared/task-page';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 import { TaskPageButton } from './TaskPageButton';
+import { SessionTitle } from './SessionTitle';
+import { isAdHocSession } from '../../shared/interruption';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -17,6 +19,10 @@ interface ActiveTaskHeroCardProps {
   /** Ends the session keeping nothing; the Finish dialog has had it confirmed. */
   onDiscard: () => void;
   onOpenTaskModal: () => void;
+  /** Interrupt: a timer at once, the task running asked about when it ends. */
+  onInterrupt: () => void;
+  /** Opens the task picker to assign the open ad-hoc session to a task. */
+  onAssign?: () => void;
 }
 
 export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
@@ -25,7 +31,9 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   onResume,
   onComplete,
   onDiscard,
-  onOpenTaskModal
+  onOpenTaskModal,
+  onInterrupt,
+  onAssign
 }) => {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
 
@@ -71,8 +79,21 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             )}
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">
-            {session?.taskTitle || 'No Active Task Selected'}
+            {session ? (
+              <SessionTitle
+                session={session}
+                className="text-xl font-bold text-white tracking-tight"
+                inputClassName="w-full bg-dark-900 border border-accent-blue rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none font-sans"
+              />
+            ) : (
+              'No Active Task Selected'
+            )}
           </h2>
+          {session?.unsorted && (
+            <div className="mt-1 text-xs font-mono text-accent-amber">
+              Interruption -- name it, or assign it to a task so its time reaches your provider.
+            </div>
+          )}
           {session?.taskUnlisted && (
             <div
               role="status"
@@ -127,6 +148,26 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             <Sparkles className="w-4 h-4 text-accent-green" />
             <span>Finish & Log Hours</span>
           </button>
+
+          <button
+            onClick={onInterrupt}
+            title="Start a timer now; name it or assign it to a task afterwards"
+            className="flex items-center space-x-2 px-5 py-2.5 bg-accent-amber/10 hover:bg-accent-amber/20 text-accent-amber rounded-lg font-semibold text-sm border border-accent-amber/30 transition-all"
+          >
+            <Zap className="w-4 h-4" />
+            <span>Interrupt</span>
+          </button>
+
+          {session && onAssign && isAdHocSession(session) && (
+            <button
+              onClick={onAssign}
+              title="Move this session to a task: all of its time goes there"
+              className="flex items-center space-x-2 px-5 py-2.5 bg-dark-700 hover:bg-dark-700/80 text-white rounded-lg font-semibold text-sm border border-border-dark transition-all"
+            >
+              <Link2 className="w-4 h-4" />
+              <span>Assign to Task</span>
+            </button>
+          )}
 
           <button
             onClick={onOpenTaskModal}

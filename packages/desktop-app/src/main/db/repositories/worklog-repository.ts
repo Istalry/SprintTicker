@@ -2,6 +2,7 @@ import { DatabaseConnection } from '../database-connection';
 import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
 import { WorklogCorrectionDTO, WorklogSyncState } from '../../../shared/worklog-correction';
 import { hasTaskPage } from '../../../shared/task-page';
+import { isAdHocTaskId } from '../id-generator';
 
 export interface WorklogRecord {
   id: string;
@@ -19,6 +20,10 @@ export interface WorklogRecord {
   syncState?: WorklogSyncState;
   /** Whether its task has a page on a provider (`hasTaskPage`). Read-only; filled on reads. */
   hasTaskPage?: boolean;
+  /** Logged on ad-hoc work, which no provider has. Read-only; filled on reads. */
+  adHoc?: true;
+  /** Its task is an interruption not yet named or assigned (migration 13). Read-only; filled on reads. */
+  unsorted?: true;
 }
 
 /** A worklog row joined to its task. */
@@ -32,6 +37,7 @@ interface WorklogRow {
   created_at_utc: string;
   task_key: string | null;
   task_title: string | null;
+  task_unsorted: number | null;
   task_project_id: string | null;
   project_provider_id: string | null;
   create_status: SyncQueueStatus | null;
@@ -47,7 +53,7 @@ interface WorklogRow {
  * its time.
  */
 const SELECT_WORKLOGS = `
-  SELECT w.*, t.key AS task_key, t.title AS task_title,
+  SELECT w.*, t.key AS task_key, t.title AS task_title, t.unsorted AS task_unsorted,
          t.project_id AS task_project_id, p.provider_id AS project_provider_id,
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation = 'CREATE'
@@ -88,6 +94,8 @@ function toRecord(r: WorklogRow): WorklogRecord {
   if (r.task_title !== null) record.taskTitle = r.task_title;
   record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null);
   record.hasTaskPage = hasTaskPage(r.task_project_id, r.project_provider_id);
+  if (isAdHocTaskId(r.task_id)) record.adHoc = true;
+  if (r.task_unsorted === 1) record.unsorted = true;
   return record;
 }
 
@@ -665,6 +673,25 @@ export class WorklogRepository {
   }
 
   /**
+   * Every worklog of an interruption still to sort, whatever its day, newest
+   * first: what History lists until each is named or assigned.
+   */
+  public getUnsortedWorklogs(): WorklogRecord[] {
+    try {
+      const db = this.dbConn.getDb();
+      if (!db || !db.open) return [];
+      return db.prepare<[], WorklogRow>(
+        `${SELECT_WORKLOGS}
+          WHERE t.unsorted = 1
+          ORDER BY w.started_at_utc DESC`
+      ).all().map(toRecord);
+    } catch (err) {
+      console.warn('[WorklogRepository] Failed to fetch the worklogs to sort:', err);
+      return [];
+    }
+  }
+
+  /**
    * Generates a daily summary report of hours and tasks for a given YYYY-MM-DD date.
    */
   public getDailySummary(dateString: string): {
@@ -677,11 +704,12 @@ export class WorklogRepository {
       title: string;
       durationSeconds: number;
       comment: string;
+      unsorted?: true;
     }>;
   } {
     const logs = this.getWorklogsByDate(dateString);
     let totalSeconds = 0;
-    const taskMap = new Map<string, { taskId: string; key: string; title: string; durationSeconds: number; comment: string }>();
+    const taskMap = new Map<string, { taskId: string; key: string; title: string; durationSeconds: number; comment: string; unsorted?: true }>();
 
     for (const log of logs) {
       totalSeconds += log.durationSeconds;
@@ -702,7 +730,8 @@ export class WorklogRepository {
           key: log.taskKey ?? log.taskId,
           title: log.taskTitle ?? log.taskId,
           durationSeconds: log.durationSeconds,
-          comment: log.comment
+          comment: log.comment,
+          ...(log.unsorted ? { unsorted: true as const } : {})
         });
       }
     }

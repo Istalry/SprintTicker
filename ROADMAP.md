@@ -1196,7 +1196,9 @@ Ordered; each says what has to be true first.
     PowerShell (`ForegroundRaiser`) brought it forward, measured.
   - **A profile the plugin ships, as a default to edit**: on the Mini, the
     six actions, one per key, with no folder -- the End folder planned for
-    Not done, Done and Discard went with the three actions cut. Installing
+    Not done, Done and Discard went with the three actions cut. Since
+    plugin 0.5.0 (2026-11-09) the layout is Session, Interrupt and the
+    answer keys A, B and C, five keys with one to spare. Installing
     the plugin is the whole set-up; anyone with another layout in mind, or
     another model, builds their own from the same actions.
   - **Done (2026-10-22): the app's side, which needs no device:** a WebSocket on 39123

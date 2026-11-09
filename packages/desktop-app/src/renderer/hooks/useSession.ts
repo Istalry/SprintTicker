@@ -89,6 +89,16 @@ export function useSession() {
     return null;
   };
 
+  /** Interrupt: a timer at once, named and assigned afterwards. */
+  const interrupt = async () => {
+    if (window.electronAPI) {
+      const res = await window.electronAPI.startInterruption();
+      setSession(res);
+      return res;
+    }
+    return null;
+  };
+
   return {
     session,
     loading,
@@ -96,6 +106,7 @@ export function useSession() {
     resume,
     complete,
     discard,
-    startTask
+    startTask,
+    interrupt
   };
 }

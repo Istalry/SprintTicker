@@ -354,8 +354,9 @@ export class InputDecoder {
     const activeSession = this._engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
 
-    // Interactive Paused State Controls: the wheel moves along STOP, FINISH
-    // and DROP and stops at either end; a click validates the choice.
+    // Interactive Paused State Controls: the wheel moves along INTERRUPT,
+    // STOP, FINISH and DROP and stops at either end; a click validates the
+    // choice.
     if (isPaused && this._renderer) {
       const isLeft = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
       const isRight = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
@@ -401,6 +402,14 @@ export class InputDecoder {
 
       if (isWheelClick) {
         const choice = this._renderer.getPausedSelection();
+        if (choice === 'INTERRUPT') {
+          // Interrupt is ContextScheduleService's, through the action
+          // handlers, as joining the stand-up is: it sets this task aside to
+          // ask about when the interruption ends. Its start draws the screen.
+          this._renderer.resetPausedChoice();
+          this.notifyActionHandlers('START_INTERRUPTION', normalizedKey);
+          return 'START_INTERRUPTION';
+        }
         if (choice === 'DISCARD') {
           // Hours thrown away by one click too many do not come back, so the
           // bar asks first, as the window does.

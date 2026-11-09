@@ -48,13 +48,15 @@ const BAR_ONLY_TABS = ['priority', 'unity', 'notifications'];
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
+  /** What the picker is open for: starting a task, or assigning the open ad-hoc session to one. */
+  const [pickerMode, setPickerMode] = useState<'start' | 'assign'>('start');
   const [isEodModalOpen, setIsEodModalOpen] = useState<boolean>(false);
   const [isStandupModalOpen, setIsStandupModalOpen] = useState<boolean>(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Custom Hooks
-  const { session, pause, resume, complete, discard, startTask } = useSession();
+  const { session, pause, resume, complete, discard, startTask, interrupt } = useSession();
   const deviceStatus = useDeviceStatus();
   // No-bar mode: what only describes the bar steps aside -- the emulator, the
   // connection readout, and BAR_ONLY_TABS. Everything that keeps time stays.
@@ -102,6 +104,12 @@ export const App: React.FC = () => {
     if (window.electronAPI) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent(event => {
         if (event.actionAssigned === 'TRIGGER_TASK_SELECTOR_MODAL' && !isEodModalOpen && !isStandupModalOpen) {
+          setPickerMode('start');
+          setIsTaskModalOpen(true);
+        }
+        // From the mini timer's Assign: the same picker, for the open session.
+        if (event.actionAssigned === 'TRIGGER_TASK_ASSIGN_MODAL' && !isEodModalOpen && !isStandupModalOpen) {
+          setPickerMode('assign');
           setIsTaskModalOpen(true);
         }
         // Answered on the bar: main has joined or dismissed it already.
@@ -139,7 +147,9 @@ export const App: React.FC = () => {
               onResume={resume}
               onComplete={complete}
               onDiscard={() => discard().catch(err => console.warn('[App] Discarding the session failed:', err))}
-              onOpenTaskModal={() => setIsTaskModalOpen(true)}
+              onOpenTaskModal={() => { setPickerMode('start'); setIsTaskModalOpen(true); }}
+              onAssign={() => { setPickerMode('assign'); setIsTaskModalOpen(true); }}
+              onInterrupt={() => { interrupt().catch(err => console.warn('[App] Interrupt failed:', err)); }}
             />
 
             {/* Todays Completed Worklogs Table */}
@@ -358,7 +368,12 @@ export const App: React.FC = () => {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         projects={projects}
+        mode={pickerMode}
         onSelectTask={(taskId, isAdHoc, title) => {
+          if (pickerMode === 'assign') {
+            window.electronAPI.assignSession(taskId).catch(err => console.warn('[App] Assigning the session failed:', err));
+            return;
+          }
           startTask(taskId, isAdHoc, title);
         }}
       />

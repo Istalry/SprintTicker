@@ -109,6 +109,12 @@ export const DECK_ACTIONS = [
   'discard',
   /** Brings the window forward with its task picker open. */
   'open-picker',
+  /**
+   * Starts an interruption: a timer at once, the task it stops asked about
+   * when it ends. Added after protocol 1 without raising it -- an older
+   * plugin never sends it, and an older app answers `invalid-request`.
+   */
+  'interrupt',
   'prompt-yes',
   'prompt-no'
 ] as const;

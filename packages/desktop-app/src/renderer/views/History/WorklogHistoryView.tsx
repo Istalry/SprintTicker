@@ -1,11 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2, Zap } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
 import { WorklogSyncState } from '../../../shared/worklog-correction';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 import { formatClockTime } from '../../utils/formatters';
 import { EditWorklogModal } from '../../components/EditWorklogModal';
 import { TaskPageButton } from '../../components/TaskPageButton';
+import { InlineRename } from '../../components/InlineRename';
+
+/** One interruption still to sort: its task, and the time logged on it. */
+interface ToSort {
+  taskId: string;
+  title: string;
+  totalSeconds: number;
+  /** The local day it began, which the list jumps to. */
+  dateKey: string;
+}
+
+/** The worklogs to sort, one entry per task, newest first as they came. */
+function groupToSort(worklogs: WorklogDTO[]): ToSort[] {
+  const byTask = new Map<string, ToSort>();
+  for (const log of worklogs) {
+    const entry = byTask.get(log.taskId);
+    // Oldest last in the answer: the last one seen is the day it began.
+    const dateKey = localDateKey(new Date(log.startedAtUtc));
+    if (entry) {
+      entry.totalSeconds += log.durationSeconds;
+      entry.dateKey = dateKey;
+    } else {
+      byTask.set(log.taskId, { taskId: log.taskId, title: log.taskTitle ?? log.taskId, totalSeconds: log.durationSeconds, dateKey });
+    }
+  }
+  return [...byTask.values()];
+}
+
+/** The badge of an interruption not yet named or assigned. */
+const TO_SORT_BADGE = 'px-1.5 py-0.5 border rounded text-[10px] text-accent-amber border-accent-amber/40';
 
 /** How each sync state reads on a row, and what its tooltip adds. */
 const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: string }> = {
@@ -47,6 +77,9 @@ export const WorklogHistoryView: React.FC = () => {
   // Bumped after a correction or deletion, so the day is read again.
   const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
+  // Every interruption still to sort, whatever its day.
+  const [unsorted, setUnsorted] = useState<WorklogDTO[]>([]);
+  const toSort = groupToSort(unsorted);
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
   const loading = day?.date !== selectedDate;
@@ -66,6 +99,21 @@ export const WorklogHistoryView: React.FC = () => {
     );
     return () => { current = false; };
   }, [selectedDate, revision]);
+
+  useEffect(() => {
+    let current = true;
+    const read = window.electronAPI?.getUnsortedWorklogs;
+    if (!read) return undefined;
+    read().then(
+      logs => { if (current) setUnsorted(logs); },
+      err => console.error('[WorklogHistoryView] Failed to read the interruptions to sort:', err)
+    );
+    return () => { current = false; };
+  }, [revision]);
+
+  /** Names ad-hoc work; the day and the list are read again with the name. */
+  const renameTask = (taskId: string, name: string) =>
+    window.electronAPI.renameAdHocTask(taskId, name).then(() => setRevision(r => r + 1));
 
   // Date Navigation Helpers
   const changeDateByDays = (days: number) => {
@@ -124,6 +172,41 @@ export const WorklogHistoryView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {toSort.length > 0 && (
+        <section aria-label="Interruptions to sort" className="bg-accent-amber/5 border border-accent-amber/30 rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-white">
+            <Zap className="w-4 h-4 text-accent-amber" />
+            <span>Interruptions to sort ({toSort.length})</span>
+          </div>
+          <p className="text-[11px] text-text-secondary">
+            Each is named for the time it started. Name it so your history says what it was; its time stays in SprintTicker.
+          </p>
+          <div className="space-y-1.5">
+            {toSort.map(item => (
+              <div key={item.taskId} className="flex items-center justify-between gap-3 text-xs py-1.5 px-2.5 bg-dark-900/60 border border-border-dark rounded-lg">
+                <InlineRename
+                  title={item.title}
+                  ownerId={item.taskId}
+                  onRename={name => renameTask(item.taskId, name)}
+                  className="font-bold text-white"
+                  inputClassName="flex-1 bg-dark-800 border border-accent-blue rounded px-2 py-0.5 text-white outline-none"
+                />
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(item.dateKey)}
+                    className="text-text-secondary hover:text-white underline-offset-2 hover:underline"
+                  >
+                    {item.dateKey}
+                  </button>
+                  <span className="font-bold text-accent-blue">{formatDuration(item.totalSeconds)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -212,7 +295,18 @@ export const WorklogHistoryView: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-white">{log.taskKey ?? log.taskId}</span>
-                    {log.taskTitle && <span className="text-text-secondary">{log.taskTitle}</span>}
+                    {log.taskTitle && (log.adHoc ? (
+                      <InlineRename
+                        title={log.taskTitle}
+                        ownerId={log.taskId}
+                        onRename={name => renameTask(log.taskId, name)}
+                        className="text-text-secondary"
+                        inputClassName="bg-dark-800 border border-accent-blue rounded px-2 py-0.5 text-white outline-none"
+                      />
+                    ) : (
+                      <span className="text-text-secondary">{log.taskTitle}</span>
+                    ))}
+                    {log.unsorted && <span className={TO_SORT_BADGE} title="An interruption not named yet.">To sort</span>}
                     {log.hasTaskPage && <TaskPageButton taskId={log.taskId} taskKey={log.taskKey ?? log.taskId} />}
                     <span className="text-text-secondary">• {formatClockTime(new Date(log.startedAtUtc))}</span>
                   </div>

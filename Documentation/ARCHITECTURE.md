@@ -522,8 +522,12 @@ Turns physical events into application actions, through a rebindable map.
 | BACK long press | `COMPLETE_AND_LOG_ACTIVE_TASK` |
 
 It also runs the two-stage task picker (project, then task) driven entirely from
-the bar, and the paused menu: STOP, FINISH and DROP, of which row 1 shows the
-pair holding the choice (`pausedChoicesShown`). DROP asks **DISCARD?** first;
+the bar, and the paused menu: INTERRUPT, STOP, FINISH and DROP, of which row
+1 shows the pair holding the choice, or INTERRUPT alone (`pausedChoicesShown`).
+It opens on FINISH, and goes back there when a pause ends on INTERRUPT. A
+click on INTERRUPT is decoded as `START_INTERRUPTION` and handed to
+`ContextScheduleService.answerFromBar`, which interrupts as the window's
+button does; the decoder ends nothing itself. DROP asks **DISCARD?** first;
 while the question is up the click confirms, BACK refuses, and every other
 key waits. A session started anywhere else while the picker is open closes
 it: it used to hold the display over the new session until BACK. After lunch,
@@ -573,7 +577,37 @@ session drops the entry. The restart is queued as a microtask, because it is
 made from the engine's listener: started there, the listeners after this one
 would still be handed the ended session, and the renderer would draw the idle
 clock over the restarted task. A stand-up stopped by lunch hands lunch the task
-before it, not the meeting. The wrap-up stops the session through
+before it, not the meeting.
+
+The stand-up and Interrupt share that mechanism, the **set-aside**: one
+`set_aside` setting holding the task to bring back, the session whose end
+brings it back (`endsWith`), and why (`after`). `switchSettingAside` starts
+the next session and stores the one it replaced; a replacement that is
+itself waited on -- an interruption, the stand-up -- passes on the task it
+was waiting for, so an interruption of an interruption returns to the first
+task. The two differ only in policy: the stand-up restarts the task itself
+unless it left the user's lists; an interruption always asks, through the
+after-lunch question with `after: 'interruption'` (and `unlisted` when the
+task has left the lists too). Interrupt (`ContextScheduleService.interrupt`,
+`session:start-interruption`, the tray's first entry) also sets aside a
+paused task, since the bar reaches it through its paused menu; the engine's
+`startInterruption` makes a new ad-hoc row every time, titled
+`Interruption HH:MM` and marked `unsorted` (migration 13). The stand-up's
+`standup_resume` entry from before is read once at start and moved over.
+While it runs, an ad-hoc session can be named (`renameAdHocSession`: the task
+row and the session's copy together, one notification) or assigned to a task
+in place (`assignSessionToTask`): `retargetSession` rewrites the open row's
+project, task, key, title and `is_ad_hoc`, and sets `provider_id` -- the one
+write of it after the start, for a session that had none, so the time still
+never follows the active provider. The task's start-time effects are the
+start's own (`takeUpTask`). Assigned to the task it set aside, the
+interruption drops the set-aside: the question would restart that task. The
+session reports `unsorted` from its task row, never a copy of its own.
+After it ended, the same work is named from History or the wrap-up
+(`renameAdHocTask`), which goes through `renameAdHocSession` when the task is
+the open session's, so the copy follows. Worklog reads join `tasks.unsorted`,
+and `getUnsortedWorklogs` lists what is still to sort across days.
+The wrap-up stops the session through
 `stopForWrapUp`, which drops every stored restart first: stopped from the IPC
 handler, a stand-up running at wrap-up time restarted its task overnight.
 
@@ -709,7 +743,7 @@ testing runs against your actual worklogs.
 | Table | Holds |
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app -- which the sync never deletes -- or `local`, the old default, meaning not known. Keys need not be unique |
-| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text; `ownership` is `mine`, `unassigned` or `other`, with `assignee_name` on a teammate's (migration 12) |
+| `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text; `ownership` is `mine`, `unassigned` or `other`, with `assignee_name` on a teammate's (migration 12); `unsorted` is 1 on an interruption's ad-hoc task until it is named or its time moved (migration 13) |
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
@@ -842,8 +876,14 @@ modifies neither your scenes nor your project code.
 `packages/streamdeck-plugin` is a plugin for Elgato's Stream Deck app, built
 on its SDK (`@elgato/streamdeck` 3) and bundled by Vite into one ESM file that
 Stream Deck runs on its own Node 24. Elgato's app keeps the device; the plugin
-only declares six actions, which the user places on any key: Session, Not
-done, Done, Discard, Yes and No -- a Mini's six keys.
+only declares actions, which the user places on any key: Session, Interrupt
+and the answer keys A, B and C -- five of a Mini's six keys. The answer keys
+stand in for whichever end applies (`resolveKind`): A is yes while a prompt
+holds the bar and Done otherwise, B no or Not done, and C Discard either way,
+so the end that keeps nothing never moves. The five fixed actions they replaced
+(Not done, Done, Discard, Yes, No) are still declared and still work, hidden
+from Stream Deck's list (`VisibleInActionsList: false`), so a deck laid out
+with them keeps its keys.
 
 ```
 Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──► AppLink ◄──► ws://127.0.0.1:39123/api/v1/deck
@@ -861,7 +901,12 @@ Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──►
   is sent only when it differs from the last one sent.
 - **A question is asked on the key that will answer it.** Discard, and Done
   on a task no longer the user's, arm on the first press and act on a second
-  within four seconds; another task starting withdraws the question.
+  within four seconds; another task starting withdraws the question, and so
+  does an answer key changing meaning.
+- **An answer key ignores a press just after it changed meaning.** For
+  `ANSWER_SETTLE_MS` (700 ms) after A or B turned from Done to yes, or back,
+  a press only flashes the key: the stand-up's question arriving as a finger
+  comes down on DONE would otherwise join the stand-up.
 - **One key has a long press: Session.** Held `LONG_PRESS_MS` (500 ms), it
   opens the picker at once, without waiting for the key to come up; let go
   sooner, it pauses or resumes. It acts when the key comes up, every other

@@ -212,6 +212,36 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
+    it('TrayManager_ContextMenu_Interrupt_StartsItWithoutTheWindow', () => {
+      const interrupt = vi.fn();
+      const manager = new TrayManager(mockWindow, engine, undefined, undefined, interrupt);
+      manager.initialize();
+
+      click('Start an Interruption');
+
+      expect(interrupt).toHaveBeenCalledTimes(1);
+      expect(mockWindow.show).not.toHaveBeenCalled();
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_InterruptFails_TheClickDoesNotThrow', () => {
+      // A throw from a menu click would reach Electron's main process.
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const manager = new TrayManager(mockWindow, engine, undefined, undefined, () => { throw new Error('database closed'); });
+      manager.initialize();
+
+      expect(() => click('Start an Interruption')).not.toThrow();
+      manager.destroy();
+    });
+
+    it('TrayManager_ContextMenu_NoInterrupt_OffersNoEntry', () => {
+      const manager = new TrayManager(mockWindow, engine);
+      manager.initialize();
+
+      expect(template.some(i => i.label === 'Start an Interruption')).toBe(false);
+      manager.destroy();
+    });
+
     it('TrayManager_ContextMenu_StartPause_NoSession_RestoresTheWindowInsteadOfGuessing', () => {
       // There is nothing to resume and no way to choose a task from a tray
       // menu, so the only useful move is to show the window.

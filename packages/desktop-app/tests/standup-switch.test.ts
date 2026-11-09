@@ -226,7 +226,7 @@ describe('Joining the stand-up', () => {
       await settle();
 
       expect(session()).toBeNull();
-      expect(renderer.renderResumePrompt).toHaveBeenCalledWith('standup');
+      expect(renderer.renderResumePrompt).toHaveBeenCalledWith('standup', A.key);
       expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'standup' });
       expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, { taskKey: A.key, taskTitle: A.title, after: 'standup' });
     });
@@ -280,10 +280,30 @@ describe('Joining the stand-up', () => {
       // Nothing restarts behind the user's back at the next start.
       standupOverA();
       service.dispose();
-      settings.setSetting('standup_resume', { ...settings.getSetting<object>('standup_resume', {}), standupSessionId: 'sess_gone' });
+      settings.setSetting('set_aside', { ...settings.getSetting<object>('set_aside', {}), endsWith: 'sess_gone' });
 
       service = createService();
 
+      expect(settings.getSetting('set_aside', 'unset')).toBeNull();
+    });
+
+    it('Restart_AStandupKeptByTheVersionBefore_StillBringsTheTaskBack', async () => {
+      // An update installed mid-meeting: the entry is under the stand-up's old
+      // key, in its old shape, and is read once.
+      standupOverA();
+      service.dispose();
+      const task = { ...settings.getSetting<Record<string, unknown>>('set_aside', {}) };
+      const standupSessionId = task.endsWith;
+      delete task.endsWith;
+      delete task.after;
+      settings.setSetting('set_aside', null);
+      settings.setSetting('standup_resume', { ...task, standupSessionId });
+
+      service = createService();
+      engine.stopSession('Stand-up over');
+      await settle();
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
       expect(settings.getSetting('standup_resume', 'unset')).toBeNull();
     });
   });

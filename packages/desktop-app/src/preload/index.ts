@@ -35,6 +35,9 @@ import type {
 const electronAPI: IElectronAPI = {
   // Session Controls
   getCurrentSession: () => ipcRenderer.invoke(IPCChannel.GET_CURRENT_SESSION),
+  startInterruption: () => ipcRenderer.invoke(IPCChannel.START_INTERRUPTION),
+  renameSession: (title: string) => ipcRenderer.invoke(IPCChannel.RENAME_SESSION, title),
+  assignSession: (taskId: string) => ipcRenderer.invoke(IPCChannel.ASSIGN_SESSION, taskId),
   startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) =>
     ipcRenderer.invoke(IPCChannel.START_TASK, { taskId, isAdHoc, customTitle }),
   pauseSession: () => ipcRenderer.invoke(IPCChannel.PAUSE_SESSION),
@@ -84,6 +87,8 @@ const electronAPI: IElectronAPI = {
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_BY_DATE, dateString),
+  getUnsortedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_UNSORTED_WORKLOGS),
+  renameAdHocTask: (taskId: string, title: string) => ipcRenderer.invoke(IPCChannel.RENAME_AD_HOC_TASK, taskId, title),
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) =>
     ipcRenderer.invoke(IPCChannel.UPDATE_WORKLOG, worklogId, correction),
   deleteWorklog: (worklogId: string) => ipcRenderer.invoke(IPCChannel.DELETE_WORKLOG, worklogId),
@@ -222,6 +227,7 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_MINI_VISIBILITY, handler);
   },
   openTaskPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PICKER),
+  openAssignPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_ASSIGN_PICKER),
   getOnlyProjectsWithTasks: () => ipcRenderer.invoke(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS),
   setOnlyProjectsWithTasks: (enabled: boolean) => ipcRenderer.invoke(IPCChannel.SET_ONLY_PROJECTS_WITH_TASKS, enabled),
   onOnlyProjectsWithTasks: (callback: (enabled: boolean) => void) => {

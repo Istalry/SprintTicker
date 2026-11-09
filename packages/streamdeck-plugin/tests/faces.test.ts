@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DeckPrompt } from '../../desktop-app/src/shared/deck-protocol';
-import { ACCENTS, GLYPHS, KeyContext, PRESS_AGAIN, faceFor, formatDuration, hasLongPress, planPress, playsOnPress, playsOnQuestion, tickPeriodMs, ticksWithTheClock } from '../src/faces';
+import { ACCENTS, GLYPHS, KeyContext, PRESS_AGAIN, answerKind, faceFor, formatDuration, hasLongPress, planPress, playsOnPress, playsOnQuestion, resolveKind, tickPeriodMs, ticksWithTheClock } from '../src/faces';
 import { KEY_KINDS } from '../src/key-kinds';
 import { STATE_AT, session, stateMessage } from './support/states';
 
@@ -116,12 +116,79 @@ describe('faceFor', () => {
 
 describe('one-shots', () => {
   it('PlaysOnPress_TheEnds_PlayAndTheRestDoNot', () => {
-    expect(['finish', 'discard', 'stop'].every(a => playsOnPress(a as never))).toBe(true);
+    expect(['finish', 'discard', 'stop', 'interrupt'].every(a => playsOnPress(a as never))).toBe(true);
     expect(['pause', 'resume', 'open-picker', 'prompt-yes', 'prompt-no'].some(a => playsOnPress(a as never))).toBe(false);
   });
 
-  it('PlaysOnQuestion_OnlyTheAnswers', () => {
-    expect(KEY_KINDS.filter(playsOnQuestion)).toEqual(['yes', 'no']);
+  it('PlaysOnQuestion_TheAnswersAndTheKeysThatBecomeThem', () => {
+    // Answer C stays DISCARD, so a question changes nothing on it.
+    expect(KEY_KINDS.filter(playsOnQuestion)).toEqual(['answer-a', 'answer-b', 'yes', 'no']);
+  });
+});
+
+describe('the Interrupt key', () => {
+  it.each([
+    ['NothingRunning', stateMessage()],
+    ['ATaskRunning', stateMessage({ session: session() })],
+    ['ATaskPaused', stateMessage({ session: session({ status: 'paused' }) })],
+    ['AQuestionWaiting', stateMessage({ session: session(), prompt: 'standup' })]
+  ])('Interrupt_%s_ReadyAndStartsOne', (_name, message) => {
+    // An interruption starts from any state; the task it stops is asked about after.
+    expect(faceFor('interrupt', online(message))).toMatchObject({ title: 'INTERRUPT', glyph: 'zap', tone: 'ready' });
+    expect(planPress('interrupt', online(message))).toEqual({ type: 'request', action: 'interrupt' });
+  });
+});
+
+describe('the answer keys', () => {
+  const PROMPTS = ['standup', 'wrap-up', 'wrap-up-confirm', 'resume'] as const;
+  const running = stateMessage({ session: session() });
+  const asked = (prompt: DeckPrompt) => stateMessage({ session: session(), prompt });
+
+  it('AnswerKind_NothingAsked_TheSessionsEnds', () => {
+    expect(answerKind('answer-a', null)).toBe('done');
+    expect(answerKind('answer-b', null)).toBe('not-done');
+    expect(answerKind('answer-c', null)).toBe('discard');
+  });
+
+  it.each(PROMPTS)('AnswerKind_%s_YesOnANoOnBDiscardStaysOnC', prompt => {
+    expect(answerKind('answer-a', prompt)).toBe('yes');
+    expect(answerKind('answer-b', prompt)).toBe('no');
+    // The one end that keeps nothing never changes under a finger.
+    expect(answerKind('answer-c', prompt)).toBe('discard');
+  });
+
+  it.each([
+    ['answer-a', 'done'],
+    ['answer-b', 'not-done'],
+    ['answer-c', 'discard']
+  ] as const)('FaceAndPress_%s_NothingAsked_AsTheKeyItStandsFor', (answer, fixed) => {
+    for (const ctx of [online(running), online(running, { armed: true }), online()]) {
+      expect(faceFor(answer, ctx)).toEqual(faceFor(fixed, ctx));
+      expect(planPress(answer, ctx)).toEqual(planPress(fixed, ctx));
+    }
+  });
+
+  it.each(PROMPTS)('FaceAndPress_%s_AAndBAnswerIt', prompt => {
+    const ctx = online(asked(prompt));
+    expect(faceFor('answer-a', ctx)).toEqual(faceFor('yes', ctx));
+    expect(faceFor('answer-b', ctx)).toEqual(faceFor('no', ctx));
+    expect(planPress('answer-a', ctx)).toEqual({ type: 'request', action: 'prompt-yes' });
+    expect(planPress('answer-b', ctx)).toEqual({ type: 'request', action: 'prompt-no' });
+    expect(planPress('answer-c', ctx)).toEqual({ type: 'arm' });
+  });
+
+  it('FaceFor_AnswerKeysOffline_WhatTheyMeanWithNothingAsked', () => {
+    // A deck laid out with SprintTicker closed still reads.
+    const off = { link: 'offline' as const, message: null, now: NOW, armed: false };
+    expect(faceFor('answer-a', off)).toMatchObject({ title: 'DONE', tone: 'idle', hint: 'offline' });
+    expect(faceFor('answer-b', off)).toMatchObject({ title: 'NOT DONE', tone: 'idle', hint: 'offline' });
+    expect(faceFor('answer-c', off)).toMatchObject({ title: 'DISCARD', tone: 'idle', hint: 'offline' });
+  });
+
+  it('ResolveKind_TheFixedKeys_ThemselvesWhateverIsAsked', () => {
+    for (const kind of ['session', 'interrupt', 'done', 'yes'] as const) {
+      expect(resolveKind(kind, online(asked('standup')))).toBe(kind);
+    }
   });
 });
 

@@ -32,11 +32,16 @@ export function revealMainWindow(win: BrowserWindow | null, raiser?: ForegroundR
  * `inputKey` as a key of the bar, and `ok` there would record a press nobody
  * made on it.
  */
-export function openTaskPickerInMainWindow(win: BrowserWindow | null, raiser?: ForegroundRaiser): boolean {
+export function openTaskPickerInMainWindow(
+  win: BrowserWindow | null,
+  raiser?: ForegroundRaiser,
+  mode: 'start' | 'assign' = 'start'
+): boolean {
   if (!revealMainWindow(win, raiser)) return false;
   win!.webContents.send(IPCChannel.ON_HARDWARE_INPUT_EVENT, {
     inputKey: 'app',
-    actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL'
+    // `assign`: the same picker, choosing the task the open ad-hoc session goes to.
+    actionAssigned: mode === 'assign' ? 'TRIGGER_TASK_ASSIGN_MODAL' : 'TRIGGER_TASK_SELECTOR_MODAL'
   });
   return true;
 }

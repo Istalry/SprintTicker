@@ -6,6 +6,12 @@ export enum IPCChannel {
   // Session & Timer Controls
   GET_CURRENT_SESSION = 'session:get-current',
   START_TASK = 'session:start-task',
+  /** Interrupt: a timer at once on a new ad-hoc task, the task it stops asked about at its end. */
+  START_INTERRUPTION = 'session:start-interruption',
+  /** Names the open ad-hoc session, and its task. */
+  RENAME_SESSION = 'session:rename',
+  /** Assigns the open ad-hoc session to a task, in place. */
+  ASSIGN_SESSION = 'session:assign',
   PAUSE_SESSION = 'session:pause',
   RESUME_SESSION = 'session:resume',
   COMPLETE_SESSION = 'session:complete',
@@ -37,6 +43,8 @@ export enum IPCChannel {
   UPDATE_TASK = 'tasks:update',
   IMPORT_TASKS = 'tasks:import',
   GET_WORKLOGS_BY_DATE = 'worklogs:get-by-date',
+  GET_UNSORTED_WORKLOGS = 'worklogs:get-unsorted',
+  RENAME_AD_HOC_TASK = 'tasks:rename-ad-hoc',
   GET_DAILY_WORKLOG_SUMMARY = 'worklogs:get-daily-summary',
   WIPE_ALL_DATA = 'db:wipe-all-data',
 
@@ -150,6 +158,8 @@ export enum IPCChannel {
   ON_MINI_VISIBILITY = 'mini:on-visibility',
   /** Brings the dashboard forward with its task picker open. */
   OPEN_TASK_PICKER = 'mini:open-task-picker',
+  /** Brings the dashboard forward with its task picker open to assign the open ad-hoc session. */
+  OPEN_ASSIGN_PICKER = 'mini:open-assign-picker',
   /** "Only my projects": whether project lists hide those with no open task. */
   GET_ONLY_PROJECTS_WITH_TASKS = 'projects:get-only-with-tasks',
   SET_ONLY_PROJECTS_WITH_TASKS = 'projects:set-only-with-tasks',

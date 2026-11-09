@@ -131,6 +131,25 @@ export class SessionRepository {
   }
 
   /**
+   * Points an open session at another task, keeping its start and pauses:
+   * an interruption assigned to a task while it runs, whose whole time then
+   * goes to that task. The provider is set here, once, for a session that had
+   * none -- ad-hoc work has no provider until it is assigned one.
+   */
+  public retargetSession(
+    sessionId: string,
+    target: { projectId: string; taskId: string; taskKey: string; taskTitle: string; providerId?: string }
+  ): void {
+    this.dbConn.getDb()
+      .prepare(
+        `UPDATE active_sessions
+            SET project_id = ?, task_id = ?, task_key = ?, task_title = ?, is_ad_hoc = 0, provider_id = ?
+          WHERE id = ?`
+      )
+      .run(target.projectId, target.taskId, target.taskKey, target.taskTitle, target.providerId ?? null, sessionId);
+  }
+
+  /**
    * Renames an open session's task: its key and title as the provider now
    * gives them. The session copies them when it starts, and nothing else
    * wrote them, so a rename or a Jira move left the old ones on the bar.

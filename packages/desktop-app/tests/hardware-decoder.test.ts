@@ -489,12 +489,51 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(renderer.getPausedSelection()).toBe('DISCARD');
     });
 
-    it('HandleHardwareInput_TaskPaused_TurningLeftPastStopStaysOnStop', () => {
+    it('HandleHardwareInput_TaskPaused_TurningLeftTwicePicksInterrupt', () => {
+      turn('rotate_left');
+      turn('rotate_left');
+
+      expect(renderer.getPausedSelection()).toBe('INTERRUPT');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningLeftPastInterruptStaysOnInterrupt', () => {
+      // INTERRUPT is the left-hand end, so the wheel finds it blind.
       turn('rotate_left');
       turn('up');
       turn('rotate_left');
+      turn('rotate_left');
 
-      expect(renderer.getPausedSelection()).toBe('STOP');
+      expect(renderer.getPausedSelection()).toBe('INTERRUPT');
+    });
+
+    it('HandleHardwareInput_ClickOnInterrupt_HandsItOnAndEndsNothingItself', () => {
+      // Interrupt is the schedule service's, which sets the task aside to ask
+      // about; the decoder stopping it here would lose that.
+      const actions: string[] = [];
+      decoder.registerActionHandler(action => actions.push(action));
+      const stop = vi.spyOn(engine, 'stopSession');
+      turn('rotate_left');
+      turn('rotate_left');
+
+      const action = turn('ok');
+
+      expect(action).toBe('START_INTERRUPTION');
+      expect(actions).toContain('START_INTERRUPTION');
+      expect(stop).not.toHaveBeenCalled();
+      expect(renderer.getPausedSelection()).toBe('FINISH');
+    });
+
+    it('HandleHardwareInput_PauseLeftOnInterrupt_TheNextOpensOnFinish', () => {
+      // Resumed with START while INTERRUPT was chosen: a click on the next
+      // pause must finish, as it always did, not start an interruption.
+      turn('rotate_left');
+      turn('rotate_left');
+      engine.resumeSession();
+      renderer.renderActiveSession(engine.getCurrentSession());
+      engine.pauseSession();
+      renderer.renderActiveSession(engine.getCurrentSession());
+
+      expect(renderer.getPausedSelection()).toBe('FINISH');
     });
 
     it('HandleHardwareInput_TaskPaused_TheWheelMovesOneNotchAtATime', () => {
@@ -514,6 +553,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
     it('HandleHardwareInput_TaskPaused_TurningAgainstAnEnd_DoesNotRedraw', () => {
       // Each redraw is an upload and a draw; turning against the end is free.
+      turn('rotate_left');
       turn('rotate_left');
       const redraws = vi.spyOn(renderer, 'renderActiveSession');
       turn('rotate_left');

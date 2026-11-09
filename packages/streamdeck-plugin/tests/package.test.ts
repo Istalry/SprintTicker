@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PLUGIN_DIR_NAME, pluginAssets } from '../src/assets/write-assets';
-import { KEY_KINDS, PLUGIN_UUID, actionUuid, kindOfUuid } from '../src/key-kinds';
+import { HIDDEN_KINDS, KEY_KINDS, PLUGIN_UUID, actionUuid, kindOfUuid } from '../src/key-kinds';
 
 /**
  * The plugin's folder against the code: Stream Deck reads the manifest, the
@@ -19,6 +19,7 @@ interface ManifestAction {
   UUID: string;
   Icon: string;
   PropertyInspectorPath?: string;
+  VisibleInActionsList?: boolean;
   Controllers: string[];
   States: { Image: string }[];
 }
@@ -46,6 +47,13 @@ describe('manifest', () => {
 
   it('Manifest_Actions_AreTheKeyKindsInOrder', () => {
     expect(manifest.Actions.map(a => a.UUID)).toEqual(KEY_KINDS.map(actionUuid));
+  });
+
+  it('Manifest_HiddenActions_AreTheFiveTheAnswerKeysReplace', () => {
+    // Still declared so a deck laid out with them keeps working; out of the
+    // list so a new one is laid out with the answer keys.
+    const hidden = manifest.Actions.filter(a => a.VisibleInActionsList === false).map(a => kindOfUuid(a.UUID));
+    expect(hidden).toEqual(HIDDEN_KINDS);
   });
 
   it('Manifest_Actions_AreKeysOnly', () => {

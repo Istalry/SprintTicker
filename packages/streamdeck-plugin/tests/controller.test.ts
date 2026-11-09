@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DeckRequest, DeckStateMessage } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from '../src/app-link';
-import { CONFIRM_WINDOW_MS, DeckController, KeyHandle, LONG_PRESS_MS, LinkLike, ONE_SHOT_FRAME_MS, ONE_SHOT_STEPS, TICK_MS } from '../src/controller';
+import { ANSWER_SETTLE_MS, CONFIRM_WINDOW_MS, DeckController, KeyHandle, LONG_PRESS_MS, LinkLike, ONE_SHOT_FRAME_MS, ONE_SHOT_STEPS, TICK_MS } from '../src/controller';
 import type { LinkStatus } from '../src/faces';
 import { FakeClock } from './support/fake-clock';
 import { session, stateMessage } from './support/states';
@@ -263,6 +263,85 @@ describe('DeckController', () => {
     link.answer = () => ({ type: 'result', id: 'k2', ok: true });
     await tap('a');
     expect(link.requests.at(-1)).toEqual({ action: 'finish', confirmed: true });
+  });
+
+  describe('the answer keys', () => {
+    const asked = () => stateMessage({ session: session(), prompt: 'standup' });
+
+    it('Press_AnswerAWithNothingAsked_FinishesTheTask', async () => {
+      link.push(tracking());
+      controller.appear('answer-a', new FakeKey('a'));
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'finish' }]);
+    });
+
+    it('Press_AnswerAJustAsAQuestionArrives_OnlyFlashes', async () => {
+      // The finger came down for DONE; joining the stand-up is not what it meant.
+      link.push(tracking());
+      const key = new FakeKey('a');
+      controller.appear('answer-a', key);
+      link.push(asked());
+      clock.advance(ANSWER_SETTLE_MS - 1);
+      await tap('a');
+      expect(link.requests).toEqual([]);
+      expect(key.alerts).toBe(1);
+      expect(logs.join('\n')).toContain('ignored');
+    });
+
+    it('Press_AnswerAOnceSettled_AnswersTheQuestion', async () => {
+      link.push(tracking());
+      controller.appear('answer-a', new FakeKey('a'));
+      link.push(asked());
+      clock.advance(ANSWER_SETTLE_MS);
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'prompt-yes' }]);
+    });
+
+    it('Press_AnswerKeyThatWasAlreadyShowing_ActsAtOnce', async () => {
+      // A key that appears changed for nobody: a page shown and pressed.
+      link.push(asked());
+      controller.appear('answer-b', new FakeKey('b'));
+      await tap('b');
+      expect(link.requests).toEqual([{ action: 'prompt-no' }]);
+    });
+
+    it('Press_AnswerCJustAsAQuestionArrives_StillAsksToDiscard', async () => {
+      // C means DISCARD either way, so the question changes nothing on it.
+      link.push(tracking());
+      const key = new FakeKey('c');
+      controller.appear('answer-c', key);
+      link.push(asked());
+      await tap('c');
+      expect(key.alerts).toBe(0);
+      expect(textsOf(key.last)).toEqual(['DISCARD?', 'press again']);
+    });
+
+    it('Arm_TheKeyChangesMeaning_TheQuestionIsWithdrawn', async () => {
+      // NOT YOURS armed on A, then the stand-up asks and leaves: A is DONE
+      // again, and one press must not finish a task that is not the user's.
+      link.push(tracking({ finishNeedsConfirmation: true }));
+      const key = new FakeKey('a');
+      controller.appear('answer-a', key);
+      await tap('a');
+      expect(textsOf(key.last)).toEqual(['NOT YOURS', 'press again']);
+      link.push(stateMessage({ session: session({ finishNeedsConfirmation: true }), prompt: 'standup' }));
+      link.push(tracking({ finishNeedsConfirmation: true }));
+      clock.advance(ANSWER_SETTLE_MS);
+      await tap('a');
+      expect(link.requests).toEqual([]);
+      expect(textsOf(key.last)).toEqual(['NOT YOURS', 'press again']);
+    });
+  });
+
+  it('Press_Interrupt_SendsItAndPlays', async () => {
+    link.push(tracking());
+    const key = new FakeKey('i');
+    controller.appear('interrupt', key);
+    const before = key.images.length;
+    await tap('i');
+    expect(link.requests).toEqual([{ action: 'interrupt' }]);
+    clock.advance(ONE_SHOT_FRAME_MS * (ONE_SHOT_STEPS + 1));
+    expect(key.images.length).toBeGreaterThan(before + 1);
   });
 
   it('Press_Refused_AlertsAndLogsWhy', async () => {

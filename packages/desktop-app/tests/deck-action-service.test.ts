@@ -48,6 +48,9 @@ describe('DeckActionService', () => {
   const MINE_IN_PROGRESS = task('2', { status: 'in_progress' });
   const THEIRS = task('3', { status: 'in_progress', ownership: TaskOwnership.OTHER, assigneeName: 'Sam' });
 
+  /** What main wires: the schedule service's Interrupt, as the window's button. */
+  const interrupt = () => { schedule.interrupt(); };
+
   let nextId = 0;
   const ask = (action: DeckRequest['action'], extra: Partial<DeckRequest> = {}) =>
     service.perform({ id: `r${++nextId}`, action, ...extra }) as DeckResultMessage;
@@ -105,7 +108,7 @@ describe('DeckActionService', () => {
     });
 
     openPicker = vi.fn(() => true);
-    service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker });
+    service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt });
   });
 
   afterEach(() => {
@@ -142,7 +145,7 @@ describe('DeckActionService', () => {
 
     it('GetState_IconThatMoves_CarriesItsMotionAndNotItsFileName', () => {
       const iconMotions = motions(true);
-      service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, iconMotions });
+      service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt, iconMotions });
       engine.startTask(MINE.id);
       renderer.renderActiveSession(engine.getCurrentSession());
 
@@ -162,7 +165,7 @@ describe('DeckActionService', () => {
 
     it('Subscribe_MotionReadAfterTheIcon_PushesTheStateAgain', () => {
       const iconMotions = motions(false);
-      service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, iconMotions });
+      service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt, iconMotions });
       engine.startTask(MINE.id);
       renderer.renderActiveSession(engine.getCurrentSession());
       const heard: DeckStateMessage[] = [];
@@ -342,6 +345,39 @@ describe('DeckActionService', () => {
       expect(refused(ask('open-picker'))).toBe('no-window');
     });
 
+    it('Perform_Interrupt_StopsTheTaskAndAsksAboutItWhenTheInterruptionEnds', async () => {
+      engine.startTask(MINE.id);
+      at(9, 30);
+
+      expect(ask('interrupt').ok).toBe(true);
+      expect(engine.getCurrentSession()).toMatchObject({ isAdHoc: true, taskTitle: 'Interruption 09:30' });
+
+      at(9, 45);
+      expect(ask('stop').ok).toBe(true);
+      // The question waits for the engine's listeners.
+      await Promise.resolve();
+      expect(service.getState().prompt).toBe('resume');
+
+      // Yes on the deck is OK on the bar: the task comes back.
+      expect(ask('prompt-yes').ok).toBe(true);
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+    });
+
+    it('Perform_Interrupt_NothingRunning_StartsATimer', () => {
+      expect(ask('interrupt').ok).toBe(true);
+
+      expect(engine.getCurrentSession()).toMatchObject({ isAdHoc: true, status: 'TRACKING' });
+    });
+
+    it('Perform_InterruptFails_FailedWithItsMessage', () => {
+      const broken = new DeckActionService({
+        engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker,
+        interrupt: () => { throw new Error('The schedule service is not running.'); }
+      });
+
+      expect(broken.perform({ id: 'x', action: 'interrupt' })).toMatchObject({ ok: false, error: 'failed' });
+    });
+
     it('Perform_TheAppThrows_FailedWithItsMessage', () => {
       openPicker.mockImplementation(() => {
         throw new Error('window crashed');
@@ -442,7 +478,7 @@ describe('DeckActionService', () => {
   });
 
   it('Refresh_TheStateUnreadable_PushesNothingAndWarns', () => {
-    const broken = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker });
+    const broken = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt });
     const pushed: DeckStateMessage[] = [];
     vi.spyOn(renderer, 'getScreenIcon').mockImplementation(() => {
       throw new Error('database closed');

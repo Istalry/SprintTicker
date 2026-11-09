@@ -414,12 +414,18 @@ async function startApplication(): Promise<void> {
   // A key press reaches Stream Deck, not this app, so Windows would keep
   // the window behind whatever is in front: the raiser asks for it.
   const foregroundRaiser = new ForegroundRaiser();
+  const interrupting = contextScheduleService;
   deckServer = new DeckServer(new DeckActionService({
     engine,
     renderer,
     priorityEngine,
     inputDecoder,
     openPicker: () => openTaskPickerInMainWindow(mainWindow, foregroundRaiser),
+    interrupt: () => {
+      // A refusal the key shows, never a press that does nothing.
+      if (!interrupting) throw new Error('The schedule service is not running.');
+      interrupting.interrupt();
+    },
     // The Session key moves as the bar's icon does, from the same frames.
     iconMotions: new DeckIconMotions(name => loadAnimationSequence(defaultAnimationsDir(), name))
   }));
@@ -429,7 +435,8 @@ async function startApplication(): Promise<void> {
   // 6. Create Window & Render Initial State
   createWindow(launchedHidden(process.argv));
   if (mainWindow && engine) {
-    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin);
+    const schedule = contextScheduleService;
+    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin, schedule ? () => { schedule.interrupt(); } : undefined);
     trayManager.initialize();
   }
   miniWindowManager.restore();

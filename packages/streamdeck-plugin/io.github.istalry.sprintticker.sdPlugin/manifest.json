@@ -2,9 +2,9 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "io.github.istalry.sprintticker",
   "Name": "SprintTicker",
-  "Version": "0.4.1.0",
+  "Version": "0.5.0.0",
   "Author": "Istalry",
-  "Description": "Keys that drive SprintTicker's running session: pause, pick a task, end it, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
+  "Description": "Keys that drive SprintTicker's running session: pause, pick a task, start an interruption, end it, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
   "URL": "https://github.com/Istalry/SprintTicker",
   "Icon": "imgs/plugin",
   "Category": "SprintTicker",
@@ -43,6 +43,78 @@
       ]
     },
     {
+      "UUID": "io.github.istalry.sprintticker.interrupt",
+      "Name": "Interrupt",
+      "Tooltip": "Starts a timer at once, whatever runs: the task it stops is asked about when the interruption ends.",
+      "Icon": "imgs/actions/interrupt",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/interrupt",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.istalry.sprintticker.answer-a",
+      "Name": "Answer A",
+      "Tooltip": "Yes to what SprintTicker is asking -- join the stand-up, wrap up, resume a task. With nothing asked: Done, which ends the session and marks the task done.",
+      "Icon": "imgs/actions/answer-a",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/answer-a",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.istalry.sprintticker.answer-b",
+      "Name": "Answer B",
+      "Tooltip": "No to what SprintTicker is asking. With nothing asked: Not done, which ends the session and logs its time, the task left open.",
+      "Icon": "imgs/actions/answer-b",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/answer-b",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.istalry.sprintticker.answer-c",
+      "Name": "Answer C",
+      "Tooltip": "Discard: throws the session away, nothing logged. Always asks first, on the same key, and never changes meaning.",
+      "Icon": "imgs/actions/answer-c",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/answer-c",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
       "UUID": "io.github.istalry.sprintticker.not-done",
       "Name": "Not done",
       "Tooltip": "Ends the session and logs its time; the task stays open.",
@@ -58,7 +130,8 @@
           "Image": "imgs/keys/not-done",
           "ShowTitle": false
         }
-      ]
+      ],
+      "VisibleInActionsList": false
     },
     {
       "UUID": "io.github.istalry.sprintticker.done",
@@ -76,7 +149,8 @@
           "Image": "imgs/keys/done",
           "ShowTitle": false
         }
-      ]
+      ],
+      "VisibleInActionsList": false
     },
     {
       "UUID": "io.github.istalry.sprintticker.discard",
@@ -94,7 +168,8 @@
           "Image": "imgs/keys/discard",
           "ShowTitle": false
         }
-      ]
+      ],
+      "VisibleInActionsList": false
     },
     {
       "UUID": "io.github.istalry.sprintticker.yes",
@@ -112,7 +187,8 @@
           "Image": "imgs/keys/yes",
           "ShowTitle": false
         }
-      ]
+      ],
+      "VisibleInActionsList": false
     },
     {
       "UUID": "io.github.istalry.sprintticker.no",
@@ -130,7 +206,8 @@
           "Image": "imgs/keys/no",
           "ShowTitle": false
         }
-      ]
+      ],
+      "VisibleInActionsList": false
     }
   ]
 }

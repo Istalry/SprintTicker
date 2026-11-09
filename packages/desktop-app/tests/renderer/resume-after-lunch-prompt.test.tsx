@@ -29,6 +29,23 @@ describe('resume after lunch', () => {
     expect(screen.getByRole('alertdialog').textContent).toMatch(/no longer assigned to you/);
   });
 
+  it('Render_AfterAnInterruption_AsksBackToTheTask', async () => {
+    // Asked every time, so it does not say the task left the user's lists...
+    installElectronApi({ getResumePrompt: async () => ({ ...QUESTION, after: 'interruption' as const }) });
+    render(<ResumeAfterLunchPrompt />);
+
+    expect(await screen.findByText('Back to your task?')).toBeTruthy();
+    expect(screen.getByRole('alertdialog').textContent).not.toMatch(/no longer assigned/);
+  });
+
+  it('Render_AfterAnInterruption_TaskLeftTheList_SaysSo', async () => {
+    // ...unless it did.
+    installElectronApi({ getResumePrompt: async () => ({ ...QUESTION, after: 'interruption' as const, unlisted: true as const }) });
+    render(<ResumeAfterLunchPrompt />);
+
+    expect((await screen.findByRole('alertdialog')).textContent).toMatch(/no longer assigned to you/);
+  });
+
   it('Render_AskedWhileOpen_ShowsTheQuestion', async () => {
     const bridge = installElectronApi();
     render(<ResumeAfterLunchPrompt />);

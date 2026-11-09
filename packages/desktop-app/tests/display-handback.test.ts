@@ -337,6 +337,20 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
+    it('BackToTheTaskAfterAnInterruption_AnsweredYes_TheSessionTakesTheDisplay', async () => {
+      // The same question, naming the task: asked after every interruption.
+      desk.renderer.renderResumePrompt('interruption', 'SCRUM-2');
+      await advance(1000);
+      expect(lock()).toBe(RESUME_PROMPT_EVENT);
+
+      await play('startTask');
+      desk.priority.releaseActiveLock(RESUME_PROMPT_EVENT);
+      await advance(SETTLE_MS);
+
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
+      expectSettledScreen(desk);
+    });
+
     it('ResumeQuestionAnsweredNo_BackOnTheIdleClock', async () => {
       desk.renderer.renderResumePrompt();
       await advance(1000);

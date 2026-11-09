@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Added
+
+- **Interrupt: a timer at once.** When someone comes to your desk, one click
+  starts a timer -- on the Active Session card, in the mini timer, or in the
+  tray menu -- with nothing to fill in. It runs on a new ad-hoc task named for
+  the time it started, *Interruption 14:32*, and the task you were on stops,
+  its time logged. When the interruption ends, SprintTicker asks whether to go
+  back to that task, in the window and on the bar. On the bar, Interrupt is
+  the paused menu's first choice: pause, turn the wheel two notches left,
+  click.
+- **Interruptions to sort.** Work History marks an interruption not named
+  yet **To sort** and lists every one at the top, whatever its day, with its
+  time and the day it began. Click a name -- there, on any ad-hoc row, or in
+  the end-of-day wrap-up, which lists the day's -- to rename it.
+- **Stream Deck plugin 0.5.0: Interrupt, and three answer keys.** The deck's
+  layout is now Session, **Interrupt**, and **Answer A, B and C**, which show
+  whichever answers apply: A is DONE, or yes to a question waiting; B is NOT
+  DONE, or no; C is DISCARD, always. A press in the moment A or B changes
+  only flashes the key. The five actions they replace keep working on decks
+  laid out with them, hidden from the list. Needs this SprintTicker for
+  Interrupt; an older app refuses that one key.
+- **Name an interruption, or assign it to a task, while it runs.** Click its
+  title on the session card or in the mini timer to name it. **Assign to
+  Task** moves the running session to a task you pick, keeping its start, so
+  the whole interruption is logged on that task and sent to its provider.
+
 ### Fixed
 
 - **The wrap-up could restart a task overnight.** Joining the stand-up

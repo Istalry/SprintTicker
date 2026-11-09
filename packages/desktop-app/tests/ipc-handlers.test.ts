@@ -371,6 +371,54 @@ describe('IPC handlers', () => {
       expect(engine.getCurrentSession()).toBeNull();
     });
 
+    it('StartInterruption_TaskRunning_SetsItAsideToAskAbout', async () => {
+      const before = engine.startTask('', true, 'Writing the spec');
+
+      const interruption = (await invoke(IPCChannel.START_INTERRUPTION)) as { taskTitle: string; sessionId: string };
+
+      expect(interruption.taskTitle).toMatch(/^Interruption \d\d:\d\d$/);
+      expect(settingsRepo.getSetting('set_aside', null)).toMatchObject({
+        taskId: before.taskId, endsWith: interruption.sessionId, after: 'interruption'
+      });
+    });
+
+    it('RenameSession_Interruption_TakesTheTrimmedName', async () => {
+      await invoke(IPCChannel.START_INTERRUPTION);
+
+      const renamed = (await invoke(IPCChannel.RENAME_SESSION, '  Call with Marc ')) as { taskTitle: string };
+
+      expect(renamed.taskTitle).toBe('Call with Marc');
+    });
+
+    it.each([[undefined], [42], ['   ']])('RenameSession_NotAName_IsRefused_%#', async title => {
+      await invoke(IPCChannel.START_INTERRUPTION);
+
+      await expect(invoke(IPCChannel.RENAME_SESSION, title)).rejects.toThrow();
+    });
+
+    it('RenameAdHocTask_AfterItEnded_ListsItNoMore', async () => {
+      const interruption = (await invoke(IPCChannel.START_INTERRUPTION)) as { taskId: string };
+      engine.stopSession('Over');
+      expect(await invoke(IPCChannel.GET_UNSORTED_WORKLOGS)).toHaveLength(1);
+
+      // Two arguments: the task, then its name.
+      const rename = handler(IPCChannel.RENAME_AD_HOC_TASK) as (event: unknown, taskId: unknown, title: unknown) => Promise<unknown>;
+      await rename({}, interruption.taskId, ' Printer jam ');
+
+      expect(await invoke(IPCChannel.GET_UNSORTED_WORKLOGS)).toEqual([]);
+    });
+
+    it.each([[undefined, 'Name'], [7, 'Name'], ['adhoc_1_x', 42]])('RenameAdHocTask_BadArguments_AreRefused_%#', async (taskId, title) => {
+      const rename = handler(IPCChannel.RENAME_AD_HOC_TASK) as (event: unknown, taskId: unknown, title: unknown) => Promise<unknown>;
+      await expect(rename({}, taskId, title)).rejects.toThrow();
+    });
+
+    it.each([[undefined], [7], ['']])('AssignSession_NotATaskId_IsRefused_%#', async taskId => {
+      await invoke(IPCChannel.START_INTERRUPTION);
+
+      await expect(invoke(IPCChannel.ASSIGN_SESSION, taskId)).rejects.toThrow(/task id/);
+    });
+
     it('WrapUp_DuringTheStandup_RestartsNothingOvernight', async () => {
       // The stand-up's end restarts the task it stopped -- but the day's end
       // is not the meeting's: the task restarted then ran all night.
@@ -381,7 +429,7 @@ describe('IPC handlers', () => {
       await Promise.resolve();
 
       expect(engine.getCurrentSession()).toBeNull();
-      expect(settingsRepo.getSetting('standup_resume', 'unset')).toBeNull();
+      expect(settingsRepo.getSetting('set_aside', 'unset')).toBeNull();
     });
 
     it('CancelWrapUp_OnTheBar_TheScreenBehindItIsDrawnOnce', async () => {

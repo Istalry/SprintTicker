@@ -99,6 +99,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
 
   const api: IElectronAPI = {
     getCurrentSession: vi.fn().mockResolvedValue(null),
+    startInterruption: vi.fn().mockResolvedValue(TRACKING_SESSION),
+    renameSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
+    assignSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
     startTask: vi.fn().mockResolvedValue(TRACKING_SESSION),
     pauseSession: vi.fn().mockResolvedValue({ ...TRACKING_SESSION, status: 'PAUSED' }),
     resumeSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
@@ -147,6 +150,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     importTasks: vi.fn().mockResolvedValue([]),
 
     getWorklogsByDate: vi.fn().mockResolvedValue([]),
+    getUnsortedWorklogs: vi.fn().mockResolvedValue([]),
+    renameAdHocTask: vi.fn().mockResolvedValue(undefined),
     updateWorklog: vi.fn().mockImplementation(async (id: string, correction: WorklogCorrectionDTO) => ({
       id, sessionId: 's', taskId: 't', createdAtUtc: correction.startedAtUtc, syncState: 'local', ...correction
     })),
@@ -240,6 +245,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     isMiniWindowOpen: vi.fn().mockResolvedValue(false),
     onMiniWindowVisibility: subscribe('onMiniWindowVisibility'),
     openTaskPicker: vi.fn().mockResolvedValue(true),
+    openAssignPicker: vi.fn().mockResolvedValue(true),
     getOnlyProjectsWithTasks: vi.fn().mockResolvedValue(true),
     setOnlyProjectsWithTasks: vi.fn(async (enabled: boolean) => enabled),
     onOnlyProjectsWithTasks: subscribe('onOnlyProjectsWithTasks'),

@@ -24,6 +24,35 @@ describe('mini timer', () => {
     expect(bridge.api.openTaskPicker).toHaveBeenCalledTimes(1);
   });
 
+  it('Interrupt_OneClick_StartsAnInterruption', async () => {
+    const bridge = installElectronApi({ getCurrentSession: async () => TRACKING_SESSION });
+    render(<MiniBar />);
+    await screen.findByText('SPR-142');
+
+    fireEvent.click(screen.getByLabelText('Interrupt'));
+
+    await waitFor(() => expect(bridge.api.startInterruption).toHaveBeenCalledTimes(1));
+  });
+
+  it('Assign_AdHocSession_OpensTheDashboardsPickerToAssign', async () => {
+    const interruption = { ...TRACKING_SESSION, taskId: 'adhoc_1_x', taskKey: 'MISC-1', taskTitle: 'Interruption 10:30', isAdHoc: true };
+    const bridge = installElectronApi({ getCurrentSession: async () => interruption });
+    render(<MiniBar />);
+    await screen.findByText('Interruption 10:30');
+
+    fireEvent.click(screen.getByLabelText('Assign to a task'));
+
+    await waitFor(() => expect(bridge.api.openAssignPicker).toHaveBeenCalledTimes(1));
+  });
+
+  it('Render_ProviderTask_OffersNoAssign', async () => {
+    installElectronApi({ getCurrentSession: async () => TRACKING_SESSION });
+    render(<MiniBar />);
+    await screen.findByText('SPR-142');
+
+    expect(screen.queryByLabelText('Assign to a task')).toBeNull();
+  });
+
   it('Render_Tracking_ShowsTheTaskAndTheElapsedTime', async () => {
     installElectronApi({ getCurrentSession: async () => TRACKING_SESSION });
     render(<MiniBar />);

@@ -11,16 +11,31 @@ on its own Node 24.
 
 ## Actions
 
-Six actions, a Stream Deck Mini's six keys, under **SprintTicker** in Stream
-Deck's list: drag each onto any key, as many times as you like.
+Five actions, on a Stream Deck Mini's six keys, under **SprintTicker** in
+Stream Deck's list: drag each onto any key, as many times as you like. The
+layout is the user's (2026-11-09): Session, Interrupt, and three answer keys
+that show whichever answers apply.
 
 | Action | Shows | A press |
 | :--- | :--- | :--- |
 | **Session** | the task's key and its time, the bar's icon moving as on the bar, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. Held half a second, opens the task picker whatever runs |
-| **Not done** | NOT DONE | ends the session, logs its time; the task stays open |
-| **Done** | DONE | ends it and marks the task done |
-| **Discard** | DISCARD | throws the session away -- asks first |
-| **Yes** / **No** | the answer to what SprintTicker asks | joins or skips the stand-up, wraps up the day or not, resumes a task or leaves it |
+| **Interrupt** | INTERRUPT | starts an interruption, whatever runs: a timer at once, the task it stops asked about when it ends |
+| **Answer A** | DONE; the yes while SprintTicker asks something | ends the session and marks the task done; or says yes |
+| **Answer B** | NOT DONE; the no while it asks | ends the session, logs its time, the task left open; or says no |
+| **Answer C** | DISCARD, whatever is asked | throws the session away -- asks first |
+
+- **An answer key is the key it stands in for** (`resolveKind` in
+  `faces.ts`): its face and its press are exactly Done's, Yes's and so on,
+  so it follows no rule of its own. Positive answers are always A, negative
+  always B; C never changes, so the one end that keeps nothing cannot move
+  under a finger.
+- **A press just after an answer key changed meaning only flashes it**
+  (`ANSWER_SETTLE_MS`, 700 ms), and a question armed on it is withdrawn: a
+  press that soon was aimed at what the key showed before.
+- **The five actions the answer keys replace** -- Not done, Done, Discard, Yes, No --
+  are still declared and still work, hidden from the list
+  (`VisibleInActionsList: false`), so a deck laid out with them keeps its
+  keys. `package.test.ts` holds the hidden set to `HIDDEN_KINDS`.
 
 - **The colour is the state.** A coloured glyph can be pressed, a grey key
   has nothing to do, a filled key waits on you. The look was chosen on Stream
@@ -36,8 +51,9 @@ Deck's list: drag each onto any key, as many times as you like.
   BACK.
 - **Yes and No are grey** while nothing is asked. The wrap-up asks twice, as
   on the bar: Yes, then CONFIRM.
-- **One-shots.** Done, Not done and Discard play a half-second movement of
-  their glyph when pressed, Yes and No when a question arrives, then rest.
+- **One-shots.** Done, Not done, Discard and Interrupt play a half-second
+  movement of their glyph when pressed, the yes and the no -- A and B too --
+  when a question arrives, then rest.
 - **update app** under every key means SprintTicker speaks another version of
   the protocol than this plugin: update whichever is older.
 

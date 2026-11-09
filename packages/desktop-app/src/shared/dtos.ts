@@ -11,6 +11,11 @@ export interface ActiveSessionDTO {
   taskKey: string;
   taskTitle: string;
   isAdHoc: boolean;
+  /**
+   * An interruption not yet named nor assigned: its task is unsorted
+   * (migration 13). Read from the task row, never stored on the session.
+   */
+  unsorted?: true;
   status: 'TRACKING' | 'PAUSED' | 'COMPLETED';
   startTimeUtc: string; // ISO 8601
   totalPausedSeconds: number;
@@ -417,6 +422,10 @@ export interface WorklogDTO {
   syncState?: WorklogSyncState;
   /** Whether its task has a page on a provider to open (`hasTaskPage`). */
   hasTaskPage?: boolean;
+  /** Logged on ad-hoc work: named in SprintTicker, sent to no provider. */
+  adHoc?: true;
+  /** An interruption not yet named or assigned. */
+  unsorted?: true;
 }
 
 export interface UnitySettingsDTO {

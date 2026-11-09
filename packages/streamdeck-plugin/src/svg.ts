@@ -66,7 +66,8 @@ export const GLYPH_PATHS: Record<Glyph, string> = {
   list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.5M4.5 12h.5M4.5 18h.5',
   yes: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M7.5 12.5l3 3 6-6.5',
   no: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M8.5 8.5l7 7M15.5 8.5l-7 7',
-  timer: 'M12 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15M12 9.5v4l2.5 1.5M9.5 2.5h5M18 6l1.5-1.5'
+  timer: 'M12 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15M12 9.5v4l2.5 1.5M9.5 2.5h5M18 6l1.5-1.5',
+  zap: 'M13.5 2.5L5.5 13.5h6l-1 8 8-11h-6z'
 };
 
 type Point = readonly [number, number];
@@ -80,7 +81,9 @@ const CIRCLE = 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18';
 const DRAWN: Partial<Record<Glyph, { still?: string; strokes: Point[][] }>> = {
   check: { strokes: [[[5, 12.5], [9.5, 17], [19, 7.5]]] },
   yes: { still: CIRCLE, strokes: [[[7.5, 12.5], [10.5, 15.5], [16.5, 9]]] },
-  no: { still: CIRCLE, strokes: [[[8.5, 8.5], [15.5, 15.5]], [[15.5, 8.5], [8.5, 15.5]]] }
+  no: { still: CIRCLE, strokes: [[[8.5, 8.5], [15.5, 15.5]], [[15.5, 8.5], [8.5, 15.5]]] },
+  // The bolt strikes: drawn from its top along its outline, as `zap` above.
+  zap: { strokes: [[[13.5, 2.5], [5.5, 13.5], [11.5, 13.5], [10.5, 21.5], [18.5, 10.5], [12.5, 10.5], [13.5, 2.5]]] }
 };
 
 /** The bin's lid, which lifts and settles, and the rest of it. */
@@ -139,7 +142,7 @@ export function partialStrokes(strokes: readonly Point[][], t: number): string {
 
 /**
  * A glyph, `size` units across, centred on (cx, cy). With `progress`, the
- * glyph's one-shot part-way: the check, yes and no draw themselves, the
+ * glyph's one-shot part-way: the check, yes, no and the bolt draw themselves, the
  * bin's lid lifts and settles, the stop square presses in. Others rest.
  */
 export function glyphSvg(glyph: Glyph, cx: number, cy: number, size: number, colour: string, weight: number = STROKE, progress?: number): string {

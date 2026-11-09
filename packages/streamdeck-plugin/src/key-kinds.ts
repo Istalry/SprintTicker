@@ -14,6 +14,23 @@ export const KEY_KINDS = [
    * picker when nothing runs; held, it opens the picker whatever runs.
    */
   'session',
+  /** Starts an interruption, whatever runs: a timer at once. */
+  'interrupt',
+  /**
+   * The answer keys, the layout the user chose (2026-11-09): three keys
+   * showing whichever answers apply, so Session, Interrupt and these fill a
+   * Mini's six keys with one to spare. A says yes or DONE, B no or NOT
+   * DONE; C is DISCARD whatever is asked, so the one key that throws work
+   * away never changes under a finger. See `answerKind`.
+   */
+  'answer-a',
+  'answer-b',
+  'answer-c',
+  /*
+   * The five fixed ends the answer keys replace. Hidden from Stream Deck's list
+   * (`VisibleInActionsList`) but still declared and still working, so a
+   * deck laid out with them keeps its keys.
+   */
   /** Ends the session, task left open. */
   'not-done',
   /** Ends it and marks the task done; asks first when it is no longer the user's. */
@@ -27,6 +44,20 @@ export const KEY_KINDS = [
 ] as const;
 
 export type KeyKind = (typeof KEY_KINDS)[number];
+
+/** The answer keys, whose meaning follows the state. */
+export const ANSWER_KINDS = ['answer-a', 'answer-b', 'answer-c'] as const;
+export type AnswerKind = (typeof ANSWER_KINDS)[number];
+
+/** What an answer key can mean: one of the fixed keys it stands in for. */
+export type FixedKind = Exclude<KeyKind, AnswerKind>;
+
+/** The kinds the answer keys replace, kept working and hidden from the list. */
+export const HIDDEN_KINDS: readonly KeyKind[] = ['not-done', 'done', 'discard', 'yes', 'no'];
+
+export function isAnswerKind(kind: KeyKind): kind is AnswerKind {
+  return (ANSWER_KINDS as readonly string[]).includes(kind);
+}
 
 export function actionUuid(kind: KeyKind): string {
   return `${PLUGIN_UUID}.${kind}`;

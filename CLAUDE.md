@@ -259,7 +259,7 @@ app, so nothing here sees it on a deck** -- the Unity plugin's situation.
 What a key shows and does is two pure functions (`faces.ts`), tested for
 every kind and state; `package.test.ts` holds the manifest to the code and
 to what the build writes; `pnpm deck:validate` runs Elgato's validator in
-CI. Five things about it cost time to find:
+CI. Six things about it cost time to find:
 - **`imgs/` and `bin/` are build output**, never edited and never tracked.
   The keys' default images are the faces the plugin draws, rendered at
   build time by `src/assets/write-assets.ts`, so the two cannot drift; the
@@ -303,6 +303,16 @@ CI. Five things about it cost time to find:
   `confirmed` when they must ask, so the plugin cannot skip the second press
   -- when the app asks where the state had not said it would, the key arms
   from that refusal (`needs-confirmation`).
+- **An answer key is the key it stands in for, and an action is hidden,
+  never removed.** The layout is the user's (2026-11-09): Session,
+  Interrupt, and Answer A/B/C showing whichever answers apply.
+  `resolveKind` maps A to Yes or Done, B to No or Not done, C to Discard
+  always -- the end that keeps nothing never moves -- and the face and the
+  press are then that key's own, so no rule is copied. A press within
+  `ANSWER_SETTLE_MS` of a change only flashes the key, or the stand-up
+  arriving under a finger on DONE joins it. The five fixed actions they replace stay in
+  the manifest with `VisibleInActionsList: false`: deleting one turns
+  every key a user placed with it into a dead tile.
 
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification
@@ -782,13 +792,25 @@ changing it:
   un-archives -- nor sends In Progress for a task archived or seen unlisted,
   and the session reads as unlisted at once, before the next sync.
 - **The stand-up's restart waits for the listeners.** `joinStandup` keeps
-  the task it stopped (`standup_resume`) and restarts it when the stand-up's
-  session ends -- which the service learns from inside the engine's
+  the task it stopped (the `set_aside` entry) and restarts it when the
+  stand-up's session ends -- which the service learns from inside the engine's
   `notifyListeners`. Starting a task there runs a second notification inside
   the first: every listener after this one is then handed the *ended*
   session, and the IPC registry's render draws the idle clock over the task
   just started. So the restart is a `queueMicrotask`. Anything else that
   starts or stops a session from an engine listener has the same trap.
+- **Interrupt and the stand-up share one set-aside; only the policy
+  differs.** `switchSettingAside` is the one place a task is put aside to
+  come back: the stand-up restarts it unless it left the lists, an
+  interruption always asks ("back to SCRUM-12?", `after: 'interruption'`).
+  A second copy of "once, the same day, not over an open session, Lunch
+  takes it over" for Interrupt would be the duplicated-constant hazard. A
+  replacement that is itself waited on passes on the first task, so the
+  wait is dropped *before* the start's own stop and taken up after it --
+  otherwise that stop reads as the interruption ending. **And the wrap-up
+  ends a session through `stopForWrapUp`**, which drops every stored
+  restart first: stopped from its IPC handler, a stand-up running at
+  wrap-up time brought its task back to run all night (2026-11-09).
 - **Lunch stops the session under Away too.** Lunch never *leaves* Away --
   Away outranks it -- and that used to mean it never began at all: locked at
   12:30, the session ran on and the break was logged as work. The check now
@@ -1143,7 +1165,12 @@ are not providers. `sprintticker` is a project made in the app, whose time
 stays here and which the sync never deletes. `local` is the column's old default, which every OpenProject
 project held because that adapter did not name itself -- it means *not
 known*, never "made here", and keeps the old rule of the active provider.
-An adapter's `getProjects` must set `providerId`.
+An adapter's `getProjects` must set `providerId`. **The one later write is
+assigning an ad-hoc session to a task** (`assignSessionToTask`): ad-hoc work
+has no provider, so it gets the task's there and keeps it -- the rule's
+purpose, never following the active provider, still holds. Nothing else
+writes `provider_id` after the start, and a provider task's open session is
+never retargeted: that would move logged time between issues.
 
 **A row sent before is looked for before it is sent again.** Neither Jira nor
 OpenProject takes an idempotency key, so a POST whose answer was lost -- a

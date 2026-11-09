@@ -124,6 +124,9 @@ Timer** in the top bar or **Show Mini Timer** in the tray menu.
   **Not done** logs the time and keeps the task open, **Done** also marks it
   done, and **Discard** throws the session away after a **Yes**. **×** keeps
   the session running.
+- ⚡ **Interrupt** starts a timer at once, as the dashboard's button does --
+  see [Interrupt](#-interrupt-a-timer-at-once). Click an interruption's title
+  to name it, and the link button to assign it to a task.
 - 📋 The **list** button brings the dashboard forward with the task picker open:
   that is how you start or switch a task from it.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -186,6 +189,45 @@ mouse, working past midnight is just a long session: nothing pauses it and
 nothing asks. Only more than two hours without any input across midnight --
 a long call -- brings the question, and **I was working all along** keeps it
 all.
+
+### ⚡ Interrupt: a timer at once
+
+Someone at your desk, a call: press **Interrupt** and a timer starts there
+and then, with nothing to fill in. It runs on a new ad-hoc task called after
+the time it started -- **Interruption 14:32** -- and the task you were on
+stops, its time logged as usual. Interrupt is on the Active Session card, in
+the mini timer, first in the tray menu, on the Stream Deck's Interrupt key,
+and on the bar: pause the task, turn the wheel two notches left to
+**INTERRUPT**, and click.
+
+When the interruption ends -- Stop, Done, or Discard if you pressed it by
+mistake -- SprintTicker asks **Back to your task?**, naming it: in the window,
+and on the bar as the task's key over **BACK? OK=YES**. Yes starts it again;
+**Leave it**, BACK, or starting something else leaves it. It is asked every
+time, because you may be done for now. A task paused when you pressed
+Interrupt is asked about too.
+
+- **An interruption of an interruption**, or of the stand-up, asks about the
+  task you were on before the first one: that is the one to go back to.
+- **Lunch during an interruption** stops it, and the task you were on before
+  it starts again when lunch ends, as lunch always does.
+- **The end-of-day wrap-up** stops an interruption without asking.
+- **Name it** while it runs: click its title on the Active Session card or
+  in the mini timer, type, and press Enter (Escape keeps the name). The card
+  says **Interruption** until you do. The name is what Work History shows.
+- **Assign it to a task** while it runs: **Assign to Task** on the card, or
+  the link button in the mini timer, opens the task picker. The session moves
+  to that task with its start kept, so the whole interruption is logged on it
+  and sent to its Jira or OpenProject when you stop. Assigned to the very task
+  it interrupted, nothing is asked at the end -- you are back on it.
+- **Name it afterwards**, in **Work History**: an interruption not named yet
+  says **To sort**, and every one of them, whatever the day, is listed at
+  the top under **Interruptions to sort**, with its time and the day it
+  began -- click the day to go there. Click its name to give it a real one.
+  The end-of-day wrap-up lists the day's too, so you can name them while you
+  remember what they were. Any ad-hoc work can be renamed the same way.
+- **Until then its time stays here**: an ad-hoc task's time is never sent to
+  Jira or OpenProject.
 
 🗑️ **Discard this session**, the third choice, is for a session started by
 mistake: nothing is kept in your history and nothing is sent to your
@@ -622,7 +664,7 @@ Every screen, as the bar shows it:
 | Screen | What it means |
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
-| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **STOP**, **FINISH** or **DROP**, click to confirm. DROP asks first. |
+| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **INTERRUPT**, **STOP**, **FINISH** or **DROP**, click to confirm. DROP asks first. |
 | <img src="../docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
@@ -638,10 +680,12 @@ while a task runs, its hand ticking round once a second; amber with blinking
 pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
 row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
-1 offers **STOP**, **FINISH** and **DROP**; the wheel moves one choice per
-notch and stops at either end, and a click confirms. Row 1 has room for two of
-them, so it shows STOP and FINISH with a small arrow towards DROP, and FINISH
-and DROP once you turn to it. DROP discards the session, so it asks first:
+1 offers **INTERRUPT**, **STOP**, **FINISH** and **DROP**; the wheel moves
+one choice per notch and stops at either end, and a click confirms. The menu
+opens on FINISH. Row 1 has room for two of them, so it shows STOP and FINISH
+with a small arrow each side, FINISH and DROP once you turn right, and
+INTERRUPT alone once you turn left past STOP. INTERRUPT starts an
+[interruption](#-interrupt-a-timer-at-once). DROP discards the session, so it asks first:
 **DISCARD?** in red, **OK=YES BACK=NO**. A click throws the session away --
 no worklog, nothing sent, no scene -- and BACK, short or long, brings the menu
 back; the other buttons wait for the answer. Picking
@@ -717,17 +761,26 @@ source with `pnpm deck:pack` and double-click the `.streamDeckPlugin` file
 that lands in `packages/streamdeck-plugin/dist/`. It has been tried on Stream
 Deck Mobile, not yet on a physical deck.
 
-Its six actions are listed under **SprintTicker** in the Stream Deck app --
-as many as a Stream Deck Mini has keys. Drag each onto any key, as many times
+Its five actions are listed under **SprintTicker** in the Stream Deck app --
+one key to spare on a Stream Deck Mini. Drag each onto any key, as many times
 as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
 | **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
-| **Not done** | NOT DONE | ends the session and logs its time; the task stays open |
-| **Done** | DONE | ends it and marks the task done |
-| **Discard** | DISCARD | throws the session away, nothing logged |
-| **Yes** / **No** | the answer to the question waiting | joins or skips the stand-up, wraps up the day or not, resumes a task or leaves it |
+| **Interrupt** | INTERRUPT | starts a timer at once, whatever runs -- see [Interrupt](#-interrupt-a-timer-at-once) |
+| **Answer A** | DONE -- or the yes to a question waiting: JOIN, WRAP UP, RESUME | ends the session and marks the task done; or says yes |
+| **Answer B** | NOT DONE -- or the no: SKIP, NOT NOW, LEAVE IT | ends the session and logs its time, the task left open; or says no |
+| **Answer C** | DISCARD, always | throws the session away, nothing logged |
+
+- **A and B follow the question.** When SprintTicker asks something -- the
+  stand-up, the wrap-up, back to your task? -- A and B turn into its yes and
+  no, filled green and red, and go back to DONE and NOT DONE once it is
+  answered. A press in the moment they change only flashes the key, so a
+  question arriving as you press DONE is not answered by mistake. C never
+  changes: the one key that throws work away stays where it is.
+- **Laid out your deck before 0.5.0?** The keys you placed -- Not done,
+  Done, Discard, Yes, No -- keep working; they are only gone from the list.
 
 - **A key's colour says what it does.** A coloured glyph can be pressed; a
   grey key has nothing to do; a key filled with colour is waiting on you --
@@ -737,14 +790,13 @@ as you like:
   **NOT YOURS**, when the task is no longer yours. Waiting, or another task
   starting, takes the question back.
 - **Keys move a little when something happens.** Done's check draws itself,
-  Discard's bin lifts its lid and Not done's square presses in when you press
-  them; Yes and No draw their mark when a question arrives. Half a second,
-  then they rest.
-- **Yes and No are two keys**, and neither changes meaning with how long you
+  Discard's bin lifts its lid, Not done's square presses in and Interrupt's
+  bolt strikes when you press them; the yes and the no draw their mark when
+  a question arrives. Half a second, then they rest.
+- **Yes and no are two keys**, and neither changes meaning with how long you
   hold it. Session is the one key with a long press: held, it opens the task
-  picker -- to switch tasks without ending the one running. Yes and No are
-  grey while nothing is asked. The wrap-up asks twice, as on the bar: Yes,
-  then **CONFIRM**.
+  picker -- to switch tasks without ending the one running. The wrap-up asks
+  twice, as on the bar: yes, then **CONFIRM**.
 - **offline under every key** means the plugin cannot reach SprintTicker:
   start it, and the keys come back by themselves within ten seconds. **update
   app** means SprintTicker and the plugin are of different versions -- update

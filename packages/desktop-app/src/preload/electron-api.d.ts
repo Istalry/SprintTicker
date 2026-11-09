@@ -63,6 +63,15 @@ export interface UnityInjectorAPI {
 export interface IElectronAPI {
   // Session Controls
   getCurrentSession: () => Promise<ActiveSessionDTO | null>;
+  /**
+   * Interrupt: starts a timer at once on a new ad-hoc task named for the time,
+   * to name or assign afterwards; the task it stops is asked about when it ends.
+   */
+  startInterruption: () => Promise<ActiveSessionDTO>;
+  /** Names the open ad-hoc session and its task; refused for a provider's task. */
+  renameSession: (title: string) => Promise<ActiveSessionDTO>;
+  /** Assigns the open ad-hoc session to a task, keeping its start: all its time goes there. */
+  assignSession: (taskId: string) => Promise<ActiveSessionDTO>;
   startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<ActiveSessionDTO>;
   pauseSession: () => Promise<ActiveSessionDTO>;
   resumeSession: () => Promise<ActiveSessionDTO>;
@@ -97,6 +106,10 @@ export interface IElectronAPI {
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;
+  /** Every worklog of an interruption still to sort, newest first. */
+  getUnsortedWorklogs: () => Promise<WorklogDTO[]>;
+  /** Names ad-hoc work after the fact; renames the open session too when it is that task. */
+  renameAdHocTask: (taskId: string, title: string) => Promise<void>;
   /** Corrects a worklog here and queues the change for its provider. Rejects with the reason when refused. */
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) => Promise<WorklogDTO>;
   /** Deletes a worklog here and queues its deletion at the provider. */
@@ -105,7 +118,8 @@ export interface IElectronAPI {
     date: string;
     totalSeconds: number;
     tasksCount: number;
-    items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string }>;
+    /** `unsorted` marks an interruption not yet named or assigned. */
+    items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string; unsorted?: true }>;
   }>;
 
   // Hardware Rebindings
@@ -207,6 +221,8 @@ export interface IElectronAPI {
   onMiniWindowVisibility: (callback: (open: boolean) => void) => () => void;
   /** Brings the dashboard forward with its task picker open. */
   openTaskPicker: () => Promise<boolean>;
+  /** Brings the dashboard forward with its picker open to assign the open ad-hoc session to a task. */
+  openAssignPicker: () => Promise<boolean>;
   /**
    * "Only my projects": whether the Projects tab, the task picker and the
    * bar's picker hide projects with no open task. Shared by all three, so a

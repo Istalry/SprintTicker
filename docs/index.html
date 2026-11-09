@@ -637,6 +637,9 @@
       <strong>Not done</strong> logs the time and keeps the task open, <strong>Done</strong> also marks it
       done, and <strong>Discard</strong> throws the session away after a <strong>Yes</strong>. <strong>×</strong> keeps
       the session running.</li>
+      <li>⚡ <strong>Interrupt</strong> starts a timer at once, as the dashboard&#39;s button does --
+      see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. Click an interruption&#39;s title
+      to name it, and the link button to assign it to a task.</li>
       <li>📋 The <strong>list</strong> button brings the dashboard forward with the task picker open:
       that is how you start or switch a task from it.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -688,6 +691,43 @@
       nothing asks. Only more than two hours without any input across midnight --
       a long call -- brings the question, and <strong>I was working all along</strong> keeps it
       all.</p>
+      <h4>⚡ Interrupt: a timer at once</h4>
+      <p>Someone at your desk, a call: press <strong>Interrupt</strong> and a timer starts there
+      and then, with nothing to fill in. It runs on a new ad-hoc task called after
+      the time it started -- <strong>Interruption 14:32</strong> -- and the task you were on
+      stops, its time logged as usual. Interrupt is on the Active Session card, in
+      the mini timer, first in the tray menu, on the Stream Deck&#39;s Interrupt key,
+      and on the bar: pause the task, turn the wheel two notches left to
+      <strong>INTERRUPT</strong>, and click.</p>
+      <p>When the interruption ends -- Stop, Done, or Discard if you pressed it by
+      mistake -- SprintTicker asks <strong>Back to your task?</strong>, naming it: in the window,
+      and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>. Yes starts it again;
+      <strong>Leave it</strong>, BACK, or starting something else leaves it. It is asked every
+      time, because you may be done for now. A task paused when you pressed
+      Interrupt is asked about too.</p>
+      <ul>
+      <li><strong>An interruption of an interruption</strong>, or of the stand-up, asks about the
+      task you were on before the first one: that is the one to go back to.</li>
+      <li><strong>Lunch during an interruption</strong> stops it, and the task you were on before
+      it starts again when lunch ends, as lunch always does.</li>
+      <li><strong>The end-of-day wrap-up</strong> stops an interruption without asking.</li>
+      <li><strong>Name it</strong> while it runs: click its title on the Active Session card or
+      in the mini timer, type, and press Enter (Escape keeps the name). The card
+      says <strong>Interruption</strong> until you do. The name is what Work History shows.</li>
+      <li><strong>Assign it to a task</strong> while it runs: <strong>Assign to Task</strong> on the card, or
+      the link button in the mini timer, opens the task picker. The session moves
+      to that task with its start kept, so the whole interruption is logged on it
+      and sent to its Jira or OpenProject when you stop. Assigned to the very task
+      it interrupted, nothing is asked at the end -- you are back on it.</li>
+      <li><strong>Name it afterwards</strong>, in <strong>Work History</strong>: an interruption not named yet
+      says <strong>To sort</strong>, and every one of them, whatever the day, is listed at
+      the top under <strong>Interruptions to sort</strong>, with its time and the day it
+      began -- click the day to go there. Click its name to give it a real one.
+      The end-of-day wrap-up lists the day&#39;s too, so you can name them while you
+      remember what they were. Any ad-hoc work can be renamed the same way.</li>
+      <li><strong>Until then its time stays here</strong>: an ad-hoc task&#39;s time is never sent to
+      Jira or OpenProject.</li>
+      </ul>
       <p>🗑️ <strong>Discard this session</strong>, the third choice, is for a session started by
       mistake: nothing is kept in your history and nothing is sent to your
       provider. It asks you to confirm, naming the task and the time it would throw
@@ -1199,7 +1239,7 @@
       </tr>
       <tr>
       <td align="center"><img src="images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"></td>
-      <td align="left">⏸️ <strong>Paused.</strong> The key and its time; turn the wheel to <strong>STOP</strong>, <strong>FINISH</strong> or <strong>DROP</strong>, click to confirm. DROP asks first.</td>
+      <td align="left">⏸️ <strong>Paused.</strong> The key and its time; turn the wheel to <strong>INTERRUPT</strong>, <strong>STOP</strong>, <strong>FINISH</strong> or <strong>DROP</strong>, click to confirm. DROP asks first.</td>
       </tr>
       <tr>
       <td align="center"><img src="images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"></td>
@@ -1243,10 +1283,12 @@
       pause bars while it is paused; dim grey when nothing runs (the screen then
       reads <strong>Ready / No task running</strong>). While a task runs, row 0 shows the task and
       row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
-      1 offers <strong>STOP</strong>, <strong>FINISH</strong> and <strong>DROP</strong>; the wheel moves one choice per
-      notch and stops at either end, and a click confirms. Row 1 has room for two of
-      them, so it shows STOP and FINISH with a small arrow towards DROP, and FINISH
-      and DROP once you turn to it. DROP discards the session, so it asks first:
+      1 offers <strong>INTERRUPT</strong>, <strong>STOP</strong>, <strong>FINISH</strong> and <strong>DROP</strong>; the wheel moves
+      one choice per notch and stops at either end, and a click confirms. The menu
+      opens on FINISH. Row 1 has room for two of them, so it shows STOP and FINISH
+      with a small arrow each side, FINISH and DROP once you turn right, and
+      INTERRUPT alone once you turn left past STOP. INTERRUPT starts an
+      <a href="#-interrupt-a-timer-at-once">interruption</a>. DROP discards the session, so it asks first:
       <strong>DISCARD?</strong> in red, <strong>OK=YES BACK=NO</strong>. A click throws the session away --
       no worklog, nothing sent, no scene -- and BACK, short or long, brings the menu
       back; the other buttons wait for the answer. Picking
@@ -1331,8 +1373,8 @@
       source with <code>pnpm deck:pack</code> and double-click the <code>.streamDeckPlugin</code> file
       that lands in <code>packages/streamdeck-plugin/dist/</code>. It has been tried on Stream
       Deck Mobile, not yet on a physical deck.</p>
-      <p>Its six actions are listed under <strong>SprintTicker</strong> in the Stream Deck app --
-      as many as a Stream Deck Mini has keys. Drag each onto any key, as many times
+      <p>Its five actions are listed under <strong>SprintTicker</strong> in the Stream Deck app --
+      one key to spare on a Stream Deck Mini. Drag each onto any key, as many times
       as you like:</p>
       <div class="table-wrap"><table>
       <thead>
@@ -1348,47 +1390,61 @@
       <td align="left">pauses or resumes; with nothing running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker whatever runs</td>
       </tr>
       <tr>
-      <td align="left"><strong>Not done</strong></td>
-      <td align="left">NOT DONE</td>
-      <td align="left">ends the session and logs its time; the task stays open</td>
+      <td align="left"><strong>Interrupt</strong></td>
+      <td align="left">INTERRUPT</td>
+      <td align="left">starts a timer at once, whatever runs -- see <a href="#-interrupt-a-timer-at-once">Interrupt</a></td>
       </tr>
       <tr>
-      <td align="left"><strong>Done</strong></td>
-      <td align="left">DONE</td>
-      <td align="left">ends it and marks the task done</td>
+      <td align="left"><strong>Answer A</strong></td>
+      <td align="left">DONE -- or the yes to a question waiting: JOIN, WRAP UP, RESUME</td>
+      <td align="left">ends the session and marks the task done; or says yes</td>
       </tr>
       <tr>
-      <td align="left"><strong>Discard</strong></td>
-      <td align="left">DISCARD</td>
+      <td align="left"><strong>Answer B</strong></td>
+      <td align="left">NOT DONE -- or the no: SKIP, NOT NOW, LEAVE IT</td>
+      <td align="left">ends the session and logs its time, the task left open; or says no</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Answer C</strong></td>
+      <td align="left">DISCARD, always</td>
       <td align="left">throws the session away, nothing logged</td>
-      </tr>
-      <tr>
-      <td align="left"><strong>Yes</strong> / <strong>No</strong></td>
-      <td align="left">the answer to the question waiting</td>
-      <td align="left">joins or skips the stand-up, wraps up the day or not, resumes a task or leaves it</td>
       </tr>
       </tbody></table></div>
       <ul>
-      <li><strong>A key&#39;s colour says what it does.</strong> A coloured glyph can be pressed; a
+      <li><p><strong>A and B follow the question.</strong> When SprintTicker asks something -- the
+      stand-up, the wrap-up, back to your task? -- A and B turn into its yes and
+      no, filled green and red, and go back to DONE and NOT DONE once it is
+      answered. A press in the moment they change only flashes the key, so a
+      question arriving as you press DONE is not answered by mistake. C never
+      changes: the one key that throws work away stays where it is.</p>
+      </li>
+      <li><p><strong>Laid out your deck before 0.5.0?</strong> The keys you placed -- Not done,
+      Done, Discard, Yes, No -- keep working; they are only gone from the list.</p>
+      </li>
+      <li><p><strong>A key&#39;s colour says what it does.</strong> A coloured glyph can be pressed; a
       grey key has nothing to do; a key filled with colour is waiting on you --
-      a question, or a second press.</li>
-      <li><strong>Discard asks first, on the same key.</strong> It fills red, <strong>DISCARD?</strong>; press
+      a question, or a second press.</p>
+      </li>
+      <li><p><strong>Discard asks first, on the same key.</strong> It fills red, <strong>DISCARD?</strong>; press
       it again within four seconds to go ahead. Done does the same, filled amber,
       <strong>NOT YOURS</strong>, when the task is no longer yours. Waiting, or another task
-      starting, takes the question back.</li>
-      <li><strong>Keys move a little when something happens.</strong> Done&#39;s check draws itself,
-      Discard&#39;s bin lifts its lid and Not done&#39;s square presses in when you press
-      them; Yes and No draw their mark when a question arrives. Half a second,
-      then they rest.</li>
-      <li><strong>Yes and No are two keys</strong>, and neither changes meaning with how long you
+      starting, takes the question back.</p>
+      </li>
+      <li><p><strong>Keys move a little when something happens.</strong> Done&#39;s check draws itself,
+      Discard&#39;s bin lifts its lid, Not done&#39;s square presses in and Interrupt&#39;s
+      bolt strikes when you press them; the yes and the no draw their mark when
+      a question arrives. Half a second, then they rest.</p>
+      </li>
+      <li><p><strong>Yes and no are two keys</strong>, and neither changes meaning with how long you
       hold it. Session is the one key with a long press: held, it opens the task
-      picker -- to switch tasks without ending the one running. Yes and No are
-      grey while nothing is asked. The wrap-up asks twice, as on the bar: Yes,
-      then <strong>CONFIRM</strong>.</li>
-      <li><strong>offline under every key</strong> means the plugin cannot reach SprintTicker:
+      picker -- to switch tasks without ending the one running. The wrap-up asks
+      twice, as on the bar: yes, then <strong>CONFIRM</strong>.</p>
+      </li>
+      <li><p><strong>offline under every key</strong> means the plugin cannot reach SprintTicker:
       start it, and the keys come back by themselves within ten seconds. <strong>update
       app</strong> means SprintTicker and the plugin are of different versions -- update
-      whichever is older.</li>
+      whichever is older.</p>
+      </li>
       </ul>
       <hr>
       <h3 id="guide-troubleshooting">🩺 Troubleshooting</h3>
@@ -2214,8 +2270,12 @@
       </tr>
       </tbody></table></div>
       <p>It also runs the two-stage task picker (project, then task) driven entirely from
-      the bar, and the paused menu: STOP, FINISH and DROP, of which row 1 shows the
-      pair holding the choice (<code>pausedChoicesShown</code>). DROP asks <strong>DISCARD?</strong> first;
+      the bar, and the paused menu: INTERRUPT, STOP, FINISH and DROP, of which row
+      1 shows the pair holding the choice, or INTERRUPT alone (<code>pausedChoicesShown</code>).
+      It opens on FINISH, and goes back there when a pause ends on INTERRUPT. A
+      click on INTERRUPT is decoded as <code>START_INTERRUPTION</code> and handed to
+      <code>ContextScheduleService.answerFromBar</code>, which interrupts as the window&#39;s
+      button does; the decoder ends nothing itself. DROP asks <strong>DISCARD?</strong> first;
       while the question is up the click confirms, BACK refuses, and every other
       key waits. A session started anywhere else while the picker is open closes
       it: it used to hold the display over the new session until BACK. After lunch,
@@ -2260,7 +2320,36 @@
       made from the engine&#39;s listener: started there, the listeners after this one
       would still be handed the ended session, and the renderer would draw the idle
       clock over the restarted task. A stand-up stopped by lunch hands lunch the task
-      before it, not the meeting. The wrap-up stops the session through
+      before it, not the meeting.</p>
+      <p>The stand-up and Interrupt share that mechanism, the <strong>set-aside</strong>: one
+      <code>set_aside</code> setting holding the task to bring back, the session whose end
+      brings it back (<code>endsWith</code>), and why (<code>after</code>). <code>switchSettingAside</code> starts
+      the next session and stores the one it replaced; a replacement that is
+      itself waited on -- an interruption, the stand-up -- passes on the task it
+      was waiting for, so an interruption of an interruption returns to the first
+      task. The two differ only in policy: the stand-up restarts the task itself
+      unless it left the user&#39;s lists; an interruption always asks, through the
+      after-lunch question with <code>after: &#39;interruption&#39;</code> (and <code>unlisted</code> when the
+      task has left the lists too). Interrupt (<code>ContextScheduleService.interrupt</code>,
+      <code>session:start-interruption</code>, the tray&#39;s first entry) also sets aside a
+      paused task, since the bar reaches it through its paused menu; the engine&#39;s
+      <code>startInterruption</code> makes a new ad-hoc row every time, titled
+      <code>Interruption HH:MM</code> and marked <code>unsorted</code> (migration 13). The stand-up&#39;s
+      <code>standup_resume</code> entry from before is read once at start and moved over.
+      While it runs, an ad-hoc session can be named (<code>renameAdHocSession</code>: the task
+      row and the session&#39;s copy together, one notification) or assigned to a task
+      in place (<code>assignSessionToTask</code>): <code>retargetSession</code> rewrites the open row&#39;s
+      project, task, key, title and <code>is_ad_hoc</code>, and sets <code>provider_id</code> -- the one
+      write of it after the start, for a session that had none, so the time still
+      never follows the active provider. The task&#39;s start-time effects are the
+      start&#39;s own (<code>takeUpTask</code>). Assigned to the task it set aside, the
+      interruption drops the set-aside: the question would restart that task. The
+      session reports <code>unsorted</code> from its task row, never a copy of its own.
+      After it ended, the same work is named from History or the wrap-up
+      (<code>renameAdHocTask</code>), which goes through <code>renameAdHocSession</code> when the task is
+      the open session&#39;s, so the copy follows. Worklog reads join <code>tasks.unsorted</code>,
+      and <code>getUnsortedWorklogs</code> lists what is still to sort across days.
+      The wrap-up stops the session through
       <code>stopForWrapUp</code>, which drops every stored restart first: stopped from the IPC
       handler, a stand-up running at wrap-up time restarted its task overnight.</p>
       <p>Only working days have ceremonies. <code>WorkingCalendar</code> answers which days are:
@@ -2382,7 +2471,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks</code></td>
-      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs; <code>description</code> is the start of the provider&#39;s, as plain text; <code>ownership</code> is <code>mine</code>, <code>unassigned</code> or <code>other</code>, with <code>assignee_name</code> on a teammate&#39;s (migration 12)</td>
+      <td align="left">Cached tasks: <code>status</code> is <code>todo</code> / <code>in_progress</code> / <code>done</code>; <code>priority_rank</code> is 0 (most urgent) to 4, or NULL; <code>archived_at_utc</code> set on a task that left the lists but has worklogs; <code>description</code> is the start of the provider&#39;s, as plain text; <code>ownership</code> is <code>mine</code>, <code>unassigned</code> or <code>other</code>, with <code>assignee_name</code> on a teammate&#39;s (migration 12); <code>unsorted</code> is 1 on an interruption&#39;s ad-hoc task until it is named or its time moved (migration 13)</td>
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
@@ -2520,8 +2609,14 @@
       <p><code>packages/streamdeck-plugin</code> is a plugin for Elgato&#39;s Stream Deck app, built
       on its SDK (<code>@elgato/streamdeck</code> 3) and bundled by Vite into one ESM file that
       Stream Deck runs on its own Node 24. Elgato&#39;s app keeps the device; the plugin
-      only declares six actions, which the user places on any key: Session, Not
-      done, Done, Discard, Yes and No -- a Mini&#39;s six keys.</p>
+      only declares actions, which the user places on any key: Session, Interrupt
+      and the answer keys A, B and C -- five of a Mini&#39;s six keys. The answer keys
+      stand in for whichever end applies (<code>resolveKind</code>): A is yes while a prompt
+      holds the bar and Done otherwise, B no or Not done, and C Discard either way,
+      so the end that keeps nothing never moves. The five fixed actions they replaced
+      (Not done, Done, Discard, Yes, No) are still declared and still work, hidden
+      from Stream Deck&#39;s list (<code>VisibleInActionsList: false</code>), so a deck laid out
+      with them keeps its keys.</p>
       <pre><code>Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──► AppLink ◄──► ws://127.0.0.1:39123/api/v1/deck
                                                    │   faces.ts: state ─► face, press ─► request
                                                    └─► svg.ts: face ─► key image
@@ -2537,7 +2632,12 @@
       is sent only when it differs from the last one sent.</li>
       <li><strong>A question is asked on the key that will answer it.</strong> Discard, and Done
       on a task no longer the user&#39;s, arm on the first press and act on a second
-      within four seconds; another task starting withdraws the question.</li>
+      within four seconds; another task starting withdraws the question, and so
+      does an answer key changing meaning.</li>
+      <li><strong>An answer key ignores a press just after it changed meaning.</strong> For
+      <code>ANSWER_SETTLE_MS</code> (700 ms) after A or B turned from Done to yes, or back,
+      a press only flashes the key: the stand-up&#39;s question arriving as a finger
+      comes down on DONE would otherwise join the stand-up.</li>
       <li><strong>One key has a long press: Session.</strong> Held <code>LONG_PRESS_MS</code> (500 ms), it
       opens the picker at once, without waiting for the key to come up; let go
       sooner, it pauses or resumes. It acts when the key comes up, every other
@@ -2682,6 +2782,22 @@
       <td align="left">Start tracking a task</td>
       </tr>
       <tr>
+      <td align="left"><code>session:rename</code></td>
+      <td align="left">Name the open ad-hoc session, and its task (so History follows): a string, trimmed, at most 120 characters (<code>checkAdHocTitle</code>). Clears the task&#39;s unsorted mark. Refused for a provider&#39;s task, which keeps the provider&#39;s name. Answers the session</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:assign</code></td>
+      <td align="left">Assign the open ad-hoc session to a task, by id, in place: the session keeps its start and pauses, takes the task&#39;s project, key and title, and gets the task&#39;s provider -- ad-hoc work had none. The task is taken up as a start takes it up (In Progress, or claimed when nobody has it); the ad-hoc row is retired. Refused for a provider task&#39;s session, an ad-hoc target, or an unknown task. Answers the session</td>
+      </tr>
+      <tr>
+      <td align="left"><code>mini:open-assign-picker</code></td>
+      <td align="left">Bring the dashboard forward with its task picker open in assign mode, for the open ad-hoc session. Answers whether there was a window</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:start-interruption</code></td>
+      <td align="left">Interrupt: start a session at once on a new ad-hoc task titled <code>Interruption HH:MM</code> and marked unsorted, and set aside the session running -- tracking or paused -- to ask about when this one ends. Answers the new session. Through <code>ContextScheduleService.interrupt</code>, which the tray calls too</td>
+      </tr>
+      <tr>
       <td align="left"><code>session:pause</code> / <code>session:resume</code></td>
       <td align="left">Pause and resume</td>
       </tr>
@@ -2798,6 +2914,25 @@
       <code>tasks:update</code>, <code>tasks:import</code>, <code>worklogs:get-by-date</code>,
       <code>worklogs:get-daily-summary</code>, <code>worklog:get-todays</code>, <code>db:wipe-all-data</code>, and the
       <code>worklog:on-updated</code> event.</p>
+      <p>A worklog read carries <code>adHoc: true</code> when it was logged on ad-hoc work, and
+      <code>unsorted: true</code> when that work is an interruption not yet named or assigned
+      (migration 13); a daily summary&#39;s items carry <code>unsorted</code> too.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Channel</th>
+      <th align="left">Does</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>worklogs:get-unsorted</code></td>
+      <td align="left">Every worklog of an interruption still to sort, whatever its day, newest first: History&#39;s list</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks:rename-ad-hoc</code></td>
+      <td align="left"><code>(taskId, title)</code>: names ad-hoc work after the fact -- the task row, so every worklog of it reads the new name -- and clears its unsorted mark. Local only, nothing is queued. The open session&#39;s own task is renamed as <code>session:rename</code> renames it, its copy included. Refused for a provider&#39;s task, an unknown one, or a title <code>checkAdHocTitle</code> refuses</td>
+      </tr>
+      </tbody></table></div>
       <p><code>projects:delete</code> and <code>tasks:delete</code> delete a task only if no time was logged
       against it; one with worklogs is archived -- off every list, still in history.</p>
       <p><code>tasks:open-page</code> takes a task id and opens the task&#39;s page on the provider it
@@ -2913,7 +3048,7 @@
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>
-      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code> or <code>standup</code>: what stopped the task</td>
+      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code>, <code>standup</code> or <code>interruption</code>: what stopped the task. Lunch and the stand-up ask only about a task that left the user&#39;s lists; an interruption asks every time, and adds <code>unlisted: true</code> when the task has left them as well</td>
       </tr>
       <tr>
       <td align="left">Unity</td>
@@ -3123,6 +3258,11 @@
       <td align="left"><code>open-picker</code></td>
       <td align="left">Brings the window forward with its task picker -- to the front, past Windows&#39; foreground lock (<code>ForegroundRaiser</code>), since the press reached Stream Deck and not the app</td>
       <td align="left">No window</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interrupt</code></td>
+      <td align="left">Starts an interruption, as the window&#39;s Interrupt: <code>ContextScheduleService.interrupt</code>, a timer at once and the task it stops asked about when it ends (<code>resume</code>). Added without raising the protocol: an app older than it answers <code>invalid-request</code></td>
+      <td align="left">Never; <code>failed</code> if the app cannot</td>
       </tr>
       <tr>
       <td align="left"><code>prompt-yes</code>, <code>prompt-no</code></td>

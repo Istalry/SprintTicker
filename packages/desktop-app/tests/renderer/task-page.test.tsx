@@ -15,7 +15,7 @@ import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
 const openButton = (key: string) => screen.queryByRole('button', { name: `Open ${key} on its provider` });
 
 const hero = (session: ActiveSessionDTO) => (
-  <ActiveTaskHeroCard session={session} onPause={vi.fn()} onResume={vi.fn()} onComplete={vi.fn()} onDiscard={vi.fn()} onOpenTaskModal={vi.fn()} />
+  <ActiveTaskHeroCard session={session} onPause={vi.fn()} onResume={vi.fn()} onComplete={vi.fn()} onDiscard={vi.fn()} onOpenTaskModal={vi.fn()} onInterrupt={vi.fn()} />
 );
 
 describe('the session card', () => {

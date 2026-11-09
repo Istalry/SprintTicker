@@ -30,6 +30,10 @@ Everything else is a request/response `invoke`.
 | :--- | :--- |
 | `session:get-current` | The live session, or `null` |
 | `session:start-task` | Start tracking a task |
+| `session:rename` | Name the open ad-hoc session, and its task (so History follows): a string, trimmed, at most 120 characters (`checkAdHocTitle`). Clears the task's unsorted mark. Refused for a provider's task, which keeps the provider's name. Answers the session |
+| `session:assign` | Assign the open ad-hoc session to a task, by id, in place: the session keeps its start and pauses, takes the task's project, key and title, and gets the task's provider -- ad-hoc work had none. The task is taken up as a start takes it up (In Progress, or claimed when nobody has it); the ad-hoc row is retired. Refused for a provider task's session, an ad-hoc target, or an unknown task. Answers the session |
+| `mini:open-assign-picker` | Bring the dashboard forward with its task picker open in assign mode, for the open ad-hoc session. Answers whether there was a window |
+| `session:start-interruption` | Interrupt: start a session at once on a new ad-hoc task titled `Interruption HH:MM` and marked unsorted, and set aside the session running -- tracking or paused -- to ask about when this one ends. Answers the new session. Through `ContextScheduleService.interrupt`, which the tray calls too |
 | `session:pause` / `session:resume` | Pause and resume |
 | `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
 | `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The tracked task is no longer the user's: the provider stopped listing it at the last sync (reassigned, closed, moved), or lists it as a teammate's. The sync keeps the task until the session ends; finishing it as done asks the user first |
@@ -71,6 +75,15 @@ Everything else is a request/response `invoke`.
 `tasks:update`, `tasks:import`, `worklogs:get-by-date`,
 `worklogs:get-daily-summary`, `worklog:get-todays`, `db:wipe-all-data`, and the
 `worklog:on-updated` event.
+
+A worklog read carries `adHoc: true` when it was logged on ad-hoc work, and
+`unsorted: true` when that work is an interruption not yet named or assigned
+(migration 13); a daily summary's items carry `unsorted` too.
+
+| Channel | Does |
+| :--- | :--- |
+| `worklogs:get-unsorted` | Every worklog of an interruption still to sort, whatever its day, newest first: History's list |
+| `tasks:rename-ad-hoc` | `(taskId, title)`: names ad-hoc work after the fact -- the task row, so every worklog of it reads the new name -- and clears its unsorted mark. Local only, nothing is queued. The open session's own task is renamed as `session:rename` renames it, its copy included. Refused for a provider's task, an unknown one, or a title `checkAdHocTitle` refuses |
 
 `projects:delete` and `tasks:delete` delete a task only if no time was logged
 against it; one with worklogs is archived -- off every list, still in history.
@@ -123,7 +136,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | :--- | :--- |
 | Device | `device:get-status`, `device:get-config`, `device:set-config`, `device:on-status-changed` |
 | Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup`, `schedule:cancel-eod-wrapup`, `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup`, `schedule:get-week-ended`, `schedule:dismiss-week-ended`, `schedule:on-week-ended`, `schedule:snooze-ceremony`, `schedule:on-ceremony-prompt`, `schedule:update-ceremony-prompt` |
-| Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it) and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch` or `standup`: what stopped the task |
+| Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it) and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch`, `standup` or `interruption`: what stopped the task. Lunch and the stand-up ask only about a task that left the user's lists; an interruption asks every time, and adds `unlisted: true` when the task has left them as well |
 | Unity | `unity:get-settings`, `unity:save-settings`, `unity:get-telemetry`, `unity:on-telemetry-updated`, `unity-injector:*`, `dialog:open-folder-picker` |
 | Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings` |
 | Provider events | `provider-events:get-settings`, `provider-events:save-settings` (answers the settings as stored: an interval is clamped to 30-3600 s), `provider-events:test` (a sample through the destinations switched on; answers `{ toast, bar }`) |
@@ -215,6 +228,7 @@ removed with the keys that used them (2026-10-22).
 | `finish` | Ends it and marks the task done, with DONE! | No session; or the task left the user's list and `confirmed` is not true (NOT YOURS?) |
 | `discard` | Keeps nothing | No session; or `confirmed` is not true -- always asked |
 | `open-picker` | Brings the window forward with its task picker -- to the front, past Windows' foreground lock (`ForegroundRaiser`), since the press reached Stream Deck and not the app | No window |
+| `interrupt` | Starts an interruption, as the window's Interrupt: `ContextScheduleService.interrupt`, a timer at once and the task it stops asked about when it ends (`resume`). Added without raising the protocol: an app older than it answers `invalid-request` | Never; `failed` if the app cannot |
 | `prompt-yes`, `prompt-no` | OK or BACK on the bar while a prompt holds it: the stand-up (`standup`), the wrap-up (`wrap-up`, then `wrap-up-confirm` after the first yes), the resume question (`resume`) | No prompt holds the bar |
 
 A prompt is reported only while it holds the bar's display: covered by a

@@ -1,13 +1,14 @@
 import type { DeckAction, DeckPrompt, DeckSession, DeckStateMessage } from '../../desktop-app/src/shared/deck-protocol';
 import { deckElapsedSeconds, deckIconPixels, isPlayableMotion } from '../../desktop-app/src/shared/deck-protocol';
-import type { KeyKind } from './key-kinds';
+import { AnswerKind, FixedKind, KeyKind, isAnswerKind } from './key-kinds';
 
 /**
  * What each key shows, and what a press on it does: two pure functions of
  * the app's state, so every face and every press is tested without a device.
  *
  * A key always says what it will do. It may change with the state -- the
- * session key pauses a running task and resumes a paused one. How long it
+ * session key pauses a running task and resumes a paused one, and an
+ * answer key stands in for whichever answer applies (`resolveKind`). How long it
  * is held changes one thing only, chosen by the user (2026-10-22): holding
  * Session opens the task picker. Never an answer: yes and no are two keys,
  * because a held press is too easy to get wrong for that.
@@ -30,7 +31,7 @@ export interface KeyContext {
   armed: boolean;
 }
 
-export type Glyph = 'play' | 'pause' | 'stop' | 'check' | 'trash' | 'list' | 'yes' | 'no' | 'timer';
+export type Glyph = 'play' | 'pause' | 'stop' | 'check' | 'trash' | 'list' | 'yes' | 'no' | 'timer' | 'zap';
 
 /**
  * What a key's look says about it, the design the user chose on Stream
@@ -81,8 +82,9 @@ export const ACCENTS = {
 } as const;
 
 /** What each kind is called on its face when there is nothing more to say. */
-const NAMES: Record<KeyKind, string> = {
+const NAMES: Record<FixedKind, string> = {
   session: 'SESSION',
+  interrupt: 'INTERRUPT',
   'not-done': 'NOT DONE',
   done: 'DONE',
   discard: 'DISCARD',
@@ -90,9 +92,17 @@ const NAMES: Record<KeyKind, string> = {
   no: 'NO'
 };
 
-/** Each kind's glyph, which it keeps grey while it has nothing to do. */
+/**
+ * Each kind's glyph, which it keeps grey while it has nothing to do. An
+ * answer key's is that of what it means with nothing asked, as it shows
+ * offline.
+ */
 export const GLYPHS: Record<KeyKind, Glyph> = {
   session: 'timer',
+  interrupt: 'zap',
+  'answer-a': 'check',
+  'answer-b': 'stop',
+  'answer-c': 'trash',
   'not-done': 'stop',
   done: 'check',
   discard: 'trash',
@@ -121,17 +131,41 @@ export function formatDuration(totalSeconds: number): string {
   return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
 }
 
+/**
+ * What an answer key stands in for: the prompt's answers while one holds
+ * the bar, the session's ends otherwise. A positive answer is always A, a
+ * negative one always B. C is DISCARD in both, never an answer: the one
+ * end that keeps nothing stays where it is.
+ */
+export function answerKind(kind: AnswerKind, prompt: DeckPrompt | null): FixedKind {
+  switch (kind) {
+    case 'answer-a':
+      return prompt ? 'yes' : 'done';
+    case 'answer-b':
+      return prompt ? 'no' : 'not-done';
+    case 'answer-c':
+      return 'discard';
+  }
+}
+
+/** What a key of `kind` means in this context: itself, or what an answer key stands in for. */
+export function resolveKind(kind: KeyKind, ctx: Pick<KeyContext, 'link' | 'message'>): FixedKind {
+  if (!isAnswerKind(kind)) return kind;
+  return answerKind(kind, ctx.link === 'online' ? (ctx.message?.state.prompt ?? null) : null);
+}
+
 function sessionOf(ctx: KeyContext): DeckSession | null {
   return ctx.message?.state.session ?? null;
 }
 
 /** A key with nothing to do: its own glyph and name, grey. */
-function idle(kind: KeyKind, hint?: string): Face {
+function idle(kind: FixedKind, hint?: string): Face {
   return { title: NAMES[kind], ...(hint ? { hint } : {}), accent: ACCENTS.grey, glyph: GLYPHS[kind], tone: 'idle' };
 }
 
 /** The face of a key of `kind`. */
-export function faceFor(kind: KeyKind, ctx: KeyContext): Face {
+export function faceFor(key: KeyKind, ctx: KeyContext): Face {
+  const kind = resolveKind(key, ctx);
   // The key keeps its own glyph and name while the app is away, so a deck
   // laid out with SprintTicker closed still reads; the hint says why.
   if (ctx.link !== 'online' || !ctx.message) return idle(kind, ctx.link === 'incompatible' ? 'update app' : 'offline');
@@ -139,6 +173,10 @@ export function faceFor(kind: KeyKind, ctx: KeyContext): Face {
   const { state } = ctx.message;
   const session = sessionOf(ctx);
   switch (kind) {
+    case 'interrupt':
+      // Ready whatever runs: an interruption starts from any state, and
+      // the task it stops is asked about when it ends.
+      return { title: NAMES.interrupt, accent: ACCENTS.amber, glyph: 'zap', tone: 'ready' };
     case 'session': {
       if (!session) return { title: 'START', hint: 'pick a task', accent: ACCENTS.blue, glyph: 'list', tone: 'ready' };
       const tracking = session.status === 'tracking';
@@ -175,11 +213,14 @@ export function faceFor(kind: KeyKind, ctx: KeyContext): Face {
  * What a press on a key of `kind` does; `held` when it was held past
  * `LONG_PRESS_MS`, which only Session reads (see {@link hasLongPress}).
  */
-export function planPress(kind: KeyKind, ctx: KeyContext, held: boolean = false): PressPlan {
+export function planPress(key: KeyKind, ctx: KeyContext, held: boolean = false): PressPlan {
   if (ctx.link !== 'online' || !ctx.message) return { type: 'none', reason: 'offline' };
+  const kind = resolveKind(key, ctx);
   const { state } = ctx.message;
   const session = sessionOf(ctx);
   switch (kind) {
+    case 'interrupt':
+      return { type: 'request', action: 'interrupt' };
     case 'session':
       if (held || !session) return { type: 'request', action: 'open-picker' };
       return { type: 'request', action: session.status === 'tracking' ? 'pause' : 'resume' };
@@ -234,10 +275,13 @@ export function tickPeriodMs(message: DeckStateMessage | null, second: number): 
  * event, so the key answers at once, before the app does.
  */
 export function playsOnPress(action: DeckAction): boolean {
-  return action === 'finish' || action === 'discard' || action === 'stop';
+  return action === 'finish' || action === 'discard' || action === 'stop' || action === 'interrupt';
 }
 
-/** Kinds that play their one-shot when a question arrives: its answers. */
+/**
+ * Kinds that play their one-shot when a question arrives: its answers, and
+ * the answer keys that become them -- the movement says the key changed.
+ */
 export function playsOnQuestion(kind: KeyKind): boolean {
-  return kind === 'yes' || kind === 'no';
+  return kind === 'yes' || kind === 'no' || kind === 'answer-a' || kind === 'answer-b';
 }

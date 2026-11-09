@@ -31,17 +31,43 @@ function isLunchResume(value: unknown): value is LunchResume {
   );
 }
 
-/** The session the stand-up switched away from, and the stand-up's own session. */
-interface StandupResume extends LunchResume {
-  standupSessionId: string;
+/**
+ * What set a task aside to come back when it ends: the stand-up, which
+ * restarts it on its own unless it left the user's lists, or an
+ * interruption, which always asks.
+ */
+type SetAsideReason = 'standup' | 'interruption';
+
+/** The task set aside, and the session that replaced it: its end brings the task back. */
+interface SetAside extends LunchResume {
+  endsWith: string;
+  after: SetAsideReason;
 }
 
-function isStandupResume(value: unknown): value is StandupResume {
-  return isLunchResume(value) && typeof (value as Partial<StandupResume>).standupSessionId === 'string';
+function isSetAside(value: unknown): value is SetAside {
+  const v = value as Partial<SetAside> | null;
+  return isLunchResume(value) && typeof v?.endsWith === 'string' && (v.after === 'standup' || v.after === 'interruption');
 }
 
-/** The question asked before restarting a task that left the list, and what stopped it. */
-type ResumeQuestion = LunchResume & { after: ResumePromptDTO['after'] };
+/** The stand-up's entry before the set-aside was shared, under its old key. */
+function isLegacyStandupResume(value: unknown): value is LunchResume & { standupSessionId: string } {
+  return isLunchResume(value) && typeof (value as { standupSessionId?: unknown }).standupSessionId === 'string';
+}
+
+/** The task part of a set-aside entry. */
+function taskOf(entry: SetAside): LunchResume {
+  return {
+    taskId: entry.taskId,
+    isAdHoc: entry.isAdHoc,
+    customTitle: entry.customTitle,
+    projectId: entry.projectId,
+    taskKey: entry.taskKey,
+    dateKey: entry.dateKey
+  };
+}
+
+/** The question asked before restarting a task, and what stopped it. */
+type ResumeQuestion = LunchResume & { after: ResumePromptDTO['after']; unlisted: boolean };
 
 /** Whether the session is the stand-up the app switches to. */
 function isStandupSession(session: ActiveSessionDTO | null): boolean {
@@ -61,8 +87,14 @@ export class ContextScheduleService {
   public static readonly LUNCH_RESUME_KEY = 'lunch_resume';
   /** The day the user chose to work through lunch: it does not start again that day. */
   public static readonly LUNCH_SKIPPED_KEY = 'lunch_skipped_date';
-  /** The task the stand-up switched away from, to restart when it ends. */
-  public static readonly STANDUP_RESUME_KEY = 'standup_resume';
+  /**
+   * The task the stand-up or an interruption switched away from, to bring
+   * back when the session that replaced it ends. One entry: one session is
+   * open at a time, and an interruption of either keeps the first task.
+   */
+  public static readonly SET_ASIDE_KEY = 'set_aside';
+  /** Where the stand-up kept it before the entry was shared; read once, at start. */
+  public static readonly LEGACY_STANDUP_RESUME_KEY = 'standup_resume';
   /** The Monday of the last week closed, so a week closes once. */
   public static readonly LAST_WEEK_CLOSED_KEY = 'last_week_closed';
   /** The week just over, until the user has seen it: it survives a restart. */
@@ -81,8 +113,8 @@ export class ContextScheduleService {
   private _isInitialCheck = true;
   /** The lunch resume being asked about: its task is no longer the user's. */
   private _resumePrompt: ResumeQuestion | null = null;
-  /** The stand-up's session while a task waits for it to end; null otherwise. */
-  private _standupSessionId: string | null = null;
+  /** The session a task set aside waits on to end; null otherwise. */
+  private _setAsideFor: string | null = null;
   /** The session the engine last told us about, to tell a start from a tick. */
   private _lastSeen: { sessionId: string; tracking: boolean } | null = null;
   private _timer?: NodeJS.Timeout;
@@ -111,7 +143,7 @@ export class ContextScheduleService {
     // Without a provider to read holidays from, the weekdays alone decide.
     this._calendar = calendar ?? new WorkingCalendar(settingsRepo);
 
-    this.adoptStoredStandup();
+    this.adoptStoredSetAside();
     // A session already running when the service starts was not started now.
     this.noteSeen(engine.getCurrentSession());
     this._unsubscribeEngine = engine.subscribe(session => this.onSessionChanged(session));
@@ -270,24 +302,70 @@ export class ContextScheduleService {
    * session's. A stand-up already running is left as it is.
    */
   public joinStandup(): void {
-    const before = this._engine.getCurrentSession();
-    if (!isStandupSession(before)) {
-      const standup = this._engine.startNamedAdHocTask(DAILY_STANDUP_TITLE);
-      if (before?.status === 'TRACKING') {
-        const resume: StandupResume = {
-          taskId: before.taskId,
-          isAdHoc: before.isAdHoc,
-          customTitle: before.taskTitle,
-          projectId: before.projectId,
-          taskKey: before.taskKey,
-          dateKey: localDateKey(new Date()),
-          standupSessionId: standup.sessionId
-        };
-        this._settingsRepo.setSetting(ContextScheduleService.STANDUP_RESUME_KEY, resume);
-        this._standupSessionId = standup.sessionId;
-      }
+    if (!isStandupSession(this._engine.getCurrentSession())) {
+      this.switchSettingAside('standup', () => this._engine.startNamedAdHocTask(DAILY_STANDUP_TITLE));
     }
     this._priorityEngine.releaseActiveLock('standupPromptPriority');
+  }
+
+  /**
+   * Interrupt: a timer at once, on a new ad-hoc task the user names or
+   * assigns afterwards, and the task it stops asked about when it ends --
+   * "back to SCRUM-12?". Every surface calls this -- the window, the mini
+   * timer, the tray, the bar's paused menu, the Stream Deck, the shortcut --
+   * so none keeps a rule of its own.
+   *
+   * A paused task is set aside too, unlike for the stand-up: the bar reaches
+   * Interrupt through its paused menu, so the task is paused by then.
+   */
+  public interrupt(): ActiveSessionDTO {
+    return this.switchSettingAside('interruption', () => this._engine.startInterruption());
+  }
+
+  /**
+   * Starts the session `start` makes and sets aside the one it replaces,
+   * to come back when the new one ends.
+   *
+   * A session that is itself a set-aside's replacement -- an interruption,
+   * the stand-up -- passes on the task it was waiting to bring back: the
+   * first task is the one to return to, not the interruption of it. The
+   * stop `start` makes is not the end being waited on, so the wait is
+   * dropped before it and taken up again after.
+   */
+  private switchSettingAside(after: SetAsideReason, start: () => ActiveSessionDTO): ActiveSessionDTO {
+    const before = this._engine.getCurrentSession();
+    const waiting = this.setAsideWaitingOn(before);
+    this._setAsideFor = null;
+    const next = start();
+    const setsAside = before !== null && (before.status === 'TRACKING' || (after === 'interruption' && before.status === 'PAUSED'));
+    const task = waiting ?? (setsAside ? ContextScheduleService.resumeOf(before) : null);
+    if (!task) {
+      this.forgetSetAside();
+      return next;
+    }
+    const entry: SetAside = { ...task, dateKey: localDateKey(new Date()), endsWith: next.sessionId, after };
+    this._settingsRepo.setSetting(ContextScheduleService.SET_ASIDE_KEY, entry);
+    this._setAsideFor = next.sessionId;
+    return next;
+  }
+
+  /** The task set aside for `session` to end, when it is the session waited on. */
+  private setAsideWaitingOn(session: ActiveSessionDTO | null): LunchResume | null {
+    if (!session || session.sessionId !== this._setAsideFor) return null;
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.SET_ASIDE_KEY, null);
+    return isSetAside(stored) ? taskOf(stored) : null;
+  }
+
+  /** A session as the entry that starts it again. */
+  private static resumeOf(session: ActiveSessionDTO): LunchResume {
+    return {
+      taskId: session.taskId,
+      isAdHoc: session.isAdHoc,
+      customTitle: session.taskTitle,
+      projectId: session.projectId,
+      taskKey: session.taskKey,
+      dateKey: localDateKey(new Date())
+    };
   }
 
   /**
@@ -299,8 +377,8 @@ export class ContextScheduleService {
    * time brought the task before it back -- to run all night.
    */
   public stopForWrapUp(): void {
-    this._standupSessionId = null;
-    this.forgetStandupResume();
+    this._setAsideFor = null;
+    this.forgetSetAside();
     this.forgetLunchResume();
     if (this._resumePrompt) this.closeResumePrompt();
     if (this._engine.getCurrentSession()) this._engine.stopSession(WORKLOG_COMMENTS.WRAP_UP);
@@ -308,10 +386,10 @@ export class ContextScheduleService {
 
   /**
    * The answers to this service's prompts among the actions InputDecoder
-   * decodes: after lunch, resume a task that is no longer the user's?; and
-   * OK on the stand-up's prompt. The bar's keys and the Stream Deck's both
-   * reach the decoder, and the decoder reaches this; anything else is not
-   * this service's to answer.
+   * decodes: after lunch, resume a task that is no longer the user's?; OK on
+   * the stand-up's prompt; and INTERRUPT in the paused menu. The bar's keys
+   * and the Stream Deck's both reach the decoder, and the decoder reaches
+   * this; anything else is not this service's to answer.
    */
   public answerFromBar(action: string): void {
     if (action === 'CONFIRM_RESUME_PROMPT' || action === 'DISMISS_RESUME_PROMPT') {
@@ -319,6 +397,9 @@ export class ContextScheduleService {
     }
     if (action === 'CONFIRM_STANDUP_PROMPT') {
       this.joinStandup();
+    }
+    if (action === 'START_INTERRUPTION') {
+      this.interrupt();
     }
   }
 
@@ -417,15 +498,7 @@ export class ContextScheduleService {
   private stopForLunch(): void {
     const session = this._engine.getCurrentSession();
     if (session && session.status === 'TRACKING') {
-      const resume: LunchResume = {
-        taskId: session.taskId,
-        isAdHoc: session.isAdHoc,
-        customTitle: session.taskTitle,
-        projectId: session.projectId,
-        taskKey: session.taskKey,
-        dateKey: localDateKey(new Date())
-      };
-      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, resume);
+      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, ContextScheduleService.resumeOf(session));
       this._engine.stopSession(WORKLOG_COMMENTS.LUNCH, false);
     }
   }
@@ -446,7 +519,7 @@ export class ContextScheduleService {
   /// The question being asked after lunch, for a window opened after it was.
   /// </summary>
   public getResumePrompt(): ResumePromptDTO | null {
-    return this._resumePrompt ? ContextScheduleService.toPromptDto(this._resumePrompt, this._resumePrompt.after) : null;
+    return this._resumePrompt ? ContextScheduleService.toPromptDto(this._resumePrompt) : null;
   }
 
   /// <summary>
@@ -516,7 +589,7 @@ export class ContextScheduleService {
     }
     if (!stored.isAdHoc && !this._engine.isTaskListed(stored.taskId)) {
       // Kept until answered, so a restart asks again rather than forgetting.
-      this.askBeforeResuming(stored, 'lunch');
+      this.askBeforeResuming(stored, 'lunch', true);
       return;
     }
     this.forgetLunchResume();
@@ -524,74 +597,102 @@ export class ContextScheduleService {
   }
 
   /**
-   * Restarts the task the stand-up switched away from, by the lunch rules:
-   * once, the same day, never over a session open now, and asking first
-   * about a task that has left the user's lists. During lunch it becomes
-   * lunch's restart instead -- lunch stopped the stand-up and kept *that* to
-   * restart, which is the meeting, not the work.
+   * Brings back the task the stand-up or an interruption set aside, by the
+   * lunch rules: once, the same day, never over a session open now. The
+   * stand-up restarts it, asking first only about a task that has left the
+   * user's lists; an interruption always asks -- "back to SCRUM-12?" --
+   * because the user may be done for now. During lunch it becomes lunch's
+   * restart instead: lunch stopped the meeting or the interruption and kept
+   * *that* to restart, which is not the work.
    */
-  private resumeAfterStandup(): void {
-    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.STANDUP_RESUME_KEY, null);
-    this.forgetStandupResume();
-    if (!isStandupResume(stored) || stored.dateKey !== localDateKey(new Date())) return;
+  private resumeAfterSetAside(): void {
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.SET_ASIDE_KEY, null);
+    this.forgetSetAside();
+    if (!isSetAside(stored) || stored.dateKey !== localDateKey(new Date())) return;
+    const task = taskOf(stored);
     if (this.isDuringLunch()) {
-      const lunchResume: LunchResume = {
-        taskId: stored.taskId,
-        isAdHoc: stored.isAdHoc,
-        customTitle: stored.customTitle,
-        projectId: stored.projectId,
-        taskKey: stored.taskKey,
-        dateKey: stored.dateKey
-      };
-      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, lunchResume);
+      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, task);
       return;
     }
     if (this._engine.getCurrentSession() || this._resumePrompt) return;
-    if (!stored.isAdHoc && !this._engine.isTaskListed(stored.taskId)) {
-      this.askBeforeResuming(stored, 'standup');
+    const unlisted = !task.isAdHoc && !this._engine.isTaskListed(task.taskId);
+    if (stored.after === 'interruption' || unlisted) {
+      this.askBeforeResuming(task, stored.after, unlisted);
       return;
     }
-    this._engine.startTask(stored.taskId, stored.isAdHoc, stored.customTitle, stored.projectId, stored.taskKey);
+    this._engine.startTask(task.taskId, task.isAdHoc, task.customTitle, task.projectId, task.taskKey);
   }
 
-  private askBeforeResuming(stored: LunchResume, after: ResumePromptDTO['after']): void {
-    this._resumePrompt = { ...stored, after };
-    this._renderer.renderResumePrompt(after);
-    this.sendResumePrompt(ContextScheduleService.toPromptDto(stored, after));
+  private askBeforeResuming(stored: LunchResume, after: ResumePromptDTO['after'], unlisted: boolean): void {
+    this._resumePrompt = { ...stored, after, unlisted };
+    const prompt = ContextScheduleService.toPromptDto(this._resumePrompt);
+    this._renderer.renderResumePrompt(after, prompt.taskKey);
+    this.sendResumePrompt(prompt);
   }
 
   /**
-   * Takes back, at start, a stand-up still waiting to end: the session it
-   * switched to is open. Anything else stored is from a stand-up that ended
+   * Takes back, at start, a set-aside task still waiting: the session that
+   * replaced it is open. Anything else stored is from a session that ended
    * while the app was closed, and is not restarted behind the user's back.
+   * The stand-up's entry from before the set-aside was shared is read once.
    */
-  private adoptStoredStandup(): void {
-    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.STANDUP_RESUME_KEY, null);
+  private adoptStoredSetAside(): void {
+    const legacy = this._settingsRepo.getSetting<unknown>(ContextScheduleService.LEGACY_STANDUP_RESUME_KEY, null);
+    if (legacy !== null) {
+      if (isLegacyStandupResume(legacy)) {
+        const entry: SetAside = {
+          taskId: legacy.taskId,
+          isAdHoc: legacy.isAdHoc,
+          customTitle: legacy.customTitle,
+          projectId: legacy.projectId,
+          taskKey: legacy.taskKey,
+          dateKey: legacy.dateKey,
+          endsWith: legacy.standupSessionId,
+          after: 'standup'
+        };
+        this._settingsRepo.setSetting(ContextScheduleService.SET_ASIDE_KEY, entry);
+      }
+      this._settingsRepo.setSetting(ContextScheduleService.LEGACY_STANDUP_RESUME_KEY, null);
+    }
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.SET_ASIDE_KEY, null);
     if (stored === null) return;
     const open = this._engine.getCurrentSession();
-    if (isStandupResume(stored) && stored.dateKey === localDateKey(new Date()) && open?.sessionId === stored.standupSessionId) {
-      this._standupSessionId = stored.standupSessionId;
+    if (isSetAside(stored) && stored.dateKey === localDateKey(new Date()) && open?.sessionId === stored.endsWith) {
+      this._setAsideFor = stored.endsWith;
       return;
     }
-    this.forgetStandupResume();
+    this.forgetSetAside();
   }
 
   /**
-   * The stand-up's session ended, or the user moved on. Ended -- STOP,
-   * FINISH, DROP -- restarts the task before it, after the listeners have all
-   * heard of the end: started from inside this one, every listener after it
-   * would still be handed the ended session, and the renderer would draw the
-   * idle clock over the restarted task. Any other session is the user's
-   * choice, and nothing restarts.
+   * The interruption was assigned to the very task it set aside: the user is
+   * back on it, and asking "back to SCRUM-12?" when it ends would restart the
+   * task just logged.
    */
-  private followStandup(session: ActiveSessionDTO | null): void {
-    if (!this._standupSessionId || session?.sessionId === this._standupSessionId) return;
-    this._standupSessionId = null;
+  private dropSetAsideWhenAssignedToIt(session: ActiveSessionDTO | null): void {
+    if (!session || session.sessionId !== this._setAsideFor) return;
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.SET_ASIDE_KEY, null);
+    if (!isSetAside(stored) || stored.taskId !== session.taskId) return;
+    this._setAsideFor = null;
+    this.forgetSetAside();
+  }
+
+  /**
+   * The session a task was set aside for ended, or the user moved on. Ended
+   * -- STOP, FINISH, DROP -- brings the task back, after the listeners have
+   * all heard of the end: started from inside this one, every listener after
+   * it would still be handed the ended session, and the renderer would draw
+   * the idle clock over the restarted task. Any other session is the user's
+   * choice, and nothing comes back.
+   */
+  private followSetAside(session: ActiveSessionDTO | null): void {
+    if (!this._setAsideFor || session?.sessionId === this._setAsideFor) return;
+    this._setAsideFor = null;
     if (session) {
-      this.forgetStandupResume();
+      this.forgetSetAside();
       return;
     }
-    queueMicrotask(() => this.resumeAfterStandup());
+    queueMicrotask(() => this.resumeAfterSetAside());
   }
 
   /**
@@ -608,7 +709,8 @@ export class ContextScheduleService {
    * running. Found on the real bar (2026-10-15).
    */
   private onSessionChanged(session: ActiveSessionDTO | null): void {
-    this.followStandup(session);
+    this.followSetAside(session);
+    this.dropSetAsideWhenAssignedToIt(session);
     const before = this._lastSeen;
     this.noteSeen(session);
     if (session?.status !== 'TRACKING') return;
@@ -662,7 +764,7 @@ export class ContextScheduleService {
   private closeResumePrompt(between?: () => void): void {
     this._resumePrompt = null;
     this.forgetLunchResume();
-    this.forgetStandupResume();
+    this.forgetSetAside();
     // The session starts under the prompt's lock, and its release draws it.
     between?.();
     this._priorityEngine.releaseActiveLock(RESUME_PROMPT_EVENT);
@@ -723,8 +825,8 @@ export class ContextScheduleService {
     win.webContents.send(channel, payload);
   }
 
-  private forgetStandupResume(): void {
-    this._settingsRepo.setSetting(ContextScheduleService.STANDUP_RESUME_KEY, null);
+  private forgetSetAside(): void {
+    this._settingsRepo.setSetting(ContextScheduleService.SET_ASIDE_KEY, null);
   }
 
   /** Brings the window up to ask, as the ceremonies do; null closes the dialog. */
@@ -738,8 +840,11 @@ export class ContextScheduleService {
     win.webContents.send(IPCChannel.ON_RESUME_PROMPT, prompt);
   }
 
-  private static toPromptDto(data: LunchResume, after: ResumePromptDTO['after']): ResumePromptDTO {
-    return { taskKey: data.taskKey || data.taskId, taskTitle: data.customTitle ?? '', after };
+  /** Unlisted goes without saying after lunch and the stand-up, which ask only then. */
+  private static toPromptDto(data: ResumeQuestion): ResumePromptDTO {
+    const prompt: ResumePromptDTO = { taskKey: data.taskKey || data.taskId, taskTitle: data.customTitle ?? '', after: data.after };
+    if (data.after === 'interruption' && data.unlisted) prompt.unlisted = true;
+    return prompt;
   }
 
   private static lunchWindow(settings: ScheduleSettingsDTO): { startMins: number; endMins: number } {

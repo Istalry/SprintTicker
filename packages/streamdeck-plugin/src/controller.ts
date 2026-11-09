@@ -1,7 +1,7 @@
 import type { DeckRequest } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from './app-link';
-import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, playsOnPress, playsOnQuestion, tickPeriodMs, ticksWithTheClock } from './faces';
-import { KeyKind } from './key-kinds';
+import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, playsOnPress, playsOnQuestion, resolveKind, tickPeriodMs, ticksWithTheClock } from './faces';
+import { FixedKind, KeyKind, isAnswerKind } from './key-kinds';
 import { renderFace } from './svg';
 
 /**
@@ -18,6 +18,14 @@ export const CONFIRM_WINDOW_MS = 4000;
  * key to come up, so the window appearing is the sign it was taken.
  */
 export const LONG_PRESS_MS = 500;
+
+/**
+ * How long an answer key ignores presses after it changed meaning. The
+ * stand-up's question arriving as a finger comes down on DONE would
+ * otherwise join the stand-up: a press this soon after the change was
+ * aimed at what the key showed before, so it only flashes the key.
+ */
+export const ANSWER_SETTLE_MS = 700;
 
 /** The clock's step for a running session's key. */
 export const TICK_MS = 1000;
@@ -67,6 +75,9 @@ interface Key {
   drawn: string | null;
   /** Set while a one-shot plays: the state's redraws wait for its end. */
   playing: unknown;
+  /** What the key stands for now -- itself, unless it is an answer key -- and since when. */
+  meaning: FixedKind;
+  meaningSince: number;
 }
 
 /**
@@ -103,7 +114,11 @@ export class DeckController {
 
   /** A key came into view: a page, a folder or a profile was shown. */
   public appear(kind: KeyKind, handle: KeyHandle): void {
-    this._keys.set(handle.id, { kind, handle, armedUntil: null, disarm: null, hold: null, drawn: null, playing: null });
+    this._keys.set(handle.id, {
+      kind, handle, armedUntil: null, disarm: null, hold: null, drawn: null, playing: null,
+      // A key coming into view is read as it is: it changed for nobody.
+      meaning: resolveKind(kind, this.linkContext()), meaningSince: Number.NEGATIVE_INFINITY
+    });
     this.draw(handle.id);
     this.updateTicker();
   }
@@ -160,6 +175,11 @@ export class DeckController {
   /** Does what the key's face says. */
   private async act(key: Key, held: boolean): Promise<void> {
     const id = key.handle.id;
+    if (isAnswerKind(key.kind) && this._now().getTime() - key.meaningSince < ANSWER_SETTLE_MS) {
+      this._log(`[SprintTicker] ${key.kind} pressed as it became ${key.meaning}: ignored.`);
+      await key.handle.showAlert();
+      return;
+    }
     const plan = planPress(key.kind, this.contextOf(key), held);
     if (plan.type === 'none') {
       await key.handle.showAlert();
@@ -197,7 +217,18 @@ export class DeckController {
       for (const key of this._keys.values()) this.clearArm(key);
       this._lastTaskId = taskId;
     }
-    // A question arriving is the yes and no keys' event.
+    // An answer key that means something else now: its question, if one was
+    // armed, was about what it meant before, and a press just now was aimed
+    // at that too (ANSWER_SETTLE_MS).
+    const now = this._now().getTime();
+    for (const key of this._keys.values()) {
+      const meaning = resolveKind(key.kind, this.linkContext());
+      if (meaning === key.meaning) continue;
+      key.meaning = meaning;
+      key.meaningSince = now;
+      this.clearArm(key);
+    }
+    // A question arriving is the yes and no keys' event, and the answer keys'.
     const prompt = this._link.status === 'online' ? (this._link.message?.state.prompt ?? null) : null;
     if (prompt !== null && prompt !== this._lastPrompt) {
       for (const key of this._keys.values()) if (playsOnQuestion(key.kind)) this.play(key);
@@ -230,6 +261,10 @@ export class DeckController {
   private clearHold(key: Key): void {
     if (key.hold !== null) this._clearTimeout(key.hold);
     key.hold = null;
+  }
+
+  private linkContext(): Pick<KeyContext, 'link' | 'message'> {
+    return { link: this._link.status, message: this._link.message };
   }
 
   private contextOf(key: Key): KeyContext {

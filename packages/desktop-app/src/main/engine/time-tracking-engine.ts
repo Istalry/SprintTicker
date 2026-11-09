@@ -1,11 +1,11 @@
 import { EventEmitter } from 'events';
 import { SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
-import { TaskRepository } from '../db/repositories/task-repository';
+import { TaskRepository, retireTasks } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { SettingsRepository } from '../db/repositories/settings-repository';
-import { ActiveSessionDTO, TaskDTO, ProjectDTO, PauseIntervalDTO, ArgumentException } from '../../shared/dtos';
+import { ActiveSessionDTO, TaskDTO, ProjectDTO, PauseIntervalDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
 import { workedSecondsUntil } from '../../shared/session-review';
 import { addLocalDays, localDateKey } from '../../shared/local-date';
 import { DEFAULT_SPLIT_PAUSE_MINUTES, mergeShortPieces, splitWork, workedSecondsByLocalDay, DayShare } from '../../shared/work-split';
@@ -18,7 +18,7 @@ import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
 import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
 import { hasTaskPage } from '../../shared/task-page';
-import { interruptionTitle } from '../../shared/interruption';
+import { checkAdHocTitle, interruptionTitle } from '../../shared/interruption';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -249,6 +249,11 @@ export class TimeTrackingEngine extends EventEmitter {
         ...(ownerName ? { taskOwnerName: ownerName } : {})
       };
     }
+    // An interruption not yet named nor assigned says so: read from its task
+    // row, which naming it clears, so the session never holds a stale copy.
+    if (session && (session.isAdHoc || isAdHocTaskId(session.taskId)) && this._taskRepo.getTaskById(session.taskId)?.unsorted) {
+      return { ...session, unsorted: true };
+    }
     return session;
   }
 
@@ -323,6 +328,90 @@ export class TimeTrackingEngine extends EventEmitter {
     const title = interruptionTitle(at);
     const task = this._taskRepo.createAdHocTask(title, this.adHocTaskKey(), true);
     return this.startTask(task.id, true, title);
+  }
+
+  /**
+   * Names the open ad-hoc session -- an interruption, typically -- and its
+   * task, so History shows the name too. The task row and the session's
+   * copy change together: the open session copies its task's title, and a
+   * rename of one alone would show two names. One notification, so one
+   * redraw of the bar.
+   *
+   * @throws ArgumentException with no ad-hoc session open, or an empty name.
+   */
+  public renameAdHocSession(title: string): ActiveSessionDTO {
+    const name = checkAdHocTitle(title);
+    const open = this.getCurrentSession();
+    if (!open || !(open.isAdHoc || isAdHocTaskId(open.taskId))) {
+      throw new ArgumentException('Only ad-hoc work is named here; a provider task keeps its own name.', 'title');
+    }
+    this._taskRepo.renameAdHocTask(open.taskId, name);
+    this._sessionRepo.renameSessionTask(open.sessionId, open.taskKey, name);
+    this._currentSession = this._sessionRepo.getActiveSession();
+    this.notifyListeners();
+    return this.getCurrentSession()!;
+  }
+
+  /**
+   * Names ad-hoc work after the fact, from History or the wrap-up: the task
+   * row, so every worklog of it reads the new name, and clears its unsorted
+   * mark. Local only: ad-hoc time was never sent. The open session's own
+   * task is renamed through `renameAdHocSession`, so its copy of the title
+   * follows and the bar redraws once.
+   *
+   * @throws ArgumentException for a provider's task, an unknown one, or an empty name.
+   */
+  public renameAdHocTask(taskId: string, title: string): void {
+    const name = checkAdHocTitle(title);
+    if (!taskId || !isAdHocTaskId(taskId)) {
+      throw new ArgumentException('Only ad-hoc work is named here; a provider task keeps its own name.', 'taskId');
+    }
+    if (!this._taskRepo.getTaskById(taskId)) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+    if (this.getCurrentSession()?.taskId === taskId) {
+      this.renameAdHocSession(name);
+      return;
+    }
+    this._taskRepo.renameAdHocTask(taskId, name);
+  }
+
+  /**
+   * Assigns the open ad-hoc session to a task, in place: its start and pauses
+   * stay, so all of its time goes to the task when it ends, and to the
+   * task's provider.
+   *
+   * The session gets its provider now -- ad-hoc work had none -- and keeps it,
+   * which is what "fixed at start" protects: the time never follows whichever
+   * provider is active when it ends. The task is then taken up as a start
+   * takes it up: In Progress for the user's own listed task, claimed when
+   * nobody has it, left as it is when it is a teammate's. The ad-hoc row is
+   * retired: deleted when nothing was logged on it.
+   *
+   * @throws ArgumentException with no ad-hoc session open, or no such task.
+   */
+  public assignSessionToTask(taskId: string): ActiveSessionDTO {
+    if (!taskId) throw new ArgumentNullException('taskId');
+    const open = this.getCurrentSession();
+    if (!open || !(open.isAdHoc || isAdHocTaskId(open.taskId))) {
+      throw new ArgumentException('Only ad-hoc work is assigned to a task while it runs.', 'taskId');
+    }
+    if (isAdHocTaskId(taskId)) throw new ArgumentException('Assign it to a task, not to other ad-hoc work.', 'taskId');
+    const task = this._taskRepo.getTaskById(taskId);
+    if (!task) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+
+    const providerId = this.providerOfProject(task.projectId);
+    this._sessionRepo.retargetSession(open.sessionId, {
+      projectId: task.projectId,
+      taskId: task.id,
+      taskKey: task.key,
+      taskTitle: task.title,
+      ...(providerId ? { providerId } : {})
+    });
+    retireTasks(this._taskRepo.getConnection().getDb(), 'id = ?', [open.taskId]);
+    this._currentSession = this._sessionRepo.getActiveSession();
+    const claimable = this.takeUpTask(task, providerId);
+    this.notifyListeners();
+    if (claimable) this.claimTask(this._currentSession!, providerId);
+    return this.getCurrentSession()!;
   }
 
   /// <summary>
@@ -402,28 +491,12 @@ export class TimeTrackingEngine extends EventEmitter {
         if (!customTitle) finalTitle = existingTask.title;
         if (existingTask.projectId) finalProjectId = existingTask.projectId;
 
-        // A task the provider no longer lists for the user -- restarted after
-        // lunch or a forgotten night, once they said yes -- is tracked as it
-        // is. Saving the row took it out of the archive, back into the lists,
-        // and the transition moved a task that is someone else's, or closed,
-        // to In Progress on the provider.
-        // Someone else's task in progress is listed too, and is tracked
-        // without being moved; one nobody owns is not moved before it is
-        // taken.
-        const listed = !adHoc && !this._taskRepo.isArchived(taskId) && !this._syncWorker.isUnlisted(taskId);
-        const stillListed = listed && existingTask.ownership === undefined;
-        // One nobody owns is taken once the session is down: see claimTask.
-        claimable = listed && existingTask.ownership === TaskOwnership.UNASSIGNED;
-        if (adHoc || stillListed) {
+        if (adHoc) {
           if (existingTask.status !== 'in_progress') {
             this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
           }
-        }
-
-        // An ad-hoc task exists only here; the provider would be asked to move
-        // an issue it has never heard of.
-        if (stillListed) {
-          this.moveTask(this.providerOfProject(finalProjectId), taskId, 'in_progress');
+        } else {
+          claimable = this.takeUpTask(existingTask, this.providerOfProject(finalProjectId));
         }
       }
     }
@@ -456,6 +529,30 @@ export class TimeTrackingEngine extends EventEmitter {
     if (claimable) this.claimTask(this._currentSession!, providerId);
 
     return this._currentSession!;
+  }
+
+  /**
+   * What starting work on a provider's task does to it, and nothing about the
+   * session: shared by a start and by assigning an interruption to a task, so
+   * the two cannot treat a task differently. True when nobody owns it, for
+   * the caller to claim once its session is down (`claimTask`).
+   *
+   * A task the provider no longer lists for the user -- restarted after
+   * lunch or a forgotten night, once they said yes -- is tracked as it is.
+   * Saving the row took it out of the archive, back into the lists, and the
+   * transition moved a task that is someone else's, or closed, to In
+   * Progress on the provider. Someone else's task in progress is listed too,
+   * and is tracked without being moved; one nobody owns is not moved before
+   * it is taken.
+   */
+  private takeUpTask(task: TaskDTO, providerId: string | undefined): boolean {
+    const listed = !this._taskRepo.isArchived(task.id) && !this._syncWorker.isUnlisted(task.id);
+    const stillListed = listed && task.ownership === undefined;
+    if (stillListed) {
+      if (task.status !== 'in_progress') this._taskRepo.updateTask({ ...task, status: 'in_progress' });
+      this.moveTask(providerId, task.id, 'in_progress');
+    }
+    return listed && task.ownership === TaskOwnership.UNASSIGNED;
   }
 
   /**

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ActiveTaskHeroCard } from '../../src/renderer/components/ActiveTaskHeroCard';
-import { TRACKING_SESSION } from './electron-api-mock';
+import { TRACKING_SESSION, installElectronApi } from './electron-api-mock';
 
 describe('ActiveTaskHeroCard', () => {
-  const card = (session = TRACKING_SESSION, onComplete = vi.fn(), onDiscard = vi.fn()) => {
+  const card = (session = TRACKING_SESSION, onComplete = vi.fn(), onDiscard = vi.fn(), onInterrupt = vi.fn()) => {
     render(
       <ActiveTaskHeroCard
         session={session}
@@ -13,10 +13,80 @@ describe('ActiveTaskHeroCard', () => {
         onComplete={onComplete}
         onDiscard={onDiscard}
         onOpenTaskModal={vi.fn()}
+        onInterrupt={onInterrupt}
       />
     );
     return onComplete;
   };
+
+  const INTERRUPTION = { ...TRACKING_SESSION, taskId: 'adhoc_1_x', taskKey: 'MISC-1', taskTitle: 'Interruption 10:30', isAdHoc: true, unsorted: true as const };
+
+  it('Rename_AdHocSession_EnterNamesIt', async () => {
+    const bridge = installElectronApi();
+    card(INTERRUPTION);
+
+    fireEvent.click(screen.getByLabelText('Rename Interruption 10:30'));
+    const field = screen.getByLabelText('Name this work');
+    fireEvent.change(field, { target: { value: '  Call with Marc ' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(bridge.api.renameSession).toHaveBeenCalledWith('Call with Marc');
+  });
+
+  it('Rename_Escape_KeepsTheName', () => {
+    const bridge = installElectronApi();
+    card(INTERRUPTION);
+
+    fireEvent.click(screen.getByLabelText('Rename Interruption 10:30'));
+    fireEvent.keyDown(screen.getByLabelText('Name this work'), { key: 'Escape' });
+
+    expect(bridge.api.renameSession).not.toHaveBeenCalled();
+    expect(screen.getByText('Interruption 10:30')).toBeTruthy();
+  });
+
+  it('Render_ProviderTask_OffersNoRenameNorAssign', () => {
+    card();
+
+    expect(screen.queryByLabelText(/^Rename /)).toBeNull();
+    expect(screen.queryByText('Assign to Task')).toBeNull();
+  });
+
+  it('Render_UnsortedInterruption_SaysWhatToDoWithIt', () => {
+    card(INTERRUPTION);
+
+    expect(screen.getByText(/name it, or assign it to a task/)).toBeTruthy();
+  });
+
+  it('Assign_AdHocSession_OpensThePicker', () => {
+    const onAssign = vi.fn();
+    render(
+      <ActiveTaskHeroCard
+        session={INTERRUPTION}
+        onPause={vi.fn()}
+        onResume={vi.fn()}
+        onComplete={vi.fn()}
+        onDiscard={vi.fn()}
+        onOpenTaskModal={vi.fn()}
+        onInterrupt={vi.fn()}
+        onAssign={onAssign}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Assign to Task'));
+
+    expect(onAssign).toHaveBeenCalledTimes(1);
+  });
+
+  it('Interrupt_OneClick_AsksNothing', () => {
+    // Someone is at the desk: the timer starts on the click, nothing to fill in.
+    const onInterrupt = vi.fn();
+    card(TRACKING_SESSION, vi.fn(), vi.fn(), onInterrupt);
+
+    fireEvent.click(screen.getByText('Interrupt'));
+
+    expect(onInterrupt).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
 
   it('Render_Tracking_OffersPauseNotResume', () => {
     card();

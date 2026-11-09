@@ -1,6 +1,6 @@
 import { BusyBarDriver } from './busybar-driver';
 import { createHash } from 'crypto';
-import { ActiveSessionDTO, ColorThemeId, LedAnimationMode, HardwareDisplayStateDTO, ScreenIconDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
+import { ActiveSessionDTO, ColorThemeId, LedAnimationMode, HardwareDisplayStateDTO, ScreenIconDTO, BitmapIconId, UserMode, DisplayElementDTO, ArgumentException, ArgumentNullException, TaskDTO, ResumePromptDTO } from '../../shared/dtos';
 import { getBitmapById } from '../../shared/pixel-bitmaps';
 import { AppIconBitmapProcessor } from './app-icon-bitmap-processor';
 import { IPriorityPreemptionEngine, NotificationEventName } from '../services/priority-preemption-engine';
@@ -42,20 +42,37 @@ const PAUSED_CONFIRM_HINT_COLOR = '#E5E7EB';
  * a 55px row; OK answers yes and BACK no, as on every question on the bar.
  */
 export const RESUME_PROMPT_TEXT = { question: 'NOT YOURS', hint: 'RESUME IT?' } as const;
+/**
+ * After an interruption: row 0 is the task it would bring back, row 1 the
+ * answer. `RESUME? OK=YES` is 56px of the 55px row in Sprint Small.
+ */
+export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BACK? OK=YES' } as const;
 const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
- * The paused menu, left to right: stop and keep the task open, finish it, or
- * throw the session away.
+ * The paused menu, left to right: interrupt it, stop and keep the task open,
+ * finish it, or throw the session away.
  *
- * Row 1 is 55px and the three do not fit in it -- STOP, FINISH and DISCARD
- * come to 77 with their bars -- so the row shows the pair that holds the
- * choice, with an arrow towards the one off screen. Even a pair is tight:
- * FINISH beside DISCARD is 58, so DISCARD reads DROP on the bar.
+ * Interrupt is at the left end so the wheel reaches it blind -- it stops at
+ * either end -- and DISCARD keeps the right end. The menu still opens on
+ * FINISH: two notches left and a click interrupt.
+ *
+ * Row 1 is 55px and the four do not fit in it, so the row shows the pair
+ * that holds the choice, with an arrow towards each side that has more.
+ * Even a pair is tight: FINISH beside DISCARD is 58, so DISCARD reads DROP on
+ * the bar, and INTERRUPT (38 with its bar) fits beside nothing, so it is
+ * shown alone.
  */
-export const PAUSED_CHOICES = ['STOP', 'FINISH', 'DISCARD'] as const;
+export const PAUSED_CHOICES = ['INTERRUPT', 'STOP', 'FINISH', 'DISCARD'] as const;
 export type PausedChoice = (typeof PAUSED_CHOICES)[number];
-export const PAUSED_CHOICE_LABELS: Record<PausedChoice, string> = { STOP: 'STOP', FINISH: 'FINISH', DISCARD: 'DROP' };
+export const PAUSED_CHOICE_LABELS: Record<PausedChoice, string> = {
+  INTERRUPT: 'INTERRUPT',
+  STOP: 'STOP',
+  FINISH: 'FINISH',
+  DISCARD: 'DROP'
+};
+/** Where a pause opens: the row it always had, so a press there does what it always did. */
+export const PAUSED_MENU_OPENS_ON: PausedChoice = 'FINISH';
 
 /**
  * A question the paused screen asks instead of offering the menu. The
@@ -71,17 +88,19 @@ export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint
 };
 
 /**
- * The two choices row 1 shows for a selection, and whether one lies off
- * screen on either side. STOP and FINISH unless DISCARD is chosen, so a pause
- * opens on the row it always had.
+ * The choices row 1 shows for a selection, and whether more lie off screen
+ * on either side. STOP and FINISH unless DISCARD or INTERRUPT is chosen, so a
+ * pause opens on the row it always had; INTERRUPT alone, since it fits
+ * beside nothing.
  */
 export function pausedChoicesShown(selection: PausedChoice): {
   choices: PausedChoice[];
   moreLeft: boolean;
   moreRight: boolean;
 } {
+  if (selection === 'INTERRUPT') return { choices: ['INTERRUPT'], moreLeft: false, moreRight: true };
   const index = PAUSED_CHOICES.indexOf(selection);
-  const start = index === PAUSED_CHOICES.length - 1 ? index - 1 : 0;
+  const start = index === PAUSED_CHOICES.length - 1 ? index - 1 : PAUSED_CHOICES.indexOf('STOP');
   return {
     choices: PAUSED_CHOICES.slice(start, start + 2),
     moreLeft: start > 0,
@@ -499,7 +518,7 @@ export class DisplayRenderer {
     this.showIdleClockFallback = enabled;
   }
 
-  private pausedSelection: PausedChoice = 'FINISH';
+  private pausedSelection: PausedChoice = PAUSED_MENU_OPENS_ON;
   private pausedConfirm: PausedConfirm | null = null;
 
   /**
@@ -524,6 +543,15 @@ export class DisplayRenderer {
     const index = PAUSED_CHOICES.indexOf(this.pausedSelection);
     const next = Math.min(PAUSED_CHOICES.length - 1, Math.max(0, index + step));
     return this.selectPausedChoice(PAUSED_CHOICES[next]);
+  }
+
+  /**
+   * Puts the menu back where a pause opens, without drawing: after Interrupt
+   * the session is no longer paused, and the next pause must not open on
+   * INTERRUPT, where a click starts another one.
+   */
+  public resetPausedChoice(): void {
+    this.pausedSelection = PAUSED_MENU_OPENS_ON;
   }
 
   /// <summary>
@@ -1047,12 +1075,16 @@ export class DisplayRenderer {
    * It is not restarted without asking. OK resumes it and BACK leaves it, in
    * InputDecoder; the window asks the same question.
    */
-  public renderResumePrompt(after: 'lunch' | 'standup' = 'lunch'): DisplayPayload {
+  public renderResumePrompt(after: ResumePromptDTO['after'] = 'lunch', taskKey?: string): DisplayPayload {
+    // After an interruption the question is asked of any task, so it names
+    // the one it would bring back; the key comes first and is cut, never
+    // the answer hint.
+    const interruption = after === 'interruption';
     return this.requestRender(RESUME_PROMPT_EVENT, () => {
       this.paintIconAndTwoRows(
-        getBitmapById(after === 'standup' ? 'clock' : 'burger'),
-        RESUME_PROMPT_TEXT.question,
-        RESUME_PROMPT_TEXT.hint,
+        getBitmapById(interruption ? 'task_in_progress' : after === 'standup' ? 'clock' : 'burger'),
+        interruption ? taskKey || RESUME_AFTER_INTERRUPTION_TEXT.fallback : RESUME_PROMPT_TEXT.question,
+        interruption ? RESUME_AFTER_INTERRUPTION_TEXT.hint : RESUME_PROMPT_TEXT.hint,
         PAUSED_CONFIRM_COLOR,
         PAUSED_CONFIRM_HINT_COLOR
       );
@@ -1090,13 +1122,18 @@ export class DisplayRenderer {
    *  - Row 0 (y=0): Task title (TASK-KEY: Title)
    *  - Row 1 (y=8): Task timer (HH:MM, in TIMER_FONT)
    *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), the time moves to row 0
-   *    and row 1 offers STOP and FINISH, chosen with the wheel.
+   *    and row 1 offers INTERRUPT, STOP, FINISH and DROP, chosen with the wheel.
    */
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
     // A question belongs to the pause it was asked in. Resumed, stopped or
     // replaced, the session takes it with it; the next pause offers the menu.
-    if (!session || session.status !== 'PAUSED') this.pausedConfirm = null;
+    // So does INTERRUPT: a pause left with START while it was chosen must not
+    // open the next one there, where a click starts an interruption.
+    if (!session || session.status !== 'PAUSED') {
+      this.pausedConfirm = null;
+      if (this.pausedSelection === 'INTERRUPT') this.pausedSelection = PAUSED_MENU_OPENS_ON;
+    }
 
     if (session && session.status === 'TRACKING' && this.isCelebrating && session.sessionId !== this.sceneSessionId) {
       this.isCelebrating = false;

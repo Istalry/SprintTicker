@@ -116,6 +116,17 @@ describe('TaskSelectionModal', () => {
     <TaskSelectionModal isOpen={isOpen} onClose={vi.fn()} projects={projects} onSelectTask={vi.fn()} />
   );
 
+  it('AssignMode_OffersNoAdHocWork', async () => {
+    // Ad-hoc work is what is being assigned: neither a new one nor the ad-hoc project.
+    installElectronApi({ getProjects: vi.fn().mockResolvedValue([...PROJECTS, { id: 'ADHOC', key: 'ADHOC', name: 'Custom Ad-Hoc / Misc Overhead' }]) });
+    render(<TaskSelectionModal isOpen onClose={vi.fn()} projects={PROJECTS} onSelectTask={vi.fn()} mode="assign" />);
+
+    expect(await screen.findByText('Operations')).toBeTruthy();
+    expect(screen.getByText('Assign to a Task: Select its Project')).toBeTruthy();
+    expect(screen.queryByText('+ Create Custom / Ad-Hoc Task')).toBeNull();
+    expect(screen.queryByText('Custom Ad-Hoc / Misc Overhead')).toBeNull();
+  });
+
   it('Reopen_AfterChoosingAProject_StartsAgainOnStepOne', async () => {
     installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
     const { rerender } = render(modal(true));

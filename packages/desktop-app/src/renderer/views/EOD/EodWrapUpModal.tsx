@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Moon, CheckCircle2, Power, BellOff, Clock } from 'lucide-react';
+import { X, Moon, CheckCircle2, Power, BellOff, Clock, Zap } from 'lucide-react';
 import { localDateKey } from '../../../shared/local-date';
+import { InlineRename } from '../../components/InlineRename';
 
 interface EodWrapUpModalProps {
   isOpen: boolean;
@@ -27,17 +28,24 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
   const [shouldShutdown, setShouldShutdown] = useState<boolean>(false);
   const [completed, setCompleted] = useState<boolean>(false);
   const [confirmStep, setConfirmStep] = useState<number>(0);
-  const [summary, setSummary] = useState<{ totalSeconds: number; tasksCount: number; items: Array<{ key: string; title: string; durationSeconds: number }> }>({
+  const [summary, setSummary] = useState<{ totalSeconds: number; tasksCount: number; items: Array<{ taskId?: string; key: string; title: string; durationSeconds: number; unsorted?: true }> }>({
     totalSeconds: 0,
     tasksCount: 0,
     items: []
   });
+  // Bumped after naming an interruption, so the day is read again.
+  const [revision, setRevision] = useState(0);
+  // Today's interruptions not yet named, listed before the day closes.
+  const toSort = summary.items.filter(item => item.unsorted && item.taskId);
 
   useEffect(() => {
     if (window.electronAPI?.getDailyWorklogSummary) {
       const todayStr = localDateKey();
-      window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary);
+      window.electronAPI.getDailyWorklogSummary(todayStr).then(setSummary, err => console.warn('[EodWrapUpModal] Failed to read the day:', err));
     }
+  }, [revision]);
+
+  useEffect(() => {
     if (window.electronAPI?.getScheduleSettings) {
       window.electronAPI.getScheduleSettings().then((sched) => {
         if (sched) {
@@ -159,6 +167,28 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
                   <div className="text-[11px] text-text-secondary italic">No active session worklogs recorded today yet.</div>
                 )}
               </div>
+
+              {toSort.length > 0 && (
+                <section aria-label="Interruptions to sort" className="bg-accent-amber/5 border border-accent-amber/30 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center space-x-1.5 text-xs font-bold text-white">
+                    <Zap className="w-4 h-4 text-accent-amber" />
+                    <span>Interruptions to sort ({toSort.length})</span>
+                  </div>
+                  <p className="text-[11px] text-text-secondary">Name them while you remember what they were. Their time stays in SprintTicker.</p>
+                  {toSort.map(item => (
+                    <div key={item.taskId} className="flex items-center justify-between text-xs py-1 px-2 bg-dark-800/60 rounded border border-border-dark">
+                      <InlineRename
+                        title={item.title}
+                        ownerId={item.taskId!}
+                        onRename={name => window.electronAPI.renameAdHocTask(item.taskId!, name).then(() => setRevision(r => r + 1))}
+                        className="text-text-primary"
+                        inputClassName="flex-1 bg-dark-900 border border-accent-blue rounded px-2 py-0.5 text-white outline-none"
+                      />
+                      <span className="text-text-secondary font-bold ml-2">{formatDuration(item.durationSeconds)}</span>
+                    </div>
+                  ))}
+                </section>
+              )}
 
               {/* Checklist */}
               <div className="bg-dark-900 p-4 rounded-lg border border-border-dark space-y-2 text-xs font-mono">

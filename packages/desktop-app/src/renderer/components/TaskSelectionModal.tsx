@@ -8,6 +8,7 @@ import { useOnlyProjectsWithTasks } from '../hooks/useOnlyProjectsWithTasks';
 import { useTaskVisibility } from '../hooks/useTaskVisibility';
 import { ProjectFilterToggle } from './ProjectFilterToggle';
 import { TaskOwnerBadge, TaskVisibilityToggle } from './TaskVisibilityToggle';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 
 interface TaskSelectionModalProps {
   isOpen: boolean;
@@ -15,6 +16,11 @@ interface TaskSelectionModalProps {
   projects: ProjectDTO[];
   tasks?: TaskDTO[];
   onSelectTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => void;
+  /**
+   * `assign` picks the task an open ad-hoc session goes to: the same lists,
+   * without the ad-hoc choices -- ad-hoc work is what is being assigned.
+   */
+  mode?: 'start' | 'assign';
 }
 
 const statusConfig: Record<string, { label: string; icon: React.FC<{ className?: string }>; color: string }> = {
@@ -36,8 +42,10 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = props =>
 const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   onClose,
   projects: propProjects,
-  onSelectTask
+  onSelectTask,
+  mode = 'start'
 }) => {
+  const assigning = mode === 'assign';
   const [step, setStep] = useState<1 | 2>(1);
   // The prop is what App had; the dialog asks main for the current list on
   // mount and falls back to the prop if that fails.
@@ -50,7 +58,8 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [onlyWithTasks, setOnlyWithTasks] = useOnlyProjectsWithTasks();
   const [visibility, setVisibility] = useTaskVisibility();
-  const { visible: listedProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(activeProjects, onlyWithTasks, [], visibility);
+  const { visible: shownProjects, hiddenCount, nothingAssigned } = filterProjectsWithTasks(activeProjects, onlyWithTasks, [], visibility);
+  const listedProjects = assigning ? shownProjects.filter(p => p.id !== ADHOC_PROJECT_ID) : shownProjects;
 
   useEffect(() => {
     if (!window.electronAPI?.getProjects) return;
@@ -148,7 +157,9 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
               </button>
             )}
             <h3 className="text-md font-bold text-white font-mono">
-              {step === 1
+              {assigning && step === 1
+                ? 'Assign to a Task: Select its Project'
+                : step === 1
                 ? 'Step 1: Select Target Project'
                 : isAdHocMode
                 ? 'Step 2: Enter Custom Ad-Hoc Task Title'
@@ -205,6 +216,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                   </div>
                 )}
 
+                {!assigning && (
                 <button
                   onClick={() => {
                     setIsAdHocMode(true);
@@ -222,6 +234,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                     <div className="text-xs text-text-secondary">Kept in your Work History, not sent to your provider</div>
                   </div>
                 </button>
+                )}
               </div>
             </div>
           ) : isAdHocMode ? (

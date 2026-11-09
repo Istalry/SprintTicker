@@ -47,6 +47,12 @@ export interface DeckActionServiceDeps {
   /** Brings the window forward with its task picker open; false when there is no window. */
   openPicker: () => boolean;
   /**
+   * Starts an interruption, as the window's button does:
+   * `ContextScheduleService.interrupt`, which sets the task aside to ask
+   * about. A key with its own copy of that rule would drift (CLAUDE.md §3).
+   */
+  interrupt: () => void;
+  /**
    * The bar's icons in motion, so the Session key moves as the bar does.
    * Without it every icon is sent still.
    */
@@ -83,7 +89,7 @@ export class DeckActionService {
 
   constructor(deps: DeckActionServiceDeps) {
     if (!deps) throw new ArgumentNullException('deps');
-    for (const name of ['engine', 'renderer', 'priorityEngine', 'inputDecoder', 'openPicker'] as const) {
+    for (const name of ['engine', 'renderer', 'priorityEngine', 'inputDecoder', 'openPicker', 'interrupt'] as const) {
       if (!deps[name]) throw new ArgumentNullException(name);
     }
     this._deps = deps;
@@ -178,6 +184,10 @@ export class DeckActionService {
         return;
       case 'open-picker':
         if (!this._deps.openPicker()) throw new DeckRefusal('no-window', 'The SprintTicker window is not open.');
+        return;
+      case 'interrupt':
+        // Whatever runs, or nothing: an interruption starts from any state.
+        this._deps.interrupt();
         return;
       case 'prompt-yes':
       case 'prompt-no':

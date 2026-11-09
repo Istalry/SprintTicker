@@ -64,7 +64,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 | | |
 | :---: | :--- |
 | <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
-| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to STOP, FINISH or DROP, click to confirm. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to INTERRUPT, STOP, FINISH or DROP, click to confirm. |
 | <img src="docs/images/bar-unity-compile.webp" width="304" alt="COMPILING with a spinning orange gear"> | 🛠️ **Unity compiling** — and **BUILDING 40%** with a progress line for a build. |
 | <img src="docs/images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game controller"> | 🎮 **Play Mode** — ON AIR, so nobody walks in on a playtest. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
@@ -121,6 +121,11 @@ deleted from Work History, and the change reaches Jira or OpenProject through
 the sync queue. Persisted
 through `better-sqlite3` with versioned schema migrations, so upgrading never
 discards existing worklogs.
+
+**Interrupt** starts a timer at once when someone comes to your desk -- one
+click on the session card, in the mini timer or in the tray -- on a new
+task named for the time; when it ends, you are asked whether to go back to
+the task it stopped.
 
 A **mini timer**, a small always-on-top window, shows the running task and its
 time on screen, with or without a bar, beside the icon of whatever holds the
@@ -301,8 +306,9 @@ discovers installed Unity projects and manages plugin injection.
 
 A plugin for Elgato's Stream Deck app puts the session on keys you place
 yourself: the running task and its time, pause and resume, the task picker,
-the three ends of a session, and yes or no to the stand-up, the wrap-up and
-the resume question -- six actions, a Stream Deck Mini's six keys. It talks to the app on
+Interrupt, and three answer keys that end the session -- done, not done,
+discard -- or answer yes or no to the stand-up, the wrap-up and the resume
+question, whichever applies. Five keys, on a Stream Deck Mini's six. It talks to the app on
 this machine, and every key turns grey while SprintTicker is closed. See
 [the plugin](#-stream-deck-plugin) below. Not yet tried on a physical deck.
 

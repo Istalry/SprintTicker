@@ -21,7 +21,9 @@ export class TrayManager {
     mainWindow: BrowserWindow,
     engine: TimeTrackingEngine,
     private readonly miniWindow?: MiniWindowController,
-    private readonly launchAtLogin?: LaunchAtLoginService
+    private readonly launchAtLogin?: LaunchAtLoginService,
+    /** Interrupt, as the window's button does it: `ContextScheduleService.interrupt`. */
+    private readonly interrupt?: () => void
   ) {
     this.mainWindow = mainWindow;
     this.engine = engine;
@@ -89,6 +91,20 @@ export class TrayManager {
         click: () => this.restoreWindow()
       },
       { type: 'separator' },
+      // First: an interruption is the moment there is no time to look for it.
+      ...(this.interrupt
+        ? [{
+            label: 'Start an Interruption',
+            click: () => {
+              try {
+                this.interrupt?.();
+              } catch (err) {
+                // A click must not take the main process down with it.
+                console.error('[TrayManager] Could not start an interruption:', err);
+              }
+            }
+          }]
+        : []),
       {
         label: 'Start / Pause Active Tracking',
         click: () => {

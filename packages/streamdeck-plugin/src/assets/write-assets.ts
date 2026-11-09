@@ -20,6 +20,10 @@ export const PLUGIN_DIR_NAME = 'io.github.istalry.sprintticker.sdPlugin';
 /** The glyph each action shows in Stream Deck's action list. */
 const LIST_GLYPHS: Record<KeyKind, Glyph> = {
   session: 'timer',
+  interrupt: 'zap',
+  'answer-a': 'yes',
+  'answer-b': 'no',
+  'answer-c': 'trash',
   'not-done': 'stop',
   done: 'check',
   discard: 'trash',

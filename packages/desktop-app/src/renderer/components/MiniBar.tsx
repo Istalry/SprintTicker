@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ListTodo, Pause, Play, Square, X } from 'lucide-react';
+import { AlertTriangle, Link2, ListTodo, Pause, Play, Square, X, Zap } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { useScreenIcon } from '../hooks/useScreenIcon';
 import { ScreenIcon } from './ScreenIcon';
 import { formatSeconds } from '../utils/formatters';
 import { finishNeedsConfirmation, taskLeftLabel } from '../../shared/task-left';
+import { isAdHocSession } from '../../shared/interruption';
+import { SessionTitle } from './SessionTitle';
 
 /**
  * The always-on-top mini timer: what the BUSY Bar shows, on screen.
@@ -22,7 +24,7 @@ import { finishNeedsConfirmation, taskLeftLabel } from '../../shared/task-left';
  * leaves the row to the session; the screen's own text is its tooltip.
  */
 export const MiniBar: React.FC = () => {
-  const { session, pause, resume, complete, discard } = useSession();
+  const { session, pause, resume, complete, discard, interrupt } = useSession();
   const screenIcon = useScreenIcon();
   const api = window.electronAPI;
   /**
@@ -83,7 +85,13 @@ export const MiniBar: React.FC = () => {
               )}
               <span className="truncate">{session.taskKey}</span>
             </div>
-            <div className="text-xs text-text-primary truncate" title={session.taskTitle}>{session.taskTitle}</div>
+            <div className="text-xs text-text-primary truncate [-webkit-app-region:no-drag]">
+              <SessionTitle
+                session={session}
+                className="text-xs text-text-primary truncate"
+                inputClassName="w-full bg-dark-900 border border-accent-blue rounded px-1 text-xs text-white focus:outline-none"
+              />
+            </div>
           </>
         ) : (
           <div className="text-xs text-text-secondary">No task running</div>
@@ -161,6 +169,26 @@ export const MiniBar: React.FC = () => {
               <Square className="w-4 h-4" />
             </button>
           )}
+          {session && isAdHocSession(session) && (
+            <button
+              type="button"
+              title="Assign this session to a task: all of its time goes there"
+              aria-label="Assign to a task"
+              className={button}
+              onClick={run('Open the assign picker', () => api.openAssignPicker())}
+            >
+              <Link2 className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            title="Interrupt: start a timer now, name or assign it afterwards"
+            aria-label="Interrupt"
+            className={button}
+            onClick={run('Interrupt', interrupt)}
+          >
+            <Zap className="w-4 h-4" />
+          </button>
           <button
             type="button"
             title={session ? 'Switch task' : 'Start a task'}
