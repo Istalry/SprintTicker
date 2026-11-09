@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A deleted worklog could stay in Jira or OpenProject.** When a send's
+  answer was lost -- a timeout, a dropped connection -- the entry may exist
+  at the provider while the worklog still reads as unsent. Deleting it then
+  sends a deletion that finds the entry by its marker. But if the worklog
+  had been corrected first, or "Retry failed" pressed, or its first send
+  refused for credentials, SprintTicker took it for one never sent and
+  deleted it here only. It now goes by whether a send was ever attempted.
+
 ## 1.4.0 — 2026-11-04
 
 Ready for BUSY Bar firmware 1.3. Firmware 1.3 reads its animations in a new
