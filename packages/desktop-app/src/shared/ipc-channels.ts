@@ -127,6 +127,7 @@ export enum IPCChannel {
   GET_SCREEN_ICON = 'display:get-screen-icon',
   ON_SCREEN_ICON = 'display:on-screen-icon',
   SET_COLOR_THEME = 'display:set-color-theme',
+  GET_COLOR_THEME = 'display:get-color-theme',
   TRIGGER_CONFETTI_BURST = 'display:trigger-confetti-burst',
   /**
    * Draws one real screen, for the debug panel.

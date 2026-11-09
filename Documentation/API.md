@@ -128,7 +128,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | `display:on-state-updated` | **Event** |
 | `display:get-screen-icon` | The icon of the screen on the bar, for the mini timer: `{ pixels, label, animation? }`, a 16x16 bitmap, the screen's top row or scene title, and the `.anim` the bar plays over it when it moves; or `null` while the firmware's clock shows |
 | `display:on-screen-icon` | **Event**, to every window, only when the icon changes -- the tracker's tick and a scene's frames do not move it |
-| `display:set-color-theme`, `display:trigger-confetti-burst` | Display options. `display:trigger-confetti-burst` plays DONE! alone, for the debug panel |
+| `display:set-color-theme`, `display:get-color-theme`, `display:trigger-confetti-burst` | Display options. The color theme is the task key's color on the bar: `set` takes `emerald` (blue), `cyberpunk` (pink), `retro_arcade` (amber) or `nordic_cyan` (pale cyan), refuses anything else, and stores it (`color_theme`) so a restart draws it again; `get` answers the stored one. `display:trigger-confetti-burst` plays DONE! alone, for the debug panel |
 | `display:preview-screen` | Draws one **real** screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting |
 
 ### Device, ceremonies, Unity, notifications, diagnostics, updates

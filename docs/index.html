@@ -1137,7 +1137,8 @@
       <code>--debug-notifications</code> to see it while troubleshooting.</p>
       <h4>⚡ Priority Rules</h4>
       <p>What the display shows when several things want it. Every claim has a score;
-      the highest holds the bar.</p>
+      the highest holds the bar. The arrows beside a claim move its level by 10 and
+      the list sorts itself again; type a level from 1 to 100 to place it exactly.</p>
       <p align="center">
         <img src="images/app-priority.png" width="80%" alt="Priority Rules: the active mode, and each claim with its level and its action in Work, Lunch and Away">
       </p><div class="table-wrap"><table>
@@ -1221,6 +1222,8 @@
       restart. Watch the connection status at the top of the window to see whether the
       new address answered; saving means the setting was stored, not that the bar
       replied. <strong>Reset to USB default</strong> puts the address back to <code>10.0.4.20</code>.</p>
+      <p>🎨 <strong>Task key color</strong> sets the color of the task key on the bar&#39;s front
+      display -- blue, pink, amber or pale cyan -- and is kept across restarts.</p>
       <p>🚀 <strong>Start with Windows</strong> starts SprintTicker when you sign in, in the tray,
       with no window over whatever you open first. The tray icon, the bar and the
       mini timer work as usual; open the window from the tray, or by starting
@@ -3096,8 +3099,8 @@
       <td align="left"><strong>Event</strong>, to every window, only when the icon changes -- the tracker&#39;s tick and a scene&#39;s frames do not move it</td>
       </tr>
       <tr>
-      <td align="left"><code>display:set-color-theme</code>, <code>display:trigger-confetti-burst</code></td>
-      <td align="left">Display options. <code>display:trigger-confetti-burst</code> plays DONE! alone, for the debug panel</td>
+      <td align="left"><code>display:set-color-theme</code>, <code>display:get-color-theme</code>, <code>display:trigger-confetti-burst</code></td>
+      <td align="left">Display options. The color theme is the task key&#39;s color on the bar: <code>set</code> takes <code>emerald</code> (blue), <code>cyberpunk</code> (pink), <code>retro_arcade</code> (amber) or <code>nordic_cyan</code> (pale cyan), refuses anything else, and stores it (<code>color_theme</code>) so a restart draws it again; <code>get</code> answers the stored one. <code>display:trigger-confetti-burst</code> plays DONE! alone, for the debug panel</td>
       </tr>
       <tr>
       <td align="left"><code>display:preview-screen</code></td>

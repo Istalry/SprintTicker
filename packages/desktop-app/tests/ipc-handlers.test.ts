@@ -769,6 +769,31 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('the task key colour', () => {
+    it('ColorTheme_NothingStored_ReadsTheDefault', async () => {
+      await expect(invoke(IPCChannel.GET_COLOR_THEME)).resolves.toBe('emerald');
+    });
+
+    it('ColorTheme_Set_StoredAndReadBack', async () => {
+      // A restart used to forget it: it lived in the renderer's memory alone.
+      await invoke(IPCChannel.SET_COLOR_THEME, 'retro_arcade');
+
+      expect(settingsRepo.getSetting('color_theme', null)).toBe('retro_arcade');
+      await expect(invoke(IPCChannel.GET_COLOR_THEME)).resolves.toBe('retro_arcade');
+    });
+
+    it('ColorTheme_Unknown_RefusedAndNothingStored', async () => {
+      await expect(invoke(IPCChannel.SET_COLOR_THEME, 'sepia')).rejects.toThrow(/key colour/);
+      expect(settingsRepo.getSetting('color_theme', null)).toBeNull();
+    });
+
+    it('ColorTheme_StoredValueNoLongerKnown_ReadsTheDefault', async () => {
+      settingsRepo.setSetting('color_theme', 'sepia');
+
+      await expect(invoke(IPCChannel.GET_COLOR_THEME)).resolves.toBe('emerald');
+    });
+  });
+
   describe('the Interrupt shortcut', () => {
     const OFF = { enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null };
     const service = () => ({

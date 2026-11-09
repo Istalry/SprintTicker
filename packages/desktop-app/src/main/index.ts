@@ -49,6 +49,7 @@ import { normalizeScheduleSettings } from '../shared/schedule-defaults';
 import { UpdateChecker } from './updater/update-checker';
 import { LaunchAtLoginService, launchedHidden } from './services/launch-at-login';
 import { InterruptShortcutService } from './services/interrupt-shortcut-service';
+import { COLOR_THEME_KEY, DEFAULT_COLOR_THEME, isColorThemeId } from '../shared/color-theme';
 import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
 let mainWindow: BrowserWindow | null = null;
@@ -268,6 +269,9 @@ async function startApplication(): Promise<void> {
 
   renderer = new DisplayRenderer(driver);
   renderer.setShowIdleClockFallback(deviceConfig.showIdleClockFallback);
+  // The key colour the user chose, which a restart used to forget.
+  const storedTheme = settingsRepo.getSetting<unknown>(COLOR_THEME_KEY, DEFAULT_COLOR_THEME);
+  renderer.setColorTheme(isColorThemeId(storedTheme) ? storedTheme : DEFAULT_COLOR_THEME);
   inputDecoder = new InputDecoder(driver, engine, settingsRepo);
 
   // 4. Initialize the local webhook server

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Moon, Play, ShieldAlert } from 'lucide-react';
+import { Calendar, Clock, Moon, Play } from 'lucide-react';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
@@ -12,7 +12,6 @@ export const CeremoniesView: React.FC = () => {
   const [lunchStart, setLunchStart] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.lunchStartTime);
   const [lunchEnd, setLunchEnd] = useState<string>('13:00');
   const [eodTime, setEodTime] = useState<string>('17:30');
-  const [timeoutSeconds, setTimeoutSeconds] = useState<number>(0);
   const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
   const [askAboutForgotten, setAskAboutForgotten] = useState<boolean>(DEFAULT_SCHEDULE_SETTINGS.askAboutForgottenSessions);
   const [workingDays, setWorkingDays] = useState<number[]>([...DEFAULT_WORKING_DAYS]);
@@ -30,7 +29,6 @@ export const CeremoniesView: React.FC = () => {
           if (sched.lunchStart) setLunchStart(sched.lunchStart);
           if (sched.lunchEnd) setLunchEnd(sched.lunchEnd);
           if (sched.eodTime) setEodTime(sched.eodTime);
-          if (sched.autoDismissSeconds !== undefined) setTimeoutSeconds(sched.autoDismissSeconds);
           if (sched.askAboutForgottenSessions !== undefined) setAskAboutForgotten(sched.askAboutForgottenSessions);
           if (sched.workingDays) setWorkingDays(sched.workingDays);
           if (sched.splitPauseMinutes !== undefined) setSplitPauseMinutes(sched.splitPauseMinutes);
@@ -55,8 +53,6 @@ export const CeremoniesView: React.FC = () => {
     lunchEndTime: lunchEnd,
     eodTime,
     eodWrapUpTime: eodTime,
-    autoDismissSeconds: timeoutSeconds,
-    promptTimeoutSeconds: timeoutSeconds,
     shutdownByDefault,
     eodShutdownByDefault: shutdownByDefault,
     askAboutForgottenSessions: askAboutForgotten,
@@ -80,7 +76,7 @@ export const CeremoniesView: React.FC = () => {
 
   const saveStatus = useAutoSave(
     handleSave,
-    [standupTime, lunchStart, lunchEnd, eodTime, timeoutSeconds, shutdownByDefault, askAboutForgotten, workingDays, splitPauseMinutes],
+    [standupTime, lunchStart, lunchEnd, eodTime, shutdownByDefault, askAboutForgotten, workingDays, splitPauseMinutes],
     loaded
   );
 
@@ -238,28 +234,8 @@ export const CeremoniesView: React.FC = () => {
           {refusal && !weekRefusal && !splitRefusal && <p role="alert" className="text-xs text-accent-red">{refusal} Not saved.</p>}
         </div>
 
-        {/* Card 3: Dialog Prompt Timeout Limits */}
-        <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
-          <div className="flex items-center space-x-3 text-white font-bold">
-            <ShieldAlert className="w-5 h-5 text-accent-purple" />
-            <h3>Dialog Prompt Timeout Limit</h3>
-          </div>
-          <p className="text-xs text-text-secondary">Configures auto-dismiss or auto-execution rules for desktop dialog popups.</p>
-
-          <div>
-            <label className="block text-xs text-text-secondary mb-1">Timeout Behavior</label>
-            <select
-              value={timeoutSeconds}
-              onChange={e => setTimeoutSeconds(Number(e.target.value))}
-              className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
-            >
-              <option value={0}>Wait Indefinitely (Default - Stays open)</option>
-              <option value={60}>Auto-Dismiss after 60 seconds</option>
-              <option value={120}>Auto-Execute after 120 seconds</option>
-            </select>
-          </div>
-        </div>
-
+        {/* No prompt timeout card: the setting was saved and never read, so its
+            auto-dismiss and auto-execute never happened (removed 2026-11-09). */}
         {/* Card 4: End-of-Day Automated Wrap-Up Sequence */}
         <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
           <div className="flex items-center space-x-3 text-white font-bold">

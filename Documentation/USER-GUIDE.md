@@ -598,7 +598,8 @@ Notification text is redacted from logs and the diagnostics export. Launch with
 ### ⚡ Priority Rules
 
 What the display shows when several things want it. Every claim has a score;
-the highest holds the bar.
+the highest holds the bar. The arrows beside a claim move its level by 10 and
+the list sorts itself again; type a level from 1 to 100 to place it exactly.
 
 <p align="center">
   <img src="../docs/images/app-priority.png" width="80%" alt="Priority Rules: the active mode, and each claim with its level and its action in Work, Lunch and Away">
@@ -650,6 +651,9 @@ your device needs one, an API token:
 restart. Watch the connection status at the top of the window to see whether the
 new address answered; saving means the setting was stored, not that the bar
 replied. **Reset to USB default** puts the address back to `10.0.4.20`.
+
+🎨 **Task key color** sets the color of the task key on the bar's front
+display -- blue, pink, amber or pale cyan -- and is kept across restarts.
 
 🚀 **Start with Windows** starts SprintTicker when you sign in, in the tray,
 with no window over whatever you open first. The tray icon, the bar and the

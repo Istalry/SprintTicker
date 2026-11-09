@@ -54,8 +54,18 @@
   `05:12` alone could be five hours -- and logged time `1h 05m`, `55m` or
   `40s` everywhere, where Work History said `1h 10m 0s` and the session page
   `0h 55m`. Days read in Windows' regional format, as the date picker does.
+- **Room to read.** The mini timer is wider, so a task's title shows rather
+  than its first word. In Projects & Tasks a key no longer breaks over two
+  lines, rows drop the internal project id, and a row offers **Start** when
+  nothing runs. Priority Rules says how its arrows and levels relate.
+- **The Ceremonies prompt timeout is gone.** It was saved but never read:
+  its auto-dismiss and auto-execute never happened.
 
 ### Fixed
+
+- **The task key's color is kept.** It was forgotten at every restart, the bar
+  going back to blue, and the window's list always showed the first entry. The
+  list now names the colors it draws: blue, pink, amber, pale cyan.
 
 - **The wrap-up could restart a task overnight.** Joining the stand-up
   stops the task you were on and brings it back when the stand-up ends. A

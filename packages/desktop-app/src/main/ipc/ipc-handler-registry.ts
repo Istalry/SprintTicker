@@ -32,6 +32,7 @@ import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } f
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { LaunchAtLoginService } from '../services/launch-at-login';
+import { COLOR_THEME_KEY, DEFAULT_COLOR_THEME, isColorThemeId } from '../../shared/color-theme';
 import { InterruptShortcutService } from '../services/interrupt-shortcut-service';
 import { DEFAULT_INTERRUPT_SHORTCUT, InterruptShortcutSetting } from '../../shared/interrupt-shortcut';
 import { OpenProjectProvider } from '../providers/openproject-provider';
@@ -961,9 +962,16 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.GET_SCREEN_ICON, async () => this.renderer.getScreenIcon());
 
-    ipcMain.handle(IPCChannel.SET_COLOR_THEME, async (_event, theme: ColorThemeId) => {
+    ipcMain.handle(IPCChannel.SET_COLOR_THEME, async (_event, theme: unknown) => {
+      if (!isColorThemeId(theme)) throw new ArgumentException('Not a key colour.', 'theme');
+      this.settingsRepo.setSetting(COLOR_THEME_KEY, theme);
       this.renderer.setColorTheme(theme);
       return true;
+    });
+
+    ipcMain.handle(IPCChannel.GET_COLOR_THEME, async (): Promise<ColorThemeId> => {
+      const stored = this.settingsRepo.getSetting<unknown>(COLOR_THEME_KEY, DEFAULT_COLOR_THEME);
+      return isColorThemeId(stored) ? stored : DEFAULT_COLOR_THEME;
     });
 
     ipcMain.handle(IPCChannel.TRIGGER_CONFETTI_BURST, async () => {

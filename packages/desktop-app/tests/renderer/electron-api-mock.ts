@@ -238,6 +238,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getScreenIcon: vi.fn().mockResolvedValue(null),
     onScreenIcon: subscribe('onScreenIcon'),
     setColorTheme: vi.fn().mockResolvedValue(true),
+    getColorTheme: vi.fn().mockResolvedValue('emerald'),
     triggerConfettiBurst: vi.fn().mockResolvedValue(true),
     previewDisplayScreen: vi.fn().mockResolvedValue(true),
 

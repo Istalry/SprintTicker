@@ -47,6 +47,7 @@ import type {
   UpdateStatusDTO,
   LaunchAtLoginStatusDTO,
   InterruptShortcutStatusDTO,
+  ColorThemeId,
   ProviderSyncResult,
   SyncQueueSnapshotDTO,
   ProjectsUpdatedPayload,
@@ -205,6 +206,8 @@ export interface IElectronAPI {
   getScreenIcon: () => Promise<ScreenIconDTO | null>;
   onScreenIcon: (callback: (icon: ScreenIconDTO | null) => void) => () => void;
   setColorTheme: (theme: string) => Promise<boolean>;
+  /** The key colour stored, which the bar draws from start. */
+  getColorTheme: () => Promise<ColorThemeId>;
   triggerConfettiBurst: () => Promise<boolean>;
   /** Draws one real screen through the actual renderer, for the debug panel. */
   previewDisplayScreen: (screen: PreviewScreenId) => Promise<boolean>;

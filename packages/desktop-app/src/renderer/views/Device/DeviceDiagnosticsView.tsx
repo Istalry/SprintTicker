@@ -5,7 +5,8 @@ import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
 import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
 import { InterruptShortcutCard } from '../../components/InterruptShortcutCard';
-import { DeviceConfigDTO } from '../../../shared/dtos';
+import { ColorThemeId, DeviceConfigDTO } from '../../../shared/dtos';
+import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { formatClockTime } from '../../utils/formatters';
 
@@ -16,6 +17,12 @@ export const DeviceDiagnosticsView: React.FC = () => {
   const [activeTestLog, setActiveTestLog] = useState<string | null>(null);
   const [hardwareLogs, setHardwareLogs] = useState<{ time: string; key: string; action: string }[]>([]);
   const [deviceConfig, setDeviceConfig] = useState<DeviceConfigDTO>(DEFAULT_DEVICE_CONFIG);
+  const [colorTheme, setColorTheme] = useState<ColorThemeId>(DEFAULT_COLOR_THEME);
+
+  // The stored colour, so the list opens on it rather than on the first entry.
+  useEffect(() => {
+    window.electronAPI?.getColorTheme?.().then(setColorTheme, err => console.error('[DeviceDiagnostics] getColorTheme failed:', err));
+  }, []);
 
   // The connection fields are a draft, applied on an explicit action rather
   // than on change. Saving per keystroke would tear down and redial the device
@@ -269,19 +276,21 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Front display color</span>
+            <span className="text-text-secondary">Task key color</span>
             <select
+              aria-label="Task key color"
+              value={colorTheme}
               onChange={(e) => {
-                if (window.electronAPI?.setColorTheme) {
-                  window.electronAPI.setColorTheme(e.target.value);
-                }
+                const next = e.target.value as ColorThemeId;
+                setColorTheme(next);
+                window.electronAPI?.setColorTheme(next)
+                  .catch(err => console.error('[DeviceDiagnostics] setColorTheme failed:', err));
               }}
               className="bg-dark-800 text-accent-blue font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
             >
-              <option value="emerald">Emerald</option>
-              <option value="cyberpunk">Neon violet</option>
-              <option value="retro_arcade">Arcade amber</option>
-              <option value="nordic_cyan">Nordic cyan</option>
+              {COLOR_THEMES.map(theme => (
+                <option key={theme.id} value={theme.id}>{theme.label}</option>
+              ))}
             </select>
           </div>
 

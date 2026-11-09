@@ -179,7 +179,12 @@ export const PriorityRulesView: React.FC = () => {
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
         <div className="p-4 bg-dark-900 border border-border-dark rounded-lg flex items-center space-x-3 text-xs text-text-secondary">
           <ShieldAlert className="w-5 h-5 text-accent-blue flex-shrink-0" />
-          <span>Higher numeric values (Priority 100 = highest) automatically preempt lower priority notifications. Non-expired queued alerts replay automatically when display locks release.</span>
+          <span>
+            The list is the order the display goes by: a rule with a higher level takes the display from a lower
+            one. The arrows move a rule&apos;s level by 10, and the list sorts itself again; type a level from 1 to
+            100 to put it exactly where you want. A screen that loses the display comes back when the one above it
+            ends.
+          </span>
         </div>
 
         <div className="divide-y divide-border-dark">
@@ -193,14 +198,16 @@ export const PriorityRulesView: React.FC = () => {
                       <button
                         onClick={() => updateRuleScore(rule.eventName, rule.priority + 10)}
                         className="p-1 bg-dark-900 hover:bg-dark-700 text-text-secondary hover:text-white rounded border border-border-dark transition-all"
-                        title="Increase Priority"
+                        title="Raise its level by 10"
+                        aria-label={`Raise ${def.label} by 10`}
                       >
                         <ChevronUp className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => updateRuleScore(rule.eventName, rule.priority - 10)}
                         className="p-1 bg-dark-900 hover:bg-dark-700 text-text-secondary hover:text-white rounded border border-border-dark transition-all"
-                        title="Decrease Priority"
+                        title="Lower its level by 10"
+                        aria-label={`Lower ${def.label} by 10`}
                       >
                         <ChevronDown className="w-3.5 h-3.5" />
                       </button>
@@ -221,6 +228,7 @@ export const PriorityRulesView: React.FC = () => {
                       min={1}
                       max={100}
                       value={rule.priority}
+                      aria-label={`${def.label} level`}
                       onChange={e => updateRuleScore(rule.eventName, Number(e.target.value))}
                       className="w-20 bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-sm text-accent-blue font-mono font-bold text-center focus:outline-none focus:border-accent-blue"
                     />

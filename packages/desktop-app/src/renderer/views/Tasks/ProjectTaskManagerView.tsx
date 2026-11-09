@@ -302,17 +302,17 @@ export const ProjectTaskManagerView: React.FC = () => {
           <button
             onClick={() => setIsImportOpen(true)}
             disabled={!selectedProjectId}
-            className="flex items-center space-x-2 px-3.5 py-2 bg-dark-700 hover:bg-dark-600 border border-border-dark text-text-primary hover:text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
+            className="flex items-center space-x-2 px-3.5 py-2 bg-dark-700 hover:bg-dark-600 border border-border-dark text-text-primary hover:text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-50 whitespace-nowrap"
           >
             <Upload className="w-4 h-4 text-accent-purple" />
             <span>Import Tasks</span>
           </button>
           <button
             onClick={() => setIsAddProjOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-accent-blue hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-md transition-all"
+            className="flex items-center space-x-2 px-4 py-2 bg-accent-blue hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-md transition-all whitespace-nowrap"
           >
             <FolderPlus className="w-4 h-4" />
-            <span>+ New Project</span>
+            <span>New Project</span>
           </button>
         </div>
       </div>
@@ -403,7 +403,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <span className="px-2 py-0.5 bg-dark-700 border border-border-dark text-accent-blue text-[10px] font-bold rounded">
+                      <span className="px-2 py-0.5 bg-dark-700 border border-border-dark text-accent-blue text-[10px] font-bold rounded whitespace-nowrap shrink-0">
                         {task.key}
                       </span>
                       <span className="text-xs font-bold text-white">{task.title}</span>
@@ -415,14 +415,13 @@ export const ProjectTaskManagerView: React.FC = () => {
                         {task.description}
                       </div>
                     )}
-                    <div className="text-[10px] text-text-secondary">Project: {task.projectId}</div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 shrink-0 ml-3">
                     {/* Status cycle buttons */}
                     <div className="flex items-center space-x-1">
                       {/* Status Label */}
-                      <div className="px-3 py-1 bg-dark-700/60 border border-border-dark rounded-lg text-[10px] font-bold text-text-secondary mr-2 flex items-center space-x-1 uppercase tracking-wider">
+                      <div className="px-3 py-1 bg-dark-700/60 border border-border-dark rounded-lg text-[10px] font-bold text-text-secondary mr-2 flex items-center space-x-1 uppercase tracking-wider whitespace-nowrap">
                         {task.status === 'todo' && <><AlertCircle className="w-3.5 h-3.5 text-text-primary"/><span className="text-text-primary">To Do</span></>}
                         {task.status === 'in_progress' && <><Clock className="w-3.5 h-3.5 text-accent-blue"/><span className="text-accent-blue">In Progress</span></>}
                         {task.status === 'done' && <><CheckCircle2 className="w-3.5 h-3.5 text-accent-green"/><span className="text-accent-green">Done</span></>}
@@ -449,13 +448,15 @@ export const ProjectTaskManagerView: React.FC = () => {
                           }}
                           className="px-3 py-1 bg-accent-blue/10 text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/20 font-bold text-xs rounded transition-colors"
                         >
-                          Switch
+                          {activeSession ? 'Switch' : 'Start'}
                         </button>
                       )}
                     </div>
 
                     <button
                       onClick={() => handleDeleteTask(task.id)}
+                      title={`Delete ${task.key}`}
+                      aria-label={`Delete ${task.key}`}
                       className="p-1.5 text-text-secondary hover:text-accent-red hover:bg-dark-700 rounded transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />

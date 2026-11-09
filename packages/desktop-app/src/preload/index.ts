@@ -211,6 +211,7 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_SCREEN_ICON, handler);
   },
   setColorTheme: (theme: string) => ipcRenderer.invoke(IPCChannel.SET_COLOR_THEME, theme),
+  getColorTheme: () => ipcRenderer.invoke(IPCChannel.GET_COLOR_THEME),
   triggerConfettiBurst: () => ipcRenderer.invoke(IPCChannel.TRIGGER_CONFETTI_BURST),
   previewDisplayScreen: (screen: PreviewScreenId) => ipcRenderer.invoke(IPCChannel.PREVIEW_DISPLAY_SCREEN, screen),
 
