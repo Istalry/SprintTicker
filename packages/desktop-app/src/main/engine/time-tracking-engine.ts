@@ -656,7 +656,7 @@ export class TimeTrackingEngine extends EventEmitter {
    * OpenProject. A session from before migration 9 recorded none and keeps
    * the old rule. A manager without `getProvider` is a test double.
    */
-  private destinationOf(session: ActiveSessionDTO): { providerId: string; minimumSeconds: number } | null {
+  private destinationOf(session: Pick<ActiveSessionDTO, 'providerId'>): { providerId: string; minimumSeconds: number } | null {
     if (session.providerId === OWN_PROJECT_PROVIDER_ID) return null;
     const manager = this._providerManager as Partial<ProviderManager> | undefined;
     if (session.providerId) {
@@ -667,6 +667,29 @@ export class TimeTrackingEngine extends EventEmitter {
     return active
       ? { providerId: active.providerId, minimumSeconds: active.minimumLoggableSeconds }
       : { providerId: 'openproject', minimumSeconds: 1 };
+  }
+
+  /**
+   * Where time logged on a task is queued, by the rule a session's end
+   * follows: its project's provider, nothing for a project made here, the
+   * active provider when the project's is not known. For moving a worklog.
+   *
+   * @throws ArgumentException for an unknown task.
+   */
+  public sendDestinationOfTask(taskId: string): { providerId: string; minimumSeconds: number } | null {
+    const task = this._taskRepo.getTaskById(taskId);
+    if (!task) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+    return this.destinationOf({ providerId: this.providerOfProject(task.projectId) });
+  }
+
+  /**
+   * Retires an ad-hoc task once no worklog names it -- deleted, as an
+   * assigned interruption's row is -- unless the open session is on it.
+   */
+  public retireAdHocTaskIfUnused(taskId: string): void {
+    if (!isAdHocTaskId(taskId) || this.getCurrentSession()?.taskId === taskId) return;
+    if (this._worklogRepo.countWorklogsOf(taskId) > 0) return;
+    retireTasks(this._taskRepo.getConnection().getDb(), 'id = ?', [taskId]);
   }
 
   /**

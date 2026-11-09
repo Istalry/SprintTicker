@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2, Zap } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2, Zap, ArrowRightLeft, Link2 } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
 import { WorklogSyncState } from '../../../shared/worklog-correction';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
@@ -7,6 +7,8 @@ import { formatClockTime } from '../../utils/formatters';
 import { EditWorklogModal } from '../../components/EditWorklogModal';
 import { TaskPageButton } from '../../components/TaskPageButton';
 import { InlineRename } from '../../components/InlineRename';
+import { TaskSelectionModal } from '../../components/TaskSelectionModal';
+import { ipcErrorMessage } from '../../utils/formatters';
 
 /** One interruption still to sort: its task, and the time logged on it. */
 interface ToSort {
@@ -79,6 +81,9 @@ export const WorklogHistoryView: React.FC = () => {
   const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
   // Every interruption still to sort, whatever its day.
   const [unsorted, setUnsorted] = useState<WorklogDTO[]>([]);
+  // The worklogs whose task is being picked, and the label of what moves.
+  const [moving, setMoving] = useState<{ worklogIds: string[]; label: string } | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const toSort = groupToSort(unsorted);
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
@@ -110,6 +115,23 @@ export const WorklogHistoryView: React.FC = () => {
     );
     return () => { current = false; };
   }, [revision]);
+
+  /**
+   * Moves the worklogs to the task picked, one after the other: each is its
+   * own deletion and send. A refusal stops there and is shown; the ones
+   * moved before it stay moved.
+   */
+  const moveTo = async (worklogIds: string[], taskId: string) => {
+    setMoving(null);
+    setMoveError(null);
+    try {
+      for (const id of worklogIds) await window.electronAPI.moveWorklog(id, taskId);
+    } catch (err) {
+      setMoveError(ipcErrorMessage(err));
+    } finally {
+      setRevision(r => r + 1);
+    }
+  };
 
   /** Names ad-hoc work; the day and the list are read again with the name. */
   const renameTask = (taskId: string, name: string) =>
@@ -195,6 +217,19 @@ export const WorklogHistoryView: React.FC = () => {
                 <div className="flex items-center gap-3 shrink-0">
                   <button
                     type="button"
+                    aria-label={`Assign ${item.title} to a task`}
+                    title="Assign to a task: its time goes to that task's provider"
+                    onClick={() => setMoving({
+                      worklogIds: unsorted.filter(log => log.taskId === item.taskId).map(log => log.id),
+                      label: item.title
+                    })}
+                    className="flex items-center gap-1 px-2 py-0.5 border border-border-dark rounded text-text-secondary hover:text-white hover:border-accent-blue"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>Assign</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setSelectedDate(item.dateKey)}
                     className="text-text-secondary hover:text-white underline-offset-2 hover:underline"
                   >
@@ -206,6 +241,10 @@ export const WorklogHistoryView: React.FC = () => {
             ))}
           </div>
         </section>
+      )}
+
+      {moveError && (
+        <p role="alert" className="text-xs text-accent-red">Not moved: {moveError}</p>
       )}
 
       {/* Metric Cards */}
@@ -335,6 +374,14 @@ export const WorklogHistoryView: React.FC = () => {
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    aria-label={`Move ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))} to another task`}
+                    title="Move to another task"
+                    onClick={() => setMoving({ worklogIds: [log.id], label: log.taskTitle ?? log.taskKey ?? log.taskId })}
+                    className="p-1 text-text-secondary hover:text-white hover:bg-dark-700 rounded transition-colors"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     aria-label={`Delete ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))}`}
                     onClick={() => setEditing({ worklog: log, mode: 'delete' })}
                     className="p-1 text-text-secondary hover:text-accent-red hover:bg-dark-700 rounded transition-colors"
@@ -351,6 +398,14 @@ export const WorklogHistoryView: React.FC = () => {
           </div>
         )}
       </div>
+
+      <TaskSelectionModal
+        isOpen={moving !== null}
+        mode="move"
+        projects={[]}
+        onClose={() => setMoving(null)}
+        onSelectTask={taskId => { if (moving) void moveTo(moving.worklogIds, taskId); }}
+      />
 
       {editing && (
         <EditWorklogModal

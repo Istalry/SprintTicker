@@ -863,6 +863,16 @@ export class IPCHandlerRegistry {
       return corrected;
     });
 
+    ipcMain.handle(IPCChannel.MOVE_WORKLOG, async (_event, worklogId: unknown, taskId: unknown) => {
+      if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
+      if (typeof worklogId !== 'string' || !worklogId || typeof taskId !== 'string' || !taskId) {
+        throw new ArgumentException('A move needs a worklog id and a task id.');
+      }
+      const moved = this.worklogCorrections.reassign(worklogId, taskId);
+      this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return moved;
+    });
+
     ipcMain.handle(IPCChannel.DELETE_WORKLOG, async (_event, worklogId: unknown) => {
       if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
       if (typeof worklogId !== 'string') throw new ArgumentException('A deletion needs a worklog id.');

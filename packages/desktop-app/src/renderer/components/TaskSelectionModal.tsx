@@ -17,10 +17,11 @@ interface TaskSelectionModalProps {
   tasks?: TaskDTO[];
   onSelectTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => void;
   /**
-   * `assign` picks the task an open ad-hoc session goes to: the same lists,
-   * without the ad-hoc choices -- ad-hoc work is what is being assigned.
+   * `assign` picks the task an open ad-hoc session goes to, `move` the task
+   * logged time goes to: the same lists, without the ad-hoc choices -- time
+   * goes to a real task.
    */
-  mode?: 'start' | 'assign';
+  mode?: 'start' | 'assign' | 'move';
 }
 
 const statusConfig: Record<string, { label: string; icon: React.FC<{ className?: string }>; color: string }> = {
@@ -45,7 +46,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   onSelectTask,
   mode = 'start'
 }) => {
-  const assigning = mode === 'assign';
+  const assigning = mode !== 'start';
   const [step, setStep] = useState<1 | 2>(1);
   // The prop is what App had; the dialog asks main for the current list on
   // mount and falls back to the prop if that fails.
@@ -157,7 +158,9 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
               </button>
             )}
             <h3 className="text-md font-bold text-white font-mono">
-              {assigning && step === 1
+              {mode === 'move' && step === 1
+                ? 'Move to a Task: Select its Project'
+                : assigning && step === 1
                 ? 'Assign to a Task: Select its Project'
                 : step === 1
                 ? 'Step 1: Select Target Project'

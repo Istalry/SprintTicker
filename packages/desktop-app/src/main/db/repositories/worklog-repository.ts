@@ -56,7 +56,7 @@ const SELECT_WORKLOGS = `
   SELECT w.*, t.key AS task_key, t.title AS task_title, t.unsorted AS task_unsorted,
          t.project_id AS task_project_id, p.provider_id AS project_provider_id,
          (SELECT q.status FROM worklog_sync_queue q
-           WHERE q.worklog_id = w.id AND q.operation = 'CREATE'
+           WHERE q.worklog_id = w.id AND q.operation = 'CREATE' AND q.task_id = w.task_id
            ORDER BY q.rowid DESC LIMIT 1) AS create_status,
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation <> 'CREATE' AND q.status <> 'SYNCED'
@@ -368,35 +368,93 @@ export class WorklogRepository {
     );
   }
 
+  /**
+   * Points a worklog at another task, with the comment it will carry there.
+   * True when there was one to move. `task_id` is a foreign key: the task
+   * must exist.
+   */
+  public retargetWorklog(id: string, taskId: string, comment: string): boolean {
+    return (
+      this.dbConn
+        .getDb()
+        .prepare('UPDATE worklogs SET task_id = ?, comment = ? WHERE id = ?')
+        .run(taskId, comment, id).changes === 1
+    );
+  }
+
+  /** How many worklogs name `taskId`. */
+  public countWorklogsOf(taskId: string): number {
+    const row = this.dbConn.getDb().prepare<[string], { n: number }>('SELECT COUNT(*) AS n FROM worklogs WHERE task_id = ?').get(taskId);
+    return row?.n ?? 0;
+  }
+
   /** Deletes a worklog row. True when there was one. */
   public deleteWorklog(id: string): boolean {
     return this.dbConn.getDb().prepare('DELETE FROM worklogs WHERE id = ?').run(id).changes === 1;
   }
 
-  /** The latest row that sends `worklogId` (a CREATE), whatever its state, or null when it was never queued. */
+  /**
+   * The latest row that sends `worklogId` (a CREATE) to the task it is on,
+   * whatever its state, or null when it was never queued for it.
+   *
+   * For its current task: a worklog moved to a project made here keeps the
+   * CREATE of the entry it had, which a DELETE has taken off since, and a
+   * correction aimed at that entry would only park on a 404.
+   */
   public getSendOf(worklogId: string): SyncQueueRecord | null {
     const row = this.dbConn
       .getDb()
-      .prepare<[string], SyncQueueRow>(
+      .prepare<[string, string], SyncQueueRow>(
         `SELECT * FROM worklog_sync_queue
           WHERE worklog_id = ? AND operation = 'CREATE'
+            AND task_id = (SELECT task_id FROM worklogs WHERE id = ?)
           ORDER BY rowid DESC LIMIT 1`
       )
-      .get(worklogId);
+      .get(worklogId, worklogId);
     return row ? mapSyncQueueRow(row) : null;
   }
 
-  /** The corrections of `worklogId` not yet claimed or delivered: PENDING or FAILED. */
-  public getUnsentCorrectionsOf(worklogId: string): SyncQueueRecord[] {
+  /**
+   * The corrections of the entry `originSyncId` sent for `worklogId`, not
+   * yet claimed or delivered: PENDING or FAILED.
+   *
+   * By the send they correct, not by the worklog alone: a worklog moved to
+   * another task has a DELETE of its previous entry queued under the same
+   * worklog id, and dropping it with the new entry's corrections would leave
+   * the previous entry at its provider for good.
+   */
+  public getUnsentCorrectionsOf(worklogId: string, originSyncId: string): SyncQueueRecord[] {
     return this.dbConn
       .getDb()
-      .prepare<[string], SyncQueueRow>(
+      .prepare<[string, string], SyncQueueRow>(
         `SELECT * FROM worklog_sync_queue
-          WHERE worklog_id = ? AND operation <> 'CREATE' AND status IN ('PENDING', 'FAILED')
+          WHERE worklog_id = ? AND origin_sync_id = ? AND operation <> 'CREATE' AND status IN ('PENDING', 'FAILED')
           ORDER BY rowid ASC`
       )
-      .all(worklogId)
+      .all(worklogId, originSyncId)
       .map(mapSyncQueueRow);
+  }
+
+  /**
+   * Points a send never attempted at another task and provider, with a fresh
+   * start: the provider it named never hears of it.
+   *
+   * Only while unclaimed *and* never attempted (`send_attempts`, never the
+   * retry budget) -- checked in the statement itself. False otherwise: an
+   * attempt may have made the entry, and the caller deletes it instead.
+   */
+  public retargetUnsentSyncItem(id: string, providerId: string, taskId: string, comment: string): boolean {
+    return (
+      this.dbConn
+        .getDb()
+        .prepare(
+          `UPDATE worklog_sync_queue
+              SET provider_id = ?, task_id = ?, comment = ?,
+                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = NULL, last_error = NULL
+            WHERE id = ? AND status IN ('PENDING', 'FAILED') AND send_attempts = 0`
+        )
+        .run(providerId, taskId, comment, id).changes === 1
+    );
   }
 
   /**

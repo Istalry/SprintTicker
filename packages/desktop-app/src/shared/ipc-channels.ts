@@ -45,6 +45,7 @@ export enum IPCChannel {
   GET_WORKLOGS_BY_DATE = 'worklogs:get-by-date',
   GET_UNSORTED_WORKLOGS = 'worklogs:get-unsorted',
   RENAME_AD_HOC_TASK = 'tasks:rename-ad-hoc',
+  MOVE_WORKLOG = 'worklogs:move',
   GET_DAILY_WORKLOG_SUMMARY = 'worklogs:get-daily-summary',
   WIPE_ALL_DATA = 'db:wipe-all-data',
 

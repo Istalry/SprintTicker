@@ -397,6 +397,11 @@ async function startApplication(): Promise<void> {
         .getSyncWorker()
         .processPendingQueue()
         .catch(err => console.warn('[Main] Draining the queue after a correction failed:', err));
+    }, Date.now, {
+      // A move follows the engine's rules for where time goes.
+      getTask: taskId => taskRepo.getTaskById(taskId),
+      destinationOf: taskId => engine!.sendDestinationOfTask(taskId),
+      retireAdHocIfUnused: taskId => engine!.retireAdHocTaskIfUnused(taskId)
     }),
     windowsNotificationService,
     providerManager,

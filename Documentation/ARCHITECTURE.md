@@ -291,6 +291,23 @@ What it queues depends on how far the send got:
 | Claimed or delivered | An `UPDATE` behind it; one unsent per worklog, the latest wins | A `DELETE` behind it, replacing any unsent `UPDATE` |
 | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
 
+A **move** to another task (`reassign`) goes by the same send:
+
+| The send | A move |
+| :--- | :--- |
+| None | A `CREATE` for the new task's provider, if it has one -- the first send of ad-hoc time |
+| Queued, never attempted (`send_attempts = 0`) | The row is pointed at the new task and provider; the old provider never hears of it |
+| Attempted, claimed or delivered | A `DELETE` of the entry where it is, then a `CREATE` on the new task |
+
+The `CREATE` waits for the `DELETE` on the same worklog (`getPendingQueueItems`),
+so a move stopped half-way has the time on neither provider for a while, never
+on both. Two reads keep a moved worklog straight: `getSendOf` and the sync
+state go by the send *for its current task*, and the drops of unsent
+corrections go by the send they correct (`origin_sync_id`), never by the
+worklog alone -- either way, a later correction or deletion took the move's
+`DELETE` with it, or aimed at the entry already deleted. Moving time moves
+neither task's status; an emptied ad-hoc task is retired.
+
 Each change runs in one transaction with the worklog's, and wakes the worker
 as a stop does. The rules for a valid correction are
 `checkWorklogCorrection` in `src/shared/`, shared with the window; the

@@ -117,6 +117,68 @@ describe('Work History, interruptions to sort', () => {
   });
 });
 
+describe('Work History, moving time to another task', () => {
+  /** Picks project P-1, then task T-9, in the picker History opened. */
+  const pick = async () => {
+    const dialog = await screen.findByRole('heading', { name: /Move to a Task/ });
+    expect(dialog).toBeTruthy();
+    fireEvent.click(await screen.findByText('Sprint'));
+    fireEvent.click(await screen.findByText('SPR-9'));
+  };
+  const withProjects = (overrides: Record<string, unknown>) => ({
+    getProjects: vi.fn().mockResolvedValue([{ id: 'P-1', key: 'SPR', name: 'Sprint' }]),
+    getTasks: vi.fn().mockResolvedValue([{ id: 'T-9', projectId: 'P-1', key: 'SPR-9', title: 'The real task', status: 'todo' }]),
+    ...overrides
+  });
+
+  it('Move_ARow_SendsItToTheTaskPicked', async () => {
+    const bridge = installElectronApi(withProjects({ getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await pick();
+
+    await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w3', 'T-9'));
+    await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(2));
+  });
+
+  it('Assign_AnInterruption_MovesEveryPieceOfIt', async () => {
+    const piece = { ...INTERRUPTION, id: 'w4', startedAtUtc: '2026-11-08T22:00:00.000Z' };
+    const bridge = installElectronApi(withProjects({ getUnsortedWorklogs: vi.fn().mockResolvedValue([INTERRUPTION, piece]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Assign Interruption 10:30 to a task' }));
+    await pick();
+
+    await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledTimes(2));
+    expect(bridge.api.moveWorklog).toHaveBeenNthCalledWith(1, 'w1', 'T-9');
+    expect(bridge.api.moveWorklog).toHaveBeenNthCalledWith(2, 'w4', 'T-9');
+  });
+
+  it('Move_Refused_SaysWhy', async () => {
+    installElectronApi(withProjects({
+      getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
+      moveWorklog: vi.fn().mockRejectedValue(new Error("Error invoking remote method 'worklogs:move': Error: The provider records at least 1 minute(s).")),
+    }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await pick();
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Not moved: .*at least 1 minute/);
+  });
+
+  it('Picker_ForAMove_OffersNoAdHocWork', async () => {
+    installElectronApi(withProjects({ getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await screen.findByRole('heading', { name: /Move to a Task/ });
+
+    expect(screen.queryByText(/Create Custom/)).toBeNull();
+  });
+});
+
 describe('the wrap-up, interruptions to sort', () => {
   const summary = (items: Array<Record<string, unknown>>) => ({ date: '2026-11-09', totalSeconds: 900, tasksCount: items.length, items });
 

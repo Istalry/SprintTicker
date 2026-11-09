@@ -12,7 +12,11 @@
  */
 export const WORKLOG_COMMENT_MAX_CHARS = 1000;
 
-/** What a correction may change. The task stays: Jira cannot move a worklog between issues. */
+/**
+ * What a correction may change. Not the task: Jira cannot move a worklog
+ * between issues, so a move is a deletion and a new send
+ * (`WorklogCorrectionService.reassign`), not a correction.
+ */
 export interface WorklogCorrectionDTO {
   durationSeconds: number;
   startedAtUtc: string;

@@ -8,6 +8,7 @@ import { ProjectRepository } from '../src/main/db/repositories/project-repositor
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
+import { WorklogCorrectionService } from '../src/main/services/worklog-correction-service';
 import { ContextScheduleService } from '../src/main/services/context-schedule-service';
 import type { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
@@ -419,6 +420,53 @@ describe('Interrupt', () => {
 
       expect(() => engine.renameAdHocTask(interruption.taskId, '   ')).toThrow();
       expect(worklogs.getUnsortedWorklogs()).toHaveLength(1);
+    });
+  });
+
+  describe('assigning it to a task after it ended', () => {
+    /** The correction service as main builds it: the engine's rules for where time goes. */
+    const corrections = () => new WorklogCorrectionService(worklogs, null, () => undefined, Date.now, {
+      getTask: taskId => tasks.getTaskById(taskId),
+      destinationOf: taskId => engine.sendDestinationOfTask(taskId),
+      retireAdHocIfUnused: taskId => engine.retireAdHocTaskIfUnused(taskId)
+    });
+    const queueOf = (taskId: string) =>
+      dbConn.getDb().prepare('SELECT provider_id, task_id, duration_seconds FROM worklog_sync_queue WHERE task_id = ?').all(taskId);
+
+    it('Reassign_AnEndedInterruption_ItsTimeGoesToTheTasksProvider', () => {
+      const interruption = interruptA();
+      engine.stopSession('Over');
+      const [log] = worklogs.getUnsortedWorklogs();
+
+      corrections().reassign(log.id, B.id);
+
+      expect(queueOf(B.id)).toEqual([{ provider_id: 'jira', task_id: B.id, duration_seconds: 15 * 60 }]);
+      expect(worklogs.getUnsortedWorklogs()).toEqual([]);
+      // Nothing is logged on the interruption's row any more: it is gone.
+      expect(tasks.getTaskById(interruption.taskId)).toBeNull();
+    });
+
+    it('Reassign_TheTaskStatus_IsNotMoved', () => {
+      // Moving time does not move either task: B stays To Do.
+      interruptA();
+      engine.stopSession('Over');
+      const [log] = worklogs.getUnsortedWorklogs();
+
+      corrections().reassign(log.id, B.id);
+
+      expect(tasks.getTaskById(B.id)?.status).toBe('todo');
+    });
+
+    it('RetireAdHocTaskIfUnused_TheOpenSessionsTask_IsKept', () => {
+      const interruption = interruptA();
+
+      engine.retireAdHocTaskIfUnused(interruption.taskId);
+
+      expect(tasks.getTaskById(interruption.taskId)).not.toBeNull();
+    });
+
+    it('SendDestinationOfTask_UnknownTask_IsRefused', () => {
+      expect(() => engine.sendDestinationOfTask('nope')).toThrow(/No task/);
     });
   });
 

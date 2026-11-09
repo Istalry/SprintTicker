@@ -725,6 +725,8 @@
       began -- click the day to go there. Click its name to give it a real one.
       The end-of-day wrap-up lists the day&#39;s too, so you can name them while you
       remember what they were. Any ad-hoc work can be renamed the same way.</li>
+      <li><strong>Assign it afterwards</strong>: <strong>Assign</strong> beside it in Interruptions to sort
+      moves all of its time to the task you pick, and sends it there.</li>
       <li><strong>Until then its time stays here</strong>: an ad-hoc task&#39;s time is never sent to
       Jira or OpenProject.</li>
       </ul>
@@ -832,14 +834,20 @@
       <p align="center">
         <img src="images/app-history-edit.png" width="80%" alt="Correcting a worklog: hours, minutes, start and comment, with the time it ends and a note that the change also goes to Jira or OpenProject">
       </p><p>✏️ <strong>Correct or delete a worklog</strong> with the pencil and the bin on its row. A
-      correction changes the duration, the start or the comment — not the task: Jira
-      does not move a worklog from one issue to another. It applies here at once and
+      correction changes the duration, the start or the comment. It applies here at once and
       reaches Jira or OpenProject through the sync queue, so it survives a lost
       connection or a restart; a worklog not sent yet is simply sent with the new
       values. A deletion asks first, and deletes the entry at the provider too.
       Worklogs sent by an earlier version are found at the provider by the
       <code>[#xxxxxxxx]</code> tag at the end of their comment, so keep that tag if you edit the
       comment in Jira.</p>
+      <p>⇄ <strong>Move a worklog to another task</strong> with the arrows on its row: pick the
+      task, and the time is on it at once here. At Jira or OpenProject the entry is
+      deleted where it was, then created on the new task -- in that order, so the
+      time is never on both, and for a moment may be on neither while the move goes
+      through. A worklog not sent yet simply goes to the new task. Neither task&#39;s
+      status changes. An interruption in <strong>Interruptions to sort</strong> has <strong>Assign</strong>,
+      which moves all of its time at once, under its name.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
       does not delete the time logged against it</strong>: the task leaves your lists and
       stays in your history. The same happens when your provider stops listing a task
@@ -1988,6 +1996,35 @@
       <td align="left">Here only</td>
       </tr>
       </tbody></table></div>
+      <p>A <strong>move</strong> to another task (<code>reassign</code>) goes by the same send:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">The send</th>
+      <th align="left">A move</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">None</td>
+      <td align="left">A <code>CREATE</code> for the new task&#39;s provider, if it has one -- the first send of ad-hoc time</td>
+      </tr>
+      <tr>
+      <td align="left">Queued, never attempted (<code>send_attempts = 0</code>)</td>
+      <td align="left">The row is pointed at the new task and provider; the old provider never hears of it</td>
+      </tr>
+      <tr>
+      <td align="left">Attempted, claimed or delivered</td>
+      <td align="left">A <code>DELETE</code> of the entry where it is, then a <code>CREATE</code> on the new task</td>
+      </tr>
+      </tbody></table></div>
+      <p>The <code>CREATE</code> waits for the <code>DELETE</code> on the same worklog (<code>getPendingQueueItems</code>),
+      so a move stopped half-way has the time on neither provider for a while, never
+      on both. Two reads keep a moved worklog straight: <code>getSendOf</code> and the sync
+      state go by the send <em>for its current task</em>, and the drops of unsent
+      corrections go by the send they correct (<code>origin_sync_id</code>), never by the
+      worklog alone -- either way, a later correction or deletion took the move&#39;s
+      <code>DELETE</code> with it, or aimed at the entry already deleted. Moving time moves
+      neither task&#39;s status; an emptied ad-hoc task is retired.</p>
       <p>Each change runs in one transaction with the worklog&#39;s, and wakes the worker
       as a stop does. The rules for a valid correction are
       <code>checkWorklogCorrection</code> in <code>src/shared/</code>, shared with the window; the
@@ -2955,11 +2992,15 @@
       </thead>
       <tbody><tr>
       <td align="left"><code>worklog:update</code></td>
-      <td align="left"><code>(worklogId, { durationSeconds, startedAtUtc, comment })</code>. Rewrites the worklog here at once and queues the change for its provider; answers the worklog as it now stands and resends <code>worklog:on-updated</code>. Rejects with the reason, as a sentence, when the correction is refused: under a second, under the provider&#39;s floor (Jira: a minute) for a worklog it holds, ending in the future, or a comment over <code>WORKLOG_COMMENT_MAX_CHARS</code> (1000). The task cannot change</td>
+      <td align="left"><code>(worklogId, { durationSeconds, startedAtUtc, comment })</code>. Rewrites the worklog here at once and queues the change for its provider; answers the worklog as it now stands and resends <code>worklog:on-updated</code>. Rejects with the reason, as a sentence, when the correction is refused: under a second, under the provider&#39;s floor (Jira: a minute) for a worklog it holds, ending in the future, or a comment over <code>WORKLOG_COMMENT_MAX_CHARS</code> (1000). Not the task: that is <code>worklogs:move</code></td>
       </tr>
       <tr>
       <td align="left"><code>worklog:delete</code></td>
       <td align="left"><code>(worklogId)</code>. Deletes the worklog here at once and queues its deletion at the provider; answers <code>true</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklogs:move</code></td>
+      <td align="left"><code>(worklogId, taskId)</code>. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted. An ad-hoc worklog takes its task&#39;s name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
       </tr>
       </tbody></table></div>
       <p>The rules are <code>checkWorklogCorrection</code> in <code>src/shared/worklog-correction.ts</code>,

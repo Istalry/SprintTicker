@@ -226,6 +226,8 @@ Interrupt is asked about too.
   began -- click the day to go there. Click its name to give it a real one.
   The end-of-day wrap-up lists the day's too, so you can name them while you
   remember what they were. Any ad-hoc work can be renamed the same way.
+- **Assign it afterwards**: **Assign** beside it in Interruptions to sort
+  moves all of its time to the task you pick, and sends it there.
 - **Until then its time stays here**: an ad-hoc task's time is never sent to
   Jira or OpenProject.
 
@@ -342,14 +344,21 @@ on its way.
 </p>
 
 ✏️ **Correct or delete a worklog** with the pencil and the bin on its row. A
-correction changes the duration, the start or the comment — not the task: Jira
-does not move a worklog from one issue to another. It applies here at once and
+correction changes the duration, the start or the comment. It applies here at once and
 reaches Jira or OpenProject through the sync queue, so it survives a lost
 connection or a restart; a worklog not sent yet is simply sent with the new
 values. A deletion asks first, and deletes the entry at the provider too.
 Worklogs sent by an earlier version are found at the provider by the
 `[#xxxxxxxx]` tag at the end of their comment, so keep that tag if you edit the
 comment in Jira.
+
+⇄ **Move a worklog to another task** with the arrows on its row: pick the
+task, and the time is on it at once here. At Jira or OpenProject the entry is
+deleted where it was, then created on the new task -- in that order, so the
+time is never on both, and for a moment may be on neither while the move goes
+through. A worklog not sent yet simply goes to the new task. Neither task's
+status changes. An interruption in **Interruptions to sort** has **Assign**,
+which moves all of its time at once, under its name.
 
 Each entry is named by its task's key and title. **Deleting a task or a project
 does not delete the time logged against it**: the task leaves your lists and

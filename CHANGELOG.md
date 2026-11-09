@@ -16,6 +16,10 @@
   yet **To sort** and lists every one at the top, whatever its day, with its
   time and the day it began. Click a name -- there, on any ad-hoc row, or in
   the end-of-day wrap-up, which lists the day's -- to rename it.
+- **Move a worklog to another task.** The arrows on a Work History row move
+  it: deleted at Jira or OpenProject where it was, then created on the new
+  task, through the sync queue, so the time is never on both. **Assign** on
+  an interruption to sort moves all of its time at once, named after it.
 - **Stream Deck plugin 0.5.0: Interrupt, and three answer keys.** The deck's
   layout is now Session, **Interrupt**, and **Answer A, B and C**, which show
   whichever answers apply: A is DONE, or yes to a question waiting; B is NOT

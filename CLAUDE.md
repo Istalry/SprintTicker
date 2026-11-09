@@ -1191,6 +1191,14 @@ network loses the correction. Two things keep the entry findable: the
 comment of every correction ends with the *original* row's marker, never its
 own, and an id the provider did not give is never stored -- the adapters
 used to invent one (`jira_wl_<time>`), indistinguishable from a real id.
+**A move to another task is a DELETE, then a CREATE** (`reassign`), the
+CREATE held behind the DELETE so the time is never on two entries. A moved
+worklog keeps the DELETE of its previous entry under its own worklog id, so
+two reads must not go by the worklog alone: a worklog's send is the latest
+CREATE *for the task it is on* (`getSendOf`), and the unsent corrections a
+correction or a deletion drops are those of *that* send (`origin_sync_id`).
+By worklog alone, deleting a just-moved worklog dropped the DELETE and left
+the old entry at Jira for good. "Never attempted" is `send_attempts`.
 
 **Listed is not mine.** The sync keeps the user's open work, every open task
 nobody is assigned and a teammate's task in progress (`keptByDefaultScope`),

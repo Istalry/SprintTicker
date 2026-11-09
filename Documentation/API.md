@@ -102,8 +102,9 @@ the task row, archived or not, and with `syncState`: `local` (never queued),
 
 | Channel | Purpose |
 | :--- | :--- |
-| `worklog:update` | `(worklogId, { durationSeconds, startedAtUtc, comment })`. Rewrites the worklog here at once and queues the change for its provider; answers the worklog as it now stands and resends `worklog:on-updated`. Rejects with the reason, as a sentence, when the correction is refused: under a second, under the provider's floor (Jira: a minute) for a worklog it holds, ending in the future, or a comment over `WORKLOG_COMMENT_MAX_CHARS` (1000). The task cannot change |
+| `worklog:update` | `(worklogId, { durationSeconds, startedAtUtc, comment })`. Rewrites the worklog here at once and queues the change for its provider; answers the worklog as it now stands and resends `worklog:on-updated`. Rejects with the reason, as a sentence, when the correction is refused: under a second, under the provider's floor (Jira: a minute) for a worklog it holds, ending in the future, or a comment over `WORKLOG_COMMENT_MAX_CHARS` (1000). Not the task: that is `worklogs:move` |
 | `worklog:delete` | `(worklogId)`. Deletes the worklog here at once and queues its deletion at the provider; answers `true` |
+| `worklogs:move` | `(worklogId, taskId)`. Moves the worklog to another task (`WorklogCorrectionService.reassign`): here at once, and through the queue as a `DELETE` where it is then a `CREATE` on the new task's provider -- or the unsent send pointed there, when it was never attempted. An ad-hoc worklog takes its task's name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here |
 
 The rules are `checkWorklogCorrection` in `src/shared/worklog-correction.ts`,
 which the window applies too, so it refuses exactly what main refuses.

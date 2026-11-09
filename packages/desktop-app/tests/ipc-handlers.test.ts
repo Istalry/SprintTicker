@@ -413,6 +413,11 @@ describe('IPC handlers', () => {
       await expect(rename({}, taskId, title)).rejects.toThrow();
     });
 
+    it.each([[undefined, 'T-1'], ['w1', undefined], [7, 'T-1'], ['', 'T-1']])('MoveWorklog_BadArguments_AreRefused_%#', async (worklogId, taskId) => {
+      const move = handler(IPCChannel.MOVE_WORKLOG) as (event: unknown, worklogId: unknown, taskId: unknown) => Promise<unknown>;
+      await expect(move({}, worklogId, taskId)).rejects.toThrow();
+    });
+
     it.each([[undefined], [7], ['']])('AssignSession_NotATaskId_IsRefused_%#', async taskId => {
       await invoke(IPCChannel.START_INTERRUPTION);
 

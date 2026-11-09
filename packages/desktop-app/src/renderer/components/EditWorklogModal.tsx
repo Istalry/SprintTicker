@@ -167,7 +167,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
 
             <p className="text-[11px] text-text-secondary leading-relaxed">
               {endsAt && <>Ends at {formatHoursMinutes(endsAt)}. </>}
-              {reachNote(worklog)} The task cannot change: a worklog is not moved between issues.
+              {reachNote(worklog)} To put it on another task, use Move on its row in Work History.
             </p>
 
             {(refusal || error) && (
