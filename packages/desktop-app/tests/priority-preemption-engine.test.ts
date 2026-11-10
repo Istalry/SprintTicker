@@ -37,11 +37,11 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
 
   it('EvaluateRequest_HigherPriorityOverActiveLock_PreemptsAndReturnsShouldRenderTrue', () => {
     // Act - First request grants lock (Priority 80)
-    const firstRes = engine.evaluateRequest('unityCompilingPriority', 80);
+    const firstRes = engine.evaluateRequest('buildStatusPriority', 80);
     expect(firstRes.shouldRender).toBe(true);
 
     // Act - Second request with higher priority (Priority 100) preempts
-    const secondRes = engine.evaluateRequest('unityBuildFailurePriority', 100);
+    const secondRes = engine.evaluateRequest('buildFailurePriority', 100);
 
     // Assert
     expect(secondRes.shouldRender).toBe(true);
@@ -53,7 +53,7 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
     const renderCb = vi.fn();
 
     // Act - Grant high priority lock
-    engine.evaluateRequest('unityBuildFailurePriority', 100);
+    engine.evaluateRequest('buildFailurePriority', 100);
 
     // Lower priority request with QUEUE action
     const lowerRes = engine.evaluateRequest('standupPromptPriority', 70, renderCb);
@@ -78,11 +78,11 @@ describe('PriorityPreemptionEngine Unit Tests', () => {
   it('ReleaseActiveLock_LockHeld_ClearsLockAndDrainsQueue', () => {
     // Arrange
     const queuedCb = vi.fn();
-    engine.evaluateRequest('unityBuildFailurePriority', 100);
+    engine.evaluateRequest('buildFailurePriority', 100);
     engine.evaluateRequest('standupPromptPriority', 70, queuedCb);
 
     // Act
-    engine.releaseActiveLock('unityBuildFailurePriority');
+    engine.releaseActiveLock('buildFailurePriority');
 
     // Assert
     expect(queuedCb).toHaveBeenCalledTimes(1);
@@ -170,7 +170,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       rule('lunchModePriority', 90, { actionOnLunch: 'DISPLAY' }),
       rule('highNotificationPriority', 70, { actionOnLunch: 'QUEUE' }),
       rule('messagingPriority', 65),
-      rule('unityCompilingPriority', 60)
+      rule('buildStatusPriority', 60)
     ]
   };
 
@@ -201,11 +201,11 @@ describe('PriorityPreemptionEngine behaviour', () => {
 
     it('SetUserMode_BackToWork_LeavesANonBreakLockAlone', () => {
       const engine = engineWith(MATRIX);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
 
       engine.setUserMode('WORK');
 
-      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(engine.getActiveLockEventName()).toBe('buildStatusPriority');
     });
 
     it('OnUserModeChanged_RealChangeOnly_NotifiesOnce', () => {
@@ -259,6 +259,26 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const rules = engineWith({ rules: [rule('breakPromptPriority', 80)] }).getRules();
 
       expect(rules.some(r => r.eventName === 'breakPromptPriority')).toBe(false);
+    });
+
+    it('GetRules_StoredUnityRules_AreDroppedAndRankNothing', () => {
+      // Unity's screens went on 2026-11-09, and a database keeps the rule set
+      // the user last saved: by event name and by id, as either may match.
+      const stored = {
+        rules: [
+          rule('unityBuildFailurePriority', 60),
+          { ...rule('somethingRenamed', 55), id: 'unity_compiling' },
+          rule('unityPlayModePriority', 50),
+          rule('messagingPriority', 65)
+        ]
+      };
+      const engine = engineWith(stored);
+
+      const names = engine.getRules().map(r => r.eventName);
+      expect(names.filter(name => /unity/i.test(name) || name === 'somethingRenamed')).toEqual([]);
+      expect(names).toContain('messagingPriority');
+      expect(engine.getEventPriority('unityPlayModePriority')).toBe(50);
+      expect(engine.getEventPriority('unityBuildFailurePriority')).toBe(50);
     });
 
     it('SaveRules_NotAnArray_Throws', () => {
@@ -315,7 +335,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       engine.evaluateRequest('highNotificationPriority');
 
-      const result = engine.evaluateRequest('unityCompilingPriority');
+      const result = engine.evaluateRequest('buildStatusPriority');
       engine.releaseActiveLock('highNotificationPriority');
 
       expect(result.shouldRender).toBe(false);
@@ -326,7 +346,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       engine.evaluateRequest('messagingPriority');
 
-      expect(engine.evaluateRequest('unityCompilingPriority', 65).shouldRender).toBe(true);
+      expect(engine.evaluateRequest('buildStatusPriority', 65).shouldRender).toBe(true);
     });
   });
 
@@ -344,10 +364,10 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       const renderer = { setContextMode: vi.fn() };
       engine.setRenderer(renderer as never);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
       engine.setUserMode('AWAY');
 
-      engine.releaseActiveLock('unityCompilingPriority');
+      engine.releaseActiveLock('buildStatusPriority');
 
       expect(renderer.setContextMode).toHaveBeenCalledWith('AWAY');
     });
@@ -381,10 +401,10 @@ describe('PriorityPreemptionEngine behaviour', () => {
 
     it('DismissNotification_NothingShowing_ReturnsFalse', () => {
       const engine = engineWith(MATRIX);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
 
       expect(engine.dismissNotification()).toBe(false);
-      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(engine.getActiveLockEventName()).toBe('buildStatusPriority');
     });
   });
 
@@ -408,18 +428,18 @@ describe('PriorityPreemptionEngine behaviour', () => {
     const rendererThatResumes = (answer = true) => ({ setContextMode: vi.fn(), resumeScreen: vi.fn(() => answer) });
 
     it('ReleaseActiveLock_PreemptedScreenStillGoing_ResumesItInsteadOfTheMode', () => {
-      // A build under a banner: the banner's end used to go to the idle
-      // clock with the build still running and its lock gone.
+      // A build under a banner (Unity's, then): the banner's end used to go
+      // to the idle clock with the build still running and its lock gone.
       const engine = engineWith(MATRIX);
       const renderer = rendererThatResumes();
       engine.setRenderer(renderer as never);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
       engine.evaluateRequest('highNotificationPriority');
 
       engine.releaseActiveLock('highNotificationPriority');
 
-      expect(renderer.resumeScreen).toHaveBeenCalledWith('unityCompilingPriority');
-      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(renderer.resumeScreen).toHaveBeenCalledWith('buildStatusPriority');
+      expect(engine.getActiveLockEventName()).toBe('buildStatusPriority');
       expect(renderer.setContextMode).not.toHaveBeenCalled();
     });
 
@@ -427,10 +447,10 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       const renderer = rendererThatResumes();
       engine.setRenderer(renderer as never);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
       engine.evaluateRequest('highNotificationPriority');
 
-      engine.releaseActiveLock('unityCompilingPriority');
+      engine.releaseActiveLock('buildStatusPriority');
       engine.releaseActiveLock('highNotificationPriority');
 
       expect(renderer.resumeScreen).not.toHaveBeenCalled();
@@ -442,7 +462,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       const renderer = rendererThatResumes(false);
       engine.setRenderer(renderer as never);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
       engine.evaluateRequest('highNotificationPriority');
 
       engine.releaseActiveLock('highNotificationPriority');
@@ -455,14 +475,14 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       const renderer = rendererThatResumes();
       engine.setRenderer(renderer as never);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
       engine.evaluateRequest('messagingPriority');
       engine.evaluateRequest('highNotificationPriority');
 
       engine.releaseActiveLock('highNotificationPriority');
       expect(engine.getActiveLockEventName()).toBe('messagingPriority');
       engine.releaseActiveLock('messagingPriority');
-      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(engine.getActiveLockEventName()).toBe('buildStatusPriority');
     });
 
     it('ReleaseActiveLock_TrackerWasCovered_LeavesItToTheMode', () => {
@@ -484,7 +504,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       const renderer = rendererThatResumes();
       engine.setRenderer(renderer as never);
-      engine.evaluateRequest('unityCompilingPriority');
+      engine.evaluateRequest('buildStatusPriority');
       engine.evaluateRequest('highNotificationPriority');
       const replay = vi.fn();
       engine.evaluateRequest('messagingPriority', undefined, replay);
@@ -494,7 +514,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       expect(replay).toHaveBeenCalledTimes(1);
       expect(renderer.resumeScreen).not.toHaveBeenCalled();
       engine.releaseActiveLock('messagingPriority');
-      expect(renderer.resumeScreen).toHaveBeenCalledWith('unityCompilingPriority');
+      expect(renderer.resumeScreen).toHaveBeenCalledWith('buildStatusPriority');
     });
   });
 
@@ -503,9 +523,9 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const engine = engineWith(MATRIX);
       const renderer = { setContextMode: vi.fn(), resumeScreen: vi.fn(() => true) };
       engine.setRenderer(renderer as never);
-      const reclaim = vi.fn(() => { engine.evaluateRequest('unityCompilingPriority'); });
-      engine.addBackgroundScreen(['unityCompilingPriority'], reclaim);
-      engine.evaluateRequest('unityCompilingPriority');
+      const reclaim = vi.fn(() => { engine.evaluateRequest('buildStatusPriority'); });
+      engine.addBackgroundScreen(['buildStatusPriority'], reclaim);
+      engine.evaluateRequest('buildStatusPriority');
       engine.evaluateRequest('highNotificationPriority');
 
       engine.releaseActiveLock('highNotificationPriority');
@@ -513,7 +533,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       // Reclaimed as it is now, never resumed as it was: not set aside.
       expect(renderer.resumeScreen).not.toHaveBeenCalled();
       expect(reclaim).toHaveBeenCalledTimes(1);
-      expect(engine.getActiveLockEventName()).toBe('unityCompilingPriority');
+      expect(engine.getActiveLockEventName()).toBe('buildStatusPriority');
       expect(renderer.setContextMode).not.toHaveBeenCalled();
     });
 
@@ -522,7 +542,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
       const renderer = { setContextMode: vi.fn() };
       engine.setRenderer(renderer as never);
       const reclaim = vi.fn();
-      engine.addBackgroundScreen(['unityCompilingPriority'], reclaim);
+      engine.addBackgroundScreen(['buildStatusPriority'], reclaim);
       engine.evaluateRequest('messagingPriority');
 
       engine.releaseActiveLock('messagingPriority');
@@ -534,7 +554,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
     it('AddBackgroundScreen_Unregistered_IsNoLongerOffered', () => {
       const engine = engineWith(MATRIX);
       const reclaim = vi.fn();
-      const unregister = engine.addBackgroundScreen(['unityCompilingPriority'], reclaim);
+      const unregister = engine.addBackgroundScreen(['buildStatusPriority'], reclaim);
       unregister();
       engine.evaluateRequest('messagingPriority');
 
@@ -549,7 +569,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
           rule('awayModePriority', 100),
           rule('menuPriority', 97),
           rule('highNotificationPriority', 70),
-          rule('unityCompilingPriority', 55)
+          rule('buildStatusPriority', 55)
         ]
       };
       /** A background state that takes the display when offered, if `wants`. */
@@ -560,16 +580,17 @@ describe('PriorityPreemptionEngine behaviour', () => {
       };
 
       it('ReleaseActiveLock_TwoStates_TheHigherRankedFirst_WhateverRegisteredFirst', () => {
-        // Unity registered before the bar's picker, and took the display from it.
+        // An editor's build registered before the bar's picker, and took the
+        // display from it.
         const engine = engineWith(RANKED);
-        const unity = state(engine, 'unityCompilingPriority');
+        const build = state(engine, 'buildStatusPriority');
         state(engine, 'menuPriority');
         engine.evaluateRequest('awayModePriority');
 
         engine.releaseActiveLock('awayModePriority');
 
         expect(engine.getActiveLockEventName()).toBe('menuPriority');
-        expect(unity).not.toHaveBeenCalled();
+        expect(build).not.toHaveBeenCalled();
       });
 
       it('ReleaseActiveLock_AStateAboveTheQueue_ComesBeforeTheQueuedAlert', () => {
@@ -586,9 +607,9 @@ describe('PriorityPreemptionEngine behaviour', () => {
       });
 
       it('ReleaseActiveLock_AStateBelowTheQueue_TheQueuedAlertFirst', () => {
-        // Unity under a banner: as it always was.
+        // A build under a banner: as it always was.
         const engine = engineWith(RANKED);
-        const unity = state(engine, 'unityCompilingPriority');
+        const build = state(engine, 'buildStatusPriority');
         engine.evaluateRequest('awayModePriority');
         const banner = vi.fn();
         engine.evaluateRequest('highNotificationPriority', undefined, banner);
@@ -597,7 +618,7 @@ describe('PriorityPreemptionEngine behaviour', () => {
 
         expect(banner).toHaveBeenCalledTimes(1);
         expect(engine.getActiveLockEventName()).toBe('highNotificationPriority');
-        expect(unity).not.toHaveBeenCalled();
+        expect(build).not.toHaveBeenCalled();
       });
 
       it('ReleaseActiveLock_AStateAboveTheQueueWithNothingToShow_TheQueueStillDrains_OfferedOnce', () => {

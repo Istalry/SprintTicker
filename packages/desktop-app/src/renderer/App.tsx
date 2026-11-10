@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Clock,
-  Gamepad2,
   Calendar,
   Zap,
   Monitor,
@@ -20,7 +19,6 @@ import { useWorklogs } from './hooks/useWorklogs';
 import { ActiveTaskHeroCard } from './components/ActiveTaskHeroCard';
 import { TaskSelectionModal } from './components/TaskSelectionModal';
 import { SettingsView } from './views/Settings/SettingsView';
-import { UnityEngineView } from './views/Unity/UnityEngineView';
 import { CeremoniesView } from './views/Ceremonies/CeremoniesView';
 import { NotificationSettingsView } from './views/Notifications/NotificationSettingsView';
 import { PriorityRulesView } from './views/Priority/PriorityRulesView';
@@ -40,10 +38,10 @@ import { UpdateBanner } from './components/UpdateNotice';
 
 /**
  * Tabs that exist only to configure what the bar shows: Priority Rules orders
- * its screen, Unity Engine puts the editor's state on it, and Notifications
- * mirrors Windows notifications onto it. Hidden in no-bar mode.
+ * its screen, and Notifications mirrors Windows notifications onto it. Hidden
+ * in no-bar mode.
  */
-const BAR_ONLY_TABS = ['priority', 'unity', 'notifications'];
+const BAR_ONLY_TABS = ['priority', 'notifications'];
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('session');
@@ -127,7 +125,6 @@ export const App: React.FC = () => {
     { id: 'projects', label: 'Projects & Tasks', icon: FolderGit2 },
     { id: 'history', label: 'Work History', icon: History },
     { id: 'settings', label: 'Task Providers', icon: Settings },
-    ...(hasBar ? [{ id: 'unity', label: 'Unity Engine', icon: Gamepad2 }] : []),
     { id: 'ceremonies', label: 'Ceremonies', icon: Calendar },
     ...(hasBar ? [{ id: 'notifications', label: 'Notifications', icon: Bell }] : []),
     ...(hasBar ? [{ id: 'priority', label: 'Priority Rules', icon: Zap }] : []),
@@ -214,8 +211,6 @@ export const App: React.FC = () => {
         return <ProjectTaskManagerView />;
       case 'history':
         return <WorklogHistoryView />;
-      case 'unity':
-        return <UnityEngineView />;
       case 'ceremonies':
         return <CeremoniesView />;
       case 'notifications':

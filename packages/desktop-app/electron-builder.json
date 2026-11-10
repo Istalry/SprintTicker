@@ -18,13 +18,6 @@
     "build/**/*",
     "package.json"
   ],
-  "extraFiles": [
-    {
-      "from": "../unity-plugin",
-      "to": "packages/unity-plugin",
-      "filter": ["**/*", "!**/node_modules/**", "!**/.git/**"]
-    }
-  ],
   "extraResources": [
     {
       "from": "../../Animations",

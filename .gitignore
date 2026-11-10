@@ -71,19 +71,6 @@ __pycache__/
 *.py[cod]
 
 # ---------------------------------------------------------------------------
-# Unity metadata & generated files
-# ---------------------------------------------------------------------------
-/[Aa]ssets/
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Llo]gs/
-/[Uu]ser[Ss]ettings/
-/[Mm]emoryCaptures/
-
-# ---------------------------------------------------------------------------
 # Compiled test outputs
 # ---------------------------------------------------------------------------
 packages/desktop-app/tests/*.js
@@ -116,7 +103,6 @@ Documentation/busybar-firmware/
 icon reference/Slack_icon_2019.png
 icon reference/Gmail_icon_(2020).png
 icon reference/discord-color-icon.png
-icon reference/unity-game-engine-icon.png
 icon reference/openproject_icon.png
 icon reference/orange-error-icon-0.png
 icon reference/pause-button-red-icon.png

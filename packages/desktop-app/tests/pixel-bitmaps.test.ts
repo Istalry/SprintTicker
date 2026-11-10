@@ -3,7 +3,7 @@ import {
   SLACK_16X16_BITMAP,
   DISCORD_16X16_BITMAP,
   GMAIL_16X16_BITMAP,
-  UNITY_16X16_BITMAP,
+  BELL_16X16_BITMAP,
   BURGER_16X16_BITMAP,
   CLOCK_16X16_BITMAP,
   WAVE_16X16_BITMAP,
@@ -16,7 +16,7 @@ describe('PixelBitmaps Unit Tests', () => {
     { name: 'SLACK_16X16_BITMAP', data: SLACK_16X16_BITMAP },
     { name: 'DISCORD_16X16_BITMAP', data: DISCORD_16X16_BITMAP },
     { name: 'GMAIL_16X16_BITMAP', data: GMAIL_16X16_BITMAP },
-    { name: 'UNITY_16X16_BITMAP', data: UNITY_16X16_BITMAP },
+    { name: 'BELL_16X16_BITMAP', data: BELL_16X16_BITMAP },
     { name: 'BURGER_16X16_BITMAP', data: BURGER_16X16_BITMAP },
     { name: 'CLOCK_16X16_BITMAP', data: CLOCK_16X16_BITMAP },
     { name: 'WAVE_16X16_BITMAP', data: WAVE_16X16_BITMAP }
@@ -36,7 +36,7 @@ describe('PixelBitmaps Unit Tests', () => {
   });
 
   it('GetBitmapById_EachIconType_ReturnsCorrectMatrixReference', () => {
-    const icons: BitmapIconId[] = ['burger', 'clock', 'slack', 'gmail', 'discord', 'unity'];
+    const icons: BitmapIconId[] = ['burger', 'clock', 'slack', 'gmail', 'discord', 'bell'];
     icons.forEach(iconId => {
       const bitmap = getBitmapById(iconId);
       expect(bitmap).toBeDefined();
@@ -54,5 +54,9 @@ describe('PixelBitmaps Unit Tests', () => {
       expect(frame0.length).toBe(16);
       expect(frame1.length).toBe(16);
     });
+  });
+
+  it('GetBitmapById_UnknownId_ReturnsTheGenericBell', () => {
+    expect(getBitmapById('no-such-icon')).toBe(BELL_16X16_BITMAP);
   });
 });

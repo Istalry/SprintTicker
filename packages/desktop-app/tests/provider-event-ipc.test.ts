@@ -46,7 +46,6 @@ describe('provider event IPC', () => {
       inputDecoder: new InputDecoder(driver, engine, settingsRepo),
       renderer: new DisplayRenderer(driver),
       getWindow: () => null,
-      saveUnityScenes: async () => false,
       providerEvents
     }).registerAllHandlers();
   }

@@ -26,15 +26,15 @@ vi.mock('electron', () => ({
   powerSaveBlocker: { start: vi.fn().mockReturnValue(1), stop: vi.fn(), isStarted: vi.fn().mockReturnValue(false) }
 }));
 
-/** Long enough for a banner (3 s), any scene and the compile grace to end. */
+/** Long enough for a banner (3 s) and any scene to end. */
 const SETTLE_MS = 8000;
 
 /**
  * Who gets the display back when something ends, scripted from what the
  * stress runs found. Each case was a seed that ended with the panel
- * disagreeing with the state: a build still running under the idle clock,
- * the sandwich up under a lock that said "compiling", the second editor's
- * compile taken down by the first one's end.
+ * disagreeing with the state: a screen still going on under the idle clock,
+ * the sandwich up under a lock that said otherwise, a picker nobody could
+ * see still taking presses.
  */
 describe('Display hand-back: the screen that ends gives the display to the right one', () => {
   let desk: Desk;
@@ -48,7 +48,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
       }
     }
   };
-  /** The animated icon on the panel, which tells the screens apart: gear, hammer, ON AIR. */
+  /** The animated icon on the panel, which tells the screens apart: stopwatch, clock, bell. */
   const icon = (): string | undefined => desk.device.elements.get(FRONT_ELEMENT_IDS.ICON)?.path;
   const lock = (): string | null => desk.priority.getActiveLockEventName();
 
@@ -89,73 +89,19 @@ describe('Display hand-back: the screen that ends gives the display to the right
     });
   });
 
-  describe('Unity under something else', () => {
-    it('Banner_OverABuild_HandsTheDisplayBackToTheBuild', async () => {
-      // Seed 1947: the banner's end went to the idle clock, the build still running.
-      await play('buildStart', 500, 'banner', SETTLE_MS);
+  describe('a screen under something else', () => {
+    const scene = (): string | undefined => desk.device.elements.get(FRONT_ELEMENT_IDS.SCENE)?.path;
 
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(icon()).toBe('icon_hammer_16x16.anim');
-      expectSettledScreen(desk);
-    });
+    it('StandupPrompt_UnderThePicker_ComesBackWhenThePickerCloses', async () => {
+      // Seed 1947, with a build under a banner then: the cover's end went to
+      // the idle clock, the screen beneath it still going on.
+      await play('standupPrompt', 1000, 'openPicker', 1000);
+      expect(lock()).toBe(BAR_MENU_EVENT);
 
-    it('Banner_CompileStartedUnderIt_ShowsTheGearAfterwards', async () => {
-      // Refused while the banner held the display, and never asked again.
-      await play('banner', 100, 'compileStart', SETTLE_MS);
+      await play('closePicker', SETTLE_MS);
 
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(icon()).toBe('icon_gear_16x16.anim');
-    });
-
-    it('LunchEnds_AnEditorStillCompiling_GearReplacesTheSandwich', async () => {
-      // Leaving Lunch drew the gear behind the sandwich still playing: the
-      // lock said compiling, the panel showed lunch.
-      await play('lunchStart', 500, 'compileStart', 500, 'lunchEnd', SETTLE_MS);
-
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
-      expect(icon()).toBe('icon_gear_16x16.anim');
-    });
-
-    it('CompileEnds_StillInPlayMode_ReturnsToPlayMode', async () => {
-      await play('playEnter', 500, 'compileStart', 500, 'compileEnd', SETTLE_MS);
-
-      expect(lock()).toBe('unityPlayModePriority');
-      expect(icon()).toBe('icon_playmode_16x16.anim');
-    });
-  });
-
-  describe('two editors open', () => {
-    it('Compile_FirstOfTwoEditorsFinishes_GearStaysForTheOther', async () => {
-      await play('compileStart', 100, 'compileStartB', 500, 'compileEnd', SETTLE_MS);
-
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(icon()).toBe('icon_gear_16x16.anim');
-
-      await play('compileEndB', SETTLE_MS);
-      expect(lock()).toBeNull();
-      expectSettledScreen(desk);
-    });
-
-    it('Build_OtherEditorsCompileEnds_BuildScreenStays', async () => {
-      await play('buildStart', 100, 'compileStartB', 500, 'compileEndB', SETTLE_MS);
-
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(icon()).toBe('icon_hammer_16x16.anim');
-    });
-
-    it('Build_OtherEditorsBuildEnds_FirstBuildScreenStays', async () => {
-      await play('buildStart', 100, 'buildStartB', 500, 'buildEndB', SETTLE_MS);
-
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(icon()).toBe('icon_hammer_16x16.anim');
-    });
-
-    it('PlayMode_OneEditorExits_OtherStaysOnAir', async () => {
-      await play('playEnter', 100, 'playEnterB', 500, 'playExit', SETTLE_MS);
-
-      expect(lock()).toBe('unityPlayModePriority');
-      expect(icon()).toBe('icon_playmode_16x16.anim');
+      expect(lock()).toBe('standupPromptPriority');
+      expect(scene()).toMatch(/^meeting_table_72x16/);
     });
   });
 
@@ -192,14 +138,16 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
-    it('TaskDone_DuringPlayMode_SceneEndsOnPlayMode', async () => {
+    it('TaskDone_UnderTheResumeQuestion_SceneEndsOnTheQuestion', async () => {
       // The scene's end went to the session -- none, so the idle clock --
-      // with Play Mode still holding the display.
-      await play('startTask', 500, 'playEnter', 500, 'finish', SETTLE_MS);
+      // with another screen still holding the display (Play Mode, then).
+      await play('startTask', 500);
+      desk.renderer.renderResumePrompt();
+      await play(500, 'finish', SETTLE_MS);
 
-      expect(lock()).toBe('unityPlayModePriority');
+      expect(lock()).toBe(RESUME_PROMPT_EVENT);
       expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
-      expect(icon()).toBe('icon_playmode_16x16.anim');
+      expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
     });
   });
 
@@ -266,11 +214,11 @@ describe('Display hand-back: the screen that ends gives the display to the right
     it.each([
       ['during DONE!', 1000],
       ['after DONE!', SETTLE_MS]
-    ])('PickerOpened_%s_ACompileStarts_ThePickerStays', async (_when, wait) => {
+    ])('PickerOpened_%s_ABannerArrives_ThePickerStays', async (_when, wait) => {
       // On the real bar (2026-10-15): FINISH, START with nothing running --
-      // the picker -- and Unity began compiling. The gear covered the picker,
-      // which outranks it, and the picker never came back.
-      await play('startTask', SETTLE_MS, 'finish', wait, 'openPicker', 500, 'compileStart', SETTLE_MS);
+      // the picker -- and a screen it outranks arrived (an editor's compile,
+      // then). It covered the picker, which never came back.
+      await play('startTask', SETTLE_MS, 'finish', wait, 'openPicker', 500, 'highBanner', SETTLE_MS);
 
       expect(lock()).toBe(BAR_MENU_EVENT);
       expectSettledScreen(desk);
@@ -286,19 +234,6 @@ describe('Display hand-back: the screen that ends gives the display to the right
 
       await play('closePicker', SETTLE_MS);
       expect(lock()).toBe('lunchModePriority');
-      expectSettledScreen(desk);
-    });
-
-    it('PickerOpenedUnderAway_AwayEndsDuringACompile_ThePickerIsOverTheGear', async () => {
-      // Unity registered first, and the display went to the registration
-      // order rather than the user's priorities.
-      await play('compileStart', 500, 'awayStart', 1000, 'openPicker', 1000, 'awayEnd', SETTLE_MS);
-
-      expect(lock()).toBe(BAR_MENU_EVENT);
-      expectSettledScreen(desk);
-
-      await play('closePicker', SETTLE_MS);
-      expect(lock()).toBe('unityCompilingPriority');
       expectSettledScreen(desk);
     });
 
@@ -401,10 +336,10 @@ describe('Display hand-back: the screen that ends gives the display to the right
     });
 
     it('IconUpWhenTheBarDrops_AwayMeanwhile_NoIconOverTheCoffeeOnceBack', async () => {
-      // Found by stress seed 1026: the gear's removal failed while the bar was
+      // Found by stress seed 1026: an icon's removal failed while the bar was
       // away, the reconnect called the icon gone, and it played on over the
       // Away scene.
-      await play('startTask', SETTLE_MS, 'compileStart', SETTLE_MS, 'barDrop', 500, 'awayStart', 2000, 'barBack', SETTLE_MS);
+      await play('startTask', SETTLE_MS, 'barDrop', 500, 'awayStart', 2000, 'barBack', SETTLE_MS);
 
       expect(lock()).toBe('awayModePriority');
       expectSettledScreen(desk);
@@ -463,8 +398,8 @@ describe('Display hand-back: the screen that ends gives the display to the right
   });
 
   /**
-   * The bar going away and coming back. 2026-10-07: it froze on BUILDING 40%,
-   * was restarted, and came back showing it -- the clear for the build's end
+   * The bar going away and coming back. 2026-10-07: it froze on a screen, was
+   * restarted, and came back showing it -- the clear for that screen's end
    * had failed while it was away, and the driver replayed the last frame on
    * its return. It now redraws what is current.
    */
@@ -482,10 +417,10 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await advance(PING_NOTICE_MS);
     };
 
-    it('BuildEndsWhileTheBarIsAway_BackOnTheIdleClock', async () => {
-      await play('buildStart', 500);
+    it('PickerClosedWhileTheBarIsAway_BackOnTheIdleClock', async () => {
+      await play('openPicker', 500);
 
-      await outage(() => play('buildEnd', SETTLE_MS));
+      await outage(() => play('closePicker', SETTLE_MS));
       await advance(SETTLE_MS);
 
       expect(lock()).toBeNull();
@@ -493,12 +428,12 @@ describe('Display hand-back: the screen that ends gives the display to the right
     });
 
     it('ShortOutage_AClearAnsweredBeforeThePingSeesTheBar_IsNotSentAgain', async () => {
-      // Found by stress seed 1670. Play Mode's screen went unanswered, the bar
-      // came back before the next ping, and a build drew and its end cleared
-      // the panel, all answered; that ping then forgot what the answers said,
-      // and the redraw it asks for removed a frame that was gone and closed a
+      // Found by stress seed 1670. A screen went unanswered, the bar came back
+      // before the next ping, and another screen drew and its end cleared the
+      // panel, all answered; that ping then forgot what the answers said, and
+      // the redraw it asks for removed a frame that was gone and closed a
       // closed screen.
-      await play('playEnter', 'playExit', 'barDrop', 1000, 'barBack', 40, 'buildStart', 1000, 'buildEnd', SETTLE_MS);
+      await play('openPicker', 'closePicker', 'barDrop', 1000, 'barBack', 40, 'openPicker', 1000, 'closePicker', SETTLE_MS);
 
       expect(lock()).toBeNull();
       expectSettledScreen(desk);
@@ -550,14 +485,13 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expect(desk.device.placeholders.size).toBe(0);
     });
 
-    it('BarRebootsUnderABuild_TheBuildComesBack', async () => {
-      await play('buildStart', 500);
+    it('BarRebootsUnderThePicker_ThePickerComesBack', async () => {
+      await play('openPicker', 500);
 
       await outage(() => advance(1000), { reboot: true });
       await advance(SETTLE_MS);
 
-      expect(lock()).toBe('unityCompilingPriority');
-      expect(icon()).toBe('icon_hammer_16x16.anim');
+      expect(lock()).toBe(BAR_MENU_EVENT);
       expectSettledScreen(desk);
     });
   });

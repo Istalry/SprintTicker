@@ -21,8 +21,6 @@ import type {
   ForgottenSessionResolutionDTO,
   UserMode,
   WorklogDTO,
-  UnitySettingsDTO,
-  UnityTelemetryDTO,
   WindowsNotificationSettingsDTO,
   NotificationLogEntryDTO,
   HardwareDisplayStateDTO,
@@ -166,17 +164,6 @@ const electronAPI: IElectronAPI = {
     return () => ipcRenderer.removeListener(IPCChannel.ON_CEREMONY_PROMPT, handler);
   },
 
-  // Unity Telemetry & Audio Settings
-  getUnitySettings: () => ipcRenderer.invoke(IPCChannel.GET_UNITY_SETTINGS),
-  saveUnitySettings: (settings: UnitySettingsDTO) =>
-    ipcRenderer.invoke(IPCChannel.SAVE_UNITY_SETTINGS, settings),
-  getUnityTelemetry: () => ipcRenderer.invoke(IPCChannel.GET_UNITY_TELEMETRY),
-  onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => {
-    const handler = (_event: IpcRendererEvent, telemetry: UnityTelemetryDTO) => callback(telemetry);
-    ipcRenderer.on(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, handler);
-    return () => ipcRenderer.removeListener(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, handler);
-  },
-
   // Provider events
   getProviderEventSettings: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDER_EVENT_SETTINGS),
   saveProviderEventSettings: (settings: ProviderEventSettingsDTO) =>
@@ -274,14 +261,6 @@ const electronAPI: IElectronAPI = {
     const handler = (_event: IpcRendererEvent, payload: ProjectsUpdatedPayload) => callback(payload);
     ipcRenderer.on(IPCChannel.ON_PROJECTS_UPDATED, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_PROJECTS_UPDATED, handler);
-  },
-  // Unity Plugin Injector & Gitignore
-  unityInjector: {
-    setupGitignore: () => ipcRenderer.invoke(IPCChannel.SETUP_GITIGNORE),
-    checkGitignore: () => ipcRenderer.invoke(IPCChannel.CHECK_GITIGNORE),
-    scanAndInject: (rootFolder: string) => ipcRenderer.invoke(IPCChannel.SCAN_AND_INJECT, rootFolder),
-    removeInjection: (projectPath: string) => ipcRenderer.invoke(IPCChannel.REMOVE_INJECTION, projectPath),
-    openFolderPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_FOLDER_PICKER)
   }
 };
 

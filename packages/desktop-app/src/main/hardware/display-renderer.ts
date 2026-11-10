@@ -112,7 +112,7 @@ export function pausedChoicesShown(selection: PausedChoice): {
 const SELECTION_LABEL_GAP_PX = 2;
 const SELECTION_LABEL_COLOR = '#9CA3AF';
 const SELECTION_POSITION_COLOR = '#E5E7EB';
-/** The selector's scroll bar: the Unity progress line's track, a thumb in the selector's blue. */
+/** The selector's scroll bar: a dark track, a thumb in the selector's blue. */
 const SELECTION_TRACK_COLOR = '#1E293B';
 const SELECTION_THUMB_COLOR = '#3B82F6';
 /** A thumb narrower than this reads as a stray pixel on the LEDs. */
@@ -433,10 +433,10 @@ export class DisplayRenderer {
   /**
    * Stops Lunch's or Away's looping scene when another screen takes the
    * display from it. Nothing else draws over a mode, so stopping it was left
-   * to `setContextMode` -- but leaving Lunch, the release of its lock hands
-   * the display to Unity's compile screen first, whose frame was held back
-   * behind the scene still playing, and the sandwich stayed up under a lock
-   * that said "compiling".
+   * to `setContextMode` -- but leaving Lunch, the release of its lock can hand
+   * the display to a screen that waited behind it first (an editor's compile
+   * screen, once), whose frame was held back behind the scene still playing,
+   * and the sandwich stayed up under a lock that said otherwise.
    */
   private endModeSceneFor(eventName: string): void {
     if (eventName === 'lunchModePriority' || eventName === 'awayModePriority') return;
@@ -802,30 +802,6 @@ export class DisplayRenderer {
   }
 
   /**
-   * Paints the icon + two rows layout with a one-pixel progress bar under row 1.
-   *
-   * The same layout as every other Unity screen -- state in row 0, project in
-   * row 1 -- where the bar used to take row 1 and push the project into row 0
-   * beside the label, cut to "BUILDING: M...".
-   */
-  private paintIconTwoRowsAndBar(
-    iconBitmap: (string | null)[][],
-    row0Text: string,
-    row1Text: string,
-    row0Color: string,
-    progressPercent: number,
-    barColor: string,
-    animatedIcon?: BitmapIconId
-  ): number {
-    this.paintIconAndTwoRows(iconBitmap, row0Text, row1Text, row0Color, '#FFFFFF', animatedIcon);
-    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
-    const barFillW = Math.max(1, Math.floor((progressPercent * layout.TEXT_FIELD_WIDTH) / 100));
-    this.canvas.drawRect(layout.TEXT_X, layout.PROGRESS_BAR_Y, layout.TEXT_FIELD_WIDTH, 1, '#1E293B');
-    this.canvas.drawRect(layout.TEXT_X, layout.PROGRESS_BAR_Y, barFillW, 1, barColor);
-    return barFillW;
-  }
-
-  /**
    * Encodes the current canvas to PNG and transmits it via the asset pipeline.
    * Also dispatches the state update to emulator subscribers.
    */
@@ -1154,8 +1130,8 @@ export class DisplayRenderer {
 
     if (!session && this.showIdleClockFallback) {
       // The idle clock is the user's mode, not a claim on the display: it
-      // used to clear whatever held the display -- a banner, Unity's Play
-      // screen -- the moment a session ended under it. The holder's release
+      // used to clear whatever held the display -- a banner, the picker --
+      // the moment a session ended under it. The holder's release
       // hands back to the mode, which lands here again.
       const holder = this.priorityEngine?.getActiveLockEventName() ?? null;
       if (holder !== null && holder !== ACTIVE_TRACKER_EVENT) {
@@ -1381,10 +1357,10 @@ export class DisplayRenderer {
    * Draws `3/12` flush right on row 1, and a scroll bar under the rows.
    * Returns the x where the number starts.
    *
-   * The bar is the one-pixel line the Unity screens use for progress: a thumb
-   * at the item's place in the list, on a dark track. At the far left there is
-   * nothing before; at the far right, nothing after. A single-item list gets no
-   * bar, since there is nowhere to scroll.
+   * The bar is a one-pixel line under row 1: a thumb at the item's place in
+   * the list, on a dark track. At the far left there is nothing before; at the
+   * far right, nothing after. A single-item list gets no bar, since there is
+   * nowhere to scroll.
    */
   private paintSelectionPosition({ index, count }: SelectionPosition): number {
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
@@ -1652,153 +1628,5 @@ export class DisplayRenderer {
       clearTimeout(this.celebrationTimeout);
       this.celebrationTimeout = null;
     }
-  }
-
-  /**
-   * Renders Template C: Unity Play Mode "ON AIR" Alert with Gamepad Controller Icon.
-   */
-  public renderPlayMode(projectName: string): DisplayPayload {
-    return this.requestRender('unityPlayModePriority', () => {
-      this.paintIconAndTwoRows(
-        getBitmapById('playmode'),
-        'ON AIR',
-        projectName,
-        '#FF0000',
-        '#3B82F6',
-        'playmode'
-      );
-
-      const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
-        ledColorHex: '#FF0000FF'
-      };
-      this.ledMode = 'PULSE_ALERT';
-      void this.transmitFrame('#FF0000FF', payload.frontElements)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      return payload;
-    });
-  }
-
-  /**
-   * Renders C# Script Compilation View with Compiling Gear Icon and text (NO progress bar).
-   */
-  public renderCompilation(projectName: string): DisplayPayload {
-    return this.requestRender('unityCompilingPriority', () => {
-      const colors = this.getThemeColors();
-      this.paintIconAndTwoRows(
-        getBitmapById('compiling'),
-        'COMPILING',
-        projectName,
-        colors.keyColor,
-        '#FFFFFF',
-        'compiling'
-      );
-
-      const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
-        ledColorHex: colors.keyColor
-      };
-      this.ledMode = 'SOLID';
-      void this.transmitFrame(colors.keyColor, payload.frontElements)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      return payload;
-    });
-  }
-
-  /**
-   * Renders Standalone Game Build View with Unity Icon and progress bar (x=16, width=56).
-   */
-  public renderBuilding(projectName: string, progress: number = 50): DisplayPayload {
-    return this.requestRender('unityCompilingPriority', () => {
-      const barColor = progress >= 80 ? '#10B981' : progress >= 40 ? '#3B82F6' : '#FBBF24';
-      const progressColorHex = `${barColor}FF`;
-
-      const barFillW = this.paintIconTwoRowsAndBar(
-        getBitmapById('hammer'),
-        `BUILDING ${progress}%`,
-        projectName,
-        barColor,
-        progress,
-        barColor,
-        'hammer'
-      );
-
-      // Build test-queryable elements alongside the canvas pixels for the emulator
-      const canvasEls = this.canvasToEmulatorElements();
-      const testEls: Array<Record<string, unknown>> = [
-        ...canvasEls,
-        // Sentinel elements so tests can find by id — not sent to hardware
-        { id: 'txt_build', type: 'text', text: `BUILDING ${progress}%`, x: 17, y: 0 },
-        {
-          id: 'bar_build_active', type: 'rectangle', x: 17,
-          y: DISPLAY_CONSTANTS.LAYOUT_OFFSETS.PROGRESS_BAR_Y, width: barFillW, height: 1
-        }
-      ];
-
-      const payload: DisplayPayload = {
-        frontElements: testEls,
-        ledColorHex: progressColorHex
-      };
-      this.ledMode = 'FLASH_BURST';
-      void this.transmitFrame(progressColorHex, canvasEls)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      return payload;
-    });
-  }
-
-  /**
-   * Renders Lightmap Baking View with Unity Icon and amber progress bar.
-   */
-  public renderBaking(projectName: string, progress: number = 50): DisplayPayload {
-    return this.requestRender('unityCompilingPriority', () => {
-      const barColor = '#FBBF24';
-
-      this.paintIconTwoRowsAndBar(
-        getBitmapById('bulb'),
-        `BAKING ${progress}%`,
-        projectName,
-        barColor,
-        progress,
-        barColor,
-        'bulb'
-      );
-
-      const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
-        ledColorHex: '#FBBF24FF'
-      };
-      this.ledMode = 'FLASH_BURST';
-      void this.transmitFrame('#FBBF24FF', payload.frontElements)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      return payload;
-    });
-  }
-
-  /**
-   * Renders Unity Exception / Error Alert View with Orange Error Icon.
-   *
-   * The project is accepted and not drawn: row 1 carries the exception's
-   * message instead, and the project only ever reached the rear preview.
-   */
-  public renderException(_projectName: string, message: string): DisplayPayload {
-    return this.requestRender('unityBuildFailurePriority', () => {
-      this.paintIconAndTwoRows(
-        getBitmapById('error'),
-        'EXCEPTION',
-        message,
-        '#EF4444',
-        '#FFFFFF',
-        'error'
-      );
-
-      const payload: DisplayPayload = {
-        frontElements: this.canvasToEmulatorElements(),
-        ledColorHex: '#EF4444FF'
-      };
-      this.ledMode = 'PULSE_ALERT';
-      void this.transmitFrame('#EF4444FF', payload.frontElements)
-        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
-      return payload;
-    });
   }
 }

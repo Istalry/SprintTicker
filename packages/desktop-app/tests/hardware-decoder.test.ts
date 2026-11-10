@@ -194,49 +194,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(engine.getCurrentSession()).toBeNull();
   });
 
-  it('RenderPlayMode_ValidProject_RendersOnAirPayload', () => {
-    // Act
-    const payload = renderer.renderPlayMode('MyFantasyGame');
-
-    // Assert: front display is pixel-canvas encoded as rectangle strips
-    const frontEls = payload.frontElements as Record<string, unknown>[];
-    // All front elements are rectangle strips from the pixel canvas
-    expect(frontEls.length).toBeGreaterThan(0);
-    expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
-    expect(payload.ledColorHex).toBe('#FF0000FF');
-  });
-
-  it('RenderCompilation_ValidProject_RendersCompilationPayloadWithoutProgressBar', () => {
-    // Act
-    const payload = renderer.renderCompilation('MyFantasyGame');
-
-    // Assert: front display is pixel-canvas encoded as rectangle strips
-    const frontEls = payload.frontElements as Record<string, unknown>[];
-    expect(frontEls.length).toBeGreaterThan(0);
-    expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
-    // No bar_ sentinel elements (those only appear in renderBuilding)
-    const sentinelBars = frontEls.filter(e => (e.id as string)?.startsWith('bar_'));
-    expect(sentinelBars).toHaveLength(0);
-  });
-
-  it('RenderBuilding_ValidProject_RendersProgressBarPayload', () => {
-    // Act
-    const payload = renderer.renderBuilding('MyFantasyGame', 75);
-
-    // Assert: renderBuilding adds sentinel elements for testability
-    const frontEls = payload.frontElements as Record<string, unknown>[];
-    const buildTitle = frontEls.find(e => e.id === 'txt_build');
-    expect(buildTitle).toBeDefined();
-    // State and percentage on row 0; the project keeps row 1 to itself.
-    expect((buildTitle as Record<string, unknown>).text).toBe('BUILDING 75%');
-    const activeBar = frontEls.find(e => e.id === 'bar_build_active');
-    expect(activeBar).toBeDefined();
-    expect((activeBar as Record<string, unknown>).x).toBe(17); // canvas icon is 15px, text starts at 17
-    // 75% of 55px bar = 41px (canvas coordinates)
-    expect((activeBar as Record<string, unknown>).width).toBe(41);
-    expect(payload.ledColorHex).toBe('#3B82F6FF');
-  });
-
   it('HandleHardwareInput_WheelRotationsAndClick_ExecutesMappedActions', () => {
     // Act
     const upAction = decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: new Date().toISOString() });
@@ -1343,7 +1300,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   describe('the picker under Away', () => {
     // Away outranks the picker, and the picker is never queued: START under
     // Away left it open and unseen, and when Away ended the display went to
-    // the clock (or Unity, or Lunch) while the wheel moved through it blind.
+    // the clock (or Lunch) while the wheel moved through it blind.
     const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
     let priority: PriorityPreemptionEngine;
 

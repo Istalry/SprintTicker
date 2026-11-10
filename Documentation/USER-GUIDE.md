@@ -6,13 +6,13 @@ Installation is in the [README](../README.md#-installation). This picks up from
 first launch.
 
 <p align="center">
-  <img src="../docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, a Unity compile, the Lunch scene and a Slack banner">
+  <img src="../docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, the paused menu, the Lunch scene and a Slack banner">
 </p>
 
 | | |
 | :--- | :--- |
 | 🏁 [First run](#-first-run) | the setup wizard, with or without a bar, and the mini timer |
-| 🗂️ [The panels](#-the-panels) | the nine tabs of the window, one by one |
+| 🗂️ [The panels](#-the-panels) | the eight tabs of the window, one by one |
 | 💡 [The bar itself](#-the-bar-itself) | every screen the bar shows, and its buttons |
 | 🎹 [A Stream Deck](#-a-stream-deck) | the session on keys you place yourself |
 | 🩺 [Troubleshooting](#-troubleshooting) | when something does not do what it should |
@@ -22,7 +22,7 @@ first launch.
 
 ## 🏁 First run
 
-The onboarding wizard opens automatically. Three steps:
+The onboarding wizard opens automatically. Two steps:
 
 <p align="center">
   <img src="../docs/images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar, device address 10.0.4.20, Test Ping">
@@ -60,8 +60,6 @@ show in the window — meetings, admin, anything without a ticket. The bar
 shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
 Work History and is **never sent** to Jira or OpenProject.
 
-**3️⃣ Unity plugin.** Optional. Skip it if you do not use Unity.
-
 ### 💻 Without a BUSY Bar
 
 <table>
@@ -74,7 +72,7 @@ Work History and is **never sent** to Jira or OpenProject.
     <td><img src="../docs/images/app-nobar-session.png" alt="Active Session in no-bar mode: no emulator, the same session"></td>
   </tr>
   <tr>
-    <td>Nine tabs; the emulator and the connection readout in the top bar.</td>
+    <td>Eight tabs; the emulator and the connection readout in the top bar.</td>
     <td>Six tabs; everything that keeps time is still there.</td>
   </tr>
 </table>
@@ -83,13 +81,10 @@ Everything that keeps time works without the hardware: the task picker, the
 running timer, pausing, finishing, worklog sync, history, the ceremonies and
 the end-of-day wrap-up. What steps aside is what only describes the bar — the
 on-screen emulator and connection readout in the top bar, **Priority Rules**,
-which orders the bar's screen and nothing else, **Unity Engine**, whose
-compile, Play Mode and error states exist to be shown on the bar, and
-**Notifications**, which mirrors Windows notifications onto it. Notifications
-*from* OpenProject still arrive, as Windows notifications; their settings are
-in Task Providers. Events from the
-Unity plugin are ignored in this mode, the Windows notification listener does
-not run, and the setup wizard skips its Unity step. The end-of-day wrap-up still saves open Unity scenes. **Device Diagnostics**
+which orders the bar's screen and nothing else, and **Notifications**, which
+mirrors Windows notifications onto it. Notifications *from* OpenProject still
+arrive, as Windows notifications; their settings are in Task Providers. The
+Windows notification listener does not run in this mode. **Device Diagnostics**
 becomes **Device & Logs**, keeping log export, the update setting and the
 factory reset.
 
@@ -110,9 +105,8 @@ before are kept, and the bar's screens come back at once.
 A small window that stays above every other one and shows what the bar would:
 the task key and title, the elapsed time, and a coloured edge -- green while
 tracking, amber while paused, grey with nothing running. Beside them is the
-icon of whatever holds the bar: the stopwatch for your session, the gear while
-Unity compiles, an app's icon during its notification, the burger at lunch, a
-coffee cup while you are away. Hover it for what the bar says. Open it with **Mini
+icon of whatever holds the bar: the stopwatch for your session, an app's icon
+during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with **Mini
 Timer** in the top bar or **Show Mini Timer** in the tray menu.
 
 <p align="center">
@@ -141,7 +135,7 @@ It counts seconds, which the bar does not: on screen a second costs nothing.
 
 ## 🗂️ The panels
 
-Nine tabs down the left.
+Eight tabs down the left.
 
 ### ▶️ Active Session
 
@@ -430,35 +424,6 @@ minutes, so a task added on the provider appears without changing views.
 > would send byte-identical requests forever, so the app stops and tells you
 > why. **Retry Failed** is for after you have fixed the cause.
 
-### 🎮 Unity Engine
-
-Discovered Unity projects and plugin injection. Once installed, the bar shows
-compile progress, an "ON AIR" screen during Play Mode, and console exceptions.
-
-> [!NOTE]
-> **Nothing on the bar from Unity?** Open the editor's Console and search
-> for `sprintticker`. A line saying a script *will not be compiled because
-> it does not belong to any assembly definition file* is a plugin from before
-> this release; one compile with the current plugin linked fixes it. An
-> error from `SprintTicker.Unity.Editor` stops the project's Play Mode too,
-> so report it.
-
-<p align="center">
-  <img src="../docs/images/app-unity.png" width="80%" alt="Unity Engine panel: connected editors, compile and Play Mode state, sound and alert settings">
-</p>
-The icons move. While scripts compile the gear turns; during Play Mode the
-pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
-bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
-a notification without an app logo rings its bell, the end-of-day prompt's
-alarm clock rings, and the lunch prompt's burger hops. An OpenProject notification passes a shine across the OpenProject logo;
-other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
-`[IconAnimator]` lines say why, and the screen is otherwise unaffected.
-
-| | | | | | | |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="../docs/images/bar-icon-gear.webp" width="64" alt="Gear turning"> | <img src="../docs/images/bar-icon-playmode.webp" width="64" alt="Game pad"> | <img src="../docs/images/bar-icon-hammer.webp" width="64" alt="Hammer striking"> | <img src="../docs/images/bar-icon-bulb.webp" width="64" alt="Glowing bulb"> | <img src="../docs/images/bar-icon-warning.webp" width="64" alt="Warning triangle shaking"> | <img src="../docs/images/bar-icon-bell.webp" width="64" alt="Bell ringing"> | <img src="../docs/images/bar-icon-clock.webp" width="64" alt="Alarm clock ringing"> |
-| compiling | Play Mode | build | lightmap bake | exception | notification | end of day |
-
 ### 📅 Ceremonies
 
 Working hours, and the three scheduled events:
@@ -516,7 +481,7 @@ you are back. Lunch never undoes what you do:
 - **The bar's picker works during lunch.** START or a click with nothing
   running opens it over the sandwich; BACK brings the sandwich back. Opened
   while Windows is locked, it waits under Away and shows as soon as you
-  unlock, ahead of Unity and any notification that came in meanwhile.
+  unlock, ahead of any notification that came in meanwhile.
 - **A task that left your list over the break** -- reassigned, closed or
   moved -- is not restarted without asking. The window asks **Resume after
   lunch?**, and the bar shows **NOT YOURS / RESUME IT?**: OK resumes it, BACK
@@ -615,9 +580,6 @@ the list sorts itself again; type a level from 1 to 100 to place it exactly.
 | 🗣️ Stand-up prompt | 75 |
 | 🔔 Notification — High Priority | 70 |
 | 💬 Notification — Default | 65 |
-| ⚠️ Unity build failure | 60 |
-| ⚙️ Unity compiling | 55 |
-| 🎮 Unity Play Mode | 50 |
 | ⏱️ Active task tracker | 45 |
 
 Every row is editable, including what each does in each mode — **Display**,
@@ -708,10 +670,6 @@ Every screen, as the bar shows it:
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
 | <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE!"> | ✅ **DONE!** Finished and marked done. |
-| <img src="../docs/images/bar-unity-compile.webp" width="304" alt="COMPILING with a turning gear"> | ⚙️ **Compiling** in Unity, with the project on row 1. |
-| <img src="../docs/images/bar-unity-build.webp" width="304" alt="BUILDING 40% with a hammer and a progress line"> | 🔨 **Building**, with its percentage and a progress line along the bottom. |
-| <img src="../docs/images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game pad"> | 🎮 **Play Mode.** ON AIR until you stop playing. |
-| <img src="../docs/images/bar-unity-exception.webp" width="304" alt="EXCEPTION with a shaking warning triangle"> | ⚠️ **Exception.** Its message on row 1, for a few seconds. |
 | <img src="../docs/images/bar-banner.png" width="304" alt="A Slack banner"> | 🔔 **Notification**, from an app you allowed, with its own icon. |
 
 The session screen's icon is a stopwatch whose colour says where you are: green
@@ -733,11 +691,6 @@ setting off, before the tracking screen. STOP logs the time and leaves the task 
 **LOGGED** for three seconds, the stopwatch's hand sweeping back to twelve;
 FINISH also marks it done, and shows **DONE!**.
 
-Unity screens all read the same way: what is happening on row 0 (with the
-percentage for a build or a lightmap bake), the project on row 1, and for a
-build or bake a thin progress line along the bottom. An exception shows its
-message on row 1 instead of the project.
-
 > [!NOTE]
 > **Why the timer shows HH:MM**
 >
@@ -746,6 +699,20 @@ message on row 1 instead of the project.
 > deliberately shows minutes. The stopwatch's ticking hand is the bar's own
 > animation: it shows that the clock is running, and is not the seconds of your
 > session.
+
+### 🎞️ Animated icons
+
+The icons move. A notification without an app logo rings its bell, the
+end-of-day prompt's alarm clock rings, and the lunch prompt's burger hops. An
+OpenProject notification passes a shine across the OpenProject logo; other
+apps' logos stay still. The bar animates them itself. If one ever shows still,
+the log's `[IconAnimator]` lines say why, and the screen is otherwise
+unaffected.
+
+| | |
+| :---: | :---: |
+| <img src="../docs/images/bar-icon-bell.webp" width="64" alt="Bell ringing"> | <img src="../docs/images/bar-icon-clock.webp" width="64" alt="Alarm clock ringing"> |
+| notification | end of day |
 
 ### 🎛️ Controls
 
@@ -1036,11 +1003,11 @@ cleared a few times while a picture and an animation are both on it. Earlier
 builds did exactly that each time Lunch, Away or a meeting began from a screen
 with an animated icon. 1.2.0 switched scenes without clearing; it still hung
 the bar during long Unity sessions, because the end of a compile cleared the
-display two or three times at once. 1.2.1 fixes that, and a burst of compiles
-now keeps the compiling screen up instead of clearing between each one.
+display two or three times at once. 1.2.1 fixed that. (Unity support itself
+was removed later.)
 
 Firmware 1.2.4 also freezes, now and then, when an animation is removed from
-the panel while it plays -- the animated icon at the end of a compile, for
+the panel while it plays -- an animated icon as its screen ends, for
 instance. The panel then stays on that icon, still moving, and the bar stops
 answering. Nothing warns of this one. 1.2.1 never removes a playing
 animation: it replaces it with an empty one, and returns to the clock by

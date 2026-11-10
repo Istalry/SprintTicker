@@ -32,8 +32,8 @@ export interface DeckBackend {
  * Reached through WebhookServer's upgrade, which has already refused a
  * handshake carrying an `Origin`: a browser opens a cross-origin WebSocket
  * without any CORS check, so that header is what stands between a web page
- * and the user's session. No token, as for Unity's webhooks -- any local
- * program can still connect, and can already do as much over HTTP.
+ * and the user's session. No token, as for `/api/input` -- any local program
+ * can still connect, and can already do as much over HTTP.
  */
 export class DeckServer {
   private readonly _backend: DeckBackend;

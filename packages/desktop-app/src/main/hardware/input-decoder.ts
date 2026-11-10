@@ -115,11 +115,11 @@ export class InputDecoder {
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
     this._unregisterPicker?.();
     this._priorityEngine = engine;
-    // The open picker is the user's hand on the bar, a state like Unity's:
-    // whenever the display frees, it is drawn again if it is still open.
-    // Never queued (each press redraws it), it used to be refused under Away
-    // and then forgotten -- open, invisible, still taking presses -- once
-    // Away ended and the display went to Unity, Lunch or the clock.
+    // The open picker is the user's hand on the bar, a state rather than an
+    // alert: whenever the display frees, it is drawn again if it is still
+    // open. Never queued (each press redraws it), it used to be refused under
+    // Away and then forgotten -- open, invisible, still taking presses -- once
+    // Away ended and the display went to Lunch or the clock.
     // A test double without background screens has nothing to register with.
     this._unregisterPicker = typeof engine.addBackgroundScreen === 'function'
       ? engine.addBackgroundScreen([BAR_MENU_EVENT], () => {

@@ -30,13 +30,14 @@ vi.mock('electron', () => ({
  * Generated days at the desk, played against the firmware simulator.
  *
  * Each scenario is a seeded run of events from every source that draws on
- * the bar -- Unity, notification banners, the session, Lunch and Away -- some
- * landing in the same tick, some seconds apart, on top of a device that takes
- * its time to answer. The whole real stack takes them: renderer, animation
- * player, icon animator, priority engine, Unity service, driver.
+ * the bar -- notification banners, the session, the bar's picker, the
+ * stand-up, Lunch and Away, the bar itself dropping out -- some landing in the
+ * same tick, some seconds apart, on top of a device that takes its time to
+ * answer. The whole real stack takes them: renderer, animation player, icon
+ * animator, priority engine, driver.
  *
  * No single test would have found the 2026-10-05 hang, because no single
- * source caused it: a compile end rendered twice, the two clears raced, and
+ * source caused it: one event's end rendered twice, the two clears raced, and
  * one closed the screen without the settle. A run of mixed events does find
  * that kind of thing, and the simulator says which rule broke.
  *
@@ -47,18 +48,21 @@ vi.mock('electron', () => ({
 
 const RUNS = Number(process.env.STRESS_RUNS ?? 30);
 const EVENTS_PER_RUN = 40;
-/** Long enough for every banner, scene, exception and grace period to end. */
+/** Long enough for every banner, scene and settle to end. */
 const QUIESCENCE_MS = 20_000;
 
-
-/** How often each event is drawn. Compiles and ticks dominate a real day. */
-const WEIGHTS: Record<EventName, number> = {
-  compileStart: 6, compileEnd: 6, buildStart: 1, buildEnd: 1, playEnter: 2, playExit: 2, exception: 2,
-  // A second editor open on another project, less busy than the first.
-  compileStartB: 3, compileEndB: 3, buildStartB: 1, buildEndB: 1, playEnterB: 1, playExitB: 1, exceptionB: 1,
-  banner: 3, highBanner: 1,
-  startTask: 2, startTaskFromBar: 1, pause: 2, resume: 2, tick: 6, stop: 1, finish: 1,
-  openPicker: 1, closePicker: 1,
+/**
+ * How often each event is drawn. Ticks and banners dominate a real day.
+ * Until 2026-11-09 a Unity editor's compiles were the busiest source; the
+ * banners, the session and the picker took their weight, so a run still
+ * changes screens about as often as it did. The stand-up and the paused
+ * menu's DROP are scripted in display-handback.test.ts but not drawn here:
+ * the settled-screen check does not model a prompt left unanswered yet.
+ */
+const WEIGHTS: Partial<Record<EventName, number>> = {
+  banner: 6, highBanner: 3,
+  startTask: 3, startTaskFromBar: 2, pause: 3, resume: 3, tick: 8, stop: 2, finish: 2,
+  openPicker: 3, closePicker: 3,
   lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1,
   // The bar dropping out and coming back, as a Wi-Fi blip or a restart does.
   barDrop: 1, barBack: 2, barReboot: 1
@@ -75,11 +79,12 @@ interface Step {
 function generate(seed: number): Step[] {
   const next = random(seed);
   const names = Object.keys(WEIGHTS) as EventName[];
-  const total = names.reduce((sum, name) => sum + WEIGHTS[name], 0);
+  const weight = (name: EventName): number => WEIGHTS[name] ?? 0;
+  const total = names.reduce((sum, name) => sum + weight(name), 0);
   const pick = (): EventName => {
     let roll = next() * total;
     for (const name of names) {
-      roll -= WEIGHTS[name];
+      roll -= weight(name);
       if (roll < 0) return name;
     }
     return names[names.length - 1];

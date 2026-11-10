@@ -27,8 +27,9 @@ Scope
 
 This license covers the material in this repository, which comprises:
 
-  * `packages/desktop-app/` and `packages/unity-plugin/` -- the application and
-    the Unity Editor package.
+  * `packages/desktop-app/`, `packages/streamdeck-plugin/` and
+    `packages/anim-studio/` -- the application, its Stream Deck plugin and
+    the animation studio.
   * `scripts/`, `tools/` and the root build configuration.
   * `Documentation/BUSY Bar API & Display Technical Developer Guide.md`,
     `Documentation/busy_bar_controller_studio.html`,

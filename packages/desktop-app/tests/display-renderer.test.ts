@@ -9,7 +9,7 @@ import {
   TASK_STARTED_DISPLAY_SECONDS, EOD_COMPLETE_DISPLAY_SECONDS
 } from '../src/shared/render-constants';
 import {
-  FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, HAMMER_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
+  FOLDER_16X16_BITMAP, TASK_16X16_BITMAP, TASK_IN_PROGRESS_16X16_BITMAP, TASK_DONE_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_IDLE_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP
 } from '../src/shared/pixel-bitmaps';
 import { measureText } from '../src/shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../src/shared/fonts/pixel-font';
@@ -628,31 +628,11 @@ describe('DisplayRenderer Unit Tests', () => {
     });
   });
 
-  describe('baking & exceptions rendering', () => {
-    it('RenderBuilding_ValidProject_DispatchesBuildingPayload', () => {
-      const payload = renderer.renderBuilding('ProjectX', 45);
-      expect(payload.ledColorHex).toBe('#3B82F6FF');
-      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
-    });
-
-    it('RenderBaking_ValidProject_DispatchesBakingPayload', () => {
-      const payload = renderer.renderBaking('ProjectX', 45);
-      expect(payload.ledColorHex).toBe('#FBBF24FF');
-      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
-    });
-
-    it('RenderException_ValidError_DispatchesExceptionPayload', () => {
-      const payload = renderer.renderException('ProjectY', 'Syntax Error');
-      expect(payload.ledColorHex).toBe('#EF4444FF');
-      expect(mockDriver.sendPixelFrame).toHaveBeenCalled();
-    });
-  });
-
   /**
    * The static icon stays in the frame; an animated one is laid over it. What
    * matters to the renderer is which icon each screen asks for, and that a
-   * screen asking for none takes the previous one away -- otherwise the gear
-   * keeps turning over the next screen's text.
+   * screen asking for none takes the previous one away -- otherwise the clock
+   * keeps ringing over the next screen's text.
    */
   describe('animated icons', () => {
     let iconAnimator: { show: ReturnType<typeof vi.fn>; reset: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> };
@@ -664,25 +644,21 @@ describe('DisplayRenderer Unit Tests', () => {
 
     const lastShown = (): unknown => iconAnimator.show.mock.calls[iconAnimator.show.mock.calls.length - 1][0];
 
-    it('RenderCompilation_Always_AsksForTheTurningGear', () => {
-      renderer.renderCompilation('ProjectX');
+    it('RenderCeremonyPrompt_EndOfDay_AsksForTheRingingClock', () => {
+      renderer.renderCeremonyPrompt('EOD', 'Wrap up');
 
-      expect(lastShown()).toBe(ANIMATED_ICONS.compiling);
-      expect(lastShown()).toBe('icon_gear_16x16');
+      expect(lastShown()).toBe(ANIMATED_ICONS.clock);
+      expect(lastShown()).toBe('icon_clock_16x16');
     });
 
-    it('RenderActiveSession_AfterCompilation_TakesTheGearAway', () => {
-      renderer.renderCompilation('ProjectX');
+    it('RenderActiveSession_AfterAPrompt_TakesTheClockAway', () => {
+      renderer.renderCeremonyPrompt('EOD', 'Wrap up');
       renderer.renderActiveSession(null);
 
       expect(lastShown()).toBeNull();
     });
 
     it.each([
-      ['Unity Play Mode', (r: DisplayRenderer) => r.renderPlayMode('P'), 'icon_playmode_16x16'],
-      ['Unity exception', (r: DisplayRenderer) => r.renderException('P', 'NullReferenceException'), 'icon_warning_16x16'],
-      ['Unity build', (r: DisplayRenderer) => r.renderBuilding('P', 40), 'icon_hammer_16x16'],
-      ['Unity bake', (r: DisplayRenderer) => r.renderBaking('P', 40), 'icon_bulb_16x16'],
       ['end-of-day prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('EOD', 'Wrap up'), 'icon_clock_16x16'],
       ['lunch prompt', (r: DisplayRenderer) => r.renderCeremonyPrompt('LUNCH', 'Lunch'), 'icon_burger_16x16'],
       ['notification without an app icon', (r: DisplayRenderer) => r.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' }), 'icon_bell_16x16'],
@@ -696,7 +672,7 @@ describe('DisplayRenderer Unit Tests', () => {
     it('RenderEodCompleted_AfterAnAnimatedIcon_TakesTheIconDown', () => {
       // The scene owns the whole panel; an icon left at z 2 would play on top
       // of the moon.
-      renderer.renderCompilation('P');
+      renderer.renderCeremonyPrompt('EOD', 'Wrap up');
       renderer.renderEodCompleted();
 
       expect(lastShown()).toBeNull();
@@ -872,15 +848,7 @@ describe('DisplayRenderer Unit Tests', () => {
       });
     });
 
-    it('RenderBuilding_Always_DrawsOurHammerRatherThanTheUnityLogo', () => {
-      renderer.renderBuilding('P', 40);
-      const pixels = (renderer as unknown as { canvas: { getPixels(): (string | null)[][] } }).canvas.getPixels();
-      const icon = pixels.slice(0, 16).map(row => row.slice(0, 16));
-
-      expect(icon).toEqual(HAMMER_16X16_BITMAP.map(row => row.map(c => c)));
-    });
-
-    it('RenderCompilation_WhileAFullPanelAnimationPlays_AsksForNone', () => {
+    it('RenderCeremonyPrompt_WhileAFullPanelAnimationPlays_AsksForNone', () => {
       // The device owns the whole panel then; an icon drawn over it would sit
       // on top of the lunch sandwich.
       vi.spyOn(
@@ -888,7 +856,7 @@ describe('DisplayRenderer Unit Tests', () => {
         'isHardwareAnimationActive'
       ).mockReturnValue(true);
 
-      renderer.renderCompilation('ProjectX');
+      renderer.renderCeremonyPrompt('EOD', 'Wrap up');
 
       expect(lastShown()).toBeNull();
     });
@@ -905,8 +873,8 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(iconAnimator.dispose).toHaveBeenCalled();
     });
 
-    it('RenderCompilation_EmulatorWatching_OverlaysTheIconFrameOnTheScreen', async () => {
-      // A real IconAnimator reading the real exported gear, so the preview
+    it('RenderCeremonyPrompt_EmulatorWatching_OverlaysTheIconFrameOnTheScreen', async () => {
+      // A real IconAnimator reading the real exported clock, so the preview
       // path is exercised end to end rather than through a stub.
       renderer = new DisplayRenderer(mockDriver, undefined, {
         animationsDir: path.resolve(__dirname, '../../../Animations')
@@ -914,7 +882,7 @@ describe('DisplayRenderer Unit Tests', () => {
       const states: HardwareDisplayStateDTO[] = [];
       renderer.onStateChanged(state => states.push({ ...state, frontElements: [...state.frontElements] }));
 
-      renderer.renderCompilation('ProjectX');
+      renderer.renderCeremonyPrompt('EOD', 'Wrap up');
       const deadline = Date.now() + 2000;
       const hasOverlay = (): boolean =>
         states.some(s => s.frontElements.some(el => el.id === 'icon_anim_preview' && el.x === 0 && el.y === 0));
@@ -940,7 +908,7 @@ describe('DisplayRenderer Unit Tests', () => {
         elapsedSeconds: 60, startedAtUtc: new Date().toISOString()
       } as never);
       renderer.renderNotificationBanner({ title: 'T', body: 'B', iconId: 'bell' });
-      renderer.renderBuilding('P', 40);
+      renderer.renderCeremonyPrompt('EOD', 'Wrap up');
       renderer.renderLunchMode();
 
       const sent = JSON.stringify([

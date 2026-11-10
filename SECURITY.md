@@ -32,8 +32,8 @@ protocol handlers.
 
 ### A local HTTP server on `127.0.0.1:39123`
 
-The app runs an HTTP server so the Unity Editor plugin can push compile and
-console events. It can drive the LED display and **inject hardware input
+The app runs an HTTP server for remote key presses and the Stream Deck
+plugin's WebSocket. It can drive the LED display and **inject hardware input
 events**, which makes it more interesting than a typical loopback endpoint.
 
 It is not authenticated. Loopback is not a security boundary — any page in any

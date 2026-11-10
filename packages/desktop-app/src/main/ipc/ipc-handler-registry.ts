@@ -13,9 +13,7 @@ import { SecretStore } from '../db/secret-store';
 import { BusyBarDriver } from '../hardware/busybar-driver';
 import { InputDecoder } from '../hardware/input-decoder';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { UnityInjectorService } from '../services/unity-injector-service';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
-import { UnityTelemetryService } from '../services/unity-telemetry-service';
 import { ProviderEventService } from '../services/provider-event-service';
 import { ProviderEventSettingsDTO } from '../../shared/provider-events';
 import { WindowsNotificationListenerService } from '../services/windows-notification-listener-service';
@@ -24,7 +22,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, UnitySettingsDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO } from '../../shared/dtos';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
@@ -44,7 +42,6 @@ import { localDateKey } from '../../shared/local-date';
 import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibility } from '../../shared/task-visibility';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
-import { createUnitySceneSaver, UnitySceneSaver } from '../services/unity-scene-saver';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { completeSession } from '../services/session-commands';
 
@@ -80,9 +77,7 @@ export interface IPCHandlerRegistryDeps {
    */
   getWindows?: () => BrowserWindow[];
   miniWindow?: MiniWindowController;
-  unityInjectorService?: UnityInjectorService;
   worklogRepo?: WorklogRepository;
-  unityTelemetryService?: UnityTelemetryService;
   providerEvents?: ProviderEventService;
   priorityEngine?: PriorityPreemptionEngine;
   contextScheduleService?: ContextScheduleService;
@@ -98,8 +93,6 @@ export interface IPCHandlerRegistryDeps {
   /** Starting with Windows; without it, the switch reads unavailable. */
   launchAtLogin?: LaunchAtLoginService;
   interruptShortcut?: InterruptShortcutService;
-  /** Asks open Unity Editors to save; defaults to the real HTTP call. */
-  saveUnityScenes?: UnitySceneSaver;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
   webhookServer?: { getStatus(): { listening: boolean; port: number } };
 }
@@ -131,8 +124,6 @@ export class IPCHandlerRegistry {
   private driver: BusyBarDriver;
   private inputDecoder: InputDecoder;
   private renderer: DisplayRenderer;
-  private unityInjectorService: UnityInjectorService;
-  private unityTelemetryService: UnityTelemetryService;
   private providerEvents: ProviderEventService;
   private windowsNotificationService: WindowsNotificationListenerService;
   private priorityEngine: PriorityPreemptionEngine;
@@ -143,7 +134,6 @@ export class IPCHandlerRegistry {
   private getWindow: () => BrowserWindow | null;
   private getWindows: () => BrowserWindow[];
   private miniWindow?: MiniWindowController;
-  private saveUnityScenes: UnitySceneSaver;
 
   constructor(deps: IPCHandlerRegistryDeps) {
     const {
@@ -156,9 +146,7 @@ export class IPCHandlerRegistry {
       getWindow,
       getWindows,
       miniWindow,
-      unityInjectorService,
       worklogRepo,
-      unityTelemetryService,
       providerEvents,
       priorityEngine,
       contextScheduleService,
@@ -195,10 +183,8 @@ export class IPCHandlerRegistry {
       return win ? [win] : [];
     });
     this.miniWindow = miniWindow;
-    this.unityInjectorService = unityInjectorService || new UnityInjectorService();
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
-    this.unityTelemetryService = unityTelemetryService || new UnityTelemetryService(settingsRepo);
     // The default is never started and shows nothing: it serves the settings
     // to a test, or a build that has no toasts.
     this.providerEvents = providerEvents || new ProviderEventService({
@@ -215,7 +201,6 @@ export class IPCHandlerRegistry {
       webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
     });
     this.systemAutomationService = systemAutomationService || new SystemAutomationService();
-    this.saveUnityScenes = deps.saveUnityScenes ?? createUnitySceneSaver();
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -567,10 +552,7 @@ export class IPCHandlerRegistry {
       // stand-up ended by the wrap-up must not bring its task back overnight.
       this.contextScheduleService.stopForWrapUp();
 
-      // 1. Ask open Unity Editors to save their scenes
-      const savedUnityScenes = await this.saveUnityScenes();
-
-      // 2. Instruct open code editors (VS Code, Cursor) to save open dirty files
+      // 1. Instruct open code editors (VS Code, Cursor) to save open dirty files
       let savedVSCode = false;
       try {
         const editorSaveResult = await this.systemAutomationService.saveOpenEditors();
@@ -579,10 +561,10 @@ export class IPCHandlerRegistry {
         console.warn('[EOD] Editor save error:', err);
       }
 
-      // 3. Render EOD completion screen on hardware display
+      // 2. Render EOD completion screen on hardware display
       this.renderer.renderEodCompleted();
 
-      // 4. Release display lock once the scene is over, to return to the
+      // 3. Release display lock once the scene is over, to return to the
       // background active/idle display
       //
       // The test branch releases at once instead. Audit F-35 flagged this shape
@@ -604,7 +586,7 @@ export class IPCHandlerRegistry {
         this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
       }
 
-      // 5. Trigger Shutdown if requested
+      // 4. Trigger Shutdown if requested
       if (options?.shouldShutdown) {
         try {
           // The service's own delay and reason; this used to repeat both.
@@ -614,7 +596,7 @@ export class IPCHandlerRegistry {
         }
       }
 
-      return { success: true, savedUnityScenes, savedVSCode };
+      return { success: true, savedVSCode };
     });
 
     ipcMain.handle(IPCChannel.CANCEL_EOD_WRAP_UP, async () => {
@@ -827,34 +809,7 @@ export class IPCHandlerRegistry {
       return OpenProjectProvider.fetchStatuses(payload.domain, payload.apiKey);
     });
 
-    // 8. Unity Injector & Gitignore IPC Handlers
-    ipcMain.handle(IPCChannel.SETUP_GITIGNORE, async () => {
-      return this.unityInjectorService.setupGlobalGitignore();
-    });
-
-    ipcMain.handle(IPCChannel.CHECK_GITIGNORE, async () => {
-      return this.unityInjectorService.checkGlobalGitignoreStatus();
-    });
-
-    ipcMain.handle(IPCChannel.SCAN_AND_INJECT, async (_event, rootFolder: string) => {
-      return this.unityInjectorService.scanAndInjectProjects(rootFolder);
-    });
-
-    ipcMain.handle(IPCChannel.REMOVE_INJECTION, async (_event, projectPath: string) => {
-      return this.unityInjectorService.removeInjection(projectPath);
-    });
-
-    ipcMain.handle(IPCChannel.OPEN_FOLDER_PICKER, async () => {
-      const win = this.getWindow();
-      const options = { properties: ['openDirectory' as const] };
-      const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
-      if (res.canceled || res.filePaths.length === 0) {
-        return null;
-      }
-      return res.filePaths[0];
-    });
-
-    // 9. Worklogs IPC Handlers
+    // 8. Worklogs IPC Handlers
     ipcMain.handle(IPCChannel.GET_TODAYS_WORKLOGS, async () => {
       return this.worklogRepo.getTodaysWorklogs();
     });
@@ -890,21 +845,7 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    // 10. Unity Telemetry & Audio Settings IPC Handlers
-    ipcMain.handle(IPCChannel.GET_UNITY_SETTINGS, async () => {
-      return this.unityTelemetryService.getSettings();
-    });
-
-    ipcMain.handle(IPCChannel.SAVE_UNITY_SETTINGS, async (_event, settings: UnitySettingsDTO) => {
-      this.unityTelemetryService.saveSettings(settings);
-      return true;
-    });
-
-    ipcMain.handle(IPCChannel.GET_UNITY_TELEMETRY, async () => {
-      return this.unityTelemetryService.getTelemetry();
-    });
-
-    // 11. Provider events & Windows Notification Listener IPC Handlers
+    // 9. Provider events & Windows Notification Listener IPC Handlers
     ipcMain.handle(IPCChannel.GET_PROVIDER_EVENT_SETTINGS, async () => this.providerEvents.getSettings());
     ipcMain.handle(IPCChannel.SAVE_PROVIDER_EVENT_SETTINGS, async (_event, settings: ProviderEventSettingsDTO) =>
       this.providerEvents.saveSettings(settings)
@@ -955,7 +896,7 @@ export class IPCHandlerRegistry {
       this.broadcast(IPCChannel.ON_NOTIFICATION_LOG, entry);
     });
 
-    // 12. Hardware Display Animation & Screen Emulator IPC Handlers
+    // 10. Hardware Display Animation & Screen Emulator IPC Handlers
     ipcMain.handle(IPCChannel.GET_DISPLAY_STATE, async () => {
       return this.renderer.getDisplayState();
     });
@@ -985,7 +926,6 @@ export class IPCHandlerRegistry {
     // and the priority engine may legitimately suppress it -- during Lunch, for
     // instance -- which the hand-built previews used to hide.
     ipcMain.handle(IPCChannel.PREVIEW_DISPLAY_SCREEN, async (_event, screen: PreviewScreenId) => {
-      const project = 'MyFantasyGame';
       switch (screen) {
         case 'CEREMONY_STANDUP':
           this.renderer.renderCeremonyPrompt('STANDUP', 'Daily Stand-Up');
@@ -995,21 +935,6 @@ export class IPCHandlerRegistry {
           return true;
         case 'EOD_COMPLETE':
           this.renderer.renderEodCompleted();
-          return true;
-        case 'UNITY_PLAY_MODE':
-          this.renderer.renderPlayMode(project);
-          return true;
-        case 'UNITY_COMPILING':
-          this.renderer.renderCompilation(project);
-          return true;
-        case 'UNITY_BUILDING':
-          this.renderer.renderBuilding(project, 80);
-          return true;
-        case 'UNITY_BAKING':
-          this.renderer.renderBaking(project, 45);
-          return true;
-        case 'UNITY_EXCEPTION':
-          this.renderer.renderException(project, 'NullReferenceException');
           return true;
         case 'TASK_SELECTION':
           this.renderer.renderTaskSelection('TASK', 'Implement dash', {
@@ -1027,7 +952,7 @@ export class IPCHandlerRegistry {
       }
     });
 
-    // 10. Diagnostics Handlers
+    // 11. Diagnostics Handlers
     ipcMain.handle(IPCChannel.EXPORT_DIAGNOSTIC_LOGS, async () => {
       try {
         const bundle = await this.diagnosticExporter.generateDiagnosticBundle();
@@ -1053,7 +978,7 @@ export class IPCHandlerRegistry {
       }
     });
 
-    // 11. Update Handlers. A notification only: nothing is downloaded or
+    // 12. Update Handlers. A notification only: nothing is downloaded or
     // installed, because unsigned builds re-trigger SmartScreen on every
     // update and some are blocked outright. See ROADMAP.md §2.
     ipcMain.handle(IPCChannel.CHECK_FOR_UPDATE, async (): Promise<UpdateStatusDTO> => {
@@ -1193,10 +1118,6 @@ export class IPCHandlerRegistry {
 
     this.priorityEngine.onUserModeChanged((mode) => {
       this.broadcast(IPCChannel.ON_USER_MODE_UPDATED, mode);
-    });
-
-    this.unityTelemetryService.onTelemetryUpdated(telemetry => {
-      this.broadcast(IPCChannel.ON_UNITY_TELEMETRY_UPDATED, telemetry);
     });
 
     this.driver.on('statusChanged', (status: DeviceStatusDTO) => {

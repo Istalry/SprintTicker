@@ -34,7 +34,6 @@ export default tseslint.config(
       // Generated reports
       '**/coverage/**',
       // Vendored / third-party
-      'packages/unity-plugin/**',
       'Documentation/**',
       // Standalone tools that are not part of the TypeScript build
       'tools/**',

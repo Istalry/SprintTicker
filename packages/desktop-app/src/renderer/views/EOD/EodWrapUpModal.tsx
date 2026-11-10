@@ -25,7 +25,6 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
   onSnooze
 }) => {
   const [executing, setExecuting] = useState<boolean>(false);
-  const [unitySaved, setUnitySaved] = useState<boolean>(false);
   const [shouldShutdown, setShouldShutdown] = useState<boolean>(false);
   const [completed, setCompleted] = useState<boolean>(false);
   const [confirmStep, setConfirmStep] = useState<number>(0);
@@ -64,8 +63,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
     setExecuting(true);
     try {
       if (window.electronAPI?.triggerEodWrapUp) {
-        const result = await window.electronAPI.triggerEodWrapUp({ shouldShutdown });
-        setUnitySaved(!!result?.savedUnityScenes);
+        await window.electronAPI.triggerEodWrapUp({ shouldShutdown });
       }
       await onConfirmEod({ shouldShutdown });
       setExecuting(false);
@@ -132,7 +130,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
           {!completed ? (
             <>
               <p className="text-xs text-text-secondary">
-                Executing EOD wrap-up will automatically finalize your active session, log pending hours, save open Unity scenes & VS Code files, and prepare your workstation for shutdown.
+                Executing EOD wrap-up will automatically finalize your active session, log pending hours, save open VS Code files, and prepare your workstation for shutdown.
               </p>
 
               {/* Today's Work Summary Breakdown */}
@@ -193,15 +191,11 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
                   <span className="text-accent-green">✓ Ready</span>
                 </div>
                 <div className="flex items-center justify-between text-text-primary">
-                  <span>2. RPC Save Open Unity Scenes</span>
-                  <span className="text-accent-blue">http://localhost:8081</span>
-                </div>
-                <div className="flex items-center justify-between text-text-primary">
-                  <span>3. VS Code File Auto-Save</span>
+                  <span>2. VS Code File Auto-Save</span>
                   <span className="text-accent-purple">saveAll CLI</span>
                 </div>
                 <div className="flex items-center justify-between text-text-primary">
-                  <span>4. Worklog Sync Queue Submission</span>
+                  <span>3. Worklog Sync Queue Submission</span>
                   <span className="text-accent-green">✓ Auto</span>
                 </div>
               </div>
@@ -227,9 +221,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
               <p className="text-xs text-text-secondary">
                 {shouldShutdown
                   ? 'All active task hours logged. Computer shutdown scheduled in 30 seconds.'
-                  : unitySaved
-                  ? 'All active task hours logged to Jira and open Unity scenes saved.'
-                  : 'All active task hours logged. Unity scene save skipped gracefully.'}
+                  : 'All active task hours logged.'}
               </p>
             </div>
           )}

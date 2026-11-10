@@ -85,10 +85,10 @@ describe('DeckIconMotions', () => {
     const heard = vi.fn();
     motions.onLoaded(heard);
 
-    expect(motions.get('icon_gear_16x16')).toBeNull();
-    expect(motions.get('icon_gear_16x16')).toBeNull();
+    expect(motions.get('icon_clock_16x16')).toBeNull();
+    expect(motions.get('icon_clock_16x16')).toBeNull();
     await vi.waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
-    expect(motions.get('icon_gear_16x16')?.poses).toHaveLength(2);
+    expect(motions.get('icon_clock_16x16')?.poses).toHaveLength(2);
     expect(load).toHaveBeenCalledTimes(1);
   });
 

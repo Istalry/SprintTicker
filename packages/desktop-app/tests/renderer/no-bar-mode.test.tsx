@@ -18,7 +18,6 @@ describe('no-bar mode', () => {
 
     expect(await screen.findByText('Device & Logs')).toBeTruthy();
     expect(screen.queryByText('Priority Rules')).toBeNull();
-    expect(screen.queryByText('Unity Engine')).toBeNull();
     expect(screen.queryByText('Notifications')).toBeNull();
     expect(screen.queryByTitle('WebSocket round trip to the bar')).toBeNull();
     // Time keeping is untouched.
@@ -33,7 +32,6 @@ describe('no-bar mode', () => {
     act(() => bridge.emit('onDeviceStatusChanged', CONNECTED_DEVICE));
 
     expect(await screen.findByText('Priority Rules')).toBeTruthy();
-    expect(screen.getByText('Unity Engine')).toBeTruthy();
     expect(screen.getByText('Notifications')).toBeTruthy();
     expect(screen.getByText('Device Diagnostics')).toBeTruthy();
   });
@@ -91,8 +89,6 @@ describe('no-bar mode', () => {
 
       fireEvent.click(screen.getByText('Not now -- use it without one'));
       expect(screen.queryByText('Test Ping')).toBeNull();
-      // The Unity plugin step goes with the bar.
-      expect(screen.queryByText(/Unity Plugin/)).toBeNull();
       await finish();
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());

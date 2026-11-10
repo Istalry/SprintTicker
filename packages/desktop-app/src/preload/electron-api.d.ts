@@ -31,10 +31,7 @@ import type {
   WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
-  UnityProjectInjectionResult,
   WorklogDTO,
-  UnitySettingsDTO,
-  UnityTelemetryDTO,
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
   NotificationLogEntryDTO,
@@ -54,14 +51,6 @@ import type {
   PreviewScreenId,
   DiscardSessionResultDTO
 } from '../shared/dtos';
-
-export interface UnityInjectorAPI {
-  setupGitignore: () => Promise<{ success: boolean; path: string; message: string }>;
-  checkGitignore: () => Promise<{ configured: boolean; path?: string }>;
-  scanAndInject: (rootFolder: string) => Promise<UnityProjectInjectionResult[]>;
-  removeInjection: (projectPath: string) => Promise<boolean>;
-  openFolderPicker: () => Promise<string | null>;
-}
 
 export interface IElectronAPI {
   // Session Controls
@@ -167,7 +156,7 @@ export interface IElectronAPI {
   /** Pushed when a week closes, and null once it is dismissed anywhere. */
   onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => () => void;
   triggerEodPrompt: () => Promise<{ success: boolean }>;
-  triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedUnityScenes: boolean; savedVSCode: boolean }>;
+  triggerEodWrapUp: (options?: { shouldShutdown?: boolean }) => Promise<{ success: boolean; savedVSCode: boolean }>;
   cancelEodWrapUp: () => Promise<boolean>;
   updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => Promise<boolean>;
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes?: number) => Promise<boolean>;
@@ -177,12 +166,6 @@ export interface IElectronAPI {
   /** Resumes the task, or leaves it. False when the question had already been answered. */
   answerResumePrompt: (resume: boolean) => Promise<boolean>;
   onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => () => void;
-
-  // Unity Telemetry & Audio Settings
-  getUnitySettings: () => Promise<UnitySettingsDTO>;
-  saveUnitySettings: (settings: UnitySettingsDTO) => Promise<boolean>;
-  getUnityTelemetry: () => Promise<UnityTelemetryDTO>;
-  onUnityTelemetryUpdated: (callback: (telemetry: UnityTelemetryDTO) => void) => () => void;
 
   // Provider events: toasts and bar banners for Jira / OpenProject activity
   getProviderEventSettings: () => Promise<ProviderEventSettingsDTO>;
@@ -279,8 +262,6 @@ export interface IElectronAPI {
   getSyncQueue: () => Promise<SyncQueueSnapshotDTO>;
   retryFailedWorklogs: () => Promise<{ requeued: number }>;
   onProjectsUpdated: (callback: (payload: ProjectsUpdatedPayload) => void) => () => void;
-  // Unity Plugin Injector & Gitignore
-  unityInjector: UnityInjectorAPI;
 }
 
 declare global {

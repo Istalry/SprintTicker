@@ -9,7 +9,6 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
-import { WebhookServer } from '../src/main/api/webhook-server';
 import { ProviderManager } from '../src/main/providers/provider-manager';
 import { OfflineSyncWorker } from '../src/main/sync/offline-sync-worker';
 
@@ -23,7 +22,6 @@ describe('Full End-to-End System Simulation Test', () => {
   let driver: BusyBarDriver;
   let renderer: DisplayRenderer;
   let decoder: InputDecoder;
-  let webhookServer: WebhookServer;
   let providerManager: ProviderManager;
   let syncWorker: OfflineSyncWorker;
 
@@ -55,45 +53,33 @@ describe('Full End-to-End System Simulation Test', () => {
     decoder = new InputDecoder(driver, engine, settingsRepo);
 
     syncWorker = new OfflineSyncWorker(providerManager, worklogRepo, undefined, undefined, 60000);
-
-    webhookServer = new WebhookServer(0);
-    await webhookServer.start();
   });
 
   afterAll(async () => {
     global.fetch = originalFetch;
-    await webhookServer.stop();
     driver.disconnect();
     engine.dispose();
     dbConn.close();
   });
 
   it('E2E_FullLifecycle_SessionTrackingOfflineBufferingAndEodFlow', async () => {
-    // Step 1: Unity Webhook Telemetry
-    const compileRes = await webhookServer.inject({
-      method: 'POST',
-      url: '/api/v1/unity/compile',
-      payload: { state: 'started', projectName: 'MyFantasyGame' }
-    });
-    expect(compileRes.statusCode).toBe(200);
-
-    // Step 2: Start Session via physical button or UI
+    // Step 1: Start Session via physical button or UI
     const session = engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
     expect(session.status).toBe('TRACKING');
 
-    // Step 3: Display Payload Generated
+    // Step 2: Display Payload Generated
     const displayPayload = renderer.renderActiveSession(session);
     // Front display is now pixel-canvas encoded as rectangle strips
     // Verify the render succeeded by checking we have pixel data and valid LED color
     expect(displayPayload.frontElements.length).toBeGreaterThan(0);
     expect(displayPayload.ledColorHex).toBe('#10B981FF'); // Tracking = green
 
-    // Step 4: Physical Wheel Click pauses session
+    // Step 3: Physical Wheel Click pauses session
     const pauseAction = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
     expect(pauseAction).toBe('TOGGLE_TRACK_PAUSE');
     expect(engine.getCurrentSession()?.status).toBe('PAUSED');
 
-    // Step 5: Resume session & Simulate Offline Disconnect & Stop Session (Worklog queued in SQLite)
+    // Step 4: Resume session & Simulate Offline Disconnect & Stop Session (Worklog queued in SQLite)
     syncWorker.setOnlineStatus(false);
     // The engine owns a worker of its own, and stopping a session now asks it
     // to dispatch straight away rather than waiting out the interval. Muting
@@ -121,7 +107,7 @@ describe('Full End-to-End System Simulation Test', () => {
     const pendingQueue = worklogRepo.getPendingQueueItems();
     expect(pendingQueue).toHaveLength(1);
 
-    // Step 6: Restore Internet Network Connection & Run Sync Worker Draining Queue
+    // Step 5: Restore Internet Network Connection & Run Sync Worker Draining Queue
     engine.getSyncWorker().setOnlineStatus(true);
     syncWorker.setOnlineStatus(true);
     const syncSummary = await syncWorker.processPendingQueue();

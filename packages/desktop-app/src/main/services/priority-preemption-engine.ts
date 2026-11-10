@@ -1,5 +1,5 @@
 import { PriorityRule, PriorityMatrixConfig, UserMode, PriorityAction, ArgumentNullException, ArgumentException } from '../../shared/dtos';
-import { ACTIVE_TRACKER_EVENT, DEFAULT_PRIORITY_RULES } from '../../shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, DEFAULT_PRIORITY_RULES, isRetiredPriorityRule } from '../../shared/priority-defaults';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import type { DisplayRenderer } from '../hardware/display-renderer';
 
@@ -88,8 +88,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   /** The lock each mode's screen holds. */
   private static readonly MODE_LOCKS = { LUNCH: 'lunchModePriority', AWAY: 'awayModePriority' } as const;
   /**
-   * Whoever owns a state that outlives any one event -- an editor compiling,
-   * in Play Mode -- and redraws it whenever the display is free. Their locks
+   * Whoever owns a state that outlives any one event -- the bar's open
+   * picker, today -- and redraws it whenever the display is free. Their locks
    * are not set aside on preemption: the screen to come back to is whatever
    * that state is by then, not what it was when it was covered.
    */
@@ -102,10 +102,11 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   private _notificationQueue: QueuedNotificationRequest[] = [];
   /**
    * Screens a higher priority took the display from, still going on beneath
-   * it: a build under a banner, Play Mode under a stand-up prompt. The queue
-   * replays requests that were *refused*; nothing used to remember a screen
-   * that had been *preempted*, so when the banner ended the display went to
-   * the idle clock with the build still running and its lock gone. Released
+   * it: the wrap-up's prompt under the bar's picker, a banner under the
+   * stand-up's prompt. The queue replays requests that were *refused*;
+   * nothing used to remember a screen that had been *preempted*, so when the
+   * cover ended the display went to the idle clock with the screen beneath
+   * still going on and its lock gone. Released
    * while hidden, a screen leaves this list; otherwise the release of what
    * covered it brings it back.
    */
@@ -163,7 +164,7 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       // the mode said LUNCH while the bar kept the coffee cup (real bar,
       // 2026-10-15). Not a full release: the caller draws the new mode next,
       // and handing the display round in between would draw a queued alert
-      // or Unity only for the mode to cover it. Only a background state the
+      // only for the mode to cover it. Only a background state the
       // user ranks above the new mode is offered it -- the bar's picker,
       // opened under Away, comes back over Lunch as it would over WORK.
       this._activeLockEventName = null;
@@ -195,8 +196,9 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       });
     }
 
-    // Ensure all default rules are present and filter out obsolete breakPromptPriority
-    const merged = [...loadedRules].filter(r => r.eventName !== 'breakPromptPriority' && r.id !== 'break_prompt');
+    // Ensure all default rules are present, and drop the rules of features
+    // that are gone: a database keeps them in its stored set for good.
+    const merged = loadedRules.filter(r => !isRetiredPriorityRule(r));
     PriorityPreemptionEngine.DEFAULT_RULES.forEach(defaultRule => {
       if (!merged.some(r => r.eventName === defaultRule.eventName || r.id === defaultRule.id)) {
         merged.push(defaultRule);
@@ -280,8 +282,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     // A background state the user ranks above everything waiting comes
     // first: the bar's picker (97) open under Away lost the display to a
     // banner queued meanwhile (70) when Away ended, and then to Lunch (95)
-    // taking it from the banner. Unity ranks below the alerts, so for it the
-    // order is as it was.
+    // taking it from the banner. A background state ranked below the alerts
+    // waits for them, as it always did.
     const waiting = this.highestWaitingPriority();
     this.offerToBackground(rank => rank > waiting);
     if (this._activeLockEventName === null) this.drainQueue();
@@ -393,10 +395,10 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
 
   /**
    * Offers the free display to each background state, the most important
-   * first by the user's rules. In the order they registered, Unity came
-   * before the bar's picker: a picker opened under Away and still open when
-   * Away ended stayed hidden under the gear, the decoder taking presses for
-   * a list nobody could see.
+   * first by the user's rules. In the order they registered, an editor's
+   * compile screen once came before the bar's picker: a picker opened under
+   * Away and still open when Away ended stayed hidden under the gear, the
+   * decoder taking presses for a list nobody could see.
    */
   private offerToBackground(eligible: (rank: number) => boolean): void {
     const rules = this.getRules();

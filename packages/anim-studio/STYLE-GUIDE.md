@@ -95,15 +95,17 @@ drawn, so three rules on top of the ones above:
   stuttering. It now turns at a constant speed. With eight identical teeth, a
   loop of exactly one tooth closes on its own.
 
-The icons so far, and which rhythm each follows:
+The icons so far, and which rhythm each follows. The first five drew the
+Unity Editor's screens, which the app dropped on 2026-11-09: it no longer
+shows them, and they stay as `pnpm probe:busybar`'s measured fixtures.
 
 | Icon | Screen | Rhythm | Motion |
 | :--- | :--- | :--- | :--- |
-| Gear | Unity compiling | steady | turns |
-| Pad | Unity Play Mode | steady | played: a button goes down and the pad dips a pixel, or the stick is pushed; ON AIR blinks |
-| Hammer | Unity build | steady | raises, strikes, sparks |
-| Bulb | Lightmap bake | steady | the glass glows and the rays breathe |
-| Warning | Unity exception | event | shakes and flashes, then rests |
+| Gear | none (was the compile screen); the probe's soak icon | steady | turns |
+| Pad | none (was Play Mode); the probe's swap icon | steady | played: a button goes down and the pad dips a pixel, or the stick is pushed; ON AIR blinks |
+| Hammer | none (was the build screen) | steady | raises, strikes, sparks |
+| Bulb | none (was the lightmap bake) | steady | the glass glows and the rays breathe |
+| Warning | none (was the exception alert) | event | shakes and flashes, then rests |
 | Bell | Notification without an app logo | event | swings and settles, the clapper a beat behind |
 | Alarm clock | End-of-day prompt | event | rings: shakes a pixel each way with vibration lines, then rests |
 | Burger | Lunch prompt | event | crouches, then the layers hop top first and pack down on landing |

@@ -3,9 +3,7 @@ import { expect, vi } from 'vitest';
 import { BusyBarDriver } from '../../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../../src/main/hardware/display-renderer';
 import { PriorityPreemptionEngine } from '../../src/main/services/priority-preemption-engine';
-import { UnityTelemetryService } from '../../src/main/services/unity-telemetry-service';
 import { SettingsRepository } from '../../src/main/db/repositories/settings-repository';
-import { TimeTrackingEngine } from '../../src/main/engine/time-tracking-engine';
 import { ActiveSessionDTO, UserMode } from '../../src/shared/dtos';
 import { FRONT_ELEMENT_IDS } from '../../src/shared/device-constants';
 import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT } from '../../src/shared/priority-defaults';
@@ -14,8 +12,8 @@ import { FRONT_ANIMATIONS } from '../../src/shared/render-constants';
 import { FirmwareSimulator } from './firmware-simulator';
 
 /**
- * A desk: the whole display stack -- driver, renderer, priority engine, Unity
- * service -- on the firmware simulator, with every source that draws on the
+ * A desk: the whole display stack -- driver, renderer, priority engine -- on
+ * the firmware simulator, with every source that draws on the
  * bar reachable as a named event.
  *
  * Shared by the generated stress runs and the scripted regressions taken
@@ -40,10 +38,7 @@ export function random(seed: number): () => number {
   };
 }
 
-export type UnityEvent = 'compileStart' | 'compileEnd' | 'buildStart' | 'buildEnd' | 'playEnter' | 'playExit' | 'exception';
-
 export type EventName =
-  | UnityEvent | `${UnityEvent}B`
   | 'banner' | 'highBanner'
   | 'startTask' | 'startTaskFromBar' | 'pause' | 'resume' | 'tick' | 'stop' | 'finish'
   /** The paused menu's DROP: the question, BACK on it, and the click that confirms. */
@@ -75,14 +70,6 @@ export async function advance(ms: number): Promise<void> {
   } while (left > 0);
 }
 
-/** The two editors: same service, told apart by instance id, as two open projects are. */
-export const EDITORS = {
-  A: { instanceId: 'game-1', projectName: 'Game' },
-  B: { instanceId: 'tools-2', projectName: 'Tools' }
-} as const;
-
-/** How often the simulated editor pings, well inside the service's 15 s prune. */
-const HEARTBEAT_MS = 5000;
 /** How long a rebooting bar stays unreachable: several pings, as on the real one. */
 const REBOOT_MS = 10_000;
 
@@ -92,16 +79,11 @@ export class Desk {
   public readonly driver: BusyBarDriver;
   public readonly renderer: DisplayRenderer;
   public readonly priority: PriorityPreemptionEngine;
-  public readonly unity: UnityTelemetryService;
   public session: ActiveSessionDTO | null = null;
   public mode: UserMode = 'WORK';
   /** The state after each step, for reading a replayed seed. */
   public readonly timeline: string[] = [];
   private readonly startedAt = Date.now();
-  /** What each editor is doing, as its own events say. */
-  public readonly editors: Record<string, { compiling: boolean; building: boolean; playing: boolean }> = Object.fromEntries(
-    Object.values(EDITORS).map(editor => [editor.instanceId, { compiling: false, building: false, playing: false }])
-  );
   private sessionCount = 0;
   private picking = false;
   /** The session the stand-up switched away from, to restart when it ends. */
@@ -109,7 +91,6 @@ export class Desk {
   /** Until when the bar is rebooting, and no `barBack` brings it back. */
   private rebootingUntil = 0;
   private readonly next: () => number;
-  private readonly heartbeat: ReturnType<typeof setInterval>;
 
   /**
    * @param firmwareVersion The bar's firmware: 1.2 and 1.3 read different
@@ -125,9 +106,7 @@ export class Desk {
       firmwareVersion
     }).install();
 
-    const store = new Map<string, unknown>([
-      ['unity_settings', { enablePlayModeDnd: true, showUnityErrors: true, errorDurationSeconds: 2 }]
-    ]);
+    const store = new Map<string, unknown>();
     const settings = {
       getSetting: (key: string, fallback: unknown) => (store.has(key) ? store.get(key) : fallback),
       setSetting: (key: string, value: unknown) => store.set(key, value)
@@ -141,17 +120,8 @@ export class Desk {
     // The user's configuration: idle shows the firmware clock, which is the
     // one path that closes the device's screen on purpose.
     this.renderer.setShowIdleClockFallback(true);
-    const engine = { getCurrentSession: () => this.session } as unknown as TimeTrackingEngine;
-    this.unity = new UnityTelemetryService(settings, undefined, this.renderer, engine, this.priority);
-    // An open editor pings every few seconds; without it the service prunes
-    // the instance after 15 s and releases on its own -- in the quiet at the
-    // end of a run too, which left that release's clear unfinished.
-    this.heartbeat = setInterval(() => {
-      for (const editor of Object.values(EDITORS)) this.unity.handleHeartbeat({ ...editor });
-    }, HEARTBEAT_MS);
     // As InputDecoder does: an open picker is drawn again whenever the
-    // display frees. Registered after Unity, so the engine's order by
-    // priority is what puts it first.
+    // display frees.
     this.priority.addBackgroundScreen([BAR_MENU_EVENT], () => {
       if (this.picking) this.renderer.renderTaskSelection('PROJECT', 'Game', { position: { index: 0, count: 2 } });
     });
@@ -164,34 +134,6 @@ export class Desk {
   }
 
   public fire(event: EventName): void {
-    const editor = event.endsWith('B') ? EDITORS.B : EDITORS.A;
-    const unityEvent = event.replace(/B$/, '');
-    const state = this.editors[editor.instanceId];
-    switch (unityEvent) {
-      case 'compileStart':
-        // A compile inside a build is part of the build, and ends with it.
-        state.compiling = state.compiling || !state.building;
-        return this.unity.handleCompile({ ...editor, state: 'started', type: 'compile' });
-      case 'compileEnd':
-        state.compiling = false;
-        return this.unity.handleCompile({ ...editor, state: 'finished', type: 'compile' });
-      case 'buildStart':
-        // A build takes over a compile already running in that editor.
-        state.building = true;
-        state.compiling = false;
-        return this.unity.handleCompile({ ...editor, state: 'started', type: 'build', progress: 30 });
-      case 'buildEnd':
-        state.building = false;
-        state.compiling = false;
-        return this.unity.handleCompile({ ...editor, state: 'finished', type: 'build' });
-      case 'playEnter':
-        state.playing = true;
-        return this.unity.handlePlayMode({ ...editor, state: 'entered' });
-      case 'playExit':
-        state.playing = false;
-        return this.unity.handlePlayMode({ ...editor, state: 'exited' });
-      case 'exception': return this.unity.handleConsole({ ...editor, type: 'exception', message: 'NullReferenceException' });
-    }
     switch (event) {
       case 'banner':
       case 'highBanner':
@@ -346,8 +288,6 @@ export class Desk {
   }
 
   public dispose(): void {
-    clearInterval(this.heartbeat);
-    this.unity.dispose();
     this.renderer.dispose();
     this.driver.disconnect();
     this.device.uninstall();
@@ -414,17 +354,6 @@ export function expectSettledScreen(desk: Desk): void {
       throw new Error(`Expected the bar's picker, which is open: ${context}`);
     }
     return;
-  }
-  // Nothing outranks Unity once every banner and scene is over, so an editor
-  // still busy holds the display: a compile or a build has the gear, Play
-  // Mode the ON AIR screen. Whichever editor finished first must not take
-  // the other's screen down with it.
-  const editors = Object.values(desk.editors);
-  if (editors.some(e => e.compiling || e.building) && lock !== 'unityCompilingPriority') {
-    throw new Error(`Expected Unity's compile screen, an editor is still compiling: ${context}`);
-  }
-  if (!editors.some(e => e.compiling || e.building) && editors.some(e => e.playing) && lock !== 'unityPlayModePriority') {
-    throw new Error(`Expected Play Mode, an editor is still in it: ${context}`);
   }
   // The stand-up tracks on the session screen, with the meeting icon -- not
   // under the prompt's scene, which made joining look like nothing happened.

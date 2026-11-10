@@ -3,7 +3,7 @@ import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS, SCENE_ICONS } from '../src/shared/render-constants';
 import {
-  BURGER_16X16_BITMAP, CHECKMARK_16X16_BITMAP, COFFEE_16X16_BITMAP, COMPILING_16X16_BITMAP, MEETING_16X16_BITMAP,
+  BURGER_16X16_BITMAP, CHECKMARK_16X16_BITMAP, CLOCK_16X16_BITMAP, COFFEE_16X16_BITMAP, MEETING_16X16_BITMAP,
   MOON_16X16_BITMAP, STOPWATCH_16X16_BITMAP, STOPWATCH_PAUSED_16X16_BITMAP, getBitmapById
 } from '../src/shared/pixel-bitmaps';
 import { ActiveSessionDTO, ScreenIconDTO } from '../src/shared/dtos';
@@ -67,12 +67,12 @@ describe('the screen icon', () => {
     expect(told).toHaveLength(1);
   });
 
-  it('RenderCompilation_IsTheGearWithTheScreensTopRow', () => {
-    renderer.renderCompilation('ProjectX');
+  it('RenderCeremonyPrompt_IsTheClockWithTheScreensTopRow', () => {
+    renderer.renderCeremonyPrompt('EOD', 'Wrap up');
 
     const icon = renderer.getScreenIcon();
-    expect(icon?.pixels).toBe(COMPILING_16X16_BITMAP);
-    expect(icon?.label).toMatch(/COMPILING/);
+    expect(icon?.pixels).toBe(CLOCK_16X16_BITMAP);
+    expect(icon?.label).toMatch(/EOD WRAP-UP/);
   });
 
   it('RenderNotificationBanner_AppsOwnIcon_IsThatIcon', () => {

@@ -94,7 +94,7 @@ export default defineConfig({
       // were covered in turn: measured 93.12 / 86.25 / 91.13 / 94.75. Those
       // tests found a replayed alert wiped as it drew, every bar press
       // delivered twice, and a suite that wrote the global git config and
-      // saved open Unity scenes.
+      // saved the open scenes of a game editor.
       thresholds: {
         lines: 93.5,
         functions: 90,

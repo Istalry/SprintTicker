@@ -61,6 +61,16 @@
 - **The Ceremonies prompt timeout is gone.** It was saved but never read:
   its auto-dismiss and auto-execute never happened.
 
+### Removed
+
+- **Unity support.** The Unity Editor package is gone, and with it the
+  compile, build, bake, Play Mode and exception screens, the Unity Engine
+  tab, the setup wizard's Unity step, project linking and the wrap-up's
+  scene save. The app's Unity routes now answer 404, so an editor still
+  carrying the package is simply not heard. Unity's rules disappear from
+  Priority Rules, including from a saved order, and the rest keep their
+  levels. `pnpm verify:unity` and `verify-unity.bat` are gone too.
+
 ### Fixed
 
 - **The task key's color is kept.** It was forgotten at every restart, the bar

@@ -22,7 +22,7 @@ traps.
                     ┌─────────────────────────────────────────┐
                     │              RENDERER                   │
                     │  React 19 + Vite + Tailwind             │
-                    │  9 views, no Node, no Electron          │
+                    │  8 views, no Node, no Electron          │
                     └────────────────┬────────────────────────┘
                                      │ window.electronAPI
                                      │ (contextBridge, the ONLY path)
@@ -50,7 +50,7 @@ traps.
 │            │                                                             │
 │      Repositories ──> DatabaseConnection ──> better-sqlite3              │
 │                                                                          │
-│   WebhookServer (127.0.0.1:39123) <── Unity Editor plugin, Stream Deck   │
+│   WebhookServer (127.0.0.1:39123) <── remote keys, Stream Deck           │
 └──────────────────────────────────┬───────────────────────────────────────┘
                                    │ HTTP
                           ┌──────────────────────┐
@@ -60,8 +60,8 @@ traps.
 ```
 
 Three processes, one database, two outbound directions (the device over USB, a
-task provider over the internet), and one inbound (the Unity plugin on
-loopback).
+task provider over the internet), and one inbound (remote key presses and the
+Stream Deck plugin, on loopback).
 
 The device address is a persisted setting (`DeviceConfigDTO.ipAddress`), seeded
 from `10.0.4.20` and edited in Settings › Device. Main reads it before
@@ -75,11 +75,9 @@ the bar onto a different address entirely.
 dials: `connect()` declines without starting the ping loop, every command throws
 `disconnected` without a request, and frames are queued as they are for an
 unplugged bar. `AnimationPlayer` skips the upload and runs frames for the
-preview; the renderer shows no animated icon and skips the idle clear;
-`UnityTelemetryService` ignores the plugin's events, whose display locks would
-only compete with the end-of-day prompt; and the Windows notification listener,
-which polls Windows' notification database every couple of seconds to mirror it
-onto the bar, is started and stopped with the mode (`followBar`). Turning the bar off while it is
+preview; the renderer shows no animated icon and skips the idle clear; and the
+Windows notification listener, which polls Windows' notification database every
+couple of seconds to mirror it onto the bar, is started and stopped with the mode (`followBar`). Turning the bar off while it is
 connected releases the display through `clearDisplay` first, or the last frame
 would stay on it. `DeviceStatusDTO.enabled` carries
 the mode to the renderer, which hides the bar-only screens live. Turning it back
@@ -329,9 +327,7 @@ Two rules, both scars:
   lock it names, replays a queued alert if one is waiting, and otherwise hands
   the display back to the user's mode (`setContextMode`). A caller that renders
   again afterwards draws twice; one releasing a lock it does not hold renders
-  nothing, which leaves the screen that took it alone. Unity's compile end
-  waits `UNITY_IDLE_RELEASE_GRACE_MS` (3 s) before releasing, so a compile that
-  starts again straight away keeps its screen instead of passing through idle.
+  nothing, which leaves the screen that took it alone.
 - **The freed display goes, in order, to:** a queued alert (a request that
   was *refused* and left a callback); the most important screen a preemption
   *set aside*, redrawn by `DisplayRenderer.resumeScreen` from the last screen
@@ -342,15 +338,13 @@ Two rules, both scars:
   Releasing a lock that is set aside rather than held removes
   it from that list. The tracker and the mode locks are never set aside:
   `setContextMode` draws them as they are now.
-- **Unity and the bar's picker are the background states.** The picker,
-  registered by `InputDecoder`, comes back while it is open: refused under
-  Away and never queued, it would otherwise be open and unseen once Away
-  ended. Unity's compile and Play Mode screens last
-  as long as an editor's state, so they are reclaimed rather than resumed:
-  after a banner, a scene, Lunch, or another editor's end, the display shows
-  what the editors are doing by then. Operations are tracked per editor
-  instance, a build or a bake shown before a compile; the compile screen
-  comes down only when no editor has one left.
+- **The bar's picker is the background state.** Registered by
+  `InputDecoder`, it comes back while it is open: refused under Away and
+  never queued, it would otherwise be open and unseen once Away ended. A
+  state is reclaimed rather than resumed -- it redraws what it is by then,
+  not what it was when covered. The Unity Editor's compile and Play Mode
+  screens were the other background states, until the app dropped Unity on
+  2026-11-09; the mechanism stays general.
 
 | Claim | Event name | Default score |
 | :--- | :--- | ---: |
@@ -362,9 +356,6 @@ Two rules, both scars:
 | Stand-up prompt | `standupPromptPriority` | 75 |
 | Notification — high | `highNotificationPriority` | 70 |
 | Notification — default | `messagingPriority` | 65 |
-| Unity build failure | `unityBuildFailurePriority` | 60 |
-| Unity compiling | `unityCompilingPriority` | 55 |
-| Unity Play Mode | `unityPlayModePriority` | 50 |
 | Active task tracker | `activeTrackerPriority` | 45 |
 
 Each rule also carries an action per user mode — `DISPLAY`, `SUPPRESS` or
@@ -727,7 +718,7 @@ The service cannot tell the two apart, and does not need to.
 
 ### `WebhookServer` — `src/main/api/`
 
-An HTTP server on `127.0.0.1:39123` for the Unity Editor plugin. See the
+An HTTP server on `127.0.0.1:39123` for remote key presses. See the
 [API reference](API.md#local-http-api) for routes and the screening rules.
 WebSocket handshakes go through it too (`onUpgrade`), screened for an
 `Origin` before any handler sees them.
@@ -885,17 +876,7 @@ Start to finish, across every component:
 
 ---
 
-## 6. Unity plugin
-
-`packages/unity-plugin` is a UPM package
-(`io.github.istalry.sprintticker`) of Editor-only C#. `BusyBarWebhookPublisher`
-and `BusyBarSceneSaveListener` initialise themselves and POST compile state,
-Play Mode transitions and console exceptions to the local HTTP server. It
-modifies neither your scenes nor your project code.
-
----
-
-## 7. Stream Deck plugin
+## 6. Stream Deck plugin
 
 `packages/streamdeck-plugin` is a plugin for Elgato's Stream Deck app, built
 on its SDK (`@elgato/streamdeck` 3) and bundled by Vite into one ESM file that
@@ -951,8 +932,8 @@ Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──►
   poses and their order, never the file name; the plugin picks the pose of
   the moment from the wall clock (`deckIconPixels`) and redraws at the
   motion's rate, sending only what changed: about once a second for the
-  stopwatch, ten times for the gear. A motion read after its icon pushes
-  the state again; one that fails leaves the still icon.
+  stopwatch, ten times for an icon always in motion. A motion read after
+  its icon pushes the state again; one that fails leaves the still icon.
 - **A one-shot is frames, not an animated image.** `setImage` shows the
   first frame of a GIF, a WebP or an animated SVG (measured on Stream Deck
   Mobile), so `DeckController.play` sends six static images 100 ms apart,
@@ -969,7 +950,7 @@ It imports only from `desktop-app/src/shared/`: the protocol is
 
 ---
 
-## 8. Animation studio
+## 7. Animation studio
 
 `packages/anim-studio` is a development tool, not part of the app: nothing in it
 ships, and the app never imports it. It produces the frame sets the app plays.
@@ -1021,9 +1002,9 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ---
 
-## 9. Testing
+## 8. Testing
 
-Vitest, 2704 tests across 130 files, in two projects: `main` in Node for
+Vitest, 2785 tests across 134 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
@@ -1039,7 +1020,7 @@ one page cannot fail the way production failed.
 
 The animation studio has its own suite, 117 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
-Stream Deck plugin, 195 tests across 8 files (`pnpm test:deck`), which also
+Stream Deck plugin, 238 tests across 8 files (`pnpm test:deck`), which also
 runs its link against the app's real `DeckServer` over loopback.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and

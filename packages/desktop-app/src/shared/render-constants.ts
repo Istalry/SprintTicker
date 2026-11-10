@@ -87,13 +87,7 @@ export const EOD_COMPLETE_DISPLAY_SECONDS = 5;
  * never change -- which is as far as a mark that is not ours should go.
  */
 export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
-  // Work in progress: moves steadily, since a pause reads as a stall.
-  compiling: 'icon_gear_16x16',
-  playmode: 'icon_playmode_16x16',
-  hammer: 'icon_hammer_16x16',
-  bulb: 'icon_bulb_16x16',
   // Events and prompts: act, then rest.
-  error: 'icon_warning_16x16',
   bell: 'icon_bell_16x16',
   clock: 'icon_clock_16x16',
   burger: 'icon_burger_16x16',
@@ -147,9 +141,9 @@ export const DISPLAY_CONSTANTS = {
     ROW1_Y: 8,
     TEXT_FIELD_WIDTH: 55,
     /**
-     * A progress bar is one pixel, under row 1. It used to take row 1 over,
-     * which pushed the project name into row 0 beside the label, where it was
-     * cut to "BUILDING: M...". Row 1's descenders end at y=14.
+     * The one-pixel line under row 1, where the picker's scroll bar runs. A
+     * bar used to take row 1 over, which pushed row 1's text into row 0 beside
+     * the label, where it was cut short. Row 1's descenders end at y=14.
      */
     PROGRESS_BAR_Y: 15,
   }
@@ -159,14 +153,3 @@ export const DISPLAY_CONSTANTS = {
   // arithmetic is in `proportional-text.ts`.
 } as const;
 
-/**
- * How long the compiling screen outlives the end of a compile.
- *
- * Unity compiles in bursts: scripts, a domain reload, often a second compile a
- * second or two later. Each end used to hand the display straight back, and
- * idle with the firmware clock that is a full clear -- the one deliberate
- * close of the device's screen, of which a Unity day made dozens. Closes are
- * what hang the bar (CLAUDE.md, section 4), so a compile that starts again
- * within this keeps the gear up and costs nothing.
- */
-export const UNITY_IDLE_RELEASE_GRACE_MS = 3000;

@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task at 01:24, a Unity compile with a spinning gear, the Lunch scene and a Slack banner">
+  <img src="docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task at 01:24, the paused menu, the Lunch scene and a Slack banner">
 </p>
 
 <p align="center">
@@ -32,13 +32,12 @@
 
 A Windows desktop companion for the **BUSY Bar** — a small USB device with a
 72×16 RGB LED matrix on the front. The app tracks what you are working on and
-puts it on the bar: the current task, a timer, Unity compile progress, and
+puts it on the bar: the current task, a timer, the day's ceremonies, and
 Windows notifications from the apps you choose, arbitrated so the most important
 thing holds the display rather than the most recent thing.
 
-It ships with a Unity Editor package that pushes compile, Play Mode and console
-events to the bar, and a canvas emulator so the whole thing can be developed
-with nothing plugged in.
+It ships with a Stream Deck plugin that puts the session on keys, and a canvas
+emulator so the whole thing can be developed with nothing plugged in.
 
 **No BUSY Bar? It still works.** Choose *Not now* on first launch and
 SprintTicker is a time tracker with a mini timer, OpenProject and Jira sync,
@@ -65,8 +64,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 | :---: | :--- |
 | <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
 | <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to INTERRUPT, STOP, FINISH or DROP, click to confirm. |
-| <img src="docs/images/bar-unity-compile.webp" width="304" alt="COMPILING with a spinning orange gear"> | 🛠️ **Unity compiling** — and **BUILDING 40%** with a progress line for a build. |
-| <img src="docs/images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game controller"> | 🎮 **Play Mode** — ON AIR, so nobody walks in on a playtest. |
+| <img src="docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up** — its own timer, three people at a table taking turns to speak. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
 | <img src="docs/images/bar-scene-lunch.webp" width="304" alt="The Lunch scene"> | 🥪 **Lunch, Away, meetings** — full-screen scenes while you are not at your desk. |
 | <img src="docs/images/bar-scene-task-done.webp" width="304" alt="DONE! with a green check"> | ✅ **Done** — a moment of celebration when a task is finished. |
@@ -130,7 +128,7 @@ stopped.
 
 A **mini timer**, a small always-on-top window, shows the running task and its
 time on screen, with or without a bar, beside the icon of whatever holds the
-bar -- the session, a Unity compile, a notification, lunch:
+bar -- the session, a notification, a prompt, lunch:
 
 <p align="center">
   <img src="docs/images/app-mini-timer.png" alt="The mini timer: MG-12, 01:24:10, pause, stop and switch buttons">
@@ -232,8 +230,8 @@ Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
 
 | | | | | | |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="docs/images/bar-icon-stopwatch.webp" width="72" alt="Stopwatch"> | <img src="docs/images/bar-icon-gear.webp" width="72" alt="Gear"> | <img src="docs/images/bar-icon-hammer.webp" width="72" alt="Hammer"> | <img src="docs/images/bar-icon-playmode.webp" width="72" alt="Game controller"> | <img src="docs/images/bar-icon-warning.webp" width="72" alt="Warning"> | <img src="docs/images/bar-icon-bell.webp" width="72" alt="Bell"> |
-| tracking | compiling | building | Play Mode | exception | notification |
+| <img src="docs/images/bar-icon-stopwatch.webp" width="72" alt="Stopwatch"> | <img src="docs/images/bar-icon-stopwatch-paused.webp" width="72" alt="Stopwatch, paused"> | <img src="docs/images/bar-icon-meeting.webp" width="72" alt="Three people at a table"> | <img src="docs/images/bar-icon-bell.webp" width="72" alt="Bell"> | <img src="docs/images/bar-icon-clock.webp" width="72" alt="Alarm clock"> | <img src="docs/images/bar-icon-burger.webp" width="72" alt="Burger"> |
+| tracking | paused | stand-up | notification | end of day | lunch |
 
 <p align="center">
   <img src="docs/images/bar-scene-away.webp" width="49%" alt="The Away scene: a steaming coffee cup">
@@ -268,9 +266,6 @@ Every claim on the display carries a score, and the highest score holds it:
 | 🗣️ Standup prompt | 75 |
 | 🔔 Notification — High Priority | 70 |
 | 💬 Notification — Default | 65 |
-| ⚠️ Unity build failure | 60 |
-| ⚙️ Unity compiling | 55 |
-| 🎮 Unity Play Mode | 50 |
 | ⏱️ Active task tracker | 45 |
 
 Per application you choose `Don't Show`, `Default` or `High Priority`; the table
@@ -287,21 +282,6 @@ every row is editable in the **Priority Rules** panel.
 
 Notification text is **redacted from logs and from the diagnostics export** by
 default. Launch with `--debug-notifications` to see it while troubleshooting.
-
-### 🎮 Unity Editor integration
-
-A UPM package (`io.github.istalry.sprintticker`) posts compile state, Play Mode
-transitions and console exceptions to the app's local HTTP server, and the app
-discovers installed Unity projects and manages plugin injection.
-
-| | |
-| :---: | :---: |
-| <img src="docs/images/bar-unity-build.webp" width="304" alt="BUILDING 40% with a hammer and a progress line"> | <img src="docs/images/bar-unity-exception.webp" width="304" alt="EXCEPTION: NullReferenceException"> |
-| A build, with its progress | An exception, while it matters |
-
-<p align="center">
-  <img src="docs/images/app-unity.png" width="70%" alt="Unity Engine panel: connected editors, compile state, alert settings">
-</p>
 
 ### 🎹 Stream Deck
 
@@ -497,10 +477,10 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2704 tests across 130 files for the app -- the main and shared
+`pnpm test` runs 2785 tests across 134 files for the app -- the main and shared
 process code, plus smoke tests that mount every renderer view in jsdom (the
 renderer is not counted in coverage) -- then the animation studio's
-117 across 6 files, then the Stream Deck plugin's 195 across 8;
+117 across 6 files, then the Stream Deck plugin's 238 across 8;
 `pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.
@@ -516,10 +496,9 @@ line as covered when any part of it ran; the same unchanged suite then measured
 76% where it had reported 88%. Nothing regressed -- the measurement got honest,
 which is why statements and lines no longer report an identical figure.
 
-`pnpm preflight` runs the release pre-flight check: it verifies that the three
-`package.json` versions agree, that the Windows SQLite binary the installer
-carries is present, and that the Unity Editor scripts are present. It
-also runs in CI, so a version drift is caught when it is introduced rather than
+`pnpm preflight` runs the release pre-flight check: it verifies that the root
+and the app's `package.json` versions agree, and that the Windows SQLite binary
+the installer carries is present. It also runs in CI, so a version drift is caught when it is introduced rather than
 when someone tries to cut a release.
 
 `pnpm db:check-migration [path]` is for a release that adds a database
@@ -570,14 +549,10 @@ pnpm --filter @sprintticker/desktop-app package:portable
 ## 🔌 Local HTTP API
 
 The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for
-the Unity Editor plugin.
+remote key presses, and the Stream Deck plugin's WebSocket.
 
 | Route | Method | Description |
 | :--- | :--- | :--- |
-| `/api/v1/unity/compile` | `POST` | Compilation state (`started`, `finished`) & progress bar display |
-| `/api/v1/unity/playmode` | `POST` | Toggles "ON AIR" red display mode during Unity Play Mode (`entered`, `exited`) |
-| `/api/v1/unity/console` | `POST` | Flashes red LED and displays exception details. Throttled to one event every 3s |
-| `/api/v1/unity/heartbeat` | `POST` | Unity Editor C# plugin active connection heartbeat pings |
 | `/api/input` | `POST` | Inject physical hardware key events (`up`, `down`, `start`, `ok`, etc.) |
 
 ### 🔒 Security
@@ -599,30 +574,6 @@ This is not authentication. Any local program can still call this API; what the
 checks close is the path from a web page you happen to be visiting to your
 hardware. The server binds to `127.0.0.1` only and is never reachable from the
 network.
-
----
-
-## 🎮 Unity Editor plugin
-
-The monorepo includes a Unity Editor C# package connecting assembly compilation,
-Play Mode transitions and console exceptions to the bar.
-
-Validate the package structure — this checks the UPM manifest and Editor
-scripts, and does not emit an archive:
-
-```bash
-pnpm verify:unity
-```
-
-To import it:
-
-1. Open your Unity project (2021.3+).
-2. **Window > Package Manager**.
-3. `+` > **Add package from disk...**
-4. Select `packages/unity-plugin/package.json`.
-
-`BusyBarWebhookPublisher` and `BusyBarSceneSaveListener` initialise themselves
-without modifying your scenes or project code.
 
 ---
 
@@ -693,14 +644,12 @@ builds it and runs Elgato's own validator on it, as CI does.
   bar clip in `docs/images/`. It runs the app on a throwaway profile with
   invented projects, under `--mock-hardware`, records what the app sends its
   emulator, and renders that as the LED panel; the scenes and icons come
-  straight from `Animations/`. Close SprintTicker and Unity first: the Unity
-  events it replays would otherwise reach the running app, and its bar, and an
-  open editor's own events would land in the pictures. Needs Python with
-  Pillow, as compiling an animation does.
+  straight from `Animations/`. Close SprintTicker first: the capture's own
+  instance needs the app's local port, and the running app drives a real bar.
+  Needs Python with Pillow, as compiling an animation does.
 
 Windows batch shortcuts for the common commands sit in the repository root:
-`install.bat`, `run_editor.bat`, `package-win.bat`, `verify-unity.bat`,
-`test-coverage.bat`.
+`install.bat`, `run_editor.bat`, `package-win.bat`, `test-coverage.bat`.
 
 ---
 
@@ -710,7 +659,6 @@ Windows batch shortcuts for the common commands sit in the repository root:
 SprintTicker/
 ├── packages/
 │   ├── desktop-app/       # Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + SQLite
-│   ├── unity-plugin/      # Unity UPM package (io.github.istalry.sprintticker)
 │   ├── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
 │   └── streamdeck-plugin/ # Elgato Stream Deck plugin (pnpm deck:pack)
 ├── Animations/            # Our full-screen animations: PNG frames (LFS) + .anim

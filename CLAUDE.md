@@ -9,12 +9,11 @@ and invisible in the source.
 
 ## 1. What this is
 
-A pnpm workspace with four packages:
+A pnpm workspace with three packages:
 
 | Package | What it is |
 | :--- | :--- |
 | `packages/desktop-app` | Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
-| `packages/unity-plugin` | A Unity Editor C# package (`io.github.istalry.sprintticker`) that posts editor events to the desktop app. Its scripts compile only because `.asmdef` files own them (see below). |
 | `packages/anim-studio` | The animation scene editor (`pnpm studio`): Vite + plain TypeScript, no React, no Electron. A development tool; nothing in it ships. |
 | `packages/streamdeck-plugin` | A plugin for Elgato's Stream Deck app (`io.github.istalry.sprintticker.sdPlugin`): Node 24 + `@elgato/streamdeck` 3, bundled by Vite. Keys that drive the session over the app's WebSocket. Ships on its own, as a `.streamDeckPlugin`. |
 
@@ -209,22 +208,6 @@ above. Two more things about it that cost time to find:
   our code under the GPL. If you change a script, add the change and its date
   to its header: GPL-2.0 requires a modified file to say so.
 
-**The Unity plugin compiles in Unity, never here, so nothing here sees it
-break.** Unity compiles no script in a package that no `.asmdef` owns, and
-the plugin had none until 2026-10-16: both editors open that day skipped it
-with a console warning, neither had ever compiled it, and the bar heard
-nothing from them while the tests, the stress run and `docs:images` --
-all replayed events -- passed. `unity-plugin-package.test.ts` now fails on a script outside an
-assembly or an asset without its `.meta`. Two more things follow:
-- **Its API floor is Unity 2021.3** (`package.json` `unity`), and an error
-  there blocks the user's whole project from entering Play Mode. Check a
-  Unity API's version before using it: its first real compile failed on
-  `SceneManager.loadedSceneCount`, which 2021.3 does not have.
-- **Projects link it, they do not copy it.** The injector makes a junction
-  to the plugin folder it resolves first -- for a packaged build,
-  `dist-electron/win-unpacked/packages/unity-plugin` -- so a change reaches
-  the editors at their next compile once that folder has it.
-
 **The Stream Deck plugin reaches the app over a WebSocket, and a key does
 what a click or a press already does.** `DeckActionService` holds no rule of
 its own, and must not grow one: ending a session is `completeSession`, shared
@@ -255,7 +238,9 @@ things about it:
   and every method then passes.
 
 **The plugin itself, `packages/streamdeck-plugin`, runs inside Elgato's
-app, so nothing here sees it on a deck** -- the Unity plugin's situation.
+app, so nothing here sees it on a deck**, and replayed events passing say
+nothing about it: the Unity plugin, removed on 2026-11-09, went unseen by
+any editor for weeks while every test passed.
 What a key shows and does is two pure functions (`faces.ts`), tested for
 every kind and state; `package.test.ts` holds the manifest to the code and
 to what the build writes; `pnpm deck:validate` runs Elgato's validator in
@@ -733,33 +718,27 @@ changing it:
   that lock is not the one held. So a service ending its screen releases and
   stops there: rendering the idle or session screen after the release draws
   twice, and idle, twice is two clears of the device's screen at once (§4).
-  `UnityTelemetryService` did exactly that on every compile, Play Mode exit
-  and exception end, which also wiped any banner that had taken the display
-  in the meantime. It is what hung the bar on 2026-10-05.
+  The Unity integration (removed 2026-11-09) did exactly that on every
+  compile, Play Mode exit and exception end, which also wiped any banner
+  that had taken the display in the meantime. It is what hung the bar on 2026-10-05.
 - **Who gets the display back is the engine's decision, in one order.**
   Freeing a lock replays a queued alert first; then resumes the most
   important screen a preemption set aside (`_suspended`, redrawn through
   `DisplayRenderer.resumeScreen`); then offers the display to the background
   states (`addBackgroundScreen`); and only then hands it to the mode. Each
-  step exists because its absence shipped: a build under a banner came back
-  as the idle clock with the build still running; a compile refused under a
-  banner never drew at all. Releasing a lock that is not held removes it
+  step exists because its absence shipped, with the Unity screens since
+  removed: a build under a banner came back as the idle clock with the build
+  still running; a compile refused under a banner never drew at all. Releasing a lock that is not held removes it
   from the set-aside list -- that screen ended while covered.
   **One exception, by the user's own scores:** a background state ranked
   above everything queued or set aside is offered first, and background
   states are offered highest first, never in the order they registered.
-  Unity ranks below the alerts, so for it nothing changes; the bar's picker
-  (97) does not, and lost the display to a banner queued under Away.
-- **Unity's screens are states, not alerts.** `UnityTelemetryService`
-  registers as a background screen and redraws whatever the editors are
-  doing *now* when the display frees; its locks are never set aside or
-  queued. Its operations are per editor instance: one global operation let
-  the first of two projects to finish take the other's gear down. A compile
-  inside a build belongs to the build and ends with it.
-- **The bar's open picker is a state too.** It is never queued (each press
+  For a state ranked below the alerts nothing changes; the bar's picker
+  (97) is not one, and lost the display to a banner queued under Away.
+- **The bar's open picker is a state, not an alert.** It is never queued (each press
   redraws it), so under Away it was refused and then forgotten: open,
   invisible, still taking presses, while Away's end handed the display to
-  the clock, Unity or Lunch. `InputDecoder` registers it as a background
+  the clock or Lunch. `InputDecoder` registers it as a background
   screen that redraws itself while open; Desk registers the same.
 - **Modes and the tracker are not claims to restore.** The idle clock is the
   user's mode: the idle branch of `renderActiveSession` leaves alone any
@@ -770,8 +749,8 @@ changing it:
   granted over a mode's looping scene stops it (`endModeSceneFor`), or the
   frame waits behind the sandwich for good.
 - **A one-shot scene ends on the holder's screen**, through
-  `grantedScreens`, not on the session: DONE! during Play Mode used to end
-  on the idle clock with Play Mode still holding the lock.
+  `grantedScreens`, not on the session: DONE! during Unity's Play Mode
+  used to end on the idle clock with Play Mode still holding the lock.
 - **A screen that redraws on every press is never queued.** The bar's
   picker (`menuPriority`) had no rule, sat at the default 50 under Lunch, and
   START during lunch opened it invisibly. It has a rule now, above Lunch, and
@@ -975,8 +954,7 @@ shortcut that declares another AUMID. Two more things about it:
 ### Naming
 
 TypeScript uses `PascalCase` types, `camelCase` members, `_camelCase` private
-fields. The Unity plugin is C# and follows C# conventions (`IPascalCase`
-interfaces, `PascalCase` methods).
+fields.
 
 ### Tests
 
@@ -1006,13 +984,13 @@ interfaces, `PascalCase` methods).
 - Tests must not spawn PowerShell against the developer's own machine or leave a
   database behind. **Every service that shells out takes its executor by
   constructor** -- `SystemAutomationService`'s `CommandExecFn`,
-  `UnityInjectorService`'s `GitRunner`, `AppIconResolver`'s runners -- and a
-  test passes a fake. A path override is not enough: the injector had one and
-  still ran `git config --global` for real, *writing* the test's temp file into
+  `AppIconResolver`'s runners -- and a test passes a fake. A path override
+  is not enough: the Unity injector (removed 2026-11-09) had one and still
+  ran `git config --global` for real, *writing* the test's temp file into
   the global config of any machine where `core.excludesfile` was unset.
-  The same goes for localhost: the wrap-up's Unity scene save is an injected
-  `UnitySceneSaver`, because the default POSTs to every Editor open on the
-  machine, and the wrap-up tests used to save the developer's scenes.
+  The same goes for localhost: anything that calls a local service is
+  injected. The wrap-up's Unity scene save POSTed to every Editor open on
+  the machine, and its tests used to save the developer's scenes.
 - **If the code checks a result, there is a test where that result is the bad
   one.** Every mock in this suite defaults to success, so a failure branch that
   is never mocked false is never executed by anything, and a dead handler looks
@@ -1035,7 +1013,7 @@ interfaces, `PascalCase` methods).
   starts checking it. `formatTrace()` prints the requests with their status
   and the panel after each, which is how a failure is read.
 - **`display-stress.test.ts` plays generated days against the simulator**:
-  seeded mixes of Unity, banners, the session, Lunch/Away and the bar
+  seeded mixes of banners, the session, the bar's picker, Lunch/Away and the bar
   dropping out or rebooting, some in one tick, over a device with latency,
   through the whole real stack. It is what catches the bugs no single source
   causes -- the 10-05 hang was one, and a Lunch scene streaming frames after
@@ -1045,9 +1023,9 @@ interfaces, `PascalCase` methods).
   firmware 1.2.4 and odd ones on 1.3.1, whose `.anim` format differs.
   Animations are read from disk once before the runs, because under fake
   timers a real file read lands at an arbitrary point of simulated time and a
-  seed would not replay. Two editors are open, and every run ends by
-  checking the panel against the state (`expectSettledScreen`): an editor
-  still compiling has the gear, idle has an empty panel, and so on.
+  seed would not replay. Every run ends by checking the panel against the
+  state (`expectSettledScreen`): Lunch has the sandwich and nothing over it,
+  an open picker holds the display, idle has an empty panel, and so on.
 - **A bug a seed finds becomes a scripted case** in
   `display-handback.test.ts`, on the same `Desk` (`tests/support/desk.ts`).
   A seed shows the bug; only a script keeps it shown once the generator's
@@ -1351,13 +1329,12 @@ duplicated-constant hazard again, in binary. Four things about them:
   `make-images.py` renders those, and every scene and icon in `Animations/`,
   as the LED panel. Never capture the real profile: development shares the
   real database (§7), so its pictures would publish the user's own task names.
-- **Close SprintTicker and Unity before running it.** The Unity events it
-  replays go to port 39123, and if the installed app owns that port they reach
-  the real bar; the script refuses to start while anything answers there.
-  Every Unity editor open on the machine posts to that port too, so a real
-  project's console errors land in the pictures -- the first run published
-  one, `Plugins: Failed...`, on the emulator. The script stops if any editor
-  but its own connects.
+- **Close SprintTicker before running it.** The capture's instance serves
+  port 39123 too, and if the installed app owns that port, the real bar and
+  any Stream Deck are behind it; the script refuses to start while anything
+  answers there. Whatever else posts to that port lands in the pictures: the
+  first run published a real Unity project's console error,
+  `Plugins: Failed...`, on the emulator.
 - **Not LFS, and on a budget.** `.gitattributes` keeps LFS to `Animations/`
   on purpose. Animated clips are WebP rather than GIF -- the LED bloom made the
   Away scene a megabyte as a GIF, 110 KB as WebP -- and screenshots are

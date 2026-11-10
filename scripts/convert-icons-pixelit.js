@@ -181,15 +181,11 @@ function processAllIcons() {
     { file: 'Slack_icon_2019.png', exportName: 'SLACK_16X16_BITMAP', comment: '💬 Slack 16x16 PixelIt Bitmap' },
     { file: 'discord-color-icon.png', exportName: 'DISCORD_16X16_BITMAP', comment: '🎮 Discord Clyde 16x16 PixelIt Bitmap' },
     { file: 'Gmail_icon_(2020).png', exportName: 'GMAIL_16X16_BITMAP', comment: '✉️ Gmail Envelope 16x16 PixelIt Bitmap' },
-    { file: 'unity-game-engine-icon.png', exportName: 'UNITY_16X16_BITMAP', comment: '🕹️ Unity 3D Cube 16x16 PixelIt Bitmap' },
     { file: 'lunch_icon.png', exportName: 'BURGER_16X16_BITMAP', comment: '🍔 Lunch Burger 16x16 PixelIt Bitmap' },
     { file: 'away_Icon.png', exportName: 'CLOCK_16X16_BITMAP', comment: '⏰ Away Clock 16x16 PixelIt Bitmap' },
     { file: 'pause-button-red-icon.png', exportName: 'PAUSE_16X16_BITMAP', comment: '⏸️ Pause Task 16x16 PixelIt Bitmap' },
     { file: 'resume_icon.png', exportName: 'PLAY_16X16_BITMAP', comment: '▶️ Resume Task 16x16 PixelIt Bitmap' },
-    { file: 'stop_task_Icon.png', exportName: 'STOP_16X16_BITMAP', comment: '⏹️ Stop Task 16x16 PixelIt Bitmap' },
-    { file: 'orange-error-icon-0.png', exportName: 'ERROR_16X16_BITMAP', comment: '⚠️ Unity Exception Error 16x16 PixelIt Bitmap' },
-    { file: 'compiling_icon.png', exportName: 'COMPILING_16X16_BITMAP', comment: '⚡ Unity Compiling 16x16 PixelIt Bitmap' },
-    { file: 'play_mode_icon.png', exportName: 'PLAYMODE_16X16_BITMAP', comment: '🔴 Unity Play Mode ON AIR 16x16 PixelIt Bitmap' }
+    { file: 'stop_task_Icon.png', exportName: 'STOP_16X16_BITMAP', comment: '⏹️ Stop Task 16x16 PixelIt Bitmap' }
   ];
 
   const generatedTSBlocks = [];

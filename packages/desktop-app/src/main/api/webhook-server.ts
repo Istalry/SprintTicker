@@ -6,43 +6,6 @@ import { LOCAL_API_PORT } from '../../shared/deck-protocol';
 /** Takes over a connection asking to become a WebSocket, once screened. */
 export type UpgradeHandler = (req: IncomingMessage, socket: Duplex, head: Buffer) => void;
 
-export interface UnityCompilePayload {
-  instanceId?: string;
-  state: 'started' | 'finished';
-  type?: 'compile' | 'build' | 'bake';
-  progress?: number;
-  projectName: string;
-  unityVersion?: string;
-  success?: boolean;
-  elapsedSeconds?: number;
-  errorCount?: number;
-  warningCount?: number;
-}
-
-export interface UnityPlayModePayload {
-  instanceId?: string;
-  state: 'entered' | 'exited';
-  projectName: string;
-}
-
-export interface UnityConsolePayload {
-  instanceId?: string;
-  type: 'warning' | 'error' | 'exception';
-  message: string;
-  stackTrace?: string;
-  projectName: string;
-}
-
-
-export interface UnityHeartbeatPayload {
-  instanceId?: string;
-  projectName: string;
-  unityVersion?: string;
-  compiling?: boolean;
-  playMode?: boolean;
-  savePort?: number;
-}
-
 export interface InjectOptions {
   method: string;
   url: string;
@@ -66,26 +29,16 @@ export interface InjectResponse {
 /**
  * Largest accepted request body.
  *
- * Generous for the payloads this actually receives -- the biggest is a Unity
- * stack trace -- and small enough that a hostile or looping client cannot make
- * the main process buffer without limit. There was no cap at all, and the body
+ * Generous for the payloads this actually receives -- a remote key press -- and
+ * small enough that a hostile or looping client cannot make the main process
+ * buffer without limit. There was no cap at all, and the body
  * was accumulated into a string one chunk at a time.
  */
 export const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
 /**
- * Minimum gap between Unity console events reaching their handlers.
- *
- * The Unity plugin posts on every logged error, which during a compile failure
- * or a script throwing inside Update means one per frame. Each one used to
- * reach the display, so the bar spent the burst redrawing an error banner it
- * had already drawn.
- */
-export const UNITY_CONSOLE_THROTTLE_MS = 3000;
-
-/**
- * Embedded HTTP server on 127.0.0.1:39123, receiving webhooks from the Unity
- * Editor plugin, and the Stream Deck plugin's WebSocket (see DeckServer).
+ * Embedded HTTP server on 127.0.0.1:39123: remote key presses on
+ * `/api/input`, and the Stream Deck plugin's WebSocket (see DeckServer).
  *
  * Loopback is not a security boundary. Any page in any browser on this machine
  * can POST here, and this API can drive the hardware and inject input events,
@@ -93,14 +46,9 @@ export const UNITY_CONSOLE_THROTTLE_MS = 3000;
  */
 export class WebhookServer {
   private readonly server: Server;
-  private lastConsoleEventMs = 0;
   private readonly port: number;
   private readonly host: string = '127.0.0.1';
   private listeningAddress: string = '';
-  private compileCallbacks: Set<(payload: UnityCompilePayload) => void> = new Set();
-  private playModeCallbacks: Set<(payload: UnityPlayModePayload) => void> = new Set();
-  private consoleCallbacks: Set<(payload: UnityConsolePayload) => void> = new Set();
-  private heartbeatCallbacks: Set<(payload: UnityHeartbeatPayload) => void> = new Set();
   private inputCallbacks: Set<(key: string) => void> = new Set();
   private readonly upgradeHandlers = new Map<string, UpgradeHandler>();
 
@@ -108,8 +56,8 @@ export class WebhookServer {
     this.port = port;
     // One listener. A second server was opened unconditionally on port 8080 --
     // a far more commonly probed port -- doubling the exposed surface for an
-    // address nothing in this repository, its documentation or the Unity plugin
-    // ever referenced.
+    // address nothing in this repository or its documentation ever
+    // referenced.
     this.server = http.createServer((req, res) => this.handleRequest(req, res));
     this.server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => this.handleUpgrade(req, socket, head));
   }
@@ -156,34 +104,6 @@ export class WebhookServer {
   /// </summary>
   public onInputEvent(cb: (key: string) => void): void {
     this.inputCallbacks.add(cb);
-  }
-
-  /// <summary>
-  /// Registers a callback listener for Unity compilation events.
-  /// </summary>
-  public onCompileEvent(cb: (payload: UnityCompilePayload) => void): void {
-    this.compileCallbacks.add(cb);
-  }
-
-  /// <summary>
-  /// Registers a callback listener for Unity playmode state changes.
-  /// </summary>
-  public onPlayModeEvent(cb: (payload: UnityPlayModePayload) => void): void {
-    this.playModeCallbacks.add(cb);
-  }
-
-  /// <summary>
-  /// Registers a callback listener for Unity console errors and warnings.
-  /// </summary>
-  public onConsoleEvent(cb: (payload: UnityConsolePayload) => void): void {
-    this.consoleCallbacks.add(cb);
-  }
-
-  /// <summary>
-  /// Registers a callback listener for Unity plugin heartbeat pings.
-  /// </summary>
-  public onHeartbeatEvent(cb: (payload: UnityHeartbeatPayload) => void): void {
-    this.heartbeatCallbacks.add(cb);
   }
 
   /// <summary>
@@ -303,25 +223,13 @@ export class WebhookServer {
   }
 
   /// <summary>
-  /// Routes parsed body content to corresponding webhook handlers.
+  /// Routes parsed body content to the remote input handler, the one route.
   /// </summary>
   private routeRequest(url: string, body: unknown, res: ServerResponse): void {
     if (url.startsWith('/api/input') || url.startsWith('/api/v1/input')) {
       return this.handleApiInput(url, body, res);
     }
-
-    switch (url) {
-      case '/api/v1/unity/compile':
-        return this.handleApiV1Compile(body, res);
-      case '/api/v1/unity/playmode':
-        return this.handleApiV1PlayMode(body, res);
-      case '/api/v1/unity/console':
-        return this.handleApiV1Console(body, res);
-      case '/api/v1/unity/heartbeat':
-        return this.handleApiV1UnityHeartbeat(body, res);
-      default:
-        return this.sendJSON(res, 404, { error: 'NOT_FOUND', message: 'Endpoint Not Found' });
-    }
+    return this.sendJSON(res, 404, { error: 'NOT_FOUND', message: 'Endpoint Not Found' });
   }
 
   private handleApiInput(url: string, body: unknown, res: ServerResponse): void {
@@ -345,53 +253,6 @@ export class WebhookServer {
       cb(key);
     }
     return this.sendJSON(res, 200, { status: 'ACCEPTED', key });
-  }
-
-  private handleApiV1Compile(body: unknown, res: ServerResponse): void {
-    const p = body as UnityCompilePayload;
-    if (!p || typeof p.projectName !== 'string' || !['started', 'finished'].includes(p.state)) {
-      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid compile payload' });
-    }
-    for (const cb of this.compileCallbacks) cb(p);
-    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
-  }
-
-  private handleApiV1PlayMode(body: unknown, res: ServerResponse): void {
-    const p = body as UnityPlayModePayload;
-    if (!p || typeof p.projectName !== 'string' || !['entered', 'exited'].includes(p.state)) {
-      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid playmode payload' });
-    }
-    for (const cb of this.playModeCallbacks) cb(p);
-    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
-  }
-
-  private handleApiV1Console(body: unknown, res: ServerResponse): void {
-    const p = body as UnityConsolePayload;
-    if (!p || typeof p.projectName !== 'string' || typeof p.message !== 'string') {
-      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid console payload' });
-    }
-
-    // Accepted either way, so the plugin does not treat a throttled event as a
-    // failure and retry it. What is dropped is the redraw: a script throwing
-    // inside Update posts once a frame, and every one of those reached the
-    // display to draw the banner that was already on it.
-    const now = Date.now();
-    if (now - this.lastConsoleEventMs < UNITY_CONSOLE_THROTTLE_MS) {
-      return this.sendJSON(res, 200, { status: 'THROTTLED' });
-    }
-    this.lastConsoleEventMs = now;
-
-    for (const cb of this.consoleCallbacks) cb(p);
-    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
-  }
-
-  private handleApiV1UnityHeartbeat(body: unknown, res: ServerResponse): void {
-    const p = body as UnityHeartbeatPayload;
-    if (!p || typeof p.projectName !== 'string') {
-      return this.sendJSON(res, 400, { error: 'INVALID_PAYLOAD', message: 'Invalid Unity heartbeat payload' });
-    }
-    for (const cb of this.heartbeatCallbacks) cb(p);
-    return this.sendJSON(res, 200, { status: 'ACCEPTED' });
   }
 
   private sendJSON(res: ServerResponse, statusCode: number, data: unknown): void {

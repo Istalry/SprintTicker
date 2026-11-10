@@ -5,7 +5,7 @@
  *   pnpm docs:images     # builds, captures, then renders scenes and icons
  *
  * or, on a build that is already current, `node scripts/doc-images/capture-app.js`.
- * Close SprintTicker and Unity first (see below).
+ * Close SprintTicker first (see below).
  *
  * Runs the app on a throwaway profile, under `--mock-hardware`, filled with
  * invented projects and tasks, and drives it over the Chrome DevTools
@@ -20,11 +20,10 @@
  *   user's own task names, and a pending migration would run on it. The
  *   profile is a fresh temp directory, removed at the end.
  * - **Never the real bar.** `--mock-hardware` keeps every draw in the process.
- *   The Unity events below are POSTed to the webhook port, though, and if the
- *   installed app is running *it* owns that port and would put them on the
- *   user's bar. So the script refuses to start while anything answers there.
- * - **No other Unity editor.** Every editor open on the machine posts to the
- *   webhook port, so the script stops if one besides its own connects.
+ *   The capture's instance serves the local port too, though, and if the
+ *   installed app is running *it* owns that port, with the user's bar and any
+ *   Stream Deck behind it. So the script refuses to start while anything
+ *   answers there.
  * - **No real notifications.** The listener is off on the profile except for
  *   the few seconds a picture needs it -- a simulated notification is dropped
  *   while it is off -- so a toast arriving mid-capture has little chance of
@@ -48,8 +47,6 @@ const APP_DIR = path.join(ROOT, 'packages', 'desktop-app');
 const IMAGES = path.join(ROOT, 'docs', 'images');
 const CDP_PORT = 9334;
 const WEBHOOK = 'http://127.0.0.1:39123';
-const UNITY = `${WEBHOOK}/api/v1/unity`;
-const EDITOR = { projectName: 'Moonlight Garden', instanceId: 'docs-capture', unityVersion: '6000.0.1f1' };
 
 // How long a new screen takes to reach the emulator after the event behind it.
 const SETTLE_MS = 700;
@@ -156,7 +153,6 @@ class Page {
   async shot(name) {
     // Let a panel's own fetches settle and its transitions finish.
     await sleep(900);
-    await assertNoOtherEditor(this);
     const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
     const file = path.join(IMAGES, `${name}.png`);
     fs.writeFileSync(file, Buffer.from(data, 'base64'));
@@ -259,41 +255,8 @@ async function clip(page, framesDir, name, ms, act = async () => {}) {
   await page.eval('window.__docRec.start()');
   await sleep(ms);
   const frames = await page.eval('window.__docRec.stop()');
-  await assertNoOtherEditor(page);
   fs.writeFileSync(path.join(framesDir, `${name}.json`), JSON.stringify({ name, holdMs: 1000, frames }));
   log(`clip ${name}: ${frames.length} frame(s)`);
-}
-
-/**
- * Refuses to go on while a Unity editor other than the invented one is
- * connected.
- *
- * Every Unity editor open on this machine posts to the webhook port, whichever
- * app owns it, so a real project's heartbeats and console errors reach the
- * capture instance. The first run of this script published one that way: a
- * real "Plugins: Failed..." exception on the bar in a screenshot, and "2 Unity
- * Instances Connected" in another. Checked before every picture rather than
- * once, because an editor can connect at any moment, a heartbeat every five
- * seconds.
- */
-async function assertNoOtherEditor(page) {
-  const telemetry = await page.api('getUnityTelemetry()');
-  const others = (telemetry?.instances ?? []).filter(i => i.instanceId !== EDITOR.instanceId);
-  if (others.length > 0) {
-    throw new Error(
-      `${others.length} other Unity editor(s) connected -- close Unity before capturing; ` +
-        'its events would end up in the pictures'
-    );
-  }
-}
-
-async function unity(route, body = {}) {
-  const res = await fetch(`${UNITY}/${route}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...EDITOR, ...body })
-  });
-  if (!res.ok) throw new Error(`Unity ${route} answered ${res.status}`);
 }
 
 // --- the invented day ------------------------------------------------------
@@ -435,23 +398,6 @@ async function captureWithBar(page, framesDir, profile) {
   mini.close();
   await page.api('toggleMiniWindow()');
 
-  await unity('heartbeat');
-  await clip(page, framesDir, 'unity-compile', 3000, () => unity('compile', { state: 'started', type: 'compile' }));
-  await unity('compile', { state: 'finished', type: 'compile' });
-  await sleep(2500);
-  await clip(page, framesDir, 'unity-build', 3000, () => unity('compile', { state: 'started', type: 'build', progress: 40 }));
-  await nav('Unity Engine');
-  await page.shot('app-unity');
-  await unity('compile', { state: 'finished', type: 'build' });
-  await sleep(2500);
-  await clip(page, framesDir, 'unity-playmode', 3000, () => unity('playmode', { state: 'entered' }));
-  await unity('playmode', { state: 'exited' });
-  await sleep(2500);
-  await clip(page, framesDir, 'unity-exception', 3000, () =>
-    unity('console', { type: 'exception', message: 'NullReferenceException: Lantern.Glow' })
-  );
-  await sleep(9000);
-
   await listener(page, true);
   await clip(page, framesDir, 'banner', 3000, () =>
     page.api(`simulateNotification({ appId: 'slack', appName: 'Slack', title: 'Mira', body: 'Playtest at three?' })`)
@@ -548,8 +494,8 @@ async function main() {
   }
   if (await portAnswers(WEBHOOK)) {
     throw new Error(
-      `something already answers on ${WEBHOOK} -- close SprintTicker first, or the Unity events ` +
-        'this sends would reach it, and its bar'
+      `something already answers on ${WEBHOOK} -- close SprintTicker first: the capture's own ` +
+        'instance needs the port, and the running one drives a real bar'
     );
   }
 
@@ -563,14 +509,9 @@ async function main() {
   let page = null;
   try {
     page = await Page.open(url => !url.includes('#mini') && !url.startsWith('devtools'));
-    // Longer than an editor's heartbeat interval, so an open one is seen
-    // before anything is captured.
-    await sleep(6000);
-    await assertNoOtherEditor(page);
+    // The app finishing its start before the first call reaches it.
+    await sleep(2000);
     await listener(page, false);
-    // Off by default; the exception screen is one of the pictures.
-    const unitySettings = await page.api('getUnitySettings()');
-    await page.api(`saveUnitySettings(${JSON.stringify({ ...unitySettings, showUnityErrors: true })})`);
     await seed(page, profile);
     await reload(page);
     await page.eval(RECORDER);

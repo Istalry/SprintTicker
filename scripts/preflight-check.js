@@ -7,21 +7,19 @@ function runPreflightChecks() {
   // 1. Verify root package.json & desktop-app version sync
   const rootPkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
   const desktopPkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../packages/desktop-app/package.json'), 'utf8'));
-  const unityPkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../packages/unity-plugin/package.json'), 'utf8'));
 
   console.log(`[PreflightCheck] Workspace Root Version: ${rootPkg.version}`);
   console.log(`[PreflightCheck] Desktop App Version: ${desktopPkg.version}`);
-  console.log(`[PreflightCheck] Unity Package Version: ${unityPkg.version}`);
 
-  // All three, not two. The root version was printed and never compared, so a
-  // root that had drifted passed this check silently -- and the root is the one
-  // `build-windows.yml` matches the git tag against before it will build, so
-  // the drift would have surfaced as a refused release instead of here.
-  const versions = new Set([rootPkg.version, desktopPkg.version, unityPkg.version]);
-  if (versions.size !== 1) {
+  // Compared, not just printed. The root version was printed and never
+  // compared, so a root that had drifted passed this check silently -- and the
+  // root is the one `build-windows.yml` matches the git tag against before it
+  // will build, so the drift would have surfaced as a refused release instead
+  // of here. The Stream Deck plugin keeps a version of its own, never the app's.
+  if (rootPkg.version !== desktopPkg.version) {
     throw new Error(
-      `Version mismatch! Root (${rootPkg.version}) vs Desktop App (${desktopPkg.version}) ` +
-        `vs Unity Package (${unityPkg.version}). All three must agree before a release.`
+      `Version mismatch! Root (${rootPkg.version}) vs Desktop App (${desktopPkg.version}). ` +
+        `Both must agree before a release.`
     );
   }
 
@@ -42,14 +40,6 @@ function runPreflightChecks() {
     throw new Error(`better-sqlite3 has no Windows x64 prebuild at ${shippedBinary}. See CLAUDE.md section 2.`);
   }
   console.log('[PreflightCheck] ✓ better-sqlite3 Windows x64 prebuild present.');
-
-  // 3. Verify Unity C# Editor scripts
-  const publisherCs = path.join(__dirname, '../packages/unity-plugin/Editor/BusyBarWebhookPublisher.cs');
-  const listenerCs = path.join(__dirname, '../packages/unity-plugin/Editor/BusyBarSceneSaveListener.cs');
-  if (!fs.existsSync(publisherCs) || !fs.existsSync(listenerCs)) {
-    throw new Error('Unity C# Editor scripts missing in packages/unity-plugin/Editor!');
-  }
-  console.log('[PreflightCheck] ✓ Unity C# Editor scripts verified.');
 
   console.log('[PreflightCheck] SUCCESS: All pre-flight checks passed!');
 }

@@ -242,7 +242,7 @@ export const CeremoniesView: React.FC = () => {
             <Play className="w-5 h-5 text-accent-green" />
             <h3>End-of-Day (EOD) Wrap-Up Sequence</h3>
           </div>
-          <p className="text-xs text-text-secondary">Prompts to finalize task sessions, submit worklogs, save Unity scenes & VS Code files.</p>
+          <p className="text-xs text-text-secondary">Prompts to finalize task sessions, submit worklogs, save VS Code files.</p>
 
           <div className="space-y-3">
             <div>

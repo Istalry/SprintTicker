@@ -117,8 +117,8 @@ async function verifyPackedApp() {
 
   console.log(`\n========================================================`);
   console.log(` [SUCCESS] Packed application verified cleanly!`);
-  console.log(` Webhook server on http://127.0.0.1:39123 accepts a Unity`);
-  console.log(` heartbeat and refuses both browser-shaped request forms.`);
+  console.log(` Webhook server on http://127.0.0.1:39123 routes a JSON`);
+  console.log(` request and refuses both browser-shaped request forms.`);
   console.log(` Zero uncaught exceptions or missing module errors detected.`);
   console.log(`========================================================\n`);
   process.exit(0);
@@ -184,9 +184,11 @@ function request({ method = 'POST', path: urlPath = '/', headers = {}, body }) {
  * true of an unrelated process. These three checks are the smallest set that
  * cannot pass by accident:
  *
- * 1. A well-formed Unity heartbeat is accepted. That exercises the whole path
- *    -- routing, body parsing, payload validation, the JSON response -- and it
- *    is the request the Unity plugin actually makes.
+ * 1. A well-formed JSON request reaches the router and is answered there, as
+ *    an unknown endpoint (404 NOT_FOUND). That exercises screening, body
+ *    parsing, routing and the JSON response. It used to be a Unity heartbeat;
+ *    the one route left, `/api/input`, presses a key on the bar, which a
+ *    check of the build must not do.
  * 2. The same request without `Content-Type: application/json` is refused.
  * 3. A request carrying an `Origin` header is refused.
  *
@@ -196,6 +198,9 @@ function request({ method = 'POST', path: urlPath = '/', headers = {}, body }) {
  * be visiting and hardware this API can drive. A regression in either is
  * invisible from the UI and would never fail a unit test that stubs the server.
  */
+/** A path no route answers: reaching the router has no side effect. */
+const VERIFY_PATH = '/api/v1/verify-packed-app';
+
 async function runBehaviourChecks() {
   const failures = [];
 
@@ -208,23 +213,23 @@ async function runBehaviourChecks() {
     }
   };
 
-  const accepted = await request({
-    path: '/api/v1/unity/heartbeat',
+  const routed = await request({
+    path: VERIFY_PATH,
     headers: { 'Content-Type': 'application/json' },
-    body: { projectName: 'verify-packed-app' }
+    body: { probe: 'verify-packed-app' }
   });
   check(
-    'Unity heartbeat with JSON content type is accepted',
-    accepted.status === 200 && accepted.body.includes('ACCEPTED'),
-    `got ${accepted.status} ${accepted.body}`
+    'JSON request is screened in, parsed and routed (404 NOT_FOUND)',
+    routed.status === 404 && routed.body.includes('NOT_FOUND'),
+    `got ${routed.status} ${routed.body}`
   );
 
   // Sent as text/plain: a "simple" request is precisely the one a browser may
   // issue cross-origin with no preflight, so this is the shape that must fail.
   const wrongType = await request({
-    path: '/api/v1/unity/heartbeat',
+    path: VERIFY_PATH,
     headers: { 'Content-Type': 'text/plain' },
-    body: { projectName: 'verify-packed-app' }
+    body: { probe: 'verify-packed-app' }
   });
   check(
     'Request without application/json is refused (415)',
@@ -234,9 +239,9 @@ async function runBehaviourChecks() {
 
   // Browsers set Origin; native clients do not.
   const browserish = await request({
-    path: '/api/v1/unity/heartbeat',
+    path: VERIFY_PATH,
     headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' },
-    body: { projectName: 'verify-packed-app' }
+    body: { probe: 'verify-packed-app' }
   });
   check(
     'Request carrying an Origin header is refused (403)',

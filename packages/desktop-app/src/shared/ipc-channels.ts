@@ -87,24 +87,11 @@ export enum IPCChannel {
   ANSWER_RESUME_PROMPT = 'schedule:answer-resume-prompt',
   ON_RESUME_PROMPT = 'schedule:on-resume-prompt',
 
-  // Unity Injector & Gitignore
-  SETUP_GITIGNORE = 'unity-injector:setup-gitignore',
-  CHECK_GITIGNORE = 'unity-injector:check-gitignore',
-  SCAN_AND_INJECT = 'unity-injector:scan-and-inject',
-  REMOVE_INJECTION = 'unity-injector:remove-injection',
-  OPEN_FOLDER_PICKER = 'dialog:open-folder-picker',
-
   // Worklogs
   GET_TODAYS_WORKLOGS = 'worklog:get-todays',
   ON_WORKLOGS_UPDATED = 'worklog:on-updated',
   UPDATE_WORKLOG = 'worklog:update',
   DELETE_WORKLOG = 'worklog:delete',
-
-  // Unity Telemetry & Audio Settings
-  GET_UNITY_SETTINGS = 'unity:get-settings',
-  SAVE_UNITY_SETTINGS = 'unity:save-settings',
-  GET_UNITY_TELEMETRY = 'unity:get-telemetry',
-  ON_UNITY_TELEMETRY_UPDATED = 'unity:on-telemetry-updated',
 
   // Provider events: toasts (and bar banners) for Jira / OpenProject activity
   GET_PROVIDER_EVENT_SETTINGS = 'provider-events:get-settings',

@@ -197,7 +197,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     dismissWeekEnded: vi.fn().mockResolvedValue(true),
     onWeekEnded: subscribe('onWeekEnded'),
     triggerEodPrompt: vi.fn().mockResolvedValue({ success: true }),
-    triggerEodWrapUp: vi.fn().mockResolvedValue({ success: true, savedUnityScenes: false, savedVSCode: false }),
+    triggerEodWrapUp: vi.fn().mockResolvedValue({ success: true, savedVSCode: false }),
     cancelEodWrapUp: vi.fn().mockResolvedValue(true),
     updateCeremonyPrompt: vi.fn().mockResolvedValue(true),
     snoozeCeremony: vi.fn().mockResolvedValue(true),
@@ -205,13 +205,6 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getResumePrompt: vi.fn().mockResolvedValue(null),
     answerResumePrompt: vi.fn().mockResolvedValue(true),
     onResumePrompt: subscribe('onResumePrompt'),
-
-    getUnitySettings: vi.fn().mockResolvedValue({ buildChime: 'none', enableFailureSound: false, enablePlayModeDnd: true }),
-    saveUnitySettings: vi.fn().mockResolvedValue(true),
-    getUnityTelemetry: vi.fn().mockResolvedValue({
-      activeProjectName: '', isConnected: false, compilationState: 'Idle', playModeStatus: 'Editor Idle', instances: []
-    }),
-    onUnityTelemetryUpdated: subscribe('onUnityTelemetryUpdated'),
 
     getProviderEventSettings: vi.fn().mockResolvedValue(DEFAULT_PROVIDER_EVENT_SETTINGS),
     saveProviderEventSettings: vi.fn(async (settings: ProviderEventSettingsDTO) => settings),
@@ -277,14 +270,6 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     }),
     retryFailedWorklogs: vi.fn().mockResolvedValue({ requeued: 0 }),
     onProjectsUpdated: subscribe('onProjectsUpdated'),
-
-    unityInjector: {
-      setupGitignore: vi.fn().mockResolvedValue({ success: true, path: '.gitignore', message: 'ok' }),
-      checkGitignore: vi.fn().mockResolvedValue({ configured: true }),
-      scanAndInject: vi.fn().mockResolvedValue([]),
-      removeInjection: vi.fn().mockResolvedValue(true),
-      openFolderPicker: vi.fn().mockResolvedValue(null)
-    },
     ...overrides
   };
 

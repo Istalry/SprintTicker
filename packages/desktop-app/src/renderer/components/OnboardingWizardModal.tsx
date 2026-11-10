@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP } from '../../shared/device-constants';
 import { DeviceConfigDTO, ProviderSettingsUpdateDTO } from '../../shared/dtos';
-import { X, Wifi, Plug, Gamepad2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { X, Wifi, Plug, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 
 interface OnboardingWizardModalProps {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface OnboardingWizardModalProps {
 }
 
 export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ isOpen, onClose }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   // Displayed, not edited. The address *is* configurable now -- it has to be,
   // for a bar on Wi-Fi or behind a proxy -- but it is owned by Device settings,
   // where it persists and reconnects the driver. Repeating an editable copy
@@ -23,9 +23,6 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   const [savedDevice, setSavedDevice] = useState<DeviceConfigDTO>(DEFAULT_DEVICE_CONFIG);
   // Step 1's answer: a BUSY Bar on this machine, or not yet.
   const [hasBar, setHasBar] = useState<boolean>(true);
-  // Without a bar the Unity step goes too: the plugin exists to show the
-  // editor's state on the bar.
-  const lastStep = hasBar ? 3 : 2;
 
   useEffect(() => {
     if (!isOpen || !window.electronAPI?.getDeviceConfig) return;
@@ -50,7 +47,6 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   const [jiraApiToken, setJiraApiToken] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string>('');
-  const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -157,12 +153,6 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
     }
   };
 
-  const handleCopyPackagePath = () => {
-    navigator.clipboard.writeText('file:./packages/unity-plugin');
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none animate-in fade-in">
       <div className="w-full max-w-xl bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -184,9 +174,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
         <div className="flex border-b border-border-dark bg-dark-900/40 text-xs font-mono">
           {[
             { num: 1, title: 'Hardware Setup', icon: Wifi },
-            { num: 2, title: 'Task Provider', icon: Plug },
-            { num: 3, title: 'Unity Plugin', icon: Gamepad2 }
-          ].filter(s => s.num <= lastStep).map(s => {
+            { num: 2, title: 'Task Provider', icon: Plug }
+          ].map(s => {
             const Icon = s.icon;
             const active = step === s.num;
             return (
@@ -383,31 +372,6 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               </p>
             </div>
           )}
-
-          {step === 3 && hasBar && (
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold font-mono text-white">
-                3. Unity Editor Plugin Setup (<code>io.github.istalry.sprintticker</code>)
-              </h4>
-              <p className="text-xs text-text-secondary">
-                Import the Unity C# Package into your game project to send automatic compilation & playmode webhooks to SprintTicker, which shows them on the BUSY Bar:
-              </p>
-
-              <div className="bg-dark-900 p-4 rounded-lg border border-border-dark space-y-2 text-xs font-mono text-text-primary">
-                <div>1. Open Unity Package Manager (Window &gt; Package Manager).</div>
-                <div>2. Click &quot;+&quot; &gt; &quot;Add package from disk...&quot;.</div>
-                <div>3. Select <code>packages/unity-plugin/package.json</code>.</div>
-              </div>
-
-              <button
-                onClick={handleCopyPackagePath}
-                className="w-full py-2.5 bg-dark-700 hover:bg-dark-700/80 text-white text-xs font-semibold rounded-lg border border-border-dark transition-all flex items-center justify-center space-x-2"
-              >
-                {copySuccess ? <Check className="w-4 h-4 text-accent-green" /> : <Gamepad2 className="w-4 h-4" />}
-                <span>{copySuccess ? 'Package Path Copied!' : 'Copy Unity Package Manifest Path'}</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* A failed save is shown, never swallowed: closing quietly would leave
@@ -422,7 +386,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
         <div className="flex items-center justify-between px-6 py-4 border-t border-border-dark bg-dark-700/30">
           {step > 1 ? (
             <button
-              onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}
+              onClick={() => setStep(s => (s - 1) as 1 | 2)}
               className="flex items-center space-x-1.5 px-4 py-2 bg-dark-700 hover:bg-dark-700/80 text-text-secondary hover:text-white text-xs font-semibold rounded-lg border border-border-dark transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -432,9 +396,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             <div />
           )}
 
-          {step < lastStep ? (
+          {step < 2 ? (
             <button
-              onClick={() => setStep(s => (s + 1) as 1 | 2 | 3)}
+              onClick={() => setStep(s => (s + 1) as 1 | 2)}
               className="flex items-center space-x-1.5 px-5 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
             >
               <span>Next</span>

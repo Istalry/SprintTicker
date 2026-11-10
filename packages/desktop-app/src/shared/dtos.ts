@@ -329,13 +329,6 @@ export interface PriorityMatrixConfig {
   rules: PriorityRule[];
 }
 
-export interface UnityProjectInjectionResult {
-  projectName: string;
-  projectPath: string;
-  status: 'injected' | 'already_exists' | 'failed';
-  error?: string;
-}
-
 /**
  * A completed worklog as sent to the renderer.
  *
@@ -428,34 +421,6 @@ export interface WorklogDTO {
   unsorted?: true;
 }
 
-export interface UnitySettingsDTO {
-  buildChime: string;
-  enableFailureSound: boolean;
-  enablePlayModeDnd: boolean;
-  showUnityErrors?: boolean;
-  errorDurationSeconds?: number;
-  scanFolder?: string;
-}
-
-export interface UnityInstanceDTO {
-  instanceId: string;
-  projectName: string;
-  unityVersion?: string;
-  compilationState: 'Idle' | 'Compiling';
-  playModeStatus: 'Editor Idle' | 'In Play Mode';
-  savePort: number;
-  lastPingUtc: string;
-}
-
-export interface UnityTelemetryDTO {
-  activeProjectName: string;
-  isConnected: boolean;
-  compilationState: 'Idle' | 'Compiling';
-  playModeStatus: 'Editor Idle' | 'In Play Mode';
-  lastPingUtc?: string;
-  instances?: UnityInstanceDTO[];
-}
-
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';
 
 export interface NotificationSourceRule {
@@ -536,10 +501,10 @@ export type LedAnimationMode = 'SOLID' | 'BREATHING' | 'PULSE_ALERT' | 'FLASH_BU
  * one was a type error against a call that works.
  */
 export type BitmapIconId =
-  | 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'unity' | 'checkmark'
-  | 'playmode' | 'compiling' | 'error' | 'antigravity' | 'battery' | 'windows'
+  | 'burger' | 'clock' | 'slack' | 'gmail' | 'discord' | 'checkmark'
+  | 'antigravity' | 'battery' | 'windows'
   | 'bell' | 'openproject' | 'jira' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
-  | 'hammer' | 'bulb' | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
+  | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
   | 'folder' | 'task' | 'task_in_progress' | 'task_done' | 'meeting'
   | 'coffee' | 'moon';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
@@ -743,11 +708,6 @@ export type PreviewScreenId =
   | 'CEREMONY_STANDUP'
   | 'CEREMONY_EOD'
   | 'EOD_COMPLETE'
-  | 'UNITY_PLAY_MODE'
-  | 'UNITY_COMPILING'
-  | 'UNITY_BUILDING'
-  | 'UNITY_BAKING'
-  | 'UNITY_EXCEPTION'
   | 'TASK_SELECTION'
   | 'TASK_LOGGED';
 

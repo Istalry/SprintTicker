@@ -62,7 +62,6 @@ describe('IPC handlers', () => {
     abortShutdown: ReturnType<typeof vi.fn>;
     isShutdownPending: ReturnType<typeof vi.fn>;
   };
-  let saveUnityScenes: ReturnType<typeof vi.fn>;
   let dir: string;
 
   const handler = (channel: string) => {
@@ -91,7 +90,6 @@ describe('IPC handlers', () => {
       priorityEngine,
       getWindow: () => window as never,
       systemAutomationService: automation,
-      saveUnityScenes,
       ...extra
     });
     registry.registerAllHandlers();
@@ -124,7 +122,6 @@ describe('IPC handlers', () => {
       abortShutdown: vi.fn().mockResolvedValue(true),
       isShutdownPending: vi.fn().mockReturnValue(false)
     };
-    saveUnityScenes = vi.fn().mockResolvedValue(false);
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprintticker-ipc-'));
     build();
   });
@@ -334,11 +331,9 @@ describe('IPC handlers', () => {
 
   describe('end-of-day wrap-up', () => {
     it('WrapUp_AnEditorSaved_ReportsIt', async () => {
-      saveUnityScenes.mockResolvedValue(true);
-
       const res = await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, {});
 
-      expect(res).toEqual({ success: true, savedUnityScenes: true, savedVSCode: true });
+      expect(res).toEqual({ success: true, savedVSCode: true });
     });
 
     it('WrapUp_EditorSaveThrows_StillWrapsUp', async () => {
@@ -347,7 +342,7 @@ describe('IPC handlers', () => {
 
       const res = await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, {});
 
-      expect(res).toEqual({ success: true, savedUnityScenes: false, savedVSCode: false });
+      expect(res).toEqual({ success: true, savedVSCode: false });
     });
 
     it('WrapUp_WithShutdown_SchedulesItWithAGracePeriod', async () => {
@@ -619,24 +614,6 @@ describe('IPC handlers', () => {
   });
 
   describe('dialogs and the shell', () => {
-    it.each([
-      [{ canceled: true, filePaths: [] }, null],
-      [{ canceled: false, filePaths: [] }, null],
-      [{ canceled: false, filePaths: ['D:\\Unity'] }, 'D:\\Unity']
-    ])('OpenFolderPicker_%j_Answers%s', async (answer, expected) => {
-      electron.dialog.showOpenDialog.mockResolvedValue(answer);
-
-      await expect(invoke(IPCChannel.OPEN_FOLDER_PICKER)).resolves.toBe(expected);
-    });
-
-    it('OpenFolderPicker_NoWindow_StillOpensTheDialog', async () => {
-      window = null;
-      electron.dialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['D:\\Unity'] });
-
-      await expect(invoke(IPCChannel.OPEN_FOLDER_PICKER)).resolves.toBe('D:\\Unity');
-      expect(electron.dialog.showOpenDialog).toHaveBeenCalledWith({ properties: ['openDirectory'] });
-    });
-
     describe('notification settings', () => {
       const platform = process.platform;
       const on = (value: string) => Object.defineProperty(process, 'platform', { value, configurable: true });

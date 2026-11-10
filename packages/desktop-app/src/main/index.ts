@@ -16,8 +16,6 @@ import { BusyBarDriver } from './hardware/busybar-driver';
 import { DisplayRenderer } from './hardware/display-renderer';
 import { InputDecoder } from './hardware/input-decoder';
 import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
-import { UnityInjectorService } from './services/unity-injector-service';
-import { UnityTelemetryService } from './services/unity-telemetry-service';
 import { followBar } from './services/follow-bar';
 import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
@@ -58,7 +56,6 @@ let engine: TimeTrackingEngine | null = null;
 let driver: BusyBarDriver | null = null;
 let inputDecoder: InputDecoder | null = null;
 let renderer: DisplayRenderer | null = null;
-let unityInjectorService: UnityInjectorService | null = null;
 let webhookServer: WebhookServer | null = null;
 let deckServer: DeckServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
@@ -287,7 +284,6 @@ async function startApplication(): Promise<void> {
   });
 
   // 5. Register IPC Handlers and Bi-directional State Broadcasts
-  unityInjectorService = new UnityInjectorService();
   const priorityEngine = new PriorityPreemptionEngine(settingsRepo);
   renderer.setPriorityEngine(priorityEngine);
   inputDecoder.setPriorityEngine(priorityEngine);
@@ -301,9 +297,6 @@ async function startApplication(): Promise<void> {
   });
 
   const activeDriver = driver;
-  const unityTelemetryService = new UnityTelemetryService(
-    settingsRepo, webhookServer, renderer, engine, priorityEngine, () => activeDriver.isEnabled()
-  );
   const bannerRenderer = renderer;
   // The app's own toasts, which the notification listener never mirrors to the bar.
   const toasts = new ElectronToastPresenter({
@@ -410,9 +403,7 @@ async function startApplication(): Promise<void> {
     getWindow: () => mainWindow,
     getWindows: () => BrowserWindow.getAllWindows(),
     miniWindow: miniWindowManager,
-    unityInjectorService,
     worklogRepo,
-    unityTelemetryService,
     providerEvents: providerEventService,
     priorityEngine,
     contextScheduleService,

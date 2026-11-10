@@ -3,7 +3,7 @@
 The four API surfaces in this project:
 
 1. [IPC channels](#ipc-channels) — renderer ↔ main
-2. [Local HTTP API](#local-http-api) — the Unity plugin → main
+2. [Local HTTP API](#local-http-api) — remote key presses and the Stream Deck → main
 3. [`ITaskProvider`](#itaskprovider) — the contract a task provider implements
 4. [The BUSY Bar device contract](#the-busy-bar-device-contract) — main → hardware
 
@@ -131,14 +131,13 @@ which the window applies too, so it refuses exactly what main refuses.
 | `display:set-color-theme`, `display:get-color-theme`, `display:trigger-confetti-burst` | Display options. The color theme is the task key's color on the bar: `set` takes `emerald` (blue), `cyberpunk` (pink), `retro_arcade` (amber) or `nordic_cyan` (pale cyan), refuses anything else, and stores it (`color_theme`) so a restart draws it again; `get` answers the stored one. `display:trigger-confetti-burst` plays DONE! alone, for the debug panel |
 | `display:preview-screen` | Draws one **real** screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting |
 
-### Device, ceremonies, Unity, notifications, diagnostics, updates
+### Device, ceremonies, notifications, diagnostics, updates
 
 | Group | Channels |
 | :--- | :--- |
 | Device | `device:get-status`, `device:get-config`, `device:set-config`, `device:on-status-changed` |
 | Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup`, `schedule:cancel-eod-wrapup`, `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup`, `schedule:get-week-ended`, `schedule:get-last-week-closed` (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, `isInClosedWeek`), `schedule:dismiss-week-ended`, `schedule:on-week-ended`, `schedule:snooze-ceremony`, `schedule:on-ceremony-prompt`, `schedule:update-ceremony-prompt` |
 | Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it) and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch`, `standup` or `interruption`: what stopped the task. Lunch and the stand-up ask only about a task that left the user's lists; an interruption asks every time, and adds `unlisted: true` when the task has left them as well |
-| Unity | `unity:get-settings`, `unity:save-settings`, `unity:get-telemetry`, `unity:on-telemetry-updated`, `unity-injector:*`, `dialog:open-folder-picker` |
 | Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings` |
 | Provider events | `provider-events:get-settings`, `provider-events:save-settings` (answers the settings as stored: an interval is clamped to 30-3600 s), `provider-events:test` (a sample through the destinations switched on; answers `{ toast, bar }`) |
 | Diagnostics | `diagnostics:export-logs` |
@@ -155,22 +154,20 @@ which the window applies too, so it refuses exactly what main refuses.
 **Source:** `src/main/api/webhook-server.ts`
 
 `http://127.0.0.1:39123`, bound to loopback and never reachable from the
-network. It exists for the Unity Editor plugin, and carries the Stream Deck
-plugin's WebSocket (below).
+network. It takes remote key presses, and carries the Stream Deck plugin's
+WebSocket (below). It also served the Unity Editor plugin's four
+`/api/v1/unity/*` routes until 2026-11-09; they answer `404` now, like any
+other path.
 
 ### Routes
 
 | Route | Method | Body |
 | :--- | :--- | :--- |
-| `/api/v1/unity/compile` | POST | `{ state: 'started' \| 'finished', projectName, type?: 'compile' \| 'build' \| 'bake', progress?, unityVersion?, success?, elapsedSeconds?, instanceId? }` |
-| `/api/v1/unity/playmode` | POST | `{ state: 'entered' \| 'exited', projectName, instanceId? }` |
-| `/api/v1/unity/console` | POST | `{ type: 'warning' \| 'error' \| 'exception', message, projectName, stackTrace?, instanceId? }` — throttled to one event per 3 s |
-| `/api/v1/unity/heartbeat` | POST | `{ projectName, unityVersion?, compiling?, playMode?, savePort?, instanceId? }` |
 | `/api/input` | POST | `{ key }` — or `?key=` — injects a physical key event (`up`, `down`, `start`, `ok`, `back`, …) |
 
-Responses are JSON. `200 { status: 'ACCEPTED' }` on success,
-`200 { status: 'THROTTLED' }` for a rate-limited console event,
-`400 { error: 'INVALID_PAYLOAD' }` for a body that does not validate.
+Responses are JSON. `200 { status: 'ACCEPTED', key }` on success,
+`400 { error: 'INVALID_PAYLOAD' }` when no key is given,
+`404 { error: 'NOT_FOUND' }` for any other path.
 
 ### Screening
 
@@ -207,7 +204,7 @@ is refused before the upgrade when:
 | Another path | `404` | |
 | Four decks already connected | `503` | One is the case; a few cover a plugin restarting before its old socket closed |
 
-A message over 4 KB closes the socket (1009). No token, as for Unity's routes.
+A message over 4 KB closes the socket (1009). No token, as for `/api/input`.
 
 **From the app**, as JSON text:
 

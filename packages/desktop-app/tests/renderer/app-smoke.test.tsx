@@ -16,7 +16,6 @@ describe('App', () => {
     ['Projects & Tasks', /Project & Task Manager/],
     ['Work History', /Work History & Reports/],
     ['Task Providers', /TASK PROVIDERS & ACCOUNT CONFIGURATION/],
-    ['Unity Engine', /UNITY ENGINE INTEGRATION/],
     ['Ceremonies', /AGILE CEREMONIES/],
     ['Notifications', /WINDOWS NOTIFICATION LISTENER/],
     ['Priority Rules', /PRIORITY MATRIX/],

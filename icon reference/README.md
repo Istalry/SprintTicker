@@ -35,4 +35,6 @@ hand-drawn bitmaps are the fallback for when that resolution fails.
 
 Original project artwork only — `App_icon.png`, `away_Icon.png`,
 `compiling_icon.png`, `lunch_icon.png`, `play_mode_icon.png`, `resume_icon.png`
-and `stop_task_Icon.png`.
+and `stop_task_Icon.png`. `compiling_icon.png` and `play_mode_icon.png` drew
+the Unity Editor's screens, removed on 2026-11-09; they feed no bitmap now and
+stay as archival art.

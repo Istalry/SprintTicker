@@ -52,10 +52,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       driver,
       inputDecoder: decoder,
       renderer,
-      getWindow: () => null,
-      // The wrap-up tests below run the real handler; the default saver POSTs
-      // to every Unity Editor open on this machine and saves its scenes.
-      saveUnityScenes: async () => false
+      getWindow: () => null
     });
   });
 
@@ -338,7 +335,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       const calls = (ipcMain.handle as unknown as ReturnType<typeof vi.fn>).mock.calls;
       const read = calls.filter(call => call[0] === IPCChannel.GET_SCREEN_ICON).pop()![1] as () => Promise<unknown>;
 
-      renderer.renderCompilation('ProjectX');
+      renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
 
       expect(await read()).toEqual(renderer.getScreenIcon());
       expect(send).toHaveBeenCalledWith(IPCChannel.ON_SCREEN_ICON, renderer.getScreenIcon());
@@ -421,8 +418,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
         driver,
         inputDecoder: new InputDecoder(driver, engine, settingsRepo),
         renderer,
-        getWindow: () => mockWindow,
-        saveUnityScenes: async () => false
+        getWindow: () => mockWindow
       }).registerAllHandlers();
     });
 
@@ -487,9 +483,9 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     }
 
     it('PreviewDisplayScreen_KnownScreenId_InvokesTheMatchingRendererMethod', async () => {
-      const spy = vi.spyOn(renderer, 'renderCompilation');
+      const spy = vi.spyOn(renderer, 'renderTaskLogged');
 
-      await previewHandler()({}, 'UNITY_COMPILING');
+      await previewHandler()({}, 'TASK_LOGGED');
 
       expect(spy).toHaveBeenCalledTimes(1);
     });

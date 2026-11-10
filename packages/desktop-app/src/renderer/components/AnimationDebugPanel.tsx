@@ -3,13 +3,11 @@ import {
   Play,
   Sparkles,
   MessageSquare,
-  Flame,
   CheckCircle2,
   Clock,
   Utensils,
   Moon,
   Pause,
-  AlertOctagon,
   Square
 } from 'lucide-react';
 import { PreviewScreenId } from '../../shared/dtos';
@@ -137,12 +135,7 @@ export const AnimationDebugPanel: React.FC = () => {
   const triggerStandupTask = () => preview('CEREMONY_STANDUP', 'Rendered stand-up prompt');
   const triggerEodComplete = () => preview('EOD_COMPLETE', 'Rendered EOD complete');
 
-  // 3. Unity & Build screens
-  const triggerCompilation = () => preview('UNITY_COMPILING', 'Rendered Unity compiling');
-  const triggerBuilding = () => preview('UNITY_BUILDING', 'Rendered Unity building (80%)');
-  const triggerBaking = () => preview('UNITY_BAKING', 'Rendered Unity baking (45%)');
-  const triggerUnityError = () => preview('UNITY_EXCEPTION', 'Rendered Unity exception');
-  const triggerPlayMode = () => preview('UNITY_PLAY_MODE', 'Rendered Unity play mode');
+  // 3. Picker and scene screens
   const triggerTaskSelection = () => preview('TASK_SELECTION', 'Rendered task selection');
   const triggerTaskLogged = () => preview('TASK_LOGGED', 'Rendered LOGGED scene');
 
@@ -238,36 +231,9 @@ export const AnimationDebugPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Category C: Unity Telemetry & Errors */}
+        {/* Category C: System & Schedule Modes */}
         <div>
-          <div className="text-[10px] text-text-secondary uppercase mb-2">3. Unity Telemetry, Build Progress & Errors</div>
-          <div className="grid grid-cols-3 gap-2">
-            <button onClick={triggerCompilation} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Flame className="w-3.5 h-3.5 text-accent-blue" />
-              <span>Compiling</span>
-            </button>
-            <button onClick={triggerUnityError} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <AlertOctagon className="w-3.5 h-3.5 text-accent-red" />
-              <span>Unity Exception</span>
-            </button>
-            <button onClick={triggerPlayMode} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Play className="w-3.5 h-3.5 text-accent-red" />
-              <span>Play Mode ON AIR</span>
-            </button>
-            <button onClick={triggerBuilding} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Flame className="w-3.5 h-3.5 text-accent-green" />
-              <span>Building (80%)</span>
-            </button>
-            <button onClick={triggerBaking} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Flame className="w-3.5 h-3.5 text-accent-purple" />
-              <span>Baking (45%)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Category D: System & Schedule Modes */}
-        <div>
-          <div className="text-[10px] text-text-secondary uppercase mb-2">4. System & Schedule Modes</div>
+          <div className="text-[10px] text-text-secondary uppercase mb-2">3. System & Schedule Modes</div>
           <div className="grid grid-cols-4 gap-2">
             <button onClick={triggerLunch} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Utensils className="w-3.5 h-3.5 text-accent-gold" />

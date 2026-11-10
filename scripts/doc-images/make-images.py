@@ -9,7 +9,7 @@ Two sources, one look:
 
 - The scenes and animated icons are read from `Animations/`, the same frames
   the app compiles into `.anim` files. Nothing has to run for these.
-- The screens the app composes itself -- the session, Unity, banners -- come
+- The screens the app composes itself -- the session, prompts, banners -- come
   from `capture-app.js`, which records the frames the app sends to its own
   emulator while it runs on a throwaway profile. Each one is a JSON file of
   72x16 pixels with the time it arrived.
@@ -201,6 +201,15 @@ def scene_clip(short, folder_name):
     return save_anim(frames, [max(step_ms, FRAME_MS)] * len(frames), f"bar-scene-{short}")
 
 
+# Icons the app no longer draws, kept in `Animations/` as the probe's measured
+# fixtures: `busybar-probe.js` soaks the gear and the pad, and its recorded
+# hang counts are for those files. They were Unity's screens (until 2026-11-09).
+NOT_DRAWN_BY_THE_APP = {
+    "icon_gear_16x16", "icon_playmode_16x16", "icon_hammer_16x16",
+    "icon_bulb_16x16", "icon_warning_16x16",
+}
+
+
 def icon_clips():
     """
     Every animated icon, one clip each, over its own whole loop.
@@ -212,6 +221,8 @@ def icon_clips():
     """
     written = []
     for folder in sorted(p for p in ANIMATIONS.glob("icon_*_16x16") if p.is_dir()):
+        if folder.name in NOT_DRAWN_BY_THE_APP:
+            continue
         short = folder.name.replace("icon_", "").replace("_16x16", "").replace("_", "-")
         paths, fps = read_frames(folder)
         frames = []
@@ -256,7 +267,7 @@ def _cut(frames, durations, ms):
 
 
 # The README's opening picture: a working day on the bar in eight seconds.
-HERO = [("captured", "tracking", 2200), ("captured", "unity-compile", 2000),
+HERO = [("captured", "tracking", 2200), ("captured", "paused", 2000),
         ("scene", "lunch", 2600), ("captured", "banner", 1800)]
 
 

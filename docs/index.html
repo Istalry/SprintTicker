@@ -485,7 +485,6 @@
       <a href="#architecture-main-process-components">Main process components</a>
       <a href="#architecture-data">Data</a>
       <a href="#architecture-how-a-session-flows">How a session flows</a>
-      <a href="#architecture-unity-plugin">Unity plugin</a>
       <a href="#architecture-stream-deck-plugin">Stream Deck plugin</a>
       <a href="#architecture-animation-studio">Animation studio</a>
       <a href="#architecture-testing">Testing</a>
@@ -507,7 +506,7 @@
         <p>Installation is in the <a href="../README.md#-installation">README</a>. This picks up from
         first launch.</p>
         <p align="center">
-          <img src="images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, a Unity compile, the Lunch scene and a Slack banner">
+          <img src="images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, the paused menu, the Lunch scene and a Slack banner">
         </p><table>
         <thead>
         <tr>
@@ -521,7 +520,7 @@
         </tr>
         <tr>
         <td align="left">🗂️ <a href="#-the-panels">The panels</a></td>
-        <td align="left">the nine tabs of the window, one by one</td>
+        <td align="left">the eight tabs of the window, one by one</td>
         </tr>
         <tr>
         <td align="left">💡 <a href="#-the-bar-itself">The bar itself</a></td>
@@ -542,7 +541,7 @@
         </tbody></table>
       </div>
       <h3 id="guide-first-run">🏁 First run</h3>
-      <p>The onboarding wizard opens automatically. Three steps:</p>
+      <p>The onboarding wizard opens automatically. Two steps:</p>
       <p align="center">
         <img src="images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar, device address 10.0.4.20, Test Ping">
         <img src="images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
@@ -585,7 +584,6 @@
       show in the window — meetings, admin, anything without a ticket. The bar
       shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
       Work History and is <strong>never sent</strong> to Jira or OpenProject.</p>
-      <p><strong>3️⃣ Unity plugin.</strong> Optional. Skip it if you do not use Unity.</p>
       <h4>💻 Without a BUSY Bar</h4>
       <div class="table-wrap"><table>
         <tr>
@@ -597,20 +595,17 @@
           <td><img src="images/app-nobar-session.png" alt="Active Session in no-bar mode: no emulator, the same session"></td>
         </tr>
         <tr>
-          <td>Nine tabs; the emulator and the connection readout in the top bar.</td>
+          <td>Eight tabs; the emulator and the connection readout in the top bar.</td>
           <td>Six tabs; everything that keeps time is still there.</td>
         </tr>
       </table></div><p>Everything that keeps time works without the hardware: the task picker, the
       running timer, pausing, finishing, worklog sync, history, the ceremonies and
       the end-of-day wrap-up. What steps aside is what only describes the bar — the
       on-screen emulator and connection readout in the top bar, <strong>Priority Rules</strong>,
-      which orders the bar&#39;s screen and nothing else, <strong>Unity Engine</strong>, whose
-      compile, Play Mode and error states exist to be shown on the bar, and
-      <strong>Notifications</strong>, which mirrors Windows notifications onto it. Notifications
-      <em>from</em> OpenProject still arrive, as Windows notifications; their settings are
-      in Task Providers. Events from the
-      Unity plugin are ignored in this mode, the Windows notification listener does
-      not run, and the setup wizard skips its Unity step. The end-of-day wrap-up still saves open Unity scenes. <strong>Device Diagnostics</strong>
+      which orders the bar&#39;s screen and nothing else, and <strong>Notifications</strong>, which
+      mirrors Windows notifications onto it. Notifications <em>from</em> OpenProject still
+      arrive, as Windows notifications; their settings are in Task Providers. The
+      Windows notification listener does not run in this mode. <strong>Device Diagnostics</strong>
       becomes <strong>Device &amp; Logs</strong>, keeping log export, the update setting and the
       factory reset.</p>
       <p>The app does not look for a bar in this mode, so it logs nothing about one being
@@ -625,9 +620,8 @@
       <p>A small window that stays above every other one and shows what the bar would:
       the task key and title, the elapsed time, and a coloured edge -- green while
       tracking, amber while paused, grey with nothing running. Beside them is the
-      icon of whatever holds the bar: the stopwatch for your session, the gear while
-      Unity compiles, an app&#39;s icon during its notification, the burger at lunch, a
-      coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
+      icon of whatever holds the bar: the stopwatch for your session, an app&#39;s icon
+      during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
       Timer</strong> in the top bar or <strong>Show Mini Timer</strong> in the tray menu.</p>
       <p align="center">
         <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
@@ -651,7 +645,7 @@
       <p>It counts seconds, which the bar does not: on screen a second costs nothing.</p>
       <hr>
       <h3 id="guide-the-panels">🗂️ The panels</h3>
-      <p>Nine tabs down the left.</p>
+      <p>Eight tabs down the left.</p>
       <h4>▶️ Active Session</h4>
       <p>The main screen. Start a task, and the bar shows it. Pause, resume, and finish
       from here. With nothing running it offers just <strong>Start a Task</strong> and
@@ -919,57 +913,6 @@
       would send byte-identical requests forever, so the app stops and tells you
       why. <strong>Retry Failed</strong> is for after you have fixed the cause.</p>
       </div>
-      <h4>🎮 Unity Engine</h4>
-      <p>Discovered Unity projects and plugin injection. Once installed, the bar shows
-      compile progress, an &quot;ON AIR&quot; screen during Play Mode, and console exceptions.</p>
-      <div class="note"><span class="label">Nothing on the bar from Unity?</span>
-      <p>Open the editor&#39;s Console and search
-      for <code>sprintticker</code>. A line saying a script <em>will not be compiled because
-      it does not belong to any assembly definition file</em> is a plugin from before
-      this release; one compile with the current plugin linked fixes it. An
-      error from <code>SprintTicker.Unity.Editor</code> stops the project&#39;s Play Mode too,
-      so report it.</p>
-      </div>
-      <p align="center">
-        <img src="images/app-unity.png" width="80%" alt="Unity Engine panel: connected editors, compile and Play Mode state, sound and alert settings">
-      </p>
-      The icons move. While scripts compile the gear turns; during Play Mode the
-      pad is played, its buttons going down and its stick pushed; a build shows a hammer striking and a lightmap
-      bake a glowing bulb; an exception shakes its warning triangle. Outside Unity,
-      a notification without an app logo rings its bell, the end-of-day prompt's
-      alarm clock rings, and the lunch prompt's burger hops. An OpenProject notification passes a shine across the OpenProject logo;
-      other apps' logos stay still. The bar animates them itself. If one ever shows still, the log's
-      `[IconAnimator]` lines say why, and the screen is otherwise unaffected.<div class="table-wrap"><table>
-      <thead>
-      <tr>
-      <th align="center"></th>
-      <th align="center"></th>
-      <th align="center"></th>
-      <th align="center"></th>
-      <th align="center"></th>
-      <th align="center"></th>
-      <th align="center"></th>
-      </tr>
-      </thead>
-      <tbody><tr>
-      <td align="center"><img src="images/bar-icon-gear.webp" width="64" alt="Gear turning"></td>
-      <td align="center"><img src="images/bar-icon-playmode.webp" width="64" alt="Game pad"></td>
-      <td align="center"><img src="images/bar-icon-hammer.webp" width="64" alt="Hammer striking"></td>
-      <td align="center"><img src="images/bar-icon-bulb.webp" width="64" alt="Glowing bulb"></td>
-      <td align="center"><img src="images/bar-icon-warning.webp" width="64" alt="Warning triangle shaking"></td>
-      <td align="center"><img src="images/bar-icon-bell.webp" width="64" alt="Bell ringing"></td>
-      <td align="center"><img src="images/bar-icon-clock.webp" width="64" alt="Alarm clock ringing"></td>
-      </tr>
-      <tr>
-      <td align="center">compiling</td>
-      <td align="center">Play Mode</td>
-      <td align="center">build</td>
-      <td align="center">lightmap bake</td>
-      <td align="center">exception</td>
-      <td align="center">notification</td>
-      <td align="center">end of day</td>
-      </tr>
-      </tbody></table></div>
       <h4>📅 Ceremonies</h4>
       <p>Working hours, and the three scheduled events:</p>
       <p align="center">
@@ -1055,7 +998,7 @@
       <li><strong>The bar&#39;s picker works during lunch.</strong> START or a click with nothing
       running opens it over the sandwich; BACK brings the sandwich back. Opened
       while Windows is locked, it waits under Away and shows as soon as you
-      unlock, ahead of Unity and any notification that came in meanwhile.</li>
+      unlock, ahead of any notification that came in meanwhile.</li>
       <li><strong>A task that left your list over the break</strong> -- reassigned, closed or
       moved -- is not restarted without asking. The window asks <strong>Resume after
       lunch?</strong>, and the bar shows <strong>NOT YOURS / RESUME IT?</strong>: OK resumes it, BACK
@@ -1181,18 +1124,6 @@
       <td align="right">65</td>
       </tr>
       <tr>
-      <td align="left">⚠️ Unity build failure</td>
-      <td align="right">60</td>
-      </tr>
-      <tr>
-      <td align="left">⚙️ Unity compiling</td>
-      <td align="right">55</td>
-      </tr>
-      <tr>
-      <td align="left">🎮 Unity Play Mode</td>
-      <td align="right">50</td>
-      </tr>
-      <tr>
       <td align="left">⏱️ Active task tracker</td>
       <td align="right">45</td>
       </tr>
@@ -1295,22 +1226,6 @@
       <td align="left">✅ <strong>DONE!</strong> Finished and marked done.</td>
       </tr>
       <tr>
-      <td align="center"><img src="images/bar-unity-compile.webp" width="304" alt="COMPILING with a turning gear"></td>
-      <td align="left">⚙️ <strong>Compiling</strong> in Unity, with the project on row 1.</td>
-      </tr>
-      <tr>
-      <td align="center"><img src="images/bar-unity-build.webp" width="304" alt="BUILDING 40% with a hammer and a progress line"></td>
-      <td align="left">🔨 <strong>Building</strong>, with its percentage and a progress line along the bottom.</td>
-      </tr>
-      <tr>
-      <td align="center"><img src="images/bar-unity-playmode.webp" width="304" alt="ON AIR with a game pad"></td>
-      <td align="left">🎮 <strong>Play Mode.</strong> ON AIR until you stop playing.</td>
-      </tr>
-      <tr>
-      <td align="center"><img src="images/bar-unity-exception.webp" width="304" alt="EXCEPTION with a shaking warning triangle"></td>
-      <td align="left">⚠️ <strong>Exception.</strong> Its message on row 1, for a few seconds.</td>
-      </tr>
-      <tr>
       <td align="center"><img src="images/bar-banner.png" width="304" alt="A Slack banner"></td>
       <td align="left">🔔 <strong>Notification</strong>, from an app you allowed, with its own icon.</td>
       </tr>
@@ -1333,10 +1248,6 @@
       setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
       <strong>LOGGED</strong> for three seconds, the stopwatch&#39;s hand sweeping back to twelve;
       FINISH also marks it done, and shows <strong>DONE!</strong>.</p>
-      <p>Unity screens all read the same way: what is happening on row 0 (with the
-      percentage for a build or a lightmap bake), the project on row 1, and for a
-      build or bake a thin progress line along the bottom. An exception shows its
-      message on row 1 instead of the project.</p>
       <div class="note"><span class="label">Why the timer shows HH:MM</span>
       <p></p>
       <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
@@ -1345,6 +1256,29 @@
       animation: it shows that the clock is running, and is not the seconds of your
       session.</p>
       </div>
+      <h4>🎞️ Animated icons</h4>
+      <p>The icons move. A notification without an app logo rings its bell, the
+      end-of-day prompt&#39;s alarm clock rings, and the lunch prompt&#39;s burger hops. An
+      OpenProject notification passes a shine across the OpenProject logo; other
+      apps&#39; logos stay still. The bar animates them itself. If one ever shows still,
+      the log&#39;s <code>[IconAnimator]</code> lines say why, and the screen is otherwise
+      unaffected.</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="center"></th>
+      <th align="center"></th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="center"><img src="images/bar-icon-bell.webp" width="64" alt="Bell ringing"></td>
+      <td align="center"><img src="images/bar-icon-clock.webp" width="64" alt="Alarm clock ringing"></td>
+      </tr>
+      <tr>
+      <td align="center">notification</td>
+      <td align="center">end of day</td>
+      </tr>
+      </tbody></table></div>
       <h4>🎛️ Controls</h4>
       <div class="table-wrap"><table>
       <thead>
@@ -1624,10 +1558,10 @@
       builds did exactly that each time Lunch, Away or a meeting began from a screen
       with an animated icon. 1.2.0 switched scenes without clearing; it still hung
       the bar during long Unity sessions, because the end of a compile cleared the
-      display two or three times at once. 1.2.1 fixes that, and a burst of compiles
-      now keeps the compiling screen up instead of clearing between each one.</p>
+      display two or three times at once. 1.2.1 fixed that. (Unity support itself
+      was removed later.)</p>
       <p>Firmware 1.2.4 also freezes, now and then, when an animation is removed from
-      the panel while it plays -- the animated icon at the end of a compile, for
+      the panel while it plays -- an animated icon as its screen ends, for
       instance. The panel then stays on that icon, still moving, and the bar stops
       answering. Nothing warns of this one. 1.2.1 never removes a playing
       animation: it replaces it with an empty one, and returns to the clock by
@@ -1701,11 +1635,11 @@
       </div>
       <h3 id="architecture-the-whole-thing-in-one-picture">1. The whole thing in one picture</h3>
       <div class="diagram">
-      <svg viewBox="0 0 660 330" role="img" aria-label="The renderer talks to main only through the preload contextBridge. Main hosts the time-tracking engine, the provider manager, the priority engine, the display renderer and the notification listener, owns the SQLite database, serves a loopback HTTP server for the Unity plugin, and drives the BUSY Bar over USB.">
+      <svg viewBox="0 0 660 330" role="img" aria-label="The renderer talks to main only through the preload contextBridge. Main hosts the time-tracking engine, the provider manager, the priority engine, the display renderer and the notification listener, owns the SQLite database, serves a loopback HTTP server for remote key presses and the Stream Deck, and drives the BUSY Bar over USB.">
         <g font-family="IBM Plex Mono, monospace" font-size="10.5">
           <rect x="150" y="8" width="360" height="42" rx="3" fill="var(--surface-2)" stroke="var(--border)"/>
           <text x="330" y="26" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">RENDERER</text>
-          <text x="330" y="40" text-anchor="middle" fill="var(--ink-3)">React 19 &#183; 9 views &#183; no Node, no Electron</text><pre><code>&lt;line x1=&quot;330&quot; y1=&quot;50&quot; x2=&quot;330&quot; y2=&quot;70&quot; stroke=&quot;var(--accent-line)&quot; stroke-width=&quot;1.5&quot;/&gt;
+          <text x="330" y="40" text-anchor="middle" fill="var(--ink-3)">React 19 &#183; 8 views &#183; no Node, no Electron</text><pre><code>&lt;line x1=&quot;330&quot; y1=&quot;50&quot; x2=&quot;330&quot; y2=&quot;70&quot; stroke=&quot;var(--accent-line)&quot; stroke-width=&quot;1.5&quot;/&gt;
       &lt;text x=&quot;338&quot; y=&quot;64&quot; fill=&quot;var(--accent)&quot;&gt;window.electronAPI&lt;/text&gt;
       
       &lt;rect x=&quot;150&quot; y=&quot;70&quot; width=&quot;360&quot; height=&quot;34&quot; rx=&quot;3&quot; fill=&quot;var(--surface-2)&quot; stroke=&quot;var(--accent-line)&quot; stroke-dasharray=&quot;3 2&quot;/&gt;
@@ -1758,8 +1692,8 @@
         </g>
       </svg>
       </div><p>Three processes, one database, two outbound directions (the device over USB, a
-      task provider over the internet), and one inbound (the Unity plugin on
-      loopback).</p>
+      task provider over the internet), and one inbound (remote key presses and the
+      Stream Deck plugin, on loopback).</p>
       <p>The device address is a persisted setting (<code>DeviceConfigDTO.ipAddress</code>), seeded
       from <code>10.0.4.20</code> and edited in Settings › Device. Main reads it before
       constructing <code>BusyBarDriver</code>; changing it calls <code>reconfigure()</code>, which tears the
@@ -1771,11 +1705,9 @@
       dials: <code>connect()</code> declines without starting the ping loop, every command throws
       <code>disconnected</code> without a request, and frames are queued as they are for an
       unplugged bar. <code>AnimationPlayer</code> skips the upload and runs frames for the
-      preview; the renderer shows no animated icon and skips the idle clear;
-      <code>UnityTelemetryService</code> ignores the plugin&#39;s events, whose display locks would
-      only compete with the end-of-day prompt; and the Windows notification listener,
-      which polls Windows&#39; notification database every couple of seconds to mirror it
-      onto the bar, is started and stopped with the mode (<code>followBar</code>). Turning the bar off while it is
+      preview; the renderer shows no animated icon and skips the idle clear; and the
+      Windows notification listener, which polls Windows&#39; notification database every
+      couple of seconds to mirror it onto the bar, is started and stopped with the mode (<code>followBar</code>). Turning the bar off while it is
       connected releases the display through <code>clearDisplay</code> first, or the last frame
       would stay on it. <code>DeviceStatusDTO.enabled</code> carries
       the mode to the renderer, which hides the bar-only screens live. Turning it back
@@ -2072,9 +2004,7 @@
       lock it names, replays a queued alert if one is waiting, and otherwise hands
       the display back to the user&#39;s mode (<code>setContextMode</code>). A caller that renders
       again afterwards draws twice; one releasing a lock it does not hold renders
-      nothing, which leaves the screen that took it alone. Unity&#39;s compile end
-      waits <code>UNITY_IDLE_RELEASE_GRACE_MS</code> (3 s) before releasing, so a compile that
-      starts again straight away keeps its screen instead of passing through idle.</li>
+      nothing, which leaves the screen that took it alone.</li>
       <li><strong>The freed display goes, in order, to:</strong> a queued alert (a request that
       was <em>refused</em> and left a callback); the most important screen a preemption
       <em>set aside</em>, redrawn by <code>DisplayRenderer.resumeScreen</code> from the last screen
@@ -2085,15 +2015,13 @@
       Releasing a lock that is set aside rather than held removes
       it from that list. The tracker and the mode locks are never set aside:
       <code>setContextMode</code> draws them as they are now.</li>
-      <li><strong>Unity and the bar&#39;s picker are the background states.</strong> The picker,
-      registered by <code>InputDecoder</code>, comes back while it is open: refused under
-      Away and never queued, it would otherwise be open and unseen once Away
-      ended. Unity&#39;s compile and Play Mode screens last
-      as long as an editor&#39;s state, so they are reclaimed rather than resumed:
-      after a banner, a scene, Lunch, or another editor&#39;s end, the display shows
-      what the editors are doing by then. Operations are tracked per editor
-      instance, a build or a bake shown before a compile; the compile screen
-      comes down only when no editor has one left.</li>
+      <li><strong>The bar&#39;s picker is the background state.</strong> Registered by
+      <code>InputDecoder</code>, it comes back while it is open: refused under Away and
+      never queued, it would otherwise be open and unseen once Away ended. A
+      state is reclaimed rather than resumed -- it redraws what it is by then,
+      not what it was when covered. The Unity Editor&#39;s compile and Play Mode
+      screens were the other background states, until the app dropped Unity on
+      2026-11-09; the mechanism stays general.</li>
       </ul>
       <div class="table-wrap"><table>
       <thead>
@@ -2142,21 +2070,6 @@
       <td align="left">Notification — default</td>
       <td align="left"><code>messagingPriority</code></td>
       <td align="right">65</td>
-      </tr>
-      <tr>
-      <td align="left">Unity build failure</td>
-      <td align="left"><code>unityBuildFailurePriority</code></td>
-      <td align="right">60</td>
-      </tr>
-      <tr>
-      <td align="left">Unity compiling</td>
-      <td align="left"><code>unityCompilingPriority</code></td>
-      <td align="right">55</td>
-      </tr>
-      <tr>
-      <td align="left">Unity Play Mode</td>
-      <td align="left"><code>unityPlayModePriority</code></td>
-      <td align="right">50</td>
       </tr>
       <tr>
       <td align="left">Active task tracker</td>
@@ -2502,7 +2415,7 @@
       everything the user did themselves (<code>Documentation/API.md</code> has the rules).
       The service cannot tell the two apart, and does not need to.</p>
       <h4><code>WebhookServer</code> — <code>src/main/api/</code></h4>
-      <p>An HTTP server on <code>127.0.0.1:39123</code> for the Unity Editor plugin. See the
+      <p>An HTTP server on <code>127.0.0.1:39123</code> for remote key presses. See the
       <a href="API.md#local-http-api">API reference</a> for routes and the screening rules.
       WebSocket handshakes go through it too (<code>onUpgrade</code>), screened for an
       <code>Origin</code> before any handler sees them.</p>
@@ -2671,14 +2584,7 @@
       next attempt time.</li>
       </ol>
       <hr>
-      <h3 id="architecture-unity-plugin">6. Unity plugin</h3>
-      <p><code>packages/unity-plugin</code> is a UPM package
-      (<code>io.github.istalry.sprintticker</code>) of Editor-only C#. <code>BusyBarWebhookPublisher</code>
-      and <code>BusyBarSceneSaveListener</code> initialise themselves and POST compile state,
-      Play Mode transitions and console exceptions to the local HTTP server. It
-      modifies neither your scenes nor your project code.</p>
-      <hr>
-      <h3 id="architecture-stream-deck-plugin">7. Stream Deck plugin</h3>
+      <h3 id="architecture-stream-deck-plugin">6. Stream Deck plugin</h3>
       <p><code>packages/streamdeck-plugin</code> is a plugin for Elgato&#39;s Stream Deck app, built
       on its SDK (<code>@elgato/streamdeck</code> 3) and bundled by Vite into one ESM file that
       Stream Deck runs on its own Node 24. Elgato&#39;s app keeps the device; the plugin
@@ -2731,8 +2637,8 @@
       poses and their order, never the file name; the plugin picks the pose of
       the moment from the wall clock (<code>deckIconPixels</code>) and redraws at the
       motion&#39;s rate, sending only what changed: about once a second for the
-      stopwatch, ten times for the gear. A motion read after its icon pushes
-      the state again; one that fails leaves the still icon.</li>
+      stopwatch, ten times for an icon always in motion. A motion read after
+      its icon pushes the state again; one that fails leaves the still icon.</li>
       <li><strong>A one-shot is frames, not an animated image.</strong> <code>setImage</code> shows the
       first frame of a GIF, a WebP or an animated SVG (measured on Stream Deck
       Mobile), so <code>DeckController.play</code> sends six static images 100 ms apart,
@@ -2747,7 +2653,7 @@
       <p>It imports only from <code>desktop-app/src/shared/</code>: the protocol is
       <code>deck-protocol.ts</code>, one module for both sides.</p>
       <hr>
-      <h3 id="architecture-animation-studio">8. Animation studio</h3>
+      <h3 id="architecture-animation-studio">7. Animation studio</h3>
       <p><code>packages/anim-studio</code> is a development tool, not part of the app: nothing in it
       ships, and the app never imports it. It produces the frame sets the app plays.</p>
       <pre><code>scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.json ──► seq2anim ──► .anim, .v1.anim
@@ -2794,8 +2700,8 @@
       <p>It imports only from <code>desktop-app/src/shared/</code>, which is where the fonts and
       <code>isValidDeviceHost</code> live.</p>
       <hr>
-      <h3 id="architecture-testing">9. Testing</h3>
-      <p>Vitest, 2704 tests across 130 files, in two projects: <code>main</code> in Node for
+      <h3 id="architecture-testing">8. Testing</h3>
+      <p>Vitest, 2785 tests across 134 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -2809,7 +2715,7 @@
       one page cannot fail the way production failed.</p>
       <p>The animation studio has its own suite, 117 tests across 6 files, run by
       <code>pnpm test</code> after the app&#39;s and on its own by <code>pnpm test:studio</code>. So has the
-      Stream Deck plugin, 195 tests across 8 files (<code>pnpm test:deck</code>), which also
+      Stream Deck plugin, 238 tests across 8 files (<code>pnpm test:deck</code>), which also
       runs its link against the app&#39;s real <code>DeckServer</code> over loopback.</p>
       <p>What the suite structurally <strong>cannot</strong> see: application startup, IPC wiring, and
       anything touching real hardware. Those need the app actually running — read its
@@ -2823,7 +2729,7 @@
         <p>The four API surfaces in this project:</p>
         <ol>
         <li><a href="#ipc-channels">IPC channels</a> — renderer ↔ main</li>
-        <li><a href="#local-http-api">Local HTTP API</a> — the Unity plugin → main</li>
+        <li><a href="#local-http-api">Local HTTP API</a> — remote key presses and the Stream Deck → main</li>
         <li><a href="#itaskprovider"><code>ITaskProvider</code></a> — the contract a task provider implements</li>
         <li><a href="#the-busy-bar-device-contract">The BUSY Bar device contract</a> — main → hardware</li>
         </ol>
@@ -3107,7 +3013,7 @@
       <td align="left">Draws one <strong>real</strong> screen for the debug panel, through the actual renderer — the panel used to hand-build payloads and drifted into a vocabulary main had stopped emitting</td>
       </tr>
       </tbody></table></div>
-      <h4>Device, ceremonies, Unity, notifications, diagnostics, updates</h4>
+      <h4>Device, ceremonies, notifications, diagnostics, updates</h4>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -3126,10 +3032,6 @@
       <tr>
       <td align="left">Resume after lunch</td>
       <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code>, <code>standup</code> or <code>interruption</code>: what stopped the task. Lunch and the stand-up ask only about a task that left the user&#39;s lists; an interruption asks every time, and adds <code>unlisted: true</code> when the task has left them as well</td>
-      </tr>
-      <tr>
-      <td align="left">Unity</td>
-      <td align="left"><code>unity:get-settings</code>, <code>unity:save-settings</code>, <code>unity:get-telemetry</code>, <code>unity:on-telemetry-updated</code>, <code>unity-injector:*</code>, <code>dialog:open-folder-picker</code></td>
       </tr>
       <tr>
       <td align="left">Notifications</td>
@@ -3168,8 +3070,10 @@
       <h3 id="api-local-http-api">Local HTTP API</h3>
       <p><strong>Source:</strong> <code>src/main/api/webhook-server.ts</code></p>
       <p><code>http://127.0.0.1:39123</code>, bound to loopback and never reachable from the
-      network. It exists for the Unity Editor plugin, and carries the Stream Deck
-      plugin&#39;s WebSocket (below).</p>
+      network. It takes remote key presses, and carries the Stream Deck plugin&#39;s
+      WebSocket (below). It also served the Unity Editor plugin&#39;s four
+      <code>/api/v1/unity/*</code> routes until 2026-11-09; they answer <code>404</code> now, like any
+      other path.</p>
       <h4>Routes</h4>
       <div class="table-wrap"><table>
       <thead>
@@ -3180,34 +3084,14 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left"><code>/api/v1/unity/compile</code></td>
-      <td align="left">POST</td>
-      <td align="left"><code>{ state: &#39;started&#39; | &#39;finished&#39;, projectName, type?: &#39;compile&#39; | &#39;build&#39; | &#39;bake&#39;, progress?, unityVersion?, success?, elapsedSeconds?, instanceId? }</code></td>
-      </tr>
-      <tr>
-      <td align="left"><code>/api/v1/unity/playmode</code></td>
-      <td align="left">POST</td>
-      <td align="left"><code>{ state: &#39;entered&#39; | &#39;exited&#39;, projectName, instanceId? }</code></td>
-      </tr>
-      <tr>
-      <td align="left"><code>/api/v1/unity/console</code></td>
-      <td align="left">POST</td>
-      <td align="left"><code>{ type: &#39;warning&#39; | &#39;error&#39; | &#39;exception&#39;, message, projectName, stackTrace?, instanceId? }</code> — throttled to one event per 3 s</td>
-      </tr>
-      <tr>
-      <td align="left"><code>/api/v1/unity/heartbeat</code></td>
-      <td align="left">POST</td>
-      <td align="left"><code>{ projectName, unityVersion?, compiling?, playMode?, savePort?, instanceId? }</code></td>
-      </tr>
-      <tr>
       <td align="left"><code>/api/input</code></td>
       <td align="left">POST</td>
       <td align="left"><code>{ key }</code> — or <code>?key=</code> — injects a physical key event (<code>up</code>, <code>down</code>, <code>start</code>, <code>ok</code>, <code>back</code>, …)</td>
       </tr>
       </tbody></table></div>
-      <p>Responses are JSON. <code>200 { status: &#39;ACCEPTED&#39; }</code> on success,
-      <code>200 { status: &#39;THROTTLED&#39; }</code> for a rate-limited console event,
-      <code>400 { error: &#39;INVALID_PAYLOAD&#39; }</code> for a body that does not validate.</p>
+      <p>Responses are JSON. <code>200 { status: &#39;ACCEPTED&#39;, key }</code> on success,
+      <code>400 { error: &#39;INVALID_PAYLOAD&#39; }</code> when no key is given,
+      <code>404 { error: &#39;NOT_FOUND&#39; }</code> for any other path.</p>
       <h4>Screening</h4>
       <div class="note trap"><span class="label">Loopback is not a security boundary</span>
       <p></p>
@@ -3277,7 +3161,7 @@
       <td align="left">One is the case; a few cover a plugin restarting before its old socket closed</td>
       </tr>
       </tbody></table></div>
-      <p>A message over 4 KB closes the socket (1009). No token, as for Unity&#39;s routes.</p>
+      <p>A message over 4 KB closes the socket (1009). No token, as for <code>/api/input</code>.</p>
       <p><strong>From the app</strong>, as JSON text:</p>
       <div class="table-wrap"><table>
       <thead>

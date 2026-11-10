@@ -3,7 +3,7 @@ import { Zap, ShieldAlert, ChevronUp, ChevronDown, User, Coffee, Moon } from 'lu
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { PriorityRule, UserMode, PriorityAction } from '../../../shared/dtos';
-import { DEFAULT_PRIORITY_RULES } from '../../../shared/priority-defaults';
+import { DEFAULT_PRIORITY_RULES, isRetiredPriorityRule } from '../../../shared/priority-defaults';
 
 interface PriorityItemDef {
   key: string;
@@ -14,8 +14,8 @@ interface PriorityItemDef {
 export const PriorityRulesView: React.FC = () => {
   const [userMode, setUserMode] = useState<UserMode>('WORK');
   // Shown only until the engine's real rules arrive. This used to be a local
-  // table that inverted main's hierarchy -- a Unity build failure outranking
-  // Away mode -- and omitted the EOD rule, so the first paint showed an ordering
+  // table that inverted main's hierarchy -- an editor's build failure
+  // outranking Away mode -- and omitted the EOD rule, so the first paint showed an ordering
   // the device never actually used.
   const [rules, setRules] = useState<PriorityRule[]>(() => [...DEFAULT_PRIORITY_RULES]);
 
@@ -42,7 +42,7 @@ export const PriorityRulesView: React.FC = () => {
 
         if (fetched.length > 0) {
           setRules(prev => {
-            const merged = [...fetched].filter(r => r.eventName !== 'breakPromptPriority' && r.id !== 'break_prompt');
+            const merged = fetched.filter(r => !isRetiredPriorityRule(r));
             prev.forEach(defaultRule => {
               if (!merged.some(r => r.eventName === defaultRule.eventName || r.id === defaultRule.id)) {
                 merged.push(defaultRule);
@@ -97,10 +97,7 @@ export const PriorityRulesView: React.FC = () => {
   };
 
   const baseItems: PriorityItemDef[] = [
-    { key: 'unityBuildFailurePriority', label: 'Unity Build Failure / Exception Alert', desc: 'High-priority critical alert; overrides active tracking display' },
     { key: 'highNotificationPriority', label: 'High Priority App / System Notification', desc: 'Critical notifications (e.g. Discord high alerts, low battery, urgent messages)' },
-    { key: 'unityPlayModePriority', label: 'Unity Play Mode / ON AIR Status', desc: 'Active Play Mode status banner; held while game is running' },
-    { key: 'unityCompilingPriority', label: 'Unity Compiling / Building Status', desc: 'Shows live compile progress over chat alerts' },
     { key: 'awayModePriority', label: 'Away Mode Screen / Windows Lock', desc: 'Away screen banner displayed when Windows session is locked or suspended' },
     { key: 'standupPromptPriority', label: 'Daily Stand-Up Ceremonies Prompt', desc: 'Interactive dialog for daily stand-up tracking' },
     { key: 'lunchModePriority', label: 'Lunch Mode Screen / Scheduled Break', desc: 'Lunch time screen displayed during configured lunch hours' },

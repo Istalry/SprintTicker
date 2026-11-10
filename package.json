@@ -3,7 +3,7 @@
   "version": "1.4.0",
   "private": true,
   "license": "MIT",
-  "description": "SprintTicker monorepo: the desktop application, its Unity Editor and Stream Deck plugins and the animation studio",
+  "description": "SprintTicker monorepo: the desktop application, its Stream Deck plugin and the animation studio",
   "scripts": {
     "dev": "pnpm --filter @sprintticker/desktop-app dev",
     "build": "pnpm --filter @sprintticker/desktop-app build",
@@ -29,7 +29,6 @@
     "mock:jira": "node scripts/fake-jira.js",
     "probe:jira-worklog": "node scripts/jira-worklog-probe.js",
     "probe:busybar": "node scripts/busybar-probe.js",
-    "verify:unity": "node scripts/verify-unity-plugin.js",
     "docs:build": "node scripts/build-docs.js",
     "docs:check": "node scripts/build-docs.js --check",
     "docs:images": "pnpm build && node scripts/doc-images/capture-app.js && python -I scripts/doc-images/make-images.py --only scenes,icons",

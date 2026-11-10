@@ -11,7 +11,7 @@ import { ArgumentException } from './dtos';
  * requests, each with an id its answer carries back.
  */
 
-/** The app's local HTTP port: Unity's webhooks and the Stream Deck share it. */
+/** The app's local HTTP port: remote key presses and the Stream Deck share it. */
 export const LOCAL_API_PORT = 39123;
 
 /** Where the plugin opens its WebSocket, on {@link LOCAL_API_PORT}. */

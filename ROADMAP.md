@@ -539,8 +539,9 @@ Also worth doing while this area is open:
   serialised, a Unity end renders once and only when it still holds the
   display, a compile burst keeps the gear up for `UNITY_IDLE_RELEASE_GRACE_MS`
   instead of closing between compiles, and the 400 on a single-id removal is
-  logged as "already gone". Still to see: a day of Unity on the real bar with
-  no hang, and its diagnostics read back.
+  logged as "already gone". A day of Unity on the real bar was never read
+  back: Unity support was removed on 2026-11-09. The rules it left in the
+  driver stand.
 - [ ] **Claude Code notifications show the Claude icon only some of the time**
   (reported 2026-10-02, after 1.2.0); the others draw the bell. Two
   candidates, not yet told apart. First, by design: `AppIconResolver` resolves
@@ -597,8 +598,8 @@ Also worth doing while this area is open:
   in bursts inside the grace, and with two ends in one instant, plus Play
   Mode -- for 26 screen closes and no hang. Uploads stayed at 24-69 ms
   (median 35-48) from first to last, no request timed out or was refused, and
-  each burst closed the screen once. Still open: read back the bundle of a
-  real Unity day.
+  each burst closed the screen once. The bundle of a real Unity day was
+  never read back; Unity support was removed on 2026-11-09.
 - [x] **Display state found inconsistent by the same stress run**, none of it a
   risk to the device. **Done** (2026-10-07): the stress test now checks the
   panel against the state at the end of every run, with two Unity editors
@@ -682,7 +683,7 @@ Also worth doing while this area is open:
   play. `--teardown-soak --park --rounds 100`, the one close the app makes,
   passed all 100 rounds there with the 1.3 icon and blank, uploads flat at
   20-60 ms -- the same result as on 1.2.4. **Still to do:** a working day of
-  the packaged app on 1.3.1, Unity included, before this box is ticked. The probe now checks that a file in the
+  the packaged app on 1.3.1 before this box is ticked. The probe now checks that a file in the
   other format reads back as the placeholder ("Animation in another
   format"), and on 1.3.1 it does: the gear as `bicycle0` drew 200 and showed
   a 9x9 still at (0,0). And 1.3.1's PR #1025 changes the
@@ -1361,8 +1362,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.99 statements / 89.68 branches / 94.71 functions / 96.63 lines across 2704
-tests in 130 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
+**95.26 statements / 89.95 branches / 95.40 functions / 96.93 lines across 2785
+tests in 134 files**, and the floor is ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware
 remapping became the default; the same 346 tests then measured 76.19% instead of
@@ -1662,5 +1663,10 @@ nobody got to.
 
 - Multi-user, teams, or any hosted component.
 - Multiple devices from one app instance.
+- **Unity Editor support** -- removed on 2026-11-09, the user's decision:
+  the Editor package, its telemetry screens, the project linking and the
+  wrap-up's scene save. Its routes now answer 404, and its stored priority
+  rules are dropped on load. Bringing it back starts from the history
+  before that date, and from the traps `CLAUDE.md` recorded with it.
 - Becoming a general-purpose BUSY Bar SDK. The device's own API is documented
   by its authors at [github.com/busy-app](https://github.com/busy-app).

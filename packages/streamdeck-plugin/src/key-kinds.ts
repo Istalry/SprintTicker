@@ -5,7 +5,7 @@
  * two equal.
  */
 
-/** Reverse-DNS, as the manifest requires; the Unity plugin's id, too. */
+/** Reverse-DNS, as the manifest requires; the app's own id, too. */
 export const PLUGIN_UUID = 'io.github.istalry.sprintticker';
 
 export const KEY_KINDS = [
