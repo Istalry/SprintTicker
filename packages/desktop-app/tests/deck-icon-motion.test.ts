@@ -35,7 +35,12 @@ describe('framePixels', () => {
   });
 });
 
-describe('iconMotionFrom', () => {
+// Decoding every real frame takes about 5 s under coverage's instrumentation,
+// the default timeout: these tests run only where the LFS frames are, so CI
+// never sees it, and a local `pnpm test:coverage` failed on them alone.
+const DECODE_TIMEOUT_MS = 30_000;
+
+describe('iconMotionFrom', { timeout: DECODE_TIMEOUT_MS }, () => {
   it('IconMotionFrom_SixtyFps_SampledToTheDecksRateWithEachPoseOnce', () => {
     // Two poses, a second each, at 60 fps: 120 frames.
     const frames = [...Array(60).fill(frame(0)), ...Array(60).fill(frame(1))];
