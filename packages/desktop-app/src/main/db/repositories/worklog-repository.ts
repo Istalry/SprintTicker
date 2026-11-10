@@ -25,7 +25,28 @@ export interface WorklogRecord {
   adHoc?: true;
   /** Its task is an interruption not yet named or assigned (migration 13). Read-only; filled on reads. */
   unsorted?: true;
+  /** The key of the earlier entry holding this one back (`held-overlap`). Read-only; filled on reads. */
+  overlapsTaskKey?: string;
 }
+
+/**
+ * An entry's start and end in whole milliseconds, for the overlap rule of
+ * `shared/overlap.ts`. Rounded: julianday is a double, and a piece ending at
+ * midnight must not read as running a hair past the next one's start.
+ */
+const START_MS = (alias: string) =>
+  `CAST(ROUND((julianday(${alias}.started_at_utc) - 2440587.5) * 86400000) AS INTEGER)`;
+
+/**
+ * The earlier worklog that `w` overlaps, by the rule of `shared/overlap.ts`:
+ * it starts first (the lower id on a tie), ends after `w` begins, and is not
+ * a piece of the same session. Used as `EXISTS (...)` and to name it.
+ */
+const OVERLAPPING_EARLIER = (w: string) => `
+  SELECT o.id FROM worklogs o
+   WHERE o.id <> ${w}.id AND o.session_id <> ${w}.session_id
+     AND (${START_MS('o')} < ${START_MS(w)} OR (${START_MS('o')} = ${START_MS(w)} AND o.id < ${w}.id))
+     AND ${START_MS('o')} + o.duration_seconds * 1000 > ${START_MS(w)}`;
 
 /** A worklog row joined to its task. */
 interface WorklogRow {
@@ -43,6 +64,7 @@ interface WorklogRow {
   project_provider_id: string | null;
   create_status: SyncQueueStatus | null;
   correction_status: SyncQueueStatus | null;
+  overlaps_task_key: string | null;
 }
 
 /**
@@ -61,14 +83,22 @@ const SELECT_WORKLOGS = `
            ORDER BY q.rowid DESC LIMIT 1) AS create_status,
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation <> 'CREATE' AND q.status <> 'SYNCED'
-           ORDER BY q.rowid DESC LIMIT 1) AS correction_status
+           ORDER BY q.rowid DESC LIMIT 1) AS correction_status,
+         (SELECT ot.key FROM worklogs ow JOIN tasks ot ON ot.id = ow.task_id
+           WHERE ow.id = (${OVERLAPPING_EARLIER('w')} ORDER BY o.started_at_utc LIMIT 1)) AS overlaps_task_key
   FROM worklogs w
   LEFT JOIN tasks t ON t.id = w.task_id
   LEFT JOIN projects p ON p.id = t.project_id`;
 
 /** Where a worklog stands, from its send and its latest open correction. */
-function syncStateOf(createStatus: SyncQueueStatus | null, correctionStatus: SyncQueueStatus | null): WorklogSyncState {
+function syncStateOf(
+  createStatus: SyncQueueStatus | null,
+  correctionStatus: SyncQueueStatus | null,
+  overlapped: boolean
+): WorklogSyncState {
   if (correctionStatus) return correctionStatus === 'FAILED' ? 'correction-failed' : 'correction-pending';
+  // Held only while it waits: one claimed or sent already is past holding.
+  if (overlapped && (createStatus === 'PENDING' || createStatus === 'FAILED')) return 'held-overlap';
   switch (createStatus) {
     case null:
       return 'local';
@@ -93,7 +123,8 @@ function toRecord(r: WorklogRow): WorklogRecord {
   };
   if (r.task_key !== null) record.taskKey = r.task_key;
   if (r.task_title !== null) record.taskTitle = r.task_title;
-  record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null);
+  record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null, r.overlaps_task_key != null);
+  if (record.syncState === 'held-overlap' && r.overlaps_task_key) record.overlapsTaskKey = r.overlaps_task_key;
   record.hasTaskPage = hasTaskPage(r.task_project_id, r.project_provider_id);
   if (isAdHocTaskId(r.task_id)) record.adHoc = true;
   if (r.task_unsorted === 1) record.unsorted = true;
@@ -289,6 +320,11 @@ export class WorklogRepository {
       `SELECT * FROM worklog_sync_queue q
         WHERE status = 'PENDING'
           AND (next_attempt_at_utc IS NULL OR next_attempt_at_utc <= ?)
+          -- The later entry of an overlap is not sent until it is fixed
+          -- (shared/overlap.ts). Only a first send: an entry already at the
+          -- provider stays there, and its corrections go.
+          AND NOT (q.operation = 'CREATE' AND q.worklog_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM worklogs w WHERE w.id = q.worklog_id AND EXISTS (${OVERLAPPING_EARLIER('w')})))
           -- A correction waits for whatever came before it on the same
           -- worklog: an UPDATE sent ahead of its CREATE names no entry.
           AND NOT EXISTS (

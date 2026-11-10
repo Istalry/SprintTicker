@@ -891,6 +891,11 @@
       done is not moved on the provider until the ten seconds are over. Starting
       another task, or another action, makes the last one final. Quitting within
       the ten seconds sends it at the next start.</p>
+      <p>⏸️ <strong>Two entries that overlap are not both sent.</strong> The same hour twice is
+      the error a timesheet reviewer finds first, so the later of two overlapping
+      entries says <strong>Waiting · overlaps PF-31</strong> and is not sent until you correct
+      one of them; then it goes. A correction that would make two entries overlap
+      says so before you save it. Entries already sent stay as they are.</p>
       <p>✏️ <strong>Correct or delete a worklog</strong> with the pencil and the bin on its row. A
       correction changes the duration, the start or the comment. It applies here at once and
       reaches Jira or OpenProject through the sync queue, so it survives a lost
@@ -2001,6 +2006,13 @@
       the window ends, another action is offered, or the app quits. Starting a
       session makes a held stop final, since undoing it would open a second one.
       The bar&#39;s own STOP and DROP are not undoable yet (P14).</p>
+      <p><strong>An overlap holds the later entry.</strong> <code>getPendingQueueItems</code> skips the first
+      send of a worklog that overlaps an earlier one (<code>shared/overlap.ts</code>: starts
+      first, lower id on a tie, ends after the other begins, another session), and
+      the worklog reads <code>held-overlap</code> with the other entry&#39;s key. Correcting
+      either releases it at the next pass. Entries already sent stay sent, and
+      their corrections go; the window warns before saving a correction that
+      would overlap.</p>
       <p><strong>The tracked task survives the prune.</strong> The engine names it
       (<code>protectTasks</code>), and a sync that no longer finds it -- reassigned, closed or
       moved -- keeps it and its project, records it as unlisted, and tells the

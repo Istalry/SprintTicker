@@ -413,6 +413,8 @@ export interface WorklogDTO {
   taskTitle?: string;
   /** Where it stands with its provider: sent, on its way, parked, or kept here only. */
   syncState?: WorklogSyncState;
+  /** The key of the earlier entry this one overlaps, while that holds it back (`held-overlap`). */
+  overlapsTaskKey?: string;
   /** Whether its task has a page on a provider to open (`hasTaskPage`). */
   hasTaskPage?: boolean;
   /** Logged on ad-hoc work: named in SprintTicker, sent to no provider. */

@@ -47,10 +47,17 @@ const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: 
   local: { label: 'Local only', tone: 'text-text-secondary border-border-dark', hint: 'Kept in SprintTicker; never sent to a provider.' },
   pending: { label: 'Sending', tone: 'text-accent-amber border-accent-amber/40', hint: 'Queued for the provider.' },
   sent: { label: 'Sent', tone: 'text-accent-green border-accent-green/40', hint: 'At the provider.' },
-  failed: { label: 'Not sent', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see the sync queue in Settings.' },
+  failed: { label: 'Not sent', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see Entries waiting to send, in Settings, Account.' },
   'correction-pending': { label: 'Correction pending', tone: 'text-accent-amber border-accent-amber/40', hint: 'A correction is on its way to the provider.' },
-  'correction-failed': { label: 'Correction failed', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see the sync queue in Settings.' }
+  'correction-failed': { label: 'Correction failed', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see Entries waiting to send, in Settings, Account.' },
+  'held-overlap': { label: 'Waiting', tone: 'text-accent-amber border-accent-amber/40', hint: 'It overlaps an earlier entry, and is not sent until one of them is corrected.' }
 };
+
+/** "Waiting · overlaps PF-31" for an entry an overlap holds back; the state's own label otherwise. */
+function syncBadgeLabel(log: WorklogDTO): string {
+  const label = SYNC_BADGE[log.syncState!].label;
+  return log.syncState === 'held-overlap' && log.overlapsTaskKey ? `${label} · overlaps ${log.overlapsTaskKey}` : label;
+}
 
 interface DaySummary {
   totalSeconds: number;
@@ -373,7 +380,7 @@ export const WorklogHistoryView: React.FC = () => {
                       title={SYNC_BADGE[log.syncState].hint}
                       className={`px-1.5 py-0.5 border rounded text-[10px] ${SYNC_BADGE[log.syncState].tone}`}
                     >
-                      {SYNC_BADGE[log.syncState].label}
+                      {syncBadgeLabel(log)}
                     </span>
                   )}
                   <div className="font-mono font-bold text-text-primary">
@@ -440,6 +447,7 @@ export const WorklogHistoryView: React.FC = () => {
           key={`${editing.worklog.id}-${editing.mode}`}
           worklog={editing.worklog}
           mode={editing.mode}
+          sameDay={worklogs}
           lastWeekClosed={lastWeekClosed}
           onClose={() => setEditing(null)}
           onDone={() => {

@@ -35,7 +35,15 @@ export interface WorklogCorrectionDTO {
  * - `correction-pending` / `correction-failed`: a correction or deletion is
  *   on its way, or parked.
  */
-export type WorklogSyncState = 'local' | 'pending' | 'sent' | 'failed' | 'correction-pending' | 'correction-failed';
+export type WorklogSyncState =
+  | 'local'
+  | 'pending'
+  | 'sent'
+  | 'failed'
+  | 'correction-pending'
+  | 'correction-failed'
+  /** Not sent, and waiting: it overlaps an earlier entry (`shared/overlap.ts`). */
+  | 'held-overlap';
 
 /**
  * Why `correction` cannot be made, as a sentence for the user, or null when

@@ -382,6 +382,12 @@ done is not moved on the provider until the ten seconds are over. Starting
 another task, or another action, makes the last one final. Quitting within
 the ten seconds sends it at the next start.
 
+⏸️ **Two entries that overlap are not both sent.** The same hour twice is
+the error a timesheet reviewer finds first, so the later of two overlapping
+entries says **Waiting · overlaps PF-31** and is not sent until you correct
+one of them; then it goes. A correction that would make two entries overlap
+says so before you save it. Entries already sent stay as they are.
+
 ✏️ **Correct or delete a worklog** with the pencil and the bin on its row. A
 correction changes the duration, the start or the comment. It applies here at once and
 reaches Jira or OpenProject through the sync queue, so it survives a lost

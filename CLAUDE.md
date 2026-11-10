@@ -1205,6 +1205,14 @@ a move to a third provider, a Done transition -- holds too, or Undo lies.
 And never hand-write an inverse of an action: the restore point records the
 rows, so a rule the action follows is not copied into its undo.
 
+**An overlapping entry is held, never sent.** Of two entries that overlap,
+the later one's first send waits until one of them is corrected
+(`shared/overlap.ts`, and the same rule in SQL in `getPendingQueueItems`).
+Touching is not overlapping, and two pieces of one session never overlap:
+`splitWork` settles rounding on the longest piece, which can run a second
+into the next. Keep the TypeScript and the SQL equal -- `overlap.test.ts`
+runs both.
+
 **A row sent before is looked for before it is sent again.** Neither Jira nor
 OpenProject takes an idempotency key, so a POST whose answer was lost -- a
 timeout, a dropped connection, the app closing mid-request -- may already be

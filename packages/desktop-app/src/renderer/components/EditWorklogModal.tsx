@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { WorklogDTO } from '../../shared/dtos';
 import { checkWorklogCorrection, WORKLOG_COMMENT_MAX_CHARS, WorklogCorrectionDTO } from '../../shared/worklog-correction';
-import { formatDayAndTime, formatHoursAndMinutes, formatHoursMinutes, ipcErrorMessage } from '../utils/formatters';
+import { formatClockTime, formatDayAndTime, formatHoursAndMinutes, formatHoursMinutes, ipcErrorMessage } from '../utils/formatters';
+import { findOverlaps } from '../../shared/overlap';
 import { ConfirmPanel } from './ConfirmPanel';
 import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
@@ -25,6 +26,8 @@ interface EditWorklogModalProps {
   mode: 'edit' | 'delete';
   /** The Monday of the last week closed: time up to its Sunday is warned about. */
   lastWeekClosed?: string | null;
+  /** The day's other entries, so a correction that would overlap one says so before it is saved. */
+  sameDay?: readonly WorklogDTO[];
   onClose: () => void;
   /** Called once main has accepted the change. */
   onDone: () => void;
@@ -39,7 +42,7 @@ interface EditWorklogModalProps {
  * fields are left alone, so fixing a comment does not also shave the
  * duration or move the start to the minute.
  */
-export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mode, lastWeekClosed = null, onClose, onDone }) => {
+export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mode, lastWeekClosed = null, sameDay = [], onClose, onDone }) => {
   const initialHours = Math.floor(worklog.durationSeconds / 3600);
   const initialMinutes = Math.floor((worklog.durationSeconds % 3600) / 60);
   const initialStart = toLocalInput(new Date(worklog.startedAtUtc));
@@ -77,6 +80,19 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
   const closedWeekNote = closedWeek && (
     <p role="note" className="text-[11px] text-accent-amber leading-relaxed">{closedWeekWarning(providerName)}</p>
   );
+  // S16: warned before saving; saved anyway, the later entry waits.
+  const corrected = { ...worklog, durationSeconds, startedAtUtc: correction.startedAtUtc };
+  const clash = refusal ? null : findOverlaps([corrected, ...sameDay.filter(other => other.id !== worklog.id)])
+    .find(overlap => overlap.earlier.id === worklog.id || overlap.later.id === worklog.id) ?? null;
+  const clashWith = clash ? (clash.earlier.id === worklog.id ? clash.later : clash.earlier) : null;
+  const overlapNote = clash && clashWith && (
+    <p role="note" className="text-[11px] text-accent-amber leading-relaxed">
+      It overlaps <span className="font-mono">{clashWith.taskKey ?? clashWith.taskId}</span>{' '}
+      {formatClockTime(new Date(clashWith.startedAtUtc))}–{formatClockTime(new Date(Date.parse(clashWith.startedAtUtc) + clashWith.durationSeconds * 1000))}
+      {' '}by {formatHoursAndMinutes(clash.seconds)}. Saved like this, {clash.later.id === worklog.id ? 'this entry' : 'that entry'} waits
+      and is not sent to {providerName} until the overlap is fixed.
+    </p>
+  );
 
   const run = (call: () => Promise<unknown>) => {
     setBusy(true);
@@ -110,7 +126,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                   {worklog.syncState === 'local' || worklog.syncState === undefined
                     ? 'It is kept nowhere else.'
                     : `It is also deleted in ${providerName}.`}{' '}
-                  This cannot be undone.
+                  You have ten seconds to undo it.
                 </>
               }
               confirmLabel="Delete"
@@ -183,6 +199,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
             </p>
 
             {closedWeekNote}
+            {overlapNote}
 
             {(refusal || error) && (
               <p role="alert" className="text-xs text-accent-red">{error ?? refusal}</p>

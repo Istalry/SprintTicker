@@ -39,6 +39,25 @@ describe('Work History corrections', () => {
     expect(screen.getByText('Local only')).toBeTruthy();
   });
 
+  it('Render_AnEntryAnOverlapHolds_SaysWhichOne', async () => {
+    const held: WorklogDTO = { ...SENT, id: 'w3', taskKey: 'PF-40', syncState: 'held-overlap', overlapsTaskKey: 'MG-12' };
+    await open([SENT, held]);
+
+    expect(screen.getByText('Waiting · overlaps MG-12')).toBeTruthy();
+  });
+
+  it('Correct_IntoAnotherEntry_WarnsBeforeSaving', async () => {
+    // A second entry from 10:30, while MG-12 runs from 09:00 to 11:03.
+    const other: WorklogDTO = { ...LOCAL, id: 'w4', sessionId: 's4', taskKey: 'PF-40', startedAtUtc: '2026-10-13T10:30:00.000Z', durationSeconds: 1800 };
+    await open([SENT, other]);
+
+    click(/Correct MG-12/);
+
+    const dialog = screen.getByRole('dialog', { name: 'Correct a worklog' });
+    const note = within(dialog).getAllByRole('note').find(n => /It overlaps/.test(n.textContent ?? ''));
+    expect(note?.textContent).toMatch(/PF-40.*by 30m.*that entry waits/);
+  });
+
   it('Correct_NewDuration_IsSentAndTheDayIsReadAgain', async () => {
     const bridge = await open();
 

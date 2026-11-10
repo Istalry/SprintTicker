@@ -284,6 +284,14 @@ the window ends, another action is offered, or the app quits. Starting a
 session makes a held stop final, since undoing it would open a second one.
 The bar's own STOP and DROP are not undoable yet (P14).
 
+**An overlap holds the later entry.** `getPendingQueueItems` skips the first
+send of a worklog that overlaps an earlier one (`shared/overlap.ts`: starts
+first, lower id on a tie, ends after the other begins, another session), and
+the worklog reads `held-overlap` with the other entry's key. Correcting
+either releases it at the next pass. Entries already sent stay sent, and
+their corrections go; the window warns before saving a correction that
+would overlap.
+
 **The tracked task survives the prune.** The engine names it
 (`protectTasks`), and a sync that no longer finds it -- reassigned, closed or
 moved -- keeps it and its project, records it as unlisted, and tells the

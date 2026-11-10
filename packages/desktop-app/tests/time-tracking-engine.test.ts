@@ -316,6 +316,9 @@ describe('TimeTrackingEngine Unit Tests', () => {
       // missing entry the queue would resend anyway.
       startBackdatedSession(5);
       stopEngine.stopSession('First');
+      // Later than the first ended: backdated over it, the second would
+      // overlap it and be held.
+      vi.setSystemTime(Date.now() + 5 * 60_000);
       startBackdatedSession(3);
       stopEngine.stopSession('Second');
 

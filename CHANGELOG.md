@@ -10,6 +10,10 @@
   **Undo** meanwhile. A stopped session runs on as if never stopped, a Done
   transition is not sent, and an edited entry is as it was. The Stream
   Deck's keys are undoable the same way.
+- **Overlapping entries wait.** Of two worklogs that overlap, the later one
+  is not sent until one of them is corrected; History marks it **Waiting ·
+  overlaps PF-31**, and a correction that would cause an overlap says so
+  before it is saved.
 - **Interrupt: a timer at once.** When someone comes to your desk, one click
   starts a timer -- on Today's session card, in the mini timer, or in the
   tray menu -- with nothing to fill in. It runs on a new ad-hoc task named for
