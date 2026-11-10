@@ -1264,7 +1264,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 
 | Phase | Status | Landed in |
 | :--- | :--- | :--- |
-| P0 | not started | |
+| P0 | landed; side worktrees still to clean up | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
 | P1 | not started | |
 | P2 | not started | |
 | P3 | not started | |

@@ -1138,9 +1138,9 @@ cup and a moon taken from their scenes' sprites.
 
 ## 6. The 2026-11 redesign
 
-**Blocked on:** the work pending in side worktrees landing on `main`: the
-Unity removal and the banner fix (phase P0). The plan's six decisions were
-taken on 2026-11-10.
+**Blocked on:** nothing; waiting to be started. Phase P0 (the Unity
+removal and the banner fix) landed on 2026-11-10, and the plan's six
+decisions were taken the same day.
 
 A new face and new flows for every surface: the window, the mini timer,
 the tray, the bar and the Stream Deck. The target is drawn in
