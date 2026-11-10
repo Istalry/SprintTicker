@@ -21,7 +21,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
 }) => {
   if (status === 'error') {
     return (
-      <div className="flex items-center space-x-2 px-3 py-2 text-xs font-mono rounded-lg bg-red-900/20 border border-red-900/50 text-red-300">
+      <div className="flex items-center space-x-2 px-3 py-2 text-xs rounded-lg bg-accent-red/10 border border-accent-red/30 text-accent-red">
         <CloudOff className="w-4 h-4" />
         <span>Could not save — see the console for details</span>
       </div>
@@ -30,7 +30,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
 
   if (status === 'saving' || status === 'pending') {
     return (
-      <div className="flex items-center space-x-2 px-3 py-2 text-xs font-mono text-text-secondary">
+      <div className="flex items-center space-x-2 px-3 py-2 text-xs text-text-secondary">
         <Loader2 className="w-4 h-4 animate-spin" />
         <span>Saving…</span>
       </div>
@@ -39,7 +39,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
 
   if (status === 'saved') {
     return (
-      <div className="flex items-center space-x-2 px-3 py-2 text-xs font-mono text-accent-green">
+      <div className="flex items-center space-x-2 px-3 py-2 text-xs text-accent-green">
         <Check className="w-4 h-4" />
         <span>Saved</span>
       </div>
@@ -47,7 +47,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
   }
 
   return (
-    <div className="flex items-center space-x-2 px-3 py-2 text-xs font-mono text-text-secondary opacity-70">
+    <div className="flex items-center space-x-2 px-3 py-2 text-xs text-text-secondary opacity-70">
       <span>{idleLabel}</span>
     </div>
   );

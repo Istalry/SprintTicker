@@ -43,7 +43,7 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
   const markDone = () => (finishNeedsConfirmation(session) ? setConfirming('finish') : onFinishOption(true));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-5">
         <div className="flex items-center justify-between border-b border-border-dark pb-3">
           <div className="flex items-center space-x-2">
@@ -66,9 +66,9 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
             title="No longer assigned to you"
             message={
               <>
-                <span className="text-accent-blue font-bold">{session.taskKey}</span> left your list since you started
+                <span className="font-mono text-text-primary font-bold">{session.taskKey}</span> left your list since you started
                 it: reassigned, closed or moved. Your{' '}
-                <strong className="text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> are logged either way.
+                <strong className="font-mono text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> are logged either way.
                 Mark it done anyway? Your completion transition will be applied to it.
               </>
             }
@@ -83,8 +83,8 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
             tone="danger"
             message={
               <>
-                <strong className="text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> on{' '}
-                <span className="text-accent-blue font-bold">{session.taskKey}</span> will be thrown away. Nothing is
+                <strong className="font-mono text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> on{' '}
+                <span className="font-mono text-text-primary font-bold">{session.taskKey}</span> will be thrown away. Nothing is
                 kept in your history and nothing is sent to your provider. This cannot be undone.
               </>
             }
@@ -96,19 +96,19 @@ const FinishSessionDialog: React.FC<FinishSessionModalProps & { session: ActiveS
         ) : (
           <>
             <p className="text-xs text-text-secondary">
-              Select task status upon logging <strong className="text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> for:
+              Select task status upon logging <strong className="font-mono text-white">{formatHoursAndMinutes(session.elapsedSeconds)}</strong> for:
               <br />
-              <span className="text-accent-blue font-bold">{session.taskTitle}</span>
+              <span className="text-text-primary font-bold">{session.taskTitle}</span>
             </p>
             {daySplit && <p className="text-[11px] text-text-secondary">Across midnight, so filed as {daySplit}.</p>}
 
             <div className="space-y-3">
               <button
                 onClick={() => onFinishOption(false)}
-                className="w-full flex items-center justify-between p-4 bg-dark-700/60 hover:bg-dark-700 border border-border-dark hover:border-accent-blue/40 rounded-xl text-left transition-all group"
+                className="w-full flex items-center justify-between p-4 bg-dark-700/60 hover:bg-dark-700 border border-border-dark hover:border-focus/40 rounded-xl text-left transition-all group"
               >
                 <div className="space-y-1">
-                  <div className="text-xs font-bold text-accent-blue flex items-center space-x-2">
+                  <div className="text-xs font-bold text-text-primary flex items-center space-x-2">
                     <Clock className="w-4 h-4" />
                     <span>Remain &apos;In Progress&apos;</span>
                   </div>

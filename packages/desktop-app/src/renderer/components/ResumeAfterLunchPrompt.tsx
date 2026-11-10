@@ -28,7 +28,7 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
   const standup = prompt.after === 'standup';
   const task = (
     <>
-      <span className="text-accent-blue font-bold">{prompt.taskKey}</span>
+      <span className="font-mono text-text-primary font-bold">{prompt.taskKey}</span>
       {prompt.taskTitle && <> ({prompt.taskTitle})</>}
     </>
   );
@@ -40,7 +40,7 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
         <ConfirmPanel
           title={

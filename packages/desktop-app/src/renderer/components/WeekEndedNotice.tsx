@@ -38,10 +38,10 @@ export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onOpenHistory 
   };
 
   return (
-    <div role="status" className="fixed bottom-4 right-4 z-40 w-80 bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-4 font-mono space-y-2">
+    <div role="status" className="fixed bottom-4 right-4 z-40 w-80 bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-4 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2 text-white font-bold text-sm">
-          <CalendarCheck className="w-4 h-4 text-accent-purple" />
+          <CalendarCheck className="w-4 h-4 text-text-primary" />
           <span>Week over</span>
         </div>
         <button onClick={dismiss} aria-label="Dismiss" className="p-1 text-text-secondary hover:text-white rounded-md">
@@ -50,7 +50,7 @@ export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onOpenHistory 
       </div>
       <p className="text-xs text-text-secondary leading-relaxed">
         {dayLabel(week.weekStart)} to {dayLabel(week.weekEnd)}:{' '}
-        <span className="text-white font-bold">{formatHoursAndMinutes(week.loggedSeconds)}</span> logged. Check it is all
+        <span className="font-mono text-white font-bold">{formatHoursAndMinutes(week.loggedSeconds)}</span> logged. Check it is all
         in before your timesheet is due.
       </p>
       <button
@@ -58,7 +58,7 @@ export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onOpenHistory 
           onOpenHistory();
           dismiss();
         }}
-        className="text-xs font-semibold text-accent-purple hover:underline"
+        className="text-xs font-semibold text-text-primary hover:underline"
       >
         Open Work History
       </button>

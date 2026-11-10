@@ -376,6 +376,30 @@ packaged app run on a database copy.
 blue or purple classes in `src/renderer`, and the tabs match the screens'
 colours.
 
+**As landed (2026-11-10):**
+
+- The tokens are the screens' (`--muted` is `#8A8A92`, the screens' value,
+  not §5's `#6B6B72`, for contrast). `accent.blue` and `accent.purple` are
+  deleted from `tailwind.config.js`, so a class naming one draws nothing
+  and the grep above finds it; there are none left.
+- The mapping, by what a use meant: a solid accent background is a primary
+  button (`bg-primary text-dark-900`); a tinted one, or a selected item, is
+  `bg-select` with a `border-focus` outline; a focus border is
+  `focus:border-focus`; an accent text or icon is `text-text-primary`. The
+  high-priority level in Notifications is amber.
+- Broken classes fixed rather than hidden: `bg-dark-600` (now the hover
+  grey), `dark-950`, `text-dark-400` / `-500` (now `text-text-muted`),
+  `accent-emerald`, `-yellow`, `-gold` and `-cyan` (never defined; now
+  green, amber, amber and primary text), the `animate-in` family (no plugin;
+  dropped, so nothing was installed) and `text-text-text-secondary`.
+- `font-mono` stays on 41 elements, each a task key or a time; the others,
+  about 160 wrappers, are gone. Uppercase stays on key inputs and log
+  badges only.
+- Checked in a browser on the renderer alone, with a stub bridge, for
+  Today, Tasks and Settings. The pictures in `USER-GUIDE.md` and the README
+  are not remade: `pnpm docs:images` needs SprintTicker closed, so it waits
+  for the user, with P3's.
+
 ---
 
 ## 8. P3 -- The shell: four places, the header, Settings in six groups
@@ -1288,8 +1312,8 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | Phase | Status | Landed in |
 | :--- | :--- | :--- |
 | P0 | done; side sessions archived, worktrees removed | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
-| P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | (2026-11-10, uncommitted) |
-| P2 | not started | |
+| P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | `4adb117` (2026-11-10) |
+| P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | (2026-11-10) |
 | P3 | not started | |
 | P4 | not started | |
 | P5 | not started | |

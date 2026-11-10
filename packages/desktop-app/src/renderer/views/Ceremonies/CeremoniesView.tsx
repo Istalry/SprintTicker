@@ -97,12 +97,12 @@ export const CeremoniesView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl font-mono">
+    <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
-            <Calendar className="w-5 h-5 text-accent-purple" />
+            <Calendar className="w-5 h-5 text-text-primary" />
             <span>AGILE CEREMONIES, SCHEDULE & PC AUTOMATION</span>
           </h2>
           <p className="text-xs text-text-secondary">Schedule Daily Stand-Up prompts, Lunch quiet hours, dialog timeout limits, and EOD Wrap-Up.</p>
@@ -114,7 +114,7 @@ export const CeremoniesView: React.FC = () => {
       {/* The week: which days prompt at all, and which one closes it. */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-3">
         <div className="flex items-center space-x-3 text-white font-bold">
-          <Calendar className="w-5 h-5 text-accent-purple" />
+          <Calendar className="w-5 h-5 text-text-primary" />
           <h3 id="working-days">Working Days</h3>
         </div>
         <p className="text-xs text-text-secondary">
@@ -133,7 +133,7 @@ export const CeremoniesView: React.FC = () => {
                 onClick={() => setWorkingDays(on ? workingDays.filter(d => d !== day) : [...workingDays, day].sort())}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                   on
-                    ? 'bg-accent-purple/20 text-accent-purple border-accent-purple/40'
+                    ? 'bg-select text-text-primary border-focus/40'
                     : 'bg-dark-900 text-text-secondary border-border-dark hover:text-white'
                 }`}
               >
@@ -154,7 +154,7 @@ export const CeremoniesView: React.FC = () => {
               aria-label="Pause that splits a worklog, in minutes"
               value={Number.isFinite(splitPauseMinutes) ? splitPauseMinutes : ''}
               onChange={e => setSplitPauseMinutes(e.target.value === '' ? Number.NaN : Number(e.target.value))}
-              className="w-20 bg-dark-900 border border-border-dark rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-accent-blue font-mono"
+              className="w-20 bg-dark-900 border border-border-dark rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-focus"
             />
             <span>minutes or more starts a new worklog.</span>
           </label>
@@ -171,7 +171,7 @@ export const CeremoniesView: React.FC = () => {
         {/* Card 1: Daily Stand-Up Ceremonies */}
         <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
           <div className="flex items-center space-x-3 text-white font-bold">
-            <Clock className="w-5 h-5 text-accent-blue" />
+            <Clock className="w-5 h-5 text-text-primary" />
             <h3>Daily Stand-Up Ceremonies</h3>
           </div>
           <p className="text-xs text-text-secondary">Pops up a visual notification on your screen and the BUSY Bar to remind you that the Stand-Up is starting.</p>
@@ -183,7 +183,7 @@ export const CeremoniesView: React.FC = () => {
                 type="time"
                 value={standupTime}
                 onChange={e => setStandupTime(e.target.value)}
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
 
@@ -194,7 +194,7 @@ export const CeremoniesView: React.FC = () => {
                     await window.electronAPI.triggerStandupPrompt();
                   }
                 }}
-                className="flex items-center space-x-1.5 px-3 py-2 bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue border border-accent-blue/30 rounded-lg text-xs font-semibold transition-all"
+                className="flex items-center space-x-1.5 px-3 py-2 bg-select hover:bg-dark-600 text-text-primary border border-focus/30 rounded-lg text-xs font-semibold transition-all"
               >
                 <Play className="w-3.5 h-3.5" />
                 <span>Try the stand-up prompt</span>
@@ -219,7 +219,7 @@ export const CeremoniesView: React.FC = () => {
                 type="time"
                 value={lunchStart}
                 onChange={e => setLunchStart(e.target.value)}
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
 
@@ -230,7 +230,7 @@ export const CeremoniesView: React.FC = () => {
                 type="time"
                 value={lunchEnd}
                 onChange={e => setLunchEnd(e.target.value)}
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
           </div>
@@ -254,7 +254,7 @@ export const CeremoniesView: React.FC = () => {
                 type="time"
                 value={eodTime}
                 onChange={e => setEodTime(e.target.value)}
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
 
@@ -263,7 +263,7 @@ export const CeremoniesView: React.FC = () => {
                 type="checkbox"
                 checked={shutdownByDefault}
                 onChange={e => setShutdownByDefault(e.target.checked)}
-                className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple bg-dark-900 border-border-dark"
+                className="w-4 h-4 rounded text-text-primary focus:ring-focus bg-dark-900 border-border-dark"
               />
               <span className="text-xs text-text-primary">Shutdown computer by default during EOD wrap-up</span>
             </label>
@@ -273,7 +273,7 @@ export const CeremoniesView: React.FC = () => {
                 type="checkbox"
                 checked={askAboutForgotten}
                 onChange={e => setAskAboutForgotten(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded text-accent-purple focus:ring-accent-purple bg-dark-900 border-border-dark"
+                className="w-4 h-4 mt-0.5 rounded text-text-primary focus:ring-focus bg-dark-900 border-border-dark"
               />
               <span className="text-xs text-text-primary">
                 Ask about a session left running overnight
@@ -286,7 +286,7 @@ export const CeremoniesView: React.FC = () => {
             <div className="pt-1 flex items-center justify-between">
               <button
                 onClick={handleTestTriggerEod}
-                className="flex items-center space-x-1.5 px-3 py-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple border border-accent-purple/30 rounded-lg text-xs font-semibold transition-all"
+                className="flex items-center space-x-1.5 px-3 py-2 bg-select hover:bg-dark-600 text-text-primary border border-focus/30 rounded-lg text-xs font-semibold transition-all"
               >
                 <Play className="w-3.5 h-3.5" />
                 <span>Try the wrap-up</span>

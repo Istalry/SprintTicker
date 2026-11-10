@@ -76,14 +76,14 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
       });
   };
 
-  const checkbox = 'rounded bg-dark-900 border-border-dark text-accent-blue focus:ring-0';
+  const checkbox = 'rounded bg-dark-900 border-border-dark text-text-primary focus:ring-0';
   const disabled = !settings.enabled;
 
   return (
-    <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4 max-w-xl font-mono">
+    <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4 max-w-xl">
       <div className="flex items-center justify-between border-b border-border-dark pb-3">
         <h3 className="text-md font-bold text-white flex items-center space-x-2">
-          <Bell className="w-4 h-4 text-accent-purple" />
+          <Bell className="w-4 h-4 text-text-primary" />
           <span>Notifications from {providerName}</span>
         </h3>
         <AutoSaveIndicator status={saveStatus} />
@@ -155,13 +155,13 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
               onChange={e => update({ pollIntervalSeconds: Number(e.target.value) })}
               min={MIN_PROVIDER_EVENT_POLL_SECONDS}
               max={MAX_PROVIDER_EVENT_POLL_SECONDS}
-              className="w-32 bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-blue"
+              className="w-32 bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
             />
           </div>
           <button
             type="button"
             onClick={sendTest}
-            className="px-3 py-1.5 bg-dark-700 text-accent-purple text-xs font-bold rounded hover:bg-dark-600 transition-colors"
+            className="px-3 py-1.5 bg-dark-700 text-text-primary text-xs font-bold rounded hover:bg-dark-600 transition-colors"
           >
             Send a test notification
           </button>

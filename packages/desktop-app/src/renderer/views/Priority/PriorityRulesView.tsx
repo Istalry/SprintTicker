@@ -125,7 +125,7 @@ export const PriorityRulesView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl font-mono">
+    <div className="space-y-6 max-w-4xl">
       {/* Title Bar */}
       <div className="flex items-center justify-between">
         <div>
@@ -142,15 +142,15 @@ export const PriorityRulesView: React.FC = () => {
       {/* Mode Selector Card */}
       <div className="bg-dark-800 p-5 rounded-xl border border-border-dark flex items-center justify-between shadow-xl">
         <div className="space-y-0.5">
-          <span className="text-xs font-bold text-white uppercase tracking-wider">Active Context Mode</span>
+          <span className="text-xs font-bold text-white">Active Context Mode</span>
           <p className="text-xs text-text-secondary">Determines active suppression rules for incoming alerts.</p>
         </div>
 
         <div className="flex space-x-3">
           {[
-            { id: 'WORK', label: 'Work Mode', icon: User, color: 'text-accent-blue' },
-            { id: 'LUNCH', label: 'Lunch Mute', icon: Coffee, color: 'text-amber-400' },
-            { id: 'AWAY', label: 'Away / Stealth', icon: Moon, color: 'text-purple-400' }
+            { id: 'WORK', label: 'Work Mode', icon: User, color: 'text-text-primary' },
+            { id: 'LUNCH', label: 'Lunch Mute', icon: Coffee, color: 'text-accent-amber' },
+            { id: 'AWAY', label: 'Away / Stealth', icon: Moon, color: 'text-text-secondary' }
           ].map(m => {
             const Icon = m.icon;
             const isActive = userMode === m.id;
@@ -160,7 +160,7 @@ export const PriorityRulesView: React.FC = () => {
                 onClick={() => handleModeChange(m.id as UserMode)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
                   isActive
-                    ? 'bg-accent-blue/10 text-white border-accent-blue'
+                    ? 'bg-select text-white border-focus'
                     : 'bg-dark-900 text-text-secondary border-border-dark hover:text-white'
                 }`}
               >
@@ -175,7 +175,7 @@ export const PriorityRulesView: React.FC = () => {
       {/* Rules Table Card */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
         <div className="p-4 bg-dark-900 border border-border-dark rounded-lg flex items-center space-x-3 text-xs text-text-secondary">
-          <ShieldAlert className="w-5 h-5 text-accent-blue flex-shrink-0" />
+          <ShieldAlert className="w-5 h-5 text-text-primary flex-shrink-0" />
           <span>
             The list is the order the display goes by: a rule with a higher level takes the display from a lower
             one. The arrows move a rule&apos;s level by 10, and the list sorts itself again; type a level from 1 to
@@ -227,9 +227,9 @@ export const PriorityRulesView: React.FC = () => {
                       value={rule.priority}
                       aria-label={`${def.label} level`}
                       onChange={e => updateRuleScore(rule.eventName, Number(e.target.value))}
-                      className="w-20 bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-sm text-accent-blue font-mono font-bold text-center focus:outline-none focus:border-accent-blue"
+                      className="w-20 bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-sm text-text-primary font-bold text-center focus:outline-none focus:border-focus"
                     />
-                    <span className="text-xs font-mono text-text-secondary">Level</span>
+                    <span className="text-xs text-text-secondary">Level</span>
                   </div>
                 </div>
 
@@ -241,11 +241,11 @@ export const PriorityRulesView: React.FC = () => {
                     const currentAction = m === 'LUNCH' ? rule.actionOnLunch : m === 'AWAY' ? rule.actionOnAway : rule.actionOnWork;
                     return (
                       <div key={m} className="flex items-center space-x-2">
-                        <span className="text-text-secondary font-mono">{m}:</span>
+                        <span className="text-text-secondary">{m}:</span>
                         <select
                           value={currentAction || 'DISPLAY'}
                           onChange={e => updateRuleAction(rule.eventName, m, e.target.value as PriorityAction)}
-                          className="bg-dark-800 border border-border-dark rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-accent-blue"
+                          className="bg-dark-800 border border-border-dark rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-focus"
                         >
                           <option value="DISPLAY">DISPLAY</option>
                           <option value="QUEUE">QUEUE</option>

@@ -284,11 +284,11 @@ export const ProjectTaskManagerView: React.FC = () => {
   const tasksHavePages = hasTaskPage(activeProject?.id, activeProject?.providerId);
 
   if (loading) {
-    return <div className="p-8 text-text-secondary font-mono text-sm">Loading Project & Task Registry...</div>;
+    return <div className="p-8 text-text-secondary text-sm">Loading Project & Task Registry...</div>;
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6 select-none font-mono">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 select-none">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -304,12 +304,12 @@ export const ProjectTaskManagerView: React.FC = () => {
             disabled={!selectedProjectId}
             className="flex items-center space-x-2 px-3.5 py-2 bg-dark-700 hover:bg-dark-600 border border-border-dark text-text-primary hover:text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-50 whitespace-nowrap"
           >
-            <Upload className="w-4 h-4 text-accent-purple" />
+            <Upload className="w-4 h-4 text-text-primary" />
             <span>Import Tasks</span>
           </button>
           <button
             onClick={() => setIsAddProjOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-accent-blue hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-md transition-all whitespace-nowrap"
+            className="flex items-center space-x-2 px-4 py-2 bg-primary hover:bg-primary/90 text-dark-900 rounded-lg text-xs font-semibold shadow-md transition-all whitespace-nowrap"
           >
             <FolderPlus className="w-4 h-4" />
             <span>New Project</span>
@@ -322,7 +322,7 @@ export const ProjectTaskManagerView: React.FC = () => {
         {/* Projects List Sidebar */}
         <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-border-dark pb-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Projects ({listedProjects.length})</h3>
+            <h3 className="text-sm font-bold text-white">Projects ({listedProjects.length})</h3>
           </div>
           <ProjectFilterToggle enabled={onlyWithTasks} onChange={setOnlyWithTasks} hiddenCount={hiddenCount} nothingAssigned={nothingAssigned} />
 
@@ -333,12 +333,12 @@ export const ProjectTaskManagerView: React.FC = () => {
                 onClick={() => setSelectedProjectId(proj.id)}
                 className={`group flex items-center justify-between p-3.5 rounded-lg border cursor-pointer transition-all ${
                   selectedProjectId === proj.id
-                    ? 'bg-accent-blue/10 border-accent-blue text-white shadow-md'
+                    ? 'bg-select border-focus text-white shadow-md'
                     : 'bg-dark-900/60 border-border-dark text-text-secondary hover:text-white hover:bg-dark-700/50'
                 }`}
               >
                 <div>
-                  <div className="font-bold text-xs text-accent-blue">{proj.key}</div>
+                  <div className="font-mono font-bold text-xs text-text-primary">{proj.key}</div>
                   <div className="text-xs font-medium text-text-primary mt-0.5">{proj.name}</div>
                 </div>
 
@@ -374,7 +374,7 @@ export const ProjectTaskManagerView: React.FC = () => {
         <div className="lg:col-span-2 bg-dark-800 border border-border-dark rounded-xl p-5 space-y-4 flex flex-col">
           <div className="flex items-center justify-between border-b border-border-dark pb-3">
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <h3 className="text-sm font-bold text-white">
                 {activeProject ? `Tasks under [${activeProject.key}] ${activeProject.name}` : 'Select a Project'}
               </h3>
               <p className="text-xs text-text-secondary mt-0.5">{countOf(listedTasks.length, 'task')} listed</p>
@@ -386,7 +386,7 @@ export const ProjectTaskManagerView: React.FC = () => {
             <button
               onClick={() => setIsAddTaskOpen(true)}
               disabled={!selectedProjectId}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-accent-green hover:bg-emerald-600 text-dark-900 rounded-lg text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-accent-green hover:bg-accent-green/90 text-dark-900 rounded-lg text-xs font-bold shadow-sm transition-all disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
               <span>Add Task</span>
@@ -403,7 +403,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <span className="px-2 py-0.5 bg-dark-700 border border-border-dark text-accent-blue text-[10px] font-bold rounded whitespace-nowrap shrink-0">
+                      <span className="px-2 py-0.5 bg-dark-700 border border-border-dark text-text-primary text-[10px] font-mono font-bold rounded whitespace-nowrap shrink-0">
                         {task.key}
                       </span>
                       <span className="text-xs font-bold text-white">{task.title}</span>
@@ -421,9 +421,9 @@ export const ProjectTaskManagerView: React.FC = () => {
                     {/* Status cycle buttons */}
                     <div className="flex items-center space-x-1">
                       {/* Status Label */}
-                      <div className="px-3 py-1 bg-dark-700/60 border border-border-dark rounded-lg text-[10px] font-bold text-text-secondary mr-2 flex items-center space-x-1 uppercase tracking-wider whitespace-nowrap">
+                      <div className="px-3 py-1 bg-dark-700/60 border border-border-dark rounded-lg text-[10px] font-bold text-text-secondary mr-2 flex items-center space-x-1 whitespace-nowrap">
                         {task.status === 'todo' && <><AlertCircle className="w-3.5 h-3.5 text-text-primary"/><span className="text-text-primary">To Do</span></>}
-                        {task.status === 'in_progress' && <><Clock className="w-3.5 h-3.5 text-accent-blue"/><span className="text-accent-blue">In Progress</span></>}
+                        {task.status === 'in_progress' && <><Clock className="w-3.5 h-3.5 text-text-primary"/><span className="text-text-primary">In Progress</span></>}
                         {task.status === 'done' && <><CheckCircle2 className="w-3.5 h-3.5 text-accent-green"/><span className="text-accent-green">Done</span></>}
                       </div>
 
@@ -446,7 +446,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                             await window.electronAPI.startTask(task.id, false);
                             await fetchTasks(selectedProjectId);
                           }}
-                          className="px-3 py-1 bg-accent-blue/10 text-accent-blue border border-accent-blue/40 hover:bg-accent-blue/20 font-bold text-xs rounded transition-colors"
+                          className="px-3 py-1 bg-select text-text-primary border border-focus/40 hover:bg-dark-600 font-bold text-xs rounded transition-colors"
                         >
                           {activeSession ? 'Switch' : 'Start'}
                         </button>
@@ -466,7 +466,7 @@ export const ProjectTaskManagerView: React.FC = () => {
               ))
             ) : (
               <div className="text-center py-12 text-xs text-text-secondary">
-                No tasks found for this project. Click <span className="text-accent-green font-bold">&apos;+ Add Task&apos;</span> or <span className="text-accent-purple font-bold">&apos;Import Tasks&apos;</span> to create work items.
+                No tasks found for this project. Click <span className="text-accent-green font-bold">&apos;+ Add Task&apos;</span> or <span className="text-text-primary font-bold">&apos;Import Tasks&apos;</span> to create work items.
               </div>
             )}
           </div>
@@ -493,7 +493,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   value={newProjKey}
                   onChange={e => setNewProjKey(e.target.value)}
                   placeholder="PROJ"
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white uppercase focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 />
               </div>
 
@@ -505,7 +505,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   value={newProjName}
                   onChange={e => setNewProjName(e.target.value)}
                   placeholder="Unannounced RPG Sandbox"
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 />
               </div>
             </div>
@@ -514,7 +514,7 @@ export const ProjectTaskManagerView: React.FC = () => {
               <button type="button" onClick={() => setIsAddProjOpen(false)} className="px-4 py-2 bg-dark-700 text-text-secondary rounded text-xs">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 bg-accent-blue text-white rounded text-xs font-bold">
+              <button type="submit" className="px-4 py-2 bg-primary text-dark-900 rounded text-xs font-bold">
                 Save Project
               </button>
             </div>
@@ -541,7 +541,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   required
                   value={editProjKey}
                   onChange={e => setEditProjKey(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white uppercase focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 />
               </div>
 
@@ -552,7 +552,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   required
                   value={editProjName}
                   onChange={e => setEditProjName(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 />
               </div>
             </div>
@@ -561,7 +561,7 @@ export const ProjectTaskManagerView: React.FC = () => {
               <button type="button" onClick={() => setIsEditProjOpen(false)} className="px-4 py-2 bg-dark-700 text-text-secondary rounded text-xs">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 bg-accent-blue text-white rounded text-xs font-bold">
+              <button type="submit" className="px-4 py-2 bg-primary text-dark-900 rounded text-xs font-bold">
                 Update Project
               </button>
             </div>
@@ -588,7 +588,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   value={newTaskKey}
                   onChange={e => setNewTaskKey(e.target.value)}
                   placeholder={`${selectedProjectId}-101`}
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white uppercase focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 />
               </div>
 
@@ -600,7 +600,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   value={newTaskTitle}
                   onChange={e => setNewTaskTitle(e.target.value)}
                   placeholder="Implement Inventory System"
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 />
               </div>
 
@@ -609,7 +609,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                 <select
                   value={newTaskStatus}
                   onChange={e => setNewTaskStatus(e.target.value as 'todo' | 'in_progress' | 'done')}
-                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-accent-blue outline-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded px-3 py-2 text-white focus:border-focus outline-none"
                 >
                   <option value="todo">To Do</option>
                   <option value="in_progress">In Progress</option>
@@ -636,7 +636,7 @@ export const ProjectTaskManagerView: React.FC = () => {
           <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border-dark pb-3">
               <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-accent-purple" />
+                <FileText className="w-5 h-5 text-text-primary" />
                 <h3 className="text-sm font-bold text-white">Import Tasks to [{selectedProjectId}]</h3>
               </div>
               <button onClick={() => setIsImportOpen(false)} className="text-text-secondary hover:text-white">
@@ -645,7 +645,7 @@ export const ProjectTaskManagerView: React.FC = () => {
             </div>
 
             <p className="text-xs text-text-secondary">
-              Paste CSV lines (Format: <span className="text-white font-mono">KEY, TITLE, STATUS</span>) or JSON array (<span className="text-white font-mono">[&#123; &quot;key&quot;: &quot;KEY-1&quot;, &quot;title&quot;: &quot;Title&quot; &#125;]</span>):
+              Paste CSV lines (Format: <span className="text-white">KEY, TITLE, STATUS</span>) or JSON array (<span className="text-white">[&#123; &quot;key&quot;: &quot;KEY-1&quot;, &quot;title&quot;: &quot;Title&quot; &#125;]</span>):
             </p>
 
             <textarea
@@ -653,7 +653,7 @@ export const ProjectTaskManagerView: React.FC = () => {
               value={importText}
               onChange={e => setImportText(e.target.value)}
               placeholder="PROJ-101, Implement Player Physics, todo&#10;PROJ-102, Design UI HUD, in_progress"
-              className="w-full bg-dark-900 border border-border-dark rounded p-3 text-xs text-white font-mono focus:border-accent-purple outline-none resize-none"
+              className="w-full bg-dark-900 border border-border-dark rounded p-3 text-xs text-white focus:border-focus outline-none resize-none"
             />
 
             {importStatus && (
@@ -669,7 +669,7 @@ export const ProjectTaskManagerView: React.FC = () => {
               <button onClick={() => setIsImportOpen(false)} className="px-4 py-2 bg-dark-700 text-text-secondary rounded text-xs">
                 Cancel
               </button>
-              <button onClick={handleImportTasks} className="px-4 py-2 bg-accent-purple text-white rounded text-xs font-bold">
+              <button onClick={handleImportTasks} className="px-4 py-2 bg-primary text-dark-900 rounded text-xs font-bold">
                 Import Tasks
               </button>
             </div>

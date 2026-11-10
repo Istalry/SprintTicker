@@ -26,7 +26,7 @@ export const TaskVisibilityToggle: React.FC<TaskVisibilityToggleProps> = ({ visi
         type="checkbox"
         checked={visibility.unassigned}
         onChange={e => onChange({ ...visibility, unassigned: e.target.checked })}
-        className="accent-accent-blue"
+        className="accent-primary"
       />
       <span>Unassigned</span>
     </label>
@@ -35,7 +35,7 @@ export const TaskVisibilityToggle: React.FC<TaskVisibilityToggleProps> = ({ visi
         type="checkbox"
         checked={visibility.others}
         onChange={e => onChange({ ...visibility, others: e.target.checked })}
-        className="accent-accent-blue"
+        className="accent-primary"
       />
       <span>Teammates&apos;</span>
     </label>
@@ -51,7 +51,7 @@ export const TaskOwnerBadge: React.FC<{ task: Pick<TaskDTO, 'ownership' | 'assig
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-bold ${
-        free ? 'text-accent-amber border-accent-amber/40 bg-accent-amber/10' : 'text-accent-purple border-accent-purple/40 bg-accent-purple/10'
+        free ? 'text-accent-amber border-accent-amber/40 bg-accent-amber/10' : 'text-text-primary border-focus/40 bg-select'
       }`}
       data-testid="task-owner"
     >

@@ -229,7 +229,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
             style={{ backgroundColor: ledColor, boxShadow: `0 0 10px ${ledColor}` }}
             title={`Status LED (${displayState?.ledMode || 'SOLID'})`}
           />
-          <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono hidden hdr-md:block">RGB LED</span>
+          <span className="text-[9px] text-text-secondary mt-1 hidden hdr-md:block">RGB LED</span>
         </div>
 
         {/* High-Precision 72x16 RGB LED Matrix Display Preview with Screen Edge Glow */}
@@ -240,7 +240,7 @@ export const HardwareDisplayEmulator: React.FC = () => {
           >
             <canvas ref={frontCanvasRef} className="block rounded max-w-full" title="Physical Front 72x16 RGB LED Matrix Display" />
           </div>
-          <span className="text-[9px] text-text-secondary mt-1 uppercase font-mono hidden hdr-md:block whitespace-nowrap">72×16 RGB LED Matrix</span>
+          <span className="text-[9px] text-text-secondary mt-1 hidden hdr-md:block whitespace-nowrap">72×16 RGB LED Matrix</span>
         </div>
       </div>
 
@@ -249,26 +249,26 @@ export const HardwareDisplayEmulator: React.FC = () => {
           injectRemoteKey exists nowhere else in the renderer, so this is the
           only way to exercise hardware input without a bar attached, which is
           the whole point of `pnpm dev:mock`. */}
-      <div className="hidden hdr-lg:flex flex-col items-center border-l border-border-dark pl-4 space-y-1 font-mono shrink-0">
-        <span className="text-[9px] text-text-secondary uppercase hidden hdr-xl:block">Remote Controls</span>
+      <div className="hidden hdr-lg:flex flex-col items-center border-l border-border-dark pl-4 space-y-1 shrink-0">
+        <span className="text-[9px] text-text-secondary hidden hdr-xl:block">Remote Controls</span>
         <div className="flex items-center space-x-1">
           <button
             onClick={() => handleKeyClick('up')}
-            className="px-1.5 py-0.5 bg-dark-800 hover:bg-accent-blue/20 text-white hover:text-accent-blue rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
+            className="px-1.5 py-0.5 bg-dark-800 hover:bg-dark-600 text-white hover:text-text-primary rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
             title="Wheel Scroll Up"
           >
             ▲
           </button>
           <button
             onClick={() => handleKeyClick('down')}
-            className="px-1.5 py-0.5 bg-dark-800 hover:bg-accent-blue/20 text-white hover:text-accent-blue rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
+            className="px-1.5 py-0.5 bg-dark-800 hover:bg-dark-600 text-white hover:text-text-primary rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
             title="Wheel Scroll Down"
           >
             ▼
           </button>
           <button
             onClick={() => handleKeyClick('ok')}
-            className="px-2 py-0.5 bg-accent-blue/20 hover:bg-accent-blue/40 text-accent-blue rounded border border-accent-blue/40 text-[10px] font-bold transition-all active:scale-95"
+            className="px-2 py-0.5 bg-select hover:bg-dark-600 text-text-primary rounded border border-focus/40 text-[10px] font-bold transition-all active:scale-95"
             title="Wheel Click OK"
           >
             OK

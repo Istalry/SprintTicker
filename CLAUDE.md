@@ -980,6 +980,14 @@ shortcut that declares another AUMID. Two more things about it:
   `execPath` is a temp folder gone by the next login), and nothing from
   `pnpm dev`, whose `execPath` is a bare electron.exe.
 
+**The window's colours are tokens, and colour means something.** Green is
+running, amber is paused or waiting on the user, red is danger; everything
+else is grey (`tailwind.config.js`). There is no blue or purple token, and
+Tailwind draws nothing for a class it does not know -- no error, no
+warning -- which is how `accent-emerald`, `bg-dark-600` and an `animate-in`
+with no plugin all shipped unnoticed. Use a defined token, and grep for the
+class before trusting it. `font-mono` is for task keys and times only.
+
 ### Naming
 
 TypeScript uses `PascalCase` types, `camelCase` members, `_camelCase` private

@@ -98,7 +98,7 @@ export const InterruptShortcutCard: React.FC = () => {
             checked={status?.enabled ?? false}
             disabled={!status || recording}
             onChange={e => void apply(e.target.checked, accelerator)}
-            className="h-4 w-4 accent-accent-blue disabled:opacity-50"
+            className="h-4 w-4 accent-primary disabled:opacity-50"
           />
           <span>Use the shortcut</span>
         </label>
@@ -113,7 +113,7 @@ export const InterruptShortcutCard: React.FC = () => {
             autoFocus
             onKeyDown={onKeyDown}
             onBlur={() => void stopRecording()}
-            className="rounded border border-accent-blue bg-dark-900 px-3 py-1.5 font-mono text-accent-blue outline-none"
+            className="rounded border border-focus bg-dark-900 px-3 py-1.5 text-text-primary outline-none"
           >
             Press the keys… (Escape cancels)
           </span>

@@ -164,11 +164,11 @@ export const AnimationDebugPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-6 font-mono text-xs">
+    <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-6 text-xs">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-accent-purple" />
+          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+            <Sparkles className="w-4 h-4 text-text-primary" />
             <span>DISPLAY VISUALS & ANIMATION DEBUGGER</span>
           </h3>
           <p className="text-xs text-text-secondary mt-0.5">
@@ -177,7 +177,7 @@ export const AnimationDebugPanel: React.FC = () => {
         </div>
 
         {statusMessage && (
-          <div className="bg-accent-purple/20 text-accent-purple px-3 py-1 rounded-lg text-xs font-mono border border-accent-purple/40 animate-fade-in font-bold">
+          <div className="bg-select text-text-primary px-3 py-1 rounded-lg text-xs border border-focus/40 animate- font-bold">
             {statusMessage}
           </div>
         )}
@@ -187,7 +187,7 @@ export const AnimationDebugPanel: React.FC = () => {
       <div className="space-y-4">
         {/* Category A: Messaging Notifications */}
         <div>
-          <div className="text-[10px] text-text-secondary uppercase mb-2">1. Messaging Alerts (16×16 Icons + Masked Text)</div>
+          <div className="text-[10px] text-text-secondary mb-2">1. Messaging Alerts (16×16 Icons + Masked Text)</div>
           <div className="grid grid-cols-4 gap-2">
             <button onClick={triggerSlack} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <MessageSquare className="w-3.5 h-3.5 text-[#36C5F0]" />
@@ -210,14 +210,14 @@ export const AnimationDebugPanel: React.FC = () => {
 
         {/* Category B: Task Session Controls */}
         <div>
-          <div className="text-[10px] text-text-secondary uppercase mb-2">2. Task Session States & Confetti</div>
+          <div className="text-[10px] text-text-secondary mb-2">2. Task Session States & Confetti</div>
           <div className="grid grid-cols-4 gap-2">
             <button onClick={triggerResume} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
               <Play className="w-3.5 h-3.5 text-accent-green" />
               <span>Track / Resume</span>
             </button>
             <button onClick={triggerPause} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Pause className="w-3.5 h-3.5 text-accent-gold" />
+              <Pause className="w-3.5 h-3.5 text-accent-amber" />
               <span>Pause Task</span>
             </button>
             <button onClick={triggerConfetti} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
@@ -233,18 +233,18 @@ export const AnimationDebugPanel: React.FC = () => {
 
         {/* Category C: System & Schedule Modes */}
         <div>
-          <div className="text-[10px] text-text-secondary uppercase mb-2">3. System & Schedule Modes</div>
+          <div className="text-[10px] text-text-secondary mb-2">3. System & Schedule Modes</div>
           <div className="grid grid-cols-4 gap-2">
             <button onClick={triggerLunch} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Utensils className="w-3.5 h-3.5 text-accent-gold" />
+              <Utensils className="w-3.5 h-3.5 text-accent-amber" />
               <span>Lunch Break</span>
             </button>
             <button onClick={triggerAway} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Moon className="w-3.5 h-3.5 text-accent-purple" />
+              <Moon className="w-3.5 h-3.5 text-text-primary" />
               <span>Away Mode</span>
             </button>
             <button onClick={triggerEodPrompt} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Moon className="w-3.5 h-3.5 text-accent-purple" />
+              <Moon className="w-3.5 h-3.5 text-text-primary" />
               <span>EOD Prompt</span>
             </button>
             <button onClick={triggerStandupTask} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
@@ -256,7 +256,7 @@ export const AnimationDebugPanel: React.FC = () => {
               <span>EOD Complete</span>
             </button>
             <button onClick={triggerTaskSelection} className="p-2.5 bg-dark-900 hover:bg-dark-700 text-white rounded border border-border-dark text-left flex items-center space-x-2">
-              <Clock className="w-3.5 h-3.5 text-accent-blue" />
+              <Clock className="w-3.5 h-3.5 text-text-primary" />
               <span>Task Selection</span>
             </button>
           </div>

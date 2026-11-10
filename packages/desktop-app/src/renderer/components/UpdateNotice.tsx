@@ -33,12 +33,12 @@ export const UpdateBanner: React.FC = () => {
   if (dismissed || !status || status.status !== 'update-available') return null;
 
   return (
-    <div className="mb-4 flex items-center justify-between rounded-lg border border-accent-blue/40 bg-accent-blue/10 px-4 py-3">
+    <div className="mb-4 flex items-center justify-between rounded-lg border border-focus/40 bg-select px-4 py-3">
       <div className="flex items-center space-x-3">
-        <Download className="h-4 w-4 shrink-0 text-accent-blue" />
+        <Download className="h-4 w-4 shrink-0 text-text-primary" />
         <p className="text-sm text-text-primary">
           <span className="font-semibold">SprintTicker {status.latestVersion}</span> is available.
-          <span className="ml-2 font-mono text-xs text-text-secondary">
+          <span className="ml-2 text-xs text-text-secondary">
             You have {status.currentVersion}.
           </span>
         </p>
@@ -47,7 +47,7 @@ export const UpdateBanner: React.FC = () => {
         <button
           type="button"
           onClick={() => void window.electronAPI?.openReleasePage(status.releaseUrl)}
-          className="rounded bg-accent-blue px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-blue/80"
+          className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-dark-900 transition-colors hover:bg-primary/90"
         >
           View release
         </button>
@@ -110,7 +110,7 @@ export const UpdateSettingsCard: React.FC = () => {
             type="checkbox"
             checked={enabled}
             onChange={e => void toggle(e.target.checked)}
-            className="h-4 w-4 accent-accent-blue"
+            className="h-4 w-4 accent-primary"
           />
           <span>Check automatically</span>
         </label>
@@ -138,7 +138,7 @@ export const UpdateSettingsCard: React.FC = () => {
           <button
             type="button"
             onClick={() => void window.electronAPI?.openReleasePage(status.releaseUrl)}
-            className="text-xs font-semibold text-accent-blue hover:underline"
+            className="text-xs font-semibold text-text-primary hover:underline"
           >
             {status.latestVersion} is available — view release
           </button>

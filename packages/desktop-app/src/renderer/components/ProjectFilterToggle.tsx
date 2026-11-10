@@ -25,7 +25,7 @@ export const ProjectFilterToggle: React.FC<ProjectFilterToggleProps> = ({ enable
       type="checkbox"
       checked={enabled}
       onChange={e => onChange(e.target.checked)}
-      className="accent-accent-blue"
+      className="accent-primary"
     />
     <span>Only projects with tasks</span>
     {enabled && hiddenCount > 0 && (

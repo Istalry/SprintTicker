@@ -63,7 +63,7 @@ export const InlineRename: React.FC<InlineRenameProps> = ({ title, ownerId, onRe
       title="Name this work"
       aria-label={`Rename ${title}`}
       onClick={() => setEditing({ ownerId, text: title })}
-      className={`${className} group inline-flex items-center gap-1.5 text-left max-w-full hover:text-accent-blue`}
+      className={`${className} group inline-flex items-center gap-1.5 text-left max-w-full hover:text-text-primary`}
     >
       <span className="truncate">{title}</span>
       <Pencil className="w-3.5 h-3.5 shrink-0 opacity-50 group-hover:opacity-100" />

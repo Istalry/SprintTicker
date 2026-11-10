@@ -29,13 +29,13 @@ export const StandupPromptModal: React.FC<StandupPromptModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none font-mono">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark bg-dark-700/50">
           <div className="flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-accent-blue" />
-            <h3 className="text-md font-bold text-white font-mono">Daily Stand-Up Meeting</h3>
+            <Clock className="w-5 h-5 text-text-primary" />
+            <h3 className="text-md font-bold text-white">Daily Stand-Up Meeting</h3>
           </div>
           <button
             onClick={onClose}
@@ -72,7 +72,7 @@ export const StandupPromptModal: React.FC<StandupPromptModalProps> = ({
             </button>
             <button
               onClick={() => void onJoin()}
-              className="flex items-center space-x-1.5 px-4 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
+              className="flex items-center space-x-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
             >
               <Users className="w-3.5 h-3.5" />
               <span>Join</span>

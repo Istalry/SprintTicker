@@ -41,6 +41,13 @@
 
 ### Changed
 
+- **A quieter look, in greys.** The blue and purple accents are gone: the
+  window is grey, the main button of each screen is light grey, and colour
+  is left for meaning -- green running, amber paused or waiting on you, red
+  danger. A high-priority notification source now shows amber. Text is set
+  in Inter; only times and task keys stay in a fixed-width face, and
+  headings are no longer in tracked capitals. A few labels that drew in no
+  colour at all, through classes that did not exist, now draw as meant.
 - **The app names your provider.** Messages that said "Jira or OpenProject"
   now name the one you use -- "It is also deleted in Jira" -- and the
   provider choice reads OpenProject, Jira and *This computer* (formerly

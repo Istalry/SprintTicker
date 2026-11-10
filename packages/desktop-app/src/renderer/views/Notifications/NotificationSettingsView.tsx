@@ -227,12 +227,12 @@ export const NotificationSettingsView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 max-w-4xl font-mono">
+    <div className="space-y-6 max-w-4xl">
       {/* Title Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold font-mono text-white tracking-tight flex items-center space-x-2">
-            <Bell className="w-6 h-6 text-accent-purple" />
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
+            <Bell className="w-6 h-6 text-text-primary" />
             <span>WINDOWS NOTIFICATION LISTENER</span>
           </h2>
           <p className="text-xs text-text-secondary mt-1">
@@ -246,14 +246,14 @@ export const NotificationSettingsView: React.FC = () => {
       <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Shield className="w-5 h-5 text-accent-purple" />
+            <Shield className="w-5 h-5 text-text-primary" />
             <div>
               <h3 className="text-sm font-bold text-white flex items-center space-x-2">
                 <span>Enable Windows User Notification Listener</span>
                 {status.isListening && (
                   <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-emerald opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-emerald"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-green opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-green"></span>
                   </span>
                 )}
               </h3>
@@ -264,7 +264,7 @@ export const NotificationSettingsView: React.FC = () => {
             onClick={() => setSettings(prev => ({ ...prev, enableListener: !prev.enableListener }))}
             className={`px-4 py-2 text-xs font-bold rounded-lg border transition-all flex items-center space-x-2 ${
               settings.enableListener
-                ? 'bg-accent-emerald/20 border-accent-emerald/40 text-accent-emerald'
+                ? 'bg-accent-green/20 border-accent-green/40 text-accent-green'
                 : 'bg-dark-700 border-border-dark text-text-secondary'
             }`}
           >
@@ -278,14 +278,14 @@ export const NotificationSettingsView: React.FC = () => {
           <div className="flex items-center space-x-2">
             <div className="p-1.5 rounded bg-dark-800">
               {status.isListening ? (
-                <CheckCircle2 className="w-4 h-4 text-accent-emerald" />
+                <CheckCircle2 className="w-4 h-4 text-accent-green" />
               ) : (
                 <XCircle className="w-4 h-4 text-accent-red" />
               )}
             </div>
             <div>
-              <div className="text-[10px] text-text-secondary uppercase">Listener Status</div>
-              <div className={`font-bold ${status.isListening ? 'text-accent-emerald' : 'text-accent-red'}`}>
+              <div className="text-[10px] text-text-secondary">Listener Status</div>
+              <div className={`font-bold ${status.isListening ? 'text-accent-green' : 'text-accent-red'}`}>
                 {status.isListening ? 'Active (Listening)' : 'Stopped'}
               </div>
             </div>
@@ -293,11 +293,11 @@ export const NotificationSettingsView: React.FC = () => {
 
           <div className="flex items-center space-x-2">
             <div className="p-1.5 rounded bg-dark-800">
-              <Activity className="w-4 h-4 text-accent-blue" />
+              <Activity className="w-4 h-4 text-text-primary" />
             </div>
             <div>
-              <div className="text-[10px] text-text-secondary uppercase">Capture Strategy</div>
-              <div className="font-bold text-white font-mono">
+              <div className="text-[10px] text-text-secondary">Capture Strategy</div>
+              <div className="font-bold text-white">
                 {status.strategy === 'DB_POLLING' ? 'DB Polling (SQLite)' : status.strategy === 'WINRT' ? 'WinRT API' : 'Inactive'}
               </div>
             </div>
@@ -306,13 +306,13 @@ export const NotificationSettingsView: React.FC = () => {
           <div className="flex items-center space-x-2">
             <div className="p-1.5 rounded bg-dark-800">
               {status.hasSqlite3 && status.hasNotifDb ? (
-                <CheckCircle2 className="w-4 h-4 text-accent-emerald" />
+                <CheckCircle2 className="w-4 h-4 text-accent-green" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-accent-yellow" />
+                <AlertTriangle className="w-4 h-4 text-accent-amber" />
               )}
             </div>
             <div>
-              <div className="text-[10px] text-text-secondary uppercase">DB & SQLite Check</div>
+              <div className="text-[10px] text-text-secondary">DB & SQLite Check</div>
               <div className="font-bold text-white text-[11px]">
                 {status.hasSqlite3 ? 'sqlite3 OK' : 'sqlite3 Missing'} | {status.hasNotifDb ? 'wpndb OK' : 'wpndb Missing'}
               </div>
@@ -321,21 +321,21 @@ export const NotificationSettingsView: React.FC = () => {
 
           <div className="flex items-center space-x-2">
             <div className="p-1.5 rounded bg-dark-800">
-              <Bell className="w-4 h-4 text-accent-purple" />
+              <Bell className="w-4 h-4 text-text-primary" />
             </div>
             <div>
-              <div className="text-[10px] text-text-secondary uppercase">Processed Stats</div>
+              <div className="text-[10px] text-text-secondary">Processed Stats</div>
               <div className="font-bold text-white">
-                <span className="text-accent-emerald">{status.totalCaptured}</span> Captured / <span className="text-accent-yellow">{status.totalSuppressed}</span> Suppressed
+                <span className="text-accent-green">{status.totalCaptured}</span> Captured / <span className="text-accent-amber">{status.totalSuppressed}</span> Suppressed
               </div>
             </div>
           </div>
         </div>
 
         {/* Windows Privacy & Authorization Helper Banner */}
-        <div className="bg-dark-900/80 border border-accent-purple/30 rounded-lg p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div className="bg-dark-900/80 border border-focus/30 rounded-lg p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-accent-purple/10 text-accent-purple">
+            <div className="p-2 rounded-lg bg-select text-text-primary">
               <Shield className="w-5 h-5" />
             </div>
             <div>
@@ -349,7 +349,7 @@ export const NotificationSettingsView: React.FC = () => {
           </div>
           <button
             onClick={() => window.electronAPI?.openNotificationSettings?.()}
-            className="w-full md:w-auto px-4 py-2 bg-accent-purple hover:bg-purple-600 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-accent-purple/20 flex items-center justify-center space-x-2 whitespace-nowrap cursor-pointer"
+            className="w-full md:w-auto px-4 py-2 bg-primary hover:bg-primary/90 text-dark-900 font-bold text-xs rounded-lg transition-all shadow-md shadow-black/20 flex items-center justify-center space-x-2 whitespace-nowrap cursor-pointer"
           >
             <Shield className="w-4 h-4" />
             <span>GRANT WINDOWS ACCESS</span>
@@ -360,7 +360,7 @@ export const NotificationSettingsView: React.FC = () => {
         <div className="pt-4 border-t border-border-dark grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center justify-between bg-dark-900/50 p-3 rounded-lg border border-border-dark/40">
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Display Duration</h4>
+              <h4 className="text-xs font-bold text-white">Display Duration</h4>
               <p className="text-[11px] text-text-secondary">Banner auto-dismiss time</p>
             </div>
             <div className="flex items-center space-x-2">
@@ -370,15 +370,15 @@ export const NotificationSettingsView: React.FC = () => {
                 max={60}
                 value={settings.notificationTimeoutSeconds || 10}
                 onChange={e => setSettings(prev => ({ ...prev, notificationTimeoutSeconds: Math.max(3, Math.min(60, Number(e.target.value))) }))}
-                className="w-16 bg-dark-900 text-white font-mono font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none focus:border-accent-purple text-center"
+                className="w-16 bg-dark-900 text-white font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none focus:border-focus text-center"
               />
-              <span className="text-xs text-text-secondary font-mono">Sec</span>
+              <span className="text-xs text-text-secondary">Sec</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between bg-dark-900/50 p-3 rounded-lg border border-border-dark/40">
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Polling Interval</h4>
+              <h4 className="text-xs font-bold text-white">Polling Interval</h4>
               <p className="text-[11px] text-text-secondary">How often Windows&apos; notifications are read</p>
             </div>
             <div className="flex items-center space-x-2">
@@ -388,9 +388,9 @@ export const NotificationSettingsView: React.FC = () => {
                 max={10}
                 value={settings.pollingIntervalSeconds || 2}
                 onChange={e => setSettings(prev => ({ ...prev, pollingIntervalSeconds: Math.max(1, Math.min(10, Number(e.target.value))) }))}
-                className="w-16 bg-dark-900 text-white font-mono font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none focus:border-accent-purple text-center"
+                className="w-16 bg-dark-900 text-white font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none focus:border-focus text-center"
               />
-              <span className="text-xs text-text-secondary font-mono">Sec</span>
+              <span className="text-xs text-text-secondary">Sec</span>
             </div>
           </div>
         </div>
@@ -398,9 +398,9 @@ export const NotificationSettingsView: React.FC = () => {
 
       {/* Per-Source Notification Rules */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Per-Source Notification Priority Rules</h3>
+        <h3 className="text-sm font-bold text-white">Per-Source Notification Priority Rules</h3>
         <p className="text-xs text-text-secondary">
-          Assign priority levels for each application source: <strong className="text-accent-red">Don&apos;t Show</strong> (suppress), <strong className="text-accent-blue">Default</strong> (level {defaultScore}), or <strong className="text-accent-purple">High Priority</strong> (level {highScore}).
+          Assign priority levels for each application source: <strong className="text-accent-red">Don&apos;t Show</strong> (suppress), <strong className="text-text-primary">Default</strong> (level {defaultScore}), or <strong className="text-accent-amber">High Priority</strong> (level {highScore}).
         </p>
 
         <div className="space-y-3">
@@ -428,7 +428,7 @@ export const NotificationSettingsView: React.FC = () => {
                 </span>
                 <div>
                   <div className="text-xs font-bold text-white">{rule.appName}</div>
-                  <div className="text-[10px] text-text-secondary font-mono">{rule.appId}</div>
+                  <div className="text-[10px] text-text-secondary">{rule.appId}</div>
                 </div>
               </div>
 
@@ -448,7 +448,7 @@ export const NotificationSettingsView: React.FC = () => {
                   onClick={() => updateRuleMode(rule.appId, 'DEFAULT')}
                   className={`px-3 py-1 text-[11px] font-bold rounded transition-all ${
                     rule.priorityMode === 'DEFAULT'
-                      ? 'bg-accent-blue/20 border border-accent-blue/40 text-accent-blue'
+                      ? 'bg-select border border-focus/40 text-text-primary'
                       : 'bg-dark-800 text-text-secondary hover:text-white border border-border-dark'
                   }`}
                 >
@@ -458,7 +458,7 @@ export const NotificationSettingsView: React.FC = () => {
                   onClick={() => updateRuleMode(rule.appId, 'HIGH_PRIORITY')}
                   className={`px-3 py-1 text-[11px] font-bold rounded transition-all ${
                     rule.priorityMode === 'HIGH_PRIORITY'
-                      ? 'bg-accent-purple/20 border border-accent-purple/40 text-accent-purple'
+                      ? 'bg-accent-amber/15 border border-accent-amber/40 text-accent-amber'
                       : 'bg-dark-800 text-text-secondary hover:text-white border border-border-dark'
                   }`}
                 >
@@ -468,7 +468,7 @@ export const NotificationSettingsView: React.FC = () => {
                 <button
                   onClick={() => handleTestNotification(rule)}
                   title="Send Test Notification"
-                  className="p-1.5 bg-dark-800 hover:bg-dark-700 text-accent-purple rounded border border-border-dark transition-all"
+                  className="p-1.5 bg-dark-800 hover:bg-dark-700 text-text-primary rounded border border-border-dark transition-all"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
@@ -488,15 +488,15 @@ export const NotificationSettingsView: React.FC = () => {
                   type="checkbox"
                   checked={rule.hideMessageBody === true}
                   onChange={e => updateRulePrivacy(rule.appId, e.target.checked)}
-                  className="accent-accent-purple"
+                  className="accent-primary"
                 />
-                <span className="text-[10px] font-mono text-text-secondary">
+                <span className="text-[10px] text-text-secondary">
                   Hide message text on the bar (show sender and &quot;New message&quot; only)
                 </span>
               </label>
 
               <div className="flex items-center space-x-2">
-                <label className="text-[10px] font-mono text-text-secondary whitespace-nowrap">
+                <label className="text-[10px] text-text-secondary whitespace-nowrap">
                   Icon override
                 </label>
                 <input
@@ -504,7 +504,7 @@ export const NotificationSettingsView: React.FC = () => {
                   value={rule.iconImagePath ?? ''}
                   onChange={e => updateRuleIcon(rule.appId, e.target.value)}
                   placeholder="Optional: a 16×16 PNG to show instead of the app's icon"
-                  className="flex-1 px-2 py-1 bg-dark-800 border border-border-dark rounded text-[10px] font-mono text-white placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-purple"
+                  className="flex-1 px-2 py-1 bg-dark-800 border border-border-dark rounded text-[10px] text-white placeholder:text-text-secondary/50 focus:outline-none focus:border-focus"
                 />
               </div>
             </div>
@@ -513,26 +513,26 @@ export const NotificationSettingsView: React.FC = () => {
 
         {/* Add New Source Rule */}
         <div className="pt-4 border-t border-border-dark">
-          <h4 className="text-xs font-bold text-text-secondary mb-3 uppercase tracking-wider">Add Custom Notification Source</h4>
+          <h4 className="text-xs font-bold text-text-secondary mb-3">Add Custom Notification Source</h4>
           <div className="flex items-center space-x-3">
             <input
               type="text"
               placeholder="App ID (e.g. chrome, outlook)"
               value={newAppId}
               onChange={e => setNewAppId(e.target.value)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-accent-purple flex-1 font-mono"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus flex-1"
             />
             <input
               type="text"
               placeholder="Display Name (e.g. Google Chrome)"
               value={newAppName}
               onChange={e => setNewAppName(e.target.value)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-accent-purple flex-1 font-mono"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus flex-1"
             />
             <select
               value={newIconId}
               onChange={e => setNewIconId(e.target.value as BitmapIconId)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-accent-purple font-mono"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus"
             >
               <option value="bell">Icon: Bell</option>
               <option value="discord">Icon: Discord</option>
@@ -545,7 +545,7 @@ export const NotificationSettingsView: React.FC = () => {
             <select
               value={newPriorityMode}
               onChange={e => setNewPriorityMode(e.target.value as NotificationPriorityMode)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-accent-purple font-mono"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus"
             >
               <option value="DONT_SHOW">Don&apos;t Show</option>
               <option value="DEFAULT">Default</option>
@@ -567,9 +567,9 @@ export const NotificationSettingsView: React.FC = () => {
         {/* Terminal Header */}
         <div className="bg-dark-900 px-4 py-2.5 border-b border-border-dark flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Terminal className="w-4 h-4 text-accent-purple" />
+            <Terminal className="w-4 h-4 text-text-primary" />
             <span className="text-xs font-bold text-white tracking-wider">NOTIFICATION LISTENER DEBUG LOGS</span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-dark-800 text-text-secondary border border-border-dark font-mono">
+            <span className="text-[10px] px-2 py-0.5 rounded bg-dark-800 text-text-secondary border border-border-dark">
               {logs.length} entries
             </span>
           </div>
@@ -583,7 +583,7 @@ export const NotificationSettingsView: React.FC = () => {
                   onClick={() => setLogFilter(filterOption)}
                   className={`px-2 py-0.5 rounded font-bold transition-all ${
                     logFilter === filterOption
-                      ? 'bg-accent-purple text-white'
+                      ? 'bg-primary text-dark-900'
                       : 'text-text-secondary hover:text-white'
                   }`}
                 >
@@ -597,7 +597,7 @@ export const NotificationSettingsView: React.FC = () => {
               onClick={() => setAutoScroll(prev => !prev)}
               className={`px-2 py-0.5 text-[10px] font-bold rounded border transition-all ${
                 autoScroll
-                  ? 'bg-accent-emerald/20 border-accent-emerald/40 text-accent-emerald'
+                  ? 'bg-accent-green/20 border-accent-green/40 text-accent-green'
                   : 'bg-dark-800 border-border-dark text-text-secondary'
               }`}
             >
@@ -627,7 +627,7 @@ export const NotificationSettingsView: React.FC = () => {
         {/* Terminal Body Log Box */}
         <div
           ref={logContainerRef}
-          className="p-4 font-mono text-[11px] leading-relaxed max-h-72 overflow-y-auto space-y-1.5 selection:bg-accent-purple selection:text-white"
+          className="p-4 text-[11px] leading-relaxed max-h-72 overflow-y-auto space-y-1.5 selection:bg-dark-600 selection:text-white"
         >
           {filteredLogs.length === 0 ? (
             <div className="text-text-secondary/60 italic py-4 text-center">
@@ -636,18 +636,18 @@ export const NotificationSettingsView: React.FC = () => {
           ) : (
             filteredLogs.map((log, idx) => {
               const timeStr = log.timestamp ? formatClockTime(new Date(log.timestamp)) : '';
-              let badgeColor = 'text-accent-blue bg-accent-blue/10 border-accent-blue/30';
-              if (log.level === 'notification') badgeColor = 'text-accent-emerald bg-accent-emerald/10 border-accent-emerald/30';
-              if (log.level === 'warn') badgeColor = 'text-accent-yellow bg-accent-yellow/10 border-accent-yellow/30';
+              let badgeColor = 'text-text-primary bg-select border-focus/30';
+              if (log.level === 'notification') badgeColor = 'text-accent-green bg-accent-green/10 border-accent-green/30';
+              if (log.level === 'warn') badgeColor = 'text-accent-amber bg-accent-amber/10 border-accent-amber/30';
               if (log.level === 'error') badgeColor = 'text-accent-red bg-accent-red/10 border-accent-red/30';
 
               return (
-                <div key={idx} className="flex items-start space-x-2 font-mono hover:bg-dark-900/50 p-0.5 rounded">
+                <div key={idx} className="flex items-start space-x-2 hover:bg-dark-900/50 p-0.5 rounded">
                   <span className="text-text-secondary/50 text-[10px] shrink-0 font-mono select-none">{timeStr}</span>
                   <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${badgeColor} shrink-0 select-none`}>
                     {log.level}
                   </span>
-                  <span className="text-slate-200 break-all">{log.message}</span>
+                  <span className="text-text-primary break-all">{log.message}</span>
                 </div>
               );
             })

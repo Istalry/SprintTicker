@@ -108,8 +108,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold font-mono text-white tracking-tight flex items-center space-x-2">
-            <Monitor className="w-5 h-5 text-accent-blue" />
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
+            <Monitor className="w-5 h-5 text-text-primary" />
             <span>BUSY BAR DEVICE DIAGNOSTICS & TELEMETRY</span>
           </h2>
           <p className="text-xs text-text-secondary">Inspect hardware connection topology, real-time WebSocket latency, battery health, and display properties.</p>
@@ -122,7 +122,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                 await window.electronAPI.exportDiagnosticLogs();
               }
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-accent-blue font-mono text-xs rounded-lg border border-border-dark transition-all"
+            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-text-primary text-xs rounded-lg border border-border-dark transition-all"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export Logs</span>
@@ -133,7 +133,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                 window.electronAPI.getDeviceStatus();
               }
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-white font-mono text-xs rounded-lg border border-border-dark transition-all"
+            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-white text-xs rounded-lg border border-border-dark transition-all"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Refresh Status</span>
@@ -143,8 +143,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {!hasBar && (
         <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-3">
-          <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
-            <Monitor className="w-4 h-4 text-accent-blue" />
+          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+            <Monitor className="w-4 h-4 text-text-primary" />
             <span>No BUSY Bar on this machine</span>
           </h3>
           <p className="text-xs text-text-secondary">
@@ -155,7 +155,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
           <button
             type="button"
             onClick={() => { void setBarEnabled(true); }}
-            className="px-3 py-1.5 text-xs font-bold rounded bg-accent-blue text-white"
+            className="px-3 py-1.5 text-xs font-bold rounded bg-primary text-dark-900"
           >
             Add a BUSY Bar
           </button>
@@ -165,7 +165,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {hasBar && (<>
       {/* Grid Status Cards */}
-      <div className="grid grid-cols-4 gap-4 font-mono">
+      <div className="grid grid-cols-4 gap-4">
         <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Status</span>
@@ -191,7 +191,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
         <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Battery Level</span>
-            <Battery className={`w-4 h-4 ${deviceStatus.connected ? 'text-accent-blue' : 'text-text-secondary'}`} />
+            <Battery className={`w-4 h-4 ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`} />
           </div>
           <div className={`text-lg font-bold ${deviceStatus.connected ? 'text-white' : 'text-text-secondary'}`}>
             {deviceStatus.connected ? `${deviceStatus.batteryPercent}%` : 'N/A'}
@@ -202,7 +202,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
         <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Firmware</span>
-            <Cpu className={`w-4 h-4 ${deviceStatus.connected ? 'text-accent-purple' : 'text-text-secondary'}`} />
+            <Cpu className={`w-4 h-4 ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`} />
           </div>
           <div className={`text-lg font-bold ${deviceStatus.connected ? 'text-white' : 'text-text-secondary'}`}>
             {deviceStatus.connected ? `v${deviceStatus.firmwareVersion}` : 'N/A'}
@@ -213,7 +213,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {/* Display health: what came before every measured hang of the bar. */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
-        <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
+        <h3 className="text-sm font-bold text-white flex items-center space-x-2">
           <Activity className={`w-4 h-4 ${deviceStatus.displayHealth.latencyWarning ? 'text-accent-red' : 'text-accent-green'}`} />
           <span>Display Health</span>
         </h3>
@@ -223,7 +223,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
             measured. If the bar stops answering, export the logs below before restarting it.
           </p>
         )}
-        <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary">Upload time (median):</span>
             <span className={`font-bold ${deviceStatus.displayHealth.latencyWarning ? 'text-accent-red' : 'text-white'}`}>
@@ -247,15 +247,15 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {/* Hardware Telemetry Detail Panel */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
-        <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
-          <HardDrive className="w-4 h-4 text-accent-blue" />
+        <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+          <HardDrive className="w-4 h-4 text-text-primary" />
           <span>Display</span>
         </h3>
 
-        <div className="space-y-3 font-mono text-xs">
+        <div className="space-y-3 text-xs">
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary">Front display brightness</span>
-            <span className={`font-bold ${deviceStatus.connected ? 'text-accent-blue' : 'text-text-secondary'}`}>
+            <span className={`font-bold ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`}>
               {!deviceStatus.connected
                 ? 'Off (Disconnected)'
                 : deviceStatus.frontBrightness === null
@@ -266,7 +266,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary">Rear display brightness</span>
-            <span className={`font-bold ${deviceStatus.connected ? 'text-accent-purple' : 'text-text-secondary'}`}>
+            <span className={`font-bold ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`}>
               {!deviceStatus.connected
                 ? 'Off (Disconnected)'
                 : deviceStatus.backBrightness === null
@@ -286,7 +286,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                 window.electronAPI?.setColorTheme(next)
                   .catch(err => console.error('[DeviceDiagnostics] setColorTheme failed:', err));
               }}
-              className="bg-dark-800 text-accent-blue font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
+              className="bg-dark-800 text-text-primary font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
             >
               {COLOR_THEMES.map(theme => (
                 <option key={theme.id} value={theme.id}>{theme.label}</option>
@@ -295,28 +295,28 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
 
           <div className="bg-dark-900 p-3 rounded-lg border border-border-dark space-y-3">
-            <div className="flex items-center space-x-2 text-accent-blue">
+            <div className="flex items-center space-x-2 text-text-primary">
               <Network className="w-4 h-4" />
-              <span className="text-xs font-bold font-mono uppercase tracking-wider">Connection</span>
+              <span className="text-xs font-bold">Connection</span>
             </div>
-            <p className="text-[10px] text-dark-400 leading-relaxed">
-              Over USB the bar answers on <span className="font-mono">{DEFAULT_USB_IP}</span>. Change this
+            <p className="text-[10px] text-text-muted leading-relaxed">
+              Over USB the bar answers on <span className="">{DEFAULT_USB_IP}</span>. Change this
               for a bar on Wi-Fi, or when the USB network interface will not start and you are reaching
               the device through a proxy on another address.
             </p>
 
             <label className="block">
-              <span className="text-[10px] uppercase tracking-wider text-text-secondary">Device address</span>
+              <span className="text-[10px] text-text-secondary">Device address</span>
               <input
                 type="text"
                 value={addressDraft}
                 spellCheck={false}
                 onChange={(e) => { setAddressDraft(e.target.value); setApplyResult(null); }}
                 placeholder={DEFAULT_USB_IP}
-                className={`mt-1 w-full bg-dark-800 border rounded px-2 py-1.5 text-sm font-mono text-text-primary focus:outline-none focus:ring-1 ${
+                className={`mt-1 w-full bg-dark-800 border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 ${
                   addressDraft.length > 0 && !addressValid
                     ? 'border-accent-red focus:ring-accent-red'
-                    : 'border-border-dark focus:ring-accent-blue'
+                    : 'border-border-dark focus:ring-focus'
                 }`}
               />
               {addressDraft.length > 0 && !addressValid && (
@@ -327,8 +327,8 @@ export const DeviceDiagnosticsView: React.FC = () => {
             </label>
 
             <label className="block">
-              <span className="text-[10px] uppercase tracking-wider text-text-secondary">
-                API token <span className="text-dark-400 normal-case tracking-normal">— leave empty for USB</span>
+              <span className="text-[10px] text-text-secondary">
+                API token <span className="text-text-muted normal-case tracking-normal">— leave empty for USB</span>
               </span>
               <div className="mt-1 flex items-center space-x-2">
                 <input
@@ -338,7 +338,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                   autoComplete="off"
                   onChange={(e) => { setTokenDraft(e.target.value); setApplyResult(null); }}
                   placeholder="Required only if the device has access protection enabled"
-                  className="flex-1 min-w-0 bg-dark-800 border border-border-dark rounded px-2 py-1.5 text-sm font-mono text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-blue"
+                  className="flex-1 min-w-0 bg-dark-800 border border-border-dark rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-focus"
                 />
                 <button
                   type="button"
@@ -357,7 +357,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                 type="button"
                 disabled={!connectionDirty || !addressValid || applying}
                 onClick={() => { void applyConnectionSettings(); }}
-                className="px-3 py-1.5 text-xs font-bold rounded bg-accent-blue text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs font-bold rounded bg-primary text-dark-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {applying ? 'Reconnecting...' : 'Save & Reconnect'}
               </button>
@@ -382,7 +382,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary flex flex-col">
               <span>Show the bar&apos;s own clock when idle</span>
-              <span className="text-[10px] text-dark-400">With no task running, SprintTicker hands the display back and the bar shows its clock.</span>
+              <span className="text-[10px] text-text-muted">With no task running, SprintTicker hands the display back and the bar shows its clock.</span>
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -401,14 +401,14 @@ export const DeviceDiagnosticsView: React.FC = () => {
                   }
                 }}
               />
-              <div className="w-9 h-5 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-blue"></div>
+              <div className="w-9 h-5 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-dark-900 peer-checked:after:bg-dark-900 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-dark after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
 
           <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
             <span className="text-text-secondary flex flex-col">
               <span>No BUSY Bar on this machine?</span>
-              <span className="text-[10px] text-dark-400">Stops dialling the bar and hides its screens. Reversible here at any time.</span>
+              <span className="text-[10px] text-text-muted">Stops dialling the bar and hides its screens. Reversible here at any time.</span>
             </span>
             <button
               type="button"
@@ -423,7 +423,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
       </div>
 
       {activeTestLog && (
-        <div className="bg-accent-blue/10 border border-accent-blue/40 text-accent-blue font-mono text-xs p-3 rounded-lg flex items-center justify-between animate-fade-in">
+        <div className="bg-select border border-focus/40 text-text-primary text-xs p-3 rounded-lg flex items-center justify-between animate-">
           <div className="flex items-center space-x-2">
             <Activity className="w-4 h-4 animate-spin" />
             <span className="font-bold">{activeTestLog}</span>
@@ -434,9 +434,9 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {/* Notification Debug Panel */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-        <div className="flex items-center space-x-2 text-accent-purple">
+        <div className="flex items-center space-x-2 text-text-primary">
           <Bell className="w-5 h-5" />
-          <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Windows Notification Debug Triggers</h3>
+          <h3 className="text-sm font-bold">Windows Notification Debug Triggers</h3>
         </div>
         <p className="text-xs text-text-secondary">
           Dispatch simulated Windows system &amp; application notifications to verify left-icon centered 15x15 rasterization and priority preemption rules.
@@ -456,7 +456,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
               }
               setTimeout(() => setActiveTestLog(null), 3000);
             }}
-            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-purple text-xs font-bold border border-border-dark rounded-lg transition-all"
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-text-primary text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
             <span>💬 Test Discord</span>
           </button>
@@ -474,7 +474,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
               }
               setTimeout(() => setActiveTestLog(null), 3000);
             }}
-            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-emerald text-xs font-bold border border-border-dark rounded-lg transition-all"
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-green text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
             <span># Test Slack</span>
           </button>
@@ -492,7 +492,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
               }
               setTimeout(() => setActiveTestLog(null), 3000);
             }}
-            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-blue text-xs font-bold border border-border-dark rounded-lg transition-all"
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-text-primary text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
             <span>🌀 Test Antigravity</span>
           </button>
@@ -529,7 +529,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
               }
               setTimeout(() => setActiveTestLog(null), 3000);
             }}
-            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-accent-cyan text-xs font-bold border border-border-dark rounded-lg transition-all"
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-text-primary text-xs font-bold border border-border-dark rounded-lg transition-all"
           >
             <span>✂️ Test Screenshot</span>
           </button>
@@ -541,22 +541,22 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {/* Hardware Input Stream Console */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-        <div className="flex items-center space-x-2 text-accent-blue">
+        <div className="flex items-center space-x-2 text-text-primary">
           <Keyboard className="w-5 h-5" />
-          <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Hardware Input Stream Console</h3>
+          <h3 className="text-sm font-bold">Hardware Input Stream Console</h3>
         </div>
         <p className="text-xs text-text-secondary">
           Live stream of physical hardware button presses received via WebSocket telemetry over USB or Wi-Fi.
         </p>
-        <div className="bg-dark-900 border border-dark-700 rounded-lg h-40 overflow-y-auto p-3 font-mono text-[11px] space-y-1 shadow-inner">
+        <div className="bg-dark-900 border border-dark-700 rounded-lg h-40 overflow-y-auto p-3 text-[11px] space-y-1 shadow-inner">
           {hardwareLogs.length === 0 ? (
-            <div className="text-dark-500 italic">Waiting for physical hardware inputs... Press a button on the BUSY Bar.</div>
+            <div className="text-text-muted italic">Waiting for physical hardware inputs... Press a button on the BUSY Bar.</div>
           ) : (
             hardwareLogs.map((log, i) => (
               <div key={i} className="flex items-center gap-3">
-                <span className="text-dark-400">[{log.time}]</span>
-                <span className="px-1.5 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-800 font-bold">INPUT</span>
-                <span className="text-text-primary">Key: <strong className="text-accent-blue">{log.key.toUpperCase()}</strong></span>
+                <span className="text-text-muted">[{log.time}]</span>
+                <span className="px-1.5 py-0.5 rounded bg-select text-text-primary border border-border-dark font-bold">INPUT</span>
+                <span className="text-text-primary">Key: <strong className="text-text-primary">{log.key.toUpperCase()}</strong></span>
                 <span className="text-text-secondary ml-4">Assigned Action: {log.action}</span>
               </div>
             ))
@@ -576,7 +576,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
       <div className="bg-dark-800 border border-accent-red/30 rounded-xl p-6 space-y-4">
         <div className="flex items-center space-x-2 text-accent-red">
           <AlertTriangle className="w-5 h-5" />
-          <h3 className="text-sm font-bold font-mono uppercase tracking-wider">Danger Zone - Factory Reset</h3>
+          <h3 className="text-sm font-bold">Danger Zone - Factory Reset</h3>
         </div>
         <p className="text-xs text-text-secondary">
           Permanently delete all projects, tasks, sessions, and worklog history from the local SQLite database.
@@ -607,7 +607,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
                 }
               }}
               disabled={wiping}
-              className="px-3 py-1.5 bg-accent-red hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all"
+              className="px-3 py-1.5 bg-accent-red hover:bg-accent-red/90 text-white text-xs font-bold rounded-lg transition-all"
             >
               {wiping ? 'Wiping...' : 'Yes, Wipe Everything'}
             </button>

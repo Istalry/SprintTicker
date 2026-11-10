@@ -53,11 +53,11 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
       <section className="bg-dark-800 rounded-xl border border-border-dark p-6 space-y-6 shadow-xl select-none">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <span className="bg-accent-blue/20 text-accent-blue px-3 py-1 rounded-md text-xs font-mono font-bold">
+            <span className="bg-select text-text-primary px-3 py-1 rounded-md text-xs font-bold">
               CURRENT SESSION
             </span>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold font-mono ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
                 session?.status === 'TRACKING'
                   ? 'bg-accent-green/20 text-accent-green border border-accent-green/30'
                   : session?.status === 'PAUSED'
@@ -72,8 +72,8 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
 
         <div>
           {session && (
-            <div className="text-xs font-mono text-text-secondary mb-1 flex items-center gap-1">
-              <span>{session.taskKey}</span>
+            <div className="text-xs text-text-secondary mb-1 flex items-center gap-1">
+              <span className="font-mono">{session.taskKey}</span>
               {hasTaskPage(session.isAdHoc ? ADHOC_PROJECT_ID : session.projectId, session.providerId) && (
                 <TaskPageButton taskId={session.taskId} taskKey={session.taskKey} />
               )}
@@ -84,21 +84,21 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               <SessionTitle
                 session={session}
                 className="text-xl font-bold text-white tracking-tight"
-                inputClassName="w-full bg-dark-900 border border-accent-blue rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none font-sans"
+                inputClassName="w-full bg-dark-900 border border-focus rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none font-sans"
               />
             ) : (
               'No task running'
             )}
           </h2>
           {session?.unsorted && (
-            <div className="mt-1 text-xs font-mono text-accent-amber">
+            <div className="mt-1 text-xs text-accent-amber">
               Interruption -- name it, or assign it to a task so its time reaches your provider.
             </div>
           )}
           {session?.taskUnlisted && (
             <div
               role="status"
-              className="mt-2 inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-xs font-mono"
+              className="mt-2 inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-xs"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>{taskLeftLabel(session.taskLeftBecause, session.taskOwnerName)} -- time is still logged</span>
@@ -107,7 +107,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         </div>
 
         <div className="flex items-baseline space-x-4 bg-dark-900 p-4 rounded-lg border border-border-dark">
-          <span className="text-xs font-mono text-text-secondary uppercase">Elapsed Time:</span>
+          <span className="text-xs text-text-secondary">Elapsed Time:</span>
           <span className="text-4xl font-extrabold font-mono text-white tracking-widest">
             {formatSeconds(session?.elapsedSeconds || 0)}
           </span>
@@ -118,7 +118,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           {!session ? (
             <button
               onClick={onOpenTaskModal}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-green hover:bg-emerald-600 text-dark-900 transition-all shadow-md"
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-green hover:bg-accent-green/90 text-dark-900 transition-all shadow-md"
             >
               <Play className="w-4 h-4" />
               <span>Start a Task</span>
@@ -126,7 +126,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           ) : session.status === 'TRACKING' ? (
             <button
               onClick={onPause}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-amber hover:bg-amber-600 text-dark-900 transition-all shadow-md"
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-amber hover:bg-accent-amber/90 text-dark-900 transition-all shadow-md"
             >
               <Pause className="w-4 h-4" />
               <span>Pause</span>
@@ -134,7 +134,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           ) : (
             <button
               onClick={onResume}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-md bg-accent-green hover:bg-emerald-600 text-dark-900"
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-md bg-accent-green hover:bg-accent-green/90 text-dark-900"
             >
               <Play className="w-4 h-4" />
               <span>Resume</span>
@@ -174,7 +174,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           {session && (
             <button
               onClick={onOpenTaskModal}
-              className="flex items-center space-x-2 px-5 py-2.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue rounded-lg font-semibold text-sm border border-accent-blue/30 transition-all"
+              className="flex items-center space-x-2 px-5 py-2.5 bg-select hover:bg-dark-600 text-text-primary rounded-lg font-semibold text-sm border border-focus/30 transition-all"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Switch Task</span>

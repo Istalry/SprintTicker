@@ -57,7 +57,7 @@ export const LaunchAtLoginCard: React.FC = () => {
             checked={status?.enabled ?? false}
             disabled={!status || !status.available}
             onChange={e => void toggle(e.target.checked)}
-            className="h-4 w-4 accent-accent-blue disabled:opacity-50"
+            className="h-4 w-4 accent-primary disabled:opacity-50"
           />
           <span>Start at sign-in</span>
         </label>

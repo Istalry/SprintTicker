@@ -174,7 +174,7 @@ export const WorklogHistoryView: React.FC = () => {
   const formatDuration = formatHoursAndMinutes;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6 select-none font-mono">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 select-none">
       {/* Header & Date Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border-dark pb-6">
         <div>
@@ -193,7 +193,7 @@ export const WorklogHistoryView: React.FC = () => {
           </button>
 
           <div className="flex items-center space-x-2 px-2">
-            <Calendar className="w-4 h-4 text-accent-blue" />
+            <Calendar className="w-4 h-4 text-text-primary" />
             <input
               type="date"
               value={selectedDate}
@@ -228,7 +228,7 @@ export const WorklogHistoryView: React.FC = () => {
                   ownerId={item.taskId}
                   onRename={name => renameTask(item.taskId, name)}
                   className="font-bold text-white"
-                  inputClassName="flex-1 bg-dark-800 border border-accent-blue rounded px-2 py-0.5 text-white outline-none"
+                  inputClassName="flex-1 bg-dark-800 border border-focus rounded px-2 py-0.5 text-white outline-none"
                 />
                 <div className="flex items-center gap-3 shrink-0">
                   <button
@@ -236,7 +236,7 @@ export const WorklogHistoryView: React.FC = () => {
                     aria-label={`Assign ${item.title} to a task`}
                     title="Assign to a task: its time goes to that task's provider"
                     onClick={() => startMove(unsorted.filter(log => log.taskId === item.taskId), item.title)}
-                    className="flex items-center gap-1 px-2 py-0.5 border border-border-dark rounded text-text-secondary hover:text-white hover:border-accent-blue"
+                    className="flex items-center gap-1 px-2 py-0.5 border border-border-dark rounded text-text-secondary hover:text-white hover:border-focus"
                   >
                     <Link2 className="w-3.5 h-3.5" />
                     <span>Assign</span>
@@ -248,7 +248,7 @@ export const WorklogHistoryView: React.FC = () => {
                   >
                     {formatDay(item.dateKey)}
                   </button>
-                  <span className="font-bold text-accent-blue">{formatDuration(item.totalSeconds)}</span>
+                  <span className="font-mono font-bold text-text-primary">{formatDuration(item.totalSeconds)}</span>
                 </div>
               </div>
             ))}
@@ -265,7 +265,7 @@ export const WorklogHistoryView: React.FC = () => {
         <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-2">
           <div className="flex items-center justify-between text-text-secondary text-xs">
             <span>Total Logged Time</span>
-            <Clock className="w-4 h-4 text-accent-blue" />
+            <Clock className="w-4 h-4 text-text-primary" />
           </div>
           <div className="text-2xl font-bold text-white font-mono">
             {formatDuration(summary.totalSeconds)}
@@ -274,11 +274,11 @@ export const WorklogHistoryView: React.FC = () => {
         </div>
 
         <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-2">
-          <div className="flex items-center justify-between text-text-text-secondary text-xs">
+          <div className="flex items-center justify-between text-text-secondary text-xs">
             <span>Tasks Worked On</span>
             <CheckCircle2 className="w-4 h-4 text-accent-green" />
           </div>
-          <div className="text-2xl font-bold text-white font-mono">
+          <div className="text-2xl font-bold text-white">
             {countOf(summary.tasksCount, 'task')}
           </div>
           <div className="text-[10px] text-text-secondary">Itemized task logs</div>
@@ -287,9 +287,9 @@ export const WorklogHistoryView: React.FC = () => {
         <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-2">
           <div className="flex items-center justify-between text-text-secondary text-xs">
             <span>Logged Sessions</span>
-            <FileText className="w-4 h-4 text-accent-purple" />
+            <FileText className="w-4 h-4 text-text-primary" />
           </div>
-          <div className="text-2xl font-bold text-white font-mono">
+          <div className="text-2xl font-bold text-white">
             {countOf(worklogs.length, 'session')}
           </div>
           <div className="text-[10px] text-text-secondary">Completed tracking sessions</div>
@@ -298,7 +298,7 @@ export const WorklogHistoryView: React.FC = () => {
 
       {/* Task Summary Breakdown Section */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+        <h3 className="text-sm font-bold text-white">
           Task Duration Breakdown
         </h3>
 
@@ -310,13 +310,13 @@ export const WorklogHistoryView: React.FC = () => {
                 className="p-4 bg-dark-900/60 border border-border-dark rounded-lg flex items-center justify-between"
               >
                 <div className="space-y-1">
-                  <span className="px-2 py-0.5 bg-dark-700 text-accent-blue text-[10px] font-bold rounded">
+                  <span className="px-2 py-0.5 bg-dark-700 text-text-primary text-[10px] font-mono font-bold rounded">
                     {item.key}
                   </span>
                   <div className="text-xs font-bold text-white">{item.title}</div>
                 </div>
 
-                <div className="text-xs font-bold text-accent-green bg-accent-green/10 border border-accent-green/30 px-2.5 py-1 rounded">
+                <div className="text-xs font-mono font-bold text-accent-green bg-accent-green/10 border border-accent-green/30 px-2.5 py-1 rounded">
                   {formatDuration(item.durationSeconds)}
                 </div>
               </div>
@@ -331,7 +331,7 @@ export const WorklogHistoryView: React.FC = () => {
 
       {/* Detailed Chronological Worklog List */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+        <h3 className="text-sm font-bold text-white">
           Chronological Session Log ({worklogs.length})
         </h3>
 
@@ -353,7 +353,7 @@ export const WorklogHistoryView: React.FC = () => {
                         ownerId={log.taskId}
                         onRename={name => renameTask(log.taskId, name)}
                         className="text-text-secondary"
-                        inputClassName="bg-dark-800 border border-accent-blue rounded px-2 py-0.5 text-white outline-none"
+                        inputClassName="bg-dark-800 border border-focus rounded px-2 py-0.5 text-white outline-none"
                       />
                     ) : (
                       <span className="text-text-secondary">{log.taskTitle}</span>
@@ -376,7 +376,7 @@ export const WorklogHistoryView: React.FC = () => {
                       {SYNC_BADGE[log.syncState].label}
                     </span>
                   )}
-                  <div className="font-mono font-bold text-accent-blue">
+                  <div className="font-mono font-bold text-text-primary">
                     {formatDuration(log.durationSeconds)}
                   </div>
                   <button
@@ -413,7 +413,7 @@ export const WorklogHistoryView: React.FC = () => {
       </div>
 
       {askingMove && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
           <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
             <ConfirmPanel
               title="Move time from a closed week?"

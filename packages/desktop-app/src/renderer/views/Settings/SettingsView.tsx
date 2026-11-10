@@ -168,12 +168,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
 
 
   return (
-    <div className="space-y-6 max-w-4xl font-mono">
+    <div className="space-y-6 max-w-4xl">
       {/* View Title */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
-            <CheckSquare className="w-5 h-5 text-accent-blue" />
+            <CheckSquare className="w-5 h-5 text-text-primary" />
             <span>TASK PROVIDERS & ACCOUNT CONFIGURATION</span>
           </h2>
           <p className="text-xs text-text-secondary">Configure OpenProject REST API integration & time tracking synchronization.</p>
@@ -184,14 +184,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
 
       {/* Settings Form Container */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-6 max-w-xl">
-        <h3 className="text-md font-bold text-white font-mono border-b border-border-dark pb-3">Provider Selection & Credentials</h3>
+        <h3 className="text-md font-bold text-white border-b border-border-dark pb-3">Provider Selection & Credentials</h3>
 
         <div>
-          <label className="block text-xs font-mono text-text-secondary mb-1">Active Task Provider</label>
+          <label className="block text-xs text-text-secondary mb-1">Active Task Provider</label>
           <select
             value={providerId}
             onChange={e => setProviderId(e.target.value)}
-            className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+            className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
           >
             {selectableProviders().map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -202,27 +202,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
         {providerId === 'openproject' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">OpenProject Domain URL</label>
+              <label className="block text-xs text-text-secondary mb-1">OpenProject Domain URL</label>
               <input
                 type="text"
                 value={opDomain}
                 onChange={e => setOpDomain(e.target.value)}
                 placeholder="https://openproject.example.com"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">API Key</label>
+              <label className="block text-xs text-text-secondary mb-1">API Key</label>
               <input
                 type="password"
                 value={opApiKey}
                 onChange={e => setOpApiKey(e.target.value)}
                 placeholder="apikey"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
             <div className="flex justify-between items-center mt-4">
-              <label className="block text-xs font-bold font-mono text-white mb-1">Status Mappings</label>
+              <label className="block text-xs font-bold text-white mb-1">Status Mappings</label>
               <button 
                 onClick={handleFetchStatuses} 
                 disabled={isLoadingStatuses || !opDomain || !opApiKey} 
@@ -232,7 +232,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
               </button>
             </div>
             {fetchError && (
-              <div className="text-xs text-red-400 mt-2 font-mono bg-red-900/20 p-2 rounded border border-red-900/50">
+              <div className="text-xs text-accent-red mt-2 bg-accent-red/10 p-2 rounded border border-accent-red/30">
                 Failed to fetch: {fetchError}
               </div>
             )}
@@ -244,51 +244,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">In Progress Status</label>
+                <label className="block text-xs text-text-secondary mb-1">In Progress Status</label>
                 {availableStatuses.length > 0 ? (
-                  <select value={opStatusInProgress} onChange={e => setOpStatusInProgress(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono">
+                  <select value={opStatusInProgress} onChange={e => setOpStatusInProgress(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus">
                     <option value="">Select status...</option>
                     {availableStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 ) : (
-                  <input type="text" value={opStatusInProgress} onChange={e => setOpStatusInProgress(e.target.value)} placeholder="Status ID" className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+                  <input type="text" value={opStatusInProgress} onChange={e => setOpStatusInProgress(e.target.value)} placeholder="Status ID" className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus" />
                 )}
               </div>
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">To Test Status</label>
+                <label className="block text-xs text-text-secondary mb-1">To Test Status</label>
                 {availableStatuses.length > 0 ? (
-                  <select value={opStatusToTest} onChange={e => setOpStatusToTest(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono">
+                  <select value={opStatusToTest} onChange={e => setOpStatusToTest(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus">
                     <option value="">Select status...</option>
                     {availableStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 ) : (
-                  <input type="text" value={opStatusToTest} onChange={e => setOpStatusToTest(e.target.value)} placeholder="Status ID" className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+                  <input type="text" value={opStatusToTest} onChange={e => setOpStatusToTest(e.target.value)} placeholder="Status ID" className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus" />
                 )}
               </div>
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">To Review Status</label>
+                <label className="block text-xs text-text-secondary mb-1">To Review Status</label>
                 {availableStatuses.length > 0 ? (
-                  <select value={opStatusToReview} onChange={e => setOpStatusToReview(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono">
+                  <select value={opStatusToReview} onChange={e => setOpStatusToReview(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus">
                     <option value="">Select status...</option>
                     {availableStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 ) : (
-                  <input type="text" value={opStatusToReview} onChange={e => setOpStatusToReview(e.target.value)} placeholder="Status ID" className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono" />
+                  <input type="text" value={opStatusToReview} onChange={e => setOpStatusToReview(e.target.value)} placeholder="Status ID" className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus" />
                 )}
               </div>
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Task Completion Action</label>
-                <select value={opCompletionAction} onChange={e => setOpCompletionAction(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono">
+                <label className="block text-xs text-text-secondary mb-1">Task Completion Action</label>
+                <select value={opCompletionAction} onChange={e => setOpCompletionAction(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus">
                   <option value="to_test">Move to To Test</option>
                   <option value="to_review">Move to To Review</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Which Tasks To Show</label>
+                <label className="block text-xs text-text-secondary mb-1">Which Tasks To Show</label>
                 <select
                   value={opTaskScope}
                   onChange={e => setOpTaskScope(e.target.value as TaskScopeValue)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                 >
                   {Object.values(TaskScope).map(scope => (
                     <option key={scope} value={scope}>{TASK_SCOPE_LABELS[scope]}</option>
@@ -300,7 +300,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
               </div>
               {opTaskScope === TaskScope.CUSTOM && (
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-mono text-text-secondary mb-1">
+                  <label className="block text-xs text-text-secondary mb-1">
                     Custom Filter (OpenProject v3 JSON)
                   </label>
                   <textarea
@@ -309,7 +309,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
                     rows={3}
                     spellCheck={false}
                     placeholder={'[{"assignee":{"operator":"=","values":["me"]}},{"status":{"operator":"o","values":[]}}]'}
-                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                   />
                   <p className="mt-1 text-xs text-text-secondary">
                     Replaces the filter entirely, including the project clause &mdash; so add one
@@ -325,23 +325,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
         {providerId === 'jira' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">Jira Site URL</label>
+              <label className="block text-xs text-text-secondary mb-1">Jira Site URL</label>
               <input
                 type="text"
                 value={jiraSite}
                 onChange={e => setJiraSite(e.target.value)}
                 placeholder="https://your-team.atlassian.net"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">Account Email</label>
+              <label className="block text-xs text-text-secondary mb-1">Account Email</label>
               <input
                 type="text"
                 value={jiraEmail}
                 onChange={e => setJiraEmail(e.target.value)}
                 placeholder="you@your-team.com"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
               <p className="mt-1 text-xs text-text-secondary">
                 A Jira API token is the password for an account, so the email is required
@@ -349,22 +349,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
               </p>
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">API Token</label>
+              <label className="block text-xs text-text-secondary mb-1">API Token</label>
               <input
                 type="password"
                 value={jiraApiToken}
                 onChange={e => setJiraApiToken(e.target.value)}
                 placeholder="Create one at id.atlassian.com"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">Which Tasks To Show</label>
+              <label className="block text-xs text-text-secondary mb-1">Which Tasks To Show</label>
               <select
                 value={jiraTaskScope}
                 onChange={e => setJiraTaskScope(e.target.value as TaskScopeValue)}
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               >
                 {Object.values(TaskScope).map(scope => (
                   <option key={scope} value={scope}>{TASK_SCOPE_LABELS[scope]}</option>
@@ -376,14 +376,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
             </div>
             {jiraTaskScope === TaskScope.CUSTOM && (
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Custom JQL</label>
+                <label className="block text-xs text-text-secondary mb-1">Custom JQL</label>
                 <textarea
                   value={jiraTaskQuery}
                   onChange={e => setJiraTaskQuery(e.target.value)}
                   rows={3}
                   spellCheck={false}
                   placeholder="assignee = currentUser() AND labels = urgent"
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                 />
                 <p className="mt-1 text-xs text-text-secondary">
                   Replaces the query entirely, including the project clause. Only Jira can
@@ -394,7 +394,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
             )}
 
             <div>
-              <label className="block text-xs font-bold font-mono text-white mb-1">Transitions</label>
+              <label className="block text-xs font-bold text-white mb-1">Transitions</label>
               <p className="mt-1 text-xs text-text-secondary">
                 Jira has no writable status field &mdash; an issue moves by running a
                 transition. Enter the transition or target status <em>name</em>: an id only
@@ -403,41 +403,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
               </p>
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">On Task Start</label>
+              <label className="block text-xs text-text-secondary mb-1">On Task Start</label>
               <input
                 type="text"
                 value={jiraTransitionInProgress}
                 onChange={e => setJiraTransitionInProgress(e.target.value)}
                 placeholder="In Progress"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">To Test</label>
+              <label className="block text-xs text-text-secondary mb-1">To Test</label>
               <input
                 type="text"
                 value={jiraTransitionToTest}
                 onChange={e => setJiraTransitionToTest(e.target.value)}
                 placeholder="Ready for QA"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">To Review</label>
+              <label className="block text-xs text-text-secondary mb-1">To Review</label>
               <input
                 type="text"
                 value={jiraTransitionToReview}
                 onChange={e => setJiraTransitionToReview(e.target.value)}
                 placeholder="In Review"
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-text-secondary mb-1">Task Completion Action</label>
+              <label className="block text-xs text-text-secondary mb-1">Task Completion Action</label>
               <select
                 value={jiraCompletionAction}
                 onChange={e => setJiraCompletionAction(e.target.value)}
-                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+                className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               >
                 <option value="to_test">Run the To Test transition</option>
                 <option value="to_review">Run the To Review transition</option>
@@ -447,13 +447,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
         )}
 
         <div>
-          <label className="block text-xs font-mono text-text-secondary mb-1">Ad-Hoc Task Key</label>
+          <label className="block text-xs text-text-secondary mb-1">Ad-Hoc Task Key</label>
           <input
             type="text"
             value={fallbackTicketKey}
             onChange={e => setFallbackTicketKey(e.target.value)}
             placeholder="e.g. MISC-1 or ADMIN-1"
-            className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
+            className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
           />
           <p className="text-xs text-text-secondary mt-1">
             The key new ad-hoc tasks show, in the lists and on the bar. Their time stays in your Work History and is

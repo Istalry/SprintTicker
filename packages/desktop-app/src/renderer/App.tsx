@@ -151,7 +151,7 @@ export const App: React.FC = () => {
 
             {/* Todays Completed Worklogs Table */}
             <section className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-              <h3 className="text-md font-bold text-white font-mono flex items-center justify-between">
+              <h3 className="text-md font-bold text-white flex items-center justify-between">
                 <span>Today&apos;s work</span>
                 <span className="text-xs text-text-secondary font-normal">
                   Total: {formatSeconds(worklogs.reduce((acc, curr) => acc + curr.durationSeconds, 0))}
@@ -161,7 +161,7 @@ export const App: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-border-dark text-text-secondary text-xs font-mono">
+                    <tr className="border-b border-border-dark text-text-secondary text-xs">
                       <th className="py-3 px-4 font-semibold">Task Key</th>
                       <th className="py-3 px-4 font-semibold">Comment / Description</th>
                       <th className="py-3 px-4 font-semibold">Logged Duration</th>
@@ -170,23 +170,23 @@ export const App: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-border-dark text-sm">
                     {session && (
-                      <tr className="bg-accent-blue/5">
-                        <td className="py-3 px-4 font-mono font-bold text-accent-blue flex items-center space-x-2">
+                      <tr className="bg-select">
+                        <td className="py-3 px-4 font-mono font-bold text-text-primary flex items-center space-x-2">
                           <span className="w-2 h-2 rounded-full bg-accent-green animate-pulse" />
-                          <span>{session.taskKey}</span>
+                          <span className="font-mono">{session.taskKey}</span>
                         </td>
                         <td className="py-3 px-4 text-white font-medium">
-                          {session.taskTitle} <span className="text-xs text-accent-blue">(Active Session)</span>
+                          {session.taskTitle} <span className="text-xs text-text-primary">(Active Session)</span>
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-accent-green">Tracking...</td>
-                        <td className="py-3 px-4 text-xs text-text-secondary font-mono">Real-time</td>
+                        <td className="py-3 px-4 font-bold text-accent-green">Tracking...</td>
+                        <td className="py-3 px-4 text-xs text-text-secondary">Real-time</td>
                       </tr>
                     )}
                     {worklogs.map(log => (
                       <tr key={log.id} className="hover:bg-dark-700/50 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-text-primary">{log.taskKey ?? log.taskId}</td>
                         <td className="py-3 px-4 text-text-primary">{log.comment || 'No comment'}</td>
-                        <td className="py-3 px-4 font-mono text-accent-blue font-bold">
+                        <td className="py-3 px-4 font-mono text-text-primary font-bold">
                           {formatSeconds(log.durationSeconds)}
                         </td>
                         <td className="py-3 px-4 text-xs text-text-secondary font-mono">
@@ -196,7 +196,7 @@ export const App: React.FC = () => {
                     ))}
                     {!session && worklogs.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-6 text-center text-xs text-text-secondary font-mono">
+                        <td colSpan={4} className="py-6 text-center text-xs text-text-secondary">
                           No worklogs recorded today yet. Select a task above to start tracking time!
                         </td>
                       </tr>
@@ -242,8 +242,8 @@ export const App: React.FC = () => {
           {hasBar && (
             <div className={`w-3 h-3 rounded-full ${deviceStatus.connected ? 'bg-accent-green animate-pulse' : 'bg-accent-red'}`} />
           )}
-          <h1 className="text-lg font-bold tracking-tight text-white font-mono">
-            SPRINT<span className="text-accent-blue font-sans">TICKER</span>
+          <h1 className="text-lg font-bold tracking-tight text-white">
+            SPRINT<span className="text-text-primary font-sans">TICKER</span>
           </h1>
         </div>
 
@@ -252,7 +252,7 @@ export const App: React.FC = () => {
           {hasBar && <HardwareDisplayEmulator />}
         </div>
 
-        <div className="flex items-center gap-3 text-sm font-mono shrink-0">
+        <div className="flex items-center gap-3 text-sm shrink-0">
           {/*
             Each control keeps a `title` covering whatever its label drops at a
             breakpoint. Losing the word must not mean losing the meaning: at the
@@ -267,7 +267,7 @@ export const App: React.FC = () => {
             aria-pressed={isMiniOpen}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border font-semibold text-xs transition-colors shrink-0 ${
               isMiniOpen
-                ? 'bg-accent-blue/20 text-accent-blue border-accent-blue/40'
+                ? 'bg-select text-text-primary border-focus/40'
                 : 'bg-dark-700 hover:bg-dark-700/80 text-text-secondary border-border-dark'
             }`}
           >
@@ -278,7 +278,7 @@ export const App: React.FC = () => {
           <button
             onClick={() => setIsOnboardingOpen(true)}
             title="Setup Wizard"
-            className="flex items-center gap-1.5 bg-dark-700 hover:bg-dark-700/80 text-accent-blue px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors shrink-0"
+            className="flex items-center gap-1.5 bg-dark-700 hover:bg-dark-700/80 text-text-primary px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden hdr-md:inline whitespace-nowrap">Setup Wizard</span>
@@ -316,7 +316,7 @@ export const App: React.FC = () => {
           <button
             onClick={openEodWrapUp}
             title="EOD Wrap-Up"
-            className="flex items-center gap-2 bg-accent-purple/20 hover:bg-accent-purple/30 text-accent-purple px-3 py-1.5 rounded-md border border-accent-purple/30 font-semibold transition-colors shrink-0"
+            className="flex items-center gap-2 bg-select hover:bg-dark-600 text-text-primary px-3 py-1.5 rounded-md border border-focus/30 font-semibold transition-colors shrink-0"
           >
             <Moon className="w-4 h-4 shrink-0" />
             <span className="hidden hdr-sm:inline whitespace-nowrap">EOD Wrap-Up</span>
@@ -337,11 +337,11 @@ export const App: React.FC = () => {
                 onClick={() => setActiveTab(item.id)}
                 className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20'
+                    ? 'bg-select text-text-primary border border-focus/20'
                     : 'text-text-secondary hover:bg-dark-700 hover:text-text-primary'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-accent-blue' : 'text-text-secondary'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-text-primary' : 'text-text-secondary'}`} />
                 <span>{item.label}</span>
               </button>
             );

@@ -158,13 +158,13 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div className="w-full max-w-xl bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark bg-dark-700/50">
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5 text-accent-blue" />
-            <h3 className="text-md font-bold text-white font-mono">First-Time Setup & Onboarding</h3>
+            <Sparkles className="w-5 h-5 text-text-primary" />
+            <h3 className="text-md font-bold text-white">First-Time Setup & Onboarding</h3>
           </div>
           <button
             onClick={onClose}
@@ -175,7 +175,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
         </div>
 
         {/* Step Indicator */}
-        <div className="flex border-b border-border-dark bg-dark-900/40 text-xs font-mono">
+        <div className="flex border-b border-border-dark bg-dark-900/40 text-xs">
           {[
             { num: 1, title: 'Hardware Setup', icon: Wifi },
             { num: 2, title: 'Task Provider', icon: Plug }
@@ -187,7 +187,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                 key={s.num}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 border-b-2 transition-all ${
                   active
-                    ? 'border-accent-blue text-accent-blue bg-accent-blue/5 font-bold'
+                    ? 'border-focus text-text-primary bg-select font-bold'
                     : 'border-transparent text-text-secondary'
                 }`}
               >
@@ -202,11 +202,11 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
         <div className="p-6 space-y-4 flex-1">
           {step === 1 && (
             <div className="space-y-4">
-              <h4 className="text-sm font-bold font-mono text-white">1. Physical BUSY Bar Hardware Connection</h4>
+              <h4 className="text-sm font-bold text-white">1. Physical BUSY Bar Hardware Connection</h4>
 
               {/* Asked first: SprintTicker keeps time without the bar, and a
                   user who has none should not be walked through pinging one. */}
-              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
                   { value: true, label: 'I have a BUSY Bar' },
                   { value: false, label: 'Not now -- use it without one' }
@@ -218,7 +218,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                     onClick={() => setHasBar(choice.value)}
                     className={`px-3 py-2 rounded-lg border transition-all ${
                       hasBar === choice.value
-                        ? 'border-accent-blue text-accent-blue bg-accent-blue/10 font-bold'
+                        ? 'border-focus text-text-primary bg-select font-bold'
                         : 'border-border-dark text-text-secondary hover:text-text-primary'
                     }`}
                   >
@@ -242,9 +242,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               </p>
 
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Device Address</label>
+                <label className="block text-xs text-text-secondary mb-1">Device Address</label>
                 <div className="flex space-x-2">
-                  <div className="flex-1 bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono">
+                  <div className="flex-1 bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white">
                     {deviceAddress}
                   </div>
                   <button
@@ -259,7 +259,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
 
               {pingSuccess !== null && (
                 <div
-                  className={`p-3 rounded-lg border text-xs font-mono flex items-center space-x-2 ${
+                  className={`p-3 rounded-lg border text-xs flex items-center space-x-2 ${
                     pingSuccess
                       ? 'bg-accent-green/10 border-accent-green/30 text-accent-green'
                       : 'bg-accent-red/10 border-accent-red/30 text-accent-red'
@@ -275,17 +275,17 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
 
           {step === 2 && (
             <div className="space-y-4">
-              <h4 className="text-sm font-bold font-mono text-white">2. Task Provider</h4>
+              <h4 className="text-sm font-bold text-white">2. Task Provider</h4>
               <p className="text-xs text-text-secondary">
                 Choose your primary task provider, and the key your own ad-hoc tasks show:
               </p>
 
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Primary Provider</label>
+                <label className="block text-xs text-text-secondary mb-1">Primary Provider</label>
                 <select
                   value={providerId}
                   onChange={e => setProviderId(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                 >
                   {selectableProviders().map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -296,23 +296,23 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               {providerId === 'openproject' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-mono text-text-secondary mb-1">OpenProject Domain URL</label>
+                    <label className="block text-xs text-text-secondary mb-1">OpenProject Domain URL</label>
                     <input
                       type="text"
                       value={opDomain}
                       onChange={e => setOpDomain(e.target.value)}
                       placeholder="https://openproject.example.com"
-                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono text-text-secondary mb-1">API Key</label>
+                    <label className="block text-xs text-text-secondary mb-1">API Key</label>
                     <input
                       type="password"
                       value={opApiKey}
                       onChange={e => setOpApiKey(e.target.value)}
                       placeholder="From My Account > Access tokens"
-                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                     />
                   </div>
                 </div>
@@ -321,33 +321,33 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               {providerId === 'jira' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-mono text-text-secondary mb-1">Jira Site URL</label>
+                    <label className="block text-xs text-text-secondary mb-1">Jira Site URL</label>
                     <input
                       type="text"
                       value={jiraSite}
                       onChange={e => setJiraSite(e.target.value)}
                       placeholder="https://your-team.atlassian.net"
-                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono text-text-secondary mb-1">Account Email</label>
+                    <label className="block text-xs text-text-secondary mb-1">Account Email</label>
                     <input
                       type="text"
                       value={jiraEmail}
                       onChange={e => setJiraEmail(e.target.value)}
                       placeholder="you@your-team.com"
-                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono text-text-secondary mb-1">API Token</label>
+                    <label className="block text-xs text-text-secondary mb-1">API Token</label>
                     <input
                       type="password"
                       value={jiraApiToken}
                       onChange={e => setJiraApiToken(e.target.value)}
                       placeholder="Create one at id.atlassian.com"
-                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                     />
                   </div>
                   {/* Jira reads status from `statusCategory`, which every workflow
@@ -361,12 +361,12 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               )}
 
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Ad-Hoc Task Key</label>
+                <label className="block text-xs text-text-secondary mb-1">Ad-Hoc Task Key</label>
                 <input
                   type="text"
                   value={fallbackKey}
                   onChange={e => setFallbackKey(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
                 />
               </div>
 
@@ -381,7 +381,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
         {/* A failed save is shown, never swallowed: closing quietly would leave
             the user believing the wizard had configured something. */}
         {saveError && (
-          <div className="mx-6 mb-4 p-3 rounded-lg border border-accent-red/30 bg-accent-red/10 text-xs font-mono text-accent-red">
+          <div className="mx-6 mb-4 p-3 rounded-lg border border-accent-red/30 bg-accent-red/10 text-xs text-accent-red">
             {saveError}
           </div>
         )}
@@ -403,7 +403,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
           {step < 2 ? (
             <button
               onClick={() => setStep(s => (s + 1) as 1 | 2)}
-              className="flex items-center space-x-1.5 px-5 py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
+              className="flex items-center space-x-1.5 px-5 py-2 bg-primary hover:bg-primary/90 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
             >
               <span>Next</span>
               <ArrowRight className="w-4 h-4" />
@@ -412,7 +412,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
             <button
               onClick={() => void handleComplete()}
               disabled={isSaving}
-              className="px-5 py-2 bg-accent-green hover:bg-emerald-600 disabled:opacity-50 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
+              className="px-5 py-2 bg-accent-green hover:bg-accent-green/90 disabled:opacity-50 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
             >
               {isSaving ? 'Saving...' : 'Complete Setup & Open Dashboard'}
             </button>

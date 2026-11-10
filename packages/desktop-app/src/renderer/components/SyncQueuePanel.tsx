@@ -101,7 +101,7 @@ export const SyncQueuePanel: React.FC = () => {
     <div className="bg-dark-800 border border-border-dark rounded-xl p-6 mt-6">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-bold font-mono text-white">Worklog Sync Queue</h3>
+          <h3 className="text-sm font-bold text-white">Worklog Sync Queue</h3>
           <p className="text-xs text-text-secondary mt-1">
             Time recorded locally and waiting to reach the provider. A row here has not arrived yet.
           </p>
@@ -111,7 +111,7 @@ export const SyncQueuePanel: React.FC = () => {
             type="button"
             onClick={() => void runSyncNow()}
             disabled={busy !== null}
-            className="flex items-center gap-2 bg-dark-900 border border-border-dark hover:border-accent-blue disabled:opacity-50 rounded-lg px-3 py-2 text-xs font-mono text-white"
+            className="flex items-center gap-2 bg-dark-900 border border-border-dark hover:border-focus disabled:opacity-50 rounded-lg px-3 py-2 text-xs text-white"
           >
             {busy === 'sync' ? (
               <Loader2 size={14} className="animate-spin" />
@@ -124,7 +124,7 @@ export const SyncQueuePanel: React.FC = () => {
             type="button"
             onClick={() => void retryFailed()}
             disabled={busy !== null || (counts?.failed ?? 0) === 0}
-            className="flex items-center gap-2 bg-dark-900 border border-border-dark hover:border-accent-amber disabled:opacity-50 rounded-lg px-3 py-2 text-xs font-mono text-white"
+            className="flex items-center gap-2 bg-dark-900 border border-border-dark hover:border-accent-amber disabled:opacity-50 rounded-lg px-3 py-2 text-xs text-white"
           >
             {busy === 'retry' ? (
               <Loader2 size={14} className="animate-spin" />
@@ -138,7 +138,7 @@ export const SyncQueuePanel: React.FC = () => {
 
       {counts && (
         <div className="grid grid-cols-4 gap-3 mb-4">
-          <Tally label="Pending" value={counts.pending} icon={<Clock size={13} />} tone="text-accent-blue" />
+          <Tally label="Pending" value={counts.pending} icon={<Clock size={13} />} tone="text-text-primary" />
           <Tally label="Sending" value={counts.syncing} icon={<Loader2 size={13} />} tone="text-text-secondary" />
           <Tally label="Failed" value={counts.failed} icon={<AlertCircle size={13} />} tone="text-accent-red" />
           <Tally label="Delivered" value={counts.synced} icon={<CheckCircle2 size={13} />} tone="text-accent-green" />
@@ -146,13 +146,13 @@ export const SyncQueuePanel: React.FC = () => {
       )}
 
       {notice && (
-        <p className="text-xs font-mono text-text-secondary bg-dark-900 border border-border-dark rounded-lg px-3 py-2 mb-4">
+        <p className="text-xs text-text-secondary bg-dark-900 border border-border-dark rounded-lg px-3 py-2 mb-4">
           {notice}
         </p>
       )}
 
       {items.length === 0 ? (
-        <p className="text-xs text-text-secondary font-mono py-2">
+        <p className="text-xs text-text-secondary py-2">
           Nothing outstanding — every recorded worklog has been delivered.
         </p>
       ) : (
@@ -173,16 +173,16 @@ const Tally: React.FC<{ label: string; value: number; icon: React.ReactNode; ton
   tone
 }) => (
   <div className="bg-dark-900 border border-border-dark rounded-lg px-3 py-2">
-    <div className={`flex items-center gap-1.5 text-xs font-mono ${tone}`}>
+    <div className={`flex items-center gap-1.5 text-xs ${tone}`}>
       {icon}
       {label}
     </div>
-    <div className="text-lg font-mono text-white mt-0.5">{value}</div>
+    <div className="text-lg text-white mt-0.5">{value}</div>
   </div>
 );
 
 const STATUS_TONE: Record<SyncQueueItemDTO['status'], string> = {
-  PENDING: 'text-accent-blue border-accent-blue',
+  PENDING: 'text-text-primary border-focus',
   SYNCING: 'text-text-secondary border-border-dark',
   SYNCED: 'text-accent-green border-accent-green',
   FAILED: 'text-accent-red border-accent-red'
@@ -200,21 +200,21 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
     <div className="bg-dark-900 border border-border-dark rounded-lg px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <span className={`text-xs font-mono px-2 py-0.5 rounded border ${STATUS_TONE[item.status]}`}>
+          <span className={`text-xs px-2 py-0.5 rounded border ${STATUS_TONE[item.status]}`}>
             {item.status}
           </span>
           {item.operation !== 'CREATE' && (
             // A correction or deletion of a worklog already sent, so the
             // row is not read as the same time being sent twice.
-            <span className="text-xs font-mono text-accent-amber">
+            <span className="text-xs text-accent-amber">
               {item.operation === 'UPDATE' ? 'Correction' : 'Deletion'}
             </span>
           )}
           <span className="text-sm font-mono text-white truncate">{item.taskKey}</span>
           <span className="text-xs font-mono text-text-secondary">{formatHoursAndMinutes(item.durationSeconds)}</span>
-          <span className="text-xs font-mono text-text-secondary truncate">{item.providerId}</span>
+          <span className="text-xs text-text-secondary truncate">{item.providerId}</span>
         </div>
-        <span className="text-xs font-mono text-text-secondary whitespace-nowrap">
+        <span className="text-xs text-text-secondary whitespace-nowrap">
           {/* Reading "attempt 8 of 8" is what tells the user the retry budget is
               spent, rather than leaving them to wonder if it is still trying. */}
           attempt {item.retryCount} of {maxAttempts}
@@ -225,7 +225,7 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
         // The provider's own words. "Provider reported failure" was what this
         // used to amount to, and it said nothing about whether the user or the
         // network had to change.
-        <p className="text-xs font-mono text-accent-red mt-2 break-words">{item.lastError}</p>
+        <p className="text-xs text-accent-red mt-2 break-words">{item.lastError}</p>
       )}
 
       {stillWaiting && waitingUntil && (

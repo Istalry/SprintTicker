@@ -109,13 +109,13 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
   const formatDuration = formatHoursAndMinutes;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none font-mono">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark bg-dark-700/50">
           <div className="flex items-center space-x-2">
-            <Moon className="w-5 h-5 text-accent-purple" />
-            <h3 className="text-md font-bold text-white font-mono">End-of-Day Wrap-Up Wizard</h3>
+            <Moon className="w-5 h-5 text-text-primary" />
+            <h3 className="text-md font-bold text-white">End-of-Day Wrap-Up Wizard</h3>
           </div>
           <button
             onClick={onClose}
@@ -137,7 +137,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
               <div className="bg-dark-900/80 border border-border-dark rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-border-dark pb-2">
                   <div className="flex items-center space-x-1.5 text-xs font-bold text-white">
-                    <Clock className="w-4 h-4 text-accent-blue" />
+                    <Clock className="w-4 h-4 text-text-primary" />
                     <span>Today&apos;s Tracked Work Summary</span>
                   </div>
                   <span className="text-xs font-bold text-accent-green bg-accent-green/10 border border-accent-green/30 px-2 py-0.5 rounded">
@@ -150,10 +150,10 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
                     {summary.items.map(item => (
                       <div key={item.key} className="flex items-center justify-between text-xs py-1 px-2 bg-dark-800/60 rounded border border-border-dark">
                         <div className="flex items-center space-x-2 truncate">
-                          <span className="text-accent-blue font-bold">{item.key}:</span>
+                          <span className="font-mono text-text-primary font-bold">{item.key}:</span>
                           <span className="text-text-primary truncate">{item.title}</span>
                         </div>
-                        <span className="text-text-secondary font-bold ml-2">{formatDuration(item.durationSeconds)}</span>
+                        <span className="font-mono text-text-secondary font-bold ml-2">{formatDuration(item.durationSeconds)}</span>
                       </div>
                     ))}
                   </div>
@@ -176,23 +176,23 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
                         ownerId={item.taskId!}
                         onRename={name => window.electronAPI.renameAdHocTask(item.taskId!, name).then(() => setRevision(r => r + 1))}
                         className="text-text-primary"
-                        inputClassName="flex-1 bg-dark-900 border border-accent-blue rounded px-2 py-0.5 text-white outline-none"
+                        inputClassName="flex-1 bg-dark-900 border border-focus rounded px-2 py-0.5 text-white outline-none"
                       />
-                      <span className="text-text-secondary font-bold ml-2">{formatDuration(item.durationSeconds)}</span>
+                      <span className="font-mono text-text-secondary font-bold ml-2">{formatDuration(item.durationSeconds)}</span>
                     </div>
                   ))}
                 </section>
               )}
 
               {/* Checklist */}
-              <div className="bg-dark-900 p-4 rounded-lg border border-border-dark space-y-2 text-xs font-mono">
+              <div className="bg-dark-900 p-4 rounded-lg border border-border-dark space-y-2 text-xs">
                 <div className="flex items-center justify-between text-text-primary">
                   <span>1. Stop Active Session & Log Hours</span>
                   <span className="text-accent-green">✓ Ready</span>
                 </div>
                 <div className="flex items-center justify-between text-text-primary">
                   <span>2. VS Code File Auto-Save</span>
-                  <span className="text-accent-purple">saveAll CLI</span>
+                  <span className="text-text-primary">saveAll CLI</span>
                 </div>
                 <div className="flex items-center justify-between text-text-primary">
                   <span>3. Worklog Sync Queue Submission</span>
@@ -206,7 +206,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
                   type="checkbox"
                   checked={shouldShutdown}
                   onChange={e => setShouldShutdown(e.target.checked)}
-                  className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple bg-dark-800 border-border-dark"
+                  className="w-4 h-4 rounded text-text-primary focus:ring-focus bg-dark-800 border-border-dark"
                 />
                 <div className="flex items-center space-x-2 text-xs font-bold text-white">
                   <Power className="w-4 h-4 text-accent-red" />
@@ -217,7 +217,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
           ) : (
             <div className="text-center py-6 space-y-3">
               <CheckCircle2 className="w-12 h-12 text-accent-green mx-auto animate-bounce" />
-              <h4 className="text-lg font-bold text-white font-mono">Day Complete!</h4>
+              <h4 className="text-lg font-bold text-white">Day Complete!</h4>
               <p className="text-xs text-text-secondary">
                 {shouldShutdown
                   ? 'All active task hours logged. Computer shutdown scheduled in 30 seconds.'
@@ -260,10 +260,10 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
                   }
                 }}
                   disabled={executing}
-                  className={`px-5 py-2 text-white text-xs font-semibold rounded-lg shadow-md transition-all ${
+                  className={`px-5 py-2 text-xs font-semibold rounded-lg shadow-md transition-all ${
                     confirmStep === 1 
-                      ? 'bg-accent-red hover:bg-red-600 animate-pulse' 
-                      : 'bg-accent-purple hover:bg-purple-600'
+                      ? 'bg-accent-red hover:bg-accent-red/90 text-white animate-pulse' 
+                      : 'bg-primary hover:bg-primary/90 text-dark-900'
                   }`}
                 >
                   {executing ? 'Executing...' : confirmStep === 1 ? 'Press START (or click) to Confirm' : 'Execute Wrap-Up Now'}
@@ -274,7 +274,7 @@ const EodWrapUpDialog: React.FC<EodWrapUpModalProps> = ({
             <div className="w-full flex justify-end">
               <button
                 onClick={onClose}
-                className="px-5 py-2 bg-accent-green hover:bg-emerald-600 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
+                className="px-5 py-2 bg-accent-green hover:bg-accent-green/90 text-dark-900 text-xs font-semibold rounded-lg shadow-md transition-all"
               >
                 Done
               </button>

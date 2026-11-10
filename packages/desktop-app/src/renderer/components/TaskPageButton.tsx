@@ -27,7 +27,7 @@ export const TaskPageButton: React.FC<TaskPageButtonProps> = ({ taskId, taskKey,
         })
         .catch(err => console.warn(`[TaskPageButton] Could not open ${taskKey}:`, err));
     }}
-    className={`p-1 text-text-secondary hover:text-accent-blue hover:bg-dark-700 rounded transition-colors ${className}`}
+    className={`p-1 text-text-secondary hover:text-text-primary hover:bg-dark-700 rounded transition-colors ${className}`}
   >
     <ExternalLink className="w-3.5 h-3.5" />
   </button>

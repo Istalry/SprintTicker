@@ -27,7 +27,7 @@ interface TaskSelectionModalProps {
 
 const statusConfig: Record<string, { label: string; icon: React.FC<{ className?: string }>; color: string }> = {
   done: { label: 'Done', icon: CheckCircle2, color: 'text-accent-green' },
-  in_progress: { label: 'In Progress', icon: Clock, color: 'text-accent-blue' },
+  in_progress: { label: 'In Progress', icon: Clock, color: 'text-text-primary' },
   todo: { label: 'To Do', icon: AlertCircle, color: 'text-text-secondary' }
 };
 
@@ -159,7 +159,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
-            <h3 className="text-md font-bold text-white font-mono">
+            <h3 className="text-md font-bold text-white">
               {mode === 'move' && step === 1
                 ? 'Move to a Task: Select its Project'
                 : assigning && step === 1
@@ -204,7 +204,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                       }}
                       className={`w-full flex items-center justify-between p-3.5 rounded-lg border text-left font-medium text-sm transition-all ${
                         selectedProjectId === proj.id && !isAdHocMode
-                          ? 'bg-accent-blue/10 border-accent-blue text-accent-blue'
+                          ? 'bg-select border-focus text-text-primary'
                           : 'bg-dark-700/50 border-border-dark text-text-primary hover:bg-dark-700'
                       }`}
                     >
@@ -216,7 +216,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                     </button>
                   ))
                 ) : (
-                  <div className="p-4 bg-dark-900/50 border border-border-dark rounded-lg text-center text-xs text-text-secondary font-mono">
+                  <div className="p-4 bg-dark-900/50 border border-border-dark rounded-lg text-center text-xs text-text-secondary">
                     No active projects registered in database.
                   </div>
                 )}
@@ -229,11 +229,11 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                   }}
                   className={`w-full flex items-center space-x-3 p-3.5 rounded-lg border text-left font-medium text-sm transition-all ${
                     isAdHocMode
-                      ? 'bg-accent-purple/10 border-accent-purple text-accent-purple'
+                      ? 'bg-select border-focus text-text-primary'
                       : 'bg-dark-700/30 border-dashed border-border-dark text-text-secondary hover:text-white hover:bg-dark-700/60'
                   }`}
                 >
-                  <PlusCircle className="w-5 h-5 text-accent-purple" />
+                  <PlusCircle className="w-5 h-5 text-text-primary" />
                   <div>
                     <div className="font-bold text-white">+ Create Custom / Ad-Hoc Task</div>
                     <div className="text-xs text-text-secondary">Kept in your Work History, not sent to your provider</div>
@@ -249,18 +249,18 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
               </p>
 
               <div>
-                <label className="block text-xs font-mono text-text-secondary mb-1">Custom Task Title</label>
+                <label className="block text-xs text-text-secondary mb-1">Custom Task Title</label>
                 <input
                   type="text"
                   value={customTitle}
                   onChange={e => setCustomTitle(e.target.value)}
                   placeholder="e.g. Code Review with Lead Architect"
                   autoFocus
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent-blue font-sans"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-focus font-sans"
                 />
               </div>
 
-              <div className="text-xs font-mono text-accent-amber bg-accent-amber/10 p-3 rounded-lg border border-accent-amber/20">
+              <div className="text-xs text-accent-amber bg-accent-amber/10 p-3 rounded-lg border border-accent-amber/20">
                 ℹ️ Ad-hoc time stays in your Work History. It is <strong>not sent</strong> to {providerName}.
               </div>
             </div>
@@ -278,13 +278,13 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                   }}
                   placeholder="Search task key, title or description..."
                   autoFocus
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent-blue font-sans"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-focus font-sans"
                 />
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
                 {loadingTasks ? (
-                  <div className="text-center py-6 text-xs text-text-secondary font-mono">
+                  <div className="text-center py-6 text-xs text-text-secondary">
                     Loading tasks for [{selectedProject?.key}]...
                   </div>
                 ) : filteredTasks.length > 0 ? (
@@ -300,13 +300,13 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                         }}
                         className={`w-full flex items-center justify-between p-3 rounded-lg text-left text-sm font-medium transition-all ${
                           selectedIndex === idx
-                            ? 'bg-accent-blue/15 border border-accent-blue/40 text-white'
+                            ? 'bg-select border border-focus/40 text-white'
                             : 'bg-dark-700/40 border border-transparent text-text-primary hover:bg-dark-700'
                         }`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-accent-blue font-bold">{t.key}</span>
+                            <span className="font-mono text-text-primary font-bold">{t.key}</span>
                             <TaskOwnerBadge task={t} />
                           </div>
                           <div className="text-xs text-text-secondary">{t.title}</div>
@@ -316,16 +316,16 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                         </div>
                         <div className={`flex items-center space-x-1 text-xs ${conf.color}`}>
                           <StatusIcon className="w-3.5 h-3.5" />
-                          <span className="font-mono">{conf.label}</span>
+                          <span className="">{conf.label}</span>
                         </div>
                       </button>
                     );
                   })
                 ) : (
-                  <div className="text-center py-6 text-xs text-text-secondary font-mono">
+                  <div className="text-center py-6 text-xs text-text-secondary">
                     No matching tasks under [{selectedProject?.key ?? selectedProjectId}].
                     <br />
-                    <span className="text-accent-purple">Add tasks in Projects &amp; Tasks manager.</span>
+                    <span className="text-text-primary">Add tasks in Projects &amp; Tasks manager.</span>
                   </div>
                 )}
               </div>
@@ -335,7 +335,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
 
         {/* Modal Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border-dark bg-dark-700/30">
-          <span className="text-xs font-mono text-text-secondary">Use Enter to select • Esc to dismiss</span>
+          <span className="text-xs text-text-secondary">Use Enter to select • Esc to dismiss</span>
 
           <div className="flex items-center space-x-3">
             <button
@@ -357,7 +357,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                 disabled={!customTitle.trim()}
                 className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                   customTitle.trim()
-                    ? 'bg-accent-green hover:bg-emerald-600 text-dark-900'
+                    ? 'bg-accent-green hover:bg-accent-green/90 text-dark-900'
                     : 'bg-dark-700 text-text-secondary cursor-not-allowed'
                 }`}
               >

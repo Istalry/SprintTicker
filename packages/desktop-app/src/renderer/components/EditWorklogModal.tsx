@@ -91,7 +91,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div
         role="dialog"
         aria-label={mode === 'edit' ? 'Correct a worklog' : 'Delete a worklog'}
@@ -104,8 +104,8 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
               tone="danger"
               message={
                 <>
-                  <strong className="text-white">{formatHoursAndMinutes(worklog.durationSeconds)}</strong> on{' '}
-                  <span className="text-accent-blue font-bold">{key}</span>, started{' '}
+                  <strong className="font-mono text-white">{formatHoursAndMinutes(worklog.durationSeconds)}</strong> on{' '}
+                  <span className="font-mono text-text-primary font-bold">{key}</span>, started{' '}
                   {formatDayAndTime(new Date(worklog.startedAtUtc))}.{' '}
                   {worklog.syncState === 'local' || worklog.syncState === undefined
                     ? 'It is kept nowhere else.'
@@ -124,9 +124,9 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
         ) : (
           <>
             <div className="flex items-center space-x-2 border-b border-border-dark pb-3">
-              <Pencil className="w-4 h-4 text-accent-blue" />
+              <Pencil className="w-4 h-4 text-text-primary" />
               <h3 className="text-sm font-bold text-white">
-                Correct <span className="text-accent-blue">{key}</span>
+                Correct <span className="font-mono text-text-primary">{key}</span>
                 {worklog.taskTitle && <span className="text-text-secondary font-normal"> {worklog.taskTitle}</span>}
               </h3>
             </div>
@@ -139,7 +139,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                   min={0}
                   value={hours}
                   onChange={e => setHours(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-accent-blue"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
                 />
               </label>
               <label className="space-y-1">
@@ -150,7 +150,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                   max={59}
                   value={minutes}
                   onChange={e => setMinutes(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-accent-blue"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
                 />
               </label>
               <label className="space-y-1 col-span-2">
@@ -162,7 +162,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                     setStart(e.target.value);
                     setNow(Date.now());
                   }}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-accent-blue"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
                 />
               </label>
               <label className="space-y-1 col-span-2">
@@ -172,7 +172,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                   maxLength={WORKLOG_COMMENT_MAX_CHARS}
                   rows={2}
                   onChange={e => setComment(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-accent-blue resize-none"
+                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus resize-none"
                 />
               </label>
             </div>
@@ -198,7 +198,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
               <button
                 onClick={() => run(() => window.electronAPI.updateWorklog(worklog.id, correction))}
                 disabled={refusal !== null || busy}
-                className="px-4 py-2 bg-accent-blue hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-all"
+                className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-dark-900 rounded-lg text-xs font-semibold transition-all"
               >
                 Save
               </button>

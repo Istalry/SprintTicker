@@ -31,21 +31,21 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({ toasts, on
       {toasts.map(t => (
         <div
           key={t.id}
-          className={`flex items-start justify-between p-4 rounded-xl shadow-2xl border backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-2 ${
+          className={`flex items-start justify-between p-4 rounded-xl shadow-2xl border backdrop-blur-md transition-all ${
             t.type === 'success'
               ? 'bg-dark-800/90 border-accent-green/40 text-white'
               : t.type === 'warning'
               ? 'bg-dark-800/90 border-accent-amber/40 text-white'
-              : 'bg-dark-800/90 border-accent-blue/40 text-white'
+              : 'bg-dark-800/90 border-focus/40 text-white'
           }`}
         >
           <div className="flex items-start space-x-3">
             {t.type === 'success' && <CheckCircle className="w-5 h-5 text-accent-green shrink-0 mt-0.5" />}
             {t.type === 'warning' && <AlertTriangle className="w-5 h-5 text-accent-amber shrink-0 mt-0.5" />}
-            {t.type === 'info' && <Info className="w-5 h-5 text-accent-blue shrink-0 mt-0.5" />}
+            {t.type === 'info' && <Info className="w-5 h-5 text-text-primary shrink-0 mt-0.5" />}
 
             <div>
-              <h5 className="text-xs font-bold font-mono">{t.title}</h5>
+              <h5 className="text-xs font-bold">{t.title}</h5>
               <p className="text-xs text-text-secondary mt-0.5">{t.message}</p>
             </div>
           </div>

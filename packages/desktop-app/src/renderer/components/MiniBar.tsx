@@ -65,7 +65,7 @@ export const MiniBar: React.FC = () => {
   const choosing = ending && session && ending.sessionId === session.sessionId ? ending.step : null;
 
   return (
-    <div className="h-screen w-screen flex items-center gap-3 pr-2 bg-dark-800 border border-border-dark rounded-lg overflow-hidden select-none font-mono [-webkit-app-region:drag]">
+    <div className="h-screen w-screen flex items-center gap-3 pr-2 bg-dark-800 border border-border-dark rounded-lg overflow-hidden select-none [-webkit-app-region:drag]">
       <div className={`self-stretch w-1.5 shrink-0 ${stripe}`} aria-hidden="true" />
 
       {screenIcon && <ScreenIcon icon={screenIcon} className="w-8 h-8" />}
@@ -73,7 +73,7 @@ export const MiniBar: React.FC = () => {
       <div className="flex-1 min-w-0 leading-tight">
         {session ? (
           <>
-            <div className="text-[11px] font-bold text-accent-blue truncate flex items-center gap-1">
+            <div className="text-[11px] font-bold text-text-primary truncate flex items-center gap-1">
               {session.taskUnlisted && (
                 <span
                   role="img"
@@ -83,13 +83,13 @@ export const MiniBar: React.FC = () => {
                   <AlertTriangle className="w-3 h-3 shrink-0 text-accent-amber" />
                 </span>
               )}
-              <span className="truncate">{session.taskKey}</span>
+              <span className="font-mono truncate">{session.taskKey}</span>
             </div>
             <div className="text-xs text-text-primary truncate [-webkit-app-region:no-drag]">
               <SessionTitle
                 session={session}
                 className="text-xs text-text-primary truncate"
-                inputClassName="w-full bg-dark-900 border border-accent-blue rounded px-1 text-xs text-white focus:outline-none"
+                inputClassName="w-full bg-dark-900 border border-focus rounded px-1 text-xs text-white focus:outline-none"
               />
             </div>
           </>
@@ -99,7 +99,7 @@ export const MiniBar: React.FC = () => {
       </div>
 
       <div
-        className={`text-lg font-bold tabular-nums ${tracking ? 'text-white' : 'text-text-secondary'}`}
+        className={`text-lg font-bold font-mono tabular-nums ${tracking ? 'text-white' : 'text-text-secondary'}`}
         aria-label="Elapsed time"
       >
         {formatSeconds(session?.elapsedSeconds ?? 0)}
@@ -107,7 +107,7 @@ export const MiniBar: React.FC = () => {
 
       {choosing === 'choose' && (
         <div className="flex items-center gap-1" role="group" aria-label="End the session">
-          <button type="button" title="Stop and log the time; the task stays open" className={`${choice} text-accent-blue hover:bg-accent-blue/15`} onClick={end('Stop', () => complete(undefined, false))}>
+          <button type="button" title="Stop and log the time; the task stays open" className={`${choice} text-text-primary hover:bg-dark-600`} onClick={end('Stop', () => complete(undefined, false))}>
             Not done
           </button>
           <button type="button" title="Log the time and mark the task done" className={`${choice} text-accent-green hover:bg-accent-green/15`} onClick={finishNeedsConfirmation(session) ? () => setEnding('finish') : end('Finish', () => complete(undefined, true))}>

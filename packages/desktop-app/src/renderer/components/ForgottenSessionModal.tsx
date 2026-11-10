@@ -81,7 +81,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
   const sinceStart = worked(new Date(now).toISOString());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 font-mono select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div
         role="dialog"
         aria-label="A session was left running"
@@ -98,7 +98,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
             tone="danger"
             message={
               <>
-                Everything on <span className="text-accent-blue font-bold">{review.taskKey}</span> since{' '}
+                Everything on <span className="font-mono text-text-primary font-bold">{review.taskKey}</span> since{' '}
                 {formatDayAndTime(new Date(start))} is thrown away. Nothing is kept or sent. This cannot be undone.
               </>
             }
@@ -112,8 +112,8 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
             title="Count it all as work?"
             message={
               <>
-                <strong className="text-white">{formatHoursAndMinutes(sinceStart)}</strong> on{' '}
-                <span className="text-accent-blue font-bold">{review.taskKey}</span>, up to now, and the session keeps
+                <strong className="font-mono text-white">{formatHoursAndMinutes(sinceStart)}</strong> on{' '}
+                <span className="font-mono text-text-primary font-bold">{review.taskKey}</span>, up to now, and the session keeps
                 running.
               </>
             }
@@ -127,7 +127,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
             title="No longer assigned to you"
             message={
               <>
-                <span className="text-accent-blue font-bold">{review.taskKey}</span> left your list: reassigned,
+                <span className="font-mono text-text-primary font-bold">{review.taskKey}</span> left your list: reassigned,
                 closed or moved. Its time is logged either way. Start tracking it again anyway?
               </>
             }
@@ -139,7 +139,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
         ) : (
           <>
             <p className="text-xs text-text-secondary leading-relaxed">
-              <span className="text-accent-blue font-bold">{review.taskKey}</span> {review.taskTitle} was still running.
+              <span className="font-mono text-text-primary font-bold">{review.taskKey}</span> {review.taskTitle} was still running.
               Last activity: <strong className="text-white">{formatDayAndTime(lastPresence)}</strong>. It is paused
               there and nothing is logged yet. When did you stop working on it?
             </p>
@@ -175,7 +175,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                       setCustom(e.target.value);
                       setNow(Date.now());
                     }}
-                    className="mt-2 w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent-blue"
+                    className="mt-2 w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-focus"
                   />
                 )}
                 {choice === 'custom' && !customValid && (
@@ -218,7 +218,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
               <button
                 disabled={!endUtc}
                 onClick={() => answer('stop')}
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent-blue hover:bg-blue-600 text-white disabled:opacity-40 transition-all"
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-dark-900 disabled:opacity-40 transition-all"
               >
                 Log and stop
               </button>
@@ -239,7 +239,7 @@ const EndOption: React.FC<{
   children?: React.ReactNode;
 }> = ({ checked, onSelect, label, seconds, children }) => (
   <div
-    className={`rounded-lg border px-3 py-2 ${checked ? 'border-accent-blue bg-accent-blue/10' : 'border-border-dark'}`}
+    className={`rounded-lg border px-3 py-2 ${checked ? 'border-focus bg-select' : 'border-border-dark'}`}
   >
     <label className="flex items-center justify-between cursor-pointer text-xs text-text-primary">
       <span className="flex items-center space-x-2">
