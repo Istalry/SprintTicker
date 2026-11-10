@@ -56,14 +56,19 @@ const QUIESCENCE_MS = 20_000;
  * Until 2026-11-09 a Unity editor's compiles were the busiest source; the
  * banners, the session and the picker took their weight, so a run still
  * changes screens about as often as it did. The stand-up and the paused
- * menu's DROP are scripted in display-handback.test.ts but not drawn here:
- * the settled-screen check does not model a prompt left unanswered yet.
+ * menu's DROP joined the mix the same day, once the settled-screen check
+ * knew a prompt left unanswered: they found the picker lost under the
+ * prompt's scene and a waiting frame landing over it.
  */
 const WEIGHTS: Partial<Record<EventName, number>> = {
   banner: 6, highBanner: 3,
   startTask: 3, startTaskFromBar: 2, pause: 3, resume: 3, tick: 8, stop: 2, finish: 2,
   openPicker: 3, closePicker: 3,
-  lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1,
+  lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1, lunchStartUnderAway: 1, awayEndIntoLunch: 1,
+  // The paused menu's DROP: asked, taken back, confirmed.
+  askDiscard: 2, cancelDiscard: 1, discard: 1,
+  // The stand-up's prompt, joined, and its end bringing the task back.
+  standupPrompt: 1, joinStandup: 1, standupEnds: 1,
   // The bar dropping out and coming back, as a Wi-Fi blip or a restart does.
   barDrop: 1, barBack: 2, barReboot: 1
 };

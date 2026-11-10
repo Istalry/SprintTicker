@@ -336,8 +336,10 @@ Two rules, both scars:
   user's mode. Background states are offered highest-ranked first, and one
   ranked above everything queued or set aside comes before the queue.
   Releasing a lock that is set aside rather than held removes
-  it from that list. The tracker and the mode locks are never set aside:
-  `setContextMode` draws them as they are now.
+  it from that list. A screen set aside comes back only in a mode whose rule
+  displays it: the stand-up prompt, covered by Away, waits through a Lunch
+  begun meanwhile and returns after it. The tracker and the mode locks are
+  never set aside: `setContextMode` draws them as they are now.
 - **The bar's picker is the background state.** Registered by
   `InputDecoder`, it comes back while it is open: refused under Away and
   never queued, it would otherwise be open and unseen once Away ended. A
@@ -1004,7 +1006,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 2785 tests across 134 files, in two projects: `main` in Node for
+Vitest, 2789 tests across 134 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

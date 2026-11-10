@@ -62,6 +62,15 @@ export class AnimationPlayer {
    * the next frame, until `retireScene` removes it.
    */
   private sceneOnDevice: string | null = null;
+  /**
+   * Whether a scene element of ours may be on the panel, playing or not, so
+   * the next frame must put it to rest. Apart from `sceneOnDevice` because an
+   * outage forgets which file the device holds, but not the element: a bar
+   * that only dropped out still plays it. Forgotten with the file, the
+   * stand-up's meeting table played on under the session's frame once the
+   * bar was back (stress seed 2153).
+   */
+  private sceneMayBeOnPanel = false;
   /** Orders scene draws and removals; see `withSceneLock`. */
   private readonly sceneLock = new SerialQueue();
 
@@ -338,6 +347,7 @@ export class AnimationPlayer {
       return 'done';
     }
     this.sceneOnDevice = path;
+    this.sceneMayBeOnPanel = true;
     if (superseded()) return 'done';
 
     // The frame is opaque across the whole panel and sits above the scene, so
@@ -375,9 +385,9 @@ export class AnimationPlayer {
    * is then what the bar shows, and putting it to rest would leave it dark.
    */
   public async retireScene(): Promise<void> {
-    if (this.sceneOnDevice === null) return;
+    if (!this.sceneMayBeOnPanel) return;
     await this.withSceneLock(async () => {
-      if (this.sceneOnDevice === null || this.hardwareAnimActive) return;
+      if (!this.sceneMayBeOnPanel || this.hardwareAnimActive) return;
       const others = this.driver
         .shownElementIds(DEVICE_APPLICATION_NAME)
         .filter(id => id !== FRONT_ELEMENT_IDS.SCENE);
@@ -386,10 +396,12 @@ export class AnimationPlayer {
       try {
         await this.driver.removeDisplayElements(DEVICE_APPLICATION_NAME, [FRONT_ELEMENT_IDS.SCENE]);
         this.sceneOnDevice = null;
+        this.sceneMayBeOnPanel = false;
       } catch (err) {
         if (isElementAbsent(err)) {
           // Already gone: a clear, a higher-priority application, a reboot.
           this.sceneOnDevice = null;
+          this.sceneMayBeOnPanel = false;
           return;
         }
         // Kept, so the next frame tries again. Harmless meanwhile: the frame
@@ -402,7 +414,9 @@ export class AnimationPlayer {
   /**
    * Forgets the scene believed on the device, after an outage that may have
    * been a reboot. The next scene is uploaded again rather than drawn from a
-   * copy the device may no longer hold.
+   * copy the device may no longer hold. Whether one may be on the panel is
+   * kept: the next frame still puts it to rest. On a bar that rebooted that
+   * costs one draw of the empty animation, under a frame that covers it.
    */
   public forgetDevice(): void {
     this.sceneOnDevice = null;

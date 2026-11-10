@@ -94,6 +94,18 @@
   break ended; the bar kept the sandwich or the coffee cup instead, then
   went to the clock, and the notification was never seen. It now shows as
   the break ends, then the bar goes on to your session or the clock.
+- **The bar's picker could open invisibly over the stand-up prompt.**
+  Pressing START while the prompt's meeting scene played opened the
+  picker -- it took presses -- but the scene stayed on the bar. The
+  picker now replaces the scene, and the prompt comes back when it closes.
+- **The stand-up prompt could vanish from the bar while it waited.** It
+  could come back during Lunch, playing the meeting scene over the break,
+  when Away had covered it before lunch began; once lunch ended, the
+  timer's screen took its place while it still waited for an answer. It
+  now waits through Lunch and shows again after it.
+- **A timer screen could land over the stand-up prompt.** When the prompt
+  arrived just as the timer redrew, the timer's screen was drawn over the
+  meeting scene a moment later and stayed there.
 
 ## 1.4.0 — 2026-11-04
 

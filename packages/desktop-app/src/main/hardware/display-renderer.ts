@@ -19,7 +19,7 @@ import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { isAdHocTaskId } from '../db/id-generator';
 import { measureText } from '../../shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
-import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 
 /** The paused screen's STOP/FINISH bars: row 1's capitals fit inside 7px. */
@@ -445,17 +445,32 @@ export class DisplayRenderer {
   }
 
   /**
-   * Stops Lunch's or Away's looping scene when another screen takes the
-   * display from it. Nothing else draws over a mode, so stopping it was left
-   * to `setContextMode` -- but leaving Lunch, the release of its lock can hand
-   * the display to a screen that waited behind it first (an editor's compile
-   * screen, once), whose frame was held back behind the scene still playing,
-   * and the sandwich stayed up under a lock that said otherwise.
+   * The looping scenes a lock holds the display with, by the lock. A one-shot
+   * scene (GO!, DONE!, LOGGED) plays over every lock and ends on its own
+   * timer; these play until something else takes the display.
+   */
+  private static readonly LOCK_SCENES: Readonly<Record<string, string>> = {
+    lunchModePriority: FRONT_ANIMATIONS.LUNCH,
+    awayModePriority: FRONT_ANIMATIONS.AWAY,
+    [STANDUP_PROMPT_EVENT]: FRONT_ANIMATIONS.MEETING
+  };
+
+  /**
+   * Stops the looping scene of the lock another screen takes the display
+   * from: Lunch's, Away's, the stand-up prompt's. Nothing else draws over a
+   * mode, so stopping it was left to `setContextMode` -- but leaving Lunch,
+   * the release of its lock can hand the display to a screen that waited
+   * behind it first (an editor's compile screen, once), whose frame was held
+   * back behind the scene still playing, and the sandwich stayed up under a
+   * lock that said otherwise. The prompt's meeting table did the same to the
+   * bar's picker opened over it: open, taking presses, and never on the panel
+   * (stress seed 1159).
    */
   private endModeSceneFor(eventName: string): void {
-    if (eventName === 'lunchModePriority' || eventName === 'awayModePriority') return;
+    // A lock with a scene of its own draws it over the one playing.
+    if (eventName in DisplayRenderer.LOCK_SCENES) return;
     const playing = this.animationPlayer.getCurrentAnimation();
-    if (playing !== FRONT_ANIMATIONS.LUNCH && playing !== FRONT_ANIMATIONS.AWAY) return;
+    if (playing === null || !Object.values(DisplayRenderer.LOCK_SCENES).includes(playing)) return;
     this.animationPlayer.stop();
     this.invalidateFrameCache();
   }
@@ -513,7 +528,15 @@ export class DisplayRenderer {
       // release lands here -- the picker handing the display back right after
       // GO!, a banner ending during DONE! -- and stopping unconditionally cut
       // the scene off the moment it started.
-      if (!this.isCelebrating) this.animationPlayer.stop();
+      // Nor the scene of the lock holding the display: leaving Lunch gives it
+      // back to a stand-up prompt set aside, whose meeting table starts in
+      // the release, and the mode's own redraw then stopped it under the
+      // prompt's lock -- the next frame put the table to rest and the prompt
+      // was gone from the panel while it waited for an answer.
+      const holder = this.priorityEngine?.getActiveLockEventName() ?? null;
+      const holderScene = holder === null ? undefined : DisplayRenderer.LOCK_SCENES[holder];
+      const holderScenePlays = holderScene !== undefined && this.animationPlayer.getCurrentAnimation() === holderScene;
+      if (!this.isCelebrating && !holderScenePlays) this.animationPlayer.stop();
       this.renderActiveSession(this.lastSessionCache);
     }
   }

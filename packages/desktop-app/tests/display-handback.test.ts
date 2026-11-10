@@ -103,6 +103,39 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expect(lock()).toBe('standupPromptPriority');
       expect(scene()).toMatch(/^meeting_table_72x16/);
     });
+
+    it('StandupPrompt_SetAsideThenLunch_StaysAsideUntilLunchEnds', async () => {
+      // Seed 2383: the prompt set aside under Away, lunch begun meanwhile,
+      // and the picker's release then gave the display to the prompt -- in
+      // LUNCH, whose rule suppresses it: the meeting table over the break.
+      await play('standupPrompt', SETTLE_MS, 'awayStart', SETTLE_MS, 'lunchStart', SETTLE_MS);
+      await play('openPicker', SETTLE_MS, 'closePicker', SETTLE_MS);
+
+      expect(lock()).not.toBe('standupPromptPriority');
+      expect(scene()).toMatch(/^lunch_sandwich_72x16/);
+      expectSettledScreen(desk);
+
+      // Still unanswered: it comes back once lunch is over.
+      await play('lunchEnd', SETTLE_MS);
+      expect(lock()).toBe('standupPromptPriority');
+      expectSettledScreen(desk);
+    });
+
+    it('Picker_OverTheStandupPrompt_IsDrawnOverTheMeetingScene', async () => {
+      // Seed 1159: the picker took the prompt's lock, but the meeting scene
+      // went on playing, and a frame is never sent over a scene that plays:
+      // the picker was open, taking presses, and nowhere on the panel.
+      await play('standupPrompt', SETTLE_MS, 'openPicker', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
+      expectSettledScreen(desk);
+
+      await play('closePicker', SETTLE_MS);
+      expect(lock()).toBe('standupPromptPriority');
+      expectSettledScreen(desk);
+    });
   });
 
   describe('the session and the scenes', () => {
@@ -423,6 +456,18 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
+    it('StandupPrompt_WhileASessionFrameWaits_NoFrameOverTheMeetingScene', async () => {
+      // Seed 1112: two session frames in a row, the second waiting behind the
+      // first, then the prompt. The scene's draw dropped the waiting frame,
+      // but its send was already on a timer, and it landed over the meeting
+      // table once the scene had removed the frame before it.
+      await play('startTask', 'tick', 40, 'standupPrompt', SETTLE_MS);
+
+      expect(lock()).toBe('standupPromptPriority');
+      expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(false);
+      expectSettledScreen(desk);
+    });
+
     it('JoinStandup_InOneTick_NoScreenStuck', async () => {
       // Prompt, OK and STOP faster than any request answers.
       await play('startTask', 'standupPrompt', 'joinStandup', 'standupEnds', SETTLE_MS);
@@ -457,6 +502,20 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await advance(SETTLE_MS);
 
       expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('StandupJoinedWhileTheBarIsAway_MeetingSceneIsPutToRestWhenItIsBack', async () => {
+      // Seed 2153: the prompt's meeting table playing, the bar gone, the
+      // stand-up joined meanwhile. The outage made the player forget the
+      // scene it had drawn, so the session's frame landed over a table it
+      // never put to rest, still playing underneath.
+      await play('standupPrompt', SETTLE_MS);
+
+      await outage(() => play('joinStandup', SETTLE_MS));
+      await advance(SETTLE_MS);
+
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
       expectSettledScreen(desk);
     });
 

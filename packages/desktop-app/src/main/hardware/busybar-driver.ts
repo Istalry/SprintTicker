@@ -1476,8 +1476,15 @@ export class BusyBarDriver extends EventEmitter {
     if (this.pendingFrameArgs) {
       const args = this.pendingFrameArgs;
       this.pendingFrameArgs = null;
+      const version = this.displayVersion;
       // Fire next frame asynchronously without blocking, with a 35ms network throttle
       setTimeout(() => {
+        // Out of `pendingFrameArgs` already, so a clear or a payload drawn
+        // during the throttle could not drop it as it drops a waiting frame:
+        // sent anyway, it took the newer version and landed over the scene
+        // the payload had just put down -- the session's frame over the
+        // stand-up's meeting table (stress seed 1112).
+        if (this.displayVersion !== version) return;
         // Nobody awaits a deferred frame, so this is where its failure is
         // reported. The next render sends a fresh one anyway.
         this.sendPixelFrame(...args).catch(err => {

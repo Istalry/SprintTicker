@@ -421,7 +421,8 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     const queued = this._notificationQueue
       .filter(item => now - item.timestampMs < PriorityPreemptionEngine.DEFAULT_QUEUE_EXPIRATION_MS)
       .map(item => item.priority);
-    return Math.max(-Infinity, ...queued, ...this._suspended.map(entry => entry.priority));
+    const suspended = this._suspended.filter(entry => this.displaysNow(entry.eventName)).map(entry => entry.priority);
+    return Math.max(-Infinity, ...queued, ...suspended);
   }
 
   /** Sets the active holder aside when `eventName` takes the display from it. */
@@ -440,11 +441,13 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
    * drew one under that lock -- is dropped, and the next tried.
    */
   private resumeSuspended(): void {
-    while (this._suspended.length > 0 && this._activeLockEventName === null) {
-      let best = 0;
-      for (let i = 1; i < this._suspended.length; i++) {
-        if (this._suspended[i].priority >= this._suspended[best].priority) best = i;
+    while (this._activeLockEventName === null) {
+      let best = -1;
+      for (let i = 0; i < this._suspended.length; i++) {
+        if (!this.displaysNow(this._suspended[i].eventName)) continue;
+        if (best < 0 || this._suspended[i].priority >= this._suspended[best].priority) best = i;
       }
+      if (best < 0) return;
       const [entry] = this._suspended.splice(best, 1);
       this._activeLockEventName = entry.eventName;
       this._activeLockPriority = entry.priority;
@@ -452,6 +455,18 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
       this._activeLockEventName = null;
       this._activeLockPriority = 0;
     }
+  }
+
+  /**
+   * Whether the user's mode lets a screen set aside come back now. The mode
+   * may have changed while it waited: a stand-up prompt set aside under Away
+   * came back during Lunch, whose rule suppresses it, and played the meeting
+   * table over the break (stress seed 2383). One the mode holds back stays
+   * aside, for the mode that shows it.
+   */
+  private displaysNow(eventName: string): boolean {
+    const rule = this.getRules().find(r => r.eventName === eventName || r.id === eventName);
+    return this.resolveModeAction(rule) === 'DISPLAY';
   }
 
   private resolveModeAction(rule?: PriorityRule): PriorityAction {

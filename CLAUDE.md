@@ -624,6 +624,17 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     test found a clear and a scene crossing in flight and closing the screen
     on both, on the stop-a-task path. **A new request that touches the panel
     goes through `queued()`**, and records what it changed before it returns.
+  - **A frame on its way is still a frame waiting.** The frame held behind
+    one in flight leaves `pendingFrameArgs` for a 35 ms throttle timer, and
+    a payload or clear in those 35 ms used to miss it: sent anyway, it took
+    the newer `displayVersion` and covered the scene just drawn (stress seed
+    1112). The timer checks the version it was scheduled under.
+  - **An outage forgets the scene's file, not the scene.** `AnimationPlayer`
+    keeps "which `.anim` the device holds" (`sceneOnDevice`, forgotten on
+    `reconnected`, so the next scene uploads again) apart from "a scene may
+    be on the panel" (`sceneMayBeOnPanel`, kept, so the next frame still
+    puts it to rest). One flag for both left the stand-up's meeting table
+    playing under the session's frame after a Wi-Fi blip (seed 2153).
   - **The run-up to a hang is recorded, not acted on.** `DisplayHealthMonitor`
     keeps the last ten upload times, the screen closes of the last hour and
     the requests the ledger skipped, in `DeviceStatusDTO.displayHealth` and so
@@ -730,6 +741,9 @@ changing it:
   removed: a build under a banner came back as the idle clock with the build
   still running; a compile refused under a banner never drew at all. Releasing a lock that is not held removes it
   from the set-aside list -- that screen ended while covered.
+  A screen set aside comes back only in a mode whose rule displays it
+  (`displaysNow`): the stand-up prompt, covered by Away, came back in a
+  Lunch begun meanwhile and played the meeting table over the break.
   **One exception, by the user's own scores:** a background state ranked
   above everything queued or set aside is offered first, and background
   states are offered highest first, never in the order they registered.
@@ -746,8 +760,12 @@ changing it:
   (`handBack: false`, since it is itself what handing back draws). Lunch and
   Away are never queued (`queueOnPreempt: false`): a Lunch refused during
   Away replayed when Away ended, holding a Lunch lock back in WORK. A screen
-  granted over a mode's looping scene stops it (`endModeSceneFor`), or the
-  frame waits behind the sandwich for good.
+  granted over a lock's looping scene -- Lunch's, Away's, the stand-up
+  prompt's meeting table (`LOCK_SCENES`) -- stops it (`endModeSceneFor`), or
+  the frame waits behind the scene for good: the picker opened over the
+  prompt took presses and never reached the panel. The other way round,
+  `setContextMode('WORK')` leaves alone the scene of the lock that holds the
+  display: it runs after the release that just gave the display back to it.
 - **A one-shot scene ends on the holder's screen**, through
   `grantedScreens`, not on the session: DONE! during Unity's Play Mode
   used to end on the idle clock with Play Mode still holding the lock.

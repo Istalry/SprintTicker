@@ -6,7 +6,7 @@ import { PriorityPreemptionEngine } from '../../src/main/services/priority-preem
 import { SettingsRepository } from '../../src/main/db/repositories/settings-repository';
 import { ActiveSessionDTO, UserMode } from '../../src/shared/dtos';
 import { FRONT_ELEMENT_IDS } from '../../src/shared/device-constants';
-import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT } from '../../src/shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, STANDUP_PROMPT_EVENT } from '../../src/shared/priority-defaults';
 import { DAILY_STANDUP_TITLE } from '../../src/shared/schedule-defaults';
 import { FRONT_ANIMATIONS } from '../../src/shared/render-constants';
 import { FirmwareSimulator } from './firmware-simulator';
@@ -353,6 +353,17 @@ export function expectSettledScreen(desk: Desk): void {
     if (lock !== BAR_MENU_EVENT || !desk.device.has(FRONT_ELEMENT_IDS.FRAME)) {
       throw new Error(`Expected the bar's picker, which is open: ${context}`);
     }
+    return;
+  }
+  // The stand-up's prompt waits for an answer, holding the display with the
+  // meeting scene alone: no frame, no session icon over the table.
+  if (lock === STANDUP_PROMPT_EVENT) {
+    const scene = desk.device.elements.get(FRONT_ELEMENT_IDS.SCENE)?.path ?? '';
+    if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE) || !scene.startsWith(FRONT_ANIMATIONS.MEETING)) {
+      throw new Error(`Expected the stand-up's meeting scene, the panel plays ${scene || 'nothing'}: ${context}`);
+    }
+    if (desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) throw new Error(`Expected no icon over the meeting scene: ${context}`);
+    if (desk.device.has(FRONT_ELEMENT_IDS.FRAME)) throw new Error(`Expected no frame over the meeting scene: ${context}`);
     return;
   }
   // The stand-up tracks on the session screen, with the meeting icon -- not

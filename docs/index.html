@@ -2013,8 +2013,10 @@
       user&#39;s mode. Background states are offered highest-ranked first, and one
       ranked above everything queued or set aside comes before the queue.
       Releasing a lock that is set aside rather than held removes
-      it from that list. The tracker and the mode locks are never set aside:
-      <code>setContextMode</code> draws them as they are now.</li>
+      it from that list. A screen set aside comes back only in a mode whose rule
+      displays it: the stand-up prompt, covered by Away, waits through a Lunch
+      begun meanwhile and returns after it. The tracker and the mode locks are
+      never set aside: <code>setContextMode</code> draws them as they are now.</li>
       <li><strong>The bar&#39;s picker is the background state.</strong> Registered by
       <code>InputDecoder</code>, it comes back while it is open: refused under Away and
       never queued, it would otherwise be open and unseen once Away ended. A
@@ -2701,7 +2703,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2785 tests across 134 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 2789 tests across 134 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
