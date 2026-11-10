@@ -17,6 +17,7 @@ import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type { FlowSettingKeyValue, FlowSettingValues } from '../shared/flow-settings';
 import type { InterruptionSource, InterruptionToPlaceDTO } from '../shared/interruption';
+import type { PickerDataDTO } from '../shared/task-picker';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -134,6 +135,10 @@ export interface IElectronAPI {
   starTask: (taskId: string) => Promise<TaskDTO[]>;
   unstarTask: (taskId: string) => Promise<TaskDTO[]>;
   getStarredTasks: () => Promise<TaskDTO[]>;
+  /** Everything the task picker lists, in one read. */
+  getPickerData: () => Promise<PickerDataDTO>;
+  /** One task by the key typed, kept like a synced one; null when the provider has none. */
+  fetchTaskByKey: (key: string) => Promise<TaskDTO | null>;
   /** The last tasks timed, each once, newest first; unnamed interruptions left out. */
   getRecentTasks: () => Promise<TaskDTO[]>;
   /** The task to switch back to, or null. */

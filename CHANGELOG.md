@@ -36,6 +36,13 @@
   on in Settings, General, where you record
   the chord (Ctrl+Alt+Shift+I suggested). A chord another app holds is said to be inactive rather than
   shown on, and a press with nothing on screen is told by a notification.
+- **One task picker, search first.** Start, Switch, Assign, Place and Move
+  open the same picker: type and it searches every project at once, or pick
+  from the previous task, Recent, Starred (☆ on any task), your open tasks
+  across projects, or a project -- starred first, then most used. A
+  project's key and a space narrows to it. A ticket made since the last sync
+  is one **Fetch MG-77** away, from Jira or OpenProject, and switching away
+  from an interruption can take its time along.
 - **Interruptions to place.** An interruption's time goes nowhere until you
   say where: History lists every one waiting, whatever its day, with what it
   interrupted, and the wrap-up lists them too. **Place…** puts its time on a

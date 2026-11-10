@@ -7,7 +7,7 @@ import { Verb, keepOffLabel } from '../../shared/words';
 import { formatClockTime, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { InlineRename } from './InlineRename';
-import { TaskSelectionModal } from './TaskSelectionModal';
+import { TaskPicker } from './TaskPicker';
 import { ConfirmPanel } from './ConfirmPanel';
 
 interface InterruptionsToPlaceProps {
@@ -152,7 +152,7 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
                   type="button"
                   aria-label={`${Verb.PLACE} ${item.title} on a task`}
                   title="Put its time on a task: sent like any entry, ten seconds to undo"
-                  onClick={() => startPlacing([item], item.title)}
+                  onClick={() => startPlacing([item], `"${item.title}"`)}
                   className={small}
                 >
                   <Link2 className="w-3.5 h-3.5" />
@@ -198,12 +198,14 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
         </div>
       )}
 
-      <TaskSelectionModal
+      <TaskPicker
         isOpen={placing !== null}
-        mode="move"
-        projects={[]}
+        mode="place"
+        title={placing ? `${Verb.PLACE} ${placing.label} on a task` : undefined}
+        subtitle="Its time is sent to the task you pick, with ten seconds to undo."
         onClose={() => setPlacing(null)}
-        onSelectTask={taskId => { if (placing) placeOn(placing.ids, taskId); }}
+        onPick={picked => { if (placing && picked.task) placeOn(placing.ids, picked.task.id); }}
+        onKeepOff={placing ? () => act(() => Promise.all(placing.ids.map(id => window.electronAPI.keepInterruptionOff(id)))) : undefined}
       />
     </section>
   );

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from './hooks/useSession';
 import { useDeviceStatus } from './hooks/useDeviceStatus';
-import { useTasks } from './hooks/useTasks';
 import { useWorklogs } from './hooks/useWorklogs';
-import { useModals } from './hooks/useModals';
+import { PickerMode, useModals } from './hooks/useModals';
+import type { ActiveSessionDTO } from '../shared/dtos';
 import { AppShell, Place } from './components/AppShell';
-import { TaskSelectionModal } from './components/TaskSelectionModal';
+import { PickedTask, TaskPicker } from './components/TaskPicker';
 import { TodayView } from './views/Today/TodayView';
 import { ProjectTaskManagerView } from './views/Tasks/ProjectTaskManagerView';
 import { WorklogHistoryView } from './views/History/WorklogHistoryView';
@@ -48,6 +48,33 @@ function useToPlaceCount(): number {
   return count;
 }
 
+/**
+ * What a pick from the window's picker does. During an interruption a task
+ * picked is a switch, and its time goes along when asked (P6's `takeAlong`).
+ */
+function pickTask(
+  mode: PickerMode,
+  session: ActiveSessionDTO | null,
+  picked: PickedTask,
+  startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<unknown>
+): void {
+  const warn = (what: string) => (err: unknown) => console.warn(`[App] ${what} failed:`, err);
+  if (picked.ownTitle) {
+    // Empty id: main owns ad-hoc identity and makes the row.
+    startTask('', true, picked.ownTitle).catch(warn('Starting own work'));
+    return;
+  }
+  const task = picked.task;
+  if (!task) return;
+  if (mode === 'assign') {
+    window.electronAPI.assignSession(task.id).catch(warn('Assigning the session'));
+  } else if (session?.interruption) {
+    window.electronAPI.switchFromInterruption(task.id, picked.takeAlong).catch(warn('Switching from the interruption'));
+  } else {
+    startTask(task.id, false, task.title).catch(warn('Starting the task'));
+  }
+}
+
 export const App: React.FC = () => {
   const [place, setPlace] = useState<Place>('today');
   const [settingsGroup, setSettingsGroup] = useState<SettingsGroupId>('general');
@@ -56,7 +83,6 @@ export const App: React.FC = () => {
   const { session, pause, resume, complete, discard, startTask, interrupt, back, stopInterruption } = useSession();
   const device = useDeviceStatus();
   const hasBar = device.enabled;
-  const { projects } = useTasks();
   const { worklogs } = useWorklogs();
   const modals = useModals(session !== null);
   const toPlace = useToPlaceCount();
@@ -114,18 +140,14 @@ export const App: React.FC = () => {
         {renderPlace()}
       </AppShell>
 
-      <TaskSelectionModal
+      <TaskPicker
         isOpen={modals.picker.open}
         onClose={modals.picker.close}
-        projects={projects}
-        mode={modals.picker.mode}
-        onSelectTask={(taskId, isAdHoc, title) => {
-          if (modals.picker.mode === 'assign') {
-            window.electronAPI.assignSession(taskId).catch(err => console.warn('[App] Assigning the session failed:', err));
-            return;
-          }
-          startTask(taskId, isAdHoc, title);
-        }}
+        mode={modals.picker.mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
+        takeAlongOf={modals.picker.mode !== 'assign' && session?.interruption
+          ? { title: session.interruption.title, seconds: session.elapsedSeconds }
+          : null}
+        onPick={picked => { pickTask(modals.picker.mode, session, picked, startTask); }}
       />
 
       <StandupPromptModal

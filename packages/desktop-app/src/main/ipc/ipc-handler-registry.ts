@@ -27,6 +27,7 @@ import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
+import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
@@ -522,6 +523,31 @@ export class IPCHandlerRegistry {
       return this.taskRepo.getStarred();
     });
     ipcMain.handle(IPCChannel.GET_STARRED_TASKS, async (): Promise<TaskDTO[]> => this.taskRepo.getStarred());
+    ipcMain.handle(IPCChannel.GET_PICKER_DATA, async (): Promise<PickerDataDTO> => {
+      const since = pickerUsageSince(new Date());
+      return {
+        previous: this.engine.getPreviousTask(),
+        recent: this.taskRepo.getRecent(RECENT_TASKS_LIMIT),
+        starred: this.taskRepo.getStarred(),
+        tasks: this.taskRepo.getAllListed(),
+        projects: this.projectRepo.getAllProjects(),
+        projectSeconds: this.taskRepo.getProjectSecondsSince(since)
+      };
+    });
+    // Kept like any task the sync brings, so starting it, its worklog and its
+    // send all find the row. A project the lists do not hold is refused: the
+    // task would be filed under nothing, and the next sync would retire it.
+    ipcMain.handle(IPCChannel.FETCH_TASK_BY_KEY, async (_event, key: unknown): Promise<TaskDTO | null> => {
+      if (typeof key !== 'string' || !key.trim()) throw new ArgumentException('Fetching needs a key.', 'key');
+      if (!this.providerManager) throw new Error('No provider is running.');
+      const task = await this.providerManager.getTaskByKey(key.trim());
+      if (!task) return null;
+      if (!this.projectRepo.getAllProjects().some(p => p.id === task.projectId)) {
+        throw new ArgumentException(`${task.key} is in a project SprintTicker does not list. Refresh, then try again.`, 'key');
+      }
+      this.taskRepo.saveTask(task);
+      return this.taskRepo.getTaskById(task.id) ?? task;
+    });
     ipcMain.handle(IPCChannel.GET_RECENT_TASKS, async (): Promise<TaskDTO[]> => this.taskRepo.getRecent(RECENT_TASKS_LIMIT));
 
     ipcMain.handle(IPCChannel.RENAME_AD_HOC_TASK, async (_event, taskId: unknown, title: unknown) => {

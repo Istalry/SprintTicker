@@ -221,6 +221,43 @@ nothing asks. Only more than two hours without any input across midnight --
 a long call -- brings the question, and **I was working all along** keeps it
 all.
 
+### 🔎 Finding a task: the picker
+
+**Start a Task**, **Switch Task**, **Assign to Task**, **Place…** and
+**Move** all open the same picker. Type, and it searches every task of every
+project at once -- key, title, description or project name -- grouped by
+project. Before you type, it offers:
+
+- **the previous task**, first, when you are switching: one click back;
+- **Recent**, the last six tasks you timed;
+- **Starred**, your usual places for time: hover a task and click its ☆;
+- **Assigned to me · open**, your own tasks from every project, in progress
+  first, then to do by priority -- **all N of my open tasks** lists them all;
+- **All projects**, the ones you have starred tasks in first, then the ones
+  you used most this month. Click one to see only its tasks.
+
+A project's key and a space -- `pf ` -- also narrows the picker to that
+project, and what you type next searches inside it: `pf 40` finds PF-40.
+Backspace on an empty search, or the ✕ beside the project, takes it off.
+Arrow keys and Enter pick from the keyboard; Escape closes.
+
+- **A ticket made a minute ago** is not there until the next sync. Type its
+  key -- `MG-77`, or a work package's number in OpenProject -- and the picker
+  offers **Fetch MG-77 from Jira**: one request, about a second, and the task
+  starts. **A ticket is missing? Refresh from Jira**, at the bottom, fetches
+  everything again.
+- **A task of my own…** starts work that stays in SprintTicker and is never
+  sent; with something typed, it is named after it.
+- **Switching away from an interruption**, the picker offers to put the
+  interruption's time on the task you pick too. Unticked, the interruption
+  waits to be placed.
+- Placing and moving offer only real tasks: time goes to a task on your
+  provider. Placing opens on **Starred**, since an interruption is most often
+  about one of your usual places, and **Keep off Jira** is there too.
+
+The picker shows the same tasks in the same order as Tasks and the bar's
+picker, and follows the same **Unassigned** and **Teammates'** switches.
+
 ### ⚡ Interrupt: a timer at once
 
 Someone at your desk, a call: press **Interrupt** and a timer starts there
@@ -317,8 +354,8 @@ default -- hides every project with no open task. A provider lists every
 project you can see, while the tasks it fetches are yours and the team's free
 or ongoing work, so most projects held nothing to pick. A project is listed again as soon as it
 has a task to do or in progress. The switch says how many projects it hides,
-and turning it off lists them all. It is one setting: the task picker shows
-the same switch, and the bar's own picker follows it. The project you have
+and turning it off lists them all. The bar's own picker follows it; the
+window's task picker always lists only the projects with a task. The project you have
 selected stays listed even when it is empty, so one you have just created does
 not vanish before its first task. If no project has a task for you -- before
 the first sync, or on a day nothing is assigned to you -- every project is

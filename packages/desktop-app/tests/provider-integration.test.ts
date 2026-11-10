@@ -385,6 +385,22 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
     expect(await provider.getTaskStanding('OP-108')).toBe(expected);
   });
 
+  it.each([['OP-1001'], ['#1001'], ['1001']])('GetTaskByKey_%s_TheWorkPackageWithItsProject', async typed => {
+    expect(await provider.getTaskByKey(typed)).toMatchObject({ id: '1001', key: 'OP-1001', projectId: '1', title: 'WP 1 of project 1' });
+  });
+
+  it.each([
+    ['an epic', 'OP-1004'],
+    ['not an id', 'PF-31'],
+    ['deleted', 'OP-1002']
+  ])('GetTaskByKey_%s_Null', async (_label, typed) => {
+    fake.deletedWorkPackages.clear();
+    fake.deletedWorkPackages.add(1002);
+
+    expect(await provider.getTaskByKey(typed)).toBeNull();
+    fake.deletedWorkPackages.clear();
+  });
+
   it('GetNonWorkingDays_AgainstTheServer_OnlyTheDaysInTheRange', async () => {
     fake.nonWorkingDays.push(
       { date: '2026-11-01', name: 'All Saints' },

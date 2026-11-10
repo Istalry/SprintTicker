@@ -119,6 +119,17 @@ was rewritten. **The bar opens its own picker**: the window opens its picker
 on `TRIGGER_TASK_SELECTOR_MODAL` only for `inputKey: 'app'` or while a
 session runs (`windowPickerWanted`), or a START on the bar opened two.
 
+**The window has one task picker** (`TaskPicker`, redesign P7) for Start,
+Switch, Assign, Place and Move. It reads one snapshot (`tasks:get-picker`:
+previous, recent, starred, every listed task, projects, time per project)
+and groups it with the pure rules of `shared/task-picker.ts` -- the groups'
+order, search across projects, a project key and a space, what looks like a
+key -- within the lists' order (`task-order.ts`) and visibility
+(`task-visibility.ts`). Fetch by key (`tasks:fetch-by-key`) asks the active
+provider's `getTaskByKey`, keeps the task as the sync would, and is shown
+only with `canFetchByKey`. Picking during an interruption is
+`interruption:switch`, with `takeAlong` when its time goes too.
+
 **Starting with Windows** is `LaunchAtLoginService`
 (`src/main/services/launch-at-login.ts`), behind both the switch in Settings,
 General and the tray's checkbox; the tray rebuilds its menu from the service's

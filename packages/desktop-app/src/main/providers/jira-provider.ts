@@ -27,24 +27,29 @@ interface JiraProjectPage {
 }
 
 /** What Jira Cloud returns from `/rest/api/3/search/jql`. */
+interface JiraIssue {
+  id?: string | number;
+  key?: string;
+  fields?: {
+    summary?: string;
+    /** Atlassian Document Format; null when the issue has none. */
+    description?: unknown;
+    project?: { id?: string | number };
+    status?: { name?: string; statusCategory?: { key?: string } };
+    priority?: { name?: string } | null;
+    /** Null on an unassigned issue. */
+    assignee?: { accountId?: string; displayName?: string } | null;
+  };
+}
+
 interface JiraIssuePage {
-  issues?: Array<{
-    id?: string | number;
-    key?: string;
-    fields?: {
-      summary?: string;
-      /** Atlassian Document Format; null when the issue has none. */
-      description?: unknown;
-      project?: { id?: string | number };
-      status?: { name?: string; statusCategory?: { key?: string } };
-      priority?: { name?: string } | null;
-      /** Null on an unassigned issue. */
-      assignee?: { accountId?: string; displayName?: string } | null;
-    };
-  }>;
+  issues?: JiraIssue[];
   nextPageToken?: string;
   isLast?: boolean;
 }
+
+/** The fields that become a TaskDTO, for a search and for one issue alike. */
+const TASK_FIELDS = 'summary,status,project,priority,description,assignee';
 
 /** A Jira user, as far as events care. */
 interface JiraUser {
@@ -306,7 +311,7 @@ export class JiraProvider implements ITaskProvider {
       // heavy field asked for, and only its start is kept -- see
       // TASK_DESCRIPTION_MAX_CHARS.
       // The assignee says whose each task is; see task-ownership.ts.
-      url.searchParams.set('fields', 'summary,status,project,priority,description,assignee');
+      url.searchParams.set('fields', TASK_FIELDS);
       if (pageToken) url.searchParams.set('nextPageToken', pageToken);
 
       const context = `Fetching Jira issues for project ${projectId}`;
@@ -330,24 +335,7 @@ export class JiraProvider implements ITaskProvider {
 
       for (const issue of issues) {
         if (issue.id === undefined || issue.id === null) continue;
-        const task: TaskDTO = {
-          id: String(issue.id),
-          projectId,
-          key: issue.key || String(issue.id),
-          title: issue.fields?.summary || 'Untitled issue',
-          status: this.mapIssueStatus(
-            issue.fields?.status?.name,
-            issue.fields?.status?.statusCategory?.key
-          )
-        };
-        const priorityRank = priorityRankFromName(issue.fields?.priority?.name);
-        if (priorityRank !== undefined) task.priorityRank = priorityRank;
-        const description = clampDescription(adfToPlainText(issue.fields?.description));
-        if (description) task.description = description;
-        const assignee = issue.fields?.assignee;
-        const ownership = ownershipOf(assignee?.accountId, me);
-        if (ownership !== TaskOwnership.MINE) task.ownership = ownership;
-        if (ownership === TaskOwnership.OTHER && assignee?.displayName) task.assigneeName = assignee.displayName;
+        const task = this.toTask(issue, projectId, me);
         if (this._taskScope === TaskScope.ASSIGNED_TO_ME && !keptByDefaultScope(task)) continue;
         collected.push(task);
       }
@@ -361,6 +349,59 @@ export class JiraProvider implements ITaskProvider {
       'protocol',
       `Fetching Jira issues for project ${projectId} failed: did not finish within ${MAX_COLLECTION_PAGES} pages`
     );
+  }
+
+  /** One issue as a task: the same mapping for a project's list and a fetch by key. */
+  private toTask(issue: JiraIssue, projectId: string, me: string): TaskDTO {
+    const task: TaskDTO = {
+      id: String(issue.id),
+      projectId,
+      key: issue.key || String(issue.id),
+      title: issue.fields?.summary || 'Untitled issue',
+      status: this.mapIssueStatus(
+        issue.fields?.status?.name,
+        issue.fields?.status?.statusCategory?.key
+      )
+    };
+    const priorityRank = priorityRankFromName(issue.fields?.priority?.name);
+    if (priorityRank !== undefined) task.priorityRank = priorityRank;
+    const description = clampDescription(adfToPlainText(issue.fields?.description));
+    if (description) task.description = description;
+    const assignee = issue.fields?.assignee;
+    const ownership = ownershipOf(assignee?.accountId, me);
+    if (ownership !== TaskOwnership.MINE) task.ownership = ownership;
+    if (ownership === TaskOwnership.OTHER && assignee?.displayName) task.assigneeName = assignee.displayName;
+    return task;
+  }
+
+  /**
+   * One issue by the key the user typed in the picker (`/issue/{key}`): a
+   * ticket made since the last sync, whoever has it. Null for a 404, which
+   * Jira answers alike for no such issue and one the user may not see. Not
+   * filtered by the task scope: the user asked for this one by name.
+   */
+  public async getTaskByKey(key: string): Promise<TaskDTO | null> {
+    this.requireConfigured();
+    const wanted = (key ?? '').trim().toUpperCase();
+    if (!wanted) throw new ArgumentException('key is required to fetch a task.');
+
+    const me = await this.authenticatedAccountId();
+    const url = new URL(`${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(wanted)}`);
+    url.searchParams.set('fields', TASK_FIELDS);
+    const context = `Fetching Jira issue ${wanted}`;
+    let issue: JiraIssue;
+    try {
+      const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
+      issue = await this.readJson<JiraIssue>(res, context);
+    } catch (err) {
+      if (err instanceof ProviderRequestError && err.status === 404) return null;
+      throw err;
+    }
+    const projectId = issue.fields?.project?.id;
+    if (issue.id === undefined || issue.id === null || projectId === undefined || projectId === null) {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: the issue had no id or project`);
+    }
+    return this.toTask(issue, String(projectId), me);
   }
 
   /**

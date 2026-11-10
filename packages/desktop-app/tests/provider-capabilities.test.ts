@@ -69,7 +69,7 @@ describe('providerCapabilities', () => {
         canAssign: true,
         canTransition: true,
         canFindWorklog: true,
-        canFetchByKey: false,
+        canFetchByKey: true,
         hasHolidays: false
       });
     });
@@ -80,7 +80,7 @@ describe('providerCapabilities', () => {
         canAssign: true,
         canTransition: true,
         canFindWorklog: true,
-        canFetchByKey: false,
+        canFetchByKey: true,
         hasHolidays: true
       });
     });

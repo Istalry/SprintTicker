@@ -1,28 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EodWrapUpModal } from '../../src/renderer/views/EOD/EodWrapUpModal';
-import { TaskSelectionModal } from '../../src/renderer/components/TaskSelectionModal';
-import { ProjectDTO, TaskDTO } from '../../src/shared/dtos';
 import { installElectronApi } from './electron-api-mock';
 
 /**
- * Both modals mount their content afresh on every opening. They used to stay
+ * The wrap-up mounts its content afresh on every opening. They used to stay
  * mounted and reset themselves from an effect on `isOpen`, which is what these
  * pin: what an opening must start from, and what must survive while open.
  */
-
-const PROJECTS: ProjectDTO[] = [
-  { id: 'P-1', key: 'SPR', name: 'Sprint' },
-  { id: 'P-2', key: 'OPS', name: 'Operations' }
-];
-
-const task = (projectId: string, key: string): TaskDTO => ({
-  id: `${projectId}-${key}`,
-  projectId,
-  key,
-  title: `Title of ${key}`,
-  status: 'todo'
-});
 
 describe('EodWrapUpModal', () => {
   const modal = (isOpen: boolean) => (
@@ -108,93 +93,5 @@ describe('EodWrapUpModal hardware buttons', () => {
     press('back', 'DISMISS_EOD_WRAP_UP');
 
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('TaskSelectionModal', () => {
-  const modal = (isOpen: boolean, projects: ProjectDTO[] = PROJECTS) => (
-    <TaskSelectionModal isOpen={isOpen} onClose={vi.fn()} projects={projects} onSelectTask={vi.fn()} />
-  );
-
-  it('AssignMode_OffersNoAdHocWork', async () => {
-    // Ad-hoc work is what is being assigned: neither a new one nor the ad-hoc project.
-    installElectronApi({ getProjects: vi.fn().mockResolvedValue([...PROJECTS, { id: 'ADHOC', key: 'ADHOC', name: 'Custom Ad-Hoc / Misc Overhead' }]) });
-    render(<TaskSelectionModal isOpen onClose={vi.fn()} projects={PROJECTS} onSelectTask={vi.fn()} mode="assign" />);
-
-    expect(await screen.findByText('Operations')).toBeTruthy();
-    expect(screen.getByText('Assign to a Task: Select its Project')).toBeTruthy();
-    expect(screen.queryByText('+ Create Custom / Ad-Hoc Task')).toBeNull();
-    expect(screen.queryByText('Custom Ad-Hoc / Misc Overhead')).toBeNull();
-  });
-
-  it('Reopen_AfterChoosingAProject_StartsAgainOnStepOne', async () => {
-    installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
-    const { rerender } = render(modal(true));
-    fireEvent.click(await screen.findByText('Operations'));
-    expect(screen.getByText('Step 2: Select Task under [OPS]')).toBeTruthy();
-
-    rerender(modal(false));
-    rerender(modal(true));
-
-    expect(screen.getByText('Step 1: Select Target Project')).toBeTruthy();
-  });
-
-  it('ProjectsUpdate_WhileChoosingATask_KeepsTheChoice', async () => {
-    // The reset listened to the projects prop as well, so a sync landing
-    // while the user was on step 2 threw them back to step 1.
-    installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
-    const { rerender } = render(modal(true));
-    fireEvent.click(await screen.findByText('Operations'));
-
-    rerender(modal(true, [...PROJECTS, { id: 'P-3', key: 'NEW', name: 'Synced' }]));
-
-    expect(screen.getByText('Step 2: Select Task under [OPS]')).toBeTruthy();
-  });
-
-  it('ChooseProject_Always_ListsThatProjectsTasks', async () => {
-    installElectronApi({
-      getProjects: vi.fn().mockResolvedValue(PROJECTS),
-      getTasks: vi.fn().mockImplementation(async (projectId: string) =>
-        projectId === 'P-2' ? [task('P-2', 'OPS-7')] : [task('P-1', 'SPR-1')])
-    });
-    render(modal(true));
-
-    fireEvent.click(await screen.findByText('Operations'));
-
-    expect(await screen.findByText('OPS-7')).toBeTruthy();
-    expect(screen.queryByText('SPR-1')).toBeNull();
-  });
-
-  it('Search_MatchingOnlyTheDescription_FindsTheTask', async () => {
-    // The description is shown under the title, so it is searched too.
-    installElectronApi({
-      getProjects: vi.fn().mockResolvedValue(PROJECTS),
-      getTasks: vi.fn().mockResolvedValue([
-        { ...task('P-1', 'SPR-1'), description: 'Login fails on Safari' },
-        task('P-1', 'SPR-2')
-      ])
-    });
-    render(modal(true));
-    fireEvent.click(await screen.findByText('Sprint'));
-    await screen.findByText('SPR-2');
-
-    fireEvent.change(screen.getByPlaceholderText(/Search task key/), { target: { value: 'safari' } });
-
-    expect(screen.getByText('SPR-1')).toBeTruthy();
-    expect(screen.getByText('Login fails on Safari')).toBeTruthy();
-    expect(screen.queryByText('SPR-2')).toBeNull();
-  });
-
-  it('ChooseProject_TasksReadFails_SaysThereAreNone', async () => {
-    installElectronApi({
-      getProjects: vi.fn().mockResolvedValue(PROJECTS),
-      getTasks: vi.fn().mockRejectedValue(new Error('database locked'))
-    });
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    render(modal(true));
-
-    fireEvent.click(await screen.findByText('Sprint'));
-
-    expect(await screen.findByText(/No matching tasks under \[SPR\]/)).toBeTruthy();
   });
 });

@@ -82,7 +82,7 @@ describe('the app shell', () => {
 
     act(() => bridge.emit('onHardwareInputEvent', { inputKey: 'ok', actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL' }));
 
-    expect(screen.queryByText('Step 1: Select Target Project')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Start a task' })).toBeNull();
   });
 
   it('PickerRequestFromTheApp_NothingRunning_OpensTheWindowsPicker', async () => {
@@ -92,7 +92,7 @@ describe('the app shell', () => {
 
     act(() => bridge.emit('onHardwareInputEvent', { inputKey: 'app', actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL' }));
 
-    expect(await screen.findByText('Step 1: Select Target Project')).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Start a task' })).toBeTruthy();
   });
 
   it.each([

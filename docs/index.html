@@ -742,6 +742,41 @@
       nothing asks. Only more than two hours without any input across midnight --
       a long call -- brings the question, and <strong>I was working all along</strong> keeps it
       all.</p>
+      <h4>🔎 Finding a task: the picker</h4>
+      <p><strong>Start a Task</strong>, <strong>Switch Task</strong>, <strong>Assign to Task</strong>, <strong>Place…</strong> and
+      <strong>Move</strong> all open the same picker. Type, and it searches every task of every
+      project at once -- key, title, description or project name -- grouped by
+      project. Before you type, it offers:</p>
+      <ul>
+      <li><strong>the previous task</strong>, first, when you are switching: one click back;</li>
+      <li><strong>Recent</strong>, the last six tasks you timed;</li>
+      <li><strong>Starred</strong>, your usual places for time: hover a task and click its ☆;</li>
+      <li><strong>Assigned to me · open</strong>, your own tasks from every project, in progress
+      first, then to do by priority -- <strong>all N of my open tasks</strong> lists them all;</li>
+      <li><strong>All projects</strong>, the ones you have starred tasks in first, then the ones
+      you used most this month. Click one to see only its tasks.</li>
+      </ul>
+      <p>A project&#39;s key and a space -- <code>pf </code> -- also narrows the picker to that
+      project, and what you type next searches inside it: <code>pf 40</code> finds PF-40.
+      Backspace on an empty search, or the ✕ beside the project, takes it off.
+      Arrow keys and Enter pick from the keyboard; Escape closes.</p>
+      <ul>
+      <li><strong>A ticket made a minute ago</strong> is not there until the next sync. Type its
+      key -- <code>MG-77</code>, or a work package&#39;s number in OpenProject -- and the picker
+      offers <strong>Fetch MG-77 from Jira</strong>: one request, about a second, and the task
+      starts. <strong>A ticket is missing? Refresh from Jira</strong>, at the bottom, fetches
+      everything again.</li>
+      <li><strong>A task of my own…</strong> starts work that stays in SprintTicker and is never
+      sent; with something typed, it is named after it.</li>
+      <li><strong>Switching away from an interruption</strong>, the picker offers to put the
+      interruption&#39;s time on the task you pick too. Unticked, the interruption
+      waits to be placed.</li>
+      <li>Placing and moving offer only real tasks: time goes to a task on your
+      provider. Placing opens on <strong>Starred</strong>, since an interruption is most often
+      about one of your usual places, and <strong>Keep off Jira</strong> is there too.</li>
+      </ul>
+      <p>The picker shows the same tasks in the same order as Tasks and the bar&#39;s
+      picker, and follows the same <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches.</p>
       <h4>⚡ Interrupt: a timer at once</h4>
       <p>Someone at your desk, a call: press <strong>Interrupt</strong> and a timer starts there
       and then, with nothing to fill in. The task you were on <strong>waits, paused</strong>:
@@ -839,8 +874,8 @@
       project you can see, while the tasks it fetches are yours and the team&#39;s free
       or ongoing work, so most projects held nothing to pick. A project is listed again as soon as it
       has a task to do or in progress. The switch says how many projects it hides,
-      and turning it off lists them all. It is one setting: the task picker shows
-      the same switch, and the bar&#39;s own picker follows it. The project you have
+      and turning it off lists them all. The bar&#39;s own picker follows it; the
+      window&#39;s task picker always lists only the projects with a task. The project you have
       selected stays listed even when it is empty, so one you have just created does
       not vanish before its first task. If no project has a task for you -- before
       the first sync, or on a day nothing is assigned to you -- every project is
@@ -1850,6 +1885,16 @@
       was rewritten. <strong>The bar opens its own picker</strong>: the window opens its picker
       on <code>TRIGGER_TASK_SELECTOR_MODAL</code> only for <code>inputKey: &#39;app&#39;</code> or while a
       session runs (<code>windowPickerWanted</code>), or a START on the bar opened two.</p>
+      <p><strong>The window has one task picker</strong> (<code>TaskPicker</code>, redesign P7) for Start,
+      Switch, Assign, Place and Move. It reads one snapshot (<code>tasks:get-picker</code>:
+      previous, recent, starred, every listed task, projects, time per project)
+      and groups it with the pure rules of <code>shared/task-picker.ts</code> -- the groups&#39;
+      order, search across projects, a project key and a space, what looks like a
+      key -- within the lists&#39; order (<code>task-order.ts</code>) and visibility
+      (<code>task-visibility.ts</code>). Fetch by key (<code>tasks:fetch-by-key</code>) asks the active
+      provider&#39;s <code>getTaskByKey</code>, keeps the task as the sync would, and is shown
+      only with <code>canFetchByKey</code>. Picking during an interruption is
+      <code>interruption:switch</code>, with <code>takeAlong</code> when its time goes too.</p>
       <p><strong>Starting with Windows</strong> is <code>LaunchAtLoginService</code>
       (<code>src/main/services/launch-at-login.ts</code>), behind both the switch in Settings,
       General and the tray&#39;s checkbox; the tray rebuilds its menu from the service&#39;s
@@ -3218,6 +3263,14 @@
       <td align="left">The last six tasks timed, each once, the most recently started first -- read from the sessions. Retired tasks and interruptions not named yet are left out</td>
       </tr>
       <tr>
+      <td align="left"><code>tasks:get-picker</code></td>
+      <td align="left">Everything the task picker lists, in one read: <code>{ previous, recent, starred, tasks, projects, projectSeconds }</code>. <code>tasks</code> is every task the lists hold, whoever&#39;s and across projects, without ad-hoc work or archived tasks; <code>projectSeconds</code> is the time logged per project over the last 30 days, which orders &quot;most used&quot;</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks:fetch-by-key</code></td>
+      <td align="left"><code>(key)</code>: one task by the key the user typed, from the active provider (<code>getTaskByKey</code>), kept like a synced task and answered; null when the provider has none. Refused when the provider names a project SprintTicker does not list, and when there is no key</td>
+      </tr>
+      <tr>
       <td align="left"><code>worklogs:get-unsorted</code></td>
       <td align="left">Every worklog of an ad-hoc task still marked unsorted, whatever its day. Since migration 15 such worklogs are interruptions to place, read through <code>interruption:get-to-place</code></td>
       </tr>
@@ -3580,6 +3633,12 @@
         // Optional: where one task stands, for a tracked task that left the list.
         // 404 is &#39;gone&#39;; any other failure throws.
         getTaskStanding?(taskId: string): Promise&lt;&#39;open&#39; | &#39;closed&#39; | &#39;gone&#39;&gt;;
+      
+        // Optional: one task by the key the user typed in the picker -- Jira&#39;s
+        // /issue/{key}; OpenProject&#39;s work package by OP-1234, #1234 or 1234 --
+        // whoever has it, outside the task scope. Null for none (404); an epic or a
+        // milestone is none. Without it the picker offers no Fetch (canFetchByKey).
+        getTaskByKey?(key: string): Promise&lt;TaskDTO | null&gt;;
       
         // Optional: assigns a task nobody owns to the user, reading its assignee
         // first. Answers &#39;assigned&#39;, &#39;already_mine&#39;, or &#39;taken&#39; with the name of

@@ -63,6 +63,8 @@ const electronAPI: IElectronAPI = {
   // Undo
   getUndo: () => ipcRenderer.invoke(IPCChannel.GET_UNDO),
   runUndo: () => ipcRenderer.invoke(IPCChannel.RUN_UNDO),
+  getPickerData: () => ipcRenderer.invoke(IPCChannel.GET_PICKER_DATA),
+  fetchTaskByKey: (key) => ipcRenderer.invoke(IPCChannel.FETCH_TASK_BY_KEY, key),
   interrupt: (options) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_START, options),
   anotherInterruption: () => ipcRenderer.invoke(IPCChannel.INTERRUPTION_ANOTHER),
   backFromInterruption: (addGapMinutes) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_BACK, addGapMinutes),

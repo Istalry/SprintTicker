@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { TaskSelectionModal } from '../../src/renderer/components/TaskSelectionModal';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ProjectTaskManagerView } from '../../src/renderer/views/Tasks/ProjectTaskManagerView';
 import { ProjectDTO } from '../../src/shared/dtos';
 import { installElectronApi } from './electron-api-mock';
@@ -18,93 +17,6 @@ const PROJECTS: ProjectDTO[] = [
 ];
 
 const toggle = () => screen.getByRole('checkbox', { name: /Only projects with tasks/ });
-
-describe('TaskSelectionModal project filter', () => {
-  const modal = () => (
-    <TaskSelectionModal isOpen onClose={vi.fn()} projects={PROJECTS} onSelectTask={vi.fn()} />
-  );
-
-  it('Open_SwitchOnByDefault_ListsOnlyProjectsWithTasksAndSaysHowManyAreHidden', async () => {
-    installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
-    render(modal());
-
-    expect(await screen.findByText('Sprint')).toBeTruthy();
-    expect(screen.queryByText('Empty')).toBeNull();
-    expect(screen.queryByText('Finished')).toBeNull();
-    expect(screen.getByText('(2 hidden)')).toBeTruthy();
-  });
-
-  it('Open_NoProjectsAtAll_SaysSoAndClaimsNothingAboutTasks', async () => {
-    installElectronApi({ getProjects: vi.fn().mockResolvedValue([]) });
-    render(<TaskSelectionModal isOpen onClose={vi.fn()} projects={[]} onSelectTask={vi.fn()} />);
-
-    expect(await screen.findByText(/No active projects registered/)).toBeTruthy();
-    expect(screen.queryByText(/showing all/)).toBeNull();
-  });
-
-  it('Untick_Switch_ListsEveryProjectAndStoresTheChoice', async () => {
-    const bridge = installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
-    render(modal());
-    await screen.findByText('Sprint');
-
-    fireEvent.click(toggle());
-
-    expect(await screen.findByText('Empty')).toBeTruthy();
-    expect(screen.getByText('Finished')).toBeTruthy();
-    expect(bridge.api.setOnlyProjectsWithTasks).toHaveBeenCalledWith(false);
-  });
-
-  it('StoredOff_OnOpen_ListsEveryProject', async () => {
-    installElectronApi({
-      getProjects: vi.fn().mockResolvedValue(PROJECTS),
-      getOnlyProjectsWithTasks: vi.fn().mockResolvedValue(false)
-    });
-    render(modal());
-
-    expect(await screen.findByText('Empty')).toBeTruthy();
-    expect((toggle() as HTMLInputElement).checked).toBe(false);
-  });
-
-  it('Broadcast_FlippedElsewhere_FollowsIt', async () => {
-    // The Projects tab behind the picker, or another window, flipped it.
-    const bridge = installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
-    render(modal());
-    await screen.findByText('Sprint');
-
-    act(() => bridge.emit('onOnlyProjectsWithTasks', false));
-
-    expect(screen.getByText('Empty')).toBeTruthy();
-  });
-
-  it('Untick_SaveFails_WarnsAndKeepsWhatTheUserChose', async () => {
-    const bridge = installElectronApi({
-      getProjects: vi.fn().mockResolvedValue(PROJECTS),
-      setOnlyProjectsWithTasks: vi.fn().mockRejectedValue(new Error('database locked'))
-    });
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    render(modal());
-    await screen.findByText('Sprint');
-
-    fireEvent.click(toggle());
-
-    await waitFor(() => expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not save'), expect.any(Error)));
-    expect(bridge.api.setOnlyProjectsWithTasks).toHaveBeenCalledWith(false);
-    expect(screen.getByText('Empty')).toBeTruthy();
-  });
-
-  it('Open_SettingReadFails_WarnsAndFiltersByDefault', async () => {
-    installElectronApi({
-      getProjects: vi.fn().mockResolvedValue(PROJECTS),
-      getOnlyProjectsWithTasks: vi.fn().mockRejectedValue(new Error('database locked'))
-    });
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    render(modal());
-
-    expect(await screen.findByText('Sprint')).toBeTruthy();
-    await waitFor(() => expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not read'), expect.any(Error)));
-    expect(screen.queryByText('Empty')).toBeNull();
-  });
-});
 
 describe('ProjectTaskManagerView project filter', () => {
   /** The sidebar, so a project's name in the task panel's header does not count. */

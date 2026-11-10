@@ -463,7 +463,17 @@ function createFakeOpenProject(overrides = {}) {
       const status = closedWorkPackages.has(id) ? statuses[statuses.length - 1] : statuses[0];
       const owner = assignees.has(id) ? assignees.get(id) : FAKE_USER;
       const assignee = owner ? { href: `/api/v3/users/${owner.id}`, title: owner.name } : { href: null };
-      send(200, { id, lockVersion: lockVersion(), subject: 'Fake work package', _embedded: { status }, _links: { assignee } });
+      // Its project and type as the list builds them: id = project * 1000 + n.
+      const projectId = Math.floor((id - 1) / 1000);
+      // One outside the generated lists still answers, as a task the tests name directly.
+      const listed = workPackagesFor(projectId, options.workPackages).find(wp => wp.id === id);
+      send(200, {
+        id,
+        lockVersion: lockVersion(),
+        subject: listed ? listed.subject : 'Fake work package',
+        _embedded: { status },
+        _links: { ...(listed ? listed._links : {}), assignee, project: { href: `/api/v3/projects/${projectId}` } }
+      });
       return;
     }
 

@@ -421,6 +421,17 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       expect(await (await configured()).getTaskStanding(key)).toBe(expected);
     });
 
+    it('GetTaskByKey_TypedLowerCase_TheIssueWithItsProject', async () => {
+      const task = await (await configured()).getTaskByKey(' fake1-2 ');
+
+      expect(task).toMatchObject({ id: '20001', key: 'FAKE1-2', projectId: '10000', title: 'Fake issue 2', status: 'in_progress' });
+      expect(requests.some(r => r.pathname === '/rest/api/3/issue/FAKE1-2')).toBe(true);
+    });
+
+    it('GetTaskByKey_NoSuchIssue_Null', async () => {
+      expect(await (await configured()).getTaskByKey('FAKE9-999')).toBeNull();
+    });
+
     it('UpdateWorklog_BelowTheMinute_ThrowsPermanentWithoutSendingAnything', async () => {
       const id = await sent('FAKE1-9', '[#short001]');
       requests.length = 0;

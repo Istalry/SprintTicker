@@ -678,6 +678,57 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('the task picker', () => {
+    beforeEach(() => {
+      new ProjectRepository(db).saveProject({ id: 'P1', key: 'A', name: 'Alpha', providerId: 'jira' });
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'One', status: 'todo' });
+    });
+
+    it('GetPickerData_OneRead_EverythingThePickerLists', async () => {
+      taskRepo.star('T1');
+      engine.startTask('T1');
+
+      const data = await invoke(IPCChannel.GET_PICKER_DATA);
+
+      expect(data).toMatchObject({
+        previous: null,
+        recent: [{ id: 'T1' }],
+        starred: [{ id: 'T1' }],
+        tasks: [{ id: 'T1' }],
+        projects: [{ id: 'P1' }],
+        projectSeconds: {}
+      });
+    });
+
+    it('FetchTaskByKey_Found_KeepsItAndAnswersTheRow', async () => {
+      const getTaskByKey = vi.fn().mockResolvedValue({ id: 'T77', projectId: 'P1', key: 'A-77', title: 'New', status: 'todo' });
+      build({ providerManager: { getTaskByKey } as unknown as ProviderManager });
+
+      expect(await invoke(IPCChannel.FETCH_TASK_BY_KEY, ' a-77 ')).toMatchObject({ id: 'T77', key: 'A-77' });
+      expect(getTaskByKey).toHaveBeenCalledWith('a-77');
+      expect(taskRepo.getTaskById('T77')).toMatchObject({ title: 'New' });
+    });
+
+    it('FetchTaskByKey_ProviderHasNone_Null', async () => {
+      build({ providerManager: { getTaskByKey: vi.fn().mockResolvedValue(null) } as unknown as ProviderManager });
+
+      expect(await invoke(IPCChannel.FETCH_TASK_BY_KEY, 'A-99')).toBeNull();
+    });
+
+    it('FetchTaskByKey_ProjectNotListed_RefusedAndNotKept', async () => {
+      // Kept, it would be filed under nothing, and the next sync would retire it.
+      const getTaskByKey = vi.fn().mockResolvedValue({ id: 'T88', projectId: 'P9', key: 'Z-88', title: 'Elsewhere', status: 'todo' });
+      build({ providerManager: { getTaskByKey } as unknown as ProviderManager });
+
+      await expect(invoke(IPCChannel.FETCH_TASK_BY_KEY, 'Z-88')).rejects.toThrow(/does not list/);
+      expect(taskRepo.getTaskById('T88')).toBeNull();
+    });
+
+    it.each([[''], ['   '], [42]])('FetchTaskByKey_%s_Throws', async key => {
+      await expect(invoke(IPCChannel.FETCH_TASK_BY_KEY, key)).rejects.toThrow(/key/);
+    });
+  });
+
   describe('provider settings', () => {
     it('GetProviders_List_NamesEachProviderAsTheAppWritesIt', async () => {
       const read = (await invoke(IPCChannel.GET_PROVIDERS)) as { providers: unknown };

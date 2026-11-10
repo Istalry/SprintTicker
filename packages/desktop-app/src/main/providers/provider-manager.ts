@@ -187,6 +187,19 @@ export class ProviderManager {
     return this.getActiveProvider().getTasks(projectId);
   }
 
+  /**
+   * One task by the key the user typed, from the active provider; null when
+   * it has none by that key. Throws when the provider cannot fetch by key --
+   * the picker hides the button then (`canFetchByKey`), so a call is a bug.
+   */
+  public async getTaskByKey(key: string): Promise<TaskDTO | null> {
+    const provider = this.getActiveProvider();
+    if (typeof provider.getTaskByKey !== 'function') {
+      throw new Error(`${provider.providerId} cannot fetch a task by its key.`);
+    }
+    return provider.getTaskByKey(key);
+  }
+
   /// <summary>
   /// Updates remote task status on the active provider.
   /// </summary>

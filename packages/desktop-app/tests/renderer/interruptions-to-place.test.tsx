@@ -36,16 +36,21 @@ const history = async (day: WorklogDTO[], waiting: InterruptionToPlaceDTO[] = []
   return bridge;
 };
 
-/** Picks project P-1, then task T-9, in the picker History opened. */
+/** Picks task SPR-9 in the picker History opened, through its project. */
 const pick = async () => {
-  const dialog = await screen.findByRole('heading', { name: /Move to a Task/ });
-  expect(dialog).toBeTruthy();
-  fireEvent.click(await screen.findByText('Sprint'));
+  await screen.findByRole('dialog', { name: /to a task|on a task/ });
+  fireEvent.click(await screen.findByRole('option', { name: /^Sprint/ }));
   fireEvent.click(await screen.findByText('SPR-9'));
 };
 const withProjects = (overrides: Record<string, unknown>) => ({
-  getProjects: vi.fn().mockResolvedValue([{ id: 'P-1', key: 'SPR', name: 'Sprint' }]),
-  getTasks: vi.fn().mockResolvedValue([{ id: 'T-9', projectId: 'P-1', key: 'SPR-9', title: 'The real task', status: 'todo' }]),
+  getPickerData: vi.fn().mockResolvedValue({
+    previous: null,
+    recent: [],
+    starred: [],
+    tasks: [{ id: 'T-9', projectId: 'P-1', key: 'SPR-9', title: 'The real task', status: 'todo' }],
+    projects: [{ id: 'P-1', key: 'SPR', name: 'Sprint' }],
+    projectSeconds: {}
+  }),
   ...overrides
 });
 
@@ -175,8 +180,8 @@ describe('Work History, interruptions to place', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
 
-    expect(screen.getByRole('alertdialog', { name: 'Place Interruption 10:30?' }).textContent).toMatch(/timesheet/);
-    expect(screen.queryByRole('heading', { name: /Move to a Task/ })).toBeNull();
+    expect(screen.getByRole('alertdialog', { name: 'Place "Interruption 10:30"?' }).textContent).toMatch(/timesheet/);
+    expect(screen.queryByRole('dialog', { name: /to a task|on a task/ })).toBeNull();
   });
 
   it('KeepOff_NamesTheProvider', async () => {
@@ -248,9 +253,9 @@ describe('Work History, moving time to another task', () => {
     render(<WorklogHistoryView />);
 
     fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
-    await screen.findByRole('heading', { name: /Move to a Task/ });
+    await screen.findByRole('dialog', { name: 'Move to a task' });
 
-    expect(screen.queryByText(/Create Custom/)).toBeNull();
+    expect(screen.queryByText(/A task of my own/)).toBeNull();
   });
 });
 
@@ -272,7 +277,7 @@ describe('Work History, time in a closed week', () => {
     expect(question.textContent).toMatch(/timesheet/);
     fireEvent.click(within(question).getByRole('button', { name: 'Back' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(screen.queryByRole('heading', { name: /Move to a Task/ })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: /to a task|on a task/ })).toBeNull();
   });
 
   it('Move_ClosedWeekTime_GoOn_OpensThePicker', async () => {
@@ -285,7 +290,7 @@ describe('Work History, time in a closed week', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a task' }));
 
-    expect(await screen.findByRole('heading', { name: /Move to a Task/ })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Move to a task' })).toBeTruthy();
   });
 
   it('Move_ThisWeeksTime_AsksNothing', async () => {
@@ -297,7 +302,7 @@ describe('Work History, time in a closed week', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
 
-    expect(await screen.findByRole('heading', { name: /Move to a Task/ })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Move to a task' })).toBeTruthy();
     expect(screen.queryByRole('alertdialog', { name: 'Move time from a closed week?' })).toBeNull();
   });
 

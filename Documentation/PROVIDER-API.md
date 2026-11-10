@@ -284,7 +284,7 @@ send the field.
 | `labels` | array of Text | no | Only with the `labels` capability (7.8) |
 | `state` | Code: `open` or `closed` | see below | `closed` when the task is finished for good, cancelled or rejected; otherwise `open` |
 
-**`state`** is required in the answers that name one task -- 6.8, 7.1, 7.2 --
+**`state`** is required in the answers that name one task -- 6.8, 7.1, 7.2, 7.9 --
 because those can be about a task closed since the client last read it. In a
 list it may be omitted: a listed task is always `open`. A closed task carries
 `"status": "done"` with `"state": "closed"`; `done` with `open` is the
@@ -408,7 +408,7 @@ saves the settings, at start-up, and once an hour.
   "server": { "name": "Team Tracker", "version": "0.4.2" },
   "siteUrl": "https://tracker.example.com",
   "minimumWorklogSeconds": 60,
-  "capabilities": ["assign", "task_state", "calendar", "events", "today_total", "inbox", "week_close", "labels"],
+  "capabilities": ["assign", "task_state", "calendar", "events", "today_total", "inbox", "week_close", "labels", "task_by_key"],
   "eventsInboxUrl": "https://tracker.example.com/notifications",
   "inboxTaskId": "t-1"
 }
@@ -437,6 +437,7 @@ saves the settings, at start-up, and once an hour.
 | `inbox` | 7.6 | A task for unplanned time |
 | `week_close` | 7.7 | Told when the user's week is over |
 | `labels` | 7.8 | Short labels shown beside a task |
+| `task_by_key` | 7.9 | Read one task by the key the user typed |
 
 The client calls no optional endpoint whose capability is not listed. A
 server must not list a capability it does not implement.
@@ -921,6 +922,32 @@ estimate -- without a change to SprintTicker and without bending the rule of
 entry.
 
 *Not built in SprintTicker yet.*
+
+### 7.9 `task_by_key` — one task, by the key the user typed
+
+```
+GET /tasks?key={key}
+```
+
+`key` is what the user typed in the task picker, trimmed, compared without
+regard to case: `PLAT-142` and `plat-142` name the same task.
+
+**Response `200`:** the Task (4.3) with that key, whoever it is assigned to
+and whatever its state, if the user may see it.
+
+**Response `404`:** no task has that key, or the user may not see it. Both
+read the same to the client.
+
+**Why.** A ticket created a minute ago is not in the task lists until the
+next sync. When the picker's search finds nothing and what was typed looks
+like a key, the client offers "Fetch PLAT-142": one request, about a second,
+instead of a full refresh. The task is then kept like any task the lists
+hold, and started.
+
+The client sends no other query parameter, and never asks for a key it has
+not been given by the user.
+
+**Status codes:** `200`; `404`; `401`.
 
 ---
 

@@ -116,6 +116,9 @@ function buildIssues(count) {
     key: `FAKE1-${i + 1}`,
     fields: {
       summary: i === count - 1 ? `Fake issue ${i + 1} (LAST)` : `Fake issue ${i + 1}`,
+      // Every issue is the first project's, as its key says: one issue read
+      // alone names its project, which the picker's fetch by key needs.
+      project: { id: '10000', key: 'FAKE1' },
       status: statuses[i % statuses.length],
       assignee: { ...FAKE_ACCOUNT }
     }

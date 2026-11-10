@@ -7,7 +7,7 @@ import { formatClockTime } from '../../utils/formatters';
 import { EditWorklogModal } from '../../components/EditWorklogModal';
 import { TaskPageButton } from '../../components/TaskPageButton';
 import { InlineRename } from '../../components/InlineRename';
-import { TaskSelectionModal } from '../../components/TaskSelectionModal';
+import { TaskPicker } from '../../components/TaskPicker';
 import { countOf, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../../utils/formatters';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { closedWeekWarning, isInClosedWeek } from '../../../shared/closed-week';
@@ -356,12 +356,12 @@ export const WorklogHistoryView: React.FC = () => {
         </div>
       )}
 
-      <TaskSelectionModal
+      <TaskPicker
         isOpen={moving !== null}
         mode="move"
-        projects={[]}
+        subtitle={moving ? `${moving.label}: its time goes to the task you pick` : undefined}
         onClose={() => setMoving(null)}
-        onSelectTask={taskId => { if (moving) void moveTo(moving.worklogIds, taskId); }}
+        onPick={picked => { if (moving && picked.task) void moveTo(moving.worklogIds, picked.task.id); }}
       />
 
       {editing && (

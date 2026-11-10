@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { TaskSelectionModal } from '../../src/renderer/components/TaskSelectionModal';
+import { TaskPicker } from '../../src/renderer/components/TaskPicker';
 import { ProjectTaskManagerView } from '../../src/renderer/views/Tasks/ProjectTaskManagerView';
 import { ProjectDTO, TaskDTO } from '../../src/shared/dtos';
 import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
@@ -26,15 +26,16 @@ const TASKS: TaskDTO[] = [
 const titlesInOrder = () =>
   screen.getAllByText(/^(Alice busy|Free todo|Mine todo)$/).map(el => el.textContent);
 
-describe('TaskSelectionModal task visibility', () => {
+describe('TaskPicker task visibility', () => {
+  const picker = () => ({ getPickerData: vi.fn().mockResolvedValue({ previous: null, recent: [], starred: [], tasks: TASKS, projects: PROJECTS, projectSeconds: {} }) });
   const openOnTheTasks = async () => {
-    render(<TaskSelectionModal isOpen onClose={vi.fn()} projects={PROJECTS} onSelectTask={vi.fn()} />);
-    fireEvent.click(await screen.findByText('Team'));
+    render(<TaskPicker isOpen mode="start" onClose={vi.fn()} onPick={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('option', { name: /^Team/ }));
     await screen.findByText('Mine todo');
   };
 
   it('Open_DefaultVisibility_ListsMineThenFreeWorkAndHidesTeammates', async () => {
-    installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS), getTasks: vi.fn().mockResolvedValue(TASKS) });
+    installElectronApi(picker());
     await openOnTheTasks();
 
     expect(titlesInOrder()).toEqual(['Mine todo', 'Free todo']);
@@ -43,7 +44,7 @@ describe('TaskSelectionModal task visibility', () => {
   });
 
   it('Tick_Teammates_ShowsTheirWorkWithTheirNameAndStoresTheChoice', async () => {
-    const bridge = installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS), getTasks: vi.fn().mockResolvedValue(TASKS) });
+    const bridge = installElectronApi(picker());
     await openOnTheTasks();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /Teammates/ }));
@@ -56,7 +57,7 @@ describe('TaskSelectionModal task visibility', () => {
 
   it('ChangedElsewhere_Broadcast_FollowsIt', async () => {
     // Flipped in the Projects tab behind the picker, the picker follows.
-    const bridge = installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS), getTasks: vi.fn().mockResolvedValue(TASKS) });
+    const bridge = installElectronApi(picker());
     await openOnTheTasks();
 
     act(() => bridge.emit('onTaskVisibility', { unassigned: false, others: false }));

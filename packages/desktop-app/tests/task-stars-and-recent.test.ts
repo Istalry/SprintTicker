@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
-import { TaskRepository } from '../src/main/db/repositories/task-repository';
+import { TaskRepository, retireTasks } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
@@ -203,6 +203,36 @@ describe('stars, recent and previous task', () => {
       expect(previousTaskId({ currentTaskId: 'b', storedPreviousTaskId: 'a', recentEndedTaskIds: ['c'], isOffered: offered })).toBe('a');
       expect(previousTaskId({ currentTaskId: 'b', storedPreviousTaskId: null, recentEndedTaskIds: ['b', 'c'], isOffered: offered })).toBe('c');
       expect(previousTaskId({ currentTaskId: null, storedPreviousTaskId: null, recentEndedTaskIds: ['x'], isOffered: id => id !== 'x' })).toBeNull();
+    });
+  });
+
+  describe('the lists of the picker (P7)', () => {
+    it('GetAllListed_EveryOwner_NoArchivedNoAdHocNoUnsorted', () => {
+      tasks.saveTask({ ...C, id: '10009', key: 'SCRUM-9', ownership: 'other', assigneeName: 'Rin' });
+      // Retired with time on it: archived, kept for history, off the lists.
+      start(C);
+      vi.setSystemTime(new Date(2026, 10, 10, 9, minute + 5, 0));
+      engine.stopSession('done');
+      retireTasks(dbConn.getDb(), 'id = ?', ['10003']);
+      const adHoc = tasks.createAdHocTask('Code review');
+
+      const ids = tasks.getAllListed().map(t => t.id).sort();
+
+      expect(ids).toEqual(['10001', '10002', '10009']);
+      expect(ids).not.toContain(adHoc.id);
+    });
+
+    it('GetProjectSecondsSince_SumsTheWorklogsOfEachProjectSinceThen', () => {
+      start(A);
+      vi.setSystemTime(new Date(2026, 10, 10, 9, minute + 10, 0));
+      engine.stopSession('done');
+
+      expect(tasks.getProjectSecondsSince(new Date(2026, 10, 10, 0, 0).toISOString())).toEqual({ '10000': 660 });
+      expect(tasks.getProjectSecondsSince(new Date(2026, 10, 11, 0, 0).toISOString())).toEqual({});
+    });
+
+    it('GetProjectSecondsSince_NoDate_Throws', () => {
+      expect(() => tasks.getProjectSecondsSince('')).toThrow();
     });
   });
 });

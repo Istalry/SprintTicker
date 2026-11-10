@@ -118,6 +118,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     onWorklogsUpdated: subscribe('onWorklogsUpdated'),
     getUndo: vi.fn().mockResolvedValue(null),
     runUndo: vi.fn().mockResolvedValue(false),
+    getPickerData: vi.fn().mockResolvedValue({ previous: null, recent: [], starred: [], tasks: [], projects: [], projectSeconds: {} }),
+    fetchTaskByKey: vi.fn().mockResolvedValue(null),
     interrupt: vi.fn().mockResolvedValue(null),
     anotherInterruption: vi.fn().mockResolvedValue(null),
     backFromInterruption: vi.fn().mockResolvedValue(null),

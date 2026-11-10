@@ -104,6 +104,8 @@ A worklog read carries `adHoc: true` when it was logged on ad-hoc work, and
 | `tasks:unstar` | `(taskId)`: takes the star off; nothing for a task never starred. Answers the starred list |
 | `tasks:get-starred` | The starred tasks the lists hold now, most recently starred first. A star whose task is retired stays, and comes back with the task |
 | `tasks:get-recent` | The last six tasks timed, each once, the most recently started first -- read from the sessions. Retired tasks and interruptions not named yet are left out |
+| `tasks:get-picker` | Everything the task picker lists, in one read: `{ previous, recent, starred, tasks, projects, projectSeconds }`. `tasks` is every task the lists hold, whoever's and across projects, without ad-hoc work or archived tasks; `projectSeconds` is the time logged per project over the last 30 days, which orders "most used" |
+| `tasks:fetch-by-key` | `(key)`: one task by the key the user typed, from the active provider (`getTaskByKey`), kept like a synced task and answered; null when the provider has none. Refused when the provider names a project SprintTicker does not list, and when there is no key |
 | `worklogs:get-unsorted` | Every worklog of an ad-hoc task still marked unsorted, whatever its day. Since migration 15 such worklogs are interruptions to place, read through `interruption:get-to-place` |
 | `tasks:rename-ad-hoc` | `(taskId, title)`: names ad-hoc work after the fact -- the task row, so every worklog of it reads the new name -- and clears its unsorted mark. Local only, nothing is queued. The open session's own task is renamed as `session:rename` renames it, its copy included. Refused for a provider's task, an unknown one, or a title `checkAdHocTitle` refuses |
 
@@ -289,6 +291,12 @@ interface ITaskProvider {
   // Optional: where one task stands, for a tracked task that left the list.
   // 404 is 'gone'; any other failure throws.
   getTaskStanding?(taskId: string): Promise<'open' | 'closed' | 'gone'>;
+
+  // Optional: one task by the key the user typed in the picker -- Jira's
+  // /issue/{key}; OpenProject's work package by OP-1234, #1234 or 1234 --
+  // whoever has it, outside the task scope. Null for none (404); an epic or a
+  // milestone is none. Without it the picker offers no Fetch (canFetchByKey).
+  getTaskByKey?(key: string): Promise<TaskDTO | null>;
 
   // Optional: assigns a task nobody owns to the user, reading its assignee
   // first. Answers 'assigned', 'already_mine', or 'taken' with the name of

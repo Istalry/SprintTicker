@@ -189,47 +189,98 @@ export class OpenProjectProvider implements ITaskProvider {
     }
 
     return [...byId.values()]
-      .map(t => {
-          const links = (t._links || {}) as Record<string, { href?: string | null; title?: string }>;
-          const opStatusId = links.status?.href?.split('/').pop();
-          const typeName = (links.type?.title as string) || '';
+      .map(t => ({ task: this.toTask(t, projectId, me), typeName: OpenProjectProvider.typeNameOf(t) }))
+      .filter(({ typeName }) => !OpenProjectProvider.isContainerType(typeName))
+      .filter(({ task }) => this._taskScope !== TaskScope.ASSIGNED_TO_ME || keptByDefaultScope(task))
+      .map(({ task }) => task);
+  }
 
-          let localStatus: 'todo' | 'in_progress' | 'done' = 'todo';
+  private static typeNameOf(element: Record<string, unknown>): string {
+    const links = (element._links || {}) as Record<string, { title?: string }>;
+    return links.type?.title || '';
+  }
 
-          if (opStatusId === this._statusIdInProgress) {
-            localStatus = 'in_progress';
-          } else if (opStatusId === this._statusIdToTest || opStatusId === this._statusIdToReview) {
-            localStatus = 'done';
-          }
+  /** Epics and milestones hold work; time is never logged on them. */
+  private static isContainerType(typeName: string): boolean {
+    const type = typeName.toLowerCase();
+    return type === 'epic' || type === 'milestone';
+  }
 
-          const rawId = (t.id as number | string).toString();
-          const priorityRank = priorityRankFromName(links.priority?.title);
-          // Already in every collection element, so this costs no request.
-          const description = clampDescription(
-            markdownToPlainText((t.description as { raw?: string } | undefined)?.raw)
-          );
-          // A user's href ends in their id; a group or a placeholder user is
-          // assigned through its own path, and is never the user.
-          const assigneeHref = links.assignee?.href ?? null;
-          const assigneeId = assigneeHref ? (USER_HREF.exec(assigneeHref)?.[1] ?? assigneeHref) : null;
-          const ownership = ownershipOf(assigneeId, me);
-          const assigneeName = ownership === TaskOwnership.OTHER ? links.assignee?.title : undefined;
-          return {
-            id: rawId,
-            projectId,
-            key: `OP-${rawId}`,
-            title: (t.subject as string) || 'Untitled Work Package',
-            status: localStatus,
-            ...(priorityRank !== undefined ? { priorityRank } : {}),
-            ...(description ? { description } : {}),
-            ...(ownership !== TaskOwnership.MINE ? { ownership } : {}),
-            ...(assigneeName ? { assigneeName } : {}),
-            _opType: typeName // Temporary prop for filtering
-          };
-      })
-      .filter(t => t._opType.toLowerCase() !== 'epic' && t._opType.toLowerCase() !== 'milestone')
-      .filter(t => this._taskScope !== TaskScope.ASSIGNED_TO_ME || keptByDefaultScope(t))
-      .map(({ _opType, ...task }): TaskDTO => task);
+  /** One work package as a task: the same mapping for a project's list and a fetch by key. */
+  private toTask(t: Record<string, unknown>, projectId: string, me: string): TaskDTO {
+    const links = (t._links || {}) as Record<string, { href?: string | null; title?: string }>;
+    const opStatusId = links.status?.href?.split('/').pop();
+
+    let localStatus: 'todo' | 'in_progress' | 'done' = 'todo';
+    if (opStatusId === this._statusIdInProgress) {
+      localStatus = 'in_progress';
+    } else if (opStatusId === this._statusIdToTest || opStatusId === this._statusIdToReview) {
+      localStatus = 'done';
+    }
+
+    const rawId = (t.id as number | string).toString();
+    const priorityRank = priorityRankFromName(links.priority?.title);
+    // Already in every collection element, so this costs no request.
+    const description = clampDescription(
+      markdownToPlainText((t.description as { raw?: string } | undefined)?.raw)
+    );
+    // A user's href ends in their id; a group or a placeholder user is
+    // assigned through its own path, and is never the user.
+    const assigneeHref = links.assignee?.href ?? null;
+    const assigneeId = assigneeHref ? (USER_HREF.exec(assigneeHref)?.[1] ?? assigneeHref) : null;
+    const ownership = ownershipOf(assigneeId, me);
+    const assigneeName = ownership === TaskOwnership.OTHER ? links.assignee?.title : undefined;
+    return {
+      id: rawId,
+      projectId,
+      key: `OP-${rawId}`,
+      title: (t.subject as string) || 'Untitled Work Package',
+      status: localStatus,
+      ...(priorityRank !== undefined ? { priorityRank } : {}),
+      ...(description ? { description } : {}),
+      ...(ownership !== TaskOwnership.MINE ? { ownership } : {}),
+      ...(assigneeName ? { assigneeName } : {})
+    };
+  }
+
+  /**
+   * One work package by what the user typed in the picker: `OP-1234` (the
+   * key this app shows), `#1234` (OpenProject's own) or `1234`. Null for no
+   * work package by that id, one the user may not see (both 404), or an epic
+   * or milestone, which never takes time. Not filtered by the task scope:
+   * the user asked for this one by name.
+   */
+  public async getTaskByKey(key: string): Promise<TaskDTO | null> {
+    this.requireConfigured();
+    const typed = (key ?? '').trim();
+    if (!typed) throw new ArgumentException('key is required to fetch a task.');
+    const id = /^(?:OP-|#)?(\d+)$/i.exec(typed)?.[1];
+    // Not an id at all: OpenProject has no other key, so there is nothing to ask.
+    if (!id) return null;
+
+    const me = await this.myUserId();
+    const context = `Fetching work package ${id}`;
+    let wp: Record<string, unknown>;
+    try {
+      const res = await providerFetch(
+        this.providerId,
+        `${this.getBaseUrl()}/api/v3/work_packages/${encodeURIComponent(id)}`,
+        { headers: { Authorization: this.getAuthHeader(), Accept: 'application/json' } },
+        context,
+        this._http
+      );
+      wp = (await res.json()) as Record<string, unknown>;
+    } catch (err) {
+      if (err instanceof ProviderRequestError && err.status === 404) return null;
+      throw err;
+    }
+    if (OpenProjectProvider.isContainerType(OpenProjectProvider.typeNameOf(wp))) return null;
+    const projectHref = ((wp._links || {}) as Record<string, { href?: string | null }>).project?.href;
+    const projectId = projectHref ? /\/projects\/([^/]+)$/.exec(projectHref)?.[1] : undefined;
+    if (!projectId) {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: it named no project`);
+    }
+    return this.toTask(wp, projectId, me);
   }
 
   /**

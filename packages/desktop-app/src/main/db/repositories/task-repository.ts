@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 import { DatabaseConnection } from '../database-connection';
 import { createId, IdPrefix, isAdHocTaskId } from '../id-generator';
 import { TOMBSTONE_PROJECT_ID } from '../migrations';
-import { ArgumentException, TaskDTO } from '../../../shared/dtos';
+import { ArgumentException, ArgumentNullException, TaskDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
 import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownership';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
@@ -102,6 +102,35 @@ export class TaskRepository {
       console.warn('[TaskRepository] Failed to fetch tasks:', err);
       return [];
     }
+  }
+
+  /**
+   * Every task the lists hold, whoever's, across projects: the picker's
+   * search and its "All projects". Ad-hoc work is left out -- the picker
+   * offers it as Recent and as "a task of my own" -- and so are interruptions
+   * of the model before P6, still marked unsorted.
+   */
+  public getAllListed(): TaskDTO[] {
+    return this.dbConn.getDb().prepare<[string, string], TaskRow>(
+      `SELECT ${TASK_COLUMNS} FROM tasks
+        WHERE archived_at_utc IS NULL AND unsorted = 0 AND project_id NOT IN (?, ?)`
+    ).all(ADHOC_PROJECT_ID, TOMBSTONE_PROJECT_ID).map(r => TaskRepository.toDto(r));
+  }
+
+  /**
+   * Seconds logged per project since `sinceUtc`, for "most used" in the
+   * picker. Read from the worklogs, so a project used only through ad-hoc
+   * work counts nothing.
+   */
+  public getProjectSecondsSince(sinceUtc: string): Record<string, number> {
+    if (!sinceUtc) throw new ArgumentNullException('sinceUtc');
+    const rows = this.dbConn.getDb().prepare<[string], { projectId: string; seconds: number }>(
+      `SELECT t.project_id AS projectId, SUM(w.duration_seconds) AS seconds
+         FROM worklogs w JOIN tasks t ON t.id = w.task_id
+        WHERE w.started_at_utc >= ?
+        GROUP BY t.project_id`
+    ).all(sinceUtc);
+    return Object.fromEntries(rows.map(r => [r.projectId, r.seconds]));
   }
 
   /**

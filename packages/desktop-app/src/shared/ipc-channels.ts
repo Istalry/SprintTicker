@@ -56,6 +56,10 @@ export enum IPCChannel {
   SET_ACTIVE_PROVIDER = 'provider:set-active',
   GET_PROJECTS = 'provider:get-projects',
   GET_TASKS = 'provider:get-tasks',
+  /** Everything the task picker lists, in one read (P7): `PickerDataDTO`. */
+  GET_PICKER_DATA = 'tasks:get-picker',
+  /** `(key)`: one task by the key the user typed, kept and answered; null when the provider has none. */
+  FETCH_TASK_BY_KEY = 'tasks:fetch-by-key',
   CREATE_AD_HOC_TASK = 'provider:create-adhoc',
   // `provider:reconcile` was declared here and on the preload bridge with no
   // handler in main, so calling it rejected -- the F-18 updater-stub shape, an
