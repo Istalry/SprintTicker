@@ -742,12 +742,13 @@ export class JiraProvider implements ITaskProvider {
    */
   public async updateTaskStatus(
     taskId: string,
-    status: 'in_progress' | 'to_test' | 'to_review' | 'done'
+    status: 'in_progress' | 'to_test' | 'to_review' | 'done',
+    doneState?: string
   ): Promise<boolean> {
     this.requireConfigured();
     if (!taskId) throw new ArgumentException('taskId is required to update a status.');
 
-    const wanted = this.configuredTransitionFor(status);
+    const wanted = status === 'done' && doneState?.trim() ? doneState.trim() : this.configuredTransitionFor(status);
     if (!wanted) {
       // Not configured is not a failure: the user simply has not mapped this
       // transition. Reported as `false` -- "this provider did not move it" --

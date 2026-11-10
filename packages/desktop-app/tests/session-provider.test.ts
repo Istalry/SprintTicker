@@ -27,6 +27,8 @@ describe('the provider a session belongs to', () => {
   let engine: TimeTrackingEngine;
   let activeId: string;
   let moves: Array<[string, string, string]>;
+  /** The project the last Done named: its own Done state is read from it. */
+  let doneOn: string | undefined;
 
   const PROVIDERS: Record<string, { providerId: string; minimumLoggableSeconds: number }> = {
     jira: { providerId: 'jira', minimumLoggableSeconds: 60 },
@@ -53,6 +55,7 @@ describe('the provider a session belongs to', () => {
     projectRepo = new ProjectRepository(dbConn);
     activeId = 'jira';
     moves = [];
+    doneOn = undefined;
     const manager = {
       getActiveProvider: () => PROVIDERS[activeId],
       getProvider: (id: string) => PROVIDERS[id],
@@ -60,8 +63,9 @@ describe('the provider a session belongs to', () => {
         moves.push([`active:${activeId}`, taskId, status]);
         return true;
       },
-      updateTaskStatusFor: async (providerId: string, taskId: string, status: string) => {
+      updateTaskStatusFor: async (providerId: string, taskId: string, status: string, projectId?: string) => {
         moves.push([providerId, taskId, status]);
+        if (status === 'done') doneOn = projectId;
         return true;
       },
       logTimeForProvider: () => new Promise(() => undefined)
@@ -109,6 +113,15 @@ describe('the provider a session belongs to', () => {
       ['jira', 'JIRA-1', 'in_progress'],
       ['jira', 'JIRA-1', 'done']
     ]);
+  });
+
+  it('MarkDone_NamesTheTasksProject_SoItsOwnDoneStateIsUsed', () => {
+    engine.startTask('JIRA-1');
+    workFor(600);
+
+    engine.stopSession('Work', true);
+
+    expect(doneOn).toBe('JIRA');
   });
 
   it('StopSession_ProjectMadeInSprintTicker_IsKeptLocallyAndMovesNothing', () => {

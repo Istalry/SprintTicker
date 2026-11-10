@@ -4,6 +4,10 @@
 
 ### Added
 
+- **Done per project.** Each workflow has its own states, so a project can
+  send Done somewhere other than the completion transition for all:
+  **Settings, Account** › *When I mark a task done* lists your projects, a
+  Jira state typed by name or an OpenProject status chosen from the list.
 - **A glance moves nothing.** Starting a task moves it to In Progress, and
   takes it if nobody has it, only after two minutes of timing; stopped or
   switched sooner, it stays where it was. **Settings, Account** › *When I

@@ -103,4 +103,19 @@ describe('OpenProject status transitions', () => {
     const body = JSON.parse(init.body as string) as { _links: { status: { href: string } } };
     expect(body._links.status.href).toBe('/api/v3/statuses/21');
   });
+
+  it('UpdateTaskStatus_DoneWithTheProjectsOwnState_UsesThatStatusId', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ lockVersion: 1 }) } as unknown as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as unknown as Response);
+    global.fetch = fetchMock;
+    await provider.initialize({ domain: BASE, apiKey: 'k', opStatusToTest: '22', opCompletionAction: 'to_test' });
+
+    await provider.updateTaskStatus('OP-9', 'done', '31');
+
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { _links: { status: { href: string } } };
+    expect(body._links.status.href).toBe('/api/v3/statuses/31');
+  });
 });

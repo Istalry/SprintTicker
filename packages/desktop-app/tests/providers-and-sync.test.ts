@@ -426,8 +426,33 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
       await manager.updateTaskStatusFor('jira', '10001', 'done');
 
-      expect(jira).toHaveBeenCalledWith('10001', 'done');
+      expect(jira).toHaveBeenCalledWith('10001', 'done', undefined);
       expect(openProject).not.toHaveBeenCalled();
+    });
+
+    it('UpdateTaskStatusFor_DoneOnAProjectOfItsOwn_NamesItsState', async () => {
+      new SettingsRepository(dbConn).setSetting('done_state_by_project', { default: 'Resolved', overrides: { P2: 'In Review' } });
+      const manager = managerOn(dbConn);
+      const jira = vi.spyOn(manager.getProvider('jira')!, 'updateTaskStatus').mockResolvedValue(true);
+
+      await manager.updateTaskStatusFor('jira', '10001', 'done', 'P2');
+      await manager.updateTaskStatusFor('jira', '10002', 'done', 'P1');
+      await manager.updateTaskStatusFor('jira', '10003', 'in_progress', 'P2');
+
+      expect(jira.mock.calls).toEqual([
+        ['10001', 'done', 'In Review'],
+        ['10002', 'done', 'Resolved'],
+        ['10003', 'in_progress', undefined]
+      ]);
+    });
+
+    it('UpdateTaskStatusFor_NothingSet_RunsTheCompletionAction', async () => {
+      const manager = managerOn(dbConn);
+      const jira = vi.spyOn(manager.getProvider('jira')!, 'updateTaskStatus').mockResolvedValue(true);
+
+      await manager.updateTaskStatusFor('jira', '10001', 'done', 'P2');
+
+      expect(jira).toHaveBeenCalledWith('10001', 'done', undefined);
     });
   });
 });

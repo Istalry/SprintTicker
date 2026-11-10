@@ -45,7 +45,7 @@ export class AdHocProvider implements ITaskProvider {
     return { success: true };
   }
 
-  public async updateTaskStatus(_taskId: string, _status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
+  public async updateTaskStatus(_taskId: string, _status: 'in_progress' | 'to_test' | 'to_review' | 'done', _doneState?: string): Promise<boolean> {
     return false;
   }
 }

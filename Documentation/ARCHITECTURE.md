@@ -295,6 +295,15 @@ scheduler checks the session id on every tick, so a run never lands on the
 next session. Turned off (`enabled: false`) nothing runs. A stop undone
 before its time reschedules the rest.
 
+**Done goes to the project's own state.** `done_state_by_project` keeps an
+override per project; the engine names the session's project when it moves a
+task to Done, and `ProviderManager` reads the override (`doneStateFor`) and
+hands it to the adapter as `doneState`, which replaces the completion action:
+Jira matches it against the issue's transitions by id, name or target status,
+OpenProject PATCHes it as a status id. No override, and the completion
+action runs as before. A state the workflow lacks answers false, as any
+transition that cannot happen; the time is queued regardless.
+
 **An overlap holds the later entry.** `getPendingQueueItems` skips the first
 send of a worklog that overlaps an earlier one (`shared/overlap.ts`: starts
 first, lower id on a tie, ends after the other begins, another session), and

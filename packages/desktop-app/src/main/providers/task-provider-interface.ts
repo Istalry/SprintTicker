@@ -84,7 +84,14 @@ export interface ITaskProvider {
   updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void>;
   /** Deletes the entry. One already gone (404) counts as deleted, not as a failure. */
   deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
-  updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
+  /**
+   * For `done`, `doneState` is the project's own state (`done_state_by_project`),
+   * which replaces the completion action: for Jira a transition's id or name,
+   * or the status it leads to; for OpenProject a status id. Absent, Done
+   * runs the completion action. A state the workflow lacks answers false,
+   * like any transition that cannot happen.
+   */
+  updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done', doneState?: string): Promise<boolean>;
 
   /**
    * False when `updateTaskStatus` never moves anything: the ad-hoc fallback

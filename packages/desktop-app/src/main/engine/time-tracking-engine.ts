@@ -763,12 +763,13 @@ export class TimeTrackingEngine extends EventEmitter {
    * a project made here. Unknown -- a session from before migration 9, or a
    * test double -- falls back to the active provider.
    */
-  private moveTask(providerId: string | undefined, taskId: string, status: 'in_progress' | 'done'): void {
+  private moveTask(providerId: string | undefined, taskId: string, status: 'in_progress' | 'done', projectId?: string): void {
     if (providerId === OWN_PROJECT_PROVIDER_ID) return;
     const manager = this._providerManager as Partial<ProviderManager>;
+    // The project names its own Done state (`done_state_by_project`).
     const moved = providerId && typeof manager.updateTaskStatusFor === 'function'
-      ? manager.updateTaskStatusFor(providerId, taskId, status)
-      : this._providerManager.updateTaskStatus(taskId, status);
+      ? manager.updateTaskStatusFor(providerId, taskId, status, projectId)
+      : this._providerManager.updateTaskStatus(taskId, status, projectId);
     moved.catch(err => {
       console.warn(`[TimeTrackingEngine] Failed to move ${taskId} to ${status} on its provider:`, err);
     });
@@ -1055,7 +1056,7 @@ export class TimeTrackingEngine extends EventEmitter {
         if (!adHoc && active.taskLeftBecause !== 'closed') {
           // Held with the stop when it can be undone: a transition sent
           // cannot be taken back.
-          const send = () => this.moveTask(active.providerId, active.taskId, 'done');
+          const send = () => this.moveTask(active.providerId, active.taskId, 'done', active.projectId);
           if (options.holdRemote) options.holdRemote(send);
           else send();
         }

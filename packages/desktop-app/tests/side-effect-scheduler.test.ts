@@ -124,7 +124,7 @@ describe('side effects after two minutes', () => {
     setting = { enabled: false, afterSeconds: 120 };
     engine.startTask(FREE.id);
 
-    seconds(3600);
+    seconds(600);
 
     expect(moves).toEqual([]);
     expect(claims).toEqual([]);

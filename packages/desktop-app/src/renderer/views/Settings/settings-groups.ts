@@ -41,7 +41,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Credentials', group: 'account', keywords: ['jira', 'openproject', 'token', 'api key', 'email', 'site', 'domain', 'url', 'sign in'] },
   { label: 'Tasks to fetch', group: 'account', keywords: ['scope', 'query', 'jql', 'filter'] },
   { label: 'When I start a task', group: 'account', keywords: ['in progress', 'assign', 'take', 'two minutes', 'glance', 'side effects'] },
-  { label: 'When I finish a task', group: 'account', keywords: ['transition', 'status', 'review', 'done', 'completion', 'to test'] },
+  { label: 'When I mark a task done', group: 'account', keywords: ['transition', 'status', 'review', 'done', 'completion', 'to test', 'per project', 'workflow'] },
   { label: 'Key for tasks of my own', group: 'account', keywords: ['ad-hoc key', 'misc-1', 'fallback'] },
   { label: 'Provider notifications', group: 'account', keywords: ['assigned', 'mentioned', 'comments', 'events'] },
   { label: 'Entries waiting to send', group: 'account', keywords: ['sync queue', 'retry', 'failed', 'worklog'] },

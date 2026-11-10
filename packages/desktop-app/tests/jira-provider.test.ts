@@ -898,6 +898,28 @@ describe('JiraProvider', () => {
       expect(JSON.parse(inits[1].body as string)).toEqual({ transition: { id: '41' } });
     });
 
+    it('UpdateTaskStatus_DoneWithTheProjectsOwnState_MatchesTheStatusItLeadsTo', async () => {
+      // Each workflow has its own states: this project's Done goes to "Resolved".
+      const { inits } = record(
+        ok({ transitions: [{ id: '41', name: 'Send to review' }, { id: '51', name: 'Resolve', to: { name: 'Resolved' } }] }),
+        ok({})
+      );
+
+      await (
+        await configured({ jiraTransitionToReview: 'Send to review', jiraCompletionAction: 'to_review' })
+      ).updateTaskStatus('A-1', 'done', 'Resolved');
+
+      expect(JSON.parse(inits[1].body as string)).toEqual({ transition: { id: '51' } });
+    });
+
+    it('UpdateTaskStatus_DoneWithAStateTheWorkflowLacks_ReturnsFalse', async () => {
+      record(ok({ transitions: [{ id: '41', name: 'Send to review' }] }));
+
+      const moved = await (await configured({ jiraCompletionAction: 'to_review' })).updateTaskStatus('A-1', 'done', 'Resolved');
+
+      expect(moved).toBe(false);
+    });
+
     it('UpdateTaskStatus_RequestFails_Throws', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,

@@ -746,7 +746,7 @@ export class OpenProjectProvider implements ITaskProvider {
   /// <summary>
   /// Updates target work package status on OpenProject via PATCH /api/v3/work_packages/{id}.
   /// </summary>
-  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
+  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done', doneState?: string): Promise<boolean> {
     if (!this._domain || !this._apiKey) return false;
 
     let targetStatusId = '';
@@ -756,6 +756,10 @@ export class OpenProjectProvider implements ITaskProvider {
       targetStatusId = this._statusIdToTest;
     } else if (status === 'to_review') {
       targetStatusId = this._statusIdToReview;
+    } else if (status === 'done' && doneState?.trim()) {
+      // The project's own state (`done_state_by_project`): its workflow may
+      // have no To Test.
+      targetStatusId = doneState.trim();
     } else if (status === 'done') {
       targetStatusId = this._defaultCompletionAction === 'to_review' ? this._statusIdToReview : this._statusIdToTest;
     }

@@ -184,7 +184,9 @@ celebrates on the bar -- a green badge drops in, ticks itself, and throws
 confetti beside **DONE!** -- then returns to the session. It also fires your
 configured completion transition — which in Jira usually means "To
 Review", not "Closed", because you send work for review rather than closing it
-yourself. Stopping without marking it done shows **LOGGED** on the bar
+yourself. Each project can send Done somewhere of its own -- workflows
+differ -- under **Settings, Account** › *When I mark a task done*. Stopping
+without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
 
 🔀 **A task that leaves your list while you track it** -- reassigned to someone
@@ -430,7 +432,11 @@ me, everything open, or your own query (JQL for Jira, a v3 filter array for
 OpenProject). **When I start a task** says how long a task is timed before it
 moves to In Progress and becomes yours -- right away, after one, two (the
 default) or five minutes -- or turns that off; it is hidden for a provider
-that can do neither.
+that can do neither. **When I mark a task done** is the completion
+transition for all projects, and under it a list of your projects where any
+one can go elsewhere: a Jira state or transition name, typed, or an
+OpenProject status, chosen. A project left empty follows the choice for all.
+A state its workflow lacks moves nothing, and the time is sent all the same.
 
 <p align="center">
   <img src="../docs/images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">

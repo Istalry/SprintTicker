@@ -6,6 +6,7 @@ import { SettingsRepository } from '../db/repositories/settings-repository';
 import { SecretStore } from '../db/secret-store';
 import { ProjectDTO, ProviderCapabilitiesDTO, TaskDTO } from '../../shared/dtos';
 import type { TaskClaim } from '../../shared/task-claim';
+import { doneStateFor, FlowSettingKey, readDoneStateByProject } from '../../shared/flow-settings';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 
 /**
@@ -189,8 +190,18 @@ export class ProviderManager {
   /// <summary>
   /// Updates remote task status on the active provider.
   /// </summary>
-  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean> {
-    return this.getActiveProvider().updateTaskStatus(taskId, status);
+  public async updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done', projectId?: string): Promise<boolean> {
+    return this.getActiveProvider().updateTaskStatus(taskId, status, this.doneStateOf(status, projectId));
+  }
+
+  /**
+   * The project's own Done state, or undefined for the completion action.
+   * Read at each Done, so a change in Settings applies to the next one.
+   */
+  private doneStateOf(status: 'in_progress' | 'to_test' | 'to_review' | 'done', projectId: string | undefined): string | undefined {
+    if (status !== 'done' || !projectId) return undefined;
+    const setting = readDoneStateByProject(this._settingsRepo.getSetting<unknown>(FlowSettingKey.DONE_STATE_BY_PROJECT, null));
+    return doneStateFor(setting, projectId) ?? undefined;
   }
 
   /**
@@ -225,13 +236,14 @@ export class ProviderManager {
   public async updateTaskStatusFor(
     providerId: string,
     taskId: string,
-    status: 'in_progress' | 'to_test' | 'to_review' | 'done'
+    status: 'in_progress' | 'to_test' | 'to_review' | 'done',
+    projectId?: string
   ): Promise<boolean> {
     const provider = this._providers.get(providerId);
     if (!provider) {
       throw new Error(`No registered provider with id "${providerId}"`);
     }
-    return provider.updateTaskStatus(taskId, status);
+    return provider.updateTaskStatus(taskId, status, this.doneStateOf(status, projectId));
   }
 
   /// <summary>

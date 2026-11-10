@@ -30,7 +30,14 @@ import { WorkingCalendar } from '../src/main/services/working-calendar';
  * for a live run, bound here to an ephemeral port. Hermetic: loopback only, no
  * fixtures on disk, in-memory database.
  */
-describe('Provider layer against a live OpenProject-shaped server', () => {
+/**
+ * Real HTTP to a local fake server, dozens of requests per sync: about 1.4 s
+ * a test alone, and over Vitest's 5 s default when the whole suite runs in
+ * parallel on a busy machine. The timeout is for that load, not a slow path.
+ */
+const LIVE_SERVER_TIMEOUT_MS = 15_000;
+
+describe('Provider layer against a live OpenProject-shaped server', { timeout: LIVE_SERVER_TIMEOUT_MS }, () => {
   const PROJECT_COUNT = 25;
   const WORK_PACKAGES = 47;
   const PAGE_SIZE = 20;

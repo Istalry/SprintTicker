@@ -5,6 +5,7 @@ import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { OpStatusDTO } from '../../../shared/dtos';
 import { TaskScope, TaskScopeValue, TASK_SCOPE_LABELS } from '../../../shared/task-scope';
 import { SyncQueuePanel } from '../../components/SyncQueuePanel';
+import { DoneStatePerProject } from '../../components/DoneStatePerProject';
 import { ProviderEventsSection } from '../../components/ProviderEventsSection';
 import { PROVIDERS_WITH_EVENTS, providerEventKindsFor } from '../../../shared/provider-events';
 import { selectableProviders, providerDisplayName } from '../../../shared/provider-names';
@@ -277,11 +278,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
                 )}
               </div>
               <div>
-                <label className="block text-xs text-text-secondary mb-1">Task Completion Action</label>
+                <label className="block text-xs text-text-secondary mb-1">When I mark a task done: all projects</label>
                 <select value={opCompletionAction} onChange={e => setOpCompletionAction(e.target.value)} className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus">
                   <option value="to_test">Move to To Test</option>
                   <option value="to_review">Move to To Review</option>
                 </select>
+                <DoneStatePerProject providerId="openproject" statuses={availableStatuses} />
               </div>
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Which Tasks To Show</label>
@@ -433,7 +435,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
               />
             </div>
             <div>
-              <label className="block text-xs text-text-secondary mb-1">Task Completion Action</label>
+              <label className="block text-xs text-text-secondary mb-1">When I mark a task done: all projects</label>
               <select
                 value={jiraCompletionAction}
                 onChange={e => setJiraCompletionAction(e.target.value)}
@@ -442,6 +444,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
                 <option value="to_test">Run the To Test transition</option>
                 <option value="to_review">Run the To Review transition</option>
               </select>
+              <DoneStatePerProject providerId="jira" statuses={[]} />
             </div>
           </div>
         )}

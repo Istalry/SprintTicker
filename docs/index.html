@@ -709,7 +709,9 @@
       confetti beside <strong>DONE!</strong> -- then returns to the session. It also fires your
       configured completion transition — which in Jira usually means &quot;To
       Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
-      yourself. Stopping without marking it done shows <strong>LOGGED</strong> on the bar
+      yourself. Each project can send Done somewhere of its own -- workflows
+      differ -- under <strong>Settings, Account</strong> › <em>When I mark a task done</em>. Stopping
+      without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
       <p>🔀 <strong>A task that leaves your list while you track it</strong> -- reassigned to someone
       else, closed or moved on Jira or OpenProject -- keeps running, and your time
@@ -932,7 +934,11 @@
       OpenProject). <strong>When I start a task</strong> says how long a task is timed before it
       moves to In Progress and becomes yours -- right away, after one, two (the
       default) or five minutes -- or turns that off; it is hidden for a provider
-      that can do neither.</p>
+      that can do neither. <strong>When I mark a task done</strong> is the completion
+      transition for all projects, and under it a list of your projects where any
+      one can go elsewhere: a Jira state or transition name, typed, or an
+      OpenProject status, chosen. A project left empty follows the choice for all.
+      A state its workflow lacks moves nothing, and the time is sent all the same.</p>
       <p align="center">
         <img src="images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">
       </p><p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
@@ -2025,6 +2031,14 @@
       scheduler checks the session id on every tick, so a run never lands on the
       next session. Turned off (<code>enabled: false</code>) nothing runs. A stop undone
       before its time reschedules the rest.</p>
+      <p><strong>Done goes to the project&#39;s own state.</strong> <code>done_state_by_project</code> keeps an
+      override per project; the engine names the session&#39;s project when it moves a
+      task to Done, and <code>ProviderManager</code> reads the override (<code>doneStateFor</code>) and
+      hands it to the adapter as <code>doneState</code>, which replaces the completion action:
+      Jira matches it against the issue&#39;s transitions by id, name or target status,
+      OpenProject PATCHes it as a status id. No override, and the completion
+      action runs as before. A state the workflow lacks answers false, as any
+      transition that cannot happen; the time is queued regardless.</p>
       <p><strong>An overlap holds the later entry.</strong> <code>getPendingQueueItems</code> skips the first
       send of a worklog that overlaps an earlier one (<code>shared/overlap.ts</code>: starts
       first, lower id on a tie, ends after the other begins, another session), and
@@ -3455,7 +3469,10 @@
         getTasks(projectId: string): Promise&lt;TaskDTO[]&gt;;
         reconcileRemoteState(): Promise&lt;{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }&gt;;
         logTime(payload: WorklogPayload): Promise&lt;{ success: boolean; remoteWorklogId?: string }&gt;;
-        updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;): Promise&lt;boolean&gt;;
+        // doneState: for &#39;done&#39;, the project&#39;s own state (done_state_by_project), replacing
+        // the completion action -- a Jira transition id or name, or the status it leads
+        // to; an OpenProject status id. A state the workflow lacks answers false.
+        updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;, doneState?: string): Promise&lt;boolean&gt;;
       
         // Optional: correcting an entry logTime made. A provider with no remote leaves them out.
         findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise&lt;string | null&gt;;

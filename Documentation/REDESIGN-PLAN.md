@@ -668,6 +668,36 @@ The glossary's "Logged · Sent · Waiting" becomes true.
   - side effects run from the scheduler, never from `startTask`;
   - an overlapping entry is held, never sent.
 
+**As landed (2026-11-10):**
+
+- Undo is generic: each action records a `RestorePoint` (the rows it
+  touches, before and after, rowids kept) and Undo puts "before" back, or
+  refuses when any queue row moved meanwhile. No action has a hand-written
+  inverse. A Done transition is held with its stop (`holdRemote`) and runs
+  when the action is final; starting a session makes a held stop final.
+- Undoable: Stop, Done and Discard from the window, the mini timer and the
+  deck; correct, move and delete from History. End my day has its kind
+  (`end-day`) but is offered by P10. **Not yet:**
+  the bar's own STOP and DROP (P14), and the OS toast's click (no toast is
+  posted for an action yet). The S26 toast for the first side effect is not
+  posted either.
+- The overlap rule is TypeScript (`shared/overlap.ts`) and SQL
+  (`getPendingQueueItems`), both run by `overlap.test.ts`; the History badge
+  reads "Waiting · overlaps KEY", and Correct warns before saving.
+- The side-effect wait is `start_side_effects` (2 min by default), set in
+  Settings, Account, *When I start a task*: off, or right away, 1, 2 or 5
+  min. The setup question (S1) that also writes it comes with P7.
+- Done per project: `done_state_by_project.overrides`, set per project
+  under each provider's completion action. Its `default` stays null from
+  the window -- the completion action is the choice for all projects, so
+  there is one place for it, not two.
+- Flow settings reach the window through `flow-settings:get` / `:save`,
+  each value made whole by its reader before it is stored. Later phases
+  wire their keys through the same pair.
+- `display-stress` has no "Stop and Undo crossing a dispatch" case: an undo
+  touches the queue and the session, never the display directly, and the
+  engine's notification after it is the one a resume already makes.
+
 ---
 
 ## 11. P6 -- Interruptions in a row
@@ -1361,7 +1391,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | `ce36fe4` (2026-11-10) |
 | P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures not remade | `1e3481e` (2026-11-10) |
 | P4 | done; `pnpm db:check-migration` on a copy of the real database waits for the user | `e9e2e38` (2026-11-10) |
-| P5 | in progress: the hold and Undo, overlaps, side effects after two minutes landed; Done per project to come | `ff15f2c`, `433b0f3`, P5c (2026-11-10) |
+| P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, P5d (2026-11-10) |
 | P6 | not started | |
 | P7 | not started | |
 | P8 | not started | |

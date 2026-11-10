@@ -265,7 +265,10 @@ interface ITaskProvider {
   getTasks(projectId: string): Promise<TaskDTO[]>;
   reconcileRemoteState(): Promise<{ activeTask?: TaskDTO; remoteLoggedTimeToday: number | null }>;
   logTime(payload: WorklogPayload): Promise<{ success: boolean; remoteWorklogId?: string }>;
-  updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
+  // doneState: for 'done', the project's own state (done_state_by_project), replacing
+  // the completion action -- a Jira transition id or name, or the status it leads
+  // to; an OpenProject status id. A state the workflow lacks answers false.
+  updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done', doneState?: string): Promise<boolean>;
 
   // Optional: correcting an entry logTime made. A provider with no remote leaves them out.
   findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise<string | null>;
