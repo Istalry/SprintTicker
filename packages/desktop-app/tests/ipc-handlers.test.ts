@@ -580,6 +580,33 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('stars, recent and previous task', () => {
+    beforeEach(() => {
+      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'One', status: 'todo' });
+      taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Two', status: 'todo' });
+    });
+
+    it('StarAndUnstar_AnswerTheStarredList', async () => {
+      expect(await invoke(IPCChannel.STAR_TASK, 'T1')).toMatchObject([{ id: 'T1' }]);
+      expect(await invoke(IPCChannel.GET_STARRED_TASKS)).toMatchObject([{ id: 'T1' }]);
+      expect(await invoke(IPCChannel.UNSTAR_TASK, 'T1')).toEqual([]);
+    });
+
+    it.each([[IPCChannel.STAR_TASK], [IPCChannel.UNSTAR_TASK]])('%s_NoTaskId_Throws', async channel => {
+      await expect(invoke(channel, '')).rejects.toThrow(/task id/);
+    });
+
+    it('RecentAndPrevious_FollowTheSessions', async () => {
+      engine.startTask('T1');
+      engine.startTask('T2');
+
+      // Both started in the same millisecond: the order is the repository's test.
+      const recent = (await invoke(IPCChannel.GET_RECENT_TASKS)) as Array<{ id: string }>;
+      expect(recent.map(t => t.id).sort()).toEqual(['T1', 'T2']);
+      expect(await invoke(IPCChannel.GET_PREVIOUS_TASK)).toMatchObject({ id: 'T1' });
+    });
+  });
+
   describe('provider settings', () => {
     it('GetProviders_List_NamesEachProviderAsTheAppWritesIt', async () => {
       const read = (await invoke(IPCChannel.GET_PROVIDERS)) as { providers: unknown };

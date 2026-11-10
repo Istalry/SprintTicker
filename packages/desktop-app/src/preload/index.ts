@@ -88,6 +88,11 @@ const electronAPI: IElectronAPI = {
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_BY_DATE, dateString),
   getUnsortedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_UNSORTED_WORKLOGS),
+  starTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.STAR_TASK, taskId),
+  unstarTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.UNSTAR_TASK, taskId),
+  getStarredTasks: () => ipcRenderer.invoke(IPCChannel.GET_STARRED_TASKS),
+  getRecentTasks: () => ipcRenderer.invoke(IPCChannel.GET_RECENT_TASKS),
+  getPreviousTask: () => ipcRenderer.invoke(IPCChannel.GET_PREVIOUS_TASK),
   renameAdHocTask: (taskId: string, title: string) => ipcRenderer.invoke(IPCChannel.RENAME_AD_HOC_TASK, taskId, title),
   moveWorklog: (worklogId: string, taskId: string) => ipcRenderer.invoke(IPCChannel.MOVE_WORKLOG, worklogId, taskId),
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) =>

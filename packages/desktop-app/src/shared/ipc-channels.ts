@@ -21,6 +21,8 @@ export enum IPCChannel {
   RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
   ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
   ON_SESSION_UPDATED = 'session:on-updated',
+  /** The task to switch back to (`shared/previous-task.ts`), or null. */
+  GET_PREVIOUS_TASK = 'session:get-previous',
 
   // Task Provider & Task Query
   GET_PROVIDERS = 'provider:get-all',
@@ -46,6 +48,12 @@ export enum IPCChannel {
   GET_WORKLOGS_BY_DATE = 'worklogs:get-by-date',
   GET_UNSORTED_WORKLOGS = 'worklogs:get-unsorted',
   RENAME_AD_HOC_TASK = 'tasks:rename-ad-hoc',
+  /** Stars a task by its provider and key (migration 14); answers the starred list. */
+  STAR_TASK = 'tasks:star',
+  UNSTAR_TASK = 'tasks:unstar',
+  GET_STARRED_TASKS = 'tasks:get-starred',
+  /** The last tasks timed, each once, newest first. */
+  GET_RECENT_TASKS = 'tasks:get-recent',
   MOVE_WORKLOG = 'worklogs:move',
   GET_DAILY_WORKLOG_SUMMARY = 'worklogs:get-daily-summary',
   WIPE_ALL_DATA = 'db:wipe-all-data',

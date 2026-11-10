@@ -645,6 +645,29 @@ describe('Schema Migrations', () => {
     });
   });
 
+  describe('migration 14: stars and the previous task', () => {
+    it('Migration014_ExistingSessions_HaveNoPreviousTask', () => {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 13)) migration.up(db);
+      db.pragma('user_version = 13');
+      db.prepare(
+        "INSERT INTO active_sessions (id, project_id, task_id, task_key, task_title, start_time_utc, status) VALUES ('s1', 'p1', 't1', 'A-1', 'One', '2026-01-01T09:00:00.000Z', 'COMPLETED')"
+      ).run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT previous_task_id FROM active_sessions').all()).toEqual([{ previous_task_id: null }]);
+      expect(db.prepare('SELECT COUNT(*) AS n FROM task_stars').get()).toEqual({ n: 0 });
+    });
+
+    it('Migration014_OneStarPerProviderAndKey', () => {
+      runMigrations(db);
+      const star = db.prepare("INSERT INTO task_stars (provider_id, task_key, starred_at_utc) VALUES ('jira', 'A-1', '2026-01-01T00:00:00.000Z')");
+      star.run();
+
+      expect(() => star.run()).toThrow(/UNIQUE/);
+    });
+  });
+
   describe('migration 13: an interruption waits to be sorted', () => {
     it('Migration013_ExistingTasks_AreSorted', () => {
       // Every row so far was named by someone: nothing waits to be sorted.

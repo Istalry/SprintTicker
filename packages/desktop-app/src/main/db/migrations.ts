@@ -499,6 +499,35 @@ const M013_TASK_UNSORTED = `
   ALTER TABLE tasks ADD COLUMN unsorted INTEGER NOT NULL DEFAULT 0 CHECK (unsorted IN (0, 1));
 `;
 
+/**
+ * Migration 14: starred tasks, and the task a session replaced.
+ *
+ * A star is keyed by the task's provider and **key**, not its id: the sync
+ * retires a task that leaves the user's scope and a later sync can fetch it
+ * again, under the same key, and a star tied to the row would be lost with
+ * it. `task_id` is the row last seen, kept for reading, never for matching.
+ * An ad-hoc task's key is the shared ad-hoc key, so its star is keyed by its
+ * id under the provider `adhoc` (`starIdentity` in `shared/task-stars.ts`).
+ *
+ * `previous_task_id` is the task of the session `startTask` stopped to start
+ * this one: "Previous task" reads it first. Every existing session started
+ * before it was recorded, so NULL is the truth for them, and the reader
+ * falls back to the sessions themselves.
+ */
+const M014_STARS_AND_PREVIOUS_TASK = `
+  CREATE TABLE task_stars (
+      provider_id TEXT NOT NULL,
+      task_key TEXT NOT NULL,
+      task_id TEXT,
+      starred_at_utc TEXT NOT NULL,
+      PRIMARY KEY (provider_id, task_key)
+  );
+
+  ALTER TABLE active_sessions ADD COLUMN previous_task_id TEXT;
+
+  CREATE INDEX idx_active_sessions_task_start ON active_sessions(task_id, start_time_utc);
+`;
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -513,7 +542,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 10, name: 'project-key-not-unique', up: db => db.exec(M010_PROJECT_KEY_NOT_UNIQUE) },
   { version: 11, name: 'send-attempts', up: db => db.exec(M011_SEND_ATTEMPTS) },
   { version: 12, name: 'task-ownership', up: db => db.exec(M012_TASK_OWNERSHIP) },
-  { version: 13, name: 'task-unsorted', up: db => db.exec(M013_TASK_UNSORTED) }
+  { version: 13, name: 'task-unsorted', up: db => db.exec(M013_TASK_UNSORTED) },
+  { version: 14, name: 'stars-and-previous-task', up: db => db.exec(M014_STARS_AND_PREVIOUS_TASK) }
 ];
 
 /** Schema version a fully migrated database reports. */

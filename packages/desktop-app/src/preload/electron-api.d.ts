@@ -103,6 +103,14 @@ export interface IElectronAPI {
   getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;
   /** Every worklog of an interruption still to sort, newest first. */
   getUnsortedWorklogs: () => Promise<WorklogDTO[]>;
+  /** Stars a task; answers the starred tasks the lists hold. */
+  starTask: (taskId: string) => Promise<TaskDTO[]>;
+  unstarTask: (taskId: string) => Promise<TaskDTO[]>;
+  getStarredTasks: () => Promise<TaskDTO[]>;
+  /** The last tasks timed, each once, newest first; unnamed interruptions left out. */
+  getRecentTasks: () => Promise<TaskDTO[]>;
+  /** The task to switch back to, or null. */
+  getPreviousTask: () => Promise<TaskDTO | null>;
   /** Names ad-hoc work after the fact; renames the open session too when it is that task. */
   renameAdHocTask: (taskId: string, title: string) => Promise<void>;
   /** Moves a worklog to another task, here and at the providers through the queue. Rejects with the reason when refused. */

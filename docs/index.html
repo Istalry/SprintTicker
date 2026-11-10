@@ -2542,7 +2542,11 @@
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
-      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index. <code>provider_id</code> is where its time goes, read from its project when it starts</td>
+      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index. <code>provider_id</code> is where its time goes, read from its project when it starts. <code>previous_task_id</code> is the task of the session <code>startTask</code> stopped to start it (migration 14). Recent tasks are read from here, with no table of their own</td>
+      </tr>
+      <tr>
+      <td align="left"><code>task_stars</code></td>
+      <td align="left">Starred tasks, keyed by <code>provider_id</code> and <code>task_key</code> so a star survives the task being retired and fetched again under a new id; an ad-hoc task is keyed by its id under <code>adhoc</code>, since every ad-hoc task shows the same key. <code>task_id</code> is the row last seen (migration 14)</td>
       </tr>
       <tr>
       <td align="left"><code>paused_intervals</code></td>
@@ -2558,7 +2562,7 @@
       </tr>
       <tr>
       <td align="left"><code>settings</code></td>
-      <td align="left">Key/value, including provider configuration</td>
+      <td align="left">Key/value, JSON: provider configuration, and the redesigned flows&#39; settings -- the start&#39;s side effects, Done per project, the prompts&#39; delays, the shortcuts, close to tray, the stand-up&#39;s task -- each read through a reader in <code>shared/flow-settings.ts</code> that answers a whole, valid value whatever is stored</td>
       </tr>
       </tbody></table></div>
       <p>Migrations are versioned and forward-only (<code>src/main/db/migrations.ts</code>):</p>
@@ -2610,6 +2614,16 @@
       marker before it is sent again; <code>retry_count</code> could not say so, since a
       correction and new credentials both reset it, and a crashed claim never
       raised it. Rows that show any sign of an attempt start at 1.</li>
+      <li><code>task-ownership</code> — <code>tasks.ownership</code> and <code>assignee_name</code>: the sync keeps
+      unassigned tasks and teammates&#39; tasks in progress too. Every row before
+      was the user&#39;s, so <code>mine</code> is both the default and the truth.</li>
+      <li><code>task-unsorted</code> — <code>tasks.unsorted</code>, set on an interruption&#39;s ad-hoc task
+      until it is named or its time moved.</li>
+      <li><code>stars-and-previous-task</code> — <code>task_stars</code>, and
+      <code>active_sessions.previous_task_id</code>. Older sessions have none, and
+      &quot;Previous task&quot; falls back to the ended sessions themselves
+      (<code>shared/previous-task.ts</code>): the most recent one whose task is not the
+      current one and can still be offered -- listed, and named.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
@@ -2890,6 +2904,10 @@
       <td align="left">Pushes the question when it is found, and null once anything answers it -- the window, the bar&#39;s STOP, a resume</td>
       </tr>
       <tr>
+      <td align="left"><code>session:get-previous</code></td>
+      <td align="left">The task to switch back to, or null: the task the open session replaced, else the most recent ended session&#39;s task that is not the current one -- in either case only one still listed and named (<code>shared/previous-task.ts</code>)</td>
+      </tr>
+      <tr>
       <td align="left"><code>session:get-days</code></td>
       <td align="left">The open session&#39;s time per local day were it stopped now, <code>{ dateKey, seconds }[]</code>: one entry unless it crosses midnight. The finish dialog says how it will be filed</td>
       </tr>
@@ -2989,6 +3007,22 @@
       </tr>
       </thead>
       <tbody><tr>
+      <td align="left"><code>tasks:star</code></td>
+      <td align="left"><code>(taskId)</code>: stars a task, kept by its provider and key, so the star outlives the row (an ad-hoc task by its id). Answers the starred list. Throws for no id or an unknown task</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks:unstar</code></td>
+      <td align="left"><code>(taskId)</code>: takes the star off; nothing for a task never starred. Answers the starred list</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks:get-starred</code></td>
+      <td align="left">The starred tasks the lists hold now, most recently starred first. A star whose task is retired stays, and comes back with the task</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks:get-recent</code></td>
+      <td align="left">The last six tasks timed, each once, the most recently started first -- read from the sessions. Retired tasks and interruptions not named yet are left out</td>
+      </tr>
+      <tr>
       <td align="left"><code>worklogs:get-unsorted</code></td>
       <td align="left">Every worklog of an interruption still to sort, whatever its day, newest first: History&#39;s list</td>
       </tr>

@@ -786,11 +786,12 @@ testing runs against your actual worklogs.
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app -- which the sync never deletes -- or `local`, the old default, meaning not known. Keys need not be unique |
 | `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text; `ownership` is `mine`, `unassigned` or `other`, with `assignee_name` on a teammate's (migration 12); `unsorted` is 1 on an interruption's ad-hoc task until it is named or its time moved (migration 13) |
-| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts |
+| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts. `previous_task_id` is the task of the session `startTask` stopped to start it (migration 14). Recent tasks are read from here, with no table of their own |
+| `task_stars` | Starred tasks, keyed by `provider_id` and `task_key` so a star survives the task being retired and fetched again under a new id; an ad-hoc task is keyed by its id under `adhoc`, since every ad-hoc task shows the same key. `task_id` is the row last seen (migration 14) |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
 | `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id` |
-| `settings` | Key/value, including provider configuration |
+| `settings` | Key/value, JSON: provider configuration, and the redesigned flows' settings -- the start's side effects, Done per project, the prompts' delays, the shortcuts, close to tray, the stand-up's task -- each read through a reader in `shared/flow-settings.ts` that answers a whole, valid value whatever is stored |
 
 Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
 
@@ -841,6 +842,16 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
     marker before it is sent again; `retry_count` could not say so, since a
     correction and new credentials both reset it, and a crashed claim never
     raised it. Rows that show any sign of an attempt start at 1.
+12. `task-ownership` — `tasks.ownership` and `assignee_name`: the sync keeps
+    unassigned tasks and teammates' tasks in progress too. Every row before
+    was the user's, so `mine` is both the default and the truth.
+13. `task-unsorted` — `tasks.unsorted`, set on an interruption's ad-hoc task
+    until it is named or its time moved.
+14. `stars-and-previous-task` — `task_stars`, and
+    `active_sessions.previous_task_id`. Older sessions have none, and
+    "Previous task" falls back to the ended sessions themselves
+    (`shared/previous-task.ts`): the most recent one whose task is not the
+    current one and can still be offered -- listed, and named.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares

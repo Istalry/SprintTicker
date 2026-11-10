@@ -554,6 +554,27 @@ bridge and the mock.
 
 **Docs:** `ARCHITECTURE.md` (data model), `API.md` (channels).
 
+**As landed (2026-11-10):**
+
+- A star is kept by provider and key, except an ad-hoc task's: every one
+  shows the configured key (`MISC-1`), so its star is kept by its id under
+  `adhoc` (`shared/task-stars.ts`). A task whose project has no row stars
+  under `local`, the unknown provider.
+- "Can be offered" -- for Recent and Previous alike -- is listed (not
+  archived) and named (not an unsorted interruption): `isOffered`. A
+  teammate's task in progress is listed, so it can be recent.
+- `previous_task_id` is not written when a task is started again over
+  itself. Ended sessions are looked through 20 deep for the fallback.
+- `tasks:star` and `tasks:unstar` answer the starred list, so a view
+  needs no second read.
+- The settings keys have readers, not IPC: `shared/flow-settings.ts`,
+  each answering a whole value from whatever is stored. A stored chord that
+  could not register (`chordProblem`) reads as the default. The phases
+  that use a key wire it; P6, which builds `ShortcutService`, also
+  decides how the existing `interrupt_shortcut` carries over.
+- **Waiting for the user:** `pnpm db:check-migration`, from an ordinary
+  terminal, on a copy of the real database.
+
 ---
 
 ## 10. P5 -- The send pipeline
@@ -1338,8 +1359,8 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P0 | done; side sessions archived, worktrees removed | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
 | P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | `4adb117` (2026-11-10) |
 | P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | `ce36fe4` (2026-11-10) |
-| P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures not remade | (2026-11-10) |
-| P4 | not started | |
+| P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures not remade | `1e3481e` (2026-11-10) |
+| P4 | done; `pnpm db:check-migration` on a copy of the real database waits for the user | (2026-11-10) |
 | P5 | not started | |
 | P6 | not started | |
 | P7 | not started | |

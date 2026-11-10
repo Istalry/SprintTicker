@@ -6,6 +6,9 @@ import { ArgumentException, TaskDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
 import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownership';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
+import { StarIdentity, starIdentity } from '../../../shared/task-stars';
+import { ProviderId } from '../../../shared/provider-names';
+import { UNKNOWN_PROJECT_PROVIDER_ID } from '../../../shared/local-provider';
 
 /**
  * The columns every read selects, under the DTO's names: three queries
@@ -292,6 +295,115 @@ export class TaskRepository {
     return this.dbConn.getDb().prepare<[], TaskRow>(
       `SELECT ${TASK_COLUMNS} FROM tasks WHERE unsorted = 1 AND archived_at_utc IS NULL ORDER BY created_at_utc ASC`
     ).all().map(r => TaskRepository.toDto(r));
+  }
+
+  /**
+   * Whether a task can be offered to switch back to or pick again: its row
+   * is in the lists and it has a name -- an interruption nobody has named
+   * yet is not, as Recent leaves it out (S7).
+   */
+  public isOffered(taskId: string): boolean {
+    if (!taskId) return false;
+    const row = this.dbConn.getDb()
+      .prepare<[string], { n: number }>(
+        'SELECT COUNT(*) AS n FROM tasks WHERE id = ? AND archived_at_utc IS NULL AND unsorted = 0'
+      )
+      .get(taskId);
+    return (row?.n ?? 0) > 0;
+  }
+
+  /**
+   * The tasks of the latest sessions, each once, the most recently started
+   * first; only those that can be offered (`isOffered`). No table of their
+   * own: the sessions are the record.
+   */
+  public getRecent(limit: number): TaskDTO[] {
+    if (!Number.isInteger(limit) || limit <= 0) throw new ArgumentException('The limit must be a positive integer.', 'limit');
+    const columns = TASK_COLUMNS.split(', ').map(c => `t.${c}`).join(', ');
+    return this.dbConn.getDb().prepare<[number], TaskRow>(
+      `SELECT ${columns}
+         FROM tasks t
+         JOIN (SELECT task_id, MAX(start_time_utc) AS last_start FROM active_sessions GROUP BY task_id) s
+           ON s.task_id = t.id
+        WHERE t.archived_at_utc IS NULL AND t.unsorted = 0
+        ORDER BY s.last_start DESC
+        LIMIT ?`
+    ).all(limit).map(r => TaskRepository.toDto(r));
+  }
+
+  /** The identity a task's star is kept under, or null for a task with no row. */
+  private starIdentityOf(taskId: string): StarIdentity | null {
+    const row = this.dbConn.getDb().prepare<[string], { id: string; key: string; providerId: string | null }>(
+      `SELECT t.id, t.key, p.provider_id AS providerId
+         FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+        WHERE t.id = ?`
+    ).get(taskId);
+    if (!row) return null;
+    return starIdentity(row, row.providerId ?? undefined, isAdHocTaskId(row.id));
+  }
+
+  /**
+   * Stars a task. Starring it again keeps the first star's time and records
+   * the row now under it.
+   *
+   * @throws ArgumentException for a task with no row.
+   */
+  public star(taskId: string): void {
+    if (!taskId) throw new ArgumentException('A task id is required.', 'taskId');
+    const identity = this.starIdentityOf(taskId);
+    if (!identity) throw new ArgumentException(`No task ${taskId} to star.`, 'taskId');
+    this.dbConn.getDb().prepare(
+      `INSERT INTO task_stars (provider_id, task_key, task_id, starred_at_utc) VALUES (?, ?, ?, ?)
+       ON CONFLICT(provider_id, task_key) DO UPDATE SET task_id = excluded.task_id`
+    ).run(identity.providerId, identity.taskKey, taskId, new Date().toISOString());
+  }
+
+  /** Takes a task's star off; nothing to do for a task with no row or no star. */
+  public unstar(taskId: string): void {
+    if (!taskId) throw new ArgumentException('A task id is required.', 'taskId');
+    const identity = this.starIdentityOf(taskId);
+    if (!identity) return;
+    this.dbConn.getDb()
+      .prepare('DELETE FROM task_stars WHERE provider_id = ? AND task_key = ?')
+      .run(identity.providerId, identity.taskKey);
+  }
+
+  /**
+   * The starred tasks the lists hold now, most recently starred first. A
+   * star whose task is retired stays, and its task comes back with it when a
+   * sync fetches it again -- matched on the key, under any id.
+   */
+  public getStarred(): TaskDTO[] {
+    const db = this.dbConn.getDb();
+    const stars = db.prepare<[], { providerId: string; taskKey: string; taskId: string | null }>(
+      'SELECT provider_id AS providerId, task_key AS taskKey, task_id AS taskId FROM task_stars ORDER BY starred_at_utc DESC'
+    ).all();
+    const columns = TASK_COLUMNS.split(', ').map(c => `t.${c}`).join(', ');
+    const byId = db.prepare<[string], TaskRow>(
+      `SELECT ${columns} FROM tasks t WHERE t.id = ? AND t.archived_at_utc IS NULL`
+    );
+    const byKey = db.prepare<[string, string, string, string], TaskRow>(
+      `SELECT ${columns}
+         FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+        WHERE t.key = ? AND t.archived_at_utc IS NULL AND t.id NOT LIKE ?
+          AND COALESCE(p.provider_id, ?) = ?
+        ORDER BY t.created_at_utc DESC
+        LIMIT 1`
+    );
+    const remember = db.prepare('UPDATE task_stars SET task_id = ? WHERE provider_id = ? AND task_key = ?');
+
+    const tasks: TaskDTO[] = [];
+    for (const star of stars) {
+      // By the key's shape too: a project of the local provider files its
+      // tasks under 'adhoc' with keys of their own.
+      const row = star.providerId === ProviderId.ADHOC && isAdHocTaskId(star.taskKey)
+        ? byId.get(star.taskKey)
+        : byKey.get(star.taskKey, `${IdPrefix.ADHOC_TASK}%`, UNKNOWN_PROJECT_PROVIDER_ID, star.providerId);
+      if (!row) continue;
+      if (row.id !== star.taskId) remember.run(row.id, star.providerId, star.taskKey);
+      tasks.push(TaskRepository.toDto(row));
+    }
+    return tasks;
   }
 
   /**

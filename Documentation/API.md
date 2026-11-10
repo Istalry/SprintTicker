@@ -42,6 +42,7 @@ Everything else is a request/response `invoke`.
 | `session:get-forgotten-review` | The session left running across a change of day, paused at the last activity and awaiting an answer: `{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted }`, or null |
 | `session:resolve-forgotten` | Answers it with `{ action, endUtc? }`: `stop` or `restart` log up to `endUtc` (between the start and now, required), `discard` keeps nothing, `keep` counts the whole absence and runs on. An unknown action or an end outside the session throws; answers `false` when nothing is asked any more |
 | `session:on-forgotten-review` | Pushes the question when it is found, and null once anything answers it -- the window, the bar's STOP, a resume |
+| `session:get-previous` | The task to switch back to, or null: the task the open session replaced, else the most recent ended session's task that is not the current one -- in either case only one still listed and named (`shared/previous-task.ts`) |
 | `session:get-days` | The open session's time per local day were it stopped now, `{ dateKey, seconds }[]`: one entry unless it crosses midnight. The finish dialog says how it will be filed |
 | `session:discard` | End the session keeping nothing: no worklog, nothing queued, the task's status untouched, no scene on the bar. Answers `{ success, discardedSeconds }`. Every caller confirms with the user first |
 | `session:on-updated` | **Event** — the session changed |
@@ -83,6 +84,10 @@ A worklog read carries `adHoc: true` when it was logged on ad-hoc work, and
 
 | Channel | Does |
 | :--- | :--- |
+| `tasks:star` | `(taskId)`: stars a task, kept by its provider and key, so the star outlives the row (an ad-hoc task by its id). Answers the starred list. Throws for no id or an unknown task |
+| `tasks:unstar` | `(taskId)`: takes the star off; nothing for a task never starred. Answers the starred list |
+| `tasks:get-starred` | The starred tasks the lists hold now, most recently starred first. A star whose task is retired stays, and comes back with the task |
+| `tasks:get-recent` | The last six tasks timed, each once, the most recently started first -- read from the sessions. Retired tasks and interruptions not named yet are left out |
 | `worklogs:get-unsorted` | Every worklog of an interruption still to sort, whatever its day, newest first: History's list |
 | `tasks:rename-ad-hoc` | `(taskId, title)`: names ad-hoc work after the fact -- the task row, so every worklog of it reads the new name -- and clears its unsorted mark. Local only, nothing is queued. The open session's own task is renamed as `session:rename` renames it, its copy included. Refused for a provider's task, an unknown one, or a title `checkAdHocTitle` refuses |
 

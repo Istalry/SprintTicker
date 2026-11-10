@@ -19,6 +19,7 @@ import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
 import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
 import { hasTaskPage } from '../../shared/task-page';
 import { checkAdHocTitle, interruptionTitle } from '../../shared/interruption';
+import { PREVIOUS_TASK_LOOKBACK, previousTaskId } from '../../shared/previous-task';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -231,6 +232,21 @@ export class TimeTrackingEngine extends EventEmitter {
     }
   }
 
+  /**
+   * The task to switch back to -- see `shared/previous-task.ts`. Null when
+   * nothing earlier can be offered.
+   */
+  public getPreviousTask(): TaskDTO | null {
+    const open = this._currentSession && this._currentSession.status !== 'COMPLETED' ? this._currentSession : null;
+    const taskId = previousTaskId({
+      currentTaskId: open?.taskId ?? null,
+      storedPreviousTaskId: open ? this._sessionRepo.getPreviousTaskId(open.sessionId) : null,
+      recentEndedTaskIds: this._sessionRepo.getRecentEndedTaskIds(PREVIOUS_TASK_LOOKBACK),
+      isOffered: id => this._taskRepo.isOffered(id)
+    });
+    return taskId ? this._taskRepo.getTaskById(taskId) : null;
+  }
+
   /// <summary>
   /// Gets current active session with live calculated UTC elapsed time.
   /// </summary>
@@ -438,8 +454,11 @@ export class TimeTrackingEngine extends EventEmitter {
       throw new Error('Task ID is required to start a session');
     }
 
-    // Finalize any existing active session before starting new task
+    // Finalize any existing active session before starting new task. Its
+    // task is the new session's previous one (migration 14).
+    let replacedTaskId: string | undefined;
     if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
+      replacedTaskId = this._currentSession.taskId;
       this.stopSession(WORKLOG_COMMENTS.SWITCHED_TASK);
     }
 
@@ -521,7 +540,7 @@ export class TimeTrackingEngine extends EventEmitter {
       ...(providerId ? { providerId } : {})
     };
 
-    this._sessionRepo.saveSession(newSession);
+    this._sessionRepo.saveSession(newSession, replacedTaskId !== effectiveTaskId ? replacedTaskId : undefined);
     this._currentSession = this._sessionRepo.getActiveSession();
     this.startTickLoop();
     this.notifyListeners();

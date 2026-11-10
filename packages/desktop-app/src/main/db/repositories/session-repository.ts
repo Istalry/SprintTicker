@@ -78,9 +78,10 @@ export class SessionRepository {
   }
 
   /**
-   * Creates a new tracking session.
+   * Creates a new tracking session. `previousTaskId` is the task of the
+   * session stopped to start this one (migration 14); written once, here.
    */
-  public saveSession(session: Omit<ActiveSessionDTO, 'elapsedSeconds'>): void {
+  public saveSession(session: Omit<ActiveSessionDTO, 'elapsedSeconds'>, previousTaskId?: string): void {
     if (!session.sessionId || !session.taskId || !session.projectId) {
       throw new Error('Session ID, Task ID, and Project ID are required');
     }
@@ -88,8 +89,8 @@ export class SessionRepository {
     const stmt = this.dbConn.getDb().prepare(`
       INSERT INTO active_sessions (
         id, project_id, task_id, task_key, task_title, is_ad_hoc, start_time_utc, status, total_paused_seconds,
-        last_pause_start_utc, provider_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        last_pause_start_utc, provider_id, previous_task_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
         start_time_utc = excluded.start_time_utc,
@@ -108,8 +109,28 @@ export class SessionRepository {
       session.status,
       session.totalPausedSeconds,
       session.lastPauseStartUtc || null,
-      session.providerId ?? null
+      session.providerId ?? null,
+      previousTaskId ?? null
     );
+  }
+
+  /** The task the session replaced, as `startTask` recorded it; null when none was. */
+  public getPreviousTaskId(sessionId: string): string | null {
+    if (!sessionId) return null;
+    const row = this.dbConn.getDb()
+      .prepare<[string], { previousTaskId: string | null }>('SELECT previous_task_id AS previousTaskId FROM active_sessions WHERE id = ?')
+      .get(sessionId);
+    return row?.previousTaskId ?? null;
+  }
+
+  /** The tasks of the latest ended sessions, newest first, one entry per session. */
+  public getRecentEndedTaskIds(limit: number): string[] {
+    return this.dbConn.getDb()
+      .prepare<[number], { taskId: string }>(
+        "SELECT task_id AS taskId FROM active_sessions WHERE status = 'COMPLETED' ORDER BY start_time_utc DESC LIMIT ?"
+      )
+      .all(limit)
+      .map(r => r.taskId);
   }
 
   /**

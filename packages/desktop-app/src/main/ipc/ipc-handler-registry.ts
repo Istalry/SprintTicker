@@ -22,7 +22,8 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO } from '../../shared/dtos';
+import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
@@ -251,6 +252,8 @@ export class IPCHandlerRegistry {
       return this.engine.discardSession();
     });
 
+    ipcMain.handle(IPCChannel.GET_PREVIOUS_TASK, async (): Promise<TaskDTO | null> => this.engine.getPreviousTask());
+
     ipcMain.handle(IPCChannel.GET_SESSION_DAYS, async (): Promise<DayShare[]> => this.engine.getSessionDays());
 
     ipcMain.handle(IPCChannel.GET_FORGOTTEN_REVIEW, async (): Promise<ForgottenSessionReviewDTO | null> =>
@@ -378,6 +381,19 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.GET_UNSORTED_WORKLOGS, async () => this.worklogRepo.getUnsortedWorklogs());
+
+    ipcMain.handle(IPCChannel.STAR_TASK, async (_event, taskId: unknown): Promise<TaskDTO[]> => {
+      if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('A task id is required.', 'taskId');
+      this.taskRepo.star(taskId);
+      return this.taskRepo.getStarred();
+    });
+    ipcMain.handle(IPCChannel.UNSTAR_TASK, async (_event, taskId: unknown): Promise<TaskDTO[]> => {
+      if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('A task id is required.', 'taskId');
+      this.taskRepo.unstar(taskId);
+      return this.taskRepo.getStarred();
+    });
+    ipcMain.handle(IPCChannel.GET_STARRED_TASKS, async (): Promise<TaskDTO[]> => this.taskRepo.getStarred());
+    ipcMain.handle(IPCChannel.GET_RECENT_TASKS, async (): Promise<TaskDTO[]> => this.taskRepo.getRecent(RECENT_TASKS_LIMIT));
 
     ipcMain.handle(IPCChannel.RENAME_AD_HOC_TASK, async (_event, taskId: unknown, title: unknown) => {
       if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('A task id is required.', 'taskId');
