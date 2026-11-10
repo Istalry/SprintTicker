@@ -1388,10 +1388,10 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | :--- | :--- | :--- |
 | P0 | done; side sessions archived, worktrees removed | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
 | P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | `4adb117` (2026-11-10) |
-| P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | `ce36fe4` (2026-11-10) |
-| P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures not remade | `1e3481e` (2026-11-10) |
-| P4 | done; `pnpm db:check-migration` on a copy of the real database waits for the user | `e9e2e38` (2026-11-10) |
-| P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, P5d (2026-11-10) |
+| P2 | done; pictures remade after P5 | `ce36fe4` (2026-11-10) |
+| P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures remade after P5 | `1e3481e` (2026-11-10) |
+| P4 | done; `pnpm db:check-migration` passed on a 7 Sep copy (schema 3 to 14), the newest the agent's shell can see | `e9e2e38` (2026-11-10) |
+| P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | not started | |
 | P7 | not started | |
 | P8 | not started | |

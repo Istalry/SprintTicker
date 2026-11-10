@@ -153,6 +153,10 @@ class Page {
   async shot(name) {
     // Let a panel's own fetches settle and its transitions finish.
     await sleep(900);
+    // The real pointer may rest over the window, and its hover would show
+    // in the picture as a second place selected. Move it to the corner.
+    await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 });
+    await sleep(150);
     const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
     const file = path.join(IMAGES, `${name}.png`);
     fs.writeFileSync(file, Buffer.from(data, 'base64'));
@@ -170,6 +174,20 @@ class Page {
       return true;
     })()`);
     if (!found) throw new Error(`no button "${label}" on screen`);
+    await sleep(300);
+  }
+
+  /** Opens the <details> whose summary reads `label`, and scrolls it to the top. */
+  async open(label) {
+    const found = await this.eval(`(() => {
+      const want = ${JSON.stringify(label)};
+      const summary = [...document.querySelectorAll('summary')].find(s => s.textContent.trim() === want);
+      if (!summary) return false;
+      summary.parentElement.open = true;
+      summary.scrollIntoView({ block: 'start' });
+      return true;
+    })()`);
+    if (!found) throw new Error(`no section "${label}" on screen`);
     await sleep(300);
   }
 
@@ -405,26 +423,33 @@ async function captureWithBar(page, framesDir, profile) {
   await listener(page, false);
   await sleep(10000);
 
-  for (const [label, name] of [
-    ['Projects & Tasks', 'app-projects'],
-    ['Work History', 'app-history'],
-    ['Task Providers', 'app-providers'],
-    ['Ceremonies', 'app-ceremonies'],
-    ['Notifications', 'app-notifications'],
-    ['Priority Rules', 'app-priority'],
-    ['Device Diagnostics', 'app-device']
+  // The places and Settings' groups since the 2026-11 redesign (P3); a
+  // section folded under <details> is opened before the picture.
+  for (const { steps, section, name } of [
+    { steps: ['Tasks'], name: 'app-projects' },
+    { steps: ['History'], name: 'app-history' },
+    { steps: ['Settings', 'Account'], name: 'app-providers' },
+    { steps: ['Settings', 'My workday'], name: 'app-ceremonies' },
+    { steps: ['Settings', 'Desk devices'], section: 'Windows notifications on the bar', name: 'app-notifications' },
+    { steps: ['Settings', 'Desk devices'], section: 'What the bar shows first', name: 'app-priority' },
+    { steps: ['Settings', 'Desk devices'], name: 'app-device' }
   ]) {
     // The panel reads the listener's state when it opens, so it is switched
     // on first.
     if (name === 'app-notifications') await listener(page, true);
-    await nav(label);
+    for (const step of steps) await nav(step);
+    // A place keeps the scroll of the one before it.
+    await page.eval(`document.querySelector('main').scrollTop = 0`);
+    if (section) await page.open(section);
     await page.shot(name);
     if (name === 'app-notifications') await listener(page, false);
     if (name === 'app-history') await shootCorrection(page);
+    await nav('Today');
   }
 
-  await nav('Active Session');
-  await page.click('Setup Wizard');
+  await nav('Settings');
+  await nav('General');
+  await page.click('Run setup');
   await page.shot('app-setup-wizard');
   await page.click('Not now -- use it without one');
   await page.shot('app-setup-wizard-nobar');
@@ -465,7 +490,7 @@ async function shootCorrection(page) {
     pencil.click();
     return true;
   })()`);
-  if (!opened) throw new Error('no worklog to correct in Work History');
+  if (!opened) throw new Error('no worklog to correct in History');
   await page.shot('app-history-edit');
   await page.click('Cancel');
 }
@@ -478,9 +503,10 @@ async function captureWithoutBar(page) {
   await page.api('resumeSession()');
   await sleep(1000);
   await page.shot('app-nobar-session');
-  await page.click('Device & Logs');
+  await page.click('Settings');
+  await page.click('Desk devices');
   await page.shot('app-nobar-device');
-  await page.click('Active Session');
+  await page.click('Today');
   await page.api('toggleMiniWindow()');
   const mini = await Page.open(url => url.includes('#mini'));
   await mini.shot('app-nobar-mini-timer');
