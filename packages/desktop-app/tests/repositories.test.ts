@@ -17,7 +17,7 @@ describe('SQLite Repositories Unit Tests', () => {
   beforeEach(() => {
     dbConn = new DatabaseConnection(':memory:');
     taskRepo = new TaskRepository(dbConn);
-    worklogRepo = new WorklogRepository(dbConn);
+    worklogRepo = new WorklogRepository(dbConn, { holdMs: 0 });
     settingsRepo = new SettingsRepository(dbConn);
     sessionRepo = new SessionRepository(dbConn);
   });

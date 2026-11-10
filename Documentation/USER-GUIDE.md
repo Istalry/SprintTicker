@@ -372,6 +372,16 @@ on its way.
   <img src="../docs/images/app-history-edit.png" width="80%" alt="Correcting a worklog: hours, minutes, start and comment, with the time it ends and a note that the change also goes to Jira or OpenProject">
 </p>
 
+↩️ **Undo, for ten seconds.** Nothing you stop, discard, correct, move or
+delete goes to Jira or OpenProject at once: for ten seconds a bar at the foot
+of the window says what you did -- *Stopped MG-12 · 1h 05m* -- with **Undo**,
+and the mini timer shows it too. Undo puts things back as they were: a
+stopped session runs on with its time and pauses, a discarded one comes
+back, a corrected, moved or deleted entry is as it was. A task you marked
+done is not moved on the provider until the ten seconds are over. Starting
+another task, or another action, makes the last one final. Quitting within
+the ten seconds sends it at the next start.
+
 ✏️ **Correct or delete a worklog** with the pencil and the bin on its row. A
 correction changes the duration, the start or the comment. It applies here at once and
 reaches Jira or OpenProject through the sync queue, so it survives a lost

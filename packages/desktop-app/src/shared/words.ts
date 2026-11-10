@@ -46,7 +46,9 @@ export const Verb = {
   /** Leave an interruption to place later. */
   LATER: 'Later',
   /** Answer no to a question; nothing changes. */
-  NOT_NOW: 'Not now'
+  NOT_NOW: 'Not now',
+  /** Take back the last action while its sends are held (P5). */
+  UNDO: 'Undo'
 } as const;
 
 /** Union of the verb strings above. */
@@ -78,6 +80,35 @@ export type StateWordValue = (typeof StateWord)[keyof typeof StateWord];
 export function keepOffLabel(providerName: string): string {
   const name = providerName.trim();
   return name ? `Keep off ${name}` : 'Keep off the provider';
+}
+
+/**
+ * What the Undo bar says was done, naming the task by its key: "Stopped
+ * MG-12 · 1h 05m". `kind` is `UndoKind`, plus `done` for a stop that marked
+ * the task done. Main writes it, so the window and the mini timer agree.
+ */
+export function undoLabel(
+  kind: 'stop' | 'done' | 'discard' | 'correct' | 'move' | 'delete' | 'end-day',
+  taskKey: string,
+  duration?: string
+): string {
+  const withTime = (text: string) => (duration ? `${text} · ${duration}` : text);
+  switch (kind) {
+    case 'stop':
+      return withTime(`Stopped ${taskKey}`);
+    case 'done':
+      return withTime(`${Verb.DONE} ${taskKey}`);
+    case 'discard':
+      return withTime(`Discarded ${taskKey}`);
+    case 'correct':
+      return withTime(`Corrected ${taskKey}`);
+    case 'move':
+      return withTime(`Moved to ${taskKey}`);
+    case 'delete':
+      return withTime(`Deleted ${taskKey}`);
+    case 'end-day':
+      return 'Day ended';
+  }
 }
 
 /** "3 to place", for the window, the tray and the mini timer. */

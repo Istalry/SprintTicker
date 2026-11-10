@@ -21,6 +21,11 @@ export enum IPCChannel {
   RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
   ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
   ON_SESSION_UPDATED = 'session:on-updated',
+  /** The last action Undo can take back, or null (P5). */
+  GET_UNDO = 'undo:get',
+  /** Takes it back; false when its window ended or something was sent. */
+  RUN_UNDO = 'undo:run',
+  ON_UNDO_CHANGED = 'undo:on-changed',
   /** The task to switch back to (`shared/previous-task.ts`), or null. */
   GET_PREVIOUS_TASK = 'session:get-previous',
 

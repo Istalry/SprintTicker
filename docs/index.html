@@ -882,7 +882,16 @@
       on its way.</p>
       <p align="center">
         <img src="images/app-history-edit.png" width="80%" alt="Correcting a worklog: hours, minutes, start and comment, with the time it ends and a note that the change also goes to Jira or OpenProject">
-      </p><p>✏️ <strong>Correct or delete a worklog</strong> with the pencil and the bin on its row. A
+      </p><p>↩️ <strong>Undo, for ten seconds.</strong> Nothing you stop, discard, correct, move or
+      delete goes to Jira or OpenProject at once: for ten seconds a bar at the foot
+      of the window says what you did -- <em>Stopped MG-12 · 1h 05m</em> -- with <strong>Undo</strong>,
+      and the mini timer shows it too. Undo puts things back as they were: a
+      stopped session runs on with its time and pauses, a discarded one comes
+      back, a corrected, moved or deleted entry is as it was. A task you marked
+      done is not moved on the provider until the ten seconds are over. Starting
+      another task, or another action, makes the last one final. Quitting within
+      the ten seconds sends it at the next start.</p>
+      <p>✏️ <strong>Correct or delete a worklog</strong> with the pencil and the bin on its row. A
       correction changes the duration, the start or the comment. It applies here at once and
       reaches Jira or OpenProject through the sync queue, so it survives a lost
       connection or a restart; a worklog not sent yet is simply sent with the new
@@ -1970,7 +1979,28 @@
       <td align="right">10 min</td>
       <td align="left">A claim left behind by a crash is reclaimable after this</td>
       </tr>
+      <tr>
+      <td align="left"><code>UNDO_WINDOW_MS</code></td>
+      <td align="right">10 s</td>
+      <td align="left">Every row is written due this long from now: the hold Undo has</td>
+      </tr>
       </tbody></table></div>
+      <p><strong>Every send is held, and only <code>UndoService</code> undoes.</strong> A row the queue takes
+      -- a session&#39;s worklog, a correction, a move, a deletion -- is written with
+      <code>next_attempt_at_utc</code> ten seconds ahead, and <code>dispatchAfterHold</code> wakes the
+      worker when that ends; nothing new in the worker, which already skipped rows
+      not yet due. <code>UndoService</code> holds the last user action for the same ten
+      seconds, on the same clock: Stop, Done and Discard from the window, the mini
+      timer or the deck (<code>undoableSessionEnding</code>), and a correction, move or
+      deletion from History. Each records a <code>RestorePoint</code> -- the rows the action
+      touches, before and just after -- and Undo puts the &quot;before&quot; back, rowids
+      included, so the queue&#39;s order on a worklog is kept. It refuses when any
+      queue row has moved since (claimed, sent, an attempt counted), so what
+      reached the provider is never taken back here only. A Done transition waits
+      with the stop (<code>StopOptions.holdRemote</code>) and runs when the action is final:
+      the window ends, another action is offered, or the app quits. Starting a
+      session makes a held stop final, since undoing it would open a second one.
+      The bar&#39;s own STOP and DROP are not undoable yet (P14).</p>
       <p><strong>The tracked task survives the prune.</strong> The engine names it
       (<code>protectTasks</code>), and a sync that no longer finds it -- reassigned, closed or
       moved -- keeps it and its project, records it as unlisted, and tells the
@@ -2877,7 +2907,7 @@
       </tr>
       <tr>
       <td align="left"><code>session:complete</code></td>
-      <td align="left">Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not)</td>
+      <td align="left">Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not). Its sends and its Done transition wait the undo window (ten seconds)</td>
       </tr>
       <tr>
       <td align="left"><code>session:get-current</code> / <code>session:on-updated</code> carry <code>taskUnlisted: true</code></td>
@@ -2913,7 +2943,19 @@
       </tr>
       <tr>
       <td align="left"><code>session:discard</code></td>
-      <td align="left">End the session keeping nothing: no worklog, nothing queued, the task&#39;s status untouched, no scene on the bar. Answers <code>{ success, discardedSeconds }</code>. Every caller confirms with the user first</td>
+      <td align="left">End the session keeping nothing: no worklog, nothing queued, the task&#39;s status untouched, no scene on the bar. Answers <code>{ success, discardedSeconds }</code>. Every caller confirms with the user first. Undoable for ten seconds, as a stop is</td>
+      </tr>
+      <tr>
+      <td align="left"><code>undo:get</code></td>
+      <td align="left">The last action Undo can take back -- <code>{ kind, label, expiresAtUtc }</code>, <code>kind</code> one of <code>stop</code>, <code>discard</code>, <code>correct</code>, <code>move</code>, <code>delete</code>, <code>end-day</code> -- or null</td>
+      </tr>
+      <tr>
+      <td align="left"><code>undo:run</code></td>
+      <td align="left">Takes it back: a stop or discard reopens the session as it was, an edit puts the worklog and its queue rows back. <code>false</code> when its ten seconds are over, a row was sent meanwhile, or (for a stop) another session runs</td>
+      </tr>
+      <tr>
+      <td align="left"><code>undo:on-changed</code></td>
+      <td align="left"><strong>Event</strong> -- an action was offered, undone or became final</td>
       </tr>
       <tr>
       <td align="left"><code>session:on-updated</code></td>

@@ -265,6 +265,24 @@ uncoordinated flushers used to race here and double-bill (F-02, F-03).
 | `SYNC_BACKOFF_BASE_MS` | 30 s | Doubles per attempt |
 | `SYNC_BACKOFF_MAX_MS` | 1 h | Ceiling on one wait |
 | `SYNC_CLAIM_TIMEOUT_MS` | 10 min | A claim left behind by a crash is reclaimable after this |
+| `UNDO_WINDOW_MS` | 10 s | Every row is written due this long from now: the hold Undo has |
+
+**Every send is held, and only `UndoService` undoes.** A row the queue takes
+-- a session's worklog, a correction, a move, a deletion -- is written with
+`next_attempt_at_utc` ten seconds ahead, and `dispatchAfterHold` wakes the
+worker when that ends; nothing new in the worker, which already skipped rows
+not yet due. `UndoService` holds the last user action for the same ten
+seconds, on the same clock: Stop, Done and Discard from the window, the mini
+timer or the deck (`undoableSessionEnding`), and a correction, move or
+deletion from History. Each records a `RestorePoint` -- the rows the action
+touches, before and just after -- and Undo puts the "before" back, rowids
+included, so the queue's order on a worklog is kept. It refuses when any
+queue row has moved since (claimed, sent, an attempt counted), so what
+reached the provider is never taken back here only. A Done transition waits
+with the stop (`StopOptions.holdRemote`) and runs when the action is final:
+the window ends, another action is offered, or the app quits. Starting a
+session makes a held stop final, since undoing it would open a second one.
+The bar's own STOP and DROP are not undoable yet (P14).
 
 **The tracked task survives the prune.** The engine names it
 (`protectTasks`), and a sync that no longer finds it -- reassigned, closed or

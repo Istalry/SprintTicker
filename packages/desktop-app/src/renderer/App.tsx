@@ -19,6 +19,7 @@ import { ResumeAfterLunchPrompt } from './components/ResumeAfterLunchPrompt';
 import { ForgottenSessionModal } from './components/ForgottenSessionModal';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { UpdateBanner } from './components/UpdateNotice';
+import { UndoBar } from './components/UndoBar';
 
 /**
  * Interruptions not placed on a task yet, for the ⚡ count beside Today. Read
@@ -168,6 +169,8 @@ export const App: React.FC = () => {
       <ForgottenSessionModal />
 
       <OnboardingWizardModal isOpen={modals.onboarding.open} onClose={modals.onboarding.close} />
+
+      <UndoBar />
 
       <ToastNotification toasts={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />
     </>

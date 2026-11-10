@@ -7,6 +7,8 @@ import { formatSeconds } from '../utils/formatters';
 import { finishNeedsConfirmation, taskLeftLabel } from '../../shared/task-left';
 import { isAdHocSession } from '../../shared/interruption';
 import { SessionTitle } from './SessionTitle';
+import { useUndo } from './UndoBar';
+import { Verb } from '../../shared/words';
 
 /**
  * The always-on-top mini timer: what the BUSY Bar shows, on screen.
@@ -25,6 +27,8 @@ import { SessionTitle } from './SessionTitle';
  */
 export const MiniBar: React.FC = () => {
   const { session, pause, resume, complete, discard, interrupt } = useSession();
+  // A stop from here leaves the row empty: Undo takes its place for the hold.
+  const undo = useUndo();
   const screenIcon = useScreenIcon();
   const api = window.electronAPI;
   /**
@@ -93,6 +97,18 @@ export const MiniBar: React.FC = () => {
               />
             </div>
           </>
+        ) : undo.state ? (
+          <div className="flex items-center gap-2 [-webkit-app-region:no-drag]" role="status" aria-label="Undo">
+            <span className="text-xs text-text-primary truncate">{undo.state.label}</span>
+            <button
+              type="button"
+              onClick={undo.run}
+              title={`Sent in ${undo.secondsLeft}s`}
+              className="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-primary text-dark-900 hover:bg-white"
+            >
+              {Verb.UNDO}
+            </button>
+          </div>
         ) : (
           <div className="text-xs text-text-secondary">No task running</div>
         )}

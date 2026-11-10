@@ -24,6 +24,8 @@ export class OfflineSyncWorker {
   private providerManager: ProviderManager;
   private syncIntervalMs: number;
   private timerId: NodeJS.Timeout | null = null;
+  /** Dispatches waiting for a hold to end (`dispatchAfterHold`). */
+  private holdTimers: Set<NodeJS.Timeout> = new Set();
   private isProcessing: boolean = false;
   /** Set when a dispatch was asked for during a pass; drained before it ends. */
   private rerunRequested: boolean = false;
@@ -90,6 +92,24 @@ export class OfflineSyncWorker {
       clearInterval(this.timerId);
       this.timerId = null;
     }
+    for (const timer of this.holdTimers) clearTimeout(timer);
+    this.holdTimers.clear();
+  }
+
+  /**
+   * Wakes the worker when the rows just queued come out of their hold
+   * (`UNDO_WINDOW_MS`), so a stop reaches the provider ten seconds later
+   * rather than at the next five-minute pass. Each call waits on its own:
+   * rows queued later are due later. A row undone meanwhile is simply not
+   * there; a dispatch with nothing due does nothing.
+   */
+  public dispatchAfterHold(): void {
+    const timer = setTimeout(() => {
+      this.holdTimers.delete(timer);
+      void this.processPendingQueue()
+        .catch(err => console.warn('[OfflineSyncWorker] Dispatching after the hold failed:', err));
+    }, this.worklogRepo.getHoldMs());
+    this.holdTimers.add(timer);
   }
 
   public setOnlineStatus(online: boolean): void {

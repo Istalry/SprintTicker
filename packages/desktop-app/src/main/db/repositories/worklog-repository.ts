@@ -3,6 +3,7 @@ import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
 import { WorklogCorrectionDTO, WorklogSyncState } from '../../../shared/worklog-correction';
 import { hasTaskPage } from '../../../shared/task-page';
 import { isAdHocTaskId } from '../id-generator';
+import { UNDO_WINDOW_MS } from '../../sync/sync-constants';
 
 export interface WorklogRecord {
   id: string;
@@ -183,9 +184,26 @@ function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
  */
 export class WorklogRepository {
   private dbConn: DatabaseConnection;
+  private readonly holdMs: number;
 
-  constructor(dbConn?: DatabaseConnection) {
+  /**
+   * `holdMs` is how long a row written now waits before it is due: the undo
+   * window (`UNDO_WINDOW_MS`). A test of the worker's own rules passes 0,
+   * and the hold is tested where it is the subject.
+   */
+  constructor(dbConn?: DatabaseConnection, options: { holdMs?: number } = {}) {
     this.dbConn = dbConn || DatabaseConnection.getInstance();
+    this.holdMs = options.holdMs ?? UNDO_WINDOW_MS;
+  }
+
+  /** How long a row written now waits before it is due. */
+  public getHoldMs(): number {
+    return this.holdMs;
+  }
+
+  /** When a row written at `nowMs` is first due. */
+  private heldUntilUtc(nowMs: number = Date.now()): string {
+    return new Date(nowMs + this.holdMs).toISOString();
   }
 
   /**
@@ -224,7 +242,7 @@ export class WorklogRepository {
   }
 
   /**
-   * Enqueues a worklog to the offline retry queue.
+   * Enqueues a worklog to the offline retry queue, held for the undo window.
    *
    * `worklogId` names the local worklog the row sends, which is what lets
    * that worklog be corrected once it has been sent.
@@ -238,12 +256,15 @@ export class WorklogRepository {
     comment: string;
     worklogId?: string | null;
   }): void {
+    // Held for the undo window (UNDO_WINDOW_MS): not due before it ends.
     const stmt = this.dbConn.getDb().prepare(`
       INSERT INTO worklog_sync_queue (
-        id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, worklog_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
+        id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, worklog_id,
+        next_attempt_at_utc
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
     `);
 
+    const now = Date.now();
     stmt.run(
       payload.id,
       payload.providerId,
@@ -251,8 +272,9 @@ export class WorklogRepository {
       payload.durationSeconds,
       payload.startedAtUtc,
       payload.comment,
-      new Date().toISOString(),
-      payload.worklogId ?? null
+      new Date(now).toISOString(),
+      payload.worklogId ?? null,
+      this.heldUntilUtc(now)
     );
   }
 
@@ -450,10 +472,10 @@ export class WorklogRepository {
         .prepare(
           `UPDATE worklog_sync_queue
               SET provider_id = ?, task_id = ?, comment = ?,
-                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = NULL, last_error = NULL
+                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = ?, last_error = NULL
             WHERE id = ? AND status IN ('PENDING', 'FAILED') AND send_attempts = 0`
         )
-        .run(providerId, taskId, comment, id).changes === 1
+        .run(providerId, taskId, comment, this.heldUntilUtc(), id).changes === 1
     );
   }
 
@@ -472,10 +494,10 @@ export class WorklogRepository {
         .prepare(
           `UPDATE worklog_sync_queue
               SET duration_seconds = ?, started_at_utc = ?, comment = ?,
-                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = NULL, last_error = NULL
+                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = ?, last_error = NULL
             WHERE id = ? AND status IN ('PENDING', 'FAILED')`
         )
-        .run(correction.durationSeconds, correction.startedAtUtc, correction.comment, id).changes === 1
+        .run(correction.durationSeconds, correction.startedAtUtc, correction.comment, this.heldUntilUtc(), id).changes === 1
     );
   }
 
@@ -511,8 +533,8 @@ export class WorklogRepository {
       .prepare(
         `INSERT INTO worklog_sync_queue (
            id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status,
-           worklog_id, operation, origin_sync_id
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`
+           worklog_id, operation, origin_sync_id, next_attempt_at_utc
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?)`
       )
       .run(
         payload.id,
@@ -524,7 +546,8 @@ export class WorklogRepository {
         new Date().toISOString(),
         payload.worklogId,
         payload.operation,
-        payload.originSyncId
+        payload.originSyncId,
+        this.heldUntilUtc()
       );
   }
 

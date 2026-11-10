@@ -1196,6 +1196,15 @@ purpose, never following the active provider, still holds. Nothing else
 writes `provider_id` after the start, and a provider task's open session is
 never retargeted: that would move logged time between issues.
 
+**Every user send waits `UNDO_WINDOW_MS`, and only `UndoService` undoes.**
+A row the queue takes is written due ten seconds ahead, and the worker is
+woken when the hold ends (`dispatchAfterHold`); Undo checks the hold and the
+rows themselves (`RestorePoint.isUntouched`) on the same clock, so it never
+takes back here what the provider already has. Anything new that sends --
+a move to a third provider, a Done transition -- holds too, or Undo lies.
+And never hand-write an inverse of an action: the restore point records the
+rows, so a rule the action follows is not copied into its undo.
+
 **A row sent before is looked for before it is sent again.** Neither Jira nor
 OpenProject takes an idempotency key, so a POST whose answer was lost -- a
 timeout, a dropped connection, the app closing mid-request -- may already be

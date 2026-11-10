@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Undo, for ten seconds.** Stop, Done, Discard, and correcting, moving or
+  deleting a worklog wait ten seconds before anything reaches Jira or
+  OpenProject; a bar at the foot of the window, and the mini timer, offer
+  **Undo** meanwhile. A stopped session runs on as if never stopped, a Done
+  transition is not sent, and an edited entry is as it was. The Stream
+  Deck's keys are undoable the same way.
 - **Interrupt: a timer at once.** When someone comes to your desk, one click
   starts a timer -- on Today's session card, in the mini timer, or in the
   tray menu -- with nothing to fill in. It runs on a new ad-hoc task named for

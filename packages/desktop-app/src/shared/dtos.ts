@@ -844,3 +844,17 @@ export interface SyncQueueSnapshotDTO {
   /** Attempts before a row parks, so the panel can say "3 of 8". */
   maxAttempts: number;
 }
+
+/** What an undo puts back (P5). */
+export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'end-day';
+
+/**
+ * The one action that can still be undone, for the window's bar and the
+ * mini timer: until `expiresAtUtc`, when its sends leave (UNDO_WINDOW_MS).
+ */
+export interface UndoStateDTO {
+  kind: UndoKind;
+  /** What was done, as the bar says it: "Stopped MG-12 · 1h 05m". */
+  label: string;
+  expiresAtUtc: string;
+}

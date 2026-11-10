@@ -7,6 +7,17 @@
  * exhausted every retry a queued worklog would ever get.
  */
 
+/**
+ * How long every send waits before it may go: the time Undo has (P5).
+ *
+ * Every row the queue takes -- a session's worklog, a correction, a move, a
+ * deletion -- is written due this long from now, and the worker is woken
+ * when it ends. Nothing is claimed before, so an undo inside the window
+ * finds every row of its action unsent; after it, the worker may have
+ * claimed one, and `UndoService` refuses. Both read `Date.now()`.
+ */
+export const UNDO_WINDOW_MS = 10_000;
+
 /** How often the background worker wakes to drain the queue. */
 export const SYNC_INTERVAL_MS = 300_000; // 5 minutes
 

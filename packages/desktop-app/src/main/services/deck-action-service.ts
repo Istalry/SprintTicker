@@ -2,7 +2,7 @@ import type { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import type { DisplayRenderer } from '../hardware/display-renderer';
 import type { InputDecoder } from '../hardware/input-decoder';
 import type { PriorityPreemptionEngine } from './priority-preemption-engine';
-import { completeSession } from './session-commands';
+import { plainSessionEnding, SessionEnding } from './session-commands';
 import type { DeckIconMotions } from './deck-icon-motion';
 import { ArgumentNullException, ActiveSessionDTO, ScreenIconDTO } from '../../shared/dtos';
 import {
@@ -57,6 +57,11 @@ export interface DeckActionServiceDeps {
    * Without it every icon is sent still.
    */
   iconMotions?: Pick<DeckIconMotions, 'get' | 'onLoaded'>;
+  /**
+   * How Stop, Done and Discard end the session: main passes the window's,
+   * with Undo, so a key ends it as a click does. Without it, at once.
+   */
+  sessionEnding?: SessionEnding;
   now?: () => Date;
 }
 
@@ -82,6 +87,7 @@ class DeckRefusal extends Error {
 export class DeckActionService {
   private readonly _deps: DeckActionServiceDeps;
   private readonly _now: () => Date;
+  private readonly _ending: SessionEnding;
   private readonly _listeners = new Set<(message: DeckStateMessage) => void>();
   private _unsubscribers: Array<() => void> = [];
   private _timer?: NodeJS.Timeout;
@@ -94,6 +100,7 @@ export class DeckActionService {
     }
     this._deps = deps;
     this._now = deps.now ?? (() => new Date());
+    this._ending = deps.sessionEnding ?? plainSessionEnding(deps.engine, deps.renderer);
   }
 
   /** The state the keys show, read now. */
@@ -152,7 +159,7 @@ export class DeckActionService {
   }
 
   private act(request: DeckRequest): void {
-    const { engine, renderer } = this._deps;
+    const { engine } = this._deps;
     const session = engine.getCurrentSession();
     switch (request.action) {
       case 'pause':
@@ -165,7 +172,7 @@ export class DeckActionService {
         return;
       case 'stop':
         if (!session) throw new DeckRefusal('no-session', 'No session to stop.');
-        completeSession(engine, renderer, undefined, false);
+        this._ending.complete(undefined, false);
         return;
       case 'finish':
         if (!session) throw new DeckRefusal('no-session', 'No session to finish.');
@@ -174,13 +181,13 @@ export class DeckActionService {
         if (finishNeedsConfirmation(session) && !request.confirmed) {
           throw new DeckRefusal('needs-confirmation', 'The task is no longer yours: confirm to mark it done.');
         }
-        completeSession(engine, renderer, undefined, true);
+        this._ending.complete(undefined, true);
         return;
       case 'discard':
         if (!session) throw new DeckRefusal('no-session', 'No session to discard.');
         // Always asked: nothing is kept, and a key is easy to brush.
         if (!request.confirmed) throw new DeckRefusal('needs-confirmation', 'Confirm to throw the session away.');
-        engine.discardSession();
+        this._ending.discard();
         return;
       case 'open-picker':
         if (!this._deps.openPicker()) throw new DeckRefusal('no-window', 'The SprintTicker window is not open.');

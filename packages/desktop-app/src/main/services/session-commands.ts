@@ -25,3 +25,25 @@ export function completeSession(
   }
   return res;
 }
+
+/**
+ * How a session is ended on the user's word -- the window's Stop, Done and
+ * Discard, and the deck's keys -- so both reach the same code. Main builds
+ * the undoable one (`undoableSessionEnding`); without it, as in a test, the
+ * plain one ends sessions as before.
+ */
+export interface SessionEnding {
+  complete(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number };
+  discard(): { success: boolean; discardedSeconds: number };
+}
+
+/** Ends sessions at once, with no undo. */
+export function plainSessionEnding(
+  engine: Pick<TimeTrackingEngine, 'stopSession' | 'discardSession'>,
+  renderer: Pick<DisplayRenderer, 'renderTaskCompletionConfetti' | 'renderTaskLogged'>
+): SessionEnding {
+  return {
+    complete: (comment, markDone) => completeSession(engine, renderer, comment, markDone),
+    discard: () => engine.discardSession()
+  };
+}

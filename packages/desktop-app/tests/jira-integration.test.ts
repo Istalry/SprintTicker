@@ -354,7 +354,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
         logTimeForProvider: (_id: string, payload: Parameters<JiraProvider['logTime']>[0]) => provider.logTime(payload)
       } as unknown as ProviderManager;
       const db = new DatabaseConnection(':memory:');
-      const repo = new WorklogRepository(db);
+      const repo = new WorklogRepository(db, { holdMs: 0 });
       const worker = new OfflineSyncWorker(manager, repo);
       repo.enqueueSyncItem({
         id: 'sync_lost0001', providerId: 'jira', taskId: 'FAKE1-10', durationSeconds: 1800, startedAtUtc: START, comment: 'Lost answer'
@@ -387,7 +387,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
         logTimeForProvider: (_id: string, payload: Parameters<JiraProvider['logTime']>[0]) => provider.logTime(payload)
       } as unknown as ProviderManager;
       const db = new DatabaseConnection(':memory:');
-      const repo = new WorklogRepository(db);
+      const repo = new WorklogRepository(db, { holdMs: 0 });
       const worker = new OfflineSyncWorker(manager, repo);
       const stopped = vi.fn();
       worker.onSendingStopped(stopped);

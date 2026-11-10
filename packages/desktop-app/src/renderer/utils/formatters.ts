@@ -12,18 +12,9 @@ export function formatSeconds(totalSeconds: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/**
- * Logged time, written the same everywhere: `1h 05m`, `55m`, and `40s` for
- * less than a minute, which would otherwise read as nothing logged.
- */
-export function formatHoursAndMinutes(totalSeconds: number): string {
-  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? Math.floor(totalSeconds) : 0;
-  const hrs = Math.floor(safe / 3600);
-  const mins = Math.floor((safe % 3600) / 60);
-  if (hrs > 0) return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
-  if (mins > 0) return `${mins}m`;
-  return `${safe}s`;
-}
+// Logged time is written by main too (the Undo bar's label), so it lives in shared.
+import { formatHoursAndMinutes } from '../../shared/time-format';
+export { formatHoursAndMinutes };
 
 /**
  * Windows' regional format, once main has said what it is; until then, and if

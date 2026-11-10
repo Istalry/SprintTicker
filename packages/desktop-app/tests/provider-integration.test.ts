@@ -76,7 +76,7 @@ describe('Provider layer against a live OpenProject-shaped server', () => {
     settingsRepo = new SettingsRepository(dbConn);
     projectRepo = new ProjectRepository(dbConn);
     taskRepo = new TaskRepository(dbConn);
-    worklogRepo = new WorklogRepository(dbConn);
+    worklogRepo = new WorklogRepository(dbConn, { holdMs: 0 });
     requests.length = 0;
     assignees.clear();
   });

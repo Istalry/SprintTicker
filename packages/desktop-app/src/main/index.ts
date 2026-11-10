@@ -29,6 +29,8 @@ import { DeckActionService } from './services/deck-action-service';
 import { DeckIconMotions } from './services/deck-icon-motion';
 import { defaultAnimationsDir, loadAnimationSequence } from './hardware/animation-sequence';
 import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
+import { UndoService } from './services/undo-service';
+import { undoableSessionEnding } from './services/undoable-commands';
 import { openTaskPickerInMainWindow } from './windows/main-window-actions';
 import { ForegroundRaiser } from './windows/foreground-raiser';
 import { ProviderManager } from './providers/provider-manager';
@@ -53,6 +55,7 @@ import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updat
 let mainWindow: BrowserWindow | null = null;
 let dbConnection: DatabaseConnection | null = null;
 let engine: TimeTrackingEngine | null = null;
+let undoService: UndoService | null = null;
 let driver: BusyBarDriver | null = null;
 let inputDecoder: InputDecoder | null = null;
 let renderer: DisplayRenderer | null = null;
@@ -393,7 +396,22 @@ async function startApplication(): Promise<void> {
   });
   interruptShortcut.start();
 
+  // Undo (P5): the last Stop, Done, Discard or worklog edit, held with its
+  // sends for UNDO_WINDOW_MS. The window and the deck end sessions through
+  // the same undoable commands.
+  undoService = new UndoService();
+  const undo = undoService;
+  const sessionEnding = undoableSessionEnding({ db: dbConnection.getDb(), undo, engine }, renderer);
+  // A session started makes a held stop final: undoing it would reopen a
+  // second session beside the new one.
+  engine.subscribe(session => {
+    const kind = undo.currentKind();
+    if (session && (kind === 'stop' || kind === 'discard' || kind === 'end-day')) undo.commitPending();
+  });
+
   ipcRegistry = new IPCHandlerRegistry({
+    undo,
+    sessionEnding,
     engine,
     taskRepo,
     settingsRepo,
@@ -409,12 +427,9 @@ async function startApplication(): Promise<void> {
     contextScheduleService,
     forgottenSessionService,
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
-      // Wakes the worker, as a stop does: a correction should not wait out
-      // the five-minute interval to reach the provider.
-      void engine!
-        .getSyncWorker()
-        .processPendingQueue()
-        .catch(err => console.warn('[Main] Draining the queue after a correction failed:', err));
+      // Wakes the worker when the hold ends, as a stop does: a correction
+      // should not wait out the five-minute interval to reach the provider.
+      engine!.getSyncWorker().dispatchAfterHold();
     }, Date.now, {
       // A move follows the engine's rules for where time goes.
       getTask: taskId => taskRepo.getTaskById(taskId),
@@ -451,7 +466,8 @@ async function startApplication(): Promise<void> {
       interrupting.interrupt();
     },
     // The Session key moves as the bar's icon does, from the same frames.
-    iconMotions: new DeckIconMotions(name => loadAnimationSequence(defaultAnimationsDir(), name))
+    iconMotions: new DeckIconMotions(name => loadAnimationSequence(defaultAnimationsDir(), name)),
+    sessionEnding
   }));
   const deck = deckServer;
   webhookServer.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));
@@ -559,6 +575,9 @@ app.on('will-quit', event => {
     console.warn('[Main] Could not record the last presence at quit:', err);
   }
   forgottenSessionService?.dispose();
+  // Makes the held action final: its rows are queued already and go at the
+  // next start; its Done transition is asked for now.
+  undoService?.dispose();
   // Synchronously too: Windows keeps a chord until the process lets go of it.
   interruptShortcut?.dispose();
 

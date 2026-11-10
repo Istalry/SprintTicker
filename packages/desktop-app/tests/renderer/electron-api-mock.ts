@@ -115,6 +115,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
 
     getTodaysWorklogs: vi.fn().mockResolvedValue([]),
     onWorklogsUpdated: subscribe('onWorklogsUpdated'),
+    getUndo: vi.fn().mockResolvedValue(null),
+    runUndo: vi.fn().mockResolvedValue(false),
+    onUndoChanged: subscribe('onUndoChanged'),
 
     getProviders: vi.fn().mockResolvedValue({
       activeProviderId: 'openproject',

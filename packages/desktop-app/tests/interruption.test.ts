@@ -14,6 +14,7 @@ import type { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { WORKLOG_COMMENTS } from '../src/shared/worklog-comments';
+import { UNDO_WINDOW_MS } from '../src/main/sync/sync-constants';
 import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
 
 /**
@@ -481,7 +482,8 @@ describe('Interrupt', () => {
       // The interruption started at 10:30: its whole half hour is B's.
       const onB = worklogs.getWorklogsByDate('2026-10-14').filter(w => w.taskId === B.id);
       expect(onB.map(w => w.durationSeconds)).toEqual([30 * 60]);
-      const queued = worklogs.getPendingQueueItems().filter(q => q.taskId === B.id);
+      // Due once the undo window has passed.
+      const queued = worklogs.getPendingQueueItems(new Date(Date.now() + UNDO_WINDOW_MS).toISOString()).filter(q => q.taskId === B.id);
       expect(queued.map(q => [q.providerId, q.durationSeconds])).toEqual([['jira', 30 * 60]]);
       expect(tasks.getTaskById(interruption.taskId)).toBeNull();
     });

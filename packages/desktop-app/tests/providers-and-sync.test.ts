@@ -20,7 +20,7 @@ describe('Task Providers & OfflineSyncWorker Unit Tests', () => {
 
   beforeEach(() => {
     dbConn = new DatabaseConnection(':memory:');
-    worklogRepo = new WorklogRepository(dbConn);
+    worklogRepo = new WorklogRepository(dbConn, { holdMs: 0 });
 
     adhocProvider = new AdHocProvider();
     openProjectProvider = new OpenProjectProvider();

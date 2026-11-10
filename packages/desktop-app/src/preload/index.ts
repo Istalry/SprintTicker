@@ -21,6 +21,7 @@ import type {
   ForgottenSessionResolutionDTO,
   UserMode,
   WorklogDTO,
+  UndoStateDTO,
   WindowsNotificationSettingsDTO,
   NotificationLogEntryDTO,
   HardwareDisplayStateDTO,
@@ -56,6 +57,15 @@ const electronAPI: IElectronAPI = {
     const handler = (_event: IpcRendererEvent, session: ActiveSessionDTO | null) => callback(session);
     ipcRenderer.on(IPCChannel.ON_SESSION_UPDATED, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_SESSION_UPDATED, handler);
+  },
+
+  // Undo
+  getUndo: () => ipcRenderer.invoke(IPCChannel.GET_UNDO),
+  runUndo: () => ipcRenderer.invoke(IPCChannel.RUN_UNDO),
+  onUndoChanged: (callback: (state: UndoStateDTO | null) => void) => {
+    const handler = (_event: IpcRendererEvent, state: UndoStateDTO | null) => callback(state);
+    ipcRenderer.on(IPCChannel.ON_UNDO_CHANGED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_UNDO_CHANGED, handler);
   },
 
   // Worklogs

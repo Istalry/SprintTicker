@@ -6,6 +6,7 @@ import { WorklogRepository } from '../src/main/db/repositories/worklog-repositor
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
+import { UNDO_WINDOW_MS } from '../src/main/sync/sync-constants';
 
 describe('TimeTrackingEngine Unit Tests', () => {
   let dbConn: DatabaseConnection;
@@ -149,8 +150,11 @@ describe('TimeTrackingEngine Unit Tests', () => {
     });
   });
 
-  describe('a finished session is delivered without waiting for the timer', () => {
+  describe('a finished session is delivered when its hold ends, not at the next pass', () => {
     /**
+     * Every send waits the undo window (UNDO_WINDOW_MS) and is delivered
+     * when it ends -- not at the next five-minute pass.
+     *
      * Reported from real use: the status change showed up on the Jira board at
      * once but the logged time took a while to appear.
      *
@@ -170,7 +174,11 @@ describe('TimeTrackingEngine Unit Tests', () => {
     /** What the active provider says it can record. Jira's real value is 60. */
     let providerMinimum: number;
 
+    /** Lets the hold run out: the worker is woken when it ends. */
+    const pastTheHold = () => vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS);
+
     beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
       delivered = [];
       providerMinimum = 1;
       const manager = {
@@ -199,6 +207,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
 
     afterEach(() => {
       stopEngine.dispose();
+      vi.useRealTimers();
     });
 
     /**
@@ -220,11 +229,17 @@ describe('TimeTrackingEngine Unit Tests', () => {
       });
     }
 
-    it('StopSession_WorklogQueued_ReachesTheProviderWithoutTheIntervalElapsing', async () => {
+    it('StopSession_WorklogQueued_ReachesTheProviderWhenTheHoldEnds', async () => {
       startBackdatedSession(5);
 
       stopEngine.stopSession('Finished');
 
+      // Not before: Undo has those ten seconds, and finds the row unsent.
+      await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS - 1);
+      await stopEngine.getSyncWorker().processPendingQueue();
+      expect(delivered).toHaveLength(0);
+
+      await vi.advanceTimersByTimeAsync(1);
       await vi.waitFor(() => expect(delivered).toHaveLength(1));
       expect(delivered[0].taskId).toBe('10001');
     });
@@ -257,6 +272,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
       const result = stopEngine.stopSession('Mis-click');
 
       expect(result.loggedSeconds).toBe(0);
+      await pastTheHold();
       await stopEngine.getSyncWorker().processPendingQueue();
       expect(delivered).toHaveLength(0);
     });
@@ -272,6 +288,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
       const result = stopEngine.stopSession('Too short for Jira');
 
       expect(result.loggedSeconds).toBeGreaterThan(0);
+      await pastTheHold();
       await stopEngine.getSyncWorker().processPendingQueue();
       expect(delivered).toHaveLength(0);
       // The session still happened, and the history has to say so.
@@ -287,6 +304,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
 
       stopEngine.stopSession('Short but recordable');
 
+      await pastTheHold();
       await vi.waitFor(() => expect(delivered).toHaveLength(1));
       expect(delivered[0].durationSeconds).toBeGreaterThan(0);
     });
@@ -301,6 +319,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
       startBackdatedSession(3);
       stopEngine.stopSession('Second');
 
+      await pastTheHold();
       await vi.waitFor(() => expect(delivered).toHaveLength(2));
       // Settle any further pass before asserting nothing extra went out.
       await stopEngine.getSyncWorker().processPendingQueue();

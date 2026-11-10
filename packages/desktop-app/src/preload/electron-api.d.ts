@@ -32,6 +32,7 @@ import type {
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
   WorklogDTO,
+  UndoStateDTO,
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
   NotificationLogEntryDTO,
@@ -83,6 +84,11 @@ export interface IElectronAPI {
   // Worklogs
   getTodaysWorklogs: () => Promise<WorklogDTO[]>;
   onWorklogsUpdated: (callback: (worklogs: WorklogDTO[]) => void) => () => void;
+  /** The last action Undo can take back, or null. */
+  getUndo: () => Promise<UndoStateDTO | null>;
+  /** Takes it back; false when its window ended or something was already sent. */
+  runUndo: () => Promise<boolean>;
+  onUndoChanged: (callback: (state: UndoStateDTO | null) => void) => () => void;
 
   // Providers, Projects & Tasks
   getProviders: () => Promise<ProviderSettingsDTO>;

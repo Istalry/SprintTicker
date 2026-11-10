@@ -25,6 +25,15 @@ export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
 export type SessionStateCallback = (session: ActiveSessionDTO | null) => void;
 
+/** How a stop treats what it would send at once. */
+export interface StopOptions {
+  /**
+   * Takes the Done transition instead of sending it, for a stop that can be
+   * undone: it runs when the undo window ends, never after an undo.
+   */
+  holdRemote?: (send: () => void) => void;
+}
+
 /**
  * Core Time Tracking Engine managing finite state machine (Idle, Tracking, Paused),
  * absolute UTC timestamp delta calculations, crash/reboot resilience, and offline worklog buffering.
@@ -950,10 +959,26 @@ export class TimeTrackingEngine extends EventEmitter {
   /// <summary>
   /// Stops and finalizes the active session, logging elapsed time and creating offline sync queue entry.
   /// </summary>
-  public stopSession(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
+  public stopSession(
+    comment?: string,
+    markDone?: boolean,
+    options: StopOptions = {}
+  ): { success: boolean; loggedSeconds: number } {
     const active = this.getCurrentSession();
     if (!active) return { success: false, loggedSeconds: 0 };
-    return this.finishSession(active, active.elapsedSeconds, new Date().toISOString(), this.pausesUntilNow(active), comment, markDone);
+    return this.finishSession(active, active.elapsedSeconds, new Date().toISOString(), this.pausesUntilNow(active), comment, markDone, options);
+  }
+
+  /**
+   * Takes up a session an undo has just put back (`UndoService`): the rows
+   * are the restore point's work, this only makes the engine follow them --
+   * the tick, and every listener told the session runs again.
+   */
+  public resumeAfterUndo(): ActiveSessionDTO | null {
+    this._currentSession = this._sessionRepo.getActiveSession();
+    if (this._currentSession) this.startTickLoop();
+    this.notifyListeners();
+    return this.getCurrentSession();
   }
 
   /**
@@ -968,7 +993,8 @@ export class TimeTrackingEngine extends EventEmitter {
     endUtc: string,
     pauses: readonly PauseIntervalDTO[],
     comment?: string,
-    markDone?: boolean
+    markDone?: boolean,
+    options: StopOptions = {}
   ): { success: boolean; loggedSeconds: number } {
     this.stopTickLoop();
 
@@ -988,7 +1014,11 @@ export class TimeTrackingEngine extends EventEmitter {
         // one closed there has none: the completion transition moved an
         // OpenProject work package out of Closed again.
         if (!adHoc && active.taskLeftBecause !== 'closed') {
-          this.moveTask(active.providerId, active.taskId, 'done');
+          // Held with the stop when it can be undone: a transition sent
+          // cannot be taken back.
+          const send = () => this.moveTask(active.providerId, active.taskId, 'done');
+          if (options.holdRemote) options.holdRemote(send);
+          else send();
         }
       } else {
         // The sync now keeps the tracked task, but a session started before
@@ -1106,22 +1136,15 @@ export class TimeTrackingEngine extends EventEmitter {
       );
     }
 
-    // Ask for delivery now rather than waiting for the timer.
+    // Ask for delivery when the hold ends rather than at the next pass.
     //
-    // The worker still owns delivery -- this only wakes it. It used to be
-    // unsafe: a flush here raced the timer over the same rows and each one
-    // POSTed them, which double-billed the session. Two things fixed that and
-    // both are now in place, so the reason for the wait has gone:
-    // `processPendingQueue` returns immediately if a pass is already running,
-    // and `claimSyncItem` is atomic, so a row another dispatcher took comes
-    // back null instead of being sent twice.
-    //
-    // Without this the queue drained on SYNC_INTERVAL_MS alone -- five
-    // minutes -- so finishing a task and then looking at Jira showed nothing,
-    // which reads as the sync being broken rather than pending.
-    void this._syncWorker
-      .processPendingQueue()
-      .catch(err => console.warn('[TimeTrackingEngine] Draining the queue after a stop failed:', err));
+    // The rows are held for the undo window (UNDO_WINDOW_MS), so Undo finds
+    // them unsent; the worker is woken when it ends. Without a wake the
+    // queue drained on SYNC_INTERVAL_MS alone -- five minutes -- so finishing
+    // a task and then looking at Jira showed nothing, which reads as the
+    // sync being broken rather than pending. A wake is safe: a pass already
+    // running returns at once, and `claimSyncItem` is atomic.
+    this._syncWorker.dispatchAfterHold();
 
     this._currentSession = null;
     this.notifyListeners();

@@ -38,7 +38,8 @@ describe('Full End-to-End System Simulation Test', () => {
     // 1. Boot Companion Engine & Database
     dbConn = new DatabaseConnection(':memory:');
     taskRepo = new TaskRepository(dbConn);
-    worklogRepo = new WorklogRepository(dbConn);
+    // The undo window is not this test's subject: rows are due at once.
+    worklogRepo = new WorklogRepository(dbConn, { holdMs: 0 });
     sessionRepo = new SessionRepository(dbConn);
     settingsRepo = new SettingsRepository(dbConn);
     settingsRepo.setSetting('op_domain', 'https://op.test');

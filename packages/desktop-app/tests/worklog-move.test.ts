@@ -45,7 +45,7 @@ describe('Moving a worklog', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     dbConn = new DatabaseConnection(':memory:');
-    worklogs = new WorklogRepository(dbConn);
+    worklogs = new WorklogRepository(dbConn, { holdMs: 0 });
     tasks = new TaskRepository(dbConn);
     tasks.ensureTaskExists({ id: 'T-1', key: 'MG-12', title: 'Ship it', projectId: 'P' });
     tasks.ensureTaskExists({ id: 'T-2', key: 'MG-13', title: 'Fix it', projectId: 'P' });

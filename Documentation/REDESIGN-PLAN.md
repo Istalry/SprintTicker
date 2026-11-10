@@ -1360,8 +1360,8 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | `4adb117` (2026-11-10) |
 | P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | `ce36fe4` (2026-11-10) |
 | P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures not remade | `1e3481e` (2026-11-10) |
-| P4 | done; `pnpm db:check-migration` on a copy of the real database waits for the user | (2026-11-10) |
-| P5 | not started | |
+| P4 | done; `pnpm db:check-migration` on a copy of the real database waits for the user | `e9e2e38` (2026-11-10) |
+| P5 | in progress: the hold and Undo landed; overlaps, side effects after two minutes, Done per project to come | (2026-11-10) |
 | P6 | not started | |
 | P7 | not started | |
 | P8 | not started | |

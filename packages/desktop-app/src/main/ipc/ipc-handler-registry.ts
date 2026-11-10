@@ -22,7 +22,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
@@ -45,7 +45,9 @@ import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibili
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { selectableProviders } from '../../shared/provider-names';
-import { completeSession } from '../services/session-commands';
+import { plainSessionEnding, SessionEnding } from '../services/session-commands';
+import { UndoService } from '../services/undo-service';
+import { correctUndoably, deleteUndoably, moveUndoably, WorklogEditDeps } from '../services/undoable-commands';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -97,6 +99,13 @@ export interface IPCHandlerRegistryDeps {
   interruptShortcut?: InterruptShortcutService;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
   webhookServer?: { getStatus(): { listening: boolean; port: number } };
+  /**
+   * Holds the last action for Undo (P5). Without it, as in most tests,
+   * nothing is undoable: sessions end and worklogs change at once.
+   */
+  undo?: UndoService;
+  /** How Stop, Done and Discard end a session; the undoable one in main. */
+  sessionEnding?: SessionEnding;
 }
 
 /** The shape a correction must have before it reaches the service, which checks its values. */
@@ -136,6 +145,8 @@ export class IPCHandlerRegistry {
   private getWindow: () => BrowserWindow | null;
   private getWindows: () => BrowserWindow[];
   private miniWindow?: MiniWindowController;
+  private undo?: UndoService;
+  private sessionEnding: SessionEnding;
 
   constructor(deps: IPCHandlerRegistryDeps) {
     const {
@@ -203,6 +214,20 @@ export class IPCHandlerRegistry {
       webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
     });
     this.systemAutomationService = systemAutomationService || new SystemAutomationService();
+    this.undo = deps.undo;
+    this.sessionEnding = deps.sessionEnding ?? plainSessionEnding(engine, renderer);
+  }
+
+  /** Corrections, moves and deletions: with Undo when there is one, at once otherwise. */
+  private worklogEdits(): WorklogEditDeps | null {
+    if (!this.undo || !this.worklogCorrections) return null;
+    return {
+      db: this.worklogRepo.getConnection().getDb(),
+      undo: this.undo,
+      worklogs: this.worklogRepo,
+      corrections: this.worklogCorrections,
+      onRestored: () => this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs())
+    };
   }
 
   public getSettingsRepo(): SettingsRepository {
@@ -243,14 +268,22 @@ export class IPCHandlerRegistry {
 
     // Shared with the Stream Deck, so a key ends a session as a click does.
     ipcMain.handle(IPCChannel.COMPLETE_SESSION, async (_event, payload: { comment?: string; markDone?: boolean }) =>
-      completeSession(this.engine, this.renderer, payload.comment, payload.markDone)
+      this.sessionEnding.complete(payload.comment, payload.markDone)
     );
 
     // Keeps nothing: no worklog, nothing sent, no scene on the bar. The
     // window asks for confirmation before calling this.
     ipcMain.handle(IPCChannel.DISCARD_SESSION, async (): Promise<DiscardSessionResultDTO> => {
-      return this.engine.discardSession();
+      return this.sessionEnding.discard();
     });
+
+    ipcMain.handle(IPCChannel.GET_UNDO, async (): Promise<UndoStateDTO | null> => this.undo?.current() ?? null);
+    ipcMain.handle(IPCChannel.RUN_UNDO, async (): Promise<boolean> => {
+      const undone = this.undo?.run() ?? false;
+      if (undone) this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return undone;
+    });
+    this.undo?.onChanged(state => this.broadcast(IPCChannel.ON_UNDO_CHANGED, state));
 
     ipcMain.handle(IPCChannel.GET_PREVIOUS_TASK, async (): Promise<TaskDTO | null> => this.engine.getPreviousTask());
 
@@ -852,7 +885,8 @@ export class IPCHandlerRegistry {
       if (typeof worklogId !== 'string' || !isWorklogCorrection(correction)) {
         throw new ArgumentException('A correction needs a worklog id, a duration, a start and a comment.');
       }
-      const corrected = this.worklogCorrections.correct(worklogId, correction);
+      const edits = this.worklogEdits();
+      const corrected = edits ? correctUndoably(edits, worklogId, correction) : this.worklogCorrections.correct(worklogId, correction);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return corrected;
     });
@@ -862,7 +896,8 @@ export class IPCHandlerRegistry {
       if (typeof worklogId !== 'string' || !worklogId || typeof taskId !== 'string' || !taskId) {
         throw new ArgumentException('A move needs a worklog id and a task id.');
       }
-      const moved = this.worklogCorrections.reassign(worklogId, taskId);
+      const edits = this.worklogEdits();
+      const moved = edits ? moveUndoably(edits, worklogId, taskId) : this.worklogCorrections.reassign(worklogId, taskId);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return moved;
     });
@@ -870,7 +905,9 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.DELETE_WORKLOG, async (_event, worklogId: unknown) => {
       if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
       if (typeof worklogId !== 'string') throw new ArgumentException('A deletion needs a worklog id.');
-      this.worklogCorrections.remove(worklogId);
+      const edits = this.worklogEdits();
+      if (edits) deleteUndoably(edits, worklogId);
+      else this.worklogCorrections.remove(worklogId);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return true;
     });

@@ -35,7 +35,7 @@ Everything else is a request/response `invoke`.
 | `mini:open-assign-picker` | Bring the dashboard forward with its task picker open in assign mode, for the open ad-hoc session. Answers whether there was a window |
 | `session:start-interruption` | Interrupt: start a session at once on a new ad-hoc task titled `Interruption HH:MM` and marked unsorted, and set aside the session running -- tracking or paused -- to ask about when this one ends. Answers the new session. Through `ContextScheduleService.interrupt`, which the tray calls too |
 | `session:pause` / `session:resume` | Pause and resume |
-| `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not) |
+| `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not). Its sends and its Done transition wait the undo window (ten seconds) |
 | `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The tracked task is no longer the user's: the provider stopped listing it at the last sync (reassigned, closed, moved), or lists it as a teammate's. The sync keeps the task until the session ends; finishing it as done asks the user first |
 | ... and `taskLeftBecause` | Why, once the provider has said: `closed` (done there -- finishing it asks nothing and sends no transition), `reassigned` (still open, out of the user's scope) or `gone` (deleted, or no longer visible). Absent while unknown |
 | ... and `taskOwnerName` | Who the task is assigned to, when it is someone else's -- reassigned, started as a teammate's, or taken by someone between the pick and the start. The window says "Assigned to" that name |
@@ -44,7 +44,10 @@ Everything else is a request/response `invoke`.
 | `session:on-forgotten-review` | Pushes the question when it is found, and null once anything answers it -- the window, the bar's STOP, a resume |
 | `session:get-previous` | The task to switch back to, or null: the task the open session replaced, else the most recent ended session's task that is not the current one -- in either case only one still listed and named (`shared/previous-task.ts`) |
 | `session:get-days` | The open session's time per local day were it stopped now, `{ dateKey, seconds }[]`: one entry unless it crosses midnight. The finish dialog says how it will be filed |
-| `session:discard` | End the session keeping nothing: no worklog, nothing queued, the task's status untouched, no scene on the bar. Answers `{ success, discardedSeconds }`. Every caller confirms with the user first |
+| `session:discard` | End the session keeping nothing: no worklog, nothing queued, the task's status untouched, no scene on the bar. Answers `{ success, discardedSeconds }`. Every caller confirms with the user first. Undoable for ten seconds, as a stop is |
+| `undo:get` | The last action Undo can take back -- `{ kind, label, expiresAtUtc }`, `kind` one of `stop`, `discard`, `correct`, `move`, `delete`, `end-day` -- or null |
+| `undo:run` | Takes it back: a stop or discard reopens the session as it was, an edit puts the worklog and its queue rows back. `false` when its ten seconds are over, a row was sent meanwhile, or (for a stop) another session runs |
+| `undo:on-changed` | **Event** -- an action was offered, undone or became final |
 | `session:on-updated` | **Event** — the session changed |
 
 ### Providers, projects and tasks

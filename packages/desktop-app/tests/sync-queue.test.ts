@@ -6,6 +6,7 @@ import {
   MAX_SYNC_ATTEMPTS,
   SYNC_CLAIM_TIMEOUT_MS,
   SYNC_BACKOFF_MAX_MS,
+  UNDO_WINDOW_MS,
   computeBackoffMs
 } from '../src/main/sync/sync-constants';
 import { createId, IdPrefix } from '../src/main/db/id-generator';
@@ -45,11 +46,45 @@ describe('Worklog sync queue ownership', () => {
 
   beforeEach(() => {
     dbConn = new DatabaseConnection(':memory:');
-    worklogRepo = new WorklogRepository(dbConn);
+    worklogRepo = new WorklogRepository(dbConn, { holdMs: 0 });
   });
 
   afterEach(() => {
     dbConn.close();
+  });
+
+  describe('every send waits the undo window', () => {
+    it('Enqueue_NotDueBeforeTheHoldEnds_DueAtIt', () => {
+      const held = new WorklogRepository(dbConn);
+      const now = Date.parse('2026-11-10T09:00:00.000Z');
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(now);
+      try {
+        held.enqueueSyncItem({ id: 'sync_h', providerId: 'jira', taskId: 'T', durationSeconds: 600, startedAtUtc: '2026-11-10T08:00:00.000Z', comment: 'c' });
+
+        expect(held.getPendingQueueItems(new Date(now + UNDO_WINDOW_MS - 1).toISOString())).toEqual([]);
+        expect(held.getPendingQueueItems(new Date(now + UNDO_WINDOW_MS).toISOString()).map(r => r.id)).toEqual(['sync_h']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('DispatchAfterHold_WakesTheWorkerWhenItEnds', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      try {
+        const worker = new OfflineSyncWorker(managerStub({}), new WorklogRepository(dbConn));
+        const drain = vi.spyOn(worker, 'processPendingQueue');
+        worker.dispatchAfterHold();
+
+        await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS - 1);
+        expect(drain).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(drain).toHaveBeenCalledTimes(1);
+        worker.stop();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('the queue can be read for the sync panel', () => {
