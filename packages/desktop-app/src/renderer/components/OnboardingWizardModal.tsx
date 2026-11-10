@@ -91,12 +91,12 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
 
       const saved = await window.electronAPI?.setActiveProvider?.(payload);
       if (!saved) {
-        setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+        setSaveError('Could not save your provider settings. Open Settings, Account, to finish setup.');
         setIsSaving(false);
         return;
       }
     } catch {
-      setSaveError('Could not save your provider settings. Open Settings > Task Providers to finish setup.');
+      setSaveError('Could not save your provider settings. Open Settings, Account, to finish setup.');
       setIsSaving(false);
       return;
     }
@@ -109,7 +109,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
       }
       onClose();
     } catch {
-      setSaveError('Could not save the BUSY Bar choice. Change it in Device Diagnostics.');
+      setSaveError('Could not save the BUSY Bar choice. Change it in Settings, Desk devices.');
     } finally {
       setIsSaving(false);
     }
@@ -230,7 +230,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               {!hasBar && (
                 <p className="text-xs text-text-secondary">
                   SprintTicker keeps time, syncs your worklogs and runs your ceremonies without the bar. If you
-                  get one later, add it in Device &amp; Logs.
+                  get one later, add it in Settings, Desk devices.
                 </p>
               )}
 
@@ -238,7 +238,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               <p className="text-xs text-text-secondary">
                 Connect your BUSY Bar over USB. It presents a virtual Ethernet adapter and answers on the
                 address below -- use Test Ping to confirm the link is up. If your bar is on Wi-Fi, or the
-                USB adapter will not start, you can change this address in Settings &gt; Device.
+                USB adapter will not start, you can change this address in Settings, Desk devices.
               </p>
 
               <div>
@@ -355,7 +355,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                       only required to have the app move an issue for you. */}
                   <p className="text-xs text-text-secondary">
                     That is enough to list issues and log time. Workflow transitions -- which move an issue when you
-                    start or finish a task -- are optional and live in Settings &gt; Task Providers.
+                    start or finish a task -- are optional and live in Settings, Account.
                   </p>
                 </div>
               )}
@@ -371,7 +371,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
               </div>
 
               <p className="text-xs text-text-secondary">
-                You can leave the credentials blank and add them later in Settings &gt; Task Providers. Until a remote
+                You can leave the credentials blank and add them later in Settings, Account. Until a remote
                 provider is configured, the app runs on local ad-hoc tasks.
               </p>
             </div>

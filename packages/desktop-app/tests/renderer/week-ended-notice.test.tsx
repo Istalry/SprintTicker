@@ -51,12 +51,12 @@ describe('the week-over notice', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it('OpenWorkHistory_Clicked_OpensItAndDismisses', async () => {
+  it('OpenHistory_Clicked_OpensItAndDismisses', async () => {
     const bridge = installElectronApi({ getWeekEnded: async () => WEEK });
     const onOpenHistory = vi.fn();
     render(<WeekEndedNotice onOpenHistory={onOpenHistory} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open Work History' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open History' }));
 
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
     expect(bridge.api.dismissWeekEnded).toHaveBeenCalledTimes(1);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, ShieldAlert, ChevronUp, ChevronDown, User, Coffee, Moon } from 'lucide-react';
+import { Zap, ShieldAlert, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { PriorityRule, UserMode, PriorityAction } from '../../../shared/dtos';
@@ -11,8 +11,11 @@ interface PriorityItemDef {
   desc: string;
 }
 
+/**
+ * "What the bar shows first" (S22): the levels and per-mode actions. The
+ * mode switch that used to head it is the header's mode chip now.
+ */
 export const PriorityRulesView: React.FC = () => {
-  const [userMode, setUserMode] = useState<UserMode>('WORK');
   // Shown only until the engine's real rules arrive. This used to be a local
   // table that inverted main's hierarchy -- an editor's build failure
   // outranking Away mode -- and omitted the EOD rule, so the first paint showed an ordering
@@ -58,28 +61,10 @@ export const PriorityRulesView: React.FC = () => {
         .finally(() => setLoaded(true));
     }
 
-    const api = window.electronAPI as unknown as {
-      getUserMode?: () => Promise<UserMode>;
-      onUserModeUpdated?: (cb: (m: UserMode) => void) => () => void;
-    };
-    if (api?.getUserMode) {
-      api.getUserMode().then((m: UserMode) => {
-        if (m) setUserMode(m);
-      }).catch(() => {});
-    }
-
-    if (api?.onUserModeUpdated) {
-      const unsub = api.onUserModeUpdated((newMode: UserMode) => {
-        if (newMode) setUserMode(newMode);
-      });
-      return () => unsub();
-    }
     return undefined;
   }, []);
 
-  // Only the rules table. The active mode is applied the instant it changes,
-  // in handleModeChange, so including it here would re-save the whole matrix
-  // every time the user switched context.
+  // Only the rules table: the mode is the header's, saved apart.
   const handleSave = async () => {
     if (window.electronAPI?.savePriorityRules) {
       await window.electronAPI.savePriorityRules(rules);
@@ -87,14 +72,6 @@ export const PriorityRulesView: React.FC = () => {
   };
 
   const saveStatus = useAutoSave(handleSave, [rules], loaded);
-
-  const handleModeChange = async (newMode: UserMode) => {
-    setUserMode(newMode);
-    const api = window.electronAPI as unknown as Record<string, (m: UserMode) => Promise<boolean>>;
-    if (api?.setUserMode) {
-      await api.setUserMode(newMode);
-    }
-  };
 
   const baseItems: PriorityItemDef[] = [
     { key: 'highNotificationPriority', label: 'High Priority App / System Notification', desc: 'Critical notifications (e.g. Discord high alerts, low battery, urgent messages)' },
@@ -131,45 +108,12 @@ export const PriorityRulesView: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
             <Zap className="w-5 h-5 text-accent-amber" />
-            <span>NOTIFICATION & PREEMPTION PRIORITY MATRIX</span>
+            <span>What the bar shows first</span>
           </h2>
-          <p className="text-xs text-text-secondary">Dictate which notifications take visual precedence and configure mode suppression (Work/Lunch/Away).</p>
+          <p className="text-xs text-text-secondary">When two things want the bar -- a call, a build, your timer -- the higher level wins. What each does depends on the mode (Work, Lunch, Away), chosen in the header.</p>
         </div>
 
         <AutoSaveIndicator status={saveStatus} />
-      </div>
-
-      {/* Mode Selector Card */}
-      <div className="bg-dark-800 p-5 rounded-xl border border-border-dark flex items-center justify-between shadow-xl">
-        <div className="space-y-0.5">
-          <span className="text-xs font-bold text-white">Active Context Mode</span>
-          <p className="text-xs text-text-secondary">Determines active suppression rules for incoming alerts.</p>
-        </div>
-
-        <div className="flex space-x-3">
-          {[
-            { id: 'WORK', label: 'Work Mode', icon: User, color: 'text-text-primary' },
-            { id: 'LUNCH', label: 'Lunch Mute', icon: Coffee, color: 'text-accent-amber' },
-            { id: 'AWAY', label: 'Away / Stealth', icon: Moon, color: 'text-text-secondary' }
-          ].map(m => {
-            const Icon = m.icon;
-            const isActive = userMode === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => handleModeChange(m.id as UserMode)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
-                  isActive
-                    ? 'bg-select text-white border-focus'
-                    : 'bg-dark-900 text-text-secondary border-border-dark hover:text-white'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${m.color}`} />
-                <span>{m.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Rules Table Card */}

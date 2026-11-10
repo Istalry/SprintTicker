@@ -1,10 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { App } from '../../src/renderer/App';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDiagnosticsView';
 import { OnboardingWizardModal } from '../../src/renderer/components/OnboardingWizardModal';
 import { DEFAULT_DEVICE_CONFIG } from '../../src/shared/device-constants';
-import { CONNECTED_DEVICE, NO_BAR_DEVICE, installElectronApi } from './electron-api-mock';
+import { NO_BAR_DEVICE, installElectronApi } from './electron-api-mock';
 
 /**
  * No-bar mode: SprintTicker without the hardware. What only describes the bar
@@ -12,30 +11,6 @@ import { CONNECTED_DEVICE, NO_BAR_DEVICE, installElectronApi } from './electron-
  * reversible, because a user who buys a bar later keeps their setup.
  */
 describe('no-bar mode', () => {
-  it('Render_NoBar_HidesWhatOnlyDescribesTheBar', async () => {
-    installElectronApi({ getDeviceStatus: async () => NO_BAR_DEVICE });
-    render(<App />);
-
-    expect(await screen.findByText('Device & Logs')).toBeTruthy();
-    expect(screen.queryByText('Priority Rules')).toBeNull();
-    expect(screen.queryByText('Notifications')).toBeNull();
-    expect(screen.queryByTitle('WebSocket round trip to the bar')).toBeNull();
-    // Time keeping is untouched.
-    expect(screen.getByText('Active Session')).toBeTruthy();
-  });
-
-  it('Render_BarAddedLater_BringsItsScreensBack', async () => {
-    const bridge = installElectronApi({ getDeviceStatus: async () => NO_BAR_DEVICE });
-    render(<App />);
-    await screen.findByText('Device & Logs');
-
-    act(() => bridge.emit('onDeviceStatusChanged', CONNECTED_DEVICE));
-
-    expect(await screen.findByText('Priority Rules')).toBeTruthy();
-    expect(screen.getByText('Notifications')).toBeTruthy();
-    expect(screen.getByText('Device Diagnostics')).toBeTruthy();
-  });
-
   it('DeviceView_NoBar_OffersToAddOneAndKeepsLogsAndReset', async () => {
     const bridge = installElectronApi({
       getDeviceStatus: async () => NO_BAR_DEVICE,

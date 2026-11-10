@@ -95,7 +95,7 @@ came from, in the browser: Jira's `<site>/browse/<KEY>`, OpenProject's
 configured site (`getTaskPageUrl`), opens it through `shell.openExternal` only
 if it is http(s) on that site, and answers `false` for a task with no page --
 ad-hoc work, the app's own projects, a provider not set up. The renderer
-never hands main a URL. Each worklog carries `hasTaskPage`, so Work History
+never hands main a URL. Each worklog carries `hasTaskPage`, so History
 knows where to offer it.
 Worklogs come back with `taskKey` and `taskTitle` beside `taskId`, read from
 the task row, archived or not, and with `syncState`: `local` (never queued),

@@ -485,6 +485,30 @@ moving, not rewriting.
 (checked off in the PR), and a run without a bar shows the same four
 places.
 
+**As landed (2026-11-10):**
+
+- `App.tsx` is the place, the session and the modals; `AppShell`,
+  `TodayView`, `useModals`, `ModeChip`, `StatusPanel` (with
+  `utils/status-summary.ts`), `BarRemotePad` and `SettingsPage` (with
+  `settings-groups.ts`, the index the search reads) are new. The existing
+  views mount whole or by a `part` prop (`DeviceDiagnosticsView`,
+  `NotificationSettingsView`), so no card was rewritten.
+- The header word's ties go sending > bar > update: time not reaching the
+  provider is worse than a bar out.
+- **Not done here:** "What you missed" lists the mirrored notifications
+  from the listener's log only -- nothing lists past provider events yet,
+  so those wait for a store (P4 or later). The status panel's update row
+  has no "Get it"; `UpdateBanner` stays above the place. Close behaviour is
+  P12's. `AnimationDebugPanel` still acts on the real timer and mode, and
+  the Developer group says so (S24's warning), rather than being cut off.
+- The inventory check is the search index: every former setting has an
+  entry with its old name among its keywords, and
+  `settings-groups.test.tsx` finds the old names. There is no PR to tick,
+  since phases are committed locally.
+- Checked in a browser on the renderer alone, with a stub bridge: the
+  header, Today, Tasks, Settings' groups and the status panel. Pictures
+  wait for `pnpm docs:images`, with P2's.
+
 ---
 
 ## 9. P4 -- Data for the new flows
@@ -1313,8 +1337,8 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | :--- | :--- | :--- |
 | P0 | done; side sessions archived, worktrees removed | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
 | P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | `4adb117` (2026-11-10) |
-| P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | (2026-11-10) |
-| P3 | not started | |
+| P2 | done; pictures not remade yet (`pnpm docs:images`, asked first) | `ce36fe4` (2026-11-10) |
+| P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures not remade | (2026-11-10) |
 | P4 | not started | |
 | P5 | not started | |
 | P6 | not started | |

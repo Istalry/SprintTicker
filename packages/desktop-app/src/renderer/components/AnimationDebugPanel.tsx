@@ -177,7 +177,7 @@ export const AnimationDebugPanel: React.FC = () => {
         </div>
 
         {statusMessage && (
-          <div className="bg-select text-text-primary px-3 py-1 rounded-lg text-xs border border-focus/40 animate- font-bold">
+          <div className="bg-select text-text-primary px-3 py-1 rounded-lg text-xs border border-focus/40  font-bold">
             {statusMessage}
           </div>
         )}

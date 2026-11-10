@@ -3,6 +3,7 @@ import { FolderPlus, Plus, Trash2, Edit3, Upload, FileText, CheckCircle, AlertCi
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
 import { triggerDesktopConfetti } from '../../utils/confetti-fx';
 import { FinishSessionModal } from '../../components/FinishSessionModal';
+import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { ProjectFilterToggle } from '../../components/ProjectFilterToggle';
 import { useOnlyProjectsWithTasks } from '../../hooks/useOnlyProjectsWithTasks';
 import { useTaskVisibility } from '../../hooks/useTaskVisibility';
@@ -172,10 +173,12 @@ export const ProjectTaskManagerView: React.FC = () => {
     }
   };
 
+  // A deletion waiting for its yes. Not `window.confirm`, which blocks the
+  // renderer; and a task is asked about too -- it used to go on one click.
+  const [askingDelete, setAskingDelete] = useState<{ kind: 'project' | 'task'; id: string; label: string } | null>(null);
+
   // Handle Project Deletion
   const handleDeleteProject = async (projId: string) => {
-    if (!window.confirm(`Are you sure you want to delete project [${projId}] and all its tasks?`)) return;
-
     if (window.electronAPI?.deleteProject) {
       await window.electronAPI.deleteProject(projId);
       setSelectedProjectId('');
@@ -342,7 +345,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                   <div className="text-xs font-medium text-text-primary mt-0.5">{proj.name}</div>
                 </div>
 
-                <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 transition-opacity">
+                <div className="flex items-center space-x-1">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -351,6 +354,8 @@ export const ProjectTaskManagerView: React.FC = () => {
                       setEditProjName(proj.name);
                       setIsEditProjOpen(true);
                     }}
+                    title={`Edit ${proj.key}`}
+                    aria-label={`Edit ${proj.key}`}
                     className="p-1 hover:bg-dark-700 text-text-secondary hover:text-white rounded"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -358,8 +363,10 @@ export const ProjectTaskManagerView: React.FC = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteProject(proj.id);
+                      setAskingDelete({ kind: 'project', id: proj.id, label: `${proj.key} ${proj.name}` });
                     }}
+                    title={`Delete ${proj.key}`}
+                    aria-label={`Delete project ${proj.key}`}
                     className="p-1 hover:bg-dark-700 text-text-secondary hover:text-accent-red rounded"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -454,7 +461,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={() => setAskingDelete({ kind: 'task', id: task.id, label: `${task.key} ${task.title}` })}
                       title={`Delete ${task.key}`}
                       aria-label={`Delete ${task.key}`}
                       className="p-1.5 text-text-secondary hover:text-accent-red hover:bg-dark-700 rounded transition-colors"
@@ -699,6 +706,33 @@ export const ProjectTaskManagerView: React.FC = () => {
           await fetchTasks(selectedProjectId);
         }}
       />
+
+      {askingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
+          <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
+            <ConfirmPanel
+              title={askingDelete.kind === 'project' ? 'Delete this project and its tasks?' : 'Delete this task?'}
+              tone="danger"
+              message={
+                <>
+                  <strong className="text-white">{askingDelete.label}</strong>.{' '}
+                  {askingDelete.kind === 'project'
+                    ? 'Its tasks go too. A task with time logged is archived instead, so your history keeps it.'
+                    : 'A task with time logged is archived instead, so your history keeps it.'}
+                </>
+              }
+              confirmLabel="Delete"
+              cancelLabel="Back"
+              onConfirm={() => {
+                const target = askingDelete;
+                setAskingDelete(null);
+                void (target.kind === 'project' ? handleDeleteProject(target.id) : handleDeleteTask(target.id));
+              }}
+              onCancel={() => setAskingDelete(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

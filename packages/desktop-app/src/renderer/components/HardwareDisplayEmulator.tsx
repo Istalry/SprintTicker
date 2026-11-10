@@ -208,14 +208,6 @@ export const HardwareDisplayEmulator: React.FC = () => {
     ? `0 0 16px rgba(${parseInt(edgeGlowHex.slice(1, 3) || '38', 16)}, ${parseInt(edgeGlowHex.slice(3, 5) || 'BD', 16)}, ${parseInt(edgeGlowHex.slice(5, 7) || 'F8', 16)}, ${edgeGlowOpacity})`
     : 'none';
 
-  const handleKeyClick = (key: string) => {
-    if (window.electronAPI?.injectRemoteKey) {
-      window.electronAPI.injectRemoteKey(key).catch(err =>
-        console.warn('[Emulator] Remote key injection error:', err)
-      );
-    }
-  };
-
   return (
     <div className="flex items-center gap-4 min-w-0 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner select-none">
       {/* The matrix and its status LED take the slack; everything to the right
@@ -232,7 +224,9 @@ export const HardwareDisplayEmulator: React.FC = () => {
           <span className="text-[9px] text-text-secondary mt-1 hidden hdr-md:block">RGB LED</span>
         </div>
 
-        {/* High-Precision 72x16 RGB LED Matrix Display Preview with Screen Edge Glow */}
+        {/* High-Precision 72x16 RGB LED Matrix Display Preview with Screen Edge Glow.
+            The remote pad that sat to its right is BarRemotePad, in Settings,
+            Developer: it acts on the real session, so it is not a header control. */}
         <div ref={matrixSlotRef} className="flex flex-col items-center flex-1 min-w-0">
           <div
             className="border border-dark-700 rounded p-1.5 bg-black transition-all duration-300"
@@ -240,55 +234,10 @@ export const HardwareDisplayEmulator: React.FC = () => {
           >
             <canvas ref={frontCanvasRef} className="block rounded max-w-full" title="Physical Front 72x16 RGB LED Matrix Display" />
           </div>
-          <span className="text-[9px] text-text-secondary mt-1 hidden hdr-md:block whitespace-nowrap">72×16 RGB LED Matrix</span>
+          <span className="text-[9px] text-text-secondary mt-1 hidden hdr-md:block whitespace-nowrap">on your BUSY Bar</span>
         </div>
       </div>
 
-      {/* Interactive Physical Remote Control Pad.
-          Hidden last rather than first, despite looking like decoration:
-          injectRemoteKey exists nowhere else in the renderer, so this is the
-          only way to exercise hardware input without a bar attached, which is
-          the whole point of `pnpm dev:mock`. */}
-      <div className="hidden hdr-lg:flex flex-col items-center border-l border-border-dark pl-4 space-y-1 shrink-0">
-        <span className="text-[9px] text-text-secondary hidden hdr-xl:block">Remote Controls</span>
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => handleKeyClick('up')}
-            className="px-1.5 py-0.5 bg-dark-800 hover:bg-dark-600 text-white hover:text-text-primary rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
-            title="Wheel Scroll Up"
-          >
-            ▲
-          </button>
-          <button
-            onClick={() => handleKeyClick('down')}
-            className="px-1.5 py-0.5 bg-dark-800 hover:bg-dark-600 text-white hover:text-text-primary rounded border border-border-dark text-[10px] font-bold transition-all active:scale-95"
-            title="Wheel Scroll Down"
-          >
-            ▼
-          </button>
-          <button
-            onClick={() => handleKeyClick('ok')}
-            className="px-2 py-0.5 bg-select hover:bg-dark-600 text-text-primary rounded border border-focus/40 text-[10px] font-bold transition-all active:scale-95"
-            title="Wheel Click OK"
-          >
-            OK
-          </button>
-          <button
-            onClick={() => handleKeyClick('back')}
-            className="px-1.5 py-0.5 bg-dark-800 hover:bg-dark-700 text-text-secondary hover:text-white rounded border border-border-dark text-[10px] font-semibold transition-all active:scale-95"
-            title="Back Button"
-          >
-            BACK
-          </button>
-          <button
-            onClick={() => handleKeyClick('start')}
-            className="px-1.5 py-0.5 bg-accent-green/20 hover:bg-accent-green/30 text-accent-green rounded border border-accent-green/30 text-[10px] font-bold transition-all active:scale-95"
-            title="Start / Pause Session"
-          >
-            START
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

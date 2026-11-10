@@ -236,7 +236,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
                   <PlusCircle className="w-5 h-5 text-text-primary" />
                   <div>
                     <div className="font-bold text-white">+ Create Custom / Ad-Hoc Task</div>
-                    <div className="text-xs text-text-secondary">Kept in your Work History, not sent to your provider</div>
+                    <div className="text-xs text-text-secondary">Kept in your History, not sent to your provider</div>
                   </div>
                 </button>
                 )}
@@ -261,7 +261,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
               </div>
 
               <div className="text-xs text-accent-amber bg-accent-amber/10 p-3 rounded-lg border border-accent-amber/20">
-                ℹ️ Ad-hoc time stays in your Work History. It is <strong>not sent</strong> to {providerName}.
+                ℹ️ Ad-hoc time stays in your History. It is <strong>not sent</strong> to {providerName}.
               </div>
             </div>
           ) : (

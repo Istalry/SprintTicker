@@ -456,7 +456,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
             className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
           />
           <p className="text-xs text-text-secondary mt-1">
-            The key new ad-hoc tasks show, in the lists and on the bar. Their time stays in your Work History and is
+            The key new ad-hoc tasks show, in the lists and on the bar. Their time stays in your History and is
             never sent to the provider.
           </p>
         </div>
@@ -474,7 +474,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
       {/* Below the credentials deliberately: the queue is the consequence of
           what is configured above, and saving credentials is what un-parks a
           row that failed because they were wrong. */}
-      <SyncQueuePanel />
+      <details className="group">
+        <summary className="cursor-pointer select-none text-xs font-semibold text-text-secondary hover:text-text-primary">
+          Entries waiting to send, with Retry
+        </summary>
+        <div className="mt-3">
+          <SyncQueuePanel />
+        </div>
+      </details>
     </div>
   );
 };

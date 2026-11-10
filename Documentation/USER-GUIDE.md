@@ -12,7 +12,7 @@ first launch.
 | | |
 | :--- | :--- |
 | 🏁 [First run](#-first-run) | the setup wizard, with or without a bar, and the mini timer |
-| 🗂️ [The panels](#-the-panels) | the eight tabs of the window, one by one |
+| 🗂️ [The window](#-the-window) | its four places -- Today, Tasks, History, Settings -- and the header |
 | 💡 [The bar itself](#-the-bar-itself) | every screen the bar shows, and its buttons |
 | 🎹 [A Stream Deck](#-a-stream-deck) | the session on keys you place yourself |
 | 🩺 [Troubleshooting](#-troubleshooting) | when something does not do what it should |
@@ -51,14 +51,14 @@ the credentials for the one you picked:
 | 🟦 Jira Cloud | Site URL, your account email, and a token from `id.atlassian.com` |
 | 📝 This computer | Nothing — local tasks only, and their time stays here |
 
-You can leave credentials blank and add them later in **Task Providers**. Until
+You can leave credentials blank and add them later in **Settings, Account**. Until
 a remote provider is configured the app runs on local ad-hoc tasks. Completing
 the wizard saves the choice and immediately fetches your projects.
 
 The **ad-hoc task key** (default `MISC-1`) is the key your own ad-hoc tasks
 show in the window — meetings, admin, anything without a ticket. The bar
 shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
-Work History and is **never sent** to Jira or OpenProject.
+History and is **never sent** to Jira or OpenProject.
 
 ### 💻 Without a BUSY Bar
 
@@ -68,25 +68,24 @@ Work History and is **never sent** to Jira or OpenProject.
     <th width="50%">💻 Without one</th>
   </tr>
   <tr>
-    <td><img src="../docs/images/app-session-tracking.png" alt="Active Session with the bar emulator in the top bar"></td>
-    <td><img src="../docs/images/app-nobar-session.png" alt="Active Session in no-bar mode: no emulator, the same session"></td>
+    <td><img src="../docs/images/app-session-tracking.png" alt="Today with the bar emulator in the header"></td>
+    <td><img src="../docs/images/app-nobar-session.png" alt="Today in no-bar mode: no emulator, the same session"></td>
   </tr>
   <tr>
-    <td>Eight tabs; the emulator and the connection readout in the top bar.</td>
-    <td>Six tabs; everything that keeps time is still there.</td>
+    <td>The four places; the bar's preview in the header.</td>
+    <td>The same four places; everything that keeps time is still there.</td>
   </tr>
 </table>
 
 Everything that keeps time works without the hardware: the task picker, the
 running timer, pausing, finishing, worklog sync, history, the ceremonies and
-the end-of-day wrap-up. What steps aside is what only describes the bar — the
-on-screen emulator and connection readout in the top bar, **Priority Rules**,
-which orders the bar's screen and nothing else, and **Notifications**, which
-mirrors Windows notifications onto it. Notifications *from* OpenProject still
-arrive, as Windows notifications; their settings are in Task Providers. The
-Windows notification listener does not run in this mode. **Device Diagnostics**
-becomes **Device & Logs**, keeping log export, the update setting and the
-factory reset.
+the end-of-day wrap-up. The window keeps its four places; what steps aside is
+what only describes the bar -- the bar's preview in the header, and in
+**Settings, Desk devices** the Windows notifications it mirrors and **What the
+bar shows first**, which orders its screen and nothing else. Notifications
+*from* OpenProject or Jira still arrive, as Windows notifications; their
+settings are in **Settings, Account**. The Windows notification listener does
+not run in this mode.
 
 The app does not look for a bar in this mode, so it logs nothing about one being
 unreachable.
@@ -95,9 +94,9 @@ unreachable.
   <img src="../docs/images/app-nobar-device.png" width="70%" alt="Device and Logs in no-bar mode, with an Add a BUSY Bar button">
 </p>
 
-To switch, use **Use without a bar** in Device Diagnostics; the bar is cleared
-and handed back to its own clock first. To add a bar later,
-press **Add a BUSY Bar** in Device & Logs: the address and token you had set
+To switch, use **Use without a bar** in **Settings, Desk devices**; the bar is
+cleared and handed back to its own clock first. To add a bar later,
+press **Add a BUSY Bar** in the same place: the address and token you had set
 before are kept, and the bar's screens come back at once.
 
 ### ⏱️ The mini timer
@@ -107,21 +106,21 @@ the task key and title, the elapsed time, and a coloured edge -- green while
 tracking, amber while paused, grey with nothing running. Beside them is the
 icon of whatever holds the bar: the stopwatch for your session, an app's icon
 during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with **Mini
-Timer** in the top bar or **Show Mini Timer** in the tray menu.
+Timer** in the header or **Show Mini Timer** in the tray menu.
 
 <p align="center">
   <img src="../docs/images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
 </p>
 
-- ⏯️ **Pause** and **Resume** act on the session as the dashboard does.
+- ⏯️ **Pause** and **Resume** act on the session as Today does.
 - ⏹️ **Stop** offers the three ways to end it, in place of the buttons:
   **Not done** logs the time and keeps the task open, **Done** also marks it
   done, and **Discard** throws the session away after a **Yes**. **×** keeps
   the session running.
-- ⚡ **Interrupt** starts a timer at once, as the dashboard's button does --
+- ⚡ **Interrupt** starts a timer at once, as Today's button does --
   see [Interrupt](#-interrupt-a-timer-at-once). Click an interruption's title
   to name it, and the link button to assign it to a task.
-- 📋 The **list** button brings the dashboard forward with the task picker open:
+- 📋 The **list** button brings the window forward with the task picker open:
   that is how you start or switch a task from it.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
   that was on a monitor you have since unplugged, it comes back in the
@@ -133,18 +132,51 @@ It counts seconds, which the bar does not: on screen a second costs nothing.
 
 ---
 
-## 🗂️ The panels
+## 🗂️ The window
 
-Eight tabs down the left.
+Four places down the left: **Today**, **Tasks** and **History**, and
+**Settings** at the bottom. They are the same with or without a bar. A ⚡
+beside Today counts the interruptions you have not placed on a task yet.
 
-### ▶️ Active Session
+Across the top, the header:
+
+- 🟩 **The bar's preview**, with a bar: what the bar shows right now.
+- 🔀 **Mode: Work ▾** switches between Work, Lunch and Away by hand. It is
+  the mode the ceremonies and Windows' lock switch for you.
+- ▭ **Mini timer** opens the mini timer, below.
+- ☾ **End my day** opens the end-of-day wrap-up now.
+- ✅ **The status entry** says in a word how things stand: **All good**,
+  **2 waiting** (entries not yet sent to your provider), **Sending stopped**
+  (your provider refused them), **Update**, or **Bar offline**; the worst
+  wins. Click it for the details, **Try now** to send what waits, and **What
+  you missed**: the last notifications the bar showed.
+
+### ⚙️ Settings
+
+Six groups, each one page, with a search box above them that finds a setting
+by its name or by the name it used to have -- *sync queue*, *priority*,
+*ceremonies*:
+
+| Group | Holds |
+| :--- | :--- |
+| **General** | Start with Windows, the Interrupt shortcut, updates, **Set up again**, and **Show developer tools** |
+| **Account** | your task provider, its credentials, the tasks to fetch, the transitions, provider notifications, and the entries waiting to send |
+| **My workday** | working days, the stand-up, lunch, the end of day |
+| **Desk devices** | the bar's status, task key color, connection, idle clock and use without a bar; with a bar, the Windows notifications it shows and what it shows first; the Stream Deck |
+| **Data** | export the logs; erase everything on this computer |
+| **Developer** | hidden until **Show developer tools**: the bar remote, the display debugger, test notifications, the listener's console, the bar's health |
+
+The developer tools act on the real app -- Pause and Resume on your real
+timer, Lunch and Away on your real mode -- and the page says so.
+
+### ▶️ Today
 
 The main screen. Start a task, and the bar shows it. Pause, resume, and finish
 from here. With nothing running it offers just **Start a Task** and
 **Interrupt**; while a task runs, **Switch Task** moves to another one.
 
 <p align="center">
-  <img src="../docs/images/app-session-tracking.png" width="80%" alt="Active Session: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
+  <img src="../docs/images/app-session-tracking.png" width="80%" alt="Today: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
 </p>
 
 Finishing asks for a comment and whether to mark the task done. Marking it done
@@ -177,7 +209,7 @@ stop**, **Log and restart it now** (asking first if the task is no longer
 assigned to you), **Discard**, or **I was working all along**, which counts
 the whole absence. Stopping it from the bar or the mini timer logs up to your
 last activity; resuming it does not count the gap. Turn the question off in
-**Ceremonies**.
+**Settings, My workday**.
 
 🌙 **Overtime is never interrupted.** As long as you are at the keyboard or
 mouse, working past midnight is just a long session: nothing pauses it and
@@ -190,7 +222,7 @@ all.
 Someone at your desk, a call: press **Interrupt** and a timer starts there
 and then, with nothing to fill in. It runs on a new ad-hoc task called after
 the time it started -- **Interruption 14:32** -- and the task you were on
-stops, its time logged as usual. Interrupt is on the Active Session card, in
+stops, its time logged as usual. Interrupt is on Today's session card, in
 the mini timer, first in the tray menu, on the Stream Deck's Interrupt key,
 and on the bar: pause the task, turn the wheel two notches left to
 **INTERRUPT**, and click. And, if you turn it on, on a keyboard shortcut
@@ -208,15 +240,15 @@ Interrupt is asked about too.
 - **Lunch during an interruption** stops it, and the task you were on before
   it starts again when lunch ends, as lunch always does.
 - **The end-of-day wrap-up** stops an interruption without asking.
-- **Name it** while it runs: click its title on the Active Session card or
+- **Name it** while it runs: click its title on Today's session card or
   in the mini timer, type, and press Enter (Escape keeps the name). The card
-  says **Interruption** until you do. The name is what Work History shows.
+  says **Interruption** until you do. The name is what History shows.
 - **Assign it to a task** while it runs: **Assign to Task** on the card, or
   the link button in the mini timer, opens the task picker. The session moves
   to that task with its start kept, so the whole interruption is logged on it
   and sent to its Jira or OpenProject when you stop. Assigned to the very task
   it interrupted, nothing is asked at the end -- you are back on it.
-- **Name it afterwards**, in **Work History**: an interruption not named yet
+- **Name it afterwards**, in **History**: an interruption not named yet
   says **To sort**, and every one of them, whatever the day, is listed at
   the top under **Interruptions to sort**, with its time and the day it
   began -- click the day to go there. Click its name to give it a real one.
@@ -237,7 +269,7 @@ away, because that time does not come back.
 | <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE! with a green check and confetti"> | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED with the stopwatch hand sweeping back"> |
 | ✅ Finished and marked done | 📝 Stopped: time logged, task still open |
 
-### 📁 Projects & Tasks
+### 📁 Tasks
 
 Your cached projects and their tasks, refreshed from the provider. Create local
 ad-hoc tasks here for work that has no ticket, or a project of your own: the
@@ -245,13 +277,13 @@ next sync leaves it alone, and time on its tasks stays on this machine like
 ad-hoc time.
 
 > [!NOTE]
-> **Ad-hoc time stays on this machine.** It is in Work History like any other
+> **Ad-hoc time stays on this machine.** It is in History like any other
 > time, but it is never sent to your provider, which has no ticket to put it
-> on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in **Task Providers**
+> on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in **Settings, Account**
 > (`MISC-1` by default); the bar shows the task's name alone.
 
 <p align="center">
-  <img src="../docs/images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
+  <img src="../docs/images/app-projects.png" width="80%" alt="Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
 </p>
 
 A task from Jira or OpenProject shows the start of its description under its
@@ -278,7 +310,7 @@ decide whose tasks it shows besides yours, which are always there.
 free to take. **Teammates'**, off by default, lists a teammate's task while it
 is in progress. A task that is not yours carries *Unassigned* or the
 assignee's name beside its key, and the switches say how many tasks they hide.
-They are one setting: the task picker, the Projects & Tasks panel and the
+They are one setting: the task picker, Tasks and the
 bar's picker all follow it, and **Only projects with tasks** counts what they
 show -- a project holding only unassigned work is listed while unassigned work
 is. The task you are tracking stays listed whoever's it is. Every list keeps
@@ -287,7 +319,7 @@ progress, teammates' in progress, then finished work -- yours, then
 unassigned.
 
 ↗️ **Open a task on its provider** -- the small arrow beside a task's key in
-the session panel, the Projects & Tasks panel and Work History opens it in
+Today, Tasks and History opens it in
 your browser, on Jira or OpenProject, to comment, attach a picture or read
 the thread. Ad-hoc work and projects made in SprintTicker have no page there,
 so no arrow.
@@ -303,17 +335,18 @@ not assigned to you*; it is not retried, so assign it on the provider if it
 should be yours. Starting a teammate's task in progress assigns nothing and
 moves nothing.
 
-The cache is what the app and the bar read. If it looks stale, **Sync Now** in
-Task Providers refetches it.
+The cache is what the app and the bar read. If it looks stale, **Sync now** in
+**Settings, Account** refetches it, and **Try now** in the header's status
+panel does too.
 
-### 📊 Work History
+### 📊 History
 
 Worklogs by date, with a daily summary and an end-of-day export. The arrow
-beside a task opens it on Jira or OpenProject, as in the session panel and
-the Projects & Tasks panel.
+beside a task opens it on Jira or OpenProject, as on Today and in
+Tasks.
 
 <p align="center">
-  <img src="../docs/images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
+  <img src="../docs/images/app-history.png" width="80%" alt="History for one day: 4h 10m logged over four tasks, broken down by task">
 </p>
 
 **A worklog never spans midnight.** Jira and OpenProject file a worklog under
@@ -324,7 +357,7 @@ question about a session left running, say how the time will be filed before
 it is. The timer still shows the whole session.
 
 **A long pause starts a new worklog too**: 15 minutes or more by default,
-set under **Working Days** in Ceremonies (0 keeps one worklog per day). A
+set under **Working Days** in **Settings, My workday** (0 keeps one worklog per day). A
 shorter pause is a gap inside one worklog. A piece too short for your
 provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
 rather than lost.
@@ -367,14 +400,14 @@ left running behind another one. Its end is where the next session began, the
 latest it can have run, so check it before copying it to a timesheet; it is not
 sent to your provider.
 
-### 🔌 Task Providers
+### 🔌 Settings: Account
 
 Credentials, the completion transitions, and which tasks to fetch — assigned to
 me, everything open, or your own query (JQL for Jira, a v3 filter array for
 OpenProject).
 
 <p align="center">
-  <img src="../docs/images/app-providers.png" width="80%" alt="Task Providers: the active provider, its domain and API key, and the status mappings">
+  <img src="../docs/images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">
 </p>
 
 **Notifications from OpenProject** turns what happens on your work packages
@@ -401,7 +434,7 @@ check, and works out what changed. That has edges worth knowing:
   mention in a description rather than a comment.
 - 📅 **Jira has no date alerts**, so that box is not offered.
 
-Below the credentials is the **sync queue**: every worklog that has not reached
+Below the credentials, folded under **Entries waiting to send**, is every worklog that has not reached
 the provider, with the server's own message, the attempt count against the
 ceiling, and when the next attempt is due. When the provider refuses your saved
 credentials, a Windows notification says **Sending time to Jira stopped** (or
@@ -424,12 +457,12 @@ minutes, so a task added on the provider appears without changing views.
 > would send byte-identical requests forever, so the app stops and tells you
 > why. **Retry Failed** is for after you have fixed the cause.
 
-### 📅 Ceremonies
+### 📅 Settings: My workday
 
 Working hours, and the three scheduled events:
 
 <p align="center">
-  <img src="../docs/images/app-ceremonies.png" width="80%" alt="Ceremonies panel: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
+  <img src="../docs/images/app-ceremonies.png" width="80%" alt="Settings, My workday: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
 </p>
 
 | | Default | Does |
@@ -493,11 +526,11 @@ you are back. Lunch never undoes what you do:
   Windows was locked. Unlock during lunch and the bar goes straight to Lunch;
   unlock after it and your task starts again.
 
-Lunch must start and end on the same day, start first: the Ceremonies panel
+Lunch must start and end on the same day, start first: **My workday**
 says so and saves nothing until it does. A window across midnight never began.
 
 📆 **The ceremonies happen on working days only.** **Working Days**, at the
-top of the Ceremonies panel, picks them -- Monday to Friday until you change
+top of **My workday**, picks them -- Monday to Friday until you change
 it, and at least one. On any other day nothing is prompted and Lunch does not
 start; your timer works as on any day, and what you track is logged as usual.
 With OpenProject connected, the holidays your instance lists (its
@@ -509,7 +542,7 @@ alone, and a holiday already read stays one.
 that is Friday's; with Friday a holiday, or a four-day week, it is Thursday's.
 A notice in the corner of the window then shows the week and the time logged
 in it, a reminder to check it is all in before your timesheet is due. **Open
-Work History** takes you to it; either button dismisses the notice, which
+History** takes you to it; either button dismisses the notice, which
 otherwise stays -- across a restart too -- until you do. Missed the wrap-up
 (a day off you had not entered, the laptop shut)? The next working day closes
 the week at its first check instead, and a week closes once, whatever happens.
@@ -522,12 +555,13 @@ the dialog before you save -- a correction that moves the start into a closed
 week too. A locked timesheet may refuse the change at Jira or OpenProject; the
 sync queue then shows why.
 
-### 🔔 Notifications
+### 🔔 Settings: Desk devices, Windows notifications
 
-Which applications may reach the bar. **Nothing is mirrored until you allow it.**
+Which applications may reach the bar -- folded under **Desk devices**, with a
+bar. **Nothing is mirrored until you allow it.**
 
 <p align="center">
-  <img src="../docs/images/app-notifications.png" width="80%" alt="Notifications panel: the listener enabled and its status, banner duration, per-source rules">
+  <img src="../docs/images/app-notifications.png" width="80%" alt="Windows notifications on the bar: the listener enabled and its status, banner duration, per-source rules">
   <img src="../docs/images/bar-banner.png" width="456" alt="A Slack banner on the bar: the Slack logo, Mira, New message">
 </p>
 
@@ -539,8 +573,8 @@ Per app, choose one of three:
 | 💬 **Default** | Claims the display at whatever *Notification — Default* scores |
 | 🔔 **High Priority** | Claims it at whatever *Notification — High Priority* scores |
 
-Note what that means: an app is assigned to a **class**, and the Priority Rules
-panel decides what that class is worth and how it behaves during Lunch and Away.
+Note what that means: an app is assigned to a **class**, and **What the bar shows
+first** decides what that class is worth and how it behaves during Lunch and Away.
 Nothing here hardcodes which app wins. In the shipped defaults those two classes
 score 65 and 70, and a few common apps arrive pre-classified — Slack and the
 battery warning as High Priority, Discord, Gmail and Windows as Default — but
@@ -560,14 +594,15 @@ show the app's own.
 Notification text is redacted from logs and the diagnostics export. Launch with
 `--debug-notifications` to see it while troubleshooting.
 
-### ⚡ Priority Rules
+### ⚡ Settings: Desk devices, What the bar shows first
 
-What the display shows when several things want it. Every claim has a score;
+What the display shows when several things want it -- folded under **Desk
+devices**, with a bar. Every claim has a score;
 the highest holds the bar. The arrows beside a claim move its level by 10 and
 the list sorts itself again; type a level from 1 to 100 to place it exactly.
 
 <p align="center">
-  <img src="../docs/images/app-priority.png" width="80%" alt="Priority Rules: the active mode, and each claim with its level and its action in Work, Lunch and Away">
+  <img src="../docs/images/app-priority.png" width="80%" alt="What the bar shows first: each claim with its level and its action in Work, Lunch and Away">
 </p>
 
 | Claim | Default |
@@ -588,14 +623,15 @@ Every row is editable, including what each does in each mode — **Display**,
 With the shipped ordering, notifications do not interrupt Lunch or Away. That is
 the table working as configured, not a bug. Move the rows if you disagree.
 
-### 🩺 Device Diagnostics
+### 🩺 Settings: Desk devices and General
 
-Connection status, battery, firmware, starting with Windows, the update
-setting, and the animation debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
-live, drawn through the real renderer.
+**Desk devices** shows the bar's connection, battery and firmware as the bar
+reports it. The animation debugger -- marquee speeds, particle effects, LED
+colours and icon rasterisation, live, drawn through the real renderer -- and
+**Display Health** are under **Developer**.
 
 <p align="center">
-  <img src="../docs/images/app-device.png" width="80%" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, and Display Health">
+  <img src="../docs/images/app-device.png" width="80%" alt="Desk devices: connected at 10.0.4.20, latency, battery, firmware">
 </p>
 
 It also holds **Connection**, where you set the address the app dials and, if
@@ -734,8 +770,8 @@ green for done, and a done task's name is dimmed. Tasks come in the window's
 order -- yours in progress, yours to do, unassigned work, teammates' work in
 progress, finished work last -- and within each the most urgent first, by the
 priority set in Jira or OpenProject. Projects and tasks follow the **Only
-projects with tasks**, **Unassigned** and **Teammates'** switches of the
-Projects & Tasks panel. The second row shows the task key, then whose the task
+projects with tasks**, **Unassigned** and **Teammates'** switches of
+Tasks. The second row shows the task key, then whose the task
 is when it is not yours -- `free` for nobody's, `@Alice` for a teammate's --
 followed by as much of its description as fits, and on
 its right where you are in the list -- `3/12` --
@@ -749,7 +785,7 @@ can shut your machine down. Once it is done, the bar says **SEE YOU!** for five
 seconds, a moon rising and the stars coming out, and then goes idle.
 
 The bar's buttons answer the wrap-up only while the bar shows its prompt. The
-**EOD Wrap-Up** button in the top bar puts the prompt on the bar too. If
+**End my day** button in the header puts the prompt on the bar too. If
 something ranked above the wrap-up holds the bar -- Lunch, in the shipped
 ordering -- the buttons keep doing what that screen says, and the wrap-up is
 confirmed in the window.
@@ -817,7 +853,7 @@ Click a problem to unfold its answer.
 <details>
 <summary>📭 <b>The task list is empty</b></summary>
 
- Check Task Providers for a saved domain and key.
+ Check **Settings, Account** for a saved domain and key.
 Press **Sync Now**; if it stays empty, the credentials are probably wrong — the
 app deliberately does not invent tasks. A provider error is shown rather than
 swallowed.
@@ -845,15 +881,15 @@ moved to a project you are not in. Nothing is lost: the session keeps running
 and its time is logged when you stop. The task stays in your lists until then.
 Marking it done asks first, because your completion transition would move a
 task that is no longer yours. If the provider refuses the time -- some Jira
-setups forbid logging on someone else's issue -- the row appears in the sync
-queue panel with Jira's own message.
+setups forbid logging on someone else's issue -- the row appears under **Entries
+waiting to send** with Jira's own message.
 
 </details>
 
 <details>
 <summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary>
 
- Open the sync queue panel. The
+ Open **Entries waiting to send** in **Settings, Account**. The
 row carries the server's own message. Common causes:
 
 - *`404` — the issue no longer exists.* Nothing to do; the local worklog stands.
@@ -868,7 +904,7 @@ row carries the server's own message. Common causes:
 <summary>✏️ <b>A correction never reached Jira or OpenProject</b></summary>
 
  The worklog says **Correction failed**,
-and the sync queue panel lists a *Correction* row with the reason.
+and **Entries waiting to send** lists a *Correction* row with the reason.
 
 - *Not found in Jira (or OpenProject).* The entry was deleted there, or its
   comment lost the `[#xxxxxxxx]` tag that identifies it. Correct it there by
@@ -887,7 +923,7 @@ to arrive first: a correction never overtakes it.
 
  Three things to check, in order: the
 app is set to something other than *Don't Show*; the notification listener is
-running (Device Diagnostics reports its status — **its failures are otherwise
+running (**Settings, Developer** reports its status — **its failures are otherwise
 silent**); and nothing higher-priority holds the display, Lunch and Away being
 the usual culprits.
 
@@ -967,7 +1003,7 @@ frame locally, while the bar is handed the whole animation file and plays it
 itself, so the preview kept animating while the bar showed nothing. Two causes,
 both addressed — a refused upload that went unreported, and the app drawing its
 own blank frame on top of the animation it had just started. If you still see
-it, export the logs from Device Diagnostics and look for `[AnimationPlayer]`
+it, export the logs from **Settings, Data** and look for `[AnimationPlayer]`
 lines naming the file and its size.
 
 </details>
@@ -986,7 +1022,7 @@ After the update the bar restarts. SprintTicker notices the new version when
 the bar answers again and sends its animations once more in the new form. If
 the bar ever reports a version the app cannot read, the app sends no animation
 files at all: scenes play from the app frame by frame, and icons stay still.
-Device Diagnostics shows the version the bar reported.
+**Settings, Desk devices** shows the version the bar reported.
 
 SprintTicker 1.3.0 or older, on a bar updated to 1.3, shows that error icon in place
 of every animated icon and scene. Updating the app fixes it.
@@ -1015,10 +1051,10 @@ taking the picture down first, which is the half second of black you may see
 before the clock.
 
 If the bar does freeze, unplug and replug it, then
-export the logs from Device Diagnostics: the lines just before the freeze say
+export the logs from **Settings, Data**: the lines just before the freeze say
 what the app was drawing. For the first kind of freeze, uploads taking several
 hundred milliseconds, rather than about fifty, are the warning sign, and
-Device Diagnostics shows them under **Display Health**: the median upload
+**Settings, Developer** shows them under **Display Health**: the median upload
 time, turning red with a warning when it reaches that level, and how many
 times the screen closed in the last hour. If you see the warning, export the
 logs before restarting the bar; the bundle then holds the run-up to the
@@ -1030,7 +1066,7 @@ freeze. Once the bar is back, the app redraws the current screen by itself.
 <summary>🕰️ <b>The bar shows something stale</b></summary>
 
  Something is holding the display lock at a
-higher priority. Check Priority Rules and your current mode. After the bar
+higher priority. Check **What the bar shows first** and the mode in the header. After the bar
 restarts or its connection drops, the app redraws the current screen within a
 few seconds of the bar answering again; before 1.2.1 it could put back the
 screen from before the outage.
@@ -1055,7 +1091,7 @@ the device accepts printable ASCII only. Emoji do not render.
 
 ### 📭 No notification from OpenProject or Jira
 
-- **Is it switched on, for that kind?** Task Providers › Notifications from
+- **Is it switched on, for that kind?** **Settings, Account** › Notifications from
   OpenProject (or Jira). **Send a test notification**: if it says it was sent and nothing
   appeared, the cause is on the Windows side.
 - **Windows may be holding it.** Do Not Disturb, Focus, or SprintTicker turned
@@ -1085,5 +1121,5 @@ are asked to re-enter rather than shown a crash.
 > **No telemetry, no account, no server**
 >
 > The one outbound request is a daily update check against GitHub, which sends
-> nothing about you and can be turned off in Device Diagnostics — turning it off
+> nothing about you and can be turned off in **Settings, General** — turning it off
 > stops the request being made, rather than hiding its result.

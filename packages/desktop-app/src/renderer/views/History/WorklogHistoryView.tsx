@@ -178,7 +178,7 @@ export const WorklogHistoryView: React.FC = () => {
       {/* Header & Date Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border-dark pb-6">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-wide">Work History & Reports</h2>
+          <h2 className="text-xl font-bold text-white tracking-wide">History</h2>
           <p className="text-xs text-text-secondary mt-1">
             Historical day-by-day log of tracked tasks, work sessions, and total duration summaries.
           </p>

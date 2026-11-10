@@ -4,7 +4,7 @@ import { WeekEndedDTO } from '../../shared/dtos';
 import { formatDay, formatHoursAndMinutes } from '../utils/formatters';
 
 interface WeekEndedNoticeProps {
-  /** Opens Work History, where the week's worklogs are. */
+  /** Opens History, where the week's worklogs are. */
   onOpenHistory: () => void;
 }
 
@@ -60,7 +60,7 @@ export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onOpenHistory 
         }}
         className="text-xs font-semibold text-text-primary hover:underline"
       >
-        Open Work History
+        Open History
       </button>
     </div>
   );

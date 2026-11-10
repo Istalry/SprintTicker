@@ -5,7 +5,7 @@
 ### Added
 
 - **Interrupt: a timer at once.** When someone comes to your desk, one click
-  starts a timer -- on the Active Session card, in the mini timer, or in the
+  starts a timer -- on Today's session card, in the mini timer, or in the
   tray menu -- with nothing to fill in. It runs on a new ad-hoc task named for
   the time it started, *Interruption 14:32*, and the task you were on stops,
   its time logged. When the interruption ends, SprintTicker asks whether to go
@@ -13,14 +13,14 @@
   the paused menu's first choice: pause, turn the wheel two notches left,
   click.
 - **A keyboard shortcut for Interrupt**, from any app, off until you turn it
-  on in Device Diagnostics (Device & Logs without a bar), where you record
+  on in Settings, General, where you record
   the chord (Ctrl+Alt+Shift+I suggested). A chord another app holds is said to be inactive rather than
   shown on, and a press with nothing on screen is told by a notification.
-- **Interruptions to sort.** Work History marks an interruption not named
+- **Interruptions to sort.** History marks an interruption not named
   yet **To sort** and lists every one at the top, whatever its day, with its
   time and the day it began. Click a name -- there, on any ad-hoc row, or in
   the end-of-day wrap-up, which lists the day's -- to rename it.
-- **Move a worklog to another task.** The arrows on a Work History row move
+- **Move a worklog to another task.** The arrows on a History row move
   it: deleted at Jira or OpenProject where it was, then created on the new
   task, through the sync queue, so the time is never on both. **Assign** on
   an interruption to sort moves all of its time at once, named after it.
@@ -41,6 +41,26 @@
 
 ### Changed
 
+- **Four places instead of eight tabs.** The window is **Today**, **Tasks**,
+  **History** (formerly Work History) and **Settings**, the same with or
+  without a bar. The header holds the bar's preview, a **Mode** chip for Work,
+  Lunch and Away (it used to hide in Priority Rules), the mini timer, **End my
+  day**, and one word for how things stand -- *All good*, *2 waiting*,
+  *Sending stopped*, *Update*, *Bar offline* -- that opens the details, with
+  **Try now** and the last notifications the bar showed. A ⚡ beside Today
+  counts the interruptions not placed yet.
+- **Settings in six groups** -- General, Account, My workday, Desk devices,
+  Data and Developer -- with a search box that also knows the old names
+  (*sync queue*, *priority*, *ceremonies*). Task Providers is Account,
+  Ceremonies is My workday, Notifications and Priority Rules (now *What the
+  bar shows first*) are folded into Desk devices, and Device Diagnostics is
+  split between Desk devices, Data and Developer. The developer tools -- the
+  bar remote, the display debugger, test notifications -- are hidden until
+  **Show developer tools**, and say that they act on the real app.
+- **Deleting a project or a task asks first**, and a project's edit and
+  delete buttons no longer appear only on hover.
+- **The bar's START opens one picker.** With nothing running, the bar's own
+  picker opens, and the window's no longer opens over it.
 - **A quieter look, in greys.** The blue and purple accents are gone: the
   window is grey, the main button of each screen is light grey, and colour
   is left for meaning -- green running, amber paused or waiting on you, red
@@ -68,7 +88,7 @@
   `40s` everywhere, where Work History said `1h 10m 0s` and the session page
   `0h 55m`. Days read in Windows' regional format, as the date picker does.
 - **Room to read.** The mini timer is wider, so a task's title shows rather
-  than its first word. In Projects & Tasks a key no longer breaks over two
+  than its first word. In Tasks a key no longer breaks over two
   lines, rows drop the internal project id, and a row offers **Start** when
   nothing runs. Priority Rules says how its arrows and levels relate.
 - **The Ceremonies prompt timeout is gone.** It was saved but never read:

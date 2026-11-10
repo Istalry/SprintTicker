@@ -10,7 +10,15 @@ import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { formatClockTime } from '../../utils/formatters';
 
-export const DeviceDiagnosticsView: React.FC = () => {
+/**
+ * Which part of the view to show. Settings splits it (S22–S24): the bar's
+ * status and setup under Desk devices, logs and erasing under Data, the
+ * debug tools under Developer. `all` is the view as it was before.
+ */
+export type DeviceDiagnosticsPart = 'all' | 'devices' | 'data' | 'developer';
+
+export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> = ({ part = 'all' }) => {
+  const show = (...parts: DeviceDiagnosticsPart[]): boolean => part === 'all' || parts.includes(part);
   const deviceStatus = useDeviceStatus();
   const [wipeConfirm, setWipeConfirm] = useState<boolean>(false);
   const [wiping, setWiping] = useState<boolean>(false);
@@ -106,6 +114,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      {part === 'all' && (
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
@@ -140,8 +149,26 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </button>
         </div>
       </div>
+      )}
 
-      {!hasBar && (
+      {part === 'data' && (
+        <div className="bg-dark-800 border border-border-dark rounded-xl p-6 flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-white">Export logs</h3>
+            <p className="text-xs text-text-secondary">A file to attach to a bug report. Your tokens are removed from it.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { void window.electronAPI?.exportDiagnosticLogs?.(); }}
+            className="flex items-center space-x-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-text-primary text-xs rounded-lg border border-border-dark transition-all shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Logs</span>
+          </button>
+        </div>
+      )}
+
+      {show('devices') && !hasBar && (
         <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-3">
           <h3 className="text-sm font-bold text-white flex items-center space-x-2">
             <Monitor className="w-4 h-4 text-text-primary" />
@@ -165,6 +192,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
 
       {hasBar && (<>
       {/* Grid Status Cards */}
+      {show('devices') && (
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-xs text-text-secondary">
@@ -207,11 +235,13 @@ export const DeviceDiagnosticsView: React.FC = () => {
           <div className={`text-lg font-bold ${deviceStatus.connected ? 'text-white' : 'text-text-secondary'}`}>
             {deviceStatus.connected ? `v${deviceStatus.firmwareVersion}` : 'N/A'}
           </div>
-          <div className="text-[11px] text-text-secondary">{deviceStatus.connected ? 'Build 2026.07' : 'Disconnected'}</div>
+          <div className="text-[11px] text-text-secondary">{deviceStatus.connected ? 'As the bar reports it' : 'Disconnected'}</div>
         </div>
       </div>
+      )}
 
       {/* Display health: what came before every measured hang of the bar. */}
+      {show('developer') && (
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
         <h3 className="text-sm font-bold text-white flex items-center space-x-2">
           <Activity className={`w-4 h-4 ${deviceStatus.displayHealth.latencyWarning ? 'text-accent-red' : 'text-accent-green'}`} />
@@ -245,7 +275,10 @@ export const DeviceDiagnosticsView: React.FC = () => {
         </div>
       </div>
 
+      )}
+
       {/* Hardware Telemetry Detail Panel */}
+      {show('devices') && (
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
         <h3 className="text-sm font-bold text-white flex items-center space-x-2">
           <HardDrive className="w-4 h-4 text-text-primary" />
@@ -422,8 +455,11 @@ export const DeviceDiagnosticsView: React.FC = () => {
         </div>
       </div>
 
+      )}
+
+      {show('developer') && (<>
       {activeTestLog && (
-        <div className="bg-select border border-focus/40 text-text-primary text-xs p-3 rounded-lg flex items-center justify-between animate-">
+        <div className="bg-select border border-focus/40 text-text-primary text-xs p-3 rounded-lg flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Activity className="w-4 h-4 animate-spin" />
             <span className="font-bold">{activeTestLog}</span>
@@ -565,14 +601,18 @@ export const DeviceDiagnosticsView: React.FC = () => {
       </div>
 
       </>)}
+      </>)}
 
+      {part === 'all' && (<>
       <LaunchAtLoginCard />
 
       <InterruptShortcutCard />
 
       <UpdateSettingsCard />
+      </>)}
 
       {/* ⚠️ Danger Zone: Factory Data Wipe */}
+      {show('data') && (
       <div className="bg-dark-800 border border-accent-red/30 rounded-xl p-6 space-y-4">
         <div className="flex items-center space-x-2 text-accent-red">
           <AlertTriangle className="w-5 h-5" />
@@ -620,6 +660,7 @@ export const DeviceDiagnosticsView: React.FC = () => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

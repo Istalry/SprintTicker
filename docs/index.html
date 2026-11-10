@@ -474,7 +474,7 @@
     <nav>
       <a class="lead" href="#guide">User guide</a>
       <a href="#guide-first-run">🏁 First run</a>
-      <a href="#guide-the-panels">🗂️ The panels</a>
+      <a href="#guide-the-window">🗂️ The window</a>
       <a href="#guide-the-bar-itself">💡 The bar itself</a>
       <a href="#guide-a-stream-deck">🎹 A Stream Deck</a>
       <a href="#guide-troubleshooting">🩺 Troubleshooting</a>
@@ -519,8 +519,8 @@
         <td align="left">the setup wizard, with or without a bar, and the mini timer</td>
         </tr>
         <tr>
-        <td align="left">🗂️ <a href="#-the-panels">The panels</a></td>
-        <td align="left">the eight tabs of the window, one by one</td>
+        <td align="left">🗂️ <a href="#-the-window">The window</a></td>
+        <td align="left">its four places -- Today, Tasks, History, Settings -- and the header</td>
         </tr>
         <tr>
         <td align="left">💡 <a href="#-the-bar-itself">The bar itself</a></td>
@@ -577,13 +577,13 @@
       <td align="left">Nothing — local tasks only, and their time stays here</td>
       </tr>
       </tbody></table></div>
-      <p>You can leave credentials blank and add them later in <strong>Task Providers</strong>. Until
+      <p>You can leave credentials blank and add them later in <strong>Settings, Account</strong>. Until
       a remote provider is configured the app runs on local ad-hoc tasks. Completing
       the wizard saves the choice and immediately fetches your projects.</p>
       <p>The <strong>ad-hoc task key</strong> (default <code>MISC-1</code>) is the key your own ad-hoc tasks
       show in the window — meetings, admin, anything without a ticket. The bar
       shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
-      Work History and is <strong>never sent</strong> to Jira or OpenProject.</p>
+      History and is <strong>never sent</strong> to Jira or OpenProject.</p>
       <h4>💻 Without a BUSY Bar</h4>
       <div class="table-wrap"><table>
         <tr>
@@ -591,30 +591,29 @@
           <th width="50%">💻 Without one</th>
         </tr>
         <tr>
-          <td><img src="images/app-session-tracking.png" alt="Active Session with the bar emulator in the top bar"></td>
-          <td><img src="images/app-nobar-session.png" alt="Active Session in no-bar mode: no emulator, the same session"></td>
+          <td><img src="images/app-session-tracking.png" alt="Today with the bar emulator in the header"></td>
+          <td><img src="images/app-nobar-session.png" alt="Today in no-bar mode: no emulator, the same session"></td>
         </tr>
         <tr>
-          <td>Eight tabs; the emulator and the connection readout in the top bar.</td>
-          <td>Six tabs; everything that keeps time is still there.</td>
+          <td>The four places; the bar's preview in the header.</td>
+          <td>The same four places; everything that keeps time is still there.</td>
         </tr>
       </table></div><p>Everything that keeps time works without the hardware: the task picker, the
       running timer, pausing, finishing, worklog sync, history, the ceremonies and
-      the end-of-day wrap-up. What steps aside is what only describes the bar — the
-      on-screen emulator and connection readout in the top bar, <strong>Priority Rules</strong>,
-      which orders the bar&#39;s screen and nothing else, and <strong>Notifications</strong>, which
-      mirrors Windows notifications onto it. Notifications <em>from</em> OpenProject still
-      arrive, as Windows notifications; their settings are in Task Providers. The
-      Windows notification listener does not run in this mode. <strong>Device Diagnostics</strong>
-      becomes <strong>Device &amp; Logs</strong>, keeping log export, the update setting and the
-      factory reset.</p>
+      the end-of-day wrap-up. The window keeps its four places; what steps aside is
+      what only describes the bar -- the bar&#39;s preview in the header, and in
+      <strong>Settings, Desk devices</strong> the Windows notifications it mirrors and <strong>What the
+      bar shows first</strong>, which orders its screen and nothing else. Notifications
+      <em>from</em> OpenProject or Jira still arrive, as Windows notifications; their
+      settings are in <strong>Settings, Account</strong>. The Windows notification listener does
+      not run in this mode.</p>
       <p>The app does not look for a bar in this mode, so it logs nothing about one being
       unreachable.</p>
       <p align="center">
         <img src="images/app-nobar-device.png" width="70%" alt="Device and Logs in no-bar mode, with an Add a BUSY Bar button">
-      </p><p>To switch, use <strong>Use without a bar</strong> in Device Diagnostics; the bar is cleared
-      and handed back to its own clock first. To add a bar later,
-      press <strong>Add a BUSY Bar</strong> in Device &amp; Logs: the address and token you had set
+      </p><p>To switch, use <strong>Use without a bar</strong> in <strong>Settings, Desk devices</strong>; the bar is
+      cleared and handed back to its own clock first. To add a bar later,
+      press <strong>Add a BUSY Bar</strong> in the same place: the address and token you had set
       before are kept, and the bar&#39;s screens come back at once.</p>
       <h4>⏱️ The mini timer</h4>
       <p>A small window that stays above every other one and shows what the bar would:
@@ -622,19 +621,19 @@
       tracking, amber while paused, grey with nothing running. Beside them is the
       icon of whatever holds the bar: the stopwatch for your session, an app&#39;s icon
       during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
-      Timer</strong> in the top bar or <strong>Show Mini Timer</strong> in the tray menu.</p>
+      Timer</strong> in the header or <strong>Show Mini Timer</strong> in the tray menu.</p>
       <p align="center">
         <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
       </p><ul>
-      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as the dashboard does.</li>
+      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as Today does.</li>
       <li>⏹️ <strong>Stop</strong> offers the three ways to end it, in place of the buttons:
       <strong>Not done</strong> logs the time and keeps the task open, <strong>Done</strong> also marks it
       done, and <strong>Discard</strong> throws the session away after a <strong>Yes</strong>. <strong>×</strong> keeps
       the session running.</li>
-      <li>⚡ <strong>Interrupt</strong> starts a timer at once, as the dashboard&#39;s button does --
+      <li>⚡ <strong>Interrupt</strong> starts a timer at once, as Today&#39;s button does --
       see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. Click an interruption&#39;s title
       to name it, and the link button to assign it to a task.</li>
-      <li>📋 The <strong>list</strong> button brings the dashboard forward with the task picker open:
+      <li>📋 The <strong>list</strong> button brings the window forward with the task picker open:
       that is how you start or switch a task from it.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
       that was on a monitor you have since unplugged, it comes back in the
@@ -644,14 +643,67 @@
       </ul>
       <p>It counts seconds, which the bar does not: on screen a second costs nothing.</p>
       <hr>
-      <h3 id="guide-the-panels">🗂️ The panels</h3>
-      <p>Eight tabs down the left.</p>
-      <h4>▶️ Active Session</h4>
+      <h3 id="guide-the-window">🗂️ The window</h3>
+      <p>Four places down the left: <strong>Today</strong>, <strong>Tasks</strong> and <strong>History</strong>, and
+      <strong>Settings</strong> at the bottom. They are the same with or without a bar. A ⚡
+      beside Today counts the interruptions you have not placed on a task yet.</p>
+      <p>Across the top, the header:</p>
+      <ul>
+      <li>🟩 <strong>The bar&#39;s preview</strong>, with a bar: what the bar shows right now.</li>
+      <li>🔀 <strong>Mode: Work ▾</strong> switches between Work, Lunch and Away by hand. It is
+      the mode the ceremonies and Windows&#39; lock switch for you.</li>
+      <li>▭ <strong>Mini timer</strong> opens the mini timer, below.</li>
+      <li>☾ <strong>End my day</strong> opens the end-of-day wrap-up now.</li>
+      <li>✅ <strong>The status entry</strong> says in a word how things stand: <strong>All good</strong>,
+      <strong>2 waiting</strong> (entries not yet sent to your provider), <strong>Sending stopped</strong>
+      (your provider refused them), <strong>Update</strong>, or <strong>Bar offline</strong>; the worst
+      wins. Click it for the details, <strong>Try now</strong> to send what waits, and <strong>What
+      you missed</strong>: the last notifications the bar showed.</li>
+      </ul>
+      <h4>⚙️ Settings</h4>
+      <p>Six groups, each one page, with a search box above them that finds a setting
+      by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
+      <em>ceremonies</em>:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Group</th>
+      <th align="left">Holds</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>General</strong></td>
+      <td align="left">Start with Windows, the Interrupt shortcut, updates, <strong>Set up again</strong>, and <strong>Show developer tools</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Account</strong></td>
+      <td align="left">your task provider, its credentials, the tasks to fetch, the transitions, provider notifications, and the entries waiting to send</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>My workday</strong></td>
+      <td align="left">working days, the stand-up, lunch, the end of day</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Desk devices</strong></td>
+      <td align="left">the bar&#39;s status, task key color, connection, idle clock and use without a bar; with a bar, the Windows notifications it shows and what it shows first; the Stream Deck</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Data</strong></td>
+      <td align="left">export the logs; erase everything on this computer</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Developer</strong></td>
+      <td align="left">hidden until <strong>Show developer tools</strong>: the bar remote, the display debugger, test notifications, the listener&#39;s console, the bar&#39;s health</td>
+      </tr>
+      </tbody></table></div>
+      <p>The developer tools act on the real app -- Pause and Resume on your real
+      timer, Lunch and Away on your real mode -- and the page says so.</p>
+      <h4>▶️ Today</h4>
       <p>The main screen. Start a task, and the bar shows it. Pause, resume, and finish
       from here. With nothing running it offers just <strong>Start a Task</strong> and
       <strong>Interrupt</strong>; while a task runs, <strong>Switch Task</strong> moves to another one.</p>
       <p align="center">
-        <img src="images/app-session-tracking.png" width="80%" alt="Active Session: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
+        <img src="images/app-session-tracking.png" width="80%" alt="Today: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
       </p><p>Finishing asks for a comment and whether to mark the task done. Marking it done
       celebrates on the bar -- a green badge drops in, ticks itself, and throws
       confetti beside <strong>DONE!</strong> -- then returns to the session. It also fires your
@@ -680,7 +732,7 @@
       assigned to you), <strong>Discard</strong>, or <strong>I was working all along</strong>, which counts
       the whole absence. Stopping it from the bar or the mini timer logs up to your
       last activity; resuming it does not count the gap. Turn the question off in
-      <strong>Ceremonies</strong>.</p>
+      <strong>Settings, My workday</strong>.</p>
       <p>🌙 <strong>Overtime is never interrupted.</strong> As long as you are at the keyboard or
       mouse, working past midnight is just a long session: nothing pauses it and
       nothing asks. Only more than two hours without any input across midnight --
@@ -690,7 +742,7 @@
       <p>Someone at your desk, a call: press <strong>Interrupt</strong> and a timer starts there
       and then, with nothing to fill in. It runs on a new ad-hoc task called after
       the time it started -- <strong>Interruption 14:32</strong> -- and the task you were on
-      stops, its time logged as usual. Interrupt is on the Active Session card, in
+      stops, its time logged as usual. Interrupt is on Today&#39;s session card, in
       the mini timer, first in the tray menu, on the Stream Deck&#39;s Interrupt key,
       and on the bar: pause the task, turn the wheel two notches left to
       <strong>INTERRUPT</strong>, and click. And, if you turn it on, on a keyboard shortcut
@@ -707,15 +759,15 @@
       <li><strong>Lunch during an interruption</strong> stops it, and the task you were on before
       it starts again when lunch ends, as lunch always does.</li>
       <li><strong>The end-of-day wrap-up</strong> stops an interruption without asking.</li>
-      <li><strong>Name it</strong> while it runs: click its title on the Active Session card or
+      <li><strong>Name it</strong> while it runs: click its title on Today&#39;s session card or
       in the mini timer, type, and press Enter (Escape keeps the name). The card
-      says <strong>Interruption</strong> until you do. The name is what Work History shows.</li>
+      says <strong>Interruption</strong> until you do. The name is what History shows.</li>
       <li><strong>Assign it to a task</strong> while it runs: <strong>Assign to Task</strong> on the card, or
       the link button in the mini timer, opens the task picker. The session moves
       to that task with its start kept, so the whole interruption is logged on it
       and sent to its Jira or OpenProject when you stop. Assigned to the very task
       it interrupted, nothing is asked at the end -- you are back on it.</li>
-      <li><strong>Name it afterwards</strong>, in <strong>Work History</strong>: an interruption not named yet
+      <li><strong>Name it afterwards</strong>, in <strong>History</strong>: an interruption not named yet
       says <strong>To sort</strong>, and every one of them, whatever the day, is listed at
       the top under <strong>Interruptions to sort</strong>, with its time and the day it
       began -- click the day to go there. Click its name to give it a real one.
@@ -746,19 +798,19 @@
       <td align="center">📝 Stopped: time logged, task still open</td>
       </tr>
       </tbody></table></div>
-      <h4>📁 Projects &amp; Tasks</h4>
+      <h4>📁 Tasks</h4>
       <p>Your cached projects and their tasks, refreshed from the provider. Create local
       ad-hoc tasks here for work that has no ticket, or a project of your own: the
       next sync leaves it alone, and time on its tasks stays on this machine like
       ad-hoc time.</p>
       <div class="note"><span class="label">Ad-hoc time stays on this machine.</span>
-      <p>It is in Work History like any other
+      <p>It is in History like any other
       time, but it is never sent to your provider, which has no ticket to put it
-      on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in <strong>Task Providers</strong>
+      on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in <strong>Settings, Account</strong>
       (<code>MISC-1</code> by default); the bar shows the task&#39;s name alone.</p>
       </div>
       <p align="center">
-        <img src="images/app-projects.png" width="80%" alt="Projects and Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
+        <img src="images/app-projects.png" width="80%" alt="Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
       </p><p>A task from Jira or OpenProject shows the start of its description under its
       title, on one line. The task picker searches it too, so you can find a task by
       what it is about.</p>
@@ -781,7 +833,7 @@
       free to take. <strong>Teammates&#39;</strong>, off by default, lists a teammate&#39;s task while it
       is in progress. A task that is not yours carries <em>Unassigned</em> or the
       assignee&#39;s name beside its key, and the switches say how many tasks they hide.
-      They are one setting: the task picker, the Projects &amp; Tasks panel and the
+      They are one setting: the task picker, Tasks and the
       bar&#39;s picker all follow it, and <strong>Only projects with tasks</strong> counts what they
       show -- a project holding only unassigned work is listed while unassigned work
       is. The task you are tracking stays listed whoever&#39;s it is. Every list keeps
@@ -789,7 +841,7 @@
       progress, teammates&#39; in progress, then finished work -- yours, then
       unassigned.</p>
       <p>↗️ <strong>Open a task on its provider</strong> -- the small arrow beside a task&#39;s key in
-      the session panel, the Projects &amp; Tasks panel and Work History opens it in
+      Today, Tasks and History opens it in
       your browser, on Jira or OpenProject, to comment, attach a picture or read
       the thread. Ad-hoc work and projects made in SprintTicker have no page there,
       so no arrow.</p>
@@ -803,14 +855,15 @@
       not assigned to you</em>; it is not retried, so assign it on the provider if it
       should be yours. Starting a teammate&#39;s task in progress assigns nothing and
       moves nothing.</p>
-      <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync Now</strong> in
-      Task Providers refetches it.</p>
-      <h4>📊 Work History</h4>
+      <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync now</strong> in
+      <strong>Settings, Account</strong> refetches it, and <strong>Try now</strong> in the header&#39;s status
+      panel does too.</p>
+      <h4>📊 History</h4>
       <p>Worklogs by date, with a daily summary and an end-of-day export. The arrow
-      beside a task opens it on Jira or OpenProject, as in the session panel and
-      the Projects &amp; Tasks panel.</p>
+      beside a task opens it on Jira or OpenProject, as on Today and in
+      Tasks.</p>
       <p align="center">
-        <img src="images/app-history.png" width="80%" alt="Work History for one day: 4h 10m logged over four tasks, broken down by task">
+        <img src="images/app-history.png" width="80%" alt="History for one day: 4h 10m logged over four tasks, broken down by task">
       </p><p><strong>A worklog never spans midnight.</strong> Jira and OpenProject file a worklog under
       the day it began, so a session from 23:00 to 01:00 is logged as two: an hour
       on each day, each sent on its own. A session paused overnight and resumed in
@@ -818,7 +871,7 @@
       question about a session left running, say how the time will be filed before
       it is. The timer still shows the whole session.</p>
       <p><strong>A long pause starts a new worklog too</strong>: 15 minutes or more by default,
-      set under <strong>Working Days</strong> in Ceremonies (0 keeps one worklog per day). A
+      set under <strong>Working Days</strong> in <strong>Settings, My workday</strong> (0 keeps one worklog per day). A
       shorter pause is a gap inside one worklog. A piece too short for your
       provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
       rather than lost.</p>
@@ -853,12 +906,12 @@
       left running behind another one. Its end is where the next session began, the
       latest it can have run, so check it before copying it to a timesheet; it is not
       sent to your provider.</p>
-      <h4>🔌 Task Providers</h4>
+      <h4>🔌 Settings: Account</h4>
       <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
       me, everything open, or your own query (JQL for Jira, a v3 filter array for
       OpenProject).</p>
       <p align="center">
-        <img src="images/app-providers.png" width="80%" alt="Task Providers: the active provider, its domain and API key, and the status mappings">
+        <img src="images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">
       </p><p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
       into Windows notifications: assigned to you, a mention, a comment, a status
       change, a date alert. Tick the ones you want. Clicking a notification opens the
@@ -882,7 +935,7 @@
       mention in a description rather than a comment.</li>
       <li>📅 <strong>Jira has no date alerts</strong>, so that box is not offered.</li>
       </ul>
-      <p>Below the credentials is the <strong>sync queue</strong>: every worklog that has not reached
+      <p>Below the credentials, folded under <strong>Entries waiting to send</strong>, is every worklog that has not reached
       the provider, with the server&#39;s own message, the attempt count against the
       ceiling, and when the next attempt is due. When the provider refuses your saved
       credentials, a Windows notification says <strong>Sending time to Jira stopped</strong> (or
@@ -913,10 +966,10 @@
       would send byte-identical requests forever, so the app stops and tells you
       why. <strong>Retry Failed</strong> is for after you have fixed the cause.</p>
       </div>
-      <h4>📅 Ceremonies</h4>
+      <h4>📅 Settings: My workday</h4>
       <p>Working hours, and the three scheduled events:</p>
       <p align="center">
-        <img src="images/app-ceremonies.png" width="80%" alt="Ceremonies panel: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
+        <img src="images/app-ceremonies.png" width="80%" alt="Settings, My workday: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
       </p><div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1010,10 +1063,10 @@
       Windows was locked. Unlock during lunch and the bar goes straight to Lunch;
       unlock after it and your task starts again.</li>
       </ul>
-      <p>Lunch must start and end on the same day, start first: the Ceremonies panel
+      <p>Lunch must start and end on the same day, start first: <strong>My workday</strong>
       says so and saves nothing until it does. A window across midnight never began.</p>
       <p>📆 <strong>The ceremonies happen on working days only.</strong> <strong>Working Days</strong>, at the
-      top of the Ceremonies panel, picks them -- Monday to Friday until you change
+      top of <strong>My workday</strong>, picks them -- Monday to Friday until you change
       it, and at least one. On any other day nothing is prompted and Lunch does not
       start; your timer works as on any day, and what you track is logged as usual.
       With OpenProject connected, the holidays your instance lists (its
@@ -1024,7 +1077,7 @@
       that is Friday&#39;s; with Friday a holiday, or a four-day week, it is Thursday&#39;s.
       A notice in the corner of the window then shows the week and the time logged
       in it, a reminder to check it is all in before your timesheet is due. <strong>Open
-      Work History</strong> takes you to it; either button dismisses the notice, which
+      History</strong> takes you to it; either button dismisses the notice, which
       otherwise stays -- across a restart too -- until you do. Missed the wrap-up
       (a day off you had not entered, the laptop shut)? The next working day closes
       the week at its first check instead, and a week closes once, whatever happens.
@@ -1035,10 +1088,11 @@
       the dialog before you save -- a correction that moves the start into a closed
       week too. A locked timesheet may refuse the change at Jira or OpenProject; the
       sync queue then shows why.</p>
-      <h4>🔔 Notifications</h4>
-      <p>Which applications may reach the bar. <strong>Nothing is mirrored until you allow it.</strong></p>
+      <h4>🔔 Settings: Desk devices, Windows notifications</h4>
+      <p>Which applications may reach the bar -- folded under <strong>Desk devices</strong>, with a
+      bar. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p align="center">
-        <img src="images/app-notifications.png" width="80%" alt="Notifications panel: the listener enabled and its status, banner duration, per-source rules">
+        <img src="images/app-notifications.png" width="80%" alt="Windows notifications on the bar: the listener enabled and its status, banner duration, per-source rules">
         <img src="images/bar-banner.png" width="456" alt="A Slack banner on the bar: the Slack logo, Mira, New message">
       </p><p>Per app, choose one of three:</p>
       <div class="table-wrap"><table>
@@ -1061,8 +1115,8 @@
       <td align="left">Claims it at whatever <em>Notification — High Priority</em> scores</td>
       </tr>
       </tbody></table></div>
-      <p>Note what that means: an app is assigned to a <strong>class</strong>, and the Priority Rules
-      panel decides what that class is worth and how it behaves during Lunch and Away.
+      <p>Note what that means: an app is assigned to a <strong>class</strong>, and <strong>What the bar shows
+      first</strong> decides what that class is worth and how it behaves during Lunch and Away.
       Nothing here hardcodes which app wins. In the shipped defaults those two classes
       score 65 and 70, and a few common apps arrive pre-classified — Slack and the
       battery warning as High Priority, Discord, Gmail and Windows as Default — but
@@ -1078,12 +1132,13 @@
       <p><strong>Sender only</strong> mode shows that a message arrived without showing what it said.</p>
       <p>Notification text is redacted from logs and the diagnostics export. Launch with
       <code>--debug-notifications</code> to see it while troubleshooting.</p>
-      <h4>⚡ Priority Rules</h4>
-      <p>What the display shows when several things want it. Every claim has a score;
+      <h4>⚡ Settings: Desk devices, What the bar shows first</h4>
+      <p>What the display shows when several things want it -- folded under <strong>Desk
+      devices</strong>, with a bar. Every claim has a score;
       the highest holds the bar. The arrows beside a claim move its level by 10 and
       the list sorts itself again; type a level from 1 to 100 to place it exactly.</p>
       <p align="center">
-        <img src="images/app-priority.png" width="80%" alt="Priority Rules: the active mode, and each claim with its level and its action in Work, Lunch and Away">
+        <img src="images/app-priority.png" width="80%" alt="What the bar shows first: each claim with its level and its action in Work, Lunch and Away">
       </p><div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1132,12 +1187,13 @@
       <strong>Suppress</strong> or <strong>Queue</strong> for Work, Lunch and Away.</p>
       <p>With the shipped ordering, notifications do not interrupt Lunch or Away. That is
       the table working as configured, not a bug. Move the rows if you disagree.</p>
-      <h4>🩺 Device Diagnostics</h4>
-      <p>Connection status, battery, firmware, starting with Windows, the update
-      setting, and the animation debugger — marquee speeds, particle effects, LED colours and icon rasterisation,
-      live, drawn through the real renderer.</p>
+      <h4>🩺 Settings: Desk devices and General</h4>
+      <p><strong>Desk devices</strong> shows the bar&#39;s connection, battery and firmware as the bar
+      reports it. The animation debugger -- marquee speeds, particle effects, LED
+      colours and icon rasterisation, live, drawn through the real renderer -- and
+      <strong>Display Health</strong> are under <strong>Developer</strong>.</p>
       <p align="center">
-        <img src="images/app-device.png" width="80%" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, and Display Health">
+        <img src="images/app-device.png" width="80%" alt="Desk devices: connected at 10.0.4.20, latency, battery, firmware">
       </p><p>It also holds <strong>Connection</strong>, where you set the address the app dials and, if
       your device needs one, an API token:</p>
       <ul>
@@ -1317,8 +1373,8 @@
       order -- yours in progress, yours to do, unassigned work, teammates&#39; work in
       progress, finished work last -- and within each the most urgent first, by the
       priority set in Jira or OpenProject. Projects and tasks follow the <strong>Only
-      projects with tasks</strong>, <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches of the
-      Projects &amp; Tasks panel. The second row shows the task key, then whose the task
+      projects with tasks</strong>, <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches of
+      Tasks. The second row shows the task key, then whose the task
       is when it is not yours -- <code>free</code> for nobody&#39;s, <code>@Alice</code> for a teammate&#39;s --
       followed by as much of its description as fits, and on
       its right where you are in the list -- <code>3/12</code> --
@@ -1330,7 +1386,7 @@
       can shut your machine down. Once it is done, the bar says <strong>SEE YOU!</strong> for five
       seconds, a moon rising and the stars coming out, and then goes idle.</p>
       <p>The bar&#39;s buttons answer the wrap-up only while the bar shows its prompt. The
-      <strong>EOD Wrap-Up</strong> button in the top bar puts the prompt on the bar too. If
+      <strong>End my day</strong> button in the header puts the prompt on the bar too. If
       something ranked above the wrap-up holds the bar -- Lunch, in the shipped
       ordering -- the buttons keep doing what that screen says, and the wrap-up is
       confirmed in the window.</p>
@@ -1421,7 +1477,7 @@
       <h3 id="guide-troubleshooting">🩺 Troubleshooting</h3>
       <p>Click a problem to unfold its answer.</p>
       <details>
-      <summary>📭 <b>The task list is empty</b></summary><p> Check Task Providers for a saved domain and key.
+      <summary>📭 <b>The task list is empty</b></summary><p> Check <strong>Settings, Account</strong> for a saved domain and key.
       Press <strong>Sync Now</strong>; if it stays empty, the credentials are probably wrong — the
       app deliberately does not invent tasks. A provider error is shown rather than
       swallowed.</p>
@@ -1439,10 +1495,10 @@
       and its time is logged when you stop. The task stays in your lists until then.
       Marking it done asks first, because your completion transition would move a
       task that is no longer yours. If the provider refuses the time -- some Jira
-      setups forbid logging on someone else&#39;s issue -- the row appears in the sync
-      queue panel with Jira&#39;s own message.</p>
+      setups forbid logging on someone else&#39;s issue -- the row appears under <strong>Entries
+      waiting to send</strong> with Jira&#39;s own message.</p>
       </details><details>
-      <summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary><p> Open the sync queue panel. The
+      <summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary><p> Open <strong>Entries waiting to send</strong> in <strong>Settings, Account</strong>. The
       row carries the server&#39;s own message. Common causes:</p>
       <ul>
       <li><em><code>404</code> — the issue no longer exists.</em> Nothing to do; the local worklog stands.</li>
@@ -1453,7 +1509,7 @@
       </ul>
       </details><details>
       <summary>✏️ <b>A correction never reached Jira or OpenProject</b></summary><p> The worklog says <strong>Correction failed</strong>,
-      and the sync queue panel lists a <em>Correction</em> row with the reason.</p>
+      and <strong>Entries waiting to send</strong> lists a <em>Correction</em> row with the reason.</p>
       <ul>
       <li><em>Not found in Jira (or OpenProject).</em> The entry was deleted there, or its
       comment lost the <code>[#xxxxxxxx]</code> tag that identifies it. Correct it there by
@@ -1467,7 +1523,7 @@
       </details><details>
       <summary>🔕 <b>Notifications never appear on the bar</b></summary><p> Three things to check, in order: the
       app is set to something other than <em>Don&#39;t Show</em>; the notification listener is
-      running (Device Diagnostics reports its status — <strong>its failures are otherwise
+      running (<strong>Settings, Developer</strong> reports its status — <strong>its failures are otherwise
       silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
       the usual culprits.</p>
       </details><details>
@@ -1534,7 +1590,7 @@
       itself, so the preview kept animating while the bar showed nothing. Two causes,
       both addressed — a refused upload that went unreported, and the app drawing its
       own blank frame on top of the animation it had just started. If you still see
-      it, export the logs from Device Diagnostics and look for <code>[AnimationPlayer]</code>
+      it, export the logs from <strong>Settings, Data</strong> and look for <code>[AnimationPlayer]</code>
       lines naming the file and its size.</p>
       </details><details>
       <summary>⬆️ <b>Updating the bar's firmware</b></summary><p> Firmware 1.3 changed how the bar
@@ -1547,7 +1603,7 @@
       the bar answers again and sends its animations once more in the new form. If
       the bar ever reports a version the app cannot read, the app sends no animation
       files at all: scenes play from the app frame by frame, and icons stay still.
-      Device Diagnostics shows the version the bar reported.</p>
+      <strong>Settings, Desk devices</strong> shows the version the bar reported.</p>
       <p>SprintTicker 1.3.0 or older, on a bar updated to 1.3, shows that error icon in place
       of every animated icon and scene. Updating the app fixes it.</p>
       </details><details>
@@ -1568,17 +1624,17 @@
       taking the picture down first, which is the half second of black you may see
       before the clock.</p>
       <p>If the bar does freeze, unplug and replug it, then
-      export the logs from Device Diagnostics: the lines just before the freeze say
+      export the logs from <strong>Settings, Data</strong>: the lines just before the freeze say
       what the app was drawing. For the first kind of freeze, uploads taking several
       hundred milliseconds, rather than about fifty, are the warning sign, and
-      Device Diagnostics shows them under <strong>Display Health</strong>: the median upload
+      <strong>Settings, Developer</strong> shows them under <strong>Display Health</strong>: the median upload
       time, turning red with a warning when it reaches that level, and how many
       times the screen closed in the last hour. If you see the warning, export the
       logs before restarting the bar; the bundle then holds the run-up to the
       freeze. Once the bar is back, the app redraws the current screen by itself.</p>
       </details><details>
       <summary>🕰️ <b>The bar shows something stale</b></summary><p> Something is holding the display lock at a
-      higher priority. Check Priority Rules and your current mode. After the bar
+      higher priority. Check <strong>What the bar shows first</strong> and the mode in the header. After the bar
       restarts or its connection drops, the app redraws the current screen within a
       few seconds of the bar answering again; before 1.2.1 it could put back the
       screen from before the outage.</p>
@@ -1590,7 +1646,7 @@
       the device accepts printable ASCII only. Emoji do not render.</p>
       </details><h4>📭 No notification from OpenProject or Jira</h4>
       <ul>
-      <li><strong>Is it switched on, for that kind?</strong> Task Providers › Notifications from
+      <li><strong>Is it switched on, for that kind?</strong> <strong>Settings, Account</strong> › Notifications from
       OpenProject (or Jira). <strong>Send a test notification</strong>: if it says it was sent and nothing
       appeared, the cause is on the Windows side.</li>
       <li><strong>Windows may be holding it.</strong> Do Not Disturb, Focus, or SprintTicker turned
@@ -1614,7 +1670,7 @@
       <div class="note"><span class="label">No telemetry, no account, no server</span>
       <p></p>
       <p>The one outbound request is a daily update check against GitHub, which sends
-      nothing about you and can be turned off in Device Diagnostics — turning it off
+      nothing about you and can be turned off in <strong>Settings, General</strong> — turning it off
       stops the request being made, rather than hiding its result.</p>
       </div>
     </section>
@@ -1710,7 +1766,8 @@
       couple of seconds to mirror it onto the bar, is started and stopped with the mode (<code>followBar</code>). Turning the bar off while it is
       connected releases the display through <code>clearDisplay</code> first, or the last frame
       would stay on it. <code>DeviceStatusDTO.enabled</code> carries
-      the mode to the renderer, which hides the bar-only screens live. Turning it back
+      the mode to the renderer, which hides the bar&#39;s header preview and its
+      bar-only settings live. Turning it back
       on (<code>setEnabled(true)</code>) dials the configured address and emits <code>reconnected</code>,
       and the renderer draws the current screen past its deduplication, which had
       recorded the last frame as sent. The queued frame is not replayed: a clear
@@ -1731,10 +1788,23 @@
       showing a session that has ended; targeted sends such as the ceremony prompt
       still reach the dashboard alone. Picking a task from the tray or the mini timer
       goes through <code>openTaskPickerInMainWindow</code>, which sends the picker&#39;s hardware
-      action on <code>input:on-hardware-event</code>.</p>
+      action on <code>input:on-hardware-event</code> with <code>inputKey: &#39;app&#39;</code>.</p>
+      <p><strong>The window is four places and a header</strong> (<code>AppShell</code>): Today, Tasks,
+      History and Settings, switched by state in <code>App</code> with no router, and the
+      same with or without a bar. <code>App</code> owns the place, the session and the
+      global modals (<code>useModals</code>); each place is a view (<code>views/Today</code>, <code>Tasks</code>,
+      <code>History</code>, <code>Settings/SettingsPage</code>). The header holds the bar&#39;s preview,
+      the mode chip (<code>priority:get-user-mode</code> / <code>set-user-mode</code>), the mini timer,
+      End my day and <code>StatusPanel</code>, whose one word is the worst of the bar, the
+      provider queue and the update (<code>utils/status-summary.ts</code>). Settings is six
+      groups, indexed with their search words in <code>settings-groups.ts</code>; the
+      existing views mount there whole or by <code>part</code>, so a card moved and none
+      was rewritten. <strong>The bar opens its own picker</strong>: the window opens its picker
+      on <code>TRIGGER_TASK_SELECTOR_MODAL</code> only for <code>inputKey: &#39;app&#39;</code> or while a
+      session runs (<code>windowPickerWanted</code>), or a START on the bar opened two.</p>
       <p><strong>Starting with Windows</strong> is <code>LaunchAtLoginService</code>
-      (<code>src/main/services/launch-at-login.ts</code>), behind both the switch in Device &amp;
-      Logs and the tray&#39;s checkbox; the tray rebuilds its menu from the service&#39;s
+      (<code>src/main/services/launch-at-login.ts</code>), behind both the switch in Settings,
+      General and the tray&#39;s checkbox; the tray rebuilds its menu from the service&#39;s
       notification. It keeps no state: every read asks Windows
       (<code>getLoginItemSettings(...).executableWillLaunchAtLogin</code>), because the
       Startup apps page can switch the entry off with no event the app hears. The
@@ -1823,7 +1893,7 @@
       recorded are known only as a total, which <code>getClosedPauses</code> places at the
       start.</p>
       <p>A worklog belongs to the day it began (<code>started_at_utc</code>), as Jira&#39;s <code>started</code>
-      and OpenProject&#39;s <code>spentOn</code> file it; Work History and the end-of-day summary
+      and OpenProject&#39;s <code>spentOn</code> file it; History and the end-of-day summary
       used to file it on its stop. So a session never ends as a worklog across local
       midnight: <code>finishSession</code> splits its time with <code>splitWork</code>
       (<code>shared/work-split.ts</code>) into one worklog per local day, and another after
@@ -2005,7 +2075,7 @@
       <p>Two rules, both scars:</p>
       <ul>
       <li><strong>Never hardcode a ranking.</strong> The table below is a <em>default</em> the user edits in
-      the Priority Rules panel. Nothing in the code may assume a particular order.</li>
+      <strong>What the bar shows first</strong> in Settings. Nothing in the code may assume a particular order.</li>
       <li><strong>One event produces exactly one <code>evaluateRequest</code>.</strong> Evaluating twice takes
       the lock twice under different names, and the release then never matches the
       lock actually held.</li>
@@ -2935,7 +3005,7 @@
       configured site (<code>getTaskPageUrl</code>), opens it through <code>shell.openExternal</code> only
       if it is http(s) on that site, and answers <code>false</code> for a task with no page --
       ad-hoc work, the app&#39;s own projects, a provider not set up. The renderer
-      never hands main a URL. Each worklog carries <code>hasTaskPage</code>, so Work History
+      never hands main a URL. Each worklog carries <code>hasTaskPage</code>, so History
       knows where to offer it.
       Worklogs come back with <code>taskKey</code> and <code>taskTitle</code> beside <code>taskId</code>, read from
       the task row, archived or not, and with <code>syncState</code>: <code>local</code> (never queued),

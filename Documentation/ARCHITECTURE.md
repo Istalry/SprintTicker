@@ -80,7 +80,8 @@ Windows notification listener, which polls Windows' notification database every
 couple of seconds to mirror it onto the bar, is started and stopped with the mode (`followBar`). Turning the bar off while it is
 connected releases the display through `clearDisplay` first, or the last frame
 would stay on it. `DeviceStatusDTO.enabled` carries
-the mode to the renderer, which hides the bar-only screens live. Turning it back
+the mode to the renderer, which hides the bar's header preview and its
+bar-only settings live. Turning it back
 on (`setEnabled(true)`) dials the configured address and emits `reconnected`,
 and the renderer draws the current screen past its deduplication, which had
 recorded the last frame as sent. The queued frame is not replayed: a clear
@@ -102,11 +103,25 @@ last window is gone. Every broadcast -- the registry's and the engine tick's
 showing a session that has ended; targeted sends such as the ceremony prompt
 still reach the dashboard alone. Picking a task from the tray or the mini timer
 goes through `openTaskPickerInMainWindow`, which sends the picker's hardware
-action on `input:on-hardware-event`.
+action on `input:on-hardware-event` with `inputKey: 'app'`.
+
+**The window is four places and a header** (`AppShell`): Today, Tasks,
+History and Settings, switched by state in `App` with no router, and the
+same with or without a bar. `App` owns the place, the session and the
+global modals (`useModals`); each place is a view (`views/Today`, `Tasks`,
+`History`, `Settings/SettingsPage`). The header holds the bar's preview,
+the mode chip (`priority:get-user-mode` / `set-user-mode`), the mini timer,
+End my day and `StatusPanel`, whose one word is the worst of the bar, the
+provider queue and the update (`utils/status-summary.ts`). Settings is six
+groups, indexed with their search words in `settings-groups.ts`; the
+existing views mount there whole or by `part`, so a card moved and none
+was rewritten. **The bar opens its own picker**: the window opens its picker
+on `TRIGGER_TASK_SELECTOR_MODAL` only for `inputKey: 'app'` or while a
+session runs (`windowPickerWanted`), or a START on the bar opened two.
 
 **Starting with Windows** is `LaunchAtLoginService`
-(`src/main/services/launch-at-login.ts`), behind both the switch in Device &
-Logs and the tray's checkbox; the tray rebuilds its menu from the service's
+(`src/main/services/launch-at-login.ts`), behind both the switch in Settings,
+General and the tray's checkbox; the tray rebuilds its menu from the service's
 notification. It keeps no state: every read asks Windows
 (`getLoginItemSettings(...).executableWillLaunchAtLogin`), because the
 Startup apps page can switch the entry off with no event the app hears. The
@@ -192,7 +207,7 @@ recorded are known only as a total, which `getClosedPauses` places at the
 start.
 
 A worklog belongs to the day it began (`started_at_utc`), as Jira's `started`
-and OpenProject's `spentOn` file it; Work History and the end-of-day summary
+and OpenProject's `spentOn` file it; History and the end-of-day summary
 used to file it on its stop. So a session never ends as a worklog across local
 midnight: `finishSession` splits its time with `splitWork`
 (`shared/work-split.ts`) into one worklog per local day, and another after
@@ -329,7 +344,7 @@ the display and takes a named lock, which the claimant must release.
 Two rules, both scars:
 
 - **Never hardcode a ranking.** The table below is a *default* the user edits in
-  the Priority Rules panel. Nothing in the code may assume a particular order.
+  **What the bar shows first** in Settings. Nothing in the code may assume a particular order.
 - **One event produces exactly one `evaluateRequest`.** Evaluating twice takes
   the lock twice under different names, and the release then never matches the
   lock actually held.

@@ -25,7 +25,16 @@ import {
 import { createDefaultNotificationSettings } from '../../../shared/notification-defaults';
 import { formatClockTime } from '../../utils/formatters';
 
-export const NotificationSettingsView: React.FC = () => {
+/**
+ * Which part of the view to show. Settings shows the per-app rules under Desk
+ * devices and the listener's diagnostics under Developer (S22, S24); `all`
+ * is the whole view, as it was before the redesign split it.
+ */
+export type NotificationSettingsPart = 'all' | 'rules' | 'diagnostics';
+
+export const NotificationSettingsView: React.FC<{ part?: NotificationSettingsPart }> = ({ part = 'all' }) => {
+  const showRules = part !== 'diagnostics';
+  const showDiagnostics = part !== 'rules';
   // Seeded from the shared defaults rather than a local copy. The copy that
   // used to live here disagreed with the main process on which apps were
   // HIGH_PRIORITY, so the effective default depended on which process wrote to
@@ -229,6 +238,7 @@ export const NotificationSettingsView: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Title Header */}
+      {part === 'all' && (
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
@@ -241,9 +251,12 @@ export const NotificationSettingsView: React.FC = () => {
         </div>
         <AutoSaveIndicator status={saveStatus} />
       </div>
+      )}
+      {part !== 'all' && <div className="flex justify-end"><AutoSaveIndicator status={saveStatus} /></div>}
 
       {/* Main Listener & Settings Card */}
       <div className="bg-dark-800 border border-border-dark rounded-xl p-5 space-y-4">
+        {showRules && (
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Shield className="w-5 h-5 text-text-primary" />
@@ -273,7 +286,10 @@ export const NotificationSettingsView: React.FC = () => {
           </button>
         </div>
 
-        {/* Real-Time OS Listener Diagnostics & Status Bar */}
+        )}
+
+        {/* Real-Time OS Listener Diagnostics & Status Bar: Developer only. */}
+        {showDiagnostics && (
         <div className="bg-dark-900 border border-border-dark/60 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div className="flex items-center space-x-2">
             <div className="p-1.5 rounded bg-dark-800">
@@ -332,7 +348,10 @@ export const NotificationSettingsView: React.FC = () => {
           </div>
         </div>
 
+        )}
+
         {/* Windows Privacy & Authorization Helper Banner */}
+        {showRules && (<>
         <div className="bg-dark-900/80 border border-focus/30 rounded-lg p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-lg bg-select text-text-primary">
@@ -394,9 +413,11 @@ export const NotificationSettingsView: React.FC = () => {
             </div>
           </div>
         </div>
+        </>)}
       </div>
 
       {/* Per-Source Notification Rules */}
+      {showRules && (
       <div className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
         <h3 className="text-sm font-bold text-white">Per-Source Notification Priority Rules</h3>
         <p className="text-xs text-text-secondary">
@@ -562,7 +583,10 @@ export const NotificationSettingsView: React.FC = () => {
         </div>
       </div>
 
+      )}
+
       {/* Debug Console Log Box */}
+      {showDiagnostics && (
       <div className="bg-dark-950 border border-border-dark rounded-xl overflow-hidden shadow-2xl">
         {/* Terminal Header */}
         <div className="bg-dark-900 px-4 py-2.5 border-b border-border-dark flex items-center justify-between">
@@ -654,6 +678,7 @@ export const NotificationSettingsView: React.FC = () => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

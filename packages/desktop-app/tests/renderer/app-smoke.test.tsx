@@ -4,7 +4,7 @@ import { App } from '../../src/renderer/App';
 import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
 
 /**
- * Every tab mounts and shows its own screen.
+ * Every place mounts and shows its own screen.
  *
  * A smoke test, on purpose: it asserts that each view renders against the
  * real bridge contract, not what each view says. That is the failure it
@@ -12,14 +12,11 @@ import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
  * the bridge no longer has, used to be found by clicking through the app.
  */
 describe('App', () => {
-  const tabs: Array<[string, RegExp]> = [
-    ['Projects & Tasks', /Project & Task Manager/],
-    ['Work History', /Work History & Reports/],
-    ['Task Providers', /TASK PROVIDERS & ACCOUNT CONFIGURATION/],
-    ['Ceremonies', /AGILE CEREMONIES/],
-    ['Notifications', /WINDOWS NOTIFICATION LISTENER/],
-    ['Priority Rules', /PRIORITY MATRIX/],
-    ['Device Diagnostics', /DEVICE DIAGNOSTICS & TELEMETRY/]
+  // Settings' groups are mounted one by one in settings-groups.test.tsx.
+  const places: Array<[string, RegExp]> = [
+    ['Tasks', /Project & Task Manager/],
+    ['History', /^History$/],
+    ['Settings', /^General$/]
   ];
 
   it('Render_FirstLaunch_OpensOnTheActiveSession', async () => {
@@ -28,10 +25,10 @@ describe('App', () => {
     expect(await screen.findByText(/No worklogs recorded today yet/)).toBeTruthy();
   });
 
-  it.each(tabs)('Navigate_%s_MountsItsView', async (label, heading) => {
+  it.each(places)('Navigate_%s_MountsItsView', async (label, heading) => {
     render(<App />);
 
-    fireEvent.click(screen.getAllByText(label)[0]);
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Places' })).getByRole('button', { name: label }));
 
     const title = await screen.findByRole('heading', { level: 2, name: heading });
     expect(title).toBeTruthy();
@@ -77,13 +74,13 @@ describe('App', () => {
     expect(await screen.findByText(/\(Active Session\)/)).toBeTruthy();
   });
 
-  it('EodWrapUpButton_Click_PutsThePromptOnTheBarToo', async () => {
+  it('EndMyDay_Click_PutsThePromptOnTheBarToo', async () => {
     // Opened in the window alone, the bar went on showing the session, and a
     // START there paused it instead of confirming the wrap-up.
     const bridge = installElectronApi();
     render(<App />);
 
-    fireEvent.click(screen.getByTitle('EOD Wrap-Up'));
+    fireEvent.click(screen.getByRole('button', { name: /End my day/ }));
 
     expect(await screen.findByText('End-of-Day Wrap-Up Wizard')).toBeTruthy();
     expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);

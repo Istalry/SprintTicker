@@ -49,12 +49,12 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
     <th width="50%">💻 Without one</th>
   </tr>
   <tr>
-    <td><img src="docs/images/app-session-tracking.png" alt="The Active Session panel with the bar emulator at the top, tracking MG-12 at 01:24"></td>
-    <td><img src="docs/images/app-nobar-session.png" alt="The same panel in no-bar mode: no emulator, the same session and worklogs"></td>
+    <td><img src="docs/images/app-session-tracking.png" alt="Today, with the bar's preview in the header, tracking MG-12 at 01:24"></td>
+    <td><img src="docs/images/app-nobar-session.png" alt="Today in no-bar mode: no preview, the same session and worklogs"></td>
   </tr>
   <tr>
-    <td>The emulator at the top shows what the bar shows, frame for frame.</td>
-    <td>The bar's panels step aside; tracking, sync and ceremonies stay.</td>
+    <td>The preview in the header shows what the bar shows, frame for frame.</td>
+    <td>The same four places; only the bar's own settings step aside.</td>
   </tr>
 </table>
 
@@ -107,6 +107,15 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 
 ## ✨ Features
 
+### 🗂️ The window
+
+Four places -- **Today**, **Tasks**, **History** and **Settings** -- and a
+header with the bar's preview, the Work / Lunch / Away mode, the mini timer,
+**End my day**, and one word for how things stand (**All good**, **2
+waiting**, **Sending stopped**, **Update**, **Bar offline**) that opens the
+details. Settings is six groups with a search box that knows the settings'
+old names; the developer tools stay hidden until you ask for them.
+
 ### ⏱️ Time tracking
 
 Timestamp-based sessions with start / pause / resume / finish, a live tracker on
@@ -115,7 +124,7 @@ running overnight or over the weekend is paused at your last activity and you
 are asked when you stopped, while overtime past midnight runs on untouched; a
 session is logged as one worklog per day it ran on, and a long pause starts a
 new one. A worklog already sent can be corrected or
-deleted from Work History, and the change reaches Jira or OpenProject through
+deleted from History, and the change reaches Jira or OpenProject through
 the sync queue. Persisted
 through `better-sqlite3` with versioned schema migrations, so upgrading never
 discards existing worklogs.
@@ -137,16 +146,16 @@ bar -- the session, a notification, a prompt, lunch:
 <table>
   <tr>
     <td width="50%"><img src="docs/images/app-projects.png" alt="Projects and tasks: Moonlight Garden's tasks, yours first, then one unassigned and a teammate's"></td>
-    <td width="50%"><img src="docs/images/app-history.png" alt="Work History: 4h 10m over four tasks today"></td>
+    <td width="50%"><img src="docs/images/app-history.png" alt="History: 4h 10m over four tasks today"></td>
   </tr>
   <tr>
     <td>📁 <b>Projects &amp; Tasks</b> — local, or synced from your tracker.</td>
-    <td>📊 <b>Work History</b> — any day, broken down by task.</td>
+    <td>📊 <b>History</b> — any day, broken down by task.</td>
   </tr>
 </table>
 
 🔎 **Only projects with tasks**, on by default, keeps every project list short:
-the Projects & Tasks panel, the task picker and the bar's own picker hide the
+Tasks, the task picker and the bar's own picker hide the
 projects with nothing to do that the lists would show.
 
 👥 **Unassigned and teammates' tasks**: every task list also shows the open
@@ -155,9 +164,9 @@ marked as such, after your own work. Starting an unassigned task assigns it
 to you; one someone took meanwhile stays theirs, and you are told who has it.
 
 ↗️ **Open on the provider**: an arrow beside a task opens it on Jira or
-OpenProject in the browser, from the session, the task list or Work History.
+OpenProject in the browser, from the session, the task list or History.
 
-🚀 **Start with Windows**, a switch in Device & Logs and in the tray: at
+🚀 **Start with Windows**, a switch in Settings, General and in the tray: at
 sign-in SprintTicker starts in the tray, with no window. It reads what
 Windows will do, so an entry switched off in Windows' Startup apps reads off.
 
@@ -180,7 +189,7 @@ Local **ad-hoc tasks** cover work that has no ticket. Their time stays in your
 history and is never sent to the provider.
 
 <p align="center">
-  <img src="docs/images/app-providers.png" width="70%" alt="Task Providers panel: OpenProject domain, API key and status mappings">
+  <img src="docs/images/app-providers.png" width="70%" alt="Settings, Account: OpenProject domain, API key and status mappings">
 </p>
 
 ### 🟦 Jira Cloud integration
@@ -271,12 +280,12 @@ Every claim on the display carries a score, and the highest score holds it:
 Per application you choose `Don't Show`, `Default` or `High Priority`; the table
 decides what that means in context. With the ordering above, notifications do
 not interrupt Lunch or Away — that is the scores working as configured, and
-every row is editable in the **Priority Rules** panel.
+every row is editable in **Settings → Desk devices → What the bar shows first**.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/app-notifications.png" alt="Notifications panel: listener enabled, per-source rules"></td>
-    <td width="50%"><img src="docs/images/app-priority.png" alt="Priority Rules panel: Away 100, Lunch 95, editable per mode"></td>
+    <td width="50%"><img src="docs/images/app-notifications.png" alt="Windows notifications on the bar: listener enabled, per-source rules"></td>
+    <td width="50%"><img src="docs/images/app-priority.png" alt="What the bar shows first: Away 100, Lunch 95, editable per mode"></td>
   </tr>
 </table>
 
@@ -306,7 +315,7 @@ OpenProject instance lists, and the last one in a week closes it with a
 reminder of the time logged.
 
 <p align="center">
-  <img src="docs/images/app-ceremonies.png" width="70%" alt="Ceremonies panel: stand-up time, lunch hours, end-of-day wrap-up">
+  <img src="docs/images/app-ceremonies.png" width="70%" alt="Settings, My workday: stand-up time, lunch hours, end-of-day wrap-up">
 </p>
 
 ---
@@ -400,21 +409,21 @@ and Electron (for the app) both load as it is. Alternating `pnpm test` and
 1. Launch the app; the onboarding wizard appears on first start.
 2. The device answers at `10.0.4.20` over USB, which is the default and needs no
    token — nothing to configure for a normal USB setup. Both the address and an
-   API token are editable under **Device Diagnostics → Connection** for a bar on
+   API token are editable under **Settings → Desk devices → Connection** for a bar on
    Wi-Fi, or one reached through a proxy.
-3. For OpenProject, open the **Task Providers** panel and enter your instance URL
+3. For OpenProject, open **Settings → Account** and enter your instance URL
    and an API key. Until you do, the app runs entirely on local ad-hoc tasks.
-4. In the **Notifications** panel, choose which applications may reach the
+4. In **Settings → Desk devices → Windows notifications on the bar**, choose which applications may reach the
    bar. Nothing is mirrored until you allow it.
 
 <table>
   <tr>
-    <th width="50%">🟢 Device Diagnostics, with a bar</th>
-    <th width="50%">💻 Device &amp; Logs, without one</th>
+    <th width="50%">🟢 Desk devices, with a bar</th>
+    <th width="50%">💻 Desk devices, without one</th>
   </tr>
   <tr>
-    <td><img src="docs/images/app-device.png" alt="Device Diagnostics: connected at 10.0.4.20, latency, battery, firmware, display health"></td>
-    <td><img src="docs/images/app-nobar-device.png" alt="Device and Logs in no-bar mode: Add a BUSY Bar, updates, factory reset"></td>
+    <td><img src="docs/images/app-device.png" alt="Desk devices: connected at 10.0.4.20, latency, battery, firmware, display health"></td>
+    <td><img src="docs/images/app-nobar-device.png" alt="Desk devices in no-bar mode: Add a BUSY Bar, updates, factory reset"></td>
   </tr>
 </table>
 
@@ -434,7 +443,7 @@ is safe — the database lives in `userData` and an installer does not touch it.
 **This is the app's only outbound connection.** One request to
 `api.github.com` thirty seconds after launch and once a day after that, sending
 nothing but the request itself — no identifier, no usage data, no telemetry.
-Turn it off under **Device Diagnostics → Updates**, which stops the request being
+Turn it off under **Settings → General → Updates**, which stops the request being
 made rather than hiding its result.
 
 A check that fails says so. It never reports "up to date" when it could not find
@@ -628,7 +637,8 @@ builds it and runs Elgato's own validator on it, as CI does.
   `tests/jira-integration.test.ts`. Note the app itself cannot be pointed at it:
   `JiraProvider` forces `https://`, deliberately, so the test injects a fetch
   function instead. Use `curl` for manual pokes.
-- **Animation debugger** — in-app under **Device Diagnostics**:
+- **Animation debugger** — in-app under **Settings → Developer**, shown by
+  **Show developer tools** in General:
   marquee speeds, particle effects, LED colours and icon rasterisation, live.
 - **Hardware contract probe** — `pnpm probe:busybar` checks a real bar: it
   reports the firmware version, verifies the calls this app depends on, and says
@@ -685,7 +695,7 @@ never `docs/index.html`, and CI fails the build if the two have drifted.
 
 **Start here:**
 
-- [**User guide**](Documentation/USER-GUIDE.md) — first run, what each panel
+- [**User guide**](Documentation/USER-GUIDE.md) — first run, what each place
   does, the controls on the bar itself, and troubleshooting.
 - [**Architecture**](Documentation/ARCHITECTURE.md) — how the system is put
   together as shipped: process boundaries, the provider layer, the priority
