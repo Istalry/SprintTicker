@@ -89,6 +89,11 @@
   had been corrected first, or "Retry failed" pressed, or its first send
   refused for credentials, SprintTicker took it for one never sent and
   deleted it here only. It now goes by whether a send was ever attempted.
+- **A notification held back during lunch never showed.** One whose
+  priority makes it wait out Lunch or Away was meant to show when the
+  break ended; the bar kept the sandwich or the coffee cup instead, then
+  went to the clock, and the notification was never seen. It now shows as
+  the break ends, then the bar goes on to your session or the clock.
 
 ## 1.4.0 — 2026-11-04
 

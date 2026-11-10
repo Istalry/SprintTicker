@@ -400,11 +400,19 @@ export class DisplayRenderer {
     if (!renderFn) throw new ArgumentNullException('renderFn');
 
     if (this.priorityEngine) {
+      const engine = this.priorityEngine;
       // A screen that redraws on a timer must not be queued for replay: by the
       // time the lock frees, every queued frame is stale, and the tracker is
       // redrawn anyway when `releaseActiveLock` restores the context mode.
-      const queueCallback = options.queueOnPreempt === false ? undefined : renderFn;
-      const evalResult = this.priorityEngine.evaluateRequest(eventName, undefined, queueCallback);
+      // A replay is a grant like the one below, made later by the engine, and
+      // goes through the same steps. It used to replay `renderFn` bare: a
+      // banner queued during Lunch was drawn when Lunch let go, but with the
+      // sandwich never stopped its frame waited behind the scene, and the
+      // banner's end then cleared a panel that had never shown it.
+      const queueCallback = options.queueOnPreempt === false
+        ? undefined
+        : () => { this.drawGranted(engine, eventName, renderFn); };
+      const evalResult = engine.evaluateRequest(eventName, undefined, queueCallback);
       if (!evalResult || !evalResult.shouldRender) {
         // Suppressed or queued. `evaluateRequest` does not take the lock on
         // either path, so there is nothing to release here.
@@ -413,21 +421,27 @@ export class DisplayRenderer {
           ledColorHex: this.lastState.ledColorHex
         };
       }
-
-      // The lock is held by this event from here on. If the render throws, no
-      // other code path releases it, and the display stays frozen at this
-      // priority until the user presses BACK.
-      this.grantedScreens.set(eventName, renderFn);
-      this.endModeSceneFor(eventName);
-      try {
-        return renderFn();
-      } catch (err) {
-        this.priorityEngine.releaseActiveLock(eventName);
-        throw err;
-      }
+      return this.drawGranted(engine, eventName, renderFn);
     }
 
     return renderFn();
+  }
+
+  /** Draws a screen whose lock the engine has just granted, now or on a replay. */
+  private drawGranted(
+    engine: IPriorityPreemptionEngine, eventName: string, renderFn: () => DisplayPayload
+  ): DisplayPayload {
+    // The lock is held by this event from here on. If the render throws, no
+    // other code path releases it, and the display stays frozen at this
+    // priority until the user presses BACK.
+    this.grantedScreens.set(eventName, renderFn);
+    this.endModeSceneFor(eventName);
+    try {
+      return renderFn();
+    } catch (err) {
+      engine.releaseActiveLock(eventName);
+      throw err;
+    }
   }
 
   /**

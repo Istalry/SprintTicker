@@ -358,6 +358,39 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await play('lunchEnd', SETTLE_MS);
       expectSettledScreen(desk);
     });
+
+    it('LunchEnds_ABannerQueuedDuringIt_TheBannerThenTheIdleClock', async () => {
+      // The queued banner was replayed when Lunch let go of the display, but
+      // as its bare drawing, past what a granted screen does first: the
+      // sandwich was not stopped, the banner's frame waited behind it, and
+      // the banner's end cleared a panel that had never shown it.
+      await play('lunchStart', 2000, 'highBanner', 500);
+      expect(lock()).toBe('lunchModePriority');
+
+      await play('lunchEnd', 500);
+      expect(lock()).toBe('highNotificationPriority');
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
+      expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+
+      await advance(SETTLE_MS);
+      expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
+
+    it('AwayEnds_ABannerQueuedDuringIt_TheBannerThenTheIdleClock', async () => {
+      // The same replay, behind the coffee cup.
+      await play('awayStart', 2000, 'highBanner', 500);
+      expect(lock()).toBe('awayModePriority');
+
+      await play('awayEnd', 500);
+      expect(lock()).toBe('highNotificationPriority');
+      expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
+      expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
+
+      await advance(SETTLE_MS);
+      expect(lock()).toBeNull();
+      expectSettledScreen(desk);
+    });
   });
 
   /**
