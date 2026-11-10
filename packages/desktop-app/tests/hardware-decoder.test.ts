@@ -15,6 +15,9 @@ import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 
+/** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
+const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
+
 describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   let dbConn: DatabaseConnection;
   let driver: BusyBarDriver;
@@ -43,7 +46,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     taskRepo = new TaskRepository(dbConn);
     const settingsRepo = new SettingsRepository(dbConn);
 
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn));
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn), undefined, TAKE_UP_AT_ONCE);
     driver = new BusyBarDriver('10.0.4.20', true); // Mock Mode
     await driver.connect();
 

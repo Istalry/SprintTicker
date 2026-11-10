@@ -194,6 +194,7 @@ describe('undoable commands', () => {
 
   it('StopThenUndo_ReopensTheSameSession_NothingSentOrMoved', async () => {
     const sessionId = runA();
+    const statusBefore = tasks.getTaskById(A.id)?.status;
     stopUndoably(deps, renderer, 'Over', true);
     expect(engine.getCurrentSession()).toBeNull();
     expect(tasks.getTaskById(A.id)?.status).toBe('done');
@@ -205,7 +206,7 @@ describe('undoable commands', () => {
     expect(engine.getCurrentSession()?.status).toBe('TRACKING');
     expect(worklogs.getTodaysWorklogs()).toEqual([]);
     expect(queueRows()).toEqual([]);
-    expect(tasks.getTaskById(A.id)?.status).toBe('in_progress');
+    expect(tasks.getTaskById(A.id)?.status).toBe(statusBefore);
     await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS);
     expect(sent).toEqual([]);
     expect(moved).not.toContain('A:done');

@@ -12,6 +12,7 @@ import {
   DEFAULT_NOTIFICATION_TIMEOUT_SECONDS
 } from '../../src/shared/notification-defaults';
 import { normalizeScheduleSettings } from '../../src/shared/schedule-defaults';
+import { readFlowSetting, type FlowSettingKeyValue } from '../../src/shared/flow-settings';
 
 /**
  * A `window.electronAPI` for the renderer's tests: every member of the bridge,
@@ -117,6 +118,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     onWorklogsUpdated: subscribe('onWorklogsUpdated'),
     getUndo: vi.fn().mockResolvedValue(null),
     runUndo: vi.fn().mockResolvedValue(false),
+    getFlowSetting: vi.fn().mockImplementation((key: FlowSettingKeyValue) => Promise.resolve(readFlowSetting(key, undefined))),
+    saveFlowSetting: vi.fn().mockImplementation((key: FlowSettingKeyValue, value: unknown) => Promise.resolve(readFlowSetting(key, value))),
     onUndoChanged: subscribe('onUndoChanged'),
 
     getProviders: vi.fn().mockResolvedValue({

@@ -845,8 +845,14 @@
       your browser, on Jira or OpenProject, to comment, attach a picture or read
       the thread. Ad-hoc work and projects made in SprintTicker have no page there,
       so no arrow.</p>
-      <p>🙋 <strong>Starting an unassigned task assigns it to you</strong>, without asking, and then
-      moves it to In Progress as for your own. If someone took it in the meantime,
+      <p>⏱️ <strong>A glance moves nothing.</strong> Starting a task moves it to In Progress, and
+      takes it if nobody has it, only once you have timed it for two minutes --
+      paused time does not count. Started to look at it and stopped or switched
+      within those two minutes, it stays where it was on Jira or OpenProject. The
+      wait, or none, is in <strong>Settings, Account</strong> › <em>When I start a task</em>, and so is
+      turning it off: then starting a task never moves or takes it.</p>
+      <p>🙋 <strong>Starting an unassigned task assigns it to you</strong>, without asking, two
+      minutes in, and then moves it to In Progress as for your own. If someone took it in the meantime,
       it stays theirs -- SprintTicker never takes a task away from anyone -- but
       your session runs and its time is logged: a Windows toast says <em>TEAM-2 is
       taken</em>, the bar shows <strong>TAKEN</strong> and their name, and the panel and the mini
@@ -923,7 +929,10 @@
       <h4>🔌 Settings: Account</h4>
       <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
       me, everything open, or your own query (JQL for Jira, a v3 filter array for
-      OpenProject).</p>
+      OpenProject). <strong>When I start a task</strong> says how long a task is timed before it
+      moves to In Progress and becomes yours -- right away, after one, two (the
+      default) or five minutes -- or turns that off; it is hidden for a provider
+      that can do neither.</p>
       <p align="center">
         <img src="images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">
       </p><p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
@@ -2006,6 +2015,16 @@
       the window ends, another action is offered, or the app quits. Starting a
       session makes a held stop final, since undoing it would open a second one.
       The bar&#39;s own STOP and DROP are not undoable yet (P14).</p>
+      <p><strong>A start moves the task only once it was timed</strong> (S20). In Progress
+      (<code>takeUpTask</code>) and taking an unassigned task (<code>claimTask</code>) used to run in
+      <code>startTask</code>, so a task started to look at it was moved and assigned all the
+      same. Now the engine hands them to a <code>SideEffectScheduler</code>, which runs them
+      once the session&#39;s <code>elapsedSeconds</code> -- pauses left out -- reaches
+      <code>start_side_effects.afterSeconds</code> (120 by default, read at each tick, so
+      Settings applies at once). A stop, a discard or a switch cancels them; the
+      scheduler checks the session id on every tick, so a run never lands on the
+      next session. Turned off (<code>enabled: false</code>) nothing runs. A stop undone
+      before its time reschedules the rest.</p>
       <p><strong>An overlap holds the later entry.</strong> <code>getPendingQueueItems</code> skips the first
       send of a worklog that overlaps an earlier one (<code>shared/overlap.ts</code>: starts
       first, lower id on a tie, ends after the other begins, another session), and
@@ -2021,7 +2040,8 @@
       says so, the session reads <code>reassigned</code> without asking the provider, and the
       engine re-sends it once when the owner changes. A task nobody owned that
       someone took between the pick and the start reads the same way: the engine&#39;s
-      claim (<code>claimTask</code>, after the session is down) finds it taken, records it as
+      claim (<code>claimTask</code>, run by the <code>SideEffectScheduler</code> once the session has
+      been timed long enough) finds it taken, records it as
       theirs, and re-sends the session at once, with <code>taskOwnerName</code>; it also hands
       <code>onTaskClaim</code> a report, which <code>ProviderEventService</code> turns into a toast and a
       <strong>TAKEN</strong> banner. It used to be retired
@@ -2450,8 +2470,9 @@
       in place (<code>assignSessionToTask</code>): <code>retargetSession</code> rewrites the open row&#39;s
       project, task, key, title and <code>is_ad_hoc</code>, and sets <code>provider_id</code> -- the one
       write of it after the start, for a session that had none, so the time still
-      never follows the active provider. The task&#39;s start-time effects are the
-      start&#39;s own (<code>takeUpTask</code>). Assigned to the task it set aside, the
+      never follows the active provider. The task&#39;s start-time effects wait as a
+      start&#39;s do (<code>SideEffectScheduler</code>), counted from the session&#39;s start, so an
+      interruption assigned after two minutes moves its task at once. Assigned to the task it set aside, the
       interruption drops the set-aside: the question would restart that task. The
       session reports <code>unsorted</code> from its task row, never a copy of its own.
       After it ended, the same work is named from History or the wrap-up
@@ -2968,6 +2989,14 @@
       <tr>
       <td align="left"><code>undo:on-changed</code></td>
       <td align="left"><strong>Event</strong> -- an action was offered, undone or became final</td>
+      </tr>
+      <tr>
+      <td align="left"><code>flow-settings:get</code></td>
+      <td align="left">A setting of the redesigned flows (<code>shared/flow-settings.ts</code>: <code>start_side_effects</code>, <code>done_state_by_project</code>, <code>prompt_delays</code>, <code>shortcuts</code>, <code>close_to_tray</code>, <code>standup_task</code>, <code>provider_display_name</code>), read through its reader -- whole and valid, the default when unset. Another key throws</td>
+      </tr>
+      <tr>
+      <td align="left"><code>flow-settings:save</code></td>
+      <td align="left">Stores one, made whole and valid by the same reader, and answers what was stored</td>
       </tr>
       <tr>
       <td align="left"><code>session:on-updated</code></td>

@@ -46,6 +46,7 @@ import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
 import { DeviceConfigDTO, ScheduleSettingsDTO } from '../shared/dtos';
 import { normalizeScheduleSettings } from '../shared/schedule-defaults';
+import { FlowSettingKey, readStartSideEffects } from '../shared/flow-settings';
 import { UpdateChecker } from './updater/update-checker';
 import { LaunchAtLoginService, launchedHidden } from './services/launch-at-login';
 import { InterruptShortcutService } from './services/interrupt-shortcut-service';
@@ -244,7 +245,9 @@ async function startApplication(): Promise<void> {
     taskRepo,
     providerManager,
     projectRepo,
-    () => normalizeScheduleSettings(settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {})).splitPauseMinutes! * 60
+    () => normalizeScheduleSettings(settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {})).splitPauseMinutes! * 60,
+    // Read at each start and each tick, so Settings applies without a restart.
+    () => readStartSideEffects(settingsRepo.getSetting<unknown>(FlowSettingKey.START_SIDE_EFFECTS, null))
   );
   engine.initialize();
 

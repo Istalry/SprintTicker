@@ -324,8 +324,15 @@ your browser, on Jira or OpenProject, to comment, attach a picture or read
 the thread. Ad-hoc work and projects made in SprintTicker have no page there,
 so no arrow.
 
-🙋 **Starting an unassigned task assigns it to you**, without asking, and then
-moves it to In Progress as for your own. If someone took it in the meantime,
+⏱️ **A glance moves nothing.** Starting a task moves it to In Progress, and
+takes it if nobody has it, only once you have timed it for two minutes --
+paused time does not count. Started to look at it and stopped or switched
+within those two minutes, it stays where it was on Jira or OpenProject. The
+wait, or none, is in **Settings, Account** › *When I start a task*, and so is
+turning it off: then starting a task never moves or takes it.
+
+🙋 **Starting an unassigned task assigns it to you**, without asking, two
+minutes in, and then moves it to In Progress as for your own. If someone took it in the meantime,
 it stays theirs -- SprintTicker never takes a task away from anyone -- but
 your session runs and its time is logged: a Windows toast says *TEAM-2 is
 taken*, the bar shows **TAKEN** and their name, and the panel and the mini
@@ -420,7 +427,10 @@ sent to your provider.
 
 Credentials, the completion transitions, and which tasks to fetch — assigned to
 me, everything open, or your own query (JQL for Jira, a v3 filter array for
-OpenProject).
+OpenProject). **When I start a task** says how long a task is timed before it
+moves to In Progress and becomes yours -- right away, after one, two (the
+default) or five minutes -- or turns that off; it is hidden for a provider
+that can do neither.
 
 <p align="center">
   <img src="../docs/images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">

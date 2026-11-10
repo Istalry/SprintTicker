@@ -160,8 +160,8 @@ projects with nothing to do that the lists would show.
 
 👥 **Unassigned and teammates' tasks**: every task list also shows the open
 tasks nobody is assigned, and on request a teammate's task in progress, each
-marked as such, after your own work. Starting an unassigned task assigns it
-to you; one someone took meanwhile stays theirs, and you are told who has it.
+marked as such, after your own work. Timing an unassigned task for two minutes
+assigns it to you (a start to glance at a task moves nothing); one someone took meanwhile stays theirs, and you are told who has it.
 
 ↗️ **Open on the provider**: an arrow beside a task opens it on Jira or
 OpenProject in the browser, from the session, the task list or History.

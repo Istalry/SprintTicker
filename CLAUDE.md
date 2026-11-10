@@ -1213,6 +1213,14 @@ Touching is not overlapping, and two pieces of one session never overlap:
 into the next. Keep the TypeScript and the SQL equal -- `overlap.test.ts`
 runs both.
 
+**What a start does at the provider runs from the scheduler, never from
+`startTask`.** In Progress and taking an unassigned task wait for
+`start_side_effects.afterSeconds` of timing (`SideEffectScheduler`, owned by
+the engine): "a glance moves nothing". Anything new that a start does to the
+task at the provider goes there too, or a start to look at a task moves it
+again. The scheduler runs on the engine's tick and checks the session id, so
+a stop or switch in between cancels it.
+
 **A row sent before is looked for before it is sent again.** Neither Jira nor
 OpenProject takes an idempotency key, so a POST whose answer was lost -- a
 timeout, a dropped connection, the app closing mid-request -- may already be
@@ -1258,8 +1266,8 @@ Three things follow:
   `/myself`, OpenProject's `/api/v3/users/me` -- and throw without it, like
   any read the prune depends on.
 - **Taking a task reads before it writes, and never takes it from anyone.**
-  Starting an unassigned task assigns it (`assignToMe`, after the session is
-  down) only if the provider still says nobody has it; OpenProject's PATCH
+  Starting an unassigned task assigns it (`assignToMe`, once the session has
+  been timed long enough -- the scheduler above) only if the provider still says nobody has it; OpenProject's PATCH
   carries the `lockVersion` read, so a 409 means someone edited it -- read
   again and decide again, once. Measured on a real OpenProject 17.9
   instance on 2026-10-16, race included; Jira has no conditional write and reads just before the PUT. Taken meanwhile, the row is recorded as

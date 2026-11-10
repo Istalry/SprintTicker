@@ -7,6 +7,9 @@ import { ProjectRepository } from '../src/main/db/repositories/project-repositor
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 
+/** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
+const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
+
 /**
  * The lunch split stops the active session and starts a fresh one afterwards,
  * which is intended: two worklog entries either side of the break track time
@@ -41,7 +44,7 @@ describe('Ad-hoc task identity', () => {
       taskRepo,
       undefined,
       new ProjectRepository(dbConn)
-    );
+    , undefined, TAKE_UP_AT_ONCE);
   });
 
   afterEach(() => {
@@ -161,7 +164,7 @@ describe('Ad-hoc work stays local', () => {
       // Never answers, so a queued row stays visible to the assertions.
       logTimeForProvider: () => new Promise(() => undefined)
     } as unknown as ProviderManager;
-    engine = new TimeTrackingEngine(sessionRepo, new WorklogRepository(dbConn), taskRepo, manager, new ProjectRepository(dbConn));
+    engine = new TimeTrackingEngine(sessionRepo, new WorklogRepository(dbConn), taskRepo, manager, new ProjectRepository(dbConn), undefined, TAKE_UP_AT_ONCE);
     taskRepo.saveTask({ id: '10001', projectId: '10000', key: 'SCRUM-2', title: 'Tache 2', status: 'todo' });
   });
 

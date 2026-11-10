@@ -48,6 +48,8 @@ Everything else is a request/response `invoke`.
 | `undo:get` | The last action Undo can take back -- `{ kind, label, expiresAtUtc }`, `kind` one of `stop`, `discard`, `correct`, `move`, `delete`, `end-day` -- or null |
 | `undo:run` | Takes it back: a stop or discard reopens the session as it was, an edit puts the worklog and its queue rows back. `false` when its ten seconds are over, a row was sent meanwhile, or (for a stop) another session runs |
 | `undo:on-changed` | **Event** -- an action was offered, undone or became final |
+| `flow-settings:get` | A setting of the redesigned flows (`shared/flow-settings.ts`: `start_side_effects`, `done_state_by_project`, `prompt_delays`, `shortcuts`, `close_to_tray`, `standup_task`, `provider_display_name`), read through its reader -- whole and valid, the default when unset. Another key throws |
+| `flow-settings:save` | Stores one, made whole and valid by the same reader, and answers what was stored |
 | `session:on-updated` | **Event** — the session changed |
 
 ### Providers, projects and tasks

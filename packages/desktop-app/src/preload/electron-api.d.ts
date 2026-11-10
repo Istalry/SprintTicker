@@ -15,6 +15,7 @@ import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { DayShare } from '../shared/work-split';
 import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
+import type { FlowSettingKeyValue, FlowSettingValues } from '../shared/flow-settings';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -89,6 +90,10 @@ export interface IElectronAPI {
   /** Takes it back; false when its window ended or something was already sent. */
   runUndo: () => Promise<boolean>;
   onUndoChanged: (callback: (state: UndoStateDTO | null) => void) => () => void;
+  /** A flow setting (`shared/flow-settings.ts`), whole and valid. */
+  getFlowSetting: <K extends FlowSettingKeyValue>(key: K) => Promise<FlowSettingValues[K]>;
+  /** Stores one; answers the value as stored, after its reader made it valid. */
+  saveFlowSetting: <K extends FlowSettingKeyValue>(key: K, value: FlowSettingValues[K]) => Promise<FlowSettingValues[K]>;
 
   // Providers, Projects & Tasks
   getProviders: () => Promise<ProviderSettingsDTO>;

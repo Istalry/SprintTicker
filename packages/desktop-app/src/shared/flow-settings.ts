@@ -161,3 +161,39 @@ export function readCloseToTray(stored: unknown): boolean {
 export function readStandupTask(stored: unknown): string | null {
   return nonEmptyString(stored);
 }
+
+/** Each flow setting's value, as its reader answers it. */
+export interface FlowSettingValues {
+  provider_display_name: string | null;
+  start_side_effects: StartSideEffectsSetting;
+  done_state_by_project: DoneStateByProjectSetting;
+  prompt_delays: PromptDelaysSetting;
+  shortcuts: ShortcutsSetting;
+  close_to_tray: boolean;
+  standup_task: string | null;
+}
+
+export type FlowSettingKeyValue = keyof FlowSettingValues;
+
+const FLOW_READERS: { [K in FlowSettingKeyValue]: (stored: unknown) => FlowSettingValues[K] } = {
+  provider_display_name: readProviderDisplayName,
+  start_side_effects: readStartSideEffects,
+  done_state_by_project: readDoneStateByProject,
+  prompt_delays: readPromptDelays,
+  shortcuts: readShortcuts,
+  close_to_tray: readCloseToTray,
+  standup_task: readStandupTask
+};
+
+export function isFlowSettingKey(key: unknown): key is FlowSettingKeyValue {
+  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(FLOW_READERS, key);
+}
+
+/**
+ * Any flow setting through its own reader: what the window reads, and what
+ * a save stores -- so a value the window sends is stored whole and valid,
+ * the same as the reader would answer for it.
+ */
+export function readFlowSetting<K extends FlowSettingKeyValue>(key: K, stored: unknown): FlowSettingValues[K] {
+  return FLOW_READERS[key](stored);
+}

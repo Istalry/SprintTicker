@@ -62,6 +62,8 @@ const electronAPI: IElectronAPI = {
   // Undo
   getUndo: () => ipcRenderer.invoke(IPCChannel.GET_UNDO),
   runUndo: () => ipcRenderer.invoke(IPCChannel.RUN_UNDO),
+  getFlowSetting: (key) => ipcRenderer.invoke(IPCChannel.GET_FLOW_SETTING, key),
+  saveFlowSetting: (key, value) => ipcRenderer.invoke(IPCChannel.SAVE_FLOW_SETTING, key, value),
   onUndoChanged: (callback: (state: UndoStateDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, state: UndoStateDTO | null) => callback(state);
     ipcRenderer.on(IPCChannel.ON_UNDO_CHANGED, handler);

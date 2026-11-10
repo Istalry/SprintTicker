@@ -20,6 +20,8 @@ import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
 import { hasTaskPage } from '../../shared/task-page';
 import { checkAdHocTitle, interruptionTitle } from '../../shared/interruption';
 import { PREVIOUS_TASK_LOOKBACK, previousTaskId } from '../../shared/previous-task';
+import { DEFAULT_START_SIDE_EFFECTS, StartSideEffectsSetting } from '../../shared/flow-settings';
+import { SideEffectScheduler } from './side-effect-scheduler';
 
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
@@ -53,6 +55,8 @@ export class TimeTrackingEngine extends EventEmitter {
   private _syncWorker: OfflineSyncWorker;
   private _initialized = false;
   private _splitPauseSeconds: () => number;
+  private _sideEffects: SideEffectScheduler;
+  private _startSideEffects: () => StartSideEffectsSetting;
 
   /**
    * Wires dependencies only. Deliberately free of side effects: call
@@ -70,10 +74,14 @@ export class TimeTrackingEngine extends EventEmitter {
     providerManager?: ProviderManager,
     projectRepo?: ProjectRepository,
     /** The pause, in seconds, that ends a worklog: the user's setting, read at each stop. */
-    splitPauseSeconds: () => number = () => DEFAULT_SPLIT_PAUSE_MINUTES * 60
+    splitPauseSeconds: () => number = () => DEFAULT_SPLIT_PAUSE_MINUTES * 60,
+    /** When starting a task moves and assigns it (`start_side_effects`), read at each start. */
+    startSideEffects: () => StartSideEffectsSetting = () => DEFAULT_START_SIDE_EFFECTS
   ) {
     super();
     this._splitPauseSeconds = splitPauseSeconds;
+    this._sideEffects = new SideEffectScheduler(startSideEffects);
+    this._startSideEffects = startSideEffects;
     this._sessionRepo = sessionRepo || new SessionRepository();
     this._worklogRepo = worklogRepo || new WorklogRepository();
     this._taskRepo = taskRepo || new TaskRepository();
@@ -176,6 +184,7 @@ export class TimeTrackingEngine extends EventEmitter {
         // from the IPC handlers and the input decoder, not from this loop.
         this.emit('tick', active);
         this.notifyListeners();
+        this._sideEffects.onTick(active);
       } catch {
         this.stopTickLoop();
       }
@@ -433,9 +442,10 @@ export class TimeTrackingEngine extends EventEmitter {
     });
     retireTasks(this._taskRepo.getConnection().getDb(), 'id = ?', [open.taskId]);
     this._currentSession = this._sessionRepo.getActiveSession();
-    const claimable = this.takeUpTask(task, providerId);
     this.notifyListeners();
-    if (claimable) this.claimTask(this._currentSession!, providerId);
+    // After two minutes of timing, counted from the interruption's start:
+    // one already that long takes the task up at once.
+    this.scheduleTakeUp(this.getCurrentSession()!, task.id, providerId);
     return this.getCurrentSession()!;
   }
 
@@ -483,7 +493,9 @@ export class TimeTrackingEngine extends EventEmitter {
     // created a different row, so every ad-hoc session pointed at a task that
     // was never stored, and every start orphaned the row it did create.
     let effectiveTaskId = taskId;
-    let claimable = false;
+    // A provider's task is taken up -- In Progress, assigned -- only after
+    // the session has been timed a while (SideEffectScheduler), not here.
+    let takeUp: TaskDTO | null = null;
 
     if (isAdHoc && customTitle) {
       // Resuming an ad-hoc task -- after the lunch split, for instance -- must
@@ -524,7 +536,7 @@ export class TimeTrackingEngine extends EventEmitter {
             this._taskRepo.updateTask({ ...existingTask, status: 'in_progress' });
           }
         } else {
-          claimable = this.takeUpTask(existingTask, this.providerOfProject(finalProjectId));
+          takeUp = existingTask;
         }
       }
     }
@@ -554,7 +566,7 @@ export class TimeTrackingEngine extends EventEmitter {
     this.startTickLoop();
     this.notifyListeners();
 
-    if (claimable) this.claimTask(this._currentSession!, providerId);
+    if (takeUp) this.scheduleTakeUp(this._currentSession!, takeUp.id, providerId);
 
     return this._currentSession!;
   }
@@ -573,6 +585,22 @@ export class TimeTrackingEngine extends EventEmitter {
    * and is tracked without being moved; one nobody owns is not moved before
    * it is taken.
    */
+  /**
+   * Waits to take the session's task up -- `takeUpTask`, then `claimTask`
+   * for one nobody owns -- until it has been timed long enough
+   * (`SideEffectScheduler`). Read again when it runs: the sync may have
+   * reassigned or archived the task meanwhile.
+   */
+  private scheduleTakeUp(session: ActiveSessionDTO, taskId: string, providerId: string | undefined): void {
+    this._sideEffects.schedule(session, () => {
+      const task = this._taskRepo.getTaskById(taskId);
+      const open = this._currentSession;
+      if (!task || !open || open.sessionId !== session.sessionId || open.taskId !== taskId) return;
+      const claimable = this.takeUpTask(task, providerId);
+      if (claimable) this.claimTask(open, providerId);
+    });
+  }
+
   private takeUpTask(task: TaskDTO, providerId: string | undefined): boolean {
     const listed = !this._taskRepo.isArchived(task.id) && !this._syncWorker.isUnlisted(task.id);
     const stillListed = listed && task.ownership === undefined;
@@ -945,6 +973,8 @@ export class TimeTrackingEngine extends EventEmitter {
     if (!active) return { success: false, discardedSeconds: 0 };
 
     this.stopTickLoop();
+    // A glance moves nothing: what waited for the timing is dropped.
+    this._sideEffects.cancel();
     this._sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
     console.log(
       `[TimeTrackingEngine] Session ${active.sessionId} on ${active.taskKey} discarded: ` +
@@ -978,7 +1008,14 @@ export class TimeTrackingEngine extends EventEmitter {
     this._currentSession = this._sessionRepo.getActiveSession();
     if (this._currentSession) this.startTickLoop();
     this.notifyListeners();
-    return this.getCurrentSession();
+    // A stop inside the wait cancelled the take-up; the session runs on, so
+    // it waits again. One timed past the wait was taken up already.
+    const reopened = this.getCurrentSession();
+    if (reopened && !reopened.isAdHoc && !isAdHocTaskId(reopened.taskId)
+      && reopened.elapsedSeconds < this._startSideEffects().afterSeconds) {
+      this.scheduleTakeUp(reopened, reopened.taskId, reopened.providerId);
+    }
+    return reopened;
   }
 
   /**
@@ -997,6 +1034,8 @@ export class TimeTrackingEngine extends EventEmitter {
     options: StopOptions = {}
   ): { success: boolean; loggedSeconds: number } {
     this.stopTickLoop();
+    // A glance moves nothing: what waited for the timing is dropped.
+    this._sideEffects.cancel();
 
     // The id as well as the flag: a session started before ad-hoc was read
     // from the id may carry `isAdHoc = false` on an ad-hoc row.

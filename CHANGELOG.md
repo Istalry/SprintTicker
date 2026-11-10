@@ -4,6 +4,10 @@
 
 ### Added
 
+- **A glance moves nothing.** Starting a task moves it to In Progress, and
+  takes it if nobody has it, only after two minutes of timing; stopped or
+  switched sooner, it stays where it was. **Settings, Account** › *When I
+  start a task* sets the wait (none, 1, 2 or 5 minutes) or turns it off.
 - **Undo, for ten seconds.** Stop, Done, Discard, and correcting, moving or
   deleting a worklog wait ten seconds before anything reaches Jira or
   OpenProject; a bar at the foot of the window, and the mini timer, offer

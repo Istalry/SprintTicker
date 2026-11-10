@@ -26,6 +26,10 @@ export enum IPCChannel {
   /** Takes it back; false when its window ended or something was sent. */
   RUN_UNDO = 'undo:run',
   ON_UNDO_CHANGED = 'undo:on-changed',
+  /** A flow setting (`shared/flow-settings.ts`), read through its reader. */
+  GET_FLOW_SETTING = 'flow-settings:get',
+  /** Stores one, made whole and valid by the same reader; answers what was stored. */
+  SAVE_FLOW_SETTING = 'flow-settings:save',
   /** The task to switch back to (`shared/previous-task.ts`), or null. */
   GET_PREVIOUS_TASK = 'session:get-previous',
 

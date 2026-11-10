@@ -580,6 +580,27 @@ describe('IPC handlers', () => {
     });
   });
 
+  describe('flow settings', () => {
+    const save = (key: unknown, value: unknown) => handler(IPCChannel.SAVE_FLOW_SETTING)({}, key, value);
+
+    it('Unset_AnswersTheDefault', async () => {
+      expect(await invoke(IPCChannel.GET_FLOW_SETTING, 'start_side_effects')).toEqual({ enabled: true, afterSeconds: 120 });
+    });
+
+    it('Save_StoresTheValueWholeAndValid', async () => {
+      // A partial value lands whole; an out-of-range number takes the default.
+      expect(await save('start_side_effects', { enabled: false, afterSeconds: -5 })).toEqual({ enabled: false, afterSeconds: 120 });
+
+      expect(settingsRepo.getSetting('start_side_effects', null)).toEqual({ enabled: false, afterSeconds: 120 });
+      expect(await invoke(IPCChannel.GET_FLOW_SETTING, 'start_side_effects')).toEqual({ enabled: false, afterSeconds: 120 });
+    });
+
+    it.each([['nonsense'], [''], [42]])('Key_%s_Throws', async key => {
+      await expect(invoke(IPCChannel.GET_FLOW_SETTING, key)).rejects.toThrow(/flow setting/);
+      await expect(save(key, true)).rejects.toThrow(/flow setting/);
+    });
+  });
+
   describe('stars, recent and previous task', () => {
     beforeEach(() => {
       taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'One', status: 'todo' });

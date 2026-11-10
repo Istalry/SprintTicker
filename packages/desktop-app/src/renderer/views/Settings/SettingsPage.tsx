@@ -7,6 +7,7 @@ import { NotificationSettingsView } from '../Notifications/NotificationSettingsV
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
 import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
 import { InterruptShortcutCard } from '../../components/InterruptShortcutCard';
+import { StartSideEffectsCard } from '../../components/StartSideEffectsCard';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
 import { BarRemotePad } from '../../components/BarRemotePad';
 import {
@@ -114,7 +115,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange
         {current === 'general' && (
           <GeneralGroup showDeveloper={showDeveloper} onShowDeveloper={setShowDeveloper} onRunSetup={onRunSetup} />
         )}
-        {current === 'account' && <SettingsView hasBar={hasBar} />}
+        {current === 'account' && (
+          <div className="space-y-6">
+            <StartSideEffectsCard />
+            <SettingsView hasBar={hasBar} />
+          </div>
+        )}
         {current === 'workday' && <CeremoniesView />}
         {current === 'devices' && <DevicesGroup hasBar={hasBar} />}
         {current === 'data' && <DeviceDiagnosticsView part="data" />}

@@ -8,6 +8,9 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
 
+/** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
+const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
+
 /**
  * A session's time goes back to the provider its task came from.
  *
@@ -63,7 +66,7 @@ describe('the provider a session belongs to', () => {
       },
       logTimeForProvider: () => new Promise(() => undefined)
     } as unknown as ProviderManager;
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, manager, projectRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, manager, projectRepo, undefined, TAKE_UP_AT_ONCE);
     project('JIRA', 'jira');
     project('OP', 'openproject');
   });

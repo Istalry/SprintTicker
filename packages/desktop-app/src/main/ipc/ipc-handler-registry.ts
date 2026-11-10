@@ -3,6 +3,7 @@ import { WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
+import { isFlowSettingKey, readFlowSetting } from '../../shared/flow-settings';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { MAX_SYNC_ATTEMPTS } from '../sync/sync-constants';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
@@ -277,6 +278,18 @@ export class IPCHandlerRegistry {
       return this.sessionEnding.discard();
     });
 
+    ipcMain.handle(IPCChannel.GET_FLOW_SETTING, async (_e, key: unknown) => {
+      if (!isFlowSettingKey(key)) throw new ArgumentException(`Not a flow setting: ${String(key)}.`, 'key');
+      return readFlowSetting(key, this.settingsRepo.getSetting<unknown>(key, null));
+    });
+    ipcMain.handle(IPCChannel.SAVE_FLOW_SETTING, async (_e, key: unknown, value: unknown) => {
+      if (!isFlowSettingKey(key)) throw new ArgumentException(`Not a flow setting: ${String(key)}.`, 'key');
+      // Stored as its reader answers it, so a partial or wrong value from the
+      // window lands whole and valid, never as the shape it was sent in.
+      const stored = readFlowSetting(key, value);
+      this.settingsRepo.setSetting(key, stored);
+      return stored;
+    });
     ipcMain.handle(IPCChannel.GET_UNDO, async (): Promise<UndoStateDTO | null> => this.undo?.current() ?? null);
     ipcMain.handle(IPCChannel.RUN_UNDO, async (): Promise<boolean> => {
       const undone = this.undo?.run() ?? false;

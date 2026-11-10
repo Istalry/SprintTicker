@@ -284,6 +284,17 @@ the window ends, another action is offered, or the app quits. Starting a
 session makes a held stop final, since undoing it would open a second one.
 The bar's own STOP and DROP are not undoable yet (P14).
 
+**A start moves the task only once it was timed** (S20). In Progress
+(`takeUpTask`) and taking an unassigned task (`claimTask`) used to run in
+`startTask`, so a task started to look at it was moved and assigned all the
+same. Now the engine hands them to a `SideEffectScheduler`, which runs them
+once the session's `elapsedSeconds` -- pauses left out -- reaches
+`start_side_effects.afterSeconds` (120 by default, read at each tick, so
+Settings applies at once). A stop, a discard or a switch cancels them; the
+scheduler checks the session id on every tick, so a run never lands on the
+next session. Turned off (`enabled: false`) nothing runs. A stop undone
+before its time reschedules the rest.
+
 **An overlap holds the later entry.** `getPendingQueueItems` skips the first
 send of a worklog that overlaps an earlier one (`shared/overlap.ts`: starts
 first, lower id on a tie, ends after the other begins, another session), and
@@ -300,7 +311,8 @@ while it stays in progress is still found, as a teammate's: its ownership
 says so, the session reads `reassigned` without asking the provider, and the
 engine re-sends it once when the owner changes. A task nobody owned that
 someone took between the pick and the start reads the same way: the engine's
-claim (`claimTask`, after the session is down) finds it taken, records it as
+claim (`claimTask`, run by the `SideEffectScheduler` once the session has
+been timed long enough) finds it taken, records it as
 theirs, and re-sends the session at once, with `taskOwnerName`; it also hands
 `onTaskClaim` a report, which `ProviderEventService` turns into a toast and a
 **TAKEN** banner. It used to be retired
@@ -667,8 +679,9 @@ row and the session's copy together, one notification) or assigned to a task
 in place (`assignSessionToTask`): `retargetSession` rewrites the open row's
 project, task, key, title and `is_ad_hoc`, and sets `provider_id` -- the one
 write of it after the start, for a session that had none, so the time still
-never follows the active provider. The task's start-time effects are the
-start's own (`takeUpTask`). Assigned to the task it set aside, the
+never follows the active provider. The task's start-time effects wait as a
+start's do (`SideEffectScheduler`), counted from the session's start, so an
+interruption assigned after two minutes moves its task at once. Assigned to the task it set aside, the
 interruption drops the set-aside: the question would restart that task. The
 session reports `unsorted` from its task row, never a copy of its own.
 After it ended, the same work is named from History or the wrap-up

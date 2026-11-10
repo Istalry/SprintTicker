@@ -9,6 +9,9 @@ import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
 import type { TaskClaim, TaskClaimReport } from '../src/shared/task-claim';
 
+/** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
+const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
+
 /**
  * A task reassigned, closed or moved on the provider while it is tracked.
  *
@@ -53,7 +56,7 @@ describe('A tracked task the provider stops listing', () => {
       },
       logTimeForProvider: () => new Promise(() => undefined)
     } as unknown as ProviderManager;
-    engine = new TimeTrackingEngine(new SessionRepository(dbConn), new WorklogRepository(dbConn), taskRepo, manager, projectRepo);
+    engine = new TimeTrackingEngine(new SessionRepository(dbConn), new WorklogRepository(dbConn), taskRepo, manager, projectRepo, undefined, TAKE_UP_AT_ONCE);
     await sync();
   });
 
@@ -392,7 +395,7 @@ describe('Tasks that are not the user\'s', () => {
       },
       logTimeForProvider: () => new Promise(() => undefined)
     } as unknown as ProviderManager;
-    engine = new TimeTrackingEngine(new SessionRepository(dbConn), new WorklogRepository(dbConn), taskRepo, manager, new ProjectRepository(dbConn));
+    engine = new TimeTrackingEngine(new SessionRepository(dbConn), new WorklogRepository(dbConn), taskRepo, manager, new ProjectRepository(dbConn), undefined, TAKE_UP_AT_ONCE);
     await sync();
   });
 

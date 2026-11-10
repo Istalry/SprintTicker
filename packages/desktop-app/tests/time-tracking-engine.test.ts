@@ -8,6 +8,9 @@ import { ProjectRepository } from '../src/main/db/repositories/project-repositor
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { UNDO_WINDOW_MS } from '../src/main/sync/sync-constants';
 
+/** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
+const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
+
 describe('TimeTrackingEngine Unit Tests', () => {
   let dbConn: DatabaseConnection;
   let sessionRepo: SessionRepository;
@@ -24,7 +27,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
     taskRepo = new TaskRepository(dbConn);
     projectRepo = new ProjectRepository(dbConn);
 
-    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo);
+    engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo, undefined, TAKE_UP_AT_ONCE);
   });
 
   afterEach(() => {
@@ -195,7 +198,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
         }
       } as unknown as ProviderManager;
 
-      stopEngine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, manager, projectRepo);
+      stopEngine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, manager, projectRepo, undefined, TAKE_UP_AT_ONCE);
       taskRepo.saveTask({
         id: '10001',
         projectId: '10000',
@@ -403,7 +406,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
     });
 
     // Act
-    const newEngine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo);
+    const newEngine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo, undefined, TAKE_UP_AT_ONCE);
     newEngine.initialize();
     const restored = newEngine.getCurrentSession();
     newEngine.dispose();
@@ -517,7 +520,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
     engine.pauseSession();
 
     // Re-create engine instance to simulate app restart (uses same DB)
-    const engine2 = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo);
+    const engine2 = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo, undefined, TAKE_UP_AT_ONCE);
 
     // Act
     const reconciled = engine2.reconcileStartupState();
@@ -529,7 +532,7 @@ describe('TimeTrackingEngine Unit Tests', () => {
 
   it('ReconcileStartupState_NoActiveSession_ReturnsNull', () => {
     // Arrange: no active session
-    const engine2 = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo);
+    const engine2 = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, projectRepo, undefined, TAKE_UP_AT_ONCE);
 
     // Act
     const result = engine2.reconcileStartupState();
