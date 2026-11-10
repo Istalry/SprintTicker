@@ -205,6 +205,7 @@ From `CLAUDE.md`, restated where they bite here:
 | P13 | Stream Deck plugin 0.6.0 | P6, P8 | M | 1.7 |
 | P14 | The bar | P6, P8, D4, D5 | L | 1.7 |
 | P15 | Documents, pictures, release | each phase | M | each |
+| P16 | Tasks and Settings, rebuilt as their screens | P3, P4, P5, P7 | L | 1.7 |
 
 Phases that can run side by side, in separate worktrees, once their
 dependencies have landed:
@@ -212,7 +213,8 @@ dependencies have landed:
 - P2 and P4;
 - P7 and P5;
 - P9 with P10–P12;
-- P13 and P14.
+- P13 and P14;
+- P16 with P9–P12 (it owns the Tasks view and Settings' cards).
 
 Two writers never touch the same files: P3 owns `App.tsx` and the views'
 layout, P6 owns `time-tracking-engine.ts`, and P14 owns `input-decoder.ts`
@@ -572,8 +574,9 @@ bridge and the mock.
   could not register (`chordProblem`) reads as the default. The phases
   that use a key wire it; P6, which builds `ShortcutService`, also
   decides how the existing `interrupt_shortcut` carries over.
-- **Waiting for the user:** `pnpm db:check-migration`, from an ordinary
-  terminal, on a copy of the real database.
+- `pnpm db:check-migration` on a copy of the real database, run by the
+  user from an ordinary terminal: schema 13 to 14, 20 worklogs and 7 queue
+  rows kept, nothing orphaned (2026-11-10).
 
 ---
 
@@ -1308,6 +1311,64 @@ draw changes), `CLAUDE.md` §4 (the new menus and their lock rules).
 
 ---
 
+## 19b. P16 -- Tasks and Settings, rebuilt as their screens
+
+Added 2026-11-10, after the pictures of P2-P5 were compared with the
+screens: P3 moved every card into Settings unchanged ("none is
+rewritten"), and no phase rebuilt them, nor the Tasks place. Both still show
+the old panels -- "TASK PROVIDERS & ACCOUNT CONFIGURATION", "AGILE
+CEREMONIES…" in capitals, raw forms, and the "Project & Task Manager".
+
+**Goal:** S13 and S19-S24 as drawn: a page of rows, each a name, one
+sentence and a control at the right, in the words of the glossary.
+
+### 19b.1 Tasks (S13)
+
+- **Projects**, a column: a search box, *Starred* then *All · N* with
+  "Hide empty", each with its open count, and "+ A project of my own".
+  A project's ⋯ holds Import, Rename and Delete; nothing is hover-only.
+- **Tasks**, a table: ☆, Key, Title, the provider's status, Who (me, a
+  name, nobody), and Stop / Switch. Above it a search, the pills *mine*,
+  *unassigned*, *teammates'* (the task visibility of today) and an
+  *Open ▾* state filter; "+ Task of my own"; a project's ⋯ again.
+- Only a task of the user's own can be deleted, and deleting asks first.
+- Stars are P4's (`tasks:star`); the order is `shared/task-order.ts`.
+
+### 19b.2 Settings, one row per setting (S19-S24)
+
+- **A `SettingRow`** (name, sentence, control; a fold for "Advanced") is
+  the one layout; the old cards' titles and their "Changes save
+  automatically" go.
+- **General** (S19): Start with Windows, the shortcuts (P6's four chords),
+  Close to tray (P12), Check for updates, Set up again, Show developer
+  tools.
+- **Account** (S20): the refused-credentials banner with "Save and send";
+  the account line (site, user, projects, tasks, last refresh; Refresh
+  now, Change account); Tasks to fetch; When I start a task (P5c); When I
+  mark a task done (P5d's per-project list behind "N projects differ…");
+  the provider's notifications (Choose…); *Advanced*: custom query, the key
+  for tasks of my own, entries waiting to send.
+- **My workday** (S21): working days, the stand-up (time, task, Show me),
+  lunch, end of day, the week's close, the four prompt delays
+  (`prompt_delays`, P8), a timer left overnight, the long pause that starts
+  a new entry.
+- **Desk devices** (S22): the bar's line (connected, firmware, battery,
+  brightness; Use without a bar), task key colour, when nothing runs,
+  Windows notifications (Grant access, Choose apps…), what the bar shows
+  first (Open…), *Connection* folded, and the Stream Deck's line.
+- **Data** (S23) and **Developer** (S24) as drawn.
+- Every setting keeps its search entry (`settings-groups.ts`) and its
+  storage: this is a view, not a migration.
+
+**Tests:** a renderer test per group that every row of its screen is there
+and saves through the bridge; `settings-groups.test.ts` still finds every
+setting; the Tasks view's filters, stars and delete-asks.
+
+**Docs:** `USER-GUIDE.md`'s Tasks and Settings sections; the pictures
+(`pnpm docs:images`); `CHANGELOG.md`.
+
+---
+
 ## 20. P15 -- Documents, pictures, release
 
 Each phase updates its documents as it lands (§3). This phase does what is
@@ -1390,7 +1451,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | `4adb117` (2026-11-10) |
 | P2 | done; pictures remade after P5 | `ce36fe4` (2026-11-10) |
 | P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures remade after P5 | `1e3481e` (2026-11-10) |
-| P4 | done; `pnpm db:check-migration` passed on a 7 Sep copy (schema 3 to 14), the newest the agent's shell can see | `e9e2e38` (2026-11-10) |
+| P4 | done; `pnpm db:check-migration` passed on the real database (13 to 14: 20 worklogs, 7 queue rows, nothing lost), run by the user | `e9e2e38` (2026-11-10) |
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | not started | |
 | P7 | not started | |
@@ -1402,3 +1463,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | not started | |
 | P14 | not started | |
 | P15 | not started | |
+| P16 | not started; added 2026-11-10 | |
