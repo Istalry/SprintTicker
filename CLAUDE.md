@@ -1123,8 +1123,8 @@ session, no second of tracked time lost, every orphaned task id named, at most
 one open session, no foreign key broken, no row of the provider queue
 lost. The rules are
 `src/main/db/migration-check.ts`, tested, and hold any future migration to the
-same standard; the script only copies and prints. Migrations 5, 6, 8, 9, 10, 11
-and 12 were checked this way. Ask the user to run it from an ordinary terminal and paste
+same standard; the script only copies and prints. Migrations 5, 6, 8, 9, 10, 11,
+12, 14 and 15 were checked this way. Ask the user to run it from an ordinary terminal and paste
 the output -- for the reason below, its answer from an agent's shell describes
 a file that may not be theirs.
 
