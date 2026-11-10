@@ -26,6 +26,8 @@ import { WorklogRepository } from '../src/main/db/repositories/worklog-repositor
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
+import { ProviderManager } from '../src/main/providers/provider-manager';
+import { selectableProviders } from '../src/shared/provider-names';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
@@ -579,6 +581,32 @@ describe('IPC handlers', () => {
   });
 
   describe('provider settings', () => {
+    it('GetProviders_List_NamesEachProviderAsTheAppWritesIt', async () => {
+      const read = (await invoke(IPCChannel.GET_PROVIDERS)) as { providers: unknown };
+
+      expect(read.providers).toEqual(selectableProviders());
+    });
+
+    it('GetProviderCapabilities_NoProvidersWired_ClaimsNothing', async () => {
+      settingsRepo.setSetting(ProviderSettingKey.ACTIVE_PROVIDER_ID, 'jira');
+
+      expect(await invoke(IPCChannel.GET_PROVIDER_CAPABILITIES)).toEqual({
+        providerId: 'jira',
+        canAssign: false,
+        canTransition: false,
+        canFindWorklog: false,
+        canFetchByKey: false,
+        hasHolidays: false
+      });
+    });
+
+    it('GetProviderCapabilities_ProvidersWired_AreTheActiveOnes', async () => {
+      settingsRepo.setSetting(ProviderSettingKey.ACTIVE_PROVIDER_ID, 'adhoc');
+      build({ providerManager: new ProviderManager(settingsRepo) });
+
+      expect(await invoke(IPCChannel.GET_PROVIDER_CAPABILITIES)).toMatchObject({ providerId: 'adhoc', canTransition: false });
+    });
+
     it('SetActiveProvider_Secrets_AreReadBackButNotStoredInTheClear', async () => {
       await invoke(IPCChannel.SET_ACTIVE_PROVIDER, { providerId: 'jira', jiraApiToken: 'tok-123', opApiKey: 'key-456' });
 

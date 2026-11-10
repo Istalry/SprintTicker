@@ -115,7 +115,8 @@ describe('Work History corrections', () => {
     const bridge = await open();
 
     click(/Delete MG-12/);
-    expect(screen.getByRole('alertdialog').textContent).toMatch(/also deleted in Jira or OpenProject/);
+    // The provider's name, once main has said which provider is active.
+    await waitFor(() => expect(screen.getByRole('alertdialog').textContent).toMatch(/also deleted in OpenProject/));
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
 
     expect(bridge.api.deleteWorklog).toHaveBeenCalledWith('w1');

@@ -6,8 +6,10 @@ import { ScheduleSettingsDTO } from '../../../shared/dtos';
 import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings } from '../../../shared/schedule-defaults';
 import { DEFAULT_WORKING_DAYS, WEEKDAYS_MONDAY_FIRST, checkWorkingDays } from '../../../shared/working-days';
 import { DEFAULT_SPLIT_PAUSE_MINUTES, MAX_SPLIT_PAUSE_MINUTES, checkSplitPauseMinutes } from '../../../shared/work-split';
+import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 
 export const CeremoniesView: React.FC = () => {
+  const { capabilities, providerName } = useProviderCapabilities();
   const [standupTime, setStandupTime] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.standupTime);
   const [lunchStart, setLunchStart] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.lunchStartTime);
   const [lunchEnd, setLunchEnd] = useState<string>('13:00');
@@ -116,8 +118,9 @@ export const CeremoniesView: React.FC = () => {
           <h3 id="working-days">Working Days</h3>
         </div>
         <p className="text-xs text-text-secondary">
-          The stand-up, lunch and the wrap-up happen on these days only, and never on a holiday your OpenProject
-          instance lists. The wrap-up of the last one in a week closes the week.
+          The stand-up, lunch and the wrap-up happen on these days only
+          {capabilities?.hasHolidays ? `, and never on a holiday ${providerName} lists` : ''}. The wrap-up of the
+          last one in a week closes the week.
         </p>
         <div role="group" aria-labelledby="working-days" className="flex flex-wrap gap-2">
           {WEEKDAYS_MONDAY_FIRST.map(({ day, label }) => {

@@ -42,14 +42,14 @@ Developing without a bar but wanting to see what it would show? Run
 `pnpm dev:mock` (or launch with `--mock-hardware`) and the on-screen emulator
 shows what the device would display.
 
-**2️⃣ Task provider.** Choose OpenProject, Jira Cloud or ad-hoc, and enter the
-credentials for the one you picked:
+**2️⃣ Task provider.** Choose OpenProject, Jira or *This computer*, and enter
+the credentials for the one you picked:
 
 | Provider | What it needs |
 | :--- | :--- |
 | 🔷 OpenProject | Domain URL, and an API key from *My Account → Access tokens* |
 | 🟦 Jira Cloud | Site URL, your account email, and a token from `id.atlassian.com` |
-| 📝 Ad-hoc | Nothing — local tasks only |
+| 📝 This computer | Nothing — local tasks only, and their time stays here |
 
 You can leave credentials blank and add them later in **Task Providers**. Until
 a remote provider is configured the app runs on local ad-hoc tasks. Completing
@@ -1066,7 +1066,7 @@ the device accepts printable ASCII only. Emoji do not render.
 - **On Jira, is it an issue you follow?** Only issues you are assigned,
   reported or watch are read, and nothing you changed yourself is reported.
 - **The log says why a check failed** -- `[ProviderEvents] OpenProject events
-  unavailable: ...`, or `Jira Cloud events` -- and a refused toast as
+  unavailable: ...`, or `Jira events` -- and a refused toast as
   `[Toasts] Windows did not show a notification`.
 
 ---

@@ -1,19 +1,25 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
+import { ProviderId, providerDisplayName } from '../../shared/provider-names';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/provider-settings';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
+
+const DEFAULT_FALLBACK_KEY = PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY];
 
 /**
  * Local task provider adapter mapping custom ad-hoc entries to fallback ticket ID (MISC-1).
  */
 export class AdHocProvider implements ITaskProvider {
-  public readonly providerId: string = 'adhoc';
-  public readonly providerName: string = 'Ad-Hoc / Custom Fallback';
+  public readonly providerId: string = ProviderId.ADHOC;
+  public readonly providerName: string = providerDisplayName(ProviderId.ADHOC);
+  /** No remote, so no status to move. */
+  public readonly movesTaskStatus: boolean = false;
   /** Nothing leaves the machine, so the only floor is a whole second. */
   public readonly minimumLoggableSeconds: number = 1;
-  private fallbackKey: string = 'MISC-1';
+  private fallbackKey: string = DEFAULT_FALLBACK_KEY;
 
   public async initialize(credentials: Record<string, string>): Promise<boolean> {
-    this.fallbackKey = credentials.fallbackKey || 'MISC-1';
+    this.fallbackKey = credentials.fallbackKey || DEFAULT_FALLBACK_KEY;
     return true;
   }
 

@@ -10,7 +10,8 @@ import { InlineRename } from '../../components/InlineRename';
 import { TaskSelectionModal } from '../../components/TaskSelectionModal';
 import { countOf, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../../utils/formatters';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
-import { CLOSED_WEEK_WARNING, isInClosedWeek } from '../../../shared/closed-week';
+import { closedWeekWarning, isInClosedWeek } from '../../../shared/closed-week';
+import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 
 /** One interruption still to sort: its task, and the time logged on it. */
 interface ToSort {
@@ -89,6 +90,7 @@ export const WorklogHistoryView: React.FC = () => {
   const [askingMove, setAskingMove] = useState<{ worklogIds: string[]; label: string } | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
+  const { providerName } = useProviderCapabilities();
   const toSort = groupToSort(unsorted);
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
@@ -415,7 +417,7 @@ export const WorklogHistoryView: React.FC = () => {
           <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
             <ConfirmPanel
               title="Move time from a closed week?"
-              message={<><strong className="text-white">{askingMove.label}</strong>. {CLOSED_WEEK_WARNING}</>}
+              message={<><strong className="text-white">{askingMove.label}</strong>. {closedWeekWarning(providerName)}</>}
               confirmLabel="Choose a task"
               cancelLabel="Back"
               onConfirm={() => { setMoving(askingMove); setAskingMove(null); }}

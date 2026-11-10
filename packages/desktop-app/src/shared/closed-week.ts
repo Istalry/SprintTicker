@@ -19,6 +19,7 @@ export function isInClosedWeek(startedAtUtc: string, lastWeekClosed: string | nu
   return weekStartKey(localDateKey(start)) <= lastWeekClosed;
 }
 
-/** What the window says before changing time in a closed week. */
-export const CLOSED_WEEK_WARNING =
-  'This is time from a week already closed. If its timesheet is in, or approved, this changes it -- and a locked one may refuse the change at Jira or OpenProject.';
+/** What the window says before changing time in a closed week, naming the provider (`providerDisplayName`). */
+export function closedWeekWarning(providerName: string): string {
+  return `This is time from a week already closed. If its timesheet is in, or approved, this changes it -- and a locked one may refuse the change at ${providerName}.`;
+}

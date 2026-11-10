@@ -1,4 +1,5 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
+import { ProviderId, providerDisplayName } from '../../shared/provider-names';
 import { ProjectDTO, TaskDTO, OpStatusDTO, ArgumentException } from '../../shared/dtos';
 import { ProviderEventDTO, ProviderEventKind } from '../../shared/provider-events';
 import { priorityRankFromName } from './task-priority';
@@ -35,8 +36,8 @@ const OPENPROJECT_REASON_KINDS: Record<string, ProviderEventKind | undefined> = 
  * Concrete task provider adapter for OpenProject API v3.
  */
 export class OpenProjectProvider implements ITaskProvider {
-  public readonly providerId: string = 'openproject';
-  public readonly providerName: string = 'OpenProject';
+  public readonly providerId: string = ProviderId.OPENPROJECT;
+  public readonly providerName: string = providerDisplayName(ProviderId.OPENPROJECT);
   /** OpenProject takes an ISO 8601 duration and records whatever it is given. */
   public readonly minimumLoggableSeconds: number = 1;
 

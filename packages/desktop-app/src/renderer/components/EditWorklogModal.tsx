@@ -4,7 +4,8 @@ import { WorklogDTO } from '../../shared/dtos';
 import { checkWorklogCorrection, WORKLOG_COMMENT_MAX_CHARS, WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import { formatDayAndTime, formatHoursAndMinutes, formatHoursMinutes, ipcErrorMessage } from '../utils/formatters';
 import { ConfirmPanel } from './ConfirmPanel';
-import { CLOSED_WEEK_WARNING, isInClosedWeek } from '../../shared/closed-week';
+import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
+import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 
 /** `YYYY-MM-DDTHH:MM` in local time, as a datetime-local input holds it. */
 function toLocalInput(date: Date): string {
@@ -13,10 +14,10 @@ function toLocalInput(date: Date): string {
 }
 
 /** What a change does beyond this window, by where the worklog stands. */
-function reachNote(worklog: WorklogDTO): string {
+function reachNote(worklog: WorklogDTO, providerName: string): string {
   return worklog.syncState === 'local' || worklog.syncState === undefined
     ? 'This worklog is kept in SprintTicker only.'
-    : 'The change also goes to Jira or OpenProject, through the sync queue.';
+    : `The change also goes to ${providerName}, through the sync queue.`;
 }
 
 interface EditWorklogModalProps {
@@ -52,6 +53,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
   // Read when the dialog opens and again as the start changes: the clock is
   // not read during render.
   const [now, setNow] = useState<number>(() => Date.now());
+  const { providerName } = useProviderCapabilities();
 
   const key = worklog.taskKey ?? worklog.taskId;
   const h = Number(hours);
@@ -73,7 +75,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
   const closedWeek = isInClosedWeek(worklog.startedAtUtc, lastWeekClosed) ||
     (correction.startedAtUtc !== '' && isInClosedWeek(correction.startedAtUtc, lastWeekClosed));
   const closedWeekNote = closedWeek && (
-    <p role="note" className="text-[11px] text-accent-amber leading-relaxed">{CLOSED_WEEK_WARNING}</p>
+    <p role="note" className="text-[11px] text-accent-amber leading-relaxed">{closedWeekWarning(providerName)}</p>
   );
 
   const run = (call: () => Promise<unknown>) => {
@@ -107,7 +109,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                   {formatDayAndTime(new Date(worklog.startedAtUtc))}.{' '}
                   {worklog.syncState === 'local' || worklog.syncState === undefined
                     ? 'It is kept nowhere else.'
-                    : 'It is also deleted in Jira or OpenProject.'}{' '}
+                    : `It is also deleted in ${providerName}.`}{' '}
                   This cannot be undone.
                 </>
               }
@@ -177,7 +179,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
 
             <p className="text-[11px] text-text-secondary leading-relaxed">
               {endsAt && <>Ends at {formatHoursMinutes(endsAt)}. </>}
-              {reachNote(worklog)} To put it on another task, use Move on its row in Work History.
+              {reachNote(worklog, providerName)} To put it on another task, use Move on its row in Work History.
             </p>
 
             {closedWeekNote}

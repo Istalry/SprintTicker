@@ -22,7 +22,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO } from '../../shared/dtos';
+import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO } from '../../shared/dtos';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
@@ -43,6 +43,7 @@ import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '
 import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibility } from '../../shared/task-visibility';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { selectableProviders } from '../../shared/provider-names';
 import { completeSession } from '../services/session-commands';
 
 /**
@@ -672,6 +673,23 @@ export class IPCHandlerRegistry {
     });
 
     // 7. Task Provider Config IPC Handlers
+    ipcMain.handle(IPCChannel.GET_PROVIDER_CAPABILITIES, async (): Promise<ProviderCapabilitiesDTO> => {
+      if (this.providerManager) return this.providerManager.getActiveCapabilities();
+      // No providers wired (a test, or a start that failed before them):
+      // claim nothing, so the window offers nothing that would fail.
+      return {
+        providerId: this.settingsRepo.getSetting(
+          ProviderSettingKey.ACTIVE_PROVIDER_ID,
+          PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.ACTIVE_PROVIDER_ID]
+        ),
+        canAssign: false,
+        canTransition: false,
+        canFindWorklog: false,
+        canFetchByKey: false,
+        hasHolidays: false
+      };
+    });
+
     ipcMain.handle(IPCChannel.GET_PROVIDERS, async () => {
       const read = (key: ProviderSettingKeyValue): string =>
         this.settingsRepo.getSetting(key, PROVIDER_SETTING_DEFAULTS[key]);
@@ -720,11 +738,7 @@ export class IPCHandlerRegistry {
         jiraTransitionToTest,
         jiraTransitionToReview,
         jiraCompletionAction,
-        providers: [
-          { id: 'openproject', name: 'OpenProject' },
-          { id: 'jira', name: 'Jira Cloud' },
-          { id: 'adhoc', name: 'Ad-Hoc / Custom Local Fallback' }
-        ]
+        providers: selectableProviders()
       };
     });
 

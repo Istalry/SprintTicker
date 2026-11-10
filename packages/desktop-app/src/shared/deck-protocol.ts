@@ -30,6 +30,34 @@ export const DECK_MAX_MESSAGE_BYTES = 4 * 1024;
 export const DECK_MAX_ID_LENGTH = 128;
 
 /**
+ * The words the keys write, from the redesign's glossary. They live here,
+ * not in `words.ts`, because this is the one file the plugin imports;
+ * `words.ts` re-exports them for the app. Not part of the wire format:
+ * changing one changes what a key says, never what a message means.
+ *
+ * DISCARD ⚡ is C during an interruption: it discards the interruption, not
+ * the task. A key draws in SVG, so it is not held to the bar's ASCII.
+ */
+export const DECK_WORDS = {
+  NOT_TIMING: 'NOT TIMING',
+  INTERRUPT: 'INTERRUPT',
+  ANOTHER: 'ANOTHER',
+  BACK: 'BACK',
+  DONE: 'DONE',
+  STOP: 'STOP',
+  DISCARD: 'DISCARD',
+  DISCARD_INTERRUPTION: 'DISCARD ⚡',
+  RESUME: 'RESUME',
+  LATER: 'LATER',
+  NOT_NOW: 'NOT NOW',
+  JOIN: 'JOIN',
+  SKIP: 'SKIP',
+  END_STAND_UP: 'END STAND-UP',
+  NOT_YOURS: 'NOT YOURS',
+  DONE_ANYWAY: 'DONE ANYWAY'
+} as const;
+
+/**
  * What the last key answers, when something is waiting for an answer:
  * - `standup`: the stand-up's prompt; yes joins it.
  * - `wrap-up`: the end-of-day wrap-up's prompt; yes arms it...

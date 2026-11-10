@@ -151,6 +151,15 @@ untrusted.
 > schedule defaults, the fonts, the text sanitiser — lives in `src/shared/` and
 > is imported, never re-declared.
 
+**Words and provider names are shared too.** `src/shared/words.ts` holds the
+redesign's glossary: the verbs, the states and their bar forms, each bar word
+measured against its field in its font by `words.test.ts`. The deck's words
+live in `deck-protocol.ts`, the one file the plugin may import, and
+`words.ts` re-exports them. `src/shared/provider-names.ts` decides what the
+app calls each provider (`providerDisplayName`: Jira, OpenProject, the name
+of a custom server, "This computer" for time that stays here); the adapters'
+`providerName` and the window's provider choice both read it.
+
 ---
 
 ## 3. Main process components
@@ -211,7 +220,8 @@ ITaskProvider  ← the contract (task-provider-interface.ts)
     ├── JiraProvider          REST API v3, two pagination schemes
     └── AdHocProvider         local only, no network
 
-ProviderManager   resolves the active provider, holds credentials
+ProviderManager   resolves the active provider, holds credentials,
+                  and reads what it can do (providerCapabilities)
 provider-http.ts  the single network call site: timeout, retries, classification
 provider-errors.ts ProviderRequestError, with isPermanent
 ```

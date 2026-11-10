@@ -50,7 +50,8 @@ Everything else is a request/response `invoke`.
 
 | Channel | Purpose |
 | :--- | :--- |
-| `provider:get-all` | Current provider settings |
+| `provider:get-all` | Current provider settings, and the providers to choose from, each under the name the app writes for it (`providerDisplayName`) |
+| `provider:get-capabilities` | What the active provider can do: `ProviderCapabilitiesDTO` (`canAssign`, `canTransition`, `canFindWorklog`, `canFetchByKey`, `hasHolidays`), read off the adapter's optional methods. A control for something it cannot do is hidden, never greyed. With no providers wired, every capability is false |
 | `provider:set-active` | Persist settings, reinitialise providers, start a sync. Takes a **partial** `ProviderSettingsUpdateDTO`, so unrelated providers' credentials are left alone |
 | `provider:get-projects` / `provider:get-tasks` | Read the local cache. Each project carries its tasks neither done nor archived, counted per owner: `openTaskCount` (the user's), `openUnassignedCount`, `openOthersCount`. `provider:get-tasks` answers every owner's tasks, each with its `ownership`; the views filter them by the task visibility |
 | `provider:create-adhoc` | A local task with no ticket. Its key is the configured ad-hoc key (`fallback_ticket_key`, `MISC-1` by default); its time is never queued for a provider |

@@ -68,6 +68,7 @@ const electronAPI: IElectronAPI = {
 
   // Providers, Projects & Tasks
   getProviders: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDERS),
+  getProviderCapabilities: () => ipcRenderer.invoke(IPCChannel.GET_PROVIDER_CAPABILITIES),
   setActiveProvider: (payload: ProviderSettingsUpdateDTO) =>
     ipcRenderer.invoke(IPCChannel.SET_ACTIVE_PROVIDER, payload),
   fetchOpenProjectStatuses: (domain: string, apiKey: string) =>

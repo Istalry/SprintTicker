@@ -555,8 +555,8 @@
       <p>Developing without a bar but wanting to see what it would show? Run
       <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen emulator
       shows what the device would display.</p>
-      <p><strong>2️⃣ Task provider.</strong> Choose OpenProject, Jira Cloud or ad-hoc, and enter the
-      credentials for the one you picked:</p>
+      <p><strong>2️⃣ Task provider.</strong> Choose OpenProject, Jira or <em>This computer</em>, and enter
+      the credentials for the one you picked:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -573,8 +573,8 @@
       <td align="left">Site URL, your account email, and a token from <code>id.atlassian.com</code></td>
       </tr>
       <tr>
-      <td align="left">📝 Ad-hoc</td>
-      <td align="left">Nothing — local tasks only</td>
+      <td align="left">📝 This computer</td>
+      <td align="left">Nothing — local tasks only, and their time stays here</td>
       </tr>
       </tbody></table></div>
       <p>You can leave credentials blank and add them later in <strong>Task Providers</strong>. Until
@@ -1600,7 +1600,7 @@
       shown; one read in OpenProject between two checks is not news.</li>
       <li><strong>On Jira, is it an issue you follow?</strong> Only issues you are assigned,
       reported or watch are read, and nothing you changed yourself is reported.</li>
-      <li><strong>The log says why a check failed</strong> -- <code>[ProviderEvents] OpenProject events unavailable: ...</code>, or <code>Jira Cloud events</code> -- and a refused toast as
+      <li><strong>The log says why a check failed</strong> -- <code>[ProviderEvents] OpenProject events unavailable: ...</code>, or <code>Jira events</code> -- and a refused toast as
       <code>[Toasts] Windows did not show a notification</code>.</li>
       </ul>
       <hr>
@@ -1790,6 +1790,14 @@
       schedule defaults, the fonts, the text sanitiser — lives in <code>src/shared/</code> and
       is imported, never re-declared.</p>
       </div>
+      <p><strong>Words and provider names are shared too.</strong> <code>src/shared/words.ts</code> holds the
+      redesign&#39;s glossary: the verbs, the states and their bar forms, each bar word
+      measured against its field in its font by <code>words.test.ts</code>. The deck&#39;s words
+      live in <code>deck-protocol.ts</code>, the one file the plugin may import, and
+      <code>words.ts</code> re-exports them. <code>src/shared/provider-names.ts</code> decides what the
+      app calls each provider (<code>providerDisplayName</code>: Jira, OpenProject, the name
+      of a custom server, &quot;This computer&quot; for time that stays here); the adapters&#39;
+      <code>providerName</code> and the window&#39;s provider choice both read it.</p>
       <hr>
       <h3 id="architecture-main-process-components">3. Main process components</h3>
       <h4><code>TimeTrackingEngine</code> — <code>src/main/engine/</code></h4>
@@ -1839,7 +1847,8 @@
           ├── JiraProvider          REST API v3, two pagination schemes
           └── AdHocProvider         local only, no network
       
-      ProviderManager   resolves the active provider, holds credentials
+      ProviderManager   resolves the active provider, holds credentials,
+                        and reads what it can do (providerCapabilities)
       provider-http.ts  the single network call site: timeout, retries, classification
       provider-errors.ts ProviderRequestError, with isPermanent
       </code></pre>
@@ -2833,7 +2842,11 @@
       </thead>
       <tbody><tr>
       <td align="left"><code>provider:get-all</code></td>
-      <td align="left">Current provider settings</td>
+      <td align="left">Current provider settings, and the providers to choose from, each under the name the app writes for it (<code>providerDisplayName</code>)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>provider:get-capabilities</code></td>
+      <td align="left">What the active provider can do: <code>ProviderCapabilitiesDTO</code> (<code>canAssign</code>, <code>canTransition</code>, <code>canFindWorklog</code>, <code>canFetchByKey</code>, <code>hasHolidays</code>), read off the adapter&#39;s optional methods. A control for something it cannot do is hidden, never greyed. With no providers wired, every capability is false</td>
       </tr>
       <tr>
       <td align="left"><code>provider:set-active</code></td>

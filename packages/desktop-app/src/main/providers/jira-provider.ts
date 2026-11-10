@@ -1,4 +1,5 @@
 import { ITaskProvider, WorklogPayload } from './task-provider-interface';
+import { ProviderId, providerDisplayName } from '../../shared/provider-names';
 import { ProjectDTO, TaskDTO, ArgumentException } from '../../shared/dtos';
 import { ProviderEventDTO, PROVIDER_EVENT_SUMMARY_MAX_CHARS } from '../../shared/provider-events';
 import { priorityRankFromName } from './task-priority';
@@ -124,8 +125,8 @@ function actorOf(user: JiraUser | null | undefined): { actorName?: string } {
  * those, which is a more complicated way of writing this twice.
  */
 export class JiraProvider implements ITaskProvider {
-  public readonly providerId: string = 'jira';
-  public readonly providerName: string = 'Jira Cloud';
+  public readonly providerId: string = ProviderId.JIRA;
+  public readonly providerName: string = providerDisplayName(ProviderId.JIRA);
   /**
    * Jira's time tracking is minute-granular; anything shorter rounds to zero
    * and is refused.

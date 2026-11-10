@@ -9,6 +9,7 @@ import { useTaskVisibility } from '../hooks/useTaskVisibility';
 import { ProjectFilterToggle } from './ProjectFilterToggle';
 import { TaskOwnerBadge, TaskVisibilityToggle } from './TaskVisibilityToggle';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
+import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 
 interface TaskSelectionModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
   mode = 'start'
 }) => {
   const assigning = mode !== 'start';
+  const { providerName } = useProviderCapabilities();
   const [step, setStep] = useState<1 | 2>(1);
   // The prop is what App had; the dialog asks main for the current list on
   // mount and falls back to the prop if that fails.
@@ -259,7 +261,7 @@ const TaskSelectionDialog: React.FC<TaskSelectionModalProps> = ({
               </div>
 
               <div className="text-xs font-mono text-accent-amber bg-accent-amber/10 p-3 rounded-lg border border-accent-amber/20">
-                ℹ️ Ad-hoc time stays in your Work History. It is <strong>not sent</strong> to Jira or OpenProject.
+                ℹ️ Ad-hoc time stays in your Work History. It is <strong>not sent</strong> to {providerName}.
               </div>
             </div>
           ) : (

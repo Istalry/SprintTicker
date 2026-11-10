@@ -87,6 +87,20 @@ export interface ITaskProvider {
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done'): Promise<boolean>;
 
   /**
+   * False when `updateTaskStatus` never moves anything: the ad-hoc fallback
+   * has no remote. Absent means it can. Read through `providerCapabilities`,
+   * which hides Done and the move to In Progress where it is false.
+   */
+  readonly movesTaskStatus?: boolean;
+
+  /**
+   * Fetches one task by the key the user typed (MG-77 in Jira, #1234 in
+   * OpenProject), or null when the provider has none by that key. Optional:
+   * without it, the picker offers no Fetch by key.
+   */
+  getTaskByKey?(key: string): Promise<TaskDTO | null>;
+
+  /**
    * Assigns a task nobody owns to the user, reading its assignee first: a
    * task someone took since the last sync is left with them and answered
    * `taken`, never reassigned. Throws on failure; the caller tells the user

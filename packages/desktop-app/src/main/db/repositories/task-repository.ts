@@ -5,6 +5,7 @@ import { TOMBSTONE_PROJECT_ID } from '../migrations';
 import { ArgumentException, TaskDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
 import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownership';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
 
 /**
  * The columns every read selects, under the DTO's names: three queries
@@ -252,7 +253,7 @@ export class TaskRepository {
    * waits for the user to name it or move its time (migration 13). Never
    * written by `saveTask`, so a later save of the row keeps it.
    */
-  public createAdHocTask(customTitle: string, adHocKey: string = 'MISC-1', unsorted: boolean = false): TaskDTO {
+  public createAdHocTask(customTitle: string, adHocKey: string = PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY], unsorted: boolean = false): TaskDTO {
     if (!customTitle) {
       throw new Error('Custom title is required for ad-hoc task creation');
     }

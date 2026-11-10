@@ -49,7 +49,8 @@ import type {
   SyncQueueSnapshotDTO,
   ProjectsUpdatedPayload,
   PreviewScreenId,
-  DiscardSessionResultDTO
+  DiscardSessionResultDTO,
+  ProviderCapabilitiesDTO
 } from '../shared/dtos';
 
 export interface IElectronAPI {
@@ -85,6 +86,8 @@ export interface IElectronAPI {
 
   // Providers, Projects & Tasks
   getProviders: () => Promise<ProviderSettingsDTO>;
+  /** What the active provider can do; a control it lacks is hidden. */
+  getProviderCapabilities: () => Promise<ProviderCapabilitiesDTO>;
   setActiveProvider: (payload: ProviderSettingsUpdateDTO) => Promise<boolean>;
   fetchOpenProjectStatuses: (domain: string, apiKey: string) => Promise<{ success: boolean; data?: OpStatusDTO[]; error?: string }>;
   getProjects: () => Promise<ProjectDTO[]>;

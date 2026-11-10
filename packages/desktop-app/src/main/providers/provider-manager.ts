@@ -4,9 +4,24 @@ import { OpenProjectProvider } from './openproject-provider';
 import { JiraProvider } from './jira-provider';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { SecretStore } from '../db/secret-store';
-import { ProjectDTO, TaskDTO } from '../../shared/dtos';
+import { ProjectDTO, ProviderCapabilitiesDTO, TaskDTO } from '../../shared/dtos';
 import type { TaskClaim } from '../../shared/task-claim';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
+
+/**
+ * What a provider can do, read off its optional methods, so the window hides
+ * a control the provider lacks instead of offering one that fails.
+ */
+export function providerCapabilities(provider: ITaskProvider): ProviderCapabilitiesDTO {
+  return {
+    providerId: provider.providerId,
+    canAssign: typeof provider.assignToMe === 'function',
+    canTransition: provider.movesTaskStatus !== false,
+    canFindWorklog: typeof provider.findWorklog === 'function',
+    canFetchByKey: typeof provider.getTaskByKey === 'function',
+    hasHolidays: typeof provider.getNonWorkingDays === 'function'
+  };
+}
 
 /**
  * Service managing registered Task Providers (OpenProject and AdHoc), provider credentials,
@@ -140,6 +155,11 @@ export class ProviderManager {
   /// </summary>
   public getActiveProvider(): ITaskProvider {
     return this._providers.get(this._activeProviderId) || this._providers.get('openproject')!;
+  }
+
+  /** What the active provider can do. */
+  public getActiveCapabilities(): ProviderCapabilitiesDTO {
+    return providerCapabilities(this.getActiveProvider());
   }
 
   /// <summary>

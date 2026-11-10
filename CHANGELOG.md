@@ -41,6 +41,12 @@
 
 ### Changed
 
+- **The app names your provider.** Messages that said "Jira or OpenProject"
+  now name the one you use -- "It is also deleted in Jira" -- and the
+  provider choice reads OpenProject, Jira and *This computer* (formerly
+  "Ad-Hoc / Custom Local Fallback"). Notifications and the log say "Jira",
+  not "Jira Cloud". Working Days mentions holidays only for a provider that
+  lists them.
 - **Plainer wording in the window.** Developer labels are gone -- the
   sidebar's "Modules" header, "UTC Absolute Timestamp Engine", "Display
   Configuration & Debug Output Strategy" -- and settings say what they do:

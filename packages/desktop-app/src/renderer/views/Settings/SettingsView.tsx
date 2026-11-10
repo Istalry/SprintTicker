@@ -7,18 +7,14 @@ import { TaskScope, TaskScopeValue, TASK_SCOPE_LABELS } from '../../../shared/ta
 import { SyncQueuePanel } from '../../components/SyncQueuePanel';
 import { ProviderEventsSection } from '../../components/ProviderEventsSection';
 import { PROVIDERS_WITH_EVENTS, providerEventKindsFor } from '../../../shared/provider-events';
+import { selectableProviders, providerDisplayName } from '../../../shared/provider-names';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
 
 export interface SettingsViewProps {
   initialTab?: string;
   /** Offers the bar as a destination for provider notifications. */
   hasBar?: boolean;
 }
-
-/** As the provider picker below names them. */
-const PROVIDER_NAMES: Record<string, string> = {
-  openproject: 'OpenProject',
-  jira: 'Jira'
-};
 
 /** Jira's notifications are read off a search, and the search has edges. */
 const PROVIDER_EVENT_NOTES: Record<string, string> = {
@@ -32,7 +28,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Settings State
-  const [fallbackTicketKey, setFallbackTicketKey] = useState<string>('MISC-1');
+  const [fallbackTicketKey, setFallbackTicketKey] = useState<string>(PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY]);
   const [providerId, setProviderId] = useState<string>('openproject');
   const [opDomain, setOpDomain] = useState<string>('');
   const [opApiKey, setOpApiKey] = useState<string>('');
@@ -197,9 +193,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
             onChange={e => setProviderId(e.target.value)}
             className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accent-blue font-mono"
           >
-            <option value="openproject">OpenProject (REST API v3)</option>
-            <option value="jira">Jira Cloud (REST API v3)</option>
-            <option value="adhoc">Ad-Hoc / Custom Local Fallback</option>
+            {selectableProviders().map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
           </select>
         </div>
 
@@ -468,7 +464,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ hasBar = true }) => 
 
       {PROVIDERS_WITH_EVENTS.includes(providerId) && (
         <ProviderEventsSection
-          providerName={PROVIDER_NAMES[providerId] ?? providerId}
+          providerName={providerDisplayName(providerId)}
           hasBar={hasBar}
           kinds={providerEventKindsFor(providerId)}
           note={PROVIDER_EVENT_NOTES[providerId]}

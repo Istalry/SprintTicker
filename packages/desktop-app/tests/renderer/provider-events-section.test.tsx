@@ -38,7 +38,7 @@ describe('provider notifications', () => {
     render(<SettingsView />);
 
     await waitFor(() => expect(bridge.api.getProviders).toHaveBeenCalled());
-    await screen.findByDisplayValue('Ad-Hoc / Custom Local Fallback');
+    await screen.findByDisplayValue('This computer');
     expect(screen.queryByText(/Notifications from/)).toBeNull();
   });
 

@@ -756,6 +756,26 @@ export interface InterruptShortcutStatusDTO {
   problem: 'taken' | null;
 }
 
+/**
+ * What the active provider can do, read off the adapter's optional methods.
+ * A control for something the provider cannot do is hidden, never greyed
+ * (the redesign's rule): no assignment, no Done transition, no Fetch by key
+ * where its API has none.
+ */
+export interface ProviderCapabilitiesDTO {
+  providerId: string;
+  /** Takes an unassigned task for the user at Start (`assignToMe`). */
+  canAssign: boolean;
+  /** Moves a task's status: In Progress at Start, the done state at Done. */
+  canTransition: boolean;
+  /** Finds a worklog it may already hold before a resend (`findWorklog`). */
+  canFindWorklog: boolean;
+  /** Fetches a task by its key, for the picker's Fetch (`getTaskByKey`). */
+  canFetchByKey: boolean;
+  /** Reads non-working days for the working calendar (`getNonWorkingDays`). */
+  hasHolidays: boolean;
+}
+
 export type UpdateStatusDTO =
   | { status: 'disabled'; currentVersion: string }
   | { status: 'up-to-date'; currentVersion: string }

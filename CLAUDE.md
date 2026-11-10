@@ -304,6 +304,17 @@ main and the renderer have shipped contradictory copies of the notification
 defaults and the priority rules, and which one won depended on process start
 order. Both now live in `src/shared/`.
 
+**Words and the provider's name are constants of the same kind.** A view,
+a service, the bar or the deck never spells a verb, a state or a
+provider's name itself: they come from `shared/words.ts` and
+`shared/provider-names.ts` (`providerDisplayName`), and the deck's from
+`DECK_WORDS` in `deck-protocol.ts`. The window said Discard where the bar
+said DROP, and "Jira or OpenProject" to a user who has one of them. A bar
+word is measured against its field in its font by `words.test.ts`, so a
+word that stops fitting fails there, not on the bar. What the provider can
+do is `provider:get-capabilities`; a control it lacks is hidden, never
+greyed.
+
 ## 4. The BUSY Bar hardware contract
 
 Violating these does not produce a helpful error. Some of them reboot the

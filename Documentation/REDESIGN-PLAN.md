@@ -301,6 +301,29 @@ never from a view).
 itself. Check with a grep for `'Jira'` in `src/renderer` and `src/main`
 outside the providers.
 
+**As landed (2026-11-10):**
+
+- The provider's name: done. What `'Jira'` still matches in the renderer is
+  Jira's own settings (its site, its token, its transitions, its event
+  note), which name Jira because they are Jira's. `EodWrapUpModal` no longer
+  exists; its "logged to Jira" went with it.
+- The adapters' `providerName` reads `providerDisplayName`, so toasts and
+  the log say "Jira", not "Jira Cloud". The ad-hoc provider reads "This
+  computer" in the provider choice.
+- The words: `words.ts` holds the glossary and the bar's D5 forms, each
+  measured. The views, the bar and the deck still spell their current words
+  (DROP, FINISH, NOT DONE among them). Each adopts `words.ts` when its phase
+  rebuilds it -- the window in P3 and P7–P8, the deck in P13, the bar in
+  P14 -- rather than in a sweep here that those phases would redo.
+- The deck's words are `DECK_WORDS` in `deck-protocol.ts`, re-exported by
+  `words.ts`: the plugin may import that file alone (`CLAUDE.md` §3).
+- `canFetchByKey` reads an optional `getTaskByKey`, declared on
+  `ITaskProvider` and implemented by no adapter until P7, so it is false
+  everywhere today. `canTransition` reads `movesTaskStatus`, false on the
+  ad-hoc provider only.
+- `'MISC-1'` is read from `PROVIDER_SETTING_DEFAULTS` in the renderer and
+  in main (the ad-hoc adapter, `createAdHocTask`).
+
 ---
 
 ## 7. P2 -- The grey look and the type
@@ -1264,8 +1287,8 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 
 | Phase | Status | Landed in |
 | :--- | :--- | :--- |
-| P0 | landed; side worktrees still to clean up | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
-| P1 | not started | |
+| P0 | done; side sessions archived, worktrees removed | `05e0958`, `38f080c`, `765c524`, `89d4768` (2026-11-10) |
+| P1 | done; the views, the bar and the deck adopt the words as P3, P13 and P14 rebuild them | (2026-11-10, uncommitted) |
 | P2 | not started | |
 | P3 | not started | |
 | P4 | not started | |

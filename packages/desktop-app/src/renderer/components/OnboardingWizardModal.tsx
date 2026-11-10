@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP } from '../../shared/device-constants';
 import { DeviceConfigDTO, ProviderSettingsUpdateDTO } from '../../shared/dtos';
 import { X, Wifi, Plug, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { selectableProviders } from '../../shared/provider-names';
+import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/provider-settings';
+
+const DEFAULT_FALLBACK_KEY = PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY];
 
 interface OnboardingWizardModalProps {
   isOpen: boolean;
@@ -39,7 +43,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
   const [pingDetails, setPingDetails] = useState<string>('');
   const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
   const [providerId, setProviderId] = useState<string>('openproject');
-  const [fallbackKey, setFallbackKey] = useState<string>('MISC-1');
+  const [fallbackKey, setFallbackKey] = useState<string>(DEFAULT_FALLBACK_KEY);
   const [opDomain, setOpDomain] = useState<string>('');
   const [opApiKey, setOpApiKey] = useState<string>('');
   const [jiraSite, setJiraSite] = useState<string>('');
@@ -74,7 +78,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
       // accepted here and silently dropped there.
       const payload: ProviderSettingsUpdateDTO = {
         providerId,
-        fallbackTicketKey: fallbackKey.trim() || 'MISC-1'
+        fallbackTicketKey: fallbackKey.trim() || DEFAULT_FALLBACK_KEY
       };
       if (providerId === 'openproject') {
         if (opDomain.trim()) payload.opDomain = opDomain.trim();
@@ -283,9 +287,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({ is
                   onChange={e => setProviderId(e.target.value)}
                   className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-accent-blue"
                 >
-                  <option value="openproject">OpenProject (REST API v3)</option>
-                  <option value="jira">Jira Cloud (REST API v3)</option>
-                  <option value="adhoc">Ad-Hoc / Custom Local Fallback</option>
+                  {selectableProviders().map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
                 </select>
               </div>
 

@@ -136,7 +136,15 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
       jiraTransitionToTest: '',
       jiraTransitionToReview: '',
       jiraCompletionAction: 'to_review',
-      providers: [{ id: 'openproject', name: 'OpenProject' }, { id: 'jira', name: 'Jira Cloud' }]
+      providers: [{ id: 'openproject', name: 'OpenProject' }, { id: 'jira', name: 'Jira' }]
+    }),
+    getProviderCapabilities: vi.fn().mockResolvedValue({
+      providerId: 'openproject',
+      canAssign: true,
+      canTransition: true,
+      canFindWorklog: true,
+      canFetchByKey: false,
+      hasHolidays: true
     }),
     setActiveProvider: vi.fn().mockResolvedValue(true),
     fetchOpenProjectStatuses: vi.fn().mockResolvedValue({ success: true, data: [] }),

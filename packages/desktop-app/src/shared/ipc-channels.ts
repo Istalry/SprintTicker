@@ -24,6 +24,7 @@ export enum IPCChannel {
 
   // Task Provider & Task Query
   GET_PROVIDERS = 'provider:get-all',
+  GET_PROVIDER_CAPABILITIES = 'provider:get-capabilities',
   SET_ACTIVE_PROVIDER = 'provider:set-active',
   GET_PROJECTS = 'provider:get-projects',
   GET_TASKS = 'provider:get-tasks',
