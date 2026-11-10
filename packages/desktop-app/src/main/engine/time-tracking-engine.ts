@@ -18,7 +18,8 @@ import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
 import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
 import { hasTaskPage } from '../../shared/task-page';
-import { checkAdHocTitle, interruptionTitle } from '../../shared/interruption';
+import { checkAdHocTitle, interruptionTitle, InterruptionSource, InterruptionToPlaceDTO, ToPlaceSummaryDTO } from '../../shared/interruption';
+import { InterruptionRecord, InterruptionRepository, interruptionSeconds } from '../db/repositories/interruption-repository';
 import { PREVIOUS_TASK_LOOKBACK, previousTaskId } from '../../shared/previous-task';
 import { DEFAULT_START_SIDE_EFFECTS, StartSideEffectsSetting } from '../../shared/flow-settings';
 import { SideEffectScheduler } from './side-effect-scheduler';
@@ -26,6 +27,25 @@ import { SideEffectScheduler } from './side-effect-scheduler';
 export type EngineState = 'Idle' | 'Tracking' | 'Paused';
 
 export type SessionStateCallback = (session: ActiveSessionDTO | null) => void;
+
+/** How an interruption ended: told to `onInterruptionEnded` listeners. */
+export interface InterruptionEnded {
+  fragment: InterruptionRecord;
+  how: 'stop' | 'discard' | 'back' | 'switch' | 'another';
+  /** The session it held, still open and paused for it; null when there is none, or it was resumed. */
+  held: ActiveSessionDTO | null;
+}
+
+/** What a placed fragment's time is written on. */
+interface LogTarget {
+  sessionId: string;
+  taskId: string;
+  taskKey: string;
+  taskTitle: string;
+  projectId: string;
+  isAdHoc: boolean;
+  providerId?: string;
+}
 
 /** How a stop treats what it would send at once. */
 export interface StopOptions {
@@ -57,6 +77,8 @@ export class TimeTrackingEngine extends EventEmitter {
   private _splitPauseSeconds: () => number;
   private _sideEffects: SideEffectScheduler;
   private _startSideEffects: () => StartSideEffectsSetting;
+  private _interruptions: InterruptionRepository;
+  private _interruptionListeners: Set<(ended: InterruptionEnded) => void> = new Set();
 
   /**
    * Wires dependencies only. Deliberately free of side effects: call
@@ -91,6 +113,9 @@ export class TimeTrackingEngine extends EventEmitter {
     // opened -- and wrote -- a real on-disk sprintticker.db beside the
     // repo, and that second connection deadlocked schema migrations.
     this._projectRepo = projectRepo || new ProjectRepository();
+    // The interruptions live beside the sessions they hold, on the same
+    // connection: a fragment and its held session change together.
+    this._interruptions = new InterruptionRepository(this._taskRepo.getConnection());
     this._providerManager =
       providerManager ||
       new ProviderManager(new SettingsRepository(this._worklogRepo.getConnection()));
@@ -184,7 +209,9 @@ export class TimeTrackingEngine extends EventEmitter {
         // from the IPC handlers and the input decoder, not from this loop.
         this.emit('tick', active);
         this.notifyListeners();
-        this._sideEffects.onTick(active);
+        // The held session, not an interruption's view of it: a take-up
+        // waiting on the task waits through the interruption, paused.
+        this._sideEffects.onTick(this.sessionView());
       } catch {
         this.stopTickLoop();
       }
@@ -215,20 +242,25 @@ export class TimeTrackingEngine extends EventEmitter {
   public reconcileStartupState(): ActiveSessionDTO | null {
     const active = this._sessionRepo.getActiveSession();
     if (!active) {
-      this.stopTickLoop();
       this._currentSession = null;
+      if (this._interruptions.getRunning()) {
+        this.startTickLoop();
+        this.notifyListeners();
+        return this.getCurrentSession();
+      }
+      this.stopTickLoop();
       return null;
     }
 
     // If session was in TRACKING state during app crash/reboot, calculate accurate elapsed time
     this._currentSession = active;
-    if (active.status === 'TRACKING') {
+    if (active.status === 'TRACKING' || this._interruptions.getRunning()) {
       this.startTickLoop();
     } else {
       this.stopTickLoop();
     }
     this.notifyListeners();
-    return this._currentSession;
+    return this.getCurrentSession();
   }
 
   /// <summary>
@@ -268,7 +300,19 @@ export class TimeTrackingEngine extends EventEmitter {
   /// <summary>
   /// Gets current active session with live calculated UTC elapsed time.
   /// </summary>
+  ///
+  /// While an interruption runs, that is the interruption's view: its title,
+  /// its start, TRACKING, and `interruption` naming the session it holds
+  /// (paused). Every surface -- the window, the bar, the tray, the deck --
+  /// times it as it timed an interruption before, and the commands they send
+  /// reach the interruption: each command checks for one first.
   public getCurrentSession(): ActiveSessionDTO | null {
+    const running = this._interruptions.getRunning();
+    return running ? this.fragmentView(running) : this.sessionView();
+  }
+
+  /** The open session itself, held or not: what every rule about sessions reads. */
+  private sessionView(): ActiveSessionDTO | null {
     if (!this._currentSession) return null;
     const session = this._sessionRepo.getActiveSession();
     if (session && this.hasLeftTheList(session)) {
@@ -346,22 +390,353 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /**
-   * Starts an interruption: a new ad-hoc task under the name the app makes up
-   * for it, marked unsorted until the user names it or moves its time
-   * (migration 13). Never an existing row -- two interruptions are two
-   * things to sort, unlike the stand-up's one task a day.
+   * Interrupt (D2): the task running is held as it was -- paused, with the
+   * reason `interruption`, from `at` -- and a fragment opens. Nothing is
+   * logged or sent. A task already paused stays paused, and Back leaves it
+   * so. During an interruption, Interrupt is Another.
    *
-   * The session running is logged as any start logs it, under its own
-   * comment. Bringing it back afterwards is the schedule service's
-   * (`ContextScheduleService.interrupt`), which is the one caller.
+   * `at` backdates it ("started 5 min ago"): never before the held session
+   * began, nor in the future.
    */
-  public startInterruption(at: Date = new Date()): ActiveSessionDTO {
-    if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
-      this.stopSession(WORKLOG_COMMENTS.INTERRUPTED);
+  public startInterruption(at: Date = new Date(), source: InterruptionSource = 'window'): ActiveSessionDTO {
+    if (this._interruptions.getRunning()) return this.anotherInterruption(source);
+    const held = this.sessionView();
+    let startMs = Math.min(at.getTime(), Date.now());
+    if (held) startMs = Math.max(startMs, Date.parse(held.startTimeUtc));
+    const startIso = new Date(startMs).toISOString();
+
+    const wasPaused = held !== null && held.status === 'PAUSED';
+    if (held && held.status === 'TRACKING') {
+      this._sessionRepo.updateStatus(held.sessionId, 'PAUSED', held.totalPausedSeconds, startIso);
+      this._sessionRepo.recordPauseInterval(held.sessionId, startIso, undefined, 'interruption');
+      this._currentSession = this._sessionRepo.getActiveSession();
     }
-    const title = interruptionTitle(at);
-    const task = this._taskRepo.createAdHocTask(title, this.adHocTaskKey(), true);
-    return this.startTask(task.id, true, title);
+    this._interruptions.open({
+      id: createId(IdPrefix.INTERRUPTION),
+      startedAtUtc: startIso,
+      source,
+      interruptedSessionId: held?.sessionId ?? null,
+      interruptedWasPaused: wasPaused,
+      afterId: null
+    });
+    this.startTickLoop();
+    this.notifyListeners();
+    return this.getCurrentSession()!;
+  }
+
+  /** ⚡ Another: the running fragment ends now and the next of the run starts, holding the same session. */
+  public anotherInterruption(source: InterruptionSource = 'window'): ActiveSessionDTO {
+    const running = this.requireRunningFragment();
+    const nowIso = new Date().toISOString();
+    this._interruptions.close(running.id, nowIso);
+    this._interruptions.open({
+      id: createId(IdPrefix.INTERRUPTION),
+      startedAtUtc: nowIso,
+      source,
+      interruptedSessionId: running.interruptedSessionId,
+      interruptedWasPaused: running.interruptedWasPaused,
+      afterId: running.id
+    });
+    this.tellInterruptionEnded(running.id, 'another');
+    this.notifyListeners();
+    return this.getCurrentSession()!;
+  }
+
+  /**
+   * Back: the interruption ends, and the session it held runs again -- or
+   * stays paused, when it was paused before. After Stop, Back still resumes
+   * it while it is paused for the interruption. `addGapMinutes` ends the
+   * pause that much earlier ("Back, add the 6 min"), never before it began.
+   *
+   * @throws ArgumentException with no interruption running and nothing held.
+   */
+  public backFromInterruption(addGapMinutes = 0): ActiveSessionDTO | null {
+    if (!Number.isFinite(addGapMinutes) || addGapMinutes < 0) {
+      throw new ArgumentException('The time to add back cannot be negative.', 'addGapMinutes');
+    }
+    const nowMs = Date.now();
+    const running = this._interruptions.getRunning();
+    let fragment = running;
+    if (running) {
+      this._interruptions.close(running.id, new Date(nowMs).toISOString());
+    } else {
+      const open = this.sessionView();
+      if (!open || open.status !== 'PAUSED' || this._sessionRepo.getOpenPauseReason(open.sessionId) !== 'interruption') {
+        throw new ArgumentException('No interruption to come back from.', 'addGapMinutes');
+      }
+      fragment = this._interruptions.getLatestFor(open.sessionId);
+    }
+    const held = this.sessionView();
+    if (
+      held && fragment && held.sessionId === fragment.interruptedSessionId && !fragment.interruptedWasPaused &&
+      held.status === 'PAUSED' && held.lastPauseStartUtc &&
+      this._sessionRepo.getOpenPauseReason(held.sessionId) === 'interruption'
+    ) {
+      const resumeAt = Math.max(Date.parse(held.lastPauseStartUtc), nowMs - addGapMinutes * 60_000);
+      this.resumeHeldAt(held, resumeAt);
+    }
+    if (running) this.tellInterruptionEnded(running.id, 'back');
+    this.notifyListeners();
+    return this.getCurrentSession();
+  }
+
+  /**
+   * Stop: the interruption ends; the session it held stays paused, and the
+   * schedule asks "Back to MG-12?" (`onInterruptionEnded`). `atUtc` ends it
+   * in the past: a fragment left running overnight ends at the last activity.
+   */
+  public stopInterruption(atUtc?: string): ActiveSessionDTO | null {
+    const running = this.requireRunningFragment();
+    const asked = atUtc === undefined ? Date.now() : Date.parse(atUtc);
+    if (!Number.isFinite(asked)) throw new ArgumentException(`Not a time: ${String(atUtc)}.`, 'atUtc');
+    const end = Math.min(Math.max(asked, Date.parse(running.startedAtUtc)), Date.now());
+    this._interruptions.close(running.id, new Date(end).toISOString());
+    this.tellInterruptionEnded(running.id, 'stop');
+    this.notifyListeners();
+    return this.getCurrentSession();
+  }
+
+  /**
+   * Discards an interruption: the one running, or one waiting to be placed.
+   * Its time is kept nowhere. The held session stays paused, as after Stop.
+   */
+  public discardInterruption(id?: string): { success: boolean; discardedSeconds: number } {
+    const fragment = id ? this._interruptions.get(id) : this._interruptions.getRunning();
+    if (!fragment || fragment.discardedAtUtc || fragment.placedTaskId || fragment.keptOff) {
+      return { success: false, discardedSeconds: 0 };
+    }
+    const nowIso = new Date().toISOString();
+    const seconds = interruptionSeconds(fragment, nowIso);
+    this._interruptions.markDiscarded(fragment.id, nowIso);
+    if (!fragment.endedAtUtc) this.tellInterruptionEnded(fragment.id, 'discard');
+    this.notifyListeners();
+    return { success: true, discardedSeconds: seconds };
+  }
+
+  /**
+   * Switch task during an interruption: it ends, the session it held is
+   * stopped and logged as any switch logs it, and `taskId` starts. With
+   * `takeAlong`, the interruption's own time is placed on `taskId` too.
+   */
+  public switchFromInterruption(taskId: string, takeAlong = false): ActiveSessionDTO {
+    if (!taskId) throw new ArgumentNullException('taskId');
+    const running = this.requireRunningFragment();
+    if (takeAlong && isAdHocTaskId(taskId)) throw new ArgumentException('Place it on a task, not on other ad-hoc work.', 'taskId');
+    if (!this._taskRepo.getTaskById(taskId)) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+    this._interruptions.close(running.id, new Date().toISOString());
+    if (takeAlong) this.placeInterruption(running.id, taskId);
+    this.tellInterruptionEnded(running.id, 'switch');
+    return this.startTask(taskId);
+  }
+
+  /** Names an interruption, running or waiting. */
+  public renameInterruption(id: string, name: string): void {
+    const fragment = this._interruptions.get(id);
+    if (!fragment) throw new ArgumentException(`No interruption ${id}.`, 'id');
+    const title = checkAdHocTitle(name);
+    this._interruptions.rename(id, title);
+    if (fragment.legacyWorklogId) {
+      // The old model's name lives on its ad-hoc task: History reads it there.
+      const taskId = this._worklogRepo.getWorklogById(fragment.legacyWorklogId)?.taskId;
+      if (taskId && isAdHocTaskId(taskId)) this._taskRepo.renameAdHocTask(taskId, title);
+    }
+    this.notifyListeners();
+  }
+
+  /**
+   * Places an ended interruption on a task: a worklog of its span, queued
+   * with the hold of every send (P5). An old-model interruption already has
+   * its worklog, and is placed by moving it -- `InterruptionService`.
+   *
+   * @throws ArgumentException for one running, placed, kept off or discarded, or an unknown task.
+   */
+  public placeInterruption(id: string, taskId: string): string[] {
+    const fragment = this.requireWaiting(id);
+    if (fragment.legacyWorklogId) throw new ArgumentException('An earlier interruption is placed by moving its entry.', 'id');
+    const task = this._taskRepo.getTaskById(taskId);
+    if (!task) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+    const adHoc = isAdHocTaskId(task.id);
+    const providerId = adHoc ? undefined : this.providerOfProject(task.projectId);
+    const ids = this.logSpan(
+      {
+        sessionId: fragment.id,
+        taskId: task.id,
+        taskKey: task.key,
+        taskTitle: task.title,
+        projectId: task.projectId,
+        isAdHoc: adHoc,
+        ...(providerId ? { providerId } : {})
+      },
+      fragment.startedAtUtc,
+      fragment.endedAtUtc!,
+      [],
+      interruptionSeconds(fragment),
+      this.titleOf(fragment)
+    );
+    this._interruptions.markPlaced(id, task.id, ids[0] ?? null);
+    this._syncWorker.dispatchAfterHold();
+    this.notifyListeners();
+    return ids;
+  }
+
+  /**
+   * Keep off the provider: the interruption stays in History as ad-hoc work
+   * under its name, and is never sent.
+   */
+  public keepInterruptionOff(id: string): void {
+    const fragment = this.requireWaiting(id);
+    if (fragment.legacyWorklogId) {
+      const taskId = this._worklogRepo.getWorklogById(fragment.legacyWorklogId)?.taskId;
+      const task = taskId ? this._taskRepo.getTaskById(taskId) : null;
+      // Its ad-hoc task stops waiting to be sorted, under the name it has.
+      if (task && isAdHocTaskId(task.id)) this._taskRepo.renameAdHocTask(task.id, task.title);
+      this._interruptions.markKeptOff(id, fragment.legacyWorklogId);
+    } else {
+      const task = this._taskRepo.createAdHocTask(this.titleOf(fragment), this.adHocTaskKey());
+      const ids = this.logSpan(
+        { sessionId: fragment.id, taskId: task.id, taskKey: task.key, taskTitle: task.title, projectId: task.projectId, isAdHoc: true },
+        fragment.startedAtUtc,
+        fragment.endedAtUtc!,
+        [],
+        interruptionSeconds(fragment),
+        this.titleOf(fragment)
+      );
+      this._interruptions.markKeptOff(id, ids[0] ?? null);
+    }
+    this.notifyListeners();
+  }
+
+  /** An old-model interruption's entry moved to a task by `InterruptionService`: it is placed. */
+  public markLegacyInterruptionPlaced(id: string, taskId: string): void {
+    const fragment = this.requireWaiting(id);
+    if (!fragment.legacyWorklogId) throw new ArgumentException('Only an earlier interruption is placed by its entry.', 'id');
+    this._interruptions.markPlaced(id, taskId, fragment.legacyWorklogId);
+    this.notifyListeners();
+  }
+
+  /** The entry an old-model interruption is, or null for one of this model. */
+  public legacyWorklogOf(id: string): string | null {
+    return this._interruptions.get(id)?.legacyWorklogId ?? null;
+  }
+
+  /** The interruptions waiting to be placed, oldest first, from any day. */
+  public getInterruptionsToPlace(): InterruptionToPlaceDTO[] {
+    return this._interruptions.getToPlace().map(fragment => {
+      const run = this._interruptions.getRun(fragment.id);
+      return {
+        id: fragment.id,
+        name: fragment.name,
+        title: this.titleOf(fragment),
+        startedAtUtc: fragment.startedAtUtc,
+        endedAtUtc: fragment.endedAtUtc!,
+        durationSeconds: interruptionSeconds(fragment),
+        source: fragment.source,
+        interruptedTaskKey: fragment.interruptedSessionId ? this._sessionRepo.getTaskKeyOf(fragment.interruptedSessionId) : null,
+        index: Math.max(1, run.findIndex(r => r.id === fragment.id) + 1),
+        ofRun: Math.max(1, run.length)
+      };
+    });
+  }
+
+  public getToPlaceSummary(): ToPlaceSummaryDTO {
+    const waiting = this._interruptions.getToPlace();
+    return { count: waiting.length, seconds: waiting.reduce((sum, f) => sum + interruptionSeconds(f), 0) };
+  }
+
+  /** Called when an interruption ends, after its row says so: the schedule asks "Back?" from here. */
+  public onInterruptionEnded(listener: (ended: InterruptionEnded) => void): () => void {
+    this._interruptionListeners.add(listener);
+    return () => this._interruptionListeners.delete(listener);
+  }
+
+  /** Whether an interruption runs now. */
+  public isInterrupted(): boolean {
+    return this._interruptions.getRunning() !== null;
+  }
+
+  private tellInterruptionEnded(id: string, how: InterruptionEnded['how']): void {
+    const fragment = this._interruptions.get(id);
+    if (!fragment) return;
+    const session = this.sessionView();
+    const held = session && session.sessionId === fragment.interruptedSessionId && session.status === 'PAUSED' ? session : null;
+    for (const listener of this._interruptionListeners) {
+      try {
+        listener({ fragment, how, held });
+      } catch (err) {
+        console.error('[TimeTrackingEngine] Interruption listener failed:', err);
+      }
+    }
+  }
+
+  private requireRunningFragment(): InterruptionRecord {
+    const running = this._interruptions.getRunning();
+    if (!running) throw new ArgumentException('No interruption is running.', 'id');
+    return running;
+  }
+
+  private requireWaiting(id: string): InterruptionRecord {
+    const fragment = id ? this._interruptions.get(id) : null;
+    if (!fragment) throw new ArgumentException(`No interruption ${id}.`, 'id');
+    if (!fragment.endedAtUtc) throw new ArgumentException('It is still running.', 'id');
+    if (fragment.discardedAtUtc || fragment.placedTaskId || fragment.keptOff) {
+      throw new ArgumentException('It was placed, kept off or discarded already.', 'id');
+    }
+    return fragment;
+  }
+
+  private titleOf(fragment: InterruptionRecord): string {
+    if (fragment.name) return fragment.name;
+    if (fragment.legacyWorklogId) {
+      const title = this._worklogRepo.getWorklogById(fragment.legacyWorklogId)?.taskTitle;
+      if (title) return title;
+    }
+    return interruptionTitle(new Date(fragment.startedAtUtc));
+  }
+
+  /** The running fragment as the session every surface reads. */
+  private fragmentView(running: InterruptionRecord): ActiveSessionDTO {
+    const session = this.sessionView();
+    const held = session && session.sessionId === running.interruptedSessionId ? session : null;
+    const run = this._interruptions.getRun(running.id);
+    const title = this.titleOf(running);
+    return {
+      sessionId: running.id,
+      projectId: held?.projectId ?? 'PROJ',
+      taskId: running.id,
+      taskKey: this.adHocTaskKey(),
+      taskTitle: title,
+      isAdHoc: true,
+      ...(running.name ? {} : { unsorted: true as const }),
+      interruption: {
+        id: running.id,
+        name: running.name,
+        title,
+        startedAtUtc: running.startedAtUtc,
+        index: Math.max(1, run.findIndex(r => r.id === running.id) + 1),
+        source: running.source,
+        interruptedSessionId: held?.sessionId ?? null,
+        interruptedTaskKey: held?.taskKey ?? null,
+        interruptedTaskTitle: held?.taskTitle ?? null,
+        interruptedWasPaused: running.interruptedWasPaused
+      },
+      status: 'TRACKING',
+      startTimeUtc: running.startedAtUtc,
+      totalPausedSeconds: 0,
+      elapsedSeconds: Math.max(0, Math.floor((Date.now() - Date.parse(running.startedAtUtc)) / 1000))
+    };
+  }
+
+  /** Resumes the held session as of `atMs`: its pause ends then, and what follows is work. */
+  private resumeHeldAt(held: ActiveSessionDTO, atMs: number): void {
+    const pauseStart = Date.parse(held.lastPauseStartUtc!);
+    const stored = this._sessionRepo.getStoredPausedSeconds(held.sessionId);
+    const atIso = new Date(atMs).toISOString();
+    this._sessionRepo.updateStatus(held.sessionId, 'TRACKING', stored + Math.floor((atMs - pauseStart) / 1000), undefined);
+    if (!this._sessionRepo.closeLatestPause(held.sessionId, atIso)) {
+      this._sessionRepo.recordPauseInterval(held.sessionId, held.lastPauseStartUtc!, atIso, 'interruption');
+    }
+    this._currentSession = this._sessionRepo.getActiveSession();
+    this.startTickLoop();
   }
 
   /**
@@ -375,7 +750,12 @@ export class TimeTrackingEngine extends EventEmitter {
    */
   public renameAdHocSession(title: string): ActiveSessionDTO {
     const name = checkAdHocTitle(title);
-    const open = this.getCurrentSession();
+    const running = this._interruptions.getRunning();
+    if (running) {
+      this.renameInterruption(running.id, name);
+      return this.getCurrentSession()!;
+    }
+    const open = this.sessionView();
     if (!open || !(open.isAdHoc || isAdHocTaskId(open.taskId))) {
       throw new ArgumentException('Only ad-hoc work is named here; a provider task keeps its own name.', 'title');
     }
@@ -383,7 +763,7 @@ export class TimeTrackingEngine extends EventEmitter {
     this._sessionRepo.renameSessionTask(open.sessionId, open.taskKey, name);
     this._currentSession = this._sessionRepo.getActiveSession();
     this.notifyListeners();
-    return this.getCurrentSession()!;
+    return this.sessionView()!;
   }
 
   /**
@@ -401,7 +781,7 @@ export class TimeTrackingEngine extends EventEmitter {
       throw new ArgumentException('Only ad-hoc work is named here; a provider task keeps its own name.', 'taskId');
     }
     if (!this._taskRepo.getTaskById(taskId)) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
-    if (this.getCurrentSession()?.taskId === taskId) {
+    if (this.sessionView()?.taskId === taskId) {
       this.renameAdHocSession(name);
       return;
     }
@@ -424,7 +804,10 @@ export class TimeTrackingEngine extends EventEmitter {
    */
   public assignSessionToTask(taskId: string): ActiveSessionDTO {
     if (!taskId) throw new ArgumentNullException('taskId');
-    const open = this.getCurrentSession();
+    // An interruption put on a task while it runs: its time goes there, and
+    // the task is what runs next.
+    if (this._interruptions.getRunning()) return this.switchFromInterruption(taskId, true);
+    const open = this.sessionView();
     if (!open || !(open.isAdHoc || isAdHocTaskId(open.taskId))) {
       throw new ArgumentException('Only ad-hoc work is assigned to a task while it runs.', 'taskId');
     }
@@ -445,8 +828,8 @@ export class TimeTrackingEngine extends EventEmitter {
     this.notifyListeners();
     // After two minutes of timing, counted from the interruption's start:
     // one already that long takes the task up at once.
-    this.scheduleTakeUp(this.getCurrentSession()!, task.id, providerId);
-    return this.getCurrentSession()!;
+    this.scheduleTakeUp(this.sessionView()!, task.id, providerId);
+    return this.sessionView()!;
   }
 
   /// <summary>
@@ -471,6 +854,13 @@ export class TimeTrackingEngine extends EventEmitter {
     const isNewAdHocTask = isAdHoc && Boolean(customTitle);
     if (!taskId && !isNewAdHocTask) {
       throw new Error('Task ID is required to start a session');
+    }
+    // A start during an interruption is Switch task: the interruption ends,
+    // waiting to be placed, and the session it held is stopped below.
+    const running = this._interruptions.getRunning();
+    if (running) {
+      this._interruptions.close(running.id, new Date().toISOString());
+      this.tellInterruptionEnded(running.id, 'switch');
     }
 
     // Finalize any existing active session before starting new task. Its
@@ -743,7 +1133,7 @@ export class TimeTrackingEngine extends EventEmitter {
    * assigned interruption's row is -- unless the open session is on it.
    */
   public retireAdHocTaskIfUnused(taskId: string): void {
-    if (!isAdHocTaskId(taskId) || this.getCurrentSession()?.taskId === taskId) return;
+    if (!isAdHocTaskId(taskId) || this.sessionView()?.taskId === taskId) return;
     if (this._worklogRepo.countWorklogsOf(taskId) > 0) return;
     retireTasks(this._taskRepo.getConnection().getDb(), 'id = ?', [taskId]);
   }
@@ -787,7 +1177,9 @@ export class TimeTrackingEngine extends EventEmitter {
   /// Pauses the current active session.
   /// </summary>
   public pauseSession(): ActiveSessionDTO {
-    const active = this.getCurrentSession();
+    // An interruption has no pause of its own: pausing it is its Stop.
+    if (this._interruptions.getRunning()) return this.stopInterruption() ?? this.getCurrentSession()!;
+    const active = this.sessionView();
     if (!active || active.status !== 'TRACKING') {
       throw new Error('No active tracking session available to pause');
     }
@@ -807,7 +1199,8 @@ export class TimeTrackingEngine extends EventEmitter {
   /// Resumes a paused session.
   /// </summary>
   public resumeSession(): ActiveSessionDTO {
-    const active = this.getCurrentSession();
+    if (this._interruptions.getRunning()) return this.backFromInterruption() ?? this.getCurrentSession()!;
+    const active = this.sessionView();
     if (!active || active.status !== 'PAUSED' || !active.lastPauseStartUtc) {
       throw new Error('No paused session available to resume');
     }
@@ -844,7 +1237,9 @@ export class TimeTrackingEngine extends EventEmitter {
    * @throws ArgumentException for an instant before the start or in the future.
    */
   public pauseSessionAt(pausedAtUtc: string): ActiveSessionDTO {
-    const active = this.getCurrentSession();
+    // Left running overnight: it ends at the user's last activity.
+    if (this._interruptions.getRunning()) return this.stopInterruption(pausedAtUtc) ?? this.getCurrentSession()!;
+    const active = this.sessionView();
     if (!active || active.status !== 'TRACKING') {
       throw new Error('No active tracking session available to pause');
     }
@@ -869,7 +1264,7 @@ export class TimeTrackingEngine extends EventEmitter {
    * were working all along; it has no row to remove.
    */
   public withdrawPause(): ActiveSessionDTO {
-    const active = this.getCurrentSession();
+    const active = this.sessionView();
     if (!active || active.status !== 'PAUSED') {
       throw new Error('No paused session available to resume');
     }
@@ -889,7 +1284,7 @@ export class TimeTrackingEngine extends EventEmitter {
    * the start -- right for any end after it, which is every end that matters.
    */
   public getClosedPauses(): PauseIntervalDTO[] {
-    const active = this.getCurrentSession();
+    const active = this.sessionView();
     if (!active) return [];
     const rows = this._sessionRepo.getPauseIntervals(active.sessionId);
     const last = rows[rows.length - 1];
@@ -915,7 +1310,11 @@ export class TimeTrackingEngine extends EventEmitter {
    * @throws ArgumentException for an end before the start or in the future.
    */
   public stopSessionAt(endUtc: string, comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } {
-    const active = this.getCurrentSession();
+    if (this._interruptions.getRunning()) {
+      this.stopInterruption(endUtc);
+      return { success: true, loggedSeconds: 0 };
+    }
+    const active = this.sessionView();
     if (!active) return { success: false, loggedSeconds: 0 };
     const end = Date.parse(endUtc);
     if (!Number.isFinite(end) || end < Date.parse(active.startTimeUtc) || end > Date.now()) {
@@ -956,7 +1355,7 @@ export class TimeTrackingEngine extends EventEmitter {
    * window shows before a stop across midnight files it under two days.
    */
   public getSessionDays(): DayShare[] {
-    const active = this.getCurrentSession();
+    const active = this.sessionView();
     if (!active) return [];
     return workedSecondsByLocalDay(active.startTimeUtc, new Date().toISOString(), this.pausesUntilNow(active), active.elapsedSeconds);
   }
@@ -970,7 +1369,8 @@ export class TimeTrackingEngine extends EventEmitter {
    * confirm first; hours thrown away by a stray click do not come back.
    */
   public discardSession(): { success: boolean; discardedSeconds: number } {
-    const active = this.getCurrentSession();
+    if (this._interruptions.getRunning()) return this.discardInterruption();
+    const active = this.sessionView();
     if (!active) return { success: false, discardedSeconds: 0 };
 
     this.stopTickLoop();
@@ -995,7 +1395,13 @@ export class TimeTrackingEngine extends EventEmitter {
     markDone?: boolean,
     options: StopOptions = {}
   ): { success: boolean; loggedSeconds: number } {
-    const active = this.getCurrentSession();
+    // Stop and Done on an interruption end it, and log nothing: its time is
+    // placed afterwards. The session it held stays paused.
+    if (this._interruptions.getRunning()) {
+      this.stopInterruption();
+      return { success: true, loggedSeconds: 0 };
+    }
+    const active = this.sessionView();
     if (!active) return { success: false, loggedSeconds: 0 };
     return this.finishSession(active, active.elapsedSeconds, new Date().toISOString(), this.pausesUntilNow(active), comment, markDone, options);
   }
@@ -1007,11 +1413,11 @@ export class TimeTrackingEngine extends EventEmitter {
    */
   public resumeAfterUndo(): ActiveSessionDTO | null {
     this._currentSession = this._sessionRepo.getActiveSession();
-    if (this._currentSession) this.startTickLoop();
+    if (this._currentSession || this._interruptions.getRunning()) this.startTickLoop();
     this.notifyListeners();
     // A stop inside the wait cancelled the take-up; the session runs on, so
     // it waits again. One timed past the wait was taken up already.
-    const reopened = this.getCurrentSession();
+    const reopened = this.sessionView();
     if (reopened && !reopened.isAdHoc && !isAdHocTaskId(reopened.taskId)
       && reopened.elapsedSeconds < this._startSideEffects().afterSeconds) {
       this.scheduleTakeUp(reopened, reopened.taskId, reopened.providerId);
@@ -1073,45 +1479,89 @@ export class TimeTrackingEngine extends EventEmitter {
 
     this._sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
 
-    const nowIso = new Date().toISOString();
-
     const worklogComment = comment || WORKLOG_COMMENTS.DEFAULT;
+    const worklogIds = this.logSpan(active, active.startTimeUtc, endUtc, pauses, loggedSeconds, worklogComment);
+
+    // An old-model interruption ending now: its worklogs wait to be placed,
+    // as migration 15 made of the ones before it.
+    if (adHoc && this._taskRepo.getTaskById(active.taskId)?.unsorted) {
+      for (const id of worklogIds) {
+        const log = this._worklogRepo.getWorklogById(id);
+        if (log) this._interruptions.adoptLegacyWorklog(log);
+      }
+    }
+
+    // Ask for delivery when the hold ends rather than at the next pass.
+    //
+    // The rows are held for the undo window (UNDO_WINDOW_MS), so Undo finds
+    // them unsent; the worker is woken when it ends. Without a wake the
+    // queue drained on SYNC_INTERVAL_MS alone -- five minutes -- so finishing
+    // a task and then looking at Jira showed nothing, which reads as the
+    // sync being broken rather than pending. A wake is safe: a pass already
+    // running returns at once, and `claimSyncItem` is atomic.
+    this._syncWorker.dispatchAfterHold();
+
+    this._currentSession = null;
+    this.notifyListeners();
+
+    return { success: true, loggedSeconds };
+  }
+
+  /**
+   * Writes `loggedSeconds` of work between `startUtc` and `endUtc` on the
+   * target's task, and queues it for the provider unless it stays here --
+   * the half of a stop that is not about the session, shared with placing an
+   * interruption so the two cannot log time differently. One worklog per
+   * stretch of work (`splitWork`), never across midnight.
+   *
+   * @returns the worklogs' ids, first to last.
+   */
+  private logSpan(
+    target: LogTarget,
+    startUtc: string,
+    endUtc: string,
+    pauses: readonly PauseIntervalDTO[],
+    loggedSeconds: number,
+    comment: string
+  ): string[] {
+    const nowIso = new Date().toISOString();
+    const adHoc = target.isAdHoc || isAdHocTaskId(target.taskId);
 
     // 1. Save worklog to SQLite, under a task row that is guaranteed to
     // exist: the foreign key would otherwise refuse a worklog whose task was
     // pruned mid-session, and the time just tracked would be lost.
     this._taskRepo.ensureTaskExists({
-      id: active.taskId,
-      key: active.taskKey,
-      title: active.taskTitle,
-      projectId: active.projectId
+      id: target.taskId,
+      key: target.taskKey,
+      title: target.taskTitle,
+      projectId: target.projectId
     });
-    const destination = this.destinationOf(active);
+    const destination = this.destinationOf(target);
 
     // One worklog per stretch of work, never across midnight. A piece too
     // short for the provider joins its neighbour rather than being dropped;
     // local and remote get the same pieces, one queue row per worklog, so a
     // correction always names the entry it corrects.
     const pieces = mergeShortPieces(
-      splitWork(active.startTimeUtc, endUtc, pauses, this._splitPauseSeconds(), loggedSeconds),
+      splitWork(startUtc, endUtc, pauses, this._splitPauseSeconds(), loggedSeconds),
       !adHoc && destination ? destination.minimumSeconds : 1
     );
     const worklogs = pieces.map(piece => {
       const id = createId(IdPrefix.WORKLOG);
       this._worklogRepo.saveWorklog({
         id,
-        sessionId: active.sessionId,
-        taskId: active.taskId,
+        sessionId: target.sessionId,
+        taskId: target.taskId,
         durationSeconds: piece.durationSeconds,
         startedAtUtc: piece.startedAtUtc,
-        comment: worklogComment,
+        comment: comment,
         createdAtUtc: nowIso
       });
       return { ...piece, worklogId: id };
     });
     if (worklogs.length > 1) {
       console.log(
-        `[TimeTrackingEngine] Session ${active.sessionId} logged as ${worklogs.length} worklogs: ` +
+        `[TimeTrackingEngine] Session ${target.sessionId} logged as ${worklogs.length} worklogs: ` +
           worklogs.map(w => `${w.durationSeconds}s on ${localDateKey(new Date(w.startedAtUtc))}`).join(', ') + '.'
       );
     }
@@ -1147,11 +1597,11 @@ export class TimeTrackingEngine extends EventEmitter {
     // fallback ticket that nothing ever used. It stays in local history.
     if (adHoc) {
       console.log(
-        `[TimeTrackingEngine] Session ${active.sessionId} is ad-hoc work: kept in local history and not queued.`
+        `[TimeTrackingEngine] Session ${target.sessionId} is ad-hoc work: kept in local history and not queued.`
       );
     } else if (!destination) {
       console.log(
-        `[TimeTrackingEngine] Session ${active.sessionId} is on a project made in SprintTicker: ` +
+        `[TimeTrackingEngine] Session ${target.sessionId} is on a project made in SprintTicker: ` +
           'kept in local history and not queued.'
       );
     } else if (loggedSeconds >= destination.minimumSeconds) {
@@ -1161,34 +1611,21 @@ export class TimeTrackingEngine extends EventEmitter {
         this._worklogRepo.enqueueSyncItem({
           id: createId(IdPrefix.SYNC_ITEM),
           providerId: destination.providerId,
-          taskId: active.taskId,
+          taskId: target.taskId,
           durationSeconds: worklog.durationSeconds,
           startedAtUtc: worklog.startedAtUtc,
-          comment: worklogComment,
+          comment: comment,
           worklogId: worklog.worklogId
         });
       }
     } else {
       console.log(
-        `[TimeTrackingEngine] Session ${active.sessionId} logged ${loggedSeconds}s, below the ` +
+        `[TimeTrackingEngine] Session ${target.sessionId} logged ${loggedSeconds}s, below the ` +
           `${destination.minimumSeconds}s ${destination.providerId} can record. ` +
           'Kept in local history and not queued.'
       );
     }
 
-    // Ask for delivery when the hold ends rather than at the next pass.
-    //
-    // The rows are held for the undo window (UNDO_WINDOW_MS), so Undo finds
-    // them unsent; the worker is woken when it ends. Without a wake the
-    // queue drained on SYNC_INTERVAL_MS alone -- five minutes -- so finishing
-    // a task and then looking at Jira showed nothing, which reads as the
-    // sync being broken rather than pending. A wake is safe: a pass already
-    // running returns at once, and `claimSyncItem` is atomic.
-    this._syncWorker.dispatchAfterHold();
-
-    this._currentSession = null;
-    this.notifyListeners();
-
-    return { success: true, loggedSeconds };
+    return worklogs.map(w => w.worklogId);
   }
 }

@@ -3,6 +3,11 @@
 *2026-11-06. A dated snapshot, like `AUDIT.md`: the request, what the code
 does today, the gaps, and a proposed design. Nothing here is implemented.*
 
+*Status, 2026-11-10: the design below was implemented first, then
+**replaced** by the redesign's P6 (`Documentation/REDESIGN-PLAN.md` §11):
+the task running is held paused rather than stopped, and an interruption is
+a fragment placed on a task afterwards. The text stays as written.*
+
 ## The request
 
 From the user's manager: when someone interrupts him, he wants to **start a

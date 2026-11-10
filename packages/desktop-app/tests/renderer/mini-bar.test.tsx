@@ -31,7 +31,37 @@ describe('mini timer', () => {
 
     fireEvent.click(screen.getByLabelText('Interrupt'));
 
-    await waitFor(() => expect(bridge.api.startInterruption).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(bridge.api.interrupt).toHaveBeenCalledWith({ source: 'mini' }));
+  });
+
+  it('DuringAnInterruption_BackStopAndAnother_NoPause', async () => {
+    const during = {
+      ...TRACKING_SESSION,
+      sessionId: 'int_1',
+      taskId: 'int_1',
+      taskKey: 'ADHOC',
+      taskTitle: 'Interruption 10:30',
+      isAdHoc: true,
+      interruption: {
+        id: 'int_1', name: null, title: 'Interruption 10:30', startedAtUtc: '2026-11-10T09:00:00.000Z', index: 2,
+        source: 'window' as const, interruptedSessionId: 's1', interruptedTaskKey: 'SPR-142',
+        interruptedTaskTitle: 'The task', interruptedWasPaused: false
+      }
+    };
+    const bridge = installElectronApi({ getCurrentSession: async () => during });
+    render(<MiniBar />);
+    await screen.findByText('during SPR-142');
+
+    expect(screen.queryByLabelText('Pause')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Back to SPR-142'));
+    fireEvent.click(screen.getByLabelText('Stop'));
+    fireEvent.click(screen.getByLabelText('Another'));
+
+    await waitFor(() => expect(bridge.api.backFromInterruption).toHaveBeenCalledTimes(1));
+    expect(bridge.api.stopInterruption).toHaveBeenCalledTimes(1);
+    expect(bridge.api.interrupt).toHaveBeenCalledWith({ source: 'mini' });
+    // Stop ends the interruption alone: no choice of done or discard.
+    expect(screen.queryByRole('group', { name: 'End the session' })).toBeNull();
   });
 
   it('Assign_AdHocSession_OpensTheDashboardsPickerToAssign', async () => {

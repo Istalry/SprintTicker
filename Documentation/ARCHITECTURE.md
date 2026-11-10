@@ -661,20 +661,54 @@ would still be handed the ended session, and the renderer would draw the idle
 clock over the restarted task. A stand-up stopped by lunch hands lunch the task
 before it, not the meeting.
 
-The stand-up and Interrupt share that mechanism, the **set-aside**: one
-`set_aside` setting holding the task to bring back, the session whose end
-brings it back (`endsWith`), and why (`after`). `switchSettingAside` starts
-the next session and stores the one it replaced; a replacement that is
-itself waited on -- an interruption, the stand-up -- passes on the task it
-was waiting for, so an interruption of an interruption returns to the first
-task. The two differ only in policy: the stand-up restarts the task itself
-unless it left the user's lists; an interruption always asks, through the
-after-lunch question with `after: 'interruption'` (and `unlisted` when the
-task has left the lists too). Interrupt (`ContextScheduleService.interrupt`,
-`session:start-interruption`, the tray's first entry) also sets aside a
-paused task, since the bar reaches it through its paused menu; the engine's
-`startInterruption` makes a new ad-hoc row every time, titled
-`Interruption HH:MM` and marked `unsorted` (migration 13). The optional global
+The stand-up keeps that mechanism, the **set-aside**: one `set_aside`
+setting holding the task to bring back, the session whose end brings it back
+(`endsWith`), and why (`after`). `switchSettingAside` starts the next session
+and stores the one it replaced; it restarts the task itself unless it left
+the user's lists. An entry stored by an interruption of the model before
+(`after: 'interruption'`) is still honoured, and asks.
+
+**Interruptions are fragments, not sessions** (redesign P6, migration 15).
+Interrupt (`ContextScheduleService.interrupt(source, at?)`, which the window,
+the mini timer, the tray, the bar, the deck and the shortcut all reach)
+calls `engine.startInterruption`: the session open, tracking or paused, is
+**held** -- paused with a `paused_intervals` row of reason `interruption`,
+never stopped, nothing logged or sent -- and a row opens in `interruptions`,
+naming the held session and whether it was already paused. One fragment
+runs at a time, by a partial unique index as for sessions. **Another**
+closes it and opens the next with `after_id`, holding the same session, so
+a run reads back as Marc, Ana, Marc and one Back. **Back**
+(`backFromInterruption(addGapMinutes)`) closes it and ends the held pause --
+earlier by the gap, after a Stop -- unless the session was paused before.
+**Stop** closes it alone; **Switch** (`switchFromInterruption(taskId,
+takeAlong)`) closes it, stops the held session as any start does, and
+starts the task, placing the fragment on it with `takeAlong`; **Discard**
+marks it discarded.
+
+While a fragment runs, `getCurrentSession()` answers a **fragment view**:
+the fragment's id as session and task id, ad-hoc, tracking, titled
+`Interruption HH:MM` until named, with `interruption: RunningInterruptionDTO`
+saying what it holds. The bar, the deck, the tray and the mini timer read
+that view, and the engine routes their commands to the fragment: pause,
+stop and Done are Stop, resume is Back, discard is Discard, a start is a
+switch, assigning is a switch taking it along, renaming names the fragment,
+and Interrupt is Another. Inside the engine `sessionView()` is the session
+itself. `onInterruptionEnded` tells who ended one and how; the schedule
+service asks "Back to MG-12?" from it after a Stop or a Discard -- never
+over lunch or the wrap-up, never for a task paused before -- and its Yes is
+Back, with the gap counted when asked (`interruptionEndedAtUtc`). Lunch
+during an interruption stops it, and stops the held task too if it was
+running, storing its restart as lunch does; the wrap-up stops both.
+
+A fragment that ended waits to be **placed**: `InterruptionService` lists
+them (`getInterruptionsToPlace`, every day), places one or several on a
+task -- a worklog of its span through `logSpan`, the path `finishSession`
+uses, queued with P5's hold -- keeps one off (a local ad-hoc worklog, never
+queued) or discards one, each behind a restore point so Undo puts the rows
+back. Interruptions of the model before -- ad-hoc tasks marked `unsorted`
+(migration 13) and their worklogs -- became fragments in migration 15 with
+`legacy_worklog_id`; placing one moves that worklog
+(`WorklogCorrectionService.reassign`). The optional global
 shortcut is one more caller: `InterruptShortcutService` takes Electron's
 `globalShortcut` by constructor, registers the stored chord only when the user
 turned it on (`interrupt_shortcut`), reports a chord another app holds as
@@ -683,20 +717,16 @@ quit, synchronously. A press with nothing on screen -- window hidden, no mini
 timer, no bar connected -- is told by one of the app's own toasts, which the
 notification listener never mirrors to the bar. The stand-up's
 `standup_resume` entry from before is read once at start and moved over.
-While it runs, an ad-hoc session can be named (`renameAdHocSession`: the task
+An ad-hoc session can be named while it runs (`renameAdHocSession`: the task
 row and the session's copy together, one notification) or assigned to a task
 in place (`assignSessionToTask`): `retargetSession` rewrites the open row's
 project, task, key, title and `is_ad_hoc`, and sets `provider_id` -- the one
 write of it after the start, for a session that had none, so the time still
 never follows the active provider. The task's start-time effects wait as a
-start's do (`SideEffectScheduler`), counted from the session's start, so an
-interruption assigned after two minutes moves its task at once. Assigned to the task it set aside, the
-interruption drops the set-aside: the question would restart that task. The
-session reports `unsorted` from its task row, never a copy of its own.
-After it ended, the same work is named from History or the wrap-up
-(`renameAdHocTask`), which goes through `renameAdHocSession` when the task is
-the open session's, so the copy follows. Worklog reads join `tasks.unsorted`,
-and `getUnsortedWorklogs` lists what is still to sort across days.
+start's do (`SideEffectScheduler`), counted from the session's start.
+After it ended, ad-hoc work is named from History (`renameAdHocTask`), which
+goes through `renameAdHocSession` when the task is the open session's, so
+the copy follows.
 The wrap-up stops the session through
 `stopForWrapUp`, which drops every stored restart first: stopped from the IPC
 handler, a stand-up running at wrap-up time restarted its task overnight.
@@ -836,7 +866,8 @@ testing runs against your actual worklogs.
 | `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text; `ownership` is `mine`, `unassigned` or `other`, with `assignee_name` on a teammate's (migration 12); `unsorted` is 1 on an interruption's ad-hoc task until it is named or its time moved (migration 13) |
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts. `previous_task_id` is the task of the session `startTask` stopped to start it (migration 14). Recent tasks are read from here, with no table of their own |
 | `task_stars` | Starred tasks, keyed by `provider_id` and `task_key` so a star survives the task being retired and fetched again under a new id; an ad-hoc task is keyed by its id under `adhoc`, since every ad-hoc task shows the same key. `task_id` is the row last seen (migration 14) |
-| `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE` |
+| `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE`; `reason` is `user`, `interruption`, `lunch` or `away` (migration 15) |
+| `interruptions` | The interruption fragments (migration 15): span, `name`, `source`, the session it held (`interrupted_session_id`, `interrupted_was_paused`), the fragment before it in its run (`after_id`), and its fate -- `placed_task_id` and `placed_worklog_id`, `kept_off`, or `discarded_at_utc`. `legacy_worklog_id` names the worklog of an interruption of the model before. At most one has no end |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
 | `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id` |
 | `settings` | Key/value, JSON: provider configuration, and the redesigned flows' settings -- the start's side effects, Done per project, the prompts' delays, the shortcuts, close to tray, the stand-up's task -- each read through a reader in `shared/flow-settings.ts` that answers a whole, valid value whatever is stored |
@@ -900,6 +931,11 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
     "Previous task" falls back to the ended sessions themselves
     (`shared/previous-task.ts`): the most recent one whose task is not the
     current one and can still be offered -- listed, and named.
+15. `interruptions` — the `interruptions` table and `paused_intervals.reason`.
+    Every worklog of a task still `unsorted` becomes a fragment waiting to
+    be placed, with `legacy_worklog_id` naming it; the ad-hoc tasks and
+    their worklogs are kept, so nothing is lost before
+    `db:check-migration` has said so.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares

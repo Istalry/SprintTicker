@@ -12,6 +12,8 @@ interface TodayViewProps {
   onComplete: (comment?: string, markDone?: boolean) => void;
   onDiscard: () => void;
   onInterrupt: () => void;
+  onBack?: () => void;
+  onStopInterruption?: () => void;
   onOpenPicker: (mode: PickerMode) => void;
 }
 
@@ -27,6 +29,8 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onComplete,
   onDiscard,
   onInterrupt,
+  onBack,
+  onStopInterruption,
   onOpenPicker
 }) => (
   <div className="space-y-6">
@@ -39,6 +43,8 @@ export const TodayView: React.FC<TodayViewProps> = ({
       onOpenTaskModal={() => onOpenPicker('start')}
       onAssign={() => onOpenPicker('assign')}
       onInterrupt={onInterrupt}
+      onBack={onBack}
+      onStopInterruption={onStopInterruption}
     />
 
     <section className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">

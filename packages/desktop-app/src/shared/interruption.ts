@@ -48,3 +48,59 @@ export function interruptionTitle(at: Date): string {
   const mm = String(at.getMinutes()).padStart(2, '0');
   return `${INTERRUPTION_TITLE_PREFIX} ${hh}:${mm}`;
 }
+
+/**
+ * Where an interruption was started from (migration 15). `legacy` is an
+ * interruption of the model before it -- an unsorted ad-hoc task's worklog --
+ * carried over as a fragment.
+ */
+export const INTERRUPTION_SOURCES = ['window', 'mini', 'tray', 'bar', 'deck', 'shortcut', 'notification', 'legacy'] as const;
+export type InterruptionSource = (typeof INTERRUPTION_SOURCES)[number];
+
+export function isInterruptionSource(value: unknown): value is InterruptionSource {
+  return typeof value === 'string' && (INTERRUPTION_SOURCES as readonly string[]).includes(value);
+}
+
+/**
+ * The interruption running, as every surface reads it (§ 11.4 of the
+ * plan): one fragment of a run, and the task it holds as it was.
+ */
+export interface RunningInterruptionDTO {
+  id: string;
+  /** The user's name for it, or null: shown as `title`. */
+  name: string | null;
+  /** The name, or the one the app makes up (`Interruption 14:32`). */
+  title: string;
+  startedAtUtc: string;
+  /** 1 for the first fragment of the run, 2 for the next (Another)... */
+  index: number;
+  source: InterruptionSource;
+  /** The session it holds, paused with reason `interruption`; null when nothing was open. */
+  interruptedSessionId: string | null;
+  interruptedTaskKey: string | null;
+  interruptedTaskTitle: string | null;
+  /** The held session was paused already: Back leaves it paused. */
+  interruptedWasPaused: boolean;
+}
+
+/** An interruption that ended and waits to be placed, kept off, or left for later. */
+export interface InterruptionToPlaceDTO {
+  id: string;
+  name: string | null;
+  title: string;
+  startedAtUtc: string;
+  endedAtUtc: string;
+  durationSeconds: number;
+  source: InterruptionSource;
+  /** What it interrupted, for the context the list shows ("during MG-12"). */
+  interruptedTaskKey: string | null;
+  /** 1, 2... within its run, and the run's length: "2 of 3". */
+  index: number;
+  ofRun: number;
+}
+
+/** The interruptions waiting, counted for a badge. */
+export interface ToPlaceSummaryDTO {
+  count: number;
+  seconds: number;
+}

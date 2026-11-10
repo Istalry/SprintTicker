@@ -22,26 +22,30 @@
   is not sent until one of them is corrected; History marks it **Waiting ·
   overlaps PF-31**, and a correction that would cause an overlap says so
   before it is saved.
-- **Interrupt: a timer at once.** When someone comes to your desk, one click
-  starts a timer -- on Today's session card, in the mini timer, or in the
-  tray menu -- with nothing to fill in. It runs on a new ad-hoc task named for
-  the time it started, *Interruption 14:32*, and the task you were on stops,
-  its time logged. When the interruption ends, SprintTicker asks whether to go
-  back to that task, in the window and on the bar. On the bar, Interrupt is
-  the paused menu's first choice: pause, turn the wheel two notches left,
-  click.
+- **Interrupt: a timer at once, and the task waits.** When someone comes to
+  your desk, one click starts a timer -- on Today's session card, in the
+  mini timer, in the tray menu, on the deck or on the bar -- with nothing to
+  fill in. The task you were on waits, paused, with nothing logged or sent:
+  **Back** resumes it where it was. **Another** starts the next
+  interruption when someone else arrives first, so Marc, Ana and Marc again
+  are three interruptions and one Back. **Stop** ends the interruption
+  alone and asks whether to go back, in the window and on the bar, with the
+  choice to count the time since as work. On the bar, Interrupt is the
+  paused menu's first choice: pause, turn the wheel two notches left, click.
 - **A keyboard shortcut for Interrupt**, from any app, off until you turn it
   on in Settings, General, where you record
   the chord (Ctrl+Alt+Shift+I suggested). A chord another app holds is said to be inactive rather than
   shown on, and a press with nothing on screen is told by a notification.
-- **Interruptions to sort.** History marks an interruption not named
-  yet **To sort** and lists every one at the top, whatever its day, with its
-  time and the day it began. Click a name -- there, on any ad-hoc row, or in
-  the end-of-day wrap-up, which lists the day's -- to rename it.
+- **Interruptions to place.** An interruption's time goes nowhere until you
+  say where: History lists every one waiting, whatever its day, with what it
+  interrupted, and the wrap-up lists them too. **Place…** puts its time on a
+  task and sends it, with ten seconds to undo; **Place all** puts several
+  on one task; **Keep off** keeps it local; the bin discards it. A ⚡ beside
+  Today counts them. Interruptions from earlier builds are listed the same
+  way.
 - **Move a worklog to another task.** The arrows on a History row move
   it: deleted at Jira or OpenProject where it was, then created on the new
-  task, through the sync queue, so the time is never on both. **Assign** on
-  an interruption to sort moves all of its time at once, named after it.
+  task, through the sync queue, so the time is never on both.
 - **Time in a closed week asks first.** Moving, correcting or deleting a
   worklog of a week already closed warns that its timesheet may be in, or
   approved, before anything changes.

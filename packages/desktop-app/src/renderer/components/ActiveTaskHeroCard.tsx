@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, RefreshCw, Sparkles, AlertTriangle, Zap, Link2 } from 'lucide-react';
+import { Play, Pause, RefreshCw, Sparkles, AlertTriangle, Zap, Link2, Square, Undo2 } from 'lucide-react';
 import { ActiveSessionDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
 import { formatSeconds } from '../utils/formatters';
@@ -10,6 +10,7 @@ import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 import { TaskPageButton } from './TaskPageButton';
 import { SessionTitle } from './SessionTitle';
 import { isAdHocSession } from '../../shared/interruption';
+import { Verb } from '../../shared/words';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -19,8 +20,12 @@ interface ActiveTaskHeroCardProps {
   /** Ends the session keeping nothing; the Finish dialog has had it confirmed. */
   onDiscard: () => void;
   onOpenTaskModal: () => void;
-  /** Interrupt: a timer at once, the task running asked about when it ends. */
+  /** Interrupt: a timer at once, the task running waits paused. During one, Another. */
   onInterrupt: () => void;
+  /** Ends the interruption and resumes the task it interrupted. */
+  onBack?: () => void;
+  /** Ends the interruption; it waits to be placed. */
+  onStopInterruption?: () => void;
   /** Opens the task picker to assign the open ad-hoc session to a task. */
   onAssign?: () => void;
 }
@@ -33,9 +38,14 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   onDiscard,
   onOpenTaskModal,
   onInterrupt,
-  onAssign
+  onAssign,
+  onBack,
+  onStopInterruption
 }) => {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
+  // An interruption is timed apart from the task it interrupted, which waits
+  // paused (P6): its controls are Back, Stop and Another, never Pause or Finish.
+  const interruption = session?.interruption ?? null;
 
   const handleFinishOption = (markDone: boolean) => {
     setIsFinishModalOpen(false);
@@ -90,7 +100,13 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               'No task running'
             )}
           </h2>
-          {session?.unsorted && (
+          {interruption ? (
+            <div className="mt-1 text-xs text-accent-amber">
+              {interruption.interruptedTaskKey
+                ? `Interruption ${interruption.index} during ${interruption.interruptedTaskKey}, which waits paused. Place it on a task when it ends.`
+                : `Interruption ${interruption.index}. Place it on a task when it ends.`}
+            </div>
+          ) : session?.unsorted && (
             <div className="mt-1 text-xs text-accent-amber">
               Interruption -- name it, or assign it to a task so its time reaches your provider.
             </div>
@@ -123,6 +139,29 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               <Play className="w-4 h-4" />
               <span>Start a Task</span>
             </button>
+          ) : interruption ? (
+            <>
+              {interruption.interruptedSessionId && onBack && (
+                <button
+                  onClick={onBack}
+                  title={`End the interruption and resume ${interruption.interruptedTaskKey}`}
+                  className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent-green hover:bg-accent-green/90 text-dark-900 transition-all shadow-md"
+                >
+                  <Undo2 className="w-4 h-4" />
+                  <span>{Verb.BACK} to {interruption.interruptedTaskKey}</span>
+                </button>
+              )}
+              {onStopInterruption && (
+                <button
+                  onClick={onStopInterruption}
+                  title="End the interruption; place it on a task afterwards"
+                  className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm border transition-all bg-dark-700 hover:bg-dark-700/80 text-white border-border-dark"
+                >
+                  <Square className="w-4 h-4" />
+                  <span>{Verb.STOP}</span>
+                </button>
+              )}
+            </>
           ) : session.status === 'TRACKING' ? (
             <button
               onClick={onPause}
@@ -141,7 +180,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             </button>
           )}
 
-          {session && (
+          {session && !interruption && (
             <button
               onClick={() => setIsFinishModalOpen(true)}
               className="flex items-center space-x-2 px-5 py-2.5 rounded-lg font-semibold text-sm border transition-all bg-dark-700 hover:bg-dark-700/80 text-white border-border-dark"
@@ -153,11 +192,13 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
 
           <button
             onClick={onInterrupt}
-            title="Start a timer now; name it or assign it to a task afterwards"
+            title={interruption
+              ? 'End this interruption and start the next one'
+              : 'Start a timer now; the task waits paused, and you place the time afterwards'}
             className="flex items-center space-x-2 px-5 py-2.5 bg-accent-amber/10 hover:bg-accent-amber/20 text-accent-amber rounded-lg font-semibold text-sm border border-accent-amber/30 transition-all"
           >
             <Zap className="w-4 h-4" />
-            <span>Interrupt</span>
+            <span>{interruption ? Verb.ANOTHER : Verb.INTERRUPT}</span>
           </button>
 
           {session && onAssign && isAdHocSession(session) && (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ActiveSessionDTO } from '../../shared/dtos';
+import type { InterruptionSource } from '../../shared/interruption';
 
 /**
  * Custom React hook subscribing to active time-tracking session state and local stopwatch ticking.
@@ -89,10 +90,33 @@ export function useSession() {
     return null;
   };
 
-  /** Interrupt: a timer at once, named and assigned afterwards. */
-  const interrupt = async () => {
+  /**
+   * Interrupt: a timer at once, placed on a task afterwards. The task running
+   * waits, paused, until Back. During an interruption main makes it Another.
+   */
+  const interrupt = async (source: InterruptionSource = 'window') => {
     if (window.electronAPI) {
-      const res = await window.electronAPI.startInterruption();
+      const res = await window.electronAPI.interrupt({ source });
+      setSession(res);
+      return res;
+    }
+    return null;
+  };
+
+  /** Ends the interruption and resumes the task it interrupted. */
+  const back = async () => {
+    if (window.electronAPI) {
+      const res = await window.electronAPI.backFromInterruption();
+      setSession(res);
+      return res;
+    }
+    return null;
+  };
+
+  /** Ends the interruption; it waits to be placed, and the task stays paused. */
+  const stopInterruption = async () => {
+    if (window.electronAPI) {
+      const res = await window.electronAPI.stopInterruption();
       setSession(res);
       return res;
     }
@@ -107,6 +131,8 @@ export function useSession() {
     complete,
     discard,
     startTask,
-    interrupt
+    interrupt,
+    back,
+    stopInterruption
   };
 }

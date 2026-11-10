@@ -10,13 +10,16 @@ import type { DisplayRenderer } from '../hardware/display-renderer';
  * nothing to celebrate, and the scene would take the display for nothing.
  */
 export function completeSession(
-  engine: Pick<TimeTrackingEngine, 'stopSession'>,
+  engine: Pick<TimeTrackingEngine, 'stopSession'> & Partial<Pick<TimeTrackingEngine, 'isInterrupted'>>,
   renderer: Pick<DisplayRenderer, 'renderTaskCompletionConfetti' | 'renderTaskLogged'>,
   comment?: string,
   markDone?: boolean
 ): { success: boolean; loggedSeconds: number } {
+  // Stopping an interruption logs nothing (P6): its time is placed later, and
+  // LOGGED or DONE! on the bar would say otherwise.
+  const interruption = engine.isInterrupted?.() ?? false;
   const res = engine.stopSession(comment, markDone);
-  if (res.success) {
+  if (res.success && !interruption) {
     if (markDone) {
       renderer.renderTaskCompletionConfetti();
     } else {
@@ -39,7 +42,7 @@ export interface SessionEnding {
 
 /** Ends sessions at once, with no undo. */
 export function plainSessionEnding(
-  engine: Pick<TimeTrackingEngine, 'stopSession' | 'discardSession'>,
+  engine: Pick<TimeTrackingEngine, 'stopSession' | 'discardSession'> & Partial<Pick<TimeTrackingEngine, 'isInterrupted'>>,
   renderer: Pick<DisplayRenderer, 'renderTaskCompletionConfetti' | 'renderTaskLogged'>
 ): SessionEnding {
   return {

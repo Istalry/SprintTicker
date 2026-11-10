@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Link2, ListTodo, Pause, Play, Square, X, Zap } from 'lucide-react';
+import { AlertTriangle, Link2, ListTodo, Pause, Play, Square, Undo2, X, Zap } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { useScreenIcon } from '../hooks/useScreenIcon';
 import { ScreenIcon } from './ScreenIcon';
@@ -26,7 +26,10 @@ import { Verb } from '../../shared/words';
  * leaves the row to the session; the screen's own text is its tooltip.
  */
 export const MiniBar: React.FC = () => {
-  const { session, pause, resume, complete, discard, interrupt } = useSession();
+  const { session, pause, resume, complete, discard, interrupt, back, stopInterruption } = useSession();
+  // During an interruption the task it interrupted waits paused (P6): Back
+  // returns to it, Stop ends the interruption alone, and Interrupt is Another.
+  const interruption = session?.interruption ?? null;
   // A stop from here leaves the row empty: Undo takes its place for the hold.
   const undo = useUndo();
   const screenIcon = useScreenIcon();
@@ -87,7 +90,13 @@ export const MiniBar: React.FC = () => {
                   <AlertTriangle className="w-3 h-3 shrink-0 text-accent-amber" />
                 </span>
               )}
-              <span className="font-mono truncate">{session.taskKey}</span>
+              {interruption ? (
+                <span className="truncate text-accent-amber">
+                  {interruption.interruptedTaskKey ? `during ${interruption.interruptedTaskKey}` : `Interruption ${interruption.index}`}
+                </span>
+              ) : (
+                <span className="font-mono truncate">{session.taskKey}</span>
+              )}
             </div>
             <div className="text-xs text-text-primary truncate [-webkit-app-region:no-drag]">
               <SessionTitle
@@ -164,7 +173,29 @@ export const MiniBar: React.FC = () => {
 
       {!choosing && (
         <div className="flex items-center">
-          {tracking && (
+          {interruption?.interruptedSessionId && (
+            <button
+              type="button"
+              title={`${Verb.BACK} to ${interruption.interruptedTaskKey}: end the interruption and resume it`}
+              aria-label={`${Verb.BACK} to ${interruption.interruptedTaskKey}`}
+              className={button}
+              onClick={run('Back', back)}
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+          )}
+          {interruption && (
+            <button
+              type="button"
+              title="End the interruption; place it on a task afterwards"
+              aria-label={Verb.STOP}
+              className={button}
+              onClick={run('Stop the interruption', stopInterruption)}
+            >
+              <Square className="w-4 h-4" />
+            </button>
+          )}
+          {tracking && !interruption && (
             <button type="button" title="Pause" aria-label="Pause" className={button} onClick={run('Pause', pause)}>
               <Pause className="w-4 h-4" />
             </button>
@@ -174,7 +205,7 @@ export const MiniBar: React.FC = () => {
               <Play className="w-4 h-4" />
             </button>
           )}
-          {session && (
+          {session && !interruption && (
             <button
               type="button"
               title="End the session: not done, done, or discard"
@@ -198,10 +229,12 @@ export const MiniBar: React.FC = () => {
           )}
           <button
             type="button"
-            title="Interrupt: start a timer now, name or assign it afterwards"
-            aria-label="Interrupt"
+            title={interruption
+              ? `${Verb.ANOTHER}: end this interruption and start the next one`
+              : `${Verb.INTERRUPT}: start a timer now; the task waits paused`}
+            aria-label={interruption ? Verb.ANOTHER : Verb.INTERRUPT}
             className={button}
-            onClick={run('Interrupt', interrupt)}
+            onClick={run('Interrupt', () => interrupt('mini'))}
           >
             <Zap className="w-4 h-4" />
           </button>

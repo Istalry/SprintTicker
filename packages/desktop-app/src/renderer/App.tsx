@@ -30,15 +30,16 @@ function useToPlaceCount(): number {
   const [count, setCount] = useState(0);
   useEffect(() => {
     const api = window.electronAPI;
-    if (!api?.getUnsortedWorklogs) return undefined;
+    if (!api?.getInterruptionsToPlace) return undefined;
     let live = true;
     const read = () => {
-      api.getUnsortedWorklogs()
-        .then(logs => { if (live) setCount(logs.length); })
+      api.getInterruptionsToPlace()
+        .then(waiting => { if (live) setCount(waiting.length); })
         .catch(err => console.warn('[App] Could not read the interruptions to place:', err));
     };
     read();
-    const off = api.onWorklogsUpdated?.(() => read());
+    // Main sends the list itself when one ends or is placed.
+    const off = api.onInterruptionsUpdated?.(waiting => { if (live) setCount(waiting.length); });
     return () => {
       live = false;
       off?.();
@@ -52,7 +53,7 @@ export const App: React.FC = () => {
   const [settingsGroup, setSettingsGroup] = useState<SettingsGroupId>('general');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const { session, pause, resume, complete, discard, startTask, interrupt } = useSession();
+  const { session, pause, resume, complete, discard, startTask, interrupt, back, stopInterruption } = useSession();
   const device = useDeviceStatus();
   const hasBar = device.enabled;
   const { projects } = useTasks();
@@ -91,6 +92,8 @@ export const App: React.FC = () => {
             onComplete={complete}
             onDiscard={() => discard().catch(err => console.warn('[App] Discarding the session failed:', err))}
             onInterrupt={() => { interrupt().catch(err => console.warn('[App] Interrupt failed:', err)); }}
+            onBack={() => { back().catch(err => console.warn('[App] Back failed:', err)); }}
+            onStopInterruption={() => { stopInterruption().catch(err => console.warn('[App] Stopping the interruption failed:', err)); }}
             onOpenPicker={modals.picker.show}
           />
         );

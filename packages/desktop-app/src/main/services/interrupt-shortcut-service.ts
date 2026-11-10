@@ -151,13 +151,24 @@ export class InterruptShortcutService {
     if (this.deps.isSeen()) return;
     this.deps.toasts.show(failure
       ? { title: 'No interruption started', body: failure }
-      : { title: 'Interruption started', body: InterruptShortcutService.describeSetAside(before) });
+      : {
+          title: before?.interruption ? 'Another interruption started' : 'Interruption started',
+          body: InterruptShortcutService.describeHeld(before)
+        });
   }
 
-  private static describeSetAside(before: ActiveSessionDTO | null): string {
-    const later = 'Name it, or assign it to a task, when it ends.';
+  /**
+   * What the interruption holds (P6): the task waits, paused, and nothing
+   * is logged until the interruption is placed.
+   */
+  private static describeHeld(before: ActiveSessionDTO | null): string {
+    const later = 'Place it on a task when it ends.';
     if (!before) return later;
+    if (before.interruption) {
+      const held = before.interruption.interruptedTaskKey;
+      return held ? `${held} still waits, paused. ${later}` : later;
+    }
     const name = before.isAdHoc ? before.taskTitle : before.taskKey;
-    return `${name} logged. ${later}`;
+    return before.status === 'TRACKING' ? `${name} is paused until you are back. ${later}` : `${name} stays paused. ${later}`;
   }
 }

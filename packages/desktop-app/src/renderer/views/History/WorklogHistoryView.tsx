@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2, Zap, ArrowRightLeft, Link2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2, ArrowRightLeft } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
 import { WorklogSyncState } from '../../../shared/worklog-correction';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
@@ -12,34 +12,10 @@ import { countOf, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../.
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { closedWeekWarning, isInClosedWeek } from '../../../shared/closed-week';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
+import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
+import { StateWord } from '../../../shared/words';
 
-/** One interruption still to sort: its task, and the time logged on it. */
-interface ToSort {
-  taskId: string;
-  title: string;
-  totalSeconds: number;
-  /** The local day it began, which the list jumps to. */
-  dateKey: string;
-}
-
-/** The worklogs to sort, one entry per task, newest first as they came. */
-function groupToSort(worklogs: WorklogDTO[]): ToSort[] {
-  const byTask = new Map<string, ToSort>();
-  for (const log of worklogs) {
-    const entry = byTask.get(log.taskId);
-    // Oldest last in the answer: the last one seen is the day it began.
-    const dateKey = localDateKey(new Date(log.startedAtUtc));
-    if (entry) {
-      entry.totalSeconds += log.durationSeconds;
-      entry.dateKey = dateKey;
-    } else {
-      byTask.set(log.taskId, { taskId: log.taskId, title: log.taskTitle ?? log.taskId, totalSeconds: log.durationSeconds, dateKey });
-    }
-  }
-  return [...byTask.values()];
-}
-
-/** The badge of an interruption not yet named or assigned. */
+/** The badge of an earlier interruption's entry, still to place. */
 const TO_SORT_BADGE = 'px-1.5 py-0.5 border rounded text-[10px] text-accent-amber border-accent-amber/40';
 
 /** How each sync state reads on a row, and what its tooltip adds. */
@@ -89,8 +65,6 @@ export const WorklogHistoryView: React.FC = () => {
   // Bumped after a correction or deletion, so the day is read again.
   const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
-  // Every interruption still to sort, whatever its day.
-  const [unsorted, setUnsorted] = useState<WorklogDTO[]>([]);
   // The worklogs whose task is being picked, and the label of what moves.
   const [moving, setMoving] = useState<{ worklogIds: string[]; label: string } | null>(null);
   // A move of closed-week time, waiting for the user to say go on.
@@ -98,7 +72,6 @@ export const WorklogHistoryView: React.FC = () => {
   const [moveError, setMoveError] = useState<string | null>(null);
   const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
   const { providerName } = useProviderCapabilities();
-  const toSort = groupToSort(unsorted);
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
   const loading = day?.date !== selectedDate;
@@ -118,17 +91,6 @@ export const WorklogHistoryView: React.FC = () => {
     );
     return () => { current = false; };
   }, [selectedDate, revision]);
-
-  useEffect(() => {
-    let current = true;
-    const read = window.electronAPI?.getUnsortedWorklogs;
-    if (!read) return undefined;
-    read().then(
-      logs => { if (current) setUnsorted(logs); },
-      err => console.error('[WorklogHistoryView] Failed to read the interruptions to sort:', err)
-    );
-    return () => { current = false; };
-  }, [revision]);
 
   useEffect(() => {
     let current = true;
@@ -218,50 +180,10 @@ export const WorklogHistoryView: React.FC = () => {
         </div>
       </div>
 
-      {toSort.length > 0 && (
-        <section aria-label="Interruptions to sort" className="bg-accent-amber/5 border border-accent-amber/30 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-white">
-            <Zap className="w-4 h-4 text-accent-amber" />
-            <span>Interruptions to sort ({toSort.length})</span>
-          </div>
-          <p className="text-[11px] text-text-secondary">
-            Each is named for the time it started. Name it so your history says what it was; its time stays in SprintTicker.
-          </p>
-          <div className="space-y-1.5">
-            {toSort.map(item => (
-              <div key={item.taskId} className="flex items-center justify-between gap-3 text-xs py-1.5 px-2.5 bg-dark-900/60 border border-border-dark rounded-lg">
-                <InlineRename
-                  title={item.title}
-                  ownerId={item.taskId}
-                  onRename={name => renameTask(item.taskId, name)}
-                  className="font-bold text-white"
-                  inputClassName="flex-1 bg-dark-800 border border-focus rounded px-2 py-0.5 text-white outline-none"
-                />
-                <div className="flex items-center gap-3 shrink-0">
-                  <button
-                    type="button"
-                    aria-label={`Assign ${item.title} to a task`}
-                    title="Assign to a task: its time goes to that task's provider"
-                    onClick={() => startMove(unsorted.filter(log => log.taskId === item.taskId), item.title)}
-                    className="flex items-center gap-1 px-2 py-0.5 border border-border-dark rounded text-text-secondary hover:text-white hover:border-focus"
-                  >
-                    <Link2 className="w-3.5 h-3.5" />
-                    <span>Assign</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(item.dateKey)}
-                    className="text-text-secondary hover:text-white underline-offset-2 hover:underline"
-                  >
-                    {formatDay(item.dateKey)}
-                  </button>
-                  <span className="font-mono font-bold text-text-primary">{formatDuration(item.totalSeconds)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <InterruptionsToPlace
+        hint="Put each on the task it was for, and its time is sent there. Kept off, it stays in SprintTicker only."
+        onJumpToDay={setSelectedDate}
+      />
 
       {moveError && (
         <p role="alert" className="text-xs text-accent-red">Not moved: {moveError}</p>
@@ -365,7 +287,7 @@ export const WorklogHistoryView: React.FC = () => {
                     ) : (
                       <span className="text-text-secondary">{log.taskTitle}</span>
                     ))}
-                    {log.unsorted && <span className={TO_SORT_BADGE} title="An interruption not named yet.">To sort</span>}
+                    {log.unsorted && <span className={TO_SORT_BADGE} title="An interruption not placed on a task yet.">{StateWord.TO_PLACE}</span>}
                     {log.hasTaskPage && <TaskPageButton taskId={log.taskId} taskKey={log.taskKey ?? log.taskId} />}
                     <span className="text-text-secondary">• {formatClockTime(new Date(log.startedAtUtc))}</span>
                   </div>

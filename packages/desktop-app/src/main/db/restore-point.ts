@@ -6,7 +6,7 @@ import type Database from 'better-sqlite3';
  * INTEGER PRIMARY KEY (`paused_intervals`) the rowid *is* the key and
  * `SELECT rowid` names it otherwise.
  */
-export type RestorableTable = 'worklogs' | 'worklog_sync_queue' | 'tasks' | 'active_sessions';
+export type RestorableTable = 'worklogs' | 'worklog_sync_queue' | 'tasks' | 'active_sessions' | 'interruptions';
 
 /** Some rows of one table: `where` is SQL over it, with `?` bound from `params`. */
 export interface RowScope {

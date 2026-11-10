@@ -13,7 +13,8 @@ export const IdPrefix = {
   ADHOC_TASK: 'adhoc_',
   SESSION: 'sess_',
   WORKLOG: 'wl_',
-  SYNC_ITEM: 'sync_'
+  SYNC_ITEM: 'sync_',
+  INTERRUPTION: 'int_'
 } as const;
 
 export type IdPrefixValue = (typeof IdPrefix)[keyof typeof IdPrefix];

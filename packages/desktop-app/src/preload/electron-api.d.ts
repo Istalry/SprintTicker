@@ -16,6 +16,7 @@ import type { DayShare } from '../shared/work-split';
 import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type { FlowSettingKeyValue, FlowSettingValues } from '../shared/flow-settings';
+import type { InterruptionSource, InterruptionToPlaceDTO } from '../shared/interruption';
 import type {
   ActiveSessionDTO,
   TaskDTO,
@@ -90,6 +91,21 @@ export interface IElectronAPI {
   /** Takes it back; false when its window ended or something was already sent. */
   runUndo: () => Promise<boolean>;
   onUndoChanged: (callback: (state: UndoStateDTO | null) => void) => () => void;
+  /** Interrupt (P6); during an interruption, Another. */
+  interrupt: (options?: { source?: InterruptionSource; startedAtUtc?: string }) => Promise<ActiveSessionDTO>;
+  anotherInterruption: () => Promise<ActiveSessionDTO>;
+  /** Back to the held task; `addGapMinutes` counts the gap since a Stop as work. */
+  backFromInterruption: (addGapMinutes?: number) => Promise<ActiveSessionDTO | null>;
+  stopInterruption: () => Promise<ActiveSessionDTO | null>;
+  switchFromInterruption: (taskId: string, takeAlong: boolean) => Promise<ActiveSessionDTO>;
+  /** The running interruption, or one waiting (`id`); ten seconds to undo. */
+  discardInterruption: (id?: string) => Promise<boolean>;
+  renameInterruption: (id: string, name: string) => Promise<void>;
+  placeInterruption: (id: string, taskId: string) => Promise<void>;
+  placeInterruptions: (ids: string[], taskId: string) => Promise<void>;
+  keepInterruptionOff: (id: string) => Promise<void>;
+  getInterruptionsToPlace: () => Promise<InterruptionToPlaceDTO[]>;
+  onInterruptionsUpdated: (callback: (waiting: InterruptionToPlaceDTO[]) => void) => () => void;
   /** A flow setting (`shared/flow-settings.ts`), whole and valid. */
   getFlowSetting: <K extends FlowSettingKeyValue>(key: K) => Promise<FlowSettingValues[K]>;
   /** Stores one; answers the value as stored, after its reader made it valid. */
@@ -186,7 +202,8 @@ export interface IElectronAPI {
   /** After lunch: the task stopped for it is no longer the user's. Null when nothing is asked. */
   getResumePrompt: () => Promise<ResumePromptDTO | null>;
   /** Resumes the task, or leaves it. False when the question had already been answered. */
-  answerResumePrompt: (resume: boolean) => Promise<boolean>;
+  /** `addGapMinutes`: after an interruption, the time since it ended counted as work on the task. */
+  answerResumePrompt: (resume: boolean, addGapMinutes?: number) => Promise<boolean>;
   onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => () => void;
 
   // Provider events: toasts and bar banners for Jira / OpenProject activity

@@ -77,7 +77,7 @@ describe('recording a chord', () => {
 });
 
 const SESSION: ActiveSessionDTO = {
-  sessionId: 's1', projectId: 'p1', taskId: 't1', taskKey: 'SCRUM-12', taskTitle: 'Login page', isAdHoc: false
+  sessionId: 's1', projectId: 'p1', taskId: 't1', taskKey: 'SCRUM-12', taskTitle: 'Login page', isAdHoc: false, status: 'TRACKING'
 } as ActiveSessionDTO;
 
 describe('InterruptShortcutService', () => {
@@ -233,13 +233,31 @@ describe('InterruptShortcutService', () => {
       held.get('Ctrl+Alt+Shift+I')!();
     };
 
-    it('Press_Unseen_InterruptsAndToastsTheTaskLogged', () => {
+    it('Press_Unseen_InterruptsAndToastsTheTaskPaused', () => {
       pressIt(make());
 
       expect(interrupt).toHaveBeenCalledTimes(1);
       expect(toasts.show).toHaveBeenCalledWith({
         title: 'Interruption started',
-        body: 'SCRUM-12 logged. Name it, or assign it to a task, when it ends.'
+        body: 'SCRUM-12 is paused until you are back. Place it on a task when it ends.'
+      });
+    });
+
+    it('Press_DuringAnInterruption_ToastsAnother', () => {
+      current = {
+        ...SESSION,
+        isAdHoc: true,
+        interruption: {
+          id: 'int_1', name: null, title: 'Interruption 10:30', startedAtUtc: '2026-10-14T08:30:00.000Z', index: 1,
+          source: 'window', interruptedSessionId: 's1', interruptedTaskKey: 'SCRUM-12', interruptedTaskTitle: 'T',
+          interruptedWasPaused: false
+        }
+      };
+      pressIt(make());
+
+      expect(toasts.show).toHaveBeenCalledWith({
+        title: 'Another interruption started',
+        body: 'SCRUM-12 still waits, paused. Place it on a task when it ends.'
       });
     });
 
@@ -247,14 +265,14 @@ describe('InterruptShortcutService', () => {
       current = { ...SESSION, taskKey: 'adhoc_9', taskTitle: 'Call with Marc', isAdHoc: true };
       pressIt(make());
 
-      expect(toasts.show.mock.calls[0][0].body).toMatch(/^Call with Marc logged/);
+      expect(toasts.show.mock.calls[0][0].body).toMatch(/^Call with Marc is paused/);
     });
 
     it('Press_NothingRunning_NoTaskNamed', () => {
       current = null;
       pressIt(make());
 
-      expect(toasts.show.mock.calls[0][0].body).toBe('Name it, or assign it to a task, when it ends.');
+      expect(toasts.show.mock.calls[0][0].body).toBe('Place it on a task when it ends.');
     });
 
     it('Press_Seen_NoToast', () => {

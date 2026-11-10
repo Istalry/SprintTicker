@@ -11,6 +11,8 @@ import { weekStartKey } from '../../shared/working-days';
 import { WorkingCalendar } from './working-calendar';
 import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
+import { InterruptionSource } from '../../shared/interruption';
+import type { InterruptionEnded } from '../engine/time-tracking-engine';
 
 /** The session lunch stopped, to start again when it ends, and the day it was stopped. */
 interface LunchResume {
@@ -66,8 +68,17 @@ function taskOf(entry: SetAside): LunchResume {
   };
 }
 
-/** The question asked before restarting a task, and what stopped it. */
-type ResumeQuestion = LunchResume & { after: ResumePromptDTO['after']; unlisted: boolean };
+/**
+ * The question asked before restarting a task, and what stopped it. After an
+ * interruption of this model the task was never stopped: `heldSessionId`
+ * names the session held for it, which Yes resumes rather than restarts.
+ */
+type ResumeQuestion = LunchResume & {
+  after: ResumePromptDTO['after'];
+  unlisted: boolean;
+  heldSessionId?: string;
+  interruptionEndedAtUtc?: string;
+};
 
 /** Whether the session is the stand-up the app switches to. */
 function isStandupSession(session: ActiveSessionDTO | null): boolean {
@@ -119,6 +130,9 @@ export class ContextScheduleService {
   private _lastSeen: { sessionId: string; tracking: boolean } | null = null;
   private _timer?: NodeJS.Timeout;
   private readonly _unsubscribeEngine: () => void;
+  private readonly _unsubscribeInterruptions: () => void;
+  /** Lunch is ending an interruption: "Back?" is not asked over the break. */
+  private _endingForLunch = false;
   private readonly _calendar: WorkingCalendar;
   private readonly _weekEndedListeners = new Set<(week: WeekEndedDTO) => void>();
 
@@ -147,6 +161,10 @@ export class ContextScheduleService {
     // A session already running when the service starts was not started now.
     this.noteSeen(engine.getCurrentSession());
     this._unsubscribeEngine = engine.subscribe(session => this.onSessionChanged(session));
+    // A test double of the engine may have no interruptions to tell of.
+    this._unsubscribeInterruptions = typeof engine.onInterruptionEnded === 'function'
+      ? engine.onInterruptionEnded(ended => this.onInterruptionEnded(ended))
+      : () => undefined;
     this.registerPowerMonitorListeners();
     this.startScheduleTimer();
   }
@@ -318,8 +336,33 @@ export class ContextScheduleService {
    * A paused task is set aside too, unlike for the stand-up: the bar reaches
    * Interrupt through its paused menu, so the task is paused by then.
    */
-  public interrupt(): ActiveSessionDTO {
-    return this.switchSettingAside('interruption', () => this._engine.startInterruption());
+  public interrupt(source: InterruptionSource = 'window', at?: Date): ActiveSessionDTO {
+    // The task is held by the engine now (D2), paused for the interruption,
+    // so nothing is set aside: Back resumes it where it was.
+    return this._engine.startInterruption(at ?? new Date(), source);
+  }
+
+  /**
+   * An interruption ended without Back: "Back to MG-12?" when it held a task
+   * that was running. Not over lunch -- lunch decides what comes after it --
+   * and not for a task that was already paused, which Back would leave paused.
+   */
+  private onInterruptionEnded(ended: InterruptionEnded): void {
+    if (ended.how !== 'stop' && ended.how !== 'discard') return;
+    if (!ended.held || ended.fragment.interruptedWasPaused || this._endingForLunch) return;
+    if (this._resumePrompt) return;
+    const held = ended.held;
+    const unlisted = !held.isAdHoc && !this._engine.isTaskListed(held.taskId);
+    this._resumePrompt = {
+      ...ContextScheduleService.resumeOf(held),
+      after: 'interruption',
+      unlisted,
+      heldSessionId: held.sessionId,
+      ...(ended.fragment.endedAtUtc ? { interruptionEndedAtUtc: ended.fragment.endedAtUtc } : {})
+    };
+    const prompt = ContextScheduleService.toPromptDto(this._resumePrompt);
+    this._renderer.renderResumePrompt('interruption', prompt.taskKey);
+    this.sendResumePrompt(prompt);
   }
 
   /**
@@ -381,6 +424,15 @@ export class ContextScheduleService {
     this.forgetSetAside();
     this.forgetLunchResume();
     if (this._resumePrompt) this.closeResumePrompt();
+    // An interruption first, then the session it held: the day ends both.
+    if (this._engine.getCurrentSession()?.interruption) {
+      this._endingForLunch = true;
+      try {
+        this._engine.stopInterruption();
+      } finally {
+        this._endingForLunch = false;
+      }
+    }
     if (this._engine.getCurrentSession()) this._engine.stopSession(WORKLOG_COMMENTS.WRAP_UP);
   }
 
@@ -399,7 +451,7 @@ export class ContextScheduleService {
       this.joinStandup();
     }
     if (action === 'START_INTERRUPTION') {
-      this.interrupt();
+      this.interrupt('bar');
     }
   }
 
@@ -501,7 +553,24 @@ export class ContextScheduleService {
    * the mode is the caller's. Nothing running leaves the stored resume alone.
    */
   private stopForLunch(): void {
-    const session = this._engine.getCurrentSession();
+    let session = this._engine.getCurrentSession();
+    // An interruption ends at lunch, and the task it held -- running before
+    // it -- is stopped and comes back after, as a running task would.
+    if (session?.interruption) {
+      const wasRunning = !session.interruption.interruptedWasPaused;
+      this._endingForLunch = true;
+      try {
+        this._engine.stopInterruption();
+      } finally {
+        this._endingForLunch = false;
+      }
+      session = this._engine.getCurrentSession();
+      if (session && wasRunning && session.status === 'PAUSED') {
+        this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, ContextScheduleService.resumeOf(session));
+        this._engine.stopSession(WORKLOG_COMMENTS.LUNCH, false);
+      }
+      return;
+    }
     if (session && session.status === 'TRACKING') {
       this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, ContextScheduleService.resumeOf(session));
       this._engine.stopSession(WORKLOG_COMMENTS.LUNCH, false);
@@ -531,11 +600,20 @@ export class ContextScheduleService {
   /// Answers "resume it anyway?", from the window or the bar. False when
   /// nothing is being asked -- the other one answered first.
   /// </summary>
-  public answerResumePrompt(resume: boolean): boolean {
+  public answerResumePrompt(resume: boolean, addGapMinutes = 0): boolean {
     const data = this._resumePrompt;
     if (!data) return false;
     this.closeResumePrompt(() => {
-      if (resume && !this._engine.getCurrentSession()) {
+      if (!resume) return;
+      if (data.heldSessionId) {
+        // Held, not stopped: Back resumes it, the gap counted as work if asked.
+        const open = this._engine.getCurrentSession();
+        if (open?.sessionId === data.heldSessionId && open.status === 'PAUSED') {
+          this._engine.backFromInterruption(addGapMinutes);
+        }
+        return;
+      }
+      if (!this._engine.getCurrentSession()) {
         this._engine.startTask(data.taskId, data.isAdHoc, data.customTitle, data.projectId, data.taskKey);
       }
     });
@@ -572,6 +650,7 @@ export class ContextScheduleService {
   /// </summary>
   public dispose(): void {
     this._unsubscribeEngine();
+    this._unsubscribeInterruptions();
     if (this._timer) {
       clearInterval(this._timer);
       this._timer = undefined;
@@ -849,6 +928,7 @@ export class ContextScheduleService {
   private static toPromptDto(data: ResumeQuestion): ResumePromptDTO {
     const prompt: ResumePromptDTO = { taskKey: data.taskKey || data.taskId, taskTitle: data.customTitle ?? '', after: data.after };
     if (data.after === 'interruption' && data.unlisted) prompt.unlisted = true;
+    if (data.interruptionEndedAtUtc) prompt.interruptionEndedAtUtc = data.interruptionEndedAtUtc;
     return prompt;
   }
 

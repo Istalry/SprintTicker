@@ -261,4 +261,42 @@ describe('ActiveTaskHeroCard', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
   });
+  it('DuringAnInterruption_BackStopAnother_NoPauseNorFinish', () => {
+    const during = {
+      ...INTERRUPTION,
+      sessionId: 'int_1',
+      taskId: 'int_1',
+      interruption: {
+        id: 'int_1', name: null, title: 'Interruption 10:30', startedAtUtc: '2026-11-10T09:00:00.000Z', index: 1,
+        source: 'window' as const, interruptedSessionId: 's1', interruptedTaskKey: 'SPR-142',
+        interruptedTaskTitle: 'The task', interruptedWasPaused: false
+      }
+    };
+    const onBack = vi.fn();
+    const onStop = vi.fn();
+    const onInterrupt = vi.fn();
+    render(
+      <ActiveTaskHeroCard
+        session={during}
+        onPause={vi.fn()}
+        onResume={vi.fn()}
+        onComplete={vi.fn()}
+        onDiscard={vi.fn()}
+        onOpenTaskModal={vi.fn()}
+        onInterrupt={onInterrupt}
+        onBack={onBack}
+        onStopInterruption={onStop}
+      />
+    );
+
+    expect(screen.getByText(/during SPR-142, which waits paused/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Finish/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to SPR-142' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Another' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onStop).toHaveBeenCalledTimes(1);
+    expect(onInterrupt).toHaveBeenCalledTimes(1);
+  });
 });

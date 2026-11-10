@@ -1,5 +1,6 @@
 import type { WorklogSyncState } from './worklog-correction';
 import type { TaskOwnershipValue } from './task-ownership';
+import type { RunningInterruptionDTO } from './interruption';
 /**
  * Data Transfer Objects (DTOs) for the IPC bridge and the local webhook endpoints.
  */
@@ -16,6 +17,12 @@ export interface ActiveSessionDTO {
    * (migration 13). Read from the task row, never stored on the session.
    */
   unsorted?: true;
+  /**
+   * An interruption runs (P6). The session is then the interruption's own
+   * view -- its title, its start, TRACKING -- so every surface times it as it
+   * timed an interruption before; the task it holds is in here, paused.
+   */
+  interruption?: RunningInterruptionDTO;
   status: 'TRACKING' | 'PAUSED' | 'COMPLETED';
   startTimeUtc: string; // ISO 8601
   totalPausedSeconds: number;
@@ -273,6 +280,11 @@ export interface ResumePromptDTO {
    * and the stand-up ask only then, so for them it goes without saying.
    */
   unlisted?: true;
+  /**
+   * After an interruption: when it ended. The time since is the gap "Back,
+   * add the 6 min" counts as work on the task.
+   */
+  interruptionEndedAtUtc?: string;
 }
 
 /** A pause of a session, closed: from when to when. */
@@ -848,7 +860,7 @@ export interface SyncQueueSnapshotDTO {
 }
 
 /** What an undo puts back (P5). */
-export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'end-day';
+export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day';
 
 /**
  * The one action that can still be undone, for the window's bar and the

@@ -5,6 +5,7 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow, revealMainWindow } from '../windows/main-window-actions';
 import type { LaunchAtLoginService } from '../services/launch-at-login';
+import { Verb } from '../../shared/words';
 
 /**
  * System Tray Manager handling desktop tray lifecycle, status tooltip badges,
@@ -14,6 +15,12 @@ export class TrayManager {
   private tray: Tray | null = null;
   private readonly unsubscribeMiniWindow?: () => void;
   private readonly unsubscribeLaunchAtLogin?: () => void;
+  private unsubscribeEngine?: () => void;
+  /**
+   * The interruption the menu was built for, and the task it holds: the menu
+   * is rebuilt when they change, never on every tick of the engine.
+   */
+  private menuInterruption = '';
   private mainWindow: BrowserWindow;
   private engine: TimeTrackingEngine;
 
@@ -60,8 +67,9 @@ export class TrayManager {
     });
 
     // Subscribe to engine state updates to adjust tray tooltip and context menu
-    this.engine.subscribe(() => {
+    this.unsubscribeEngine = this.engine.subscribe(() => {
       this.updateStatusTooltip();
+      if (this.interruptionKey() !== this.menuInterruption) this.updateContextMenu();
     });
   }
 
@@ -82,8 +90,48 @@ export class TrayManager {
     }
   }
 
+  private interruptionKey(): string {
+    const running = this.engine.getCurrentSession()?.interruption;
+    return running ? `${running.id}:${running.interruptedTaskKey ?? ''}` : '';
+  }
+
+  /** Runs a menu click; a throw from one would reach Electron's main process. */
+  private guarded(what: string, action: () => unknown): () => void {
+    return () => {
+      try {
+        action();
+      } catch (err) {
+        console.error(`[TrayManager] Could not ${what}:`, err);
+      }
+    };
+  }
+
+  /**
+   * During an interruption (P6): Back to the task it holds, and Stop. The
+   * engine's own commands, which every surface reaches, so the tray holds no
+   * rule of its own.
+   */
+  private interruptionItems(): Electron.MenuItemConstructorOptions[] {
+    const running = this.engine.getCurrentSession()?.interruption;
+    if (!running) return [];
+    return [
+      ...(running.interruptedSessionId
+        ? [{
+            label: `${Verb.BACK} to ${running.interruptedTaskKey ?? 'the task'}`,
+            click: this.guarded('go back from the interruption', () => this.engine.backFromInterruption())
+          }]
+        : []),
+      {
+        label: 'Stop the Interruption',
+        click: this.guarded('stop the interruption', () => this.engine.stopInterruption())
+      }
+    ];
+  }
+
   private updateContextMenu(): void {
     if (!this.tray) return;
+    this.menuInterruption = this.interruptionKey();
+    const interrupting = this.menuInterruption !== '';
 
     const contextMenu = Menu.buildFromTemplate([
       {
@@ -92,17 +140,12 @@ export class TrayManager {
       },
       { type: 'separator' },
       // First: an interruption is the moment there is no time to look for it.
+      ...this.interruptionItems(),
       ...(this.interrupt
         ? [{
-            label: 'Start an Interruption',
-            click: () => {
-              try {
-                this.interrupt?.();
-              } catch (err) {
-                // A click must not take the main process down with it.
-                console.error('[TrayManager] Could not start an interruption:', err);
-              }
-            }
+            // During one, the same press is Another: main decides.
+            label: interrupting ? `${Verb.ANOTHER} Interruption` : 'Start an Interruption',
+            click: this.guarded('start an interruption', () => this.interrupt?.())
           }]
         : []),
       {
@@ -161,6 +204,7 @@ export class TrayManager {
   public destroy(): void {
     this.unsubscribeMiniWindow?.();
     this.unsubscribeLaunchAtLogin?.();
+    this.unsubscribeEngine?.();
     if (this.tray) {
       this.tray.destroy();
       this.tray = null;

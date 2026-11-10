@@ -388,7 +388,7 @@ async function startApplication(): Promise<void> {
     settings: settingsRepo,
     interrupt: () => {
       if (!schedule) throw new Error('The schedule service is not running.');
-      return schedule.interrupt();
+      return schedule.interrupt('shortcut');
     },
     getCurrentSession: () => engine?.getCurrentSession() ?? null,
     isSeen: () =>
@@ -466,7 +466,7 @@ async function startApplication(): Promise<void> {
     interrupt: () => {
       // A refusal the key shows, never a press that does nothing.
       if (!interrupting) throw new Error('The schedule service is not running.');
-      interrupting.interrupt();
+      interrupting.interrupt('deck');
     },
     // The Session key moves as the bar's icon does, from the same frames.
     iconMotions: new DeckIconMotions(name => loadAnimationSequence(defaultAnimationsDir(), name)),
@@ -479,7 +479,7 @@ async function startApplication(): Promise<void> {
   createWindow(launchedHidden(process.argv));
   if (mainWindow && engine) {
     const schedule = contextScheduleService;
-    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin, schedule ? () => { schedule.interrupt(); } : undefined);
+    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin, schedule ? () => { schedule.interrupt('tray'); } : undefined);
     trayManager.initialize();
   }
   miniWindowManager.restore();

@@ -807,18 +807,32 @@ changing it:
   session, and the IPC registry's render draws the idle clock over the task
   just started. So the restart is a `queueMicrotask`. Anything else that
   starts or stops a session from an engine listener has the same trap.
-- **Interrupt and the stand-up share one set-aside; only the policy
-  differs.** `switchSettingAside` is the one place a task is put aside to
-  come back: the stand-up restarts it unless it left the lists, an
-  interruption always asks ("back to SCRUM-12?", `after: 'interruption'`).
-  A second copy of "once, the same day, not over an open session, Lunch
-  takes it over" for Interrupt would be the duplicated-constant hazard. A
-  replacement that is itself waited on passes on the first task, so the
-  wait is dropped *before* the start's own stop and taken up after it --
-  otherwise that stop reads as the interruption ending. **And the wrap-up
-  ends a session through `stopForWrapUp`**, which drops every stored
-  restart first: stopped from its IPC handler, a stand-up running at
+- **An interruption holds the session; it never stops it** (redesign P6).
+  The session open is paused with a `paused_intervals` row of reason
+  `interruption`, and the interruption is a fragment in its own table. So
+  nothing is logged or sent at Interrupt, Back is ending a pause, and the
+  task's total already leaves the fragment out -- never subtract it again.
+  While a fragment runs, `getCurrentSession()` answers the fragment as an
+  ad-hoc session (`interruption` set), and the engine routes every command
+  to it: Stop, Done and pause are Stop, resume is Back, a start is a switch.
+  A surface that reads the session works unchanged; one that needs the
+  held task reads `interruption.interruptedTaskKey`, never a second
+  `getCurrentSession`. Inside the engine, use `sessionView()`.
+- **The set-aside is the stand-up's alone now.** `switchSettingAside` puts
+  a task aside to come back, and the stand-up restarts it unless it left
+  the lists; an entry an interruption of the model before stored still
+  asks. A replacement that is itself waited on passes on the first task,
+  so the wait is dropped *before* the start's own stop and taken up after
+  it. **And the wrap-up ends a session through `stopForWrapUp`**, which
+  drops every stored restart first, and ends a running interruption before
+  the session it holds: stopped from its IPC handler, a stand-up running at
   wrap-up time brought its task back to run all night (2026-11-09).
+- **"Back to MG-12?" comes from `onInterruptionEnded`, not from the session
+  ending.** The schedule service asks after a Stop or a Discard, never while
+  it is itself ending one for lunch or the wrap-up (`_endingForLunch`), and
+  never for a task paused before the interruption, which Back would leave
+  paused. The LOGGED scene does not play for a fragment's stop
+  (`completeSession` checks `isInterrupted`): nothing was logged.
 - **Lunch stops the session under Away too.** Lunch never *leaves* Away --
   Away outranks it -- and that used to mean it never began at all: locked at
   12:30, the session ran on and the break was logged as work. The check now

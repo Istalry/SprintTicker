@@ -33,7 +33,18 @@ Everything else is a request/response `invoke`.
 | `session:rename` | Name the open ad-hoc session, and its task (so History follows): a string, trimmed, at most 120 characters (`checkAdHocTitle`). Clears the task's unsorted mark. Refused for a provider's task, which keeps the provider's name. Answers the session |
 | `session:assign` | Assign the open ad-hoc session to a task, by id, in place: the session keeps its start and pauses, takes the task's project, key and title, and gets the task's provider -- ad-hoc work had none. The task is taken up as a start takes it up (In Progress, or claimed when nobody has it); the ad-hoc row is retired. Refused for a provider task's session, an ad-hoc target, or an unknown task. Answers the session |
 | `mini:open-assign-picker` | Bring the dashboard forward with its task picker open in assign mode, for the open ad-hoc session. Answers whether there was a window |
-| `session:start-interruption` | Interrupt: start a session at once on a new ad-hoc task titled `Interruption HH:MM` and marked unsorted, and set aside the session running -- tracking or paused -- to ask about when this one ends. Answers the new session. Through `ContextScheduleService.interrupt`, which the tray calls too |
+| `session:start-interruption` | Kept for one release as an alias of `interruption:start` |
+| `interruption:start` | Interrupt: `{ source?, startedAtUtc? }`, `source` one of `window`, `mini`, `tray`, `bar`, `deck`, `shortcut`, `notification` (anything else is `window`). Holds the session open -- paused with reason `interruption`, nothing logged or sent -- and starts a fragment; during one it is Another. Through `ContextScheduleService.interrupt`. Answers the session view: while a fragment runs, the fragment as an ad-hoc session with `interruption` set |
+| `interruption:another` | Ends the fragment running and starts the next, holding the same session |
+| `interruption:back` | `(addGapMinutes?)`: ends the fragment and resumes the held session, its pause ended that many minutes earlier; one paused before stays paused |
+| `interruption:stop` | Ends the fragment alone, with ten seconds to undo; the held session stays paused and "Back to MG-12?" is asked |
+| `interruption:switch` | `(taskId, takeAlong)`: ends the fragment, stops the held session, starts `taskId`; with `takeAlong` the fragment is placed on it |
+| `interruption:discard` | `(id?)`: the running fragment, or one waiting; ten seconds to undo |
+| `interruption:rename` | `(id, name)`: names a fragment, running or waiting; `checkAdHocTitle` rules |
+| `interruption:place` / `interruption:place-many` | `(id, taskId)` / `(ids, taskId)`: a worklog of each fragment's span on the task, queued with the hold; an interruption of the model before has its worklog moved. Refused for one not waiting. Ten seconds to undo |
+| `interruption:keep-off` | `(id)`: keeps it off the provider, as a local ad-hoc worklog |
+| `interruption:get-to-place` | Every fragment that ended and waits, any day, oldest first: `{ id, name, title, startedAtUtc, endedAtUtc, durationSeconds, source, interruptedTaskKey, index, ofRun }` |
+| `interruption:on-updated` | Pushes that list whenever one ends, is placed, kept off or discarded, from any surface |
 | `session:pause` / `session:resume` | Pause and resume |
 | `session:complete` | Stop, write a worklog, optionally mark the task done. When a session was stopped, the bar plays DONE! (marked done) or LOGGED (not). Its sends and its Done transition wait the undo window (ten seconds) |
 | `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The tracked task is no longer the user's: the provider stopped listing it at the last sync (reassigned, closed, moved), or lists it as a teammate's. The sync keeps the task until the session ends; finishing it as done asks the user first |
@@ -93,7 +104,7 @@ A worklog read carries `adHoc: true` when it was logged on ad-hoc work, and
 | `tasks:unstar` | `(taskId)`: takes the star off; nothing for a task never starred. Answers the starred list |
 | `tasks:get-starred` | The starred tasks the lists hold now, most recently starred first. A star whose task is retired stays, and comes back with the task |
 | `tasks:get-recent` | The last six tasks timed, each once, the most recently started first -- read from the sessions. Retired tasks and interruptions not named yet are left out |
-| `worklogs:get-unsorted` | Every worklog of an interruption still to sort, whatever its day, newest first: History's list |
+| `worklogs:get-unsorted` | Every worklog of an ad-hoc task still marked unsorted, whatever its day. Since migration 15 such worklogs are interruptions to place, read through `interruption:get-to-place` |
 | `tasks:rename-ad-hoc` | `(taskId, title)`: names ad-hoc work after the fact -- the task row, so every worklog of it reads the new name -- and clears its unsorted mark. Local only, nothing is queued. The open session's own task is renamed as `session:rename` renames it, its copy included. Refused for a provider's task, an unknown one, or a title `checkAdHocTitle` refuses |
 
 `projects:delete` and `tasks:delete` delete a task only if no time was logged
@@ -148,7 +159,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | :--- | :--- |
 | Device | `device:get-status`, `device:get-config`, `device:set-config`, `device:on-status-changed` |
 | Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup`, `schedule:cancel-eod-wrapup`, `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup`, `schedule:get-week-ended`, `schedule:get-last-week-closed` (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, `isInClosedWeek`), `schedule:dismiss-week-ended`, `schedule:on-week-ended`, `schedule:snooze-ceremony`, `schedule:on-ceremony-prompt`, `schedule:update-ceremony-prompt` |
-| Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it) and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch`, `standup` or `interruption`: what stopped the task. Lunch and the stand-up ask only about a task that left the user's lists; an interruption asks every time, and adds `unlisted: true` when the task has left them as well |
+| Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it), and after an interruption the minutes to count as work since it ended (`addGapMinutes`), and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch`, `standup` or `interruption`: what stopped the task -- or, after an interruption, what it waited paused through, with `interruptionEndedAtUtc`. Lunch and the stand-up ask only about a task that left the user's lists; an interruption asks every time, and adds `unlisted: true` when the task has left them as well |
 | Notifications | `notifications:get-settings`, `notifications:save-settings`, `notifications:simulate`, `notifications:get-listener-status`, `notifications:on-log`, `notifications:open-settings` |
 | Provider events | `provider-events:get-settings`, `provider-events:save-settings` (answers the settings as stored: an interval is clamped to 30-3600 s), `provider-events:test` (a sample through the destinations switched on; answers `{ toast, bar }`) |
 | Diagnostics | `diagnostics:export-logs` |
@@ -238,7 +249,7 @@ removed with the keys that used them (2026-10-22).
 | `finish` | Ends it and marks the task done, with DONE! | No session; or the task left the user's list and `confirmed` is not true (NOT YOURS?) |
 | `discard` | Keeps nothing | No session; or `confirmed` is not true -- always asked |
 | `open-picker` | Brings the window forward with its task picker -- to the front, past Windows' foreground lock (`ForegroundRaiser`), since the press reached Stream Deck and not the app | No window |
-| `interrupt` | Starts an interruption, as the window's Interrupt: `ContextScheduleService.interrupt`, a timer at once and the task it stops asked about when it ends (`resume`). Added without raising the protocol: an app older than it answers `invalid-request` | Never; `failed` if the app cannot |
+| `interrupt` | Starts an interruption, as the window's Interrupt: `ContextScheduleService.interrupt('deck')`, a timer at once while the task running waits paused; during one, Another. Added without raising the protocol: an app older than it answers `invalid-request` | Never; `failed` if the app cannot |
 | `prompt-yes`, `prompt-no` | OK or BACK on the bar while a prompt holds it: the stand-up (`standup`), the wrap-up (`wrap-up`, then `wrap-up-confirm` after the first yes), the resume question (`resume`) | No prompt holds the bar |
 
 A prompt is reported only while it holds the bar's display: covered by a

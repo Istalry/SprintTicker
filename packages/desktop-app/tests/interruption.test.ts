@@ -9,55 +9,58 @@ import { SettingsRepository } from '../src/main/db/repositories/settings-reposit
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
 import { WorklogCorrectionService } from '../src/main/services/worklog-correction-service';
+import { InterruptionService } from '../src/main/services/interruption-service';
+import { UndoService } from '../src/main/services/undo-service';
 import { ContextScheduleService } from '../src/main/services/context-schedule-service';
 import type { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { IPCChannel } from '../src/shared/ipc-channels';
-import { WORKLOG_COMMENTS } from '../src/shared/worklog-comments';
-import { UNDO_WINDOW_MS } from '../src/main/sync/sync-constants';
 import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
 
 /**
- * Interrupt: a timer at once, on a new ad-hoc task named for the time it
- * started, and the task it stopped asked about when it ends -- "back to
- * SCRUM-2?". It shares the stand-up's set-aside, with one difference: the
- * stand-up restarts the task on its own, an interruption always asks.
+ * Interruptions in a row (P6, D2): the task running is held as it was --
+ * paused, with the reason `interruption` -- and each ⚡ is a fragment of its
+ * own, placed on a task afterwards, kept off the provider, or left for later.
+ * Nothing is logged or sent at the start.
  *
  * Real engine, priority engine and settings on a database in memory; only
  * the renderer is a stand-in, and the clock is faked.
  */
-describe('Interrupt', () => {
+describe('Interruptions in a row', () => {
   let dbConn: DatabaseConnection;
   let settings: SettingsRepository;
   let tasks: TaskRepository;
   let worklogs: WorklogRepository;
+  let sessions: SessionRepository;
   let engine: TimeTrackingEngine;
   let priority: PriorityPreemptionEngine;
   let renderer: { setContextMode: ReturnType<typeof vi.fn>; renderResumePrompt: ReturnType<typeof vi.fn> };
   let send: ReturnType<typeof vi.fn>;
   let service: ContextScheduleService;
-  let remoteTasks: TaskDTO[];
 
   const PROJECT: ProjectDTO = { id: '10000', key: 'SCRUM', name: 'My Software Team' };
   const A: TaskDTO = { id: '10001', projectId: '10000', key: 'SCRUM-2', title: 'Tache 2', status: 'todo' };
   const B: TaskDTO = { id: '10002', projectId: '10000', key: 'SCRUM-3', title: 'Tache 3', status: 'todo' };
+  const DAY = '2026-10-14';
 
   /** 14 October 2026, local time; lunch 12:30 to 13:30. */
   const at = (hours: number, minutes: number, day = 14) => vi.setSystemTime(new Date(2026, 9, day, hours, minutes, 0));
-  const sync = () => engine.getSyncWorker().syncTasksAndProjects();
   const startA = () => engine.startTask(A.id, false, A.title, A.projectId, A.key);
   const session = () => engine.getCurrentSession();
-  /** The question waits until every listener has heard the interruption end. */
+  const minutes = (n: number) => n * 60;
+  const logged = (taskId: string) => worklogs.getWorklogsByDate(DAY).filter(w => w.taskId === taskId).map(w => w.durationSeconds);
+  const queued = (taskId: string) =>
+    dbConn.getDb().prepare('SELECT task_id AS taskId, duration_seconds AS seconds FROM worklog_sync_queue WHERE task_id = ?').all(taskId);
+  const prompts = () => send.mock.calls.filter(([channel]) => channel === IPCChannel.ON_RESUME_PROMPT).map(([, prompt]) => prompt);
   const settle = () => Promise.resolve();
-  const createService = () =>
-    new ContextScheduleService(
-      priority,
-      settings,
-      engine,
-      renderer as unknown as DisplayRenderer,
-      () => ({ isDestroyed: () => false, webContents: { send } }) as unknown as BrowserWindow
-    );
-  /** Working on A from 10:00, interrupted at 10:30, the interruption over at 10:45. */
+  const corrections = () =>
+    new WorklogCorrectionService(worklogs, null, () => undefined, Date.now, {
+      getTask: taskId => tasks.getTaskById(taskId),
+      destinationOf: taskId => engine.sendDestinationOfTask(taskId),
+      retireAdHocIfUnused: taskId => engine.retireAdHocTaskIfUnused(taskId)
+    });
+
+  /** Working on A from 10:00, interrupted at 10:30, now 10:45. */
   const interruptA = () => {
     at(10, 0);
     startA();
@@ -76,22 +79,28 @@ describe('Interrupt', () => {
     settings.setSetting('schedule_settings', {
       enableStandupPrompt: false, lunchStartTime: '12:30', lunchEndTime: '13:30', eodWrapUpTime: '23:00'
     });
-    remoteTasks = [A, B];
     const manager = {
       getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60 }),
       getProjects: async () => [PROJECT],
-      getTasks: async () => remoteTasks,
+      getTasks: async () => [A, B],
       updateTaskStatus: async () => true,
       logTimeForProvider: () => new Promise(() => undefined)
     } as unknown as ProviderManager;
     tasks = new TaskRepository(dbConn);
     worklogs = new WorklogRepository(dbConn);
-    engine = new TimeTrackingEngine(new SessionRepository(dbConn), worklogs, tasks, manager, new ProjectRepository(dbConn));
-    await sync();
+    sessions = new SessionRepository(dbConn);
+    engine = new TimeTrackingEngine(sessions, worklogs, tasks, manager, new ProjectRepository(dbConn));
+    await engine.getSyncWorker().syncTasksAndProjects();
     priority = new PriorityPreemptionEngine(settings);
     renderer = { setContextMode: vi.fn(), renderResumePrompt: vi.fn() };
     send = vi.fn();
-    service = createService();
+    service = new ContextScheduleService(
+      priority,
+      settings,
+      engine,
+      renderer as unknown as DisplayRenderer,
+      () => ({ isDestroyed: () => false, webContents: { send } }) as unknown as BrowserWindow
+    );
     service.evaluateSchedule();
   });
 
@@ -104,196 +113,327 @@ describe('Interrupt', () => {
   });
 
   describe('the start', () => {
-    it('Interrupt_WhileTracking_StartsAnUnsortedTaskNamedForTheTime', () => {
+    it('WhileTracking_HoldsTheTaskPaused_AndLogsNothing', () => {
       const interruption = interruptA();
 
-      expect(interruption).toMatchObject({ isAdHoc: true, taskTitle: 'Interruption 10:30', status: 'TRACKING' });
-      expect(tasks.getTaskById(interruption.taskId)).toMatchObject({ title: 'Interruption 10:30', unsorted: true });
-      expect(tasks.getUnsortedTasks().map(t => t.id)).toEqual([interruption.taskId]);
+      expect(interruption).toMatchObject({
+        isAdHoc: true,
+        taskTitle: 'Interruption 10:30',
+        status: 'TRACKING',
+        interruption: { index: 1, interruptedTaskKey: A.key, interruptedWasPaused: false, source: 'window' }
+      });
+      expect(worklogs.getWorklogsByDate(DAY)).toEqual([]);
+      expect(sessions.getActiveSession()).toMatchObject({ taskId: A.id, status: 'PAUSED', elapsedSeconds: minutes(30) });
+      expect(session()?.elapsedSeconds).toBe(minutes(15));
     });
 
-    it('Interrupt_WhileTracking_LogsTheTaskBeforeUnderItsOwnComment', () => {
-      interruptA();
+    it('Backdated_ThePauseStartsThen', () => {
+      at(10, 0);
+      startA();
+      at(10, 30);
 
-      expect(worklogs.getWorklogsByDate('2026-10-14').map(w => [w.taskId, w.durationSeconds, w.comment])).toEqual([
-        [A.id, 30 * 60, WORKLOG_COMMENTS.INTERRUPTED]
+      service.interrupt('shortcut', new Date(2026, 9, 14, 10, 25));
+
+      expect(session()).toMatchObject({ startTimeUtc: new Date(2026, 9, 14, 10, 25).toISOString(), interruption: { source: 'shortcut' } });
+      expect(sessions.getActiveSession()?.elapsedSeconds).toBe(minutes(25));
+    });
+
+    it('Backdated_NeverBeforeTheTaskBegan', () => {
+      at(10, 0);
+      startA();
+      at(10, 5);
+
+      service.interrupt('window', new Date(2026, 9, 14, 9, 0));
+
+      expect(session()?.startTimeUtc).toBe(new Date(2026, 9, 14, 10, 0).toISOString());
+    });
+
+    it('NothingRunning_AnInterruptionAlone', () => {
+      at(10, 0);
+      service.interrupt();
+
+      expect(session()).toMatchObject({ status: 'TRACKING', interruption: { interruptedSessionId: null } });
+    });
+  });
+
+  describe('a run: Marc, Ana, Marc', () => {
+    it('AnotherTwice_ThreeFragments_ThenBackResumesTheTask', () => {
+      interruptA();
+      engine.renameAdHocSession('Call with Marc');
+      at(10, 50);
+      service.interrupt();
+      engine.renameAdHocSession("Ana's question");
+      at(10, 55);
+      expect(session()?.interruption).toMatchObject({ index: 2, interruptedTaskKey: A.key });
+      engine.anotherInterruption();
+      engine.renameAdHocSession('Marc again');
+      at(11, 0);
+
+      engine.backFromInterruption();
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING', elapsedSeconds: minutes(30) });
+      expect(engine.getInterruptionsToPlace().map(f => [f.title, f.durationSeconds, f.index, f.ofRun, f.interruptedTaskKey])).toEqual([
+        ['Call with Marc', minutes(20), 1, 3, A.key],
+        ["Ana's question", minutes(5), 2, 3, A.key],
+        ['Marc again', minutes(5), 3, 3, A.key]
       ]);
     });
 
-    it('Interrupt_TwiceInADay_TwoTasksToSort', () => {
-      const first = interruptA();
-      engine.stopSession('Over');
-      at(11, 15);
-      const second = service.interrupt();
+    it('TimeAddsUp_NothingCountedTwice', () => {
+      interruptA();
+      at(11, 0);
+      engine.backFromInterruption();
+      at(11, 30);
 
-      expect(second.taskId).not.toBe(first.taskId);
-      expect(tasks.getUnsortedTasks()).toHaveLength(2);
-    });
+      engine.stopSession('Done for now');
 
-    it('Interrupt_NothingRunning_StartsAndAsksNothingAfter', async () => {
-      service.interrupt();
-      engine.stopSession('Over');
-      await settle();
-
-      expect(session()).toBeNull();
-      expect(service.getResumePrompt()).toBeNull();
+      // 10:00-10:30 and 11:00-11:30: the 30-minute pause splits the entry.
+      expect(logged(A.id)).toEqual([minutes(30), minutes(30)]);
+      expect(engine.getToPlaceSummary()).toEqual({ count: 1, seconds: minutes(30) });
     });
   });
 
-  describe('when it ends', () => {
-    it.each([
-      ['stopped', () => engine.stopSession('Over')],
-      ['finished', () => engine.stopSession('Over', true)],
-      // Interrupt pressed by mistake: exactly when the task is wanted back.
-      ['discarded', () => engine.discardSession()]
-    ])('InterruptionEnds_%s_AsksBackToTheTask', async (_how, end) => {
+  describe('back', () => {
+    it('ARunningTask_RunsAgain', () => {
       interruptA();
 
-      end();
-      await settle();
+      engine.backFromInterruption();
 
-      expect(session()).toBeNull();
-      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'interruption' });
-      expect(renderer.renderResumePrompt).toHaveBeenCalledWith('interruption', A.key);
-      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, { taskKey: A.key, taskTitle: A.title, after: 'interruption' });
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING', elapsedSeconds: minutes(30) });
+      expect(session()?.interruption).toBeUndefined();
     });
 
-    it('InterruptionEnds_Yes_ResumesTheTask', async () => {
-      interruptA();
-      engine.stopSession('Over');
-      await settle();
-
-      service.answerResumePrompt(true);
-
-      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
-      expect(service.getResumePrompt()).toBeNull();
-    });
-
-    it('InterruptionEnds_No_LeavesNothingRunning', async () => {
-      interruptA();
-      engine.stopSession('Over');
-      await settle();
-
-      service.answerResumePrompt(false);
-
-      expect(session()).toBeNull();
-      expect(settings.getSetting('set_aside', 'unset')).toBeNull();
-    });
-
-    it('InterruptionEnds_TaskLeftTheListMeanwhile_SaysSo', async () => {
-      interruptA();
-      remoteTasks = [B];
-      await sync();
-
-      engine.stopSession('Over');
-      await settle();
-
-      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'interruption', unlisted: true });
-    });
-
-    it('InterruptionPaused_AsksNothing', async () => {
-      // A pause is not the end of the interruption.
-      interruptA();
-
-      engine.pauseSession();
-      await settle();
-
-      expect(service.getResumePrompt()).toBeNull();
-    });
-
-    it('UserStartsAnotherTask_NothingIsAsked', async () => {
-      interruptA();
-      engine.startTask(B.id, false, B.title, B.projectId, B.key);
-      await settle();
-
-      engine.stopSession('B done');
-      await settle();
-
-      expect(service.getResumePrompt()).toBeNull();
-    });
-
-    it('SomethingStartsWhileAsked_TheQuestionGoes', async () => {
-      interruptA();
-      engine.stopSession('Over');
-      await settle();
-
-      engine.startTask(B.id, false, B.title, B.projectId, B.key);
-
-      expect(service.getResumePrompt()).toBeNull();
-      expect(session()).toMatchObject({ taskId: B.id });
-    });
-
-    it('WrapUpEndsTheInterruption_AsksNothing', async () => {
-      interruptA();
-
-      service.stopForWrapUp();
-      await settle();
-
-      expect(session()).toBeNull();
-      expect(service.getResumePrompt()).toBeNull();
-    });
-  });
-
-  describe('a task paused, or already set aside', () => {
-    it('AnswerFromBar_InterruptInThePausedMenu_Interrupts', async () => {
-      // The bar's click reaches this service as the decoder's action, as the
-      // stand-up's OK does.
-      at(10, 0);
-      startA();
-      engine.pauseSession();
-      at(10, 30);
-
-      service.answerFromBar('START_INTERRUPTION');
-
-      expect(session()).toMatchObject({ isAdHoc: true, taskTitle: 'Interruption 10:30', status: 'TRACKING' });
-      engine.stopSession('Over');
-      await settle();
-      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'interruption' });
-    });
-
-    it('Interrupt_WhilePaused_TheTaskIsAskedAboutToo', async () => {
-      // The bar's Interrupt is in its paused menu: the task is paused by then.
+    it('APausedTask_StaysPaused', () => {
       at(10, 0);
       startA();
       at(10, 20);
       engine.pauseSession();
       at(10, 30);
       service.interrupt();
-      engine.stopSession('Over');
-      await settle();
+      expect(session()?.interruption?.interruptedWasPaused).toBe(true);
 
-      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'interruption' });
-      expect(worklogs.getWorklogsByDate('2026-10-14').filter(w => w.taskId === A.id).map(w => w.durationSeconds)).toEqual([20 * 60]);
+      engine.backFromInterruption();
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED', elapsedSeconds: minutes(20) });
     });
 
-    it('InterruptDuringAnInterruption_AsksAboutTheFirstTask', async () => {
-      interruptA();
-      service.interrupt();
-
-      engine.stopSession('Over');
-      await settle();
-
-      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'interruption' });
-    });
-
-    it('InterruptDuringTheStandup_AsksAboutTheTaskBeforeTheMeeting', async () => {
-      at(9, 0);
+    it('NothingToComeBackFrom_IsRefused', () => {
+      at(10, 0);
       startA();
-      at(9, 30);
-      service.joinStandup();
-      at(9, 40);
-      service.interrupt();
 
-      engine.stopSession('Over');
-      await settle();
-
-      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'interruption' });
+      expect(() => engine.backFromInterruption()).toThrow(/No interruption/);
     });
   });
 
-  describe('lunch in the middle of it', () => {
-    it('LunchStopsTheInterruption_LunchEnds_TheTaskBeforeComesBack', async () => {
-      // Lunch keeps what it stopped to restart, which here is the interruption.
+  describe('stop, and the question after it', () => {
+    it('Stop_TheTaskStaysPaused_AndBackIsAsked', async () => {
+      interruptA();
+
+      engine.stopSession();
+      await settle();
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(prompts()).toEqual([expect.objectContaining({ taskKey: A.key, after: 'interruption', interruptionEndedAtUtc: new Date(2026, 9, 14, 10, 45).toISOString() })]);
+      expect(engine.getToPlaceSummary().count).toBe(1);
+    });
+
+    it('StopThenBackPlusTheGap_TheGapCountsAsWork', () => {
+      interruptA();
+      engine.stopInterruption();
+      at(10, 51);
+
+      service.answerResumePrompt(true, 6);
+
+      // Paused 10:30 to 10:45 only: 10:45 to 10:51 is work.
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING', elapsedSeconds: minutes(36) });
+    });
+
+    it('StopThenBack_TheGapIsNot', () => {
+      interruptA();
+      engine.stopInterruption();
+      at(10, 51);
+
+      service.answerResumePrompt(true);
+
+      expect(session()).toMatchObject({ status: 'TRACKING', elapsedSeconds: minutes(30) });
+    });
+
+    it('No_LeavesTheTaskPaused', () => {
+      interruptA();
+      engine.stopInterruption();
+
+      service.answerResumePrompt(false);
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+    });
+
+    it('APausedTaskInterrupted_NothingIsAsked', () => {
+      at(10, 0);
+      startA();
+      engine.pauseSession();
+      service.interrupt();
+
+      engine.stopInterruption();
+
+      expect(prompts()).toEqual([]);
+    });
+
+    it('PauseOnAnInterruption_IsItsStop', () => {
+      interruptA();
+
+      engine.pauseSession();
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(engine.isInterrupted()).toBe(false);
+    });
+
+    it('SomethingStartsWhileAsked_TheQuestionGoes', () => {
+      interruptA();
+      engine.stopInterruption();
+
+      engine.startTask(B.id);
+
+      expect(prompts().at(-1)).toBeNull();
+    });
+  });
+
+  describe('switch task', () => {
+    it('Switch_TheInterruptionWaits_TheTaskBeforeIsLogged', () => {
+      interruptA();
+
+      engine.switchFromInterruption(B.id);
+
+      expect(session()).toMatchObject({ taskId: B.id, status: 'TRACKING' });
+      expect(logged(A.id)).toEqual([minutes(30)]);
+      expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+    });
+
+    it('SwitchTakingItAlong_ItsTimeGoesToTheNewTask', () => {
+      interruptA();
+
+      engine.switchFromInterruption(B.id, true);
+
+      expect(logged(B.id)).toEqual([minutes(15)]);
+      expect(queued(B.id)).toEqual([{ taskId: B.id, seconds: minutes(15) }]);
+      expect(engine.getInterruptionsToPlace()).toEqual([]);
+    });
+
+    it('AStartFromAnyList_IsASwitch', () => {
+      interruptA();
+
+      engine.startTask(B.id);
+
+      expect(session()?.taskId).toBe(B.id);
+      expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+    });
+
+    it('AssignWhileItRuns_PlacesItAndRunsTheTask', () => {
+      interruptA();
+
+      engine.assignSessionToTask(B.id);
+
+      expect(session()?.taskId).toBe(B.id);
+      expect(logged(B.id)).toEqual([minutes(15)]);
+    });
+  });
+
+  describe('place, keep off, discard', () => {
+    const endedOne = () => {
+      interruptA();
+      engine.stopInterruption();
+      return engine.getInterruptionsToPlace()[0];
+    };
+
+    it('Place_AWorklogOfItsSpan_SentLikeAnyEntry', () => {
+      const fragment = endedOne();
+
+      engine.placeInterruption(fragment.id, B.id);
+
+      expect(worklogs.getWorklogsByDate(DAY).filter(w => w.taskId === B.id).map(w => [w.durationSeconds, w.startedAtUtc])).toEqual([
+        [minutes(15), new Date(2026, 9, 14, 10, 30).toISOString()]
+      ]);
+      expect(queued(B.id)).toHaveLength(1);
+      expect(engine.getInterruptionsToPlace()).toEqual([]);
+    });
+
+    it('KeepOff_InHistoryAsItsName_NeverSent', () => {
+      const fragment = endedOne();
+      engine.renameInterruption(fragment.id, 'Coffee with Sam');
+
+      engine.keepInterruptionOff(fragment.id);
+
+      const kept = worklogs.getWorklogsByDate(DAY).filter(w => w.taskTitle === 'Coffee with Sam');
+      expect(kept.map(w => w.durationSeconds)).toEqual([minutes(15)]);
+      expect(queued(kept[0].taskId)).toEqual([]);
+      expect(engine.getInterruptionsToPlace()).toEqual([]);
+    });
+
+    it('DiscardRunning_NothingKept_BackIsAsked', async () => {
+      interruptA();
+
+      expect(engine.discardSession()).toEqual({ success: true, discardedSeconds: minutes(15) });
+      await settle();
+
+      expect(engine.getInterruptionsToPlace()).toEqual([]);
+      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(prompts()).toHaveLength(1);
+    });
+
+    it('PlaceTwice_IsRefused', () => {
+      const fragment = endedOne();
+      engine.placeInterruption(fragment.id, B.id);
+
+      expect(() => engine.placeInterruption(fragment.id, B.id)).toThrow(/already/);
+    });
+
+    it('PlaceManyWithUndo_UndoPutsThemBack', () => {
+      interruptA();
+      engine.anotherInterruption();
+      at(10, 50);
+      engine.stopInterruption();
+      const undo = new UndoService();
+      const places = new InterruptionService({
+        engine,
+        db: dbConn.getDb(),
+        undo,
+        corrections: corrections(),
+        getTaskKey: id => tasks.getTaskById(id)?.key ?? null
+      });
+
+      places.place(engine.getInterruptionsToPlace().map(f => f.id), B.id);
+      expect(logged(B.id).sort((a, b) => b - a)).toEqual([minutes(15), minutes(5)]);
+      expect(undo.current()?.label).toBe('Placed on SCRUM-3 · 20m');
+
+      expect(undo.run()).toBe(true);
+
+      expect(logged(B.id)).toEqual([]);
+      expect(queued(B.id)).toEqual([]);
+      expect(engine.getInterruptionsToPlace()).toHaveLength(2);
+      undo.dispose();
+    });
+  });
+
+  describe('an interruption of the model before', () => {
+    it('AnUnsortedTasksEnd_WaitsToBePlaced_AndPlacingMovesItsEntry', () => {
+      const old = tasks.createAdHocTask('Interruption 09:30', 'MISC-1', true);
+      at(9, 30);
+      engine.startTask(old.id, true, old.title);
+      at(9, 45);
+      engine.stopSession();
+
+      const [fragment] = engine.getInterruptionsToPlace();
+      expect(fragment).toMatchObject({ title: 'Interruption 09:30', durationSeconds: minutes(15), source: 'legacy' });
+
+      new InterruptionService({ engine, corrections: corrections(), getTaskKey: () => null }).place([fragment.id], B.id);
+
+      expect(logged(B.id)).toEqual([minutes(15)]);
+      expect(tasks.getTaskById(old.id)).toBeNull();
+      expect(engine.getInterruptionsToPlace()).toEqual([]);
+    });
+  });
+
+  describe('lunch, the wrap-up, a restart', () => {
+    it('Lunch_EndsTheInterruption_StopsTheTask_ThatComesBackAfter', async () => {
       at(12, 0);
       startA();
       at(12, 20);
@@ -302,262 +442,47 @@ describe('Interrupt', () => {
       at(12, 31);
       service.evaluateSchedule();
       await settle();
+
       expect(session()).toBeNull();
+      expect(prompts()).toEqual([]);
+      expect(logged(A.id)).toEqual([minutes(20)]);
+      expect(engine.getInterruptionsToPlace()).toHaveLength(1);
 
       at(13, 31);
       service.evaluateSchedule();
 
       expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
     });
-  });
 
-  describe('naming it while it runs', () => {
-    it('RenameAdHocSession_NamesTheSessionAndItsTask_AndSortsIt', () => {
-      const interruption = interruptA();
-
-      const renamed = engine.renameAdHocSession('Call with Marc');
-
-      expect(renamed).toMatchObject({ sessionId: interruption.sessionId, taskTitle: 'Call with Marc' });
-      expect(renamed.unsorted).toBeUndefined();
-      expect(tasks.getTaskById(interruption.taskId)?.title).toBe('Call with Marc');
-      expect(tasks.getUnsortedTasks()).toEqual([]);
-    });
-
-    it('GetCurrentSession_UnnamedInterruption_SaysItIsUnsorted', () => {
+    it('WrapUp_EndsTheInterruptionAndTheTaskItHeld', () => {
       interruptA();
 
-      expect(session()?.unsorted).toBe(true);
-    });
+      service.stopForWrapUp();
 
-    it('RenameAdHocSession_ProviderTask_IsRefused', () => {
-      // A provider's task is named by the provider: the sync would put it back.
-      startA();
-
-      expect(() => engine.renameAdHocSession('Something else')).toThrow(/ad-hoc/);
-      expect(session()?.taskTitle).toBe(A.title);
-    });
-
-    it.each(['', '   ', 'x'.repeat(121)])('RenameAdHocSession_NameRefused_%#', name => {
-      interruptA();
-
-      expect(() => engine.renameAdHocSession(name)).toThrow();
-      expect(session()?.taskTitle).toBe('Interruption 10:30');
-    });
-  });
-
-  describe('naming it after it ended', () => {
-    /** Interrupted at 10:30 and stopped at 10:45: its worklog, still to sort. */
-    const endedInterruption = () => {
-      const interruption = interruptA();
-      engine.stopSession('Over');
-      return interruption;
-    };
-    const today = () => worklogs.getWorklogsByDate('2026-10-14');
-
-    it('Worklogs_OfAnUnnamedInterruption_AreAdHocAndToSort', () => {
-      const interruption = endedInterruption();
-
-      const log = today().find(w => w.taskId === interruption.taskId);
-      expect(log).toMatchObject({ adHoc: true, unsorted: true, taskTitle: 'Interruption 10:30' });
-      expect(worklogs.getUnsortedWorklogs().map(w => w.taskId)).toEqual([interruption.taskId]);
-      expect(worklogs.getDailySummary('2026-10-14').items.find(i => i.taskId === interruption.taskId)?.unsorted).toBe(true);
-      // The task it stopped is neither.
-      const before = today().find(w => w.taskId === A.id);
-      expect(before?.adHoc).toBeUndefined();
-      expect(before?.unsorted).toBeUndefined();
-    });
-
-    it('RenameAdHocTask_RenamesItsHistoryAndSortsIt', () => {
-      const interruption = endedInterruption();
-
-      engine.renameAdHocTask(interruption.taskId, 'Call with Marc');
-
-      const log = today().find(w => w.taskId === interruption.taskId);
-      expect(log).toMatchObject({ adHoc: true, taskTitle: 'Call with Marc' });
-      expect(log?.unsorted).toBeUndefined();
-      expect(worklogs.getUnsortedWorklogs()).toEqual([]);
-      expect(worklogs.getDailySummary('2026-10-14').items.find(i => i.taskId === interruption.taskId)?.unsorted).toBeUndefined();
-    });
-
-    it('RenameAdHocTask_SendsNothing', () => {
-      // Ad-hoc time was never queued; naming it does not change that.
-      const interruption = endedInterruption();
-      const queued = () => dbConn.getDb().prepare('SELECT COUNT(*) AS n FROM worklog_sync_queue WHERE task_id = ?').get(interruption.taskId);
-
-      engine.renameAdHocTask(interruption.taskId, 'Call with Marc');
-
-      expect(queued()).toEqual({ n: 0 });
-    });
-
-    it('RenameAdHocTask_TheOpenSession_RenamesItsCopyToo', () => {
-      // From History, while the interruption still runs: the session's own
-      // copy of the title follows, as a rename on the session card would.
-      const interruption = interruptA();
-      const heard = vi.fn();
-      const off = engine.subscribe(heard);
-      heard.mockClear();
-
-      engine.renameAdHocTask(interruption.taskId, 'Call with Marc');
-
-      expect(session()).toMatchObject({ taskTitle: 'Call with Marc' });
-      expect(session()?.unsorted).toBeUndefined();
-      expect(heard).toHaveBeenCalledTimes(1);
-      off();
-    });
-
-    it('RenameAdHocTask_ProviderTask_IsRefused', () => {
-      endedInterruption();
-
-      expect(() => engine.renameAdHocTask(A.id, 'Mine now')).toThrow(/ad-hoc/);
-      expect(tasks.getTaskById(A.id)?.title).toBe(A.title);
-    });
-
-    it.each([['adhoc_0_missing', 'Name'], ['', 'Name']])('RenameAdHocTask_NoSuchTask_IsRefused_%#', (taskId, title) => {
-      expect(() => engine.renameAdHocTask(taskId, title)).toThrow();
-    });
-
-    it('RenameAdHocTask_EmptyName_IsRefused', () => {
-      const interruption = endedInterruption();
-
-      expect(() => engine.renameAdHocTask(interruption.taskId, '   ')).toThrow();
-      expect(worklogs.getUnsortedWorklogs()).toHaveLength(1);
-    });
-  });
-
-  describe('assigning it to a task after it ended', () => {
-    /** The correction service as main builds it: the engine's rules for where time goes. */
-    const corrections = () => new WorklogCorrectionService(worklogs, null, () => undefined, Date.now, {
-      getTask: taskId => tasks.getTaskById(taskId),
-      destinationOf: taskId => engine.sendDestinationOfTask(taskId),
-      retireAdHocIfUnused: taskId => engine.retireAdHocTaskIfUnused(taskId)
-    });
-    const queueOf = (taskId: string) =>
-      dbConn.getDb().prepare('SELECT provider_id, task_id, duration_seconds FROM worklog_sync_queue WHERE task_id = ?').all(taskId);
-
-    it('Reassign_AnEndedInterruption_ItsTimeGoesToTheTasksProvider', () => {
-      const interruption = interruptA();
-      engine.stopSession('Over');
-      const [log] = worklogs.getUnsortedWorklogs();
-
-      corrections().reassign(log.id, B.id);
-
-      expect(queueOf(B.id)).toEqual([{ provider_id: 'jira', task_id: B.id, duration_seconds: 15 * 60 }]);
-      expect(worklogs.getUnsortedWorklogs()).toEqual([]);
-      // Nothing is logged on the interruption's row any more: it is gone.
-      expect(tasks.getTaskById(interruption.taskId)).toBeNull();
-    });
-
-    it('Reassign_TheTaskStatus_IsNotMoved', () => {
-      // Moving time does not move either task: B stays To Do.
-      interruptA();
-      engine.stopSession('Over');
-      const [log] = worklogs.getUnsortedWorklogs();
-
-      corrections().reassign(log.id, B.id);
-
-      expect(tasks.getTaskById(B.id)?.status).toBe('todo');
-    });
-
-    it('RetireAdHocTaskIfUnused_TheOpenSessionsTask_IsKept', () => {
-      const interruption = interruptA();
-
-      engine.retireAdHocTaskIfUnused(interruption.taskId);
-
-      expect(tasks.getTaskById(interruption.taskId)).not.toBeNull();
-    });
-
-    it('SendDestinationOfTask_UnknownTask_IsRefused', () => {
-      expect(() => engine.sendDestinationOfTask('nope')).toThrow(/No task/);
-    });
-  });
-
-  describe('assigning it to a task while it runs', () => {
-    it('AssignSessionToTask_AllOfItsTimeGoesToTheTaskAndItsProvider', () => {
-      const interruption = interruptA();
-      engine.assignSessionToTask(B.id);
-      at(11, 0);
-
-      engine.stopSession('Over');
-
-      // The interruption started at 10:30: its whole half hour is B's.
-      const onB = worklogs.getWorklogsByDate('2026-10-14').filter(w => w.taskId === B.id);
-      expect(onB.map(w => w.durationSeconds)).toEqual([30 * 60]);
-      // Due once the undo window has passed.
-      const queued = worklogs.getPendingQueueItems(new Date(Date.now() + UNDO_WINDOW_MS).toISOString()).filter(q => q.taskId === B.id);
-      expect(queued.map(q => [q.providerId, q.durationSeconds])).toEqual([['jira', 30 * 60]]);
-      expect(tasks.getTaskById(interruption.taskId)).toBeNull();
-    });
-
-    it('AssignSessionToTask_TheSessionNowShowsTheTask', () => {
-      const interruption = interruptA();
-
-      const assigned = engine.assignSessionToTask(B.id);
-
-      expect(assigned).toMatchObject({
-        sessionId: interruption.sessionId, taskId: B.id, taskKey: B.key, taskTitle: B.title, isAdHoc: false, startTimeUtc: interruption.startTimeUtc
-      });
-      expect(assigned.unsorted).toBeUndefined();
-    });
-
-    it('AssignSessionToTask_TheUsersTask_GoesInProgress', () => {
-      interruptA();
-
-      engine.assignSessionToTask(B.id);
-
-      expect(tasks.getTaskById(B.id)?.status).toBe('in_progress');
-    });
-
-    it('AssignSessionToTask_TheTaskSetAside_NothingIsAskedAtTheEnd', async () => {
-      // Back on A by assigning: asking "back to SCRUM-2?" would restart it.
-      interruptA();
-      engine.assignSessionToTask(A.id);
-
-      engine.stopSession('Over');
-      await settle();
-
-      expect(service.getResumePrompt()).toBeNull();
       expect(session()).toBeNull();
+      expect(logged(A.id)).toEqual([minutes(30)]);
+      expect(prompts()).toEqual([]);
     });
 
-    it('AssignSessionToTask_AnotherTask_StillAsksBackToTheFirst', async () => {
+    it('Restart_TheInterruptionStillRuns', () => {
       interruptA();
-      engine.assignSessionToTask(B.id);
+      engine.dispose();
 
-      engine.stopSession('Over');
-      await settle();
+      const again = new TimeTrackingEngine(sessions, worklogs, tasks, undefined, new ProjectRepository(dbConn));
+      again.reconcileStartupState();
 
-      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'interruption' });
+      expect(again.getCurrentSession()).toMatchObject({ status: 'TRACKING', interruption: { interruptedTaskKey: A.key } });
+      again.dispose();
     });
 
-    it('AssignSessionToTask_ProviderSessionOpen_IsRefused', () => {
-      // Moving a provider task's running session would move logged time
-      // between issues; that is History's move, not this.
+    it('TheBarsPausedMenu_Interrupts_FromTheBar', () => {
+      at(10, 0);
       startA();
+      engine.pauseSession();
 
-      expect(() => engine.assignSessionToTask(B.id)).toThrow(/ad-hoc/);
-    });
+      service.answerFromBar('START_INTERRUPTION');
 
-    it('AssignSessionToTask_ToAdHocWorkOrNoTask_IsRefused', () => {
-      const interruption = interruptA();
-      const other = tasks.createAdHocTask('Other', 'MISC-1');
-
-      expect(() => engine.assignSessionToTask(other.id)).toThrow(/not to other ad-hoc/);
-      expect(() => engine.assignSessionToTask('99999')).toThrow(/No task/);
-      expect(session()?.taskId).toBe(interruption.taskId);
-    });
-  });
-
-  describe('a restart of the app', () => {
-    it('Restart_DuringTheInterruption_TheQuestionStillComesAtTheEnd', async () => {
-      interruptA();
-
-      service.dispose();
-      priority = new PriorityPreemptionEngine(settings);
-      service = createService();
-      engine.stopSession('Over');
-      await settle();
-
-      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'interruption' });
+      expect(session()?.interruption).toMatchObject({ source: 'bar', interruptedWasPaused: true });
     });
   });
 });

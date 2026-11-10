@@ -4,6 +4,8 @@ import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { isFlowSettingKey, readFlowSetting } from '../../shared/flow-settings';
+import { isInterruptionSource } from '../../shared/interruption';
+import { InterruptionService } from '../services/interruption-service';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { MAX_SYNC_ATTEMPTS } from '../sync/sync-constants';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
@@ -220,6 +222,30 @@ export class IPCHandlerRegistry {
   }
 
   /** Corrections, moves and deletions: with Undo when there is one, at once otherwise. */
+  private _interruptionService: InterruptionService | null = null;
+
+  /** Placing, keeping off and discarding the interruptions that ended; built once, on first use. */
+  private interruptions(): InterruptionService {
+    if (!this._interruptionService) {
+      this._interruptionService = new InterruptionService({
+        engine: this.engine,
+        ...(this.worklogCorrections ? { corrections: this.worklogCorrections } : {}),
+        ...(this.undo ? { undo: this.undo, db: this.worklogRepo.getConnection().getDb() } : {}),
+        onRestored: () => {
+          this.broadcastInterruptions();
+          this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+        },
+        getTaskKey: taskId => this.taskRepo.getTaskById(taskId)?.key ?? null
+      });
+    }
+    return this._interruptionService;
+  }
+
+  private broadcastInterruptions(): void {
+    this.broadcast(IPCChannel.ON_INTERRUPTIONS_UPDATED, this.engine.getInterruptionsToPlace());
+    this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+  }
+
   private worklogEdits(): WorklogEditDeps | null {
     if (!this.undo || !this.worklogCorrections) return null;
     return {
@@ -248,9 +274,66 @@ export class IPCHandlerRegistry {
       return this.engine.startTask(payload.taskId, payload.isAdHoc, payload.customTitle);
     });
 
-    // The schedule service's, not the engine's: it sets the task running aside
-    // to ask about when the interruption ends, as the stand-up does.
-    ipcMain.handle(IPCChannel.START_INTERRUPTION, async () => this.contextScheduleService.interrupt());
+    // Interruptions in a row (P6). Start goes through the schedule service,
+    // the one place every surface's Interrupt meets; the rest are the
+    // engine's, which holds the interrupted task, and the interruption
+    // service's for the ones waiting to be placed.
+    const interrupt = (options: unknown) => {
+      const { source, startedAtUtc } = (options ?? {}) as { source?: unknown; startedAtUtc?: unknown };
+      const at = typeof startedAtUtc === 'string' ? new Date(startedAtUtc) : undefined;
+      if (at && Number.isNaN(at.getTime())) throw new ArgumentException('Not a time.', 'startedAtUtc');
+      return this.contextScheduleService.interrupt(isInterruptionSource(source) ? source : 'window', at);
+    };
+    ipcMain.handle(IPCChannel.START_INTERRUPTION, async (_event, options: unknown) => interrupt(options));
+    ipcMain.handle(IPCChannel.INTERRUPTION_START, async (_event, options: unknown) => interrupt(options));
+    ipcMain.handle(IPCChannel.INTERRUPTION_ANOTHER, async () => this.engine.anotherInterruption('window'));
+    ipcMain.handle(IPCChannel.INTERRUPTION_BACK, async (_event, addGapMinutes: unknown) =>
+      this.engine.backFromInterruption(typeof addGapMinutes === 'number' ? addGapMinutes : 0));
+    ipcMain.handle(IPCChannel.INTERRUPTION_STOP, async () => {
+      // Through the session's ending, so Stop on an interruption can be undone too.
+      if (this.engine.isInterrupted()) this.sessionEnding.complete();
+      return this.engine.getCurrentSession();
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_SWITCH, async (_event, taskId: unknown, takeAlong: unknown) => {
+      if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('Switching needs a task id.', 'taskId');
+      return this.engine.switchFromInterruption(taskId, takeAlong === true);
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_DISCARD, async (_event, id: unknown) => {
+      if (id === undefined || id === null) {
+        return this.engine.isInterrupted() ? this.sessionEnding.discard().success : false;
+      }
+      if (typeof id !== 'string' || !id) throw new ArgumentException('Discarding needs an interruption id.', 'id');
+      const discarded = this.interruptions().discard(id);
+      this.broadcastInterruptions();
+      return discarded;
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_RENAME, async (_event, id: unknown, name: unknown) => {
+      if (typeof id !== 'string' || !id) throw new ArgumentException('Naming needs an interruption id.', 'id');
+      this.interruptions().rename(id, checkAdHocTitle(name));
+      this.broadcastInterruptions();
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_PLACE, async (_event, id: unknown, taskId: unknown) => {
+      if (typeof id !== 'string' || !id || typeof taskId !== 'string' || !taskId) {
+        throw new ArgumentException('Placing needs an interruption and a task.');
+      }
+      this.interruptions().place([id], taskId);
+      this.broadcastInterruptions();
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_PLACE_MANY, async (_event, ids: unknown, taskId: unknown) => {
+      if (!Array.isArray(ids) || !ids.every(id => typeof id === 'string' && id) || typeof taskId !== 'string' || !taskId) {
+        throw new ArgumentException('Placing needs interruptions and a task.');
+      }
+      this.interruptions().place(ids as string[], taskId);
+      this.broadcastInterruptions();
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_KEEP_OFF, async (_event, id: unknown) => {
+      if (typeof id !== 'string' || !id) throw new ArgumentException('Keeping off needs an interruption id.', 'id');
+      this.interruptions().keepOff([id]);
+      this.broadcastInterruptions();
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_GET_TO_PLACE, async () => this.interruptions().getToPlace());
+    // Ended from anywhere -- the bar, the deck, the tray, lunch -- the lists follow.
+    this.engine.onInterruptionEnded(() => this.broadcastInterruptions());
 
     ipcMain.handle(IPCChannel.RENAME_SESSION, async (_event, title: unknown) => this.engine.renameAdHocSession(checkAdHocTitle(title)));
 
@@ -603,11 +686,14 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.GET_RESUME_PROMPT, async () => this.contextScheduleService.getResumePrompt());
 
-    ipcMain.handle(IPCChannel.ANSWER_RESUME_PROMPT, async (_event, resume: unknown) => {
+    ipcMain.handle(IPCChannel.ANSWER_RESUME_PROMPT, async (_event, resume: unknown, addGapMinutes: unknown) => {
       if (typeof resume !== 'boolean') {
         throw new ArgumentException(`The answer must be true or false, got ${String(resume)}.`, 'resume');
       }
-      return this.contextScheduleService.answerResumePrompt(resume);
+      if (addGapMinutes !== undefined && (typeof addGapMinutes !== 'number' || !Number.isFinite(addGapMinutes) || addGapMinutes < 0)) {
+        throw new ArgumentException(`The gap must be a number of minutes, got ${String(addGapMinutes)}.`, 'addGapMinutes');
+      }
+      return this.contextScheduleService.answerResumePrompt(resume, addGapMinutes ?? 0);
     });
 
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {

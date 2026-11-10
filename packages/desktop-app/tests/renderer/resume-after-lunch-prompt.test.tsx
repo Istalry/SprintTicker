@@ -65,7 +65,7 @@ describe('resume after lunch', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: label }));
 
-    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(resume);
+    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(resume, undefined);
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
@@ -89,5 +89,25 @@ describe('resume after lunch', () => {
 
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(bridge.api.answerResumePrompt).not.toHaveBeenCalled();
+  });
+  it('AfterAnInterruption_ResumeCountingTheGap_SendsItsMinutes', async () => {
+    // Stopped twelve minutes ago: the task waited paused through the gap.
+    const ended = new Date(Date.now() - 12 * 60_000).toISOString();
+    const bridge = installElectronApi({
+      getResumePrompt: async () => ({ ...QUESTION, after: 'interruption' as const, interruptionEndedAtUtc: ended })
+    });
+    render(<ResumeAfterLunchPrompt />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Resume, and count the time since as work' }));
+
+    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, 12);
+  });
+
+  it('AfterLunch_NoGapToCount', async () => {
+    installElectronApi({ getResumePrompt: async () => QUESTION });
+    render(<ResumeAfterLunchPrompt />);
+    await screen.findByRole('alertdialog');
+
+    expect(screen.queryByRole('button', { name: /count the time since/ })).toBeNull();
   });
 });

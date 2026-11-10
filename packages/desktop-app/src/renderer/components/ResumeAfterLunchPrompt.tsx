@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ResumePromptDTO } from '../../shared/dtos';
 import { ConfirmPanel } from './ConfirmPanel';
 
+const MS_PER_MINUTE = 60_000;
+
 /**
  * "Resume it anyway?", asked when lunch or the stand-up ends and the task it
  * stopped has left the user's lists meanwhile -- reassigned, closed or moved.
@@ -33,11 +35,15 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
     </>
   );
 
-  const answer = (resume: boolean) => {
+  const answer = (resume: boolean, addGapMinutes?: number) => {
     setPrompt(null);
-    window.electronAPI.answerResumePrompt(resume)
+    window.electronAPI.answerResumePrompt(resume, addGapMinutes)
       .catch(err => console.warn('[ResumeAfterLunchPrompt] Could not answer:', err));
   };
+  // The minutes since the interruption ended, read at the click: Back then
+  // counts them as work on the task, which waited paused through them.
+  const endedAt = prompt.interruptionEndedAtUtc ? Date.parse(prompt.interruptionEndedAtUtc) : NaN;
+  const answerWithGap = () => answer(true, Math.max(0, Math.round((Date.now() - endedAt) / MS_PER_MINUTE)));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
@@ -49,7 +55,7 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
           message={
             prompt.after === 'interruption' ? (
               <>
-                The interruption stopped {task}.
+                {task} waited paused through the interruption.
                 {prompt.unlisted && <> It is no longer assigned to you: it was reassigned, closed or moved meanwhile.</>}
                 {' '}Resume tracking it?
               </>
@@ -65,6 +71,18 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
           onConfirm={() => answer(true)}
           onCancel={() => answer(false)}
         />
+        {prompt.after === 'interruption' && !Number.isNaN(endedAt) && (
+          <div className="flex justify-end pt-3">
+            <button
+              type="button"
+              onClick={answerWithGap}
+              title="Resume it, and count the time since the interruption ended as work on it"
+              className="text-xs text-text-secondary hover:text-white underline-offset-2 hover:underline"
+            >
+              Resume, and count the time since as work
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

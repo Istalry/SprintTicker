@@ -3,6 +3,7 @@ import type { ProviderEventSettingsDTO } from '../shared/provider-events';
 import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
+import type { InterruptionToPlaceDTO } from '../shared/interruption';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -62,6 +63,22 @@ const electronAPI: IElectronAPI = {
   // Undo
   getUndo: () => ipcRenderer.invoke(IPCChannel.GET_UNDO),
   runUndo: () => ipcRenderer.invoke(IPCChannel.RUN_UNDO),
+  interrupt: (options) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_START, options),
+  anotherInterruption: () => ipcRenderer.invoke(IPCChannel.INTERRUPTION_ANOTHER),
+  backFromInterruption: (addGapMinutes) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_BACK, addGapMinutes),
+  stopInterruption: () => ipcRenderer.invoke(IPCChannel.INTERRUPTION_STOP),
+  switchFromInterruption: (taskId, takeAlong) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_SWITCH, taskId, takeAlong),
+  discardInterruption: (id) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_DISCARD, id),
+  renameInterruption: (id, name) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_RENAME, id, name),
+  placeInterruption: (id, taskId) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_PLACE, id, taskId),
+  placeInterruptions: (ids, taskId) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_PLACE_MANY, ids, taskId),
+  keepInterruptionOff: (id) => ipcRenderer.invoke(IPCChannel.INTERRUPTION_KEEP_OFF, id),
+  getInterruptionsToPlace: () => ipcRenderer.invoke(IPCChannel.INTERRUPTION_GET_TO_PLACE),
+  onInterruptionsUpdated: (callback: (waiting: InterruptionToPlaceDTO[]) => void) => {
+    const handler = (_event: IpcRendererEvent, waiting: InterruptionToPlaceDTO[]) => callback(waiting);
+    ipcRenderer.on(IPCChannel.ON_INTERRUPTIONS_UPDATED, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_INTERRUPTIONS_UPDATED, handler);
+  },
   getFlowSetting: (key) => ipcRenderer.invoke(IPCChannel.GET_FLOW_SETTING, key),
   saveFlowSetting: (key, value) => ipcRenderer.invoke(IPCChannel.SAVE_FLOW_SETTING, key, value),
   onUndoChanged: (callback: (state: UndoStateDTO | null) => void) => {
@@ -169,7 +186,7 @@ const electronAPI: IElectronAPI = {
   updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => ipcRenderer.invoke(IPCChannel.UPDATE_CEREMONY_PROMPT, { type, title }),
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes = 10) => ipcRenderer.invoke(IPCChannel.SNOOZE_CEREMONY, { type, minutes }),
   getResumePrompt: () => ipcRenderer.invoke(IPCChannel.GET_RESUME_PROMPT),
-  answerResumePrompt: (resume: boolean) => ipcRenderer.invoke(IPCChannel.ANSWER_RESUME_PROMPT, resume),
+  answerResumePrompt: (resume: boolean, addGapMinutes?: number) => ipcRenderer.invoke(IPCChannel.ANSWER_RESUME_PROMPT, resume, addGapMinutes),
   onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, prompt: ResumePromptDTO | null) => callback(prompt);
     ipcRenderer.on(IPCChannel.ON_RESUME_PROMPT, handler);

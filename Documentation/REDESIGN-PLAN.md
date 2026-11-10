@@ -815,6 +815,53 @@ which stays as an alias for one release), `another`, `back`, `stop`,
   paused with a reason, never stopped.
 - `AUDIT-INTERRUPTIONS.md`: a status line saying the model was replaced.
 
+**As landed (2026-11-10):**
+
+- The model is as planned: migration 15 adds `interruptions` and
+  `paused_intervals.reason`, one fragment at a time by a partial unique
+  index, and the held session is paused with reason `interruption`, never
+  stopped. Unsorted ad-hoc worklogs became fragments with
+  `legacy_worklog_id`; the ad-hoc rows stay until a later migration retires
+  them.
+- **The running fragment is the engine's, not `InterruptionService`'s.**
+  While one runs, `getCurrentSession()` answers it as an ad-hoc session
+  with `interruption` set, and the engine routes every command to it --
+  pause, Stop and Done are Stop, resume is Back, a start is a switch,
+  assigning is a switch taking it along, Interrupt is Another. The bar,
+  the deck, the tray and the mini timer keep working until P12-P14 rebuild
+  them. `InterruptionService` handles only the ones that ended: rename,
+  place, place many, keep off, discard, each behind a restore point.
+- `ActiveSessionDTO` gains `interruption` only. `toPlace` is read through
+  `interruption:get-to-place` and pushed on `interruption:on-updated`, and
+  `previousTask` through P4's channels: the session DTO goes out every
+  second, and neither changes that often.
+- **Keep off** is a local ad-hoc worklog, never queued. Placing an
+  interruption of the model before moves its worklog
+  (`WorklogCorrectionService.reassign`).
+- The set-aside stays for the stand-up, and for entries an interruption of
+  the model before stored. Lunch during an interruption stops it, and stops
+  the held task if it was running, keeping its restart; the wrap-up stops
+  both.
+- **"Back, add the 6 min"** is a second action on the existing resume
+  prompt, "Resume, and count the time since as work", with the minutes
+  read at the click from `interruptionEndedAtUtc`. P8 rebuilds the prompt
+  as S10's card.
+- The window: the session card and the mini timer show Back, Stop and
+  Another during an interruption, never Pause or Finish; the tray menu
+  follows the engine (Back to KEY, Stop the Interruption, Another
+  Interruption). History and the wrap-up share one list,
+  `InterruptionsToPlace`: rename, Place…, Place all, Keep off, discard.
+- **Not yet:**
+  - `ShortcutService` and its four chords. `InterruptShortcutService` still
+    owns the Interrupt chord, which is Another during an interruption, and
+    its toast says which task waits. Back, Switch and Previous chords move
+    to P12, which owns everything outside the window.
+  - "Still on it?" and the "Back?" toast after 10 min go to P8, with the
+    other prompts and reminders.
+  - `display-stress` has no Interrupt, Another or Back source yet; P14 adds
+    them with the bar's own controls.
+  - `pnpm db:check-migration` for migration 15, by the user.
+
 ---
 
 ## 12. P7 -- One picker, its own window, the command palette
@@ -880,6 +927,8 @@ channels), `PROVIDER-API.md` (fetch one task by key, **before** the client:
 ---
 
 ## 13. P8 -- Today and the prompts
+
+> **From P6 (2026-11-10):** "Still on it?" after `prompt_delays.interruptionRunning`, and the "Back?" toast after 10 min, are this phase's. The resume prompt's "Resume, and count the time since as work" becomes S10's "↩ Back, add the 6 min".
 
 **Goal:**
 
@@ -1133,6 +1182,8 @@ waits for the undo and the drain).
 
 ## 17. P12 -- Outside the window
 
+> **From P6 (2026-11-10):** `ShortcutService` and its four chords (Interrupt, Back, Switch, Previous) are this phase's; `InterruptShortcutService` still owns the Interrupt chord.
+
 - **Close hides to the tray.**
   - `window-all-closed` no longer quits. The first close shows "SprintTicker
     is still running".
@@ -1237,6 +1288,8 @@ hides; only Quit clears the bar).
 ---
 
 ## 19. P14 -- The bar
+
+> **From P6 (2026-11-10):** `display-stress` gains Interrupt, Another and Back as sources here, through `InputDecoder` as well as IPC.
 
 **Goal:** S28 and the bar column of the states table, within the hardware
 contract.
@@ -1453,7 +1506,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P3 | done; provider events in "What you missed" and the update's "Get it" deferred; pictures remade after P5 | `1e3481e` (2026-11-10) |
 | P4 | done; `pnpm db:check-migration` passed on the real database (13 to 14: 20 worklogs, 7 queue rows, nothing lost), run by the user | `e9e2e38` (2026-11-10) |
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
-| P6 | not started | |
+| P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; migration 15 not yet checked on the real database | P6 commit (2026-11-10) |
 | P7 | not started | |
 | P8 | not started | |
 | P9 | not started | |

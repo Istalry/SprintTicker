@@ -631,8 +631,10 @@
       done, and <strong>Discard</strong> throws the session away after a <strong>Yes</strong>. <strong>×</strong> keeps
       the session running.</li>
       <li>⚡ <strong>Interrupt</strong> starts a timer at once, as Today&#39;s button does --
-      see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. Click an interruption&#39;s title
-      to name it, and the link button to assign it to a task.</li>
+      see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. During an interruption the
+      row says which task waits, and offers ↩ <strong>Back</strong> to it, ⏹️ <strong>Stop</strong>, which
+      ends the interruption alone, and ⚡ <strong>Another</strong>. Click an interruption&#39;s
+      title to name it, and the link button to put it on a task.</li>
       <li>📋 The <strong>list</strong> button brings the window forward with the task picker open:
       that is how you start or switch a task from it.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -742,44 +744,60 @@
       all.</p>
       <h4>⚡ Interrupt: a timer at once</h4>
       <p>Someone at your desk, a call: press <strong>Interrupt</strong> and a timer starts there
-      and then, with nothing to fill in. It runs on a new ad-hoc task called after
-      the time it started -- <strong>Interruption 14:32</strong> -- and the task you were on
-      stops, its time logged as usual. Interrupt is on Today&#39;s session card, in
-      the mini timer, first in the tray menu, on the Stream Deck&#39;s Interrupt key,
-      and on the bar: pause the task, turn the wheel two notches left to
-      <strong>INTERRUPT</strong>, and click. And, if you turn it on, on a keyboard shortcut
-      that works from any app -- see below.</p>
-      <p>When the interruption ends -- Stop, Done, or Discard if you pressed it by
-      mistake -- SprintTicker asks <strong>Back to your task?</strong>, naming it: in the window,
-      and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>. Yes starts it again;
-      <strong>Leave it</strong>, BACK, or starting something else leaves it. It is asked every
-      time, because you may be done for now. A task paused when you pressed
-      Interrupt is asked about too.</p>
+      and then, with nothing to fill in. The task you were on <strong>waits, paused</strong>:
+      nothing is logged or sent for it, and its timer goes on from where it was
+      when you come back. Interrupt is on Today&#39;s session card, in the mini timer,
+      first in the tray menu, on the Stream Deck&#39;s Interrupt key, and on the bar:
+      pause the task, turn the wheel two notches left to <strong>INTERRUPT</strong>, and click.
+      And, if you turn it on, on a keyboard shortcut that works from any app --
+      see below.</p>
+      <p>While it runs, the session card says which task waits, and offers:</p>
       <ul>
-      <li><strong>An interruption of an interruption</strong>, or of the stand-up, asks about the
-      task you were on before the first one: that is the one to go back to.</li>
-      <li><strong>Lunch during an interruption</strong> stops it, and the task you were on before
-      it starts again when lunch ends, as lunch always does.</li>
-      <li><strong>The end-of-day wrap-up</strong> stops an interruption without asking.</li>
-      <li><strong>Name it</strong> while it runs: click its title on Today&#39;s session card or
-      in the mini timer, type, and press Enter (Escape keeps the name). The card
-      says <strong>Interruption</strong> until you do. The name is what History shows.</li>
-      <li><strong>Assign it to a task</strong> while it runs: <strong>Assign to Task</strong> on the card, or
-      the link button in the mini timer, opens the task picker. The session moves
-      to that task with its start kept, so the whole interruption is logged on it
-      and sent to its Jira or OpenProject when you stop. Assigned to the very task
-      it interrupted, nothing is asked at the end -- you are back on it.</li>
-      <li><strong>Name it afterwards</strong>, in <strong>History</strong>: an interruption not named yet
-      says <strong>To sort</strong>, and every one of them, whatever the day, is listed at
-      the top under <strong>Interruptions to sort</strong>, with its time and the day it
-      began -- click the day to go there. Click its name to give it a real one.
-      The end-of-day wrap-up lists the day&#39;s too, so you can name them while you
-      remember what they were. Any ad-hoc work can be renamed the same way.</li>
-      <li><strong>Assign it afterwards</strong>: <strong>Assign</strong> beside it in Interruptions to sort
-      moves all of its time to the task you pick, and sends it there.</li>
-      <li><strong>Until then its time stays here</strong>: an ad-hoc task&#39;s time is never sent to
-      Jira or OpenProject.</li>
+      <li>↩ <strong>Back to MG-12</strong> ends the interruption and resumes the task. A task
+      that was already paused when you pressed Interrupt stays paused.</li>
+      <li>⏹️ <strong>Stop</strong> ends the interruption alone. The task still waits, paused,
+      and SprintTicker asks <strong>Back to your task?</strong>, naming it: in the window,
+      and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>. <strong>Resume it</strong> goes
+      back; <strong>Resume, and count the time since as work</strong> also puts the minutes
+      between the Stop and now on the task; <strong>Leave it</strong> leaves it paused.</li>
+      <li>⚡ <strong>Another</strong>: someone else arrives before you got back. The interruption
+      ends and the next starts, waiting on the same task. Marc, then Ana, then
+      Marc again is three interruptions in a row and one <strong>Back</strong>.</li>
+      <li><strong>Switch Task</strong> ends the interruption and starts another task; the one
+      that waited stops, its time logged.</li>
+      <li><strong>Assign to Task</strong> ends the interruption, puts its time on the task you
+      pick, and starts that task.</li>
       </ul>
+      <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>Back to
+      MG-12</strong>, <strong>Stop the Interruption</strong> and <strong>Another Interruption</strong>.</p>
+      <ul>
+      <li><strong>Lunch during an interruption</strong> ends it. The task that waited stops for
+      lunch, and starts again when lunch ends, as lunch always does.</li>
+      <li><strong>The end-of-day wrap-up</strong> ends an interruption and the task it held,
+      without asking.</li>
+      <li><strong>Name it</strong> while it runs: click its title on Today&#39;s session card or
+      in the mini timer, type, and press Enter (Escape keeps the name). It is
+      called after the time it started, <strong>Interruption 14:32</strong>, until you do.</li>
+      </ul>
+      <h5>Interruptions to place</h5>
+      <p>An interruption that ended is on no task yet, and <strong>its time is sent
+      nowhere until you say where it goes</strong>. The ⚡ count beside Today says how
+      many wait. <strong>History</strong> lists every one at the top, whatever its day, under
+      <strong>Interruptions to place</strong>: what it interrupted (<em>during MG-12</em>), its place
+      in its run (<em>2 of 3</em>), its time, and when it began -- click that to go to
+      the day. The end-of-day wrap-up lists them too, so you can place them while
+      you remember what they were. For each:</p>
+      <ul>
+      <li>Click its name to give it one.</li>
+      <li><strong>Place…</strong> puts its time on the task you pick: an entry, sent like any
+      other, with ten seconds to undo. <strong>Place all</strong> puts every one on one task.</li>
+      <li><strong>Keep off Jira</strong> -- your provider&#39;s name -- keeps its time in
+      SprintTicker only, as ad-hoc work, never sent.</li>
+      <li>The bin discards it: its time is kept nowhere. Ten seconds to undo.</li>
+      <li>Leave it there, and it waits for later.</li>
+      </ul>
+      <p>Interruptions timed by an earlier version are listed the same way;
+      placing one moves its entry to the task.</p>
       <p>🗑️ <strong>Discard this session</strong>, the third choice, is for a session started by
       mistake: nothing is kept in your history and nothing is sent to your
       provider. It asks you to confirm, naming the task and the time it would throw
@@ -917,8 +935,8 @@
       deleted where it was, then created on the new task -- in that order, so the
       time is never on both, and for a moment may be on neither while the move goes
       through. A worklog not sent yet simply goes to the new task. Neither task&#39;s
-      status changes. An interruption in <strong>Interruptions to sort</strong> has <strong>Assign</strong>,
-      which moves all of its time at once, under its name.</p>
+      status changes. An interruption waiting in <strong>Interruptions to place</strong> is
+      placed rather than moved: see <a href="#-interrupt-a-timer-at-once">Interrupt</a>.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
       does not delete the time logged against it</strong>: the task leaves your lists and
       stays in your history. The same happens when your provider stops listing a task
@@ -1263,8 +1281,9 @@
       <li><strong>Nothing happens in an app run as administrator.</strong> Windows does not pass
       a shortcut to SprintTicker while such a window has the focus.</li>
       <li><strong>With the window hidden, no bar and no mini timer</strong>, a Windows
-      notification says the interruption started and which task&#39;s time was
-      logged -- otherwise nothing would show that the timer changed.</li>
+      notification says the interruption started and which task waits paused
+      -- otherwise nothing would show that the timer changed. Pressed during
+      an interruption, the shortcut is <strong>Another</strong>.</li>
       </ul>
       <hr>
       <h3 id="guide-the-bar-itself">💡 The bar itself</h3>
@@ -2457,20 +2476,50 @@
       would still be handed the ended session, and the renderer would draw the idle
       clock over the restarted task. A stand-up stopped by lunch hands lunch the task
       before it, not the meeting.</p>
-      <p>The stand-up and Interrupt share that mechanism, the <strong>set-aside</strong>: one
-      <code>set_aside</code> setting holding the task to bring back, the session whose end
-      brings it back (<code>endsWith</code>), and why (<code>after</code>). <code>switchSettingAside</code> starts
-      the next session and stores the one it replaced; a replacement that is
-      itself waited on -- an interruption, the stand-up -- passes on the task it
-      was waiting for, so an interruption of an interruption returns to the first
-      task. The two differ only in policy: the stand-up restarts the task itself
-      unless it left the user&#39;s lists; an interruption always asks, through the
-      after-lunch question with <code>after: &#39;interruption&#39;</code> (and <code>unlisted</code> when the
-      task has left the lists too). Interrupt (<code>ContextScheduleService.interrupt</code>,
-      <code>session:start-interruption</code>, the tray&#39;s first entry) also sets aside a
-      paused task, since the bar reaches it through its paused menu; the engine&#39;s
-      <code>startInterruption</code> makes a new ad-hoc row every time, titled
-      <code>Interruption HH:MM</code> and marked <code>unsorted</code> (migration 13). The optional global
+      <p>The stand-up keeps that mechanism, the <strong>set-aside</strong>: one <code>set_aside</code>
+      setting holding the task to bring back, the session whose end brings it back
+      (<code>endsWith</code>), and why (<code>after</code>). <code>switchSettingAside</code> starts the next session
+      and stores the one it replaced; it restarts the task itself unless it left
+      the user&#39;s lists. An entry stored by an interruption of the model before
+      (<code>after: &#39;interruption&#39;</code>) is still honoured, and asks.</p>
+      <p><strong>Interruptions are fragments, not sessions</strong> (redesign P6, migration 15).
+      Interrupt (<code>ContextScheduleService.interrupt(source, at?)</code>, which the window,
+      the mini timer, the tray, the bar, the deck and the shortcut all reach)
+      calls <code>engine.startInterruption</code>: the session open, tracking or paused, is
+      <strong>held</strong> -- paused with a <code>paused_intervals</code> row of reason <code>interruption</code>,
+      never stopped, nothing logged or sent -- and a row opens in <code>interruptions</code>,
+      naming the held session and whether it was already paused. One fragment
+      runs at a time, by a partial unique index as for sessions. <strong>Another</strong>
+      closes it and opens the next with <code>after_id</code>, holding the same session, so
+      a run reads back as Marc, Ana, Marc and one Back. <strong>Back</strong>
+      (<code>backFromInterruption(addGapMinutes)</code>) closes it and ends the held pause --
+      earlier by the gap, after a Stop -- unless the session was paused before.
+      <strong>Stop</strong> closes it alone; <strong>Switch</strong> (<code>switchFromInterruption(taskId, takeAlong)</code>) closes it, stops the held session as any start does, and
+      starts the task, placing the fragment on it with <code>takeAlong</code>; <strong>Discard</strong>
+      marks it discarded.</p>
+      <p>While a fragment runs, <code>getCurrentSession()</code> answers a <strong>fragment view</strong>:
+      the fragment&#39;s id as session and task id, ad-hoc, tracking, titled
+      <code>Interruption HH:MM</code> until named, with <code>interruption: RunningInterruptionDTO</code>
+      saying what it holds. The bar, the deck, the tray and the mini timer read
+      that view, and the engine routes their commands to the fragment: pause,
+      stop and Done are Stop, resume is Back, discard is Discard, a start is a
+      switch, assigning is a switch taking it along, renaming names the fragment,
+      and Interrupt is Another. Inside the engine <code>sessionView()</code> is the session
+      itself. <code>onInterruptionEnded</code> tells who ended one and how; the schedule
+      service asks &quot;Back to MG-12?&quot; from it after a Stop or a Discard -- never
+      over lunch or the wrap-up, never for a task paused before -- and its Yes is
+      Back, with the gap counted when asked (<code>interruptionEndedAtUtc</code>). Lunch
+      during an interruption stops it, and stops the held task too if it was
+      running, storing its restart as lunch does; the wrap-up stops both.</p>
+      <p>A fragment that ended waits to be <strong>placed</strong>: <code>InterruptionService</code> lists
+      them (<code>getInterruptionsToPlace</code>, every day), places one or several on a
+      task -- a worklog of its span through <code>logSpan</code>, the path <code>finishSession</code>
+      uses, queued with P5&#39;s hold -- keeps one off (a local ad-hoc worklog, never
+      queued) or discards one, each behind a restore point so Undo puts the rows
+      back. Interruptions of the model before -- ad-hoc tasks marked <code>unsorted</code>
+      (migration 13) and their worklogs -- became fragments in migration 15 with
+      <code>legacy_worklog_id</code>; placing one moves that worklog
+      (<code>WorklogCorrectionService.reassign</code>). The optional global
       shortcut is one more caller: <code>InterruptShortcutService</code> takes Electron&#39;s
       <code>globalShortcut</code> by constructor, registers the stored chord only when the user
       turned it on (<code>interrupt_shortcut</code>), reports a chord another app holds as
@@ -2479,20 +2528,16 @@
       timer, no bar connected -- is told by one of the app&#39;s own toasts, which the
       notification listener never mirrors to the bar. The stand-up&#39;s
       <code>standup_resume</code> entry from before is read once at start and moved over.
-      While it runs, an ad-hoc session can be named (<code>renameAdHocSession</code>: the task
+      An ad-hoc session can be named while it runs (<code>renameAdHocSession</code>: the task
       row and the session&#39;s copy together, one notification) or assigned to a task
       in place (<code>assignSessionToTask</code>): <code>retargetSession</code> rewrites the open row&#39;s
       project, task, key, title and <code>is_ad_hoc</code>, and sets <code>provider_id</code> -- the one
       write of it after the start, for a session that had none, so the time still
       never follows the active provider. The task&#39;s start-time effects wait as a
-      start&#39;s do (<code>SideEffectScheduler</code>), counted from the session&#39;s start, so an
-      interruption assigned after two minutes moves its task at once. Assigned to the task it set aside, the
-      interruption drops the set-aside: the question would restart that task. The
-      session reports <code>unsorted</code> from its task row, never a copy of its own.
-      After it ended, the same work is named from History or the wrap-up
-      (<code>renameAdHocTask</code>), which goes through <code>renameAdHocSession</code> when the task is
-      the open session&#39;s, so the copy follows. Worklog reads join <code>tasks.unsorted</code>,
-      and <code>getUnsortedWorklogs</code> lists what is still to sort across days.
+      start&#39;s do (<code>SideEffectScheduler</code>), counted from the session&#39;s start.
+      After it ended, ad-hoc work is named from History (<code>renameAdHocTask</code>), which
+      goes through <code>renameAdHocSession</code> when the task is the open session&#39;s, so
+      the copy follows.
       The wrap-up stops the session through
       <code>stopForWrapUp</code>, which drops every stored restart first: stopped from the IPC
       handler, a stand-up running at wrap-up time restarted its task overnight.</p>
@@ -2627,7 +2672,11 @@
       </tr>
       <tr>
       <td align="left"><code>paused_intervals</code></td>
-      <td align="left">Each pause, FK to the session, <code>ON DELETE CASCADE</code></td>
+      <td align="left">Each pause, FK to the session, <code>ON DELETE CASCADE</code>; <code>reason</code> is <code>user</code>, <code>interruption</code>, <code>lunch</code> or <code>away</code> (migration 15)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruptions</code></td>
+      <td align="left">The interruption fragments (migration 15): span, <code>name</code>, <code>source</code>, the session it held (<code>interrupted_session_id</code>, <code>interrupted_was_paused</code>), the fragment before it in its run (<code>after_id</code>), and its fate -- <code>placed_task_id</code> and <code>placed_worklog_id</code>, <code>kept_off</code>, or <code>discarded_at_utc</code>. <code>legacy_worklog_id</code> names the worklog of an interruption of the model before. At most one has no end</td>
       </tr>
       <tr>
       <td align="left"><code>worklogs</code></td>
@@ -2701,6 +2750,11 @@
       &quot;Previous task&quot; falls back to the ended sessions themselves
       (<code>shared/previous-task.ts</code>): the most recent one whose task is not the
       current one and can still be offered -- listed, and named.</li>
+      <li><code>interruptions</code> — the <code>interruptions</code> table and <code>paused_intervals.reason</code>.
+      Every worklog of a task still <code>unsorted</code> becomes a fragment waiting to
+      be placed, with <code>legacy_worklog_id</code> naming it; the ad-hoc tasks and
+      their worklogs are kept, so nothing is lost before
+      <code>db:check-migration</code> has said so.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
@@ -2946,7 +3000,51 @@
       </tr>
       <tr>
       <td align="left"><code>session:start-interruption</code></td>
-      <td align="left">Interrupt: start a session at once on a new ad-hoc task titled <code>Interruption HH:MM</code> and marked unsorted, and set aside the session running -- tracking or paused -- to ask about when this one ends. Answers the new session. Through <code>ContextScheduleService.interrupt</code>, which the tray calls too</td>
+      <td align="left">Kept for one release as an alias of <code>interruption:start</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:start</code></td>
+      <td align="left">Interrupt: <code>{ source?, startedAtUtc? }</code>, <code>source</code> one of <code>window</code>, <code>mini</code>, <code>tray</code>, <code>bar</code>, <code>deck</code>, <code>shortcut</code>, <code>notification</code> (anything else is <code>window</code>). Holds the session open -- paused with reason <code>interruption</code>, nothing logged or sent -- and starts a fragment; during one it is Another. Through <code>ContextScheduleService.interrupt</code>. Answers the session view: while a fragment runs, the fragment as an ad-hoc session with <code>interruption</code> set</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:another</code></td>
+      <td align="left">Ends the fragment running and starts the next, holding the same session</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:back</code></td>
+      <td align="left"><code>(addGapMinutes?)</code>: ends the fragment and resumes the held session, its pause ended that many minutes earlier; one paused before stays paused</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:stop</code></td>
+      <td align="left">Ends the fragment alone, with ten seconds to undo; the held session stays paused and &quot;Back to MG-12?&quot; is asked</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:switch</code></td>
+      <td align="left"><code>(taskId, takeAlong)</code>: ends the fragment, stops the held session, starts <code>taskId</code>; with <code>takeAlong</code> the fragment is placed on it</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:discard</code></td>
+      <td align="left"><code>(id?)</code>: the running fragment, or one waiting; ten seconds to undo</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:rename</code></td>
+      <td align="left"><code>(id, name)</code>: names a fragment, running or waiting; <code>checkAdHocTitle</code> rules</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:place</code> / <code>interruption:place-many</code></td>
+      <td align="left"><code>(id, taskId)</code> / <code>(ids, taskId)</code>: a worklog of each fragment&#39;s span on the task, queued with the hold; an interruption of the model before has its worklog moved. Refused for one not waiting. Ten seconds to undo</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:keep-off</code></td>
+      <td align="left"><code>(id)</code>: keeps it off the provider, as a local ad-hoc worklog</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:get-to-place</code></td>
+      <td align="left">Every fragment that ended and waits, any day, oldest first: <code>{ id, name, title, startedAtUtc, endedAtUtc, durationSeconds, source, interruptedTaskKey, index, ofRun }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:on-updated</code></td>
+      <td align="left">Pushes that list whenever one ends, is placed, kept off or discarded, from any surface</td>
       </tr>
       <tr>
       <td align="left"><code>session:pause</code> / <code>session:resume</code></td>
@@ -3121,7 +3219,7 @@
       </tr>
       <tr>
       <td align="left"><code>worklogs:get-unsorted</code></td>
-      <td align="left">Every worklog of an interruption still to sort, whatever its day, newest first: History&#39;s list</td>
+      <td align="left">Every worklog of an ad-hoc task still marked unsorted, whatever its day. Since migration 15 such worklogs are interruptions to place, read through <code>interruption:get-to-place</code></td>
       </tr>
       <tr>
       <td align="left"><code>tasks:rename-ad-hoc</code></td>
@@ -3247,7 +3345,7 @@
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>
-      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it) and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code>, <code>standup</code> or <code>interruption</code>: what stopped the task. Lunch and the stand-up ask only about a task that left the user&#39;s lists; an interruption asks every time, and adds <code>unlisted: true</code> when the task has left them as well</td>
+      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it), and after an interruption the minutes to count as work since it ended (<code>addGapMinutes</code>), and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code>, <code>standup</code> or <code>interruption</code>: what stopped the task -- or, after an interruption, what it waited paused through, with <code>interruptionEndedAtUtc</code>. Lunch and the stand-up ask only about a task that left the user&#39;s lists; an interruption asks every time, and adds <code>unlisted: true</code> when the task has left them as well</td>
       </tr>
       <tr>
       <td align="left">Notifications</td>
@@ -3442,7 +3540,7 @@
       </tr>
       <tr>
       <td align="left"><code>interrupt</code></td>
-      <td align="left">Starts an interruption, as the window&#39;s Interrupt: <code>ContextScheduleService.interrupt</code>, a timer at once and the task it stops asked about when it ends (<code>resume</code>). Added without raising the protocol: an app older than it answers <code>invalid-request</code></td>
+      <td align="left">Starts an interruption, as the window&#39;s Interrupt: <code>ContextScheduleService.interrupt(&#39;deck&#39;)</code>, a timer at once while the task running waits paused; during one, Another. Added without raising the protocol: an app older than it answers <code>invalid-request</code></td>
       <td align="left">Never; <code>failed</code> if the app cannot</td>
       </tr>
       <tr>

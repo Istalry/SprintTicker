@@ -255,7 +255,18 @@ describe('IPC handlers', () => {
 
       expect(await invoke(IPCChannel.GET_RESUME_PROMPT)).toEqual({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2', after: 'lunch' });
       expect(await invoke(IPCChannel.ANSWER_RESUME_PROMPT, false)).toBe(true);
-      expect(answerResumePrompt).toHaveBeenCalledWith(false);
+      expect(answerResumePrompt).toHaveBeenCalledWith(false, 0);
+    });
+
+    it('AnswerResumePrompt_WithTheGap_PassesItsMinutes_RefusesANegativeOne', async () => {
+      const answerResumePrompt = vi.fn().mockReturnValue(true);
+      build({ contextScheduleService: { answerResumePrompt, getResumePrompt: vi.fn() } });
+
+      await handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, 6);
+      expect(answerResumePrompt).toHaveBeenCalledWith(true, 6);
+      await expect(handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, -6)).rejects.toThrow(/minutes/);
+      await expect(handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, '6')).rejects.toThrow(/minutes/);
+      expect(answerResumePrompt).toHaveBeenCalledTimes(1);
     });
 
     it('AnswerResumePrompt_NotABoolean_IsRefused', async () => {
@@ -374,15 +385,66 @@ describe('IPC handlers', () => {
       expect(engine.getCurrentSession()).toBeNull();
     });
 
-    it('StartInterruption_TaskRunning_SetsItAsideToAskAbout', async () => {
+    it('StartInterruption_TaskRunning_HoldsItPaused', async () => {
       const before = engine.startTask('', true, 'Writing the spec');
 
-      const interruption = (await invoke(IPCChannel.START_INTERRUPTION)) as { taskTitle: string; sessionId: string };
+      const interruption = (await invoke(IPCChannel.START_INTERRUPTION)) as {
+        taskTitle: string;
+        interruption: { interruptedSessionId: string };
+      };
 
       expect(interruption.taskTitle).toMatch(/^Interruption \d\d:\d\d$/);
-      expect(settingsRepo.getSetting('set_aside', null)).toMatchObject({
-        taskId: before.taskId, endsWith: interruption.sessionId, after: 'interruption'
-      });
+      expect(interruption.interruption.interruptedSessionId).toBe(before.sessionId);
+      expect(settingsRepo.getSetting('set_aside', null)).toBeNull();
+    });
+
+    it('InterruptionStart_ASource_IsKept', async () => {
+      const started = (await invoke(IPCChannel.INTERRUPTION_START, { source: 'mini' })) as { interruption: { source: string } };
+
+      expect(started.interruption.source).toBe('mini');
+    });
+
+    it('InterruptionStart_NotATime_IsRefused', async () => {
+      await expect(invoke(IPCChannel.INTERRUPTION_START, { startedAtUtc: 'soon' })).rejects.toThrow(/time/);
+    });
+
+    it('InterruptionBack_ResumesTheTaskHeld', async () => {
+      const before = engine.startTask('', true, 'Writing the spec');
+      await invoke(IPCChannel.INTERRUPTION_START);
+
+      const back = (await invoke(IPCChannel.INTERRUPTION_BACK)) as { sessionId: string; status: string };
+
+      expect(back).toMatchObject({ sessionId: before.sessionId, status: 'TRACKING' });
+    });
+
+    it('InterruptionStopThenRenameThenKeepOff_ListsItNoMore', async () => {
+      await invoke(IPCChannel.INTERRUPTION_START);
+      await invoke(IPCChannel.INTERRUPTION_STOP);
+      const [waiting] = (await invoke(IPCChannel.INTERRUPTION_GET_TO_PLACE)) as Array<{ id: string }>;
+      expect(waiting).toBeDefined();
+
+      const rename = handler(IPCChannel.INTERRUPTION_RENAME) as (event: unknown, id: unknown, name: unknown) => Promise<unknown>;
+      await rename({}, waiting.id, ' Printer jam ');
+      expect(await invoke(IPCChannel.INTERRUPTION_GET_TO_PLACE)).toMatchObject([{ title: 'Printer jam' }]);
+
+      await invoke(IPCChannel.INTERRUPTION_KEEP_OFF, waiting.id);
+
+      expect(await invoke(IPCChannel.INTERRUPTION_GET_TO_PLACE)).toEqual([]);
+      expect(sentOn(IPCChannel.ON_INTERRUPTIONS_UPDATED).at(-1)).toEqual([]);
+    });
+
+    it.each([
+      [IPCChannel.INTERRUPTION_PLACE, [undefined, 'T-1']],
+      [IPCChannel.INTERRUPTION_PLACE, ['int_1', '']],
+      [IPCChannel.INTERRUPTION_PLACE_MANY, ['int_1', 'T-1']],
+      [IPCChannel.INTERRUPTION_PLACE_MANY, [[], 'T-1']],
+      [IPCChannel.INTERRUPTION_KEEP_OFF, [7]],
+      [IPCChannel.INTERRUPTION_RENAME, ['', 'Name']],
+      [IPCChannel.INTERRUPTION_SWITCH, ['']],
+      [IPCChannel.INTERRUPTION_DISCARD, [7]]
+    ])('%s_BadArguments_AreRefused_%#', async (channel, args) => {
+      const call = handler(channel) as (event: unknown, ...rest: unknown[]) => Promise<unknown>;
+      await expect(call({}, ...(args as unknown[]))).rejects.toThrow();
     });
 
     it('RenameSession_Interruption_TakesTheTrimmedName', async () => {
@@ -397,18 +459,6 @@ describe('IPC handlers', () => {
       await invoke(IPCChannel.START_INTERRUPTION);
 
       await expect(invoke(IPCChannel.RENAME_SESSION, title)).rejects.toThrow();
-    });
-
-    it('RenameAdHocTask_AfterItEnded_ListsItNoMore', async () => {
-      const interruption = (await invoke(IPCChannel.START_INTERRUPTION)) as { taskId: string };
-      engine.stopSession('Over');
-      expect(await invoke(IPCChannel.GET_UNSORTED_WORKLOGS)).toHaveLength(1);
-
-      // Two arguments: the task, then its name.
-      const rename = handler(IPCChannel.RENAME_AD_HOC_TASK) as (event: unknown, taskId: unknown, title: unknown) => Promise<unknown>;
-      await rename({}, interruption.taskId, ' Printer jam ');
-
-      expect(await invoke(IPCChannel.GET_UNSORTED_WORKLOGS)).toEqual([]);
     });
 
     it.each([[undefined, 'Name'], [7, 'Name'], ['adhoc_1_x', 42]])('RenameAdHocTask_BadArguments_AreRefused_%#', async (taskId, title) => {

@@ -242,6 +242,29 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
+    it('TrayManager_ContextMenu_DuringAnInterruption_BackStopAndAnother', () => {
+      engine.startTask('adhoc_t', true, 'The task');
+      const manager = new TrayManager(mockWindow, engine, undefined, undefined, vi.fn());
+      manager.initialize();
+      expect(template.some(i => i.label?.startsWith('Back to'))).toBe(false);
+
+      engine.startInterruption(new Date(), 'tray');
+
+      // The menu followed the engine: rebuilt for the interruption.
+      expect(template.some(i => i.label === 'Another Interruption')).toBe(true);
+      click(template.find(i => i.label?.startsWith('Back to'))!.label!);
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+      expect(template.some(i => i.label === 'Start an Interruption')).toBe(true);
+
+      engine.startInterruption(new Date(), 'tray');
+      click('Stop the Interruption');
+      // Ended alone: the task still waits, paused.
+      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      manager.destroy();
+    });
+
     it('TrayManager_ContextMenu_StartPause_NoSession_RestoresTheWindowInsteadOfGuessing', () => {
       // There is nothing to resume and no way to choose a task from a tray
       // menu, so the only useful move is to show the window.

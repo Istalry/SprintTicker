@@ -118,8 +118,10 @@ Timer** in the header or **Show Mini Timer** in the tray menu.
   done, and **Discard** throws the session away after a **Yes**. **×** keeps
   the session running.
 - ⚡ **Interrupt** starts a timer at once, as Today's button does --
-  see [Interrupt](#-interrupt-a-timer-at-once). Click an interruption's title
-  to name it, and the link button to assign it to a task.
+  see [Interrupt](#-interrupt-a-timer-at-once). During an interruption the
+  row says which task waits, and offers ↩ **Back** to it, ⏹️ **Stop**, which
+  ends the interruption alone, and ⚡ **Another**. Click an interruption's
+  title to name it, and the link button to put it on a task.
 - 📋 The **list** button brings the window forward with the task picker open:
   that is how you start or switch a task from it.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -222,44 +224,62 @@ all.
 ### ⚡ Interrupt: a timer at once
 
 Someone at your desk, a call: press **Interrupt** and a timer starts there
-and then, with nothing to fill in. It runs on a new ad-hoc task called after
-the time it started -- **Interruption 14:32** -- and the task you were on
-stops, its time logged as usual. Interrupt is on Today's session card, in
-the mini timer, first in the tray menu, on the Stream Deck's Interrupt key,
-and on the bar: pause the task, turn the wheel two notches left to
-**INTERRUPT**, and click. And, if you turn it on, on a keyboard shortcut
-that works from any app -- see below.
+and then, with nothing to fill in. The task you were on **waits, paused**:
+nothing is logged or sent for it, and its timer goes on from where it was
+when you come back. Interrupt is on Today's session card, in the mini timer,
+first in the tray menu, on the Stream Deck's Interrupt key, and on the bar:
+pause the task, turn the wheel two notches left to **INTERRUPT**, and click.
+And, if you turn it on, on a keyboard shortcut that works from any app --
+see below.
 
-When the interruption ends -- Stop, Done, or Discard if you pressed it by
-mistake -- SprintTicker asks **Back to your task?**, naming it: in the window,
-and on the bar as the task's key over **BACK? OK=YES**. Yes starts it again;
-**Leave it**, BACK, or starting something else leaves it. It is asked every
-time, because you may be done for now. A task paused when you pressed
-Interrupt is asked about too.
+While it runs, the session card says which task waits, and offers:
 
-- **An interruption of an interruption**, or of the stand-up, asks about the
-  task you were on before the first one: that is the one to go back to.
-- **Lunch during an interruption** stops it, and the task you were on before
-  it starts again when lunch ends, as lunch always does.
-- **The end-of-day wrap-up** stops an interruption without asking.
+- ↩ **Back to MG-12** ends the interruption and resumes the task. A task
+  that was already paused when you pressed Interrupt stays paused.
+- ⏹️ **Stop** ends the interruption alone. The task still waits, paused,
+  and SprintTicker asks **Back to your task?**, naming it: in the window,
+  and on the bar as the task's key over **BACK? OK=YES**. **Resume it** goes
+  back; **Resume, and count the time since as work** also puts the minutes
+  between the Stop and now on the task; **Leave it** leaves it paused.
+- ⚡ **Another**: someone else arrives before you got back. The interruption
+  ends and the next starts, waiting on the same task. Marc, then Ana, then
+  Marc again is three interruptions in a row and one **Back**.
+- **Switch Task** ends the interruption and starts another task; the one
+  that waited stops, its time logged.
+- **Assign to Task** ends the interruption, puts its time on the task you
+  pick, and starts that task.
+
+The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **Back to
+MG-12**, **Stop the Interruption** and **Another Interruption**.
+
+- **Lunch during an interruption** ends it. The task that waited stops for
+  lunch, and starts again when lunch ends, as lunch always does.
+- **The end-of-day wrap-up** ends an interruption and the task it held,
+  without asking.
 - **Name it** while it runs: click its title on Today's session card or
-  in the mini timer, type, and press Enter (Escape keeps the name). The card
-  says **Interruption** until you do. The name is what History shows.
-- **Assign it to a task** while it runs: **Assign to Task** on the card, or
-  the link button in the mini timer, opens the task picker. The session moves
-  to that task with its start kept, so the whole interruption is logged on it
-  and sent to its Jira or OpenProject when you stop. Assigned to the very task
-  it interrupted, nothing is asked at the end -- you are back on it.
-- **Name it afterwards**, in **History**: an interruption not named yet
-  says **To sort**, and every one of them, whatever the day, is listed at
-  the top under **Interruptions to sort**, with its time and the day it
-  began -- click the day to go there. Click its name to give it a real one.
-  The end-of-day wrap-up lists the day's too, so you can name them while you
-  remember what they were. Any ad-hoc work can be renamed the same way.
-- **Assign it afterwards**: **Assign** beside it in Interruptions to sort
-  moves all of its time to the task you pick, and sends it there.
-- **Until then its time stays here**: an ad-hoc task's time is never sent to
-  Jira or OpenProject.
+  in the mini timer, type, and press Enter (Escape keeps the name). It is
+  called after the time it started, **Interruption 14:32**, until you do.
+
+#### Interruptions to place
+
+An interruption that ended is on no task yet, and **its time is sent
+nowhere until you say where it goes**. The ⚡ count beside Today says how
+many wait. **History** lists every one at the top, whatever its day, under
+**Interruptions to place**: what it interrupted (*during MG-12*), its place
+in its run (*2 of 3*), its time, and when it began -- click that to go to
+the day. The end-of-day wrap-up lists them too, so you can place them while
+you remember what they were. For each:
+
+- Click its name to give it one.
+- **Place…** puts its time on the task you pick: an entry, sent like any
+  other, with ten seconds to undo. **Place all** puts every one on one task.
+- **Keep off Jira** -- your provider's name -- keeps its time in
+  SprintTicker only, as ad-hoc work, never sent.
+- The bin discards it: its time is kept nowhere. Ten seconds to undo.
+- Leave it there, and it waits for later.
+
+Interruptions timed by an earlier version are listed the same way;
+placing one moves its entry to the task.
 
 🗑️ **Discard this session**, the third choice, is for a session started by
 mistake: nothing is kept in your history and nothing is sent to your
@@ -411,8 +431,8 @@ task, and the time is on it at once here. At Jira or OpenProject the entry is
 deleted where it was, then created on the new task -- in that order, so the
 time is never on both, and for a moment may be on neither while the move goes
 through. A worklog not sent yet simply goes to the new task. Neither task's
-status changes. An interruption in **Interruptions to sort** has **Assign**,
-which moves all of its time at once, under its name.
+status changes. An interruption waiting in **Interruptions to place** is
+placed rather than moved: see [Interrupt](#-interrupt-a-timer-at-once).
 
 Each entry is named by its task's key and title. **Deleting a task or a project
 does not delete the time logged against it**: the task leaves your lists and
@@ -708,8 +728,9 @@ other layouts where it is AltGr, or the shortcut takes a character you type
 - **Nothing happens in an app run as administrator.** Windows does not pass
   a shortcut to SprintTicker while such a window has the focus.
 - **With the window hidden, no bar and no mini timer**, a Windows
-  notification says the interruption started and which task's time was
-  logged -- otherwise nothing would show that the timer changed.
+  notification says the interruption started and which task waits paused
+  -- otherwise nothing would show that the timer changed. Pressed during
+  an interruption, the shortcut is **Another**.
 
 ---
 

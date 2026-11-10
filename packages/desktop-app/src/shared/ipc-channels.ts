@@ -7,7 +7,24 @@ export enum IPCChannel {
   GET_CURRENT_SESSION = 'session:get-current',
   START_TASK = 'session:start-task',
   /** Interrupt: a timer at once on a new ad-hoc task, the task it stops asked about at its end. */
+  /** Kept as an alias of `interruption:start` for one release (P6). */
   START_INTERRUPTION = 'session:start-interruption',
+  /** Interrupt (P6): `{ source?, startedAtUtc? }`; during an interruption it is Another. */
+  INTERRUPTION_START = 'interruption:start',
+  INTERRUPTION_ANOTHER = 'interruption:another',
+  /** Back to the held task: `addGapMinutes?` counts the gap after a Stop as work. */
+  INTERRUPTION_BACK = 'interruption:back',
+  INTERRUPTION_STOP = 'interruption:stop',
+  /** `taskId`, `takeAlong`: end it, stop the held task, start `taskId`. */
+  INTERRUPTION_SWITCH = 'interruption:switch',
+  /** The running one, or one waiting (`id`): ten seconds to undo. */
+  INTERRUPTION_DISCARD = 'interruption:discard',
+  INTERRUPTION_RENAME = 'interruption:rename',
+  INTERRUPTION_PLACE = 'interruption:place',
+  INTERRUPTION_PLACE_MANY = 'interruption:place-many',
+  INTERRUPTION_KEEP_OFF = 'interruption:keep-off',
+  INTERRUPTION_GET_TO_PLACE = 'interruption:get-to-place',
+  ON_INTERRUPTIONS_UPDATED = 'interruption:on-updated',
   /** Names the open ad-hoc session, and its task. */
   RENAME_SESSION = 'session:rename',
   /** Assigns the open ad-hoc session to a task, in place. */

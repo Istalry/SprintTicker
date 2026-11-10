@@ -14,12 +14,18 @@ import { WorklogCorrectionDTO } from '../../shared/worklog-correction';
 export interface UndoableDeps {
   db: Database.Database;
   undo: UndoService;
-  engine: Pick<TimeTrackingEngine, 'getCurrentSession' | 'stopSession' | 'discardSession' | 'resumeAfterUndo'>;
+  engine: Pick<TimeTrackingEngine, 'getCurrentSession' | 'stopSession' | 'discardSession' | 'resumeAfterUndo'> &
+    Partial<Pick<TimeTrackingEngine, 'isInterrupted'>>;
 }
 
-/** The rows a session's end writes: the session, its task, its worklogs and their sends. */
+/**
+ * The rows a session's end writes: the session, its task, its worklogs and
+ * their sends -- and, for an interruption, its fragment (whose id is the
+ * session id of its view).
+ */
 function sessionScopes(sessionId: string, taskId: string): RowScope[] {
   return [
+    { table: 'interruptions', where: 'id = ?', params: [sessionId] },
     { table: 'active_sessions', where: 'id = ?', params: [sessionId] },
     { table: 'tasks', where: 'id = ?', params: [taskId] },
     { table: 'worklogs', where: 'session_id = ?', params: [sessionId] },
@@ -45,8 +51,11 @@ function worklogScopes(worklogId: string, taskIds: readonly string[]): RowScope[
  * session is open: the one open session is a unique index, and the user has
  * moved on.
  */
-function reopen(deps: UndoableDeps, point: RestorePoint): boolean {
-  if (deps.engine.getCurrentSession()) return false;
+function reopen(deps: UndoableDeps, point: RestorePoint, heldSessionId: string | null = null): boolean {
+  const open = deps.engine.getCurrentSession();
+  // An interruption ended leaves the session it held open, paused for it:
+  // that one does not stand in the way of bringing the interruption back.
+  if (open && !(heldSessionId && open.sessionId === heldSessionId && open.status === 'PAUSED')) return false;
   if (!point.restore()) return false;
   deps.engine.resumeAfterUndo();
   return true;
@@ -68,17 +77,23 @@ export function stopUndoably(
   const point = RestorePoint.capture(deps.db, sessionScopes(active.sessionId, active.taskId));
   const held: Array<() => void> = [];
   const result = completeSession(
-    { stopSession: (c, d) => deps.engine.stopSession(c, d, { holdRemote: send => held.push(send) }) },
+    {
+      stopSession: (c, d) => deps.engine.stopSession(c, d, { holdRemote: send => held.push(send) }),
+      isInterrupted: () => deps.engine.isInterrupted?.() ?? false
+    },
     renderer,
     comment,
     markDone
   );
   if (!result.success) return result;
   point.seal();
+  const fragment = active.interruption;
   deps.undo.offer({
     kind: 'stop',
-    label: undoLabel(markDone ? 'done' : 'stop', active.taskKey, formatHoursAndMinutes(result.loggedSeconds)),
-    undo: () => reopen(deps, point),
+    label: fragment
+      ? undoLabel('stop', fragment.title, formatHoursAndMinutes(active.elapsedSeconds))
+      : undoLabel(markDone ? 'done' : 'stop', active.taskKey, formatHoursAndMinutes(result.loggedSeconds)),
+    undo: () => reopen(deps, point, fragment?.interruptedSessionId ?? null),
     commit: () => held.forEach(send => send())
   });
   return result;
@@ -92,10 +107,11 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
   const result = deps.engine.discardSession();
   if (!result.success) return result;
   point.seal();
+  const fragment = active.interruption;
   deps.undo.offer({
     kind: 'discard',
-    label: undoLabel('discard', active.taskKey, formatHoursAndMinutes(result.discardedSeconds)),
-    undo: () => reopen(deps, point)
+    label: undoLabel('discard', fragment ? fragment.title : active.taskKey, formatHoursAndMinutes(result.discardedSeconds)),
+    undo: () => reopen(deps, point, fragment?.interruptedSessionId ?? null)
   });
   return result;
 }

@@ -528,6 +528,60 @@ const M014_STARS_AND_PREVIOUS_TASK = `
   CREATE INDEX idx_active_sessions_task_start ON active_sessions(task_id, start_time_utc);
 `;
 
+/**
+ * Migration 15: interruptions in a row (D2).
+ *
+ * An interruption is no longer a session on an ad-hoc task. It is a fragment
+ * of its own, and the session it interrupts is held as it was: paused, with
+ * the pause's reason saying why. Nothing is logged at the start; a fragment
+ * gets a worklog only when it is placed on a task.
+ *
+ * - One fragment runs at a time, as one session is open at a time
+ *   (migration 6): a unique index on the running ones.
+ * - `after_id` chains a run: ⚡ Another closes one and opens the next.
+ * - `paused_intervals.reason`: every existing pause was the user's.
+ * - Legacy: each worklog of an unsorted ad-hoc task (migration 13) becomes
+ *   a fragment pointing at it (`legacy_worklog_id`). The task and the
+ *   worklog are kept -- `db:check-migration` counts them -- and placing the
+ *   fragment moves that worklog rather than writing another.
+ */
+function m015Interruptions(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE interruptions (
+        id TEXT PRIMARY KEY,
+        started_at_utc TEXT NOT NULL,
+        ended_at_utc TEXT,
+        name TEXT,
+        source TEXT NOT NULL
+          CHECK (source IN ('window', 'mini', 'tray', 'bar', 'deck', 'shortcut', 'notification', 'legacy')),
+        interrupted_session_id TEXT,
+        interrupted_was_paused INTEGER NOT NULL DEFAULT 0 CHECK (interrupted_was_paused IN (0, 1)),
+        after_id TEXT,
+        placed_task_id TEXT,
+        placed_worklog_id TEXT,
+        kept_off INTEGER NOT NULL DEFAULT 0 CHECK (kept_off IN (0, 1)),
+        discarded_at_utc TEXT,
+        legacy_worklog_id TEXT
+    );
+
+    CREATE UNIQUE INDEX idx_interruptions_one_running ON interruptions((ended_at_utc IS NULL)) WHERE ended_at_utc IS NULL;
+    CREATE INDEX idx_interruptions_started ON interruptions(started_at_utc);
+
+    ALTER TABLE paused_intervals ADD COLUMN reason TEXT NOT NULL DEFAULT 'user'
+      CHECK (reason IN ('user', 'interruption', 'lunch', 'away'));
+  `);
+  db.prepare(`
+    INSERT INTO interruptions (id, started_at_utc, ended_at_utc, source, legacy_worklog_id)
+    SELECT 'legacy_' || w.id,
+           w.started_at_utc,
+           strftime('%Y-%m-%dT%H:%M:%fZ', julianday(w.started_at_utc) + w.duration_seconds / 86400.0),
+           'legacy',
+           w.id
+      FROM worklogs w JOIN tasks t ON t.id = w.task_id
+     WHERE t.unsorted = 1
+  `).run();
+}
+
 /** Ordered, append-only migration list. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial-schema', up: db => db.exec(M001_INITIAL_SCHEMA) },
@@ -543,7 +597,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 11, name: 'send-attempts', up: db => db.exec(M011_SEND_ATTEMPTS) },
   { version: 12, name: 'task-ownership', up: db => db.exec(M012_TASK_OWNERSHIP) },
   { version: 13, name: 'task-unsorted', up: db => db.exec(M013_TASK_UNSORTED) },
-  { version: 14, name: 'stars-and-previous-task', up: db => db.exec(M014_STARS_AND_PREVIOUS_TASK) }
+  { version: 14, name: 'stars-and-previous-task', up: db => db.exec(M014_STARS_AND_PREVIOUS_TASK) },
+  { version: 15, name: 'interruptions', up: m015Interruptions }
 ];
 
 /** Schema version a fully migrated database reports. */

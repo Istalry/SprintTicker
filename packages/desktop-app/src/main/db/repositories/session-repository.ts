@@ -4,6 +4,9 @@ import { ActiveSessionDTO } from '../../../shared/dtos';
 /**
  * Repository layer for active time-tracking session state and paused interval persistence.
  */
+/** Why a session paused: the user, or an interruption holding it (migration 15). */
+export type PauseReason = 'user' | 'interruption' | 'lunch' | 'away';
+
 export class SessionRepository {
   private dbConn: DatabaseConnection;
 
@@ -184,13 +187,35 @@ export class SessionRepository {
   /**
    * Records a paused interval entry in paused_intervals table.
    */
-  public recordPauseInterval(sessionId: string, pausedAtUtc: string, resumedAtUtc?: string): void {
+  public recordPauseInterval(
+    sessionId: string,
+    pausedAtUtc: string,
+    resumedAtUtc?: string,
+    reason: PauseReason = 'user'
+  ): void {
     const stmt = this.dbConn.getDb().prepare(`
-      INSERT INTO paused_intervals (session_id, paused_at_utc, resumed_at_utc)
-      VALUES (?, ?, ?)
+      INSERT INTO paused_intervals (session_id, paused_at_utc, resumed_at_utc, reason)
+      VALUES (?, ?, ?, ?)
     `);
 
-    stmt.run(sessionId, pausedAtUtc, resumedAtUtc || null);
+    stmt.run(sessionId, pausedAtUtc, resumedAtUtc || null, reason);
+  }
+
+  /** The task key a session was on, open or ended; null for no such session. */
+  public getTaskKeyOf(sessionId: string): string | null {
+    const row = this.dbConn.getDb()
+      .prepare<[string], { key: string }>('SELECT task_key AS key FROM active_sessions WHERE id = ?')
+      .get(sessionId);
+    return row?.key ?? null;
+  }
+
+  /** Why the session's open pause was made, or null with none open (migration 15). */
+  public getOpenPauseReason(sessionId: string): PauseReason | null {
+    const row = this.dbConn.getDb().prepare<[string], { reason: PauseReason }>(`
+      SELECT reason FROM paused_intervals
+       WHERE id = (SELECT MAX(id) FROM paused_intervals WHERE session_id = ?) AND resumed_at_utc IS NULL
+    `).get(sessionId);
+    return row?.reason ?? null;
   }
 
   /**

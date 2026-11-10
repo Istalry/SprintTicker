@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { App } from '../../src/renderer/App';
 import { windowPickerWanted } from '../../src/renderer/hooks/useModals';
 import { CONNECTED_DEVICE, NO_BAR_DEVICE, TRACKING_SESSION, installElectronApi } from './electron-api-mock';
-import { WorklogDTO } from '../../src/shared/dtos';
+import type { InterruptionToPlaceDTO } from '../../src/shared/interruption';
 
 const placeNames = () =>
   within(screen.getByRole('navigation', { name: 'Places' }))
@@ -43,11 +43,14 @@ describe('the app shell', () => {
   });
 
   it('Today_InterruptionsToPlace_AreCountedBesideIt', async () => {
-    const piece = { id: 'w1', unsorted: true } as unknown as WorklogDTO;
-    installElectronApi({ getUnsortedWorklogs: async () => [piece, { ...piece, id: 'w2' }] });
+    const one = { id: 'int_1' } as unknown as InterruptionToPlaceDTO;
+    const bridge = installElectronApi({ getInterruptionsToPlace: async () => [one, { ...one, id: 'int_2' }] });
     render(<App />);
 
     expect(await screen.findByLabelText('2 to place')).toBeTruthy();
+    // One more ends on the bar: main sends the list.
+    act(() => bridge.emit('onInterruptionsUpdated', [one, { ...one, id: 'int_2' }, { ...one, id: 'int_3' }]));
+    expect(await screen.findByLabelText('3 to place')).toBeTruthy();
   });
 
   it('ModeChip_Choose_WritesTheModeMainKeeps', async () => {

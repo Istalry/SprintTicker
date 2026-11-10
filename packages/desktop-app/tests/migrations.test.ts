@@ -692,4 +692,56 @@ describe('Schema Migrations', () => {
       ).toThrow(/CHECK/);
     });
   });
+
+  describe('migration 15: interruptions in a row', () => {
+    const upTo14 = () => {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 14)) migration.up(db);
+      db.pragma('user_version = 14');
+    };
+
+    it('Migration015_AnUnsortedInterruptionsWorklog_BecomesAFragmentPointingAtIt', () => {
+      upTo14();
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, unsorted, created_at_utc) VALUES ('adhoc_1', 'ADHOC', 'MISC-1', 'Interruption 10:30', 'done', 1, '2026-10-14T08:00:00.000Z')"
+      ).run();
+      db.prepare(
+        "INSERT INTO tasks (id, project_id, key, title, status, unsorted, created_at_utc) VALUES ('adhoc_2', 'ADHOC', 'MISC-1', 'Named', 'done', 0, '2026-10-14T08:00:00.000Z')"
+      ).run();
+      db.prepare(
+        "INSERT INTO worklogs (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc) VALUES ('w1', 's1', 'adhoc_1', 900, '2026-10-14T08:30:00.000Z', 'c', '2026-10-14T08:45:00.000Z')"
+      ).run();
+      db.prepare(
+        "INSERT INTO worklogs (id, session_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc) VALUES ('w2', 's2', 'adhoc_2', 600, '2026-10-14T09:00:00.000Z', 'c', '2026-10-14T09:10:00.000Z')"
+      ).run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT id, started_at_utc, ended_at_utc, source, legacy_worklog_id FROM interruptions').all()).toEqual([
+        { id: 'legacy_w1', started_at_utc: '2026-10-14T08:30:00.000Z', ended_at_utc: '2026-10-14T08:45:00.000Z', source: 'legacy', legacy_worklog_id: 'w1' }
+      ]);
+      // Kept: the check counts every worklog and every second.
+      expect(db.prepare('SELECT COUNT(*) AS n FROM worklogs').get()).toEqual({ n: 2 });
+    });
+
+    it('Migration015_EveryExistingPause_IsTheUsers', () => {
+      upTo14();
+      db.prepare(
+        "INSERT INTO active_sessions (id, project_id, task_id, task_key, task_title, start_time_utc, status) VALUES ('s1', 'p', 't', 'K', 'T', '2026-10-14T08:00:00.000Z', 'PAUSED')"
+      ).run();
+      db.prepare("INSERT INTO paused_intervals (session_id, paused_at_utc) VALUES ('s1', '2026-10-14T08:10:00.000Z')").run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT reason FROM paused_intervals').all()).toEqual([{ reason: 'user' }]);
+    });
+
+    it('Migration015_OneInterruptionRunsAtMost', () => {
+      runMigrations(db);
+      const open = (id: string) =>
+        db.prepare("INSERT INTO interruptions (id, started_at_utc, source) VALUES (?, '2026-10-14T08:00:00.000Z', 'window')").run(id);
+      open('a');
+
+      expect(() => open('b')).toThrow(/UNIQUE/);
+    });
+  });
 });

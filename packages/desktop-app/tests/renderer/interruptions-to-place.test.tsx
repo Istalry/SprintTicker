@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { WorklogHistoryView } from '../../src/renderer/views/History/WorklogHistoryView';
 import { EodWrapUpModal } from '../../src/renderer/views/EOD/EodWrapUpModal';
 import { WorklogDTO } from '../../src/shared/dtos';
+import type { InterruptionToPlaceDTO } from '../../src/shared/interruption';
 import { localDateKey } from '../../src/shared/local-date';
 import { formatDay } from '../../src/renderer/utils/formatters';
 import { installElectronApi } from './electron-api-mock';
@@ -25,22 +26,49 @@ const INTERRUPTION: WorklogDTO = {
 const NAMED: WorklogDTO = { ...INTERRUPTION, id: 'w2', taskId: 'adhoc_2_y', taskTitle: 'Call with Marc', unsorted: undefined };
 const PROVIDER: WorklogDTO = { ...INTERRUPTION, id: 'w3', taskId: '10001', taskKey: 'MG-12', taskTitle: 'Rework the pause menu', adHoc: undefined, unsorted: undefined };
 
-const history = async (day: WorklogDTO[], unsorted: WorklogDTO[] = []) => {
+const history = async (day: WorklogDTO[], waiting: InterruptionToPlaceDTO[] = []) => {
   const bridge = installElectronApi({
     getWorklogsByDate: vi.fn().mockResolvedValue(day),
-    getUnsortedWorklogs: vi.fn().mockResolvedValue(unsorted)
+    getInterruptionsToPlace: vi.fn().mockResolvedValue(waiting)
   });
   render(<WorklogHistoryView />);
   await screen.findByText('Chronological Session Log (' + day.length + ')');
   return bridge;
 };
 
-/** An interruption runs under a made-up name; History and the wrap-up are where it gets a real one. */
-describe('Work History, interruptions to sort', () => {
-  it('Row_Unsorted_SaysToSort', async () => {
+/** Picks project P-1, then task T-9, in the picker History opened. */
+const pick = async () => {
+  const dialog = await screen.findByRole('heading', { name: /Move to a Task/ });
+  expect(dialog).toBeTruthy();
+  fireEvent.click(await screen.findByText('Sprint'));
+  fireEvent.click(await screen.findByText('SPR-9'));
+};
+const withProjects = (overrides: Record<string, unknown>) => ({
+  getProjects: vi.fn().mockResolvedValue([{ id: 'P-1', key: 'SPR', name: 'Sprint' }]),
+  getTasks: vi.fn().mockResolvedValue([{ id: 'T-9', projectId: 'P-1', key: 'SPR-9', title: 'The real task', status: 'todo' }]),
+  ...overrides
+});
+
+const WAITING: InterruptionToPlaceDTO = {
+  id: 'int_1',
+  name: null,
+  title: 'Interruption 10:30',
+  startedAtUtc: START,
+  endedAtUtc: '2026-11-09T09:45:00.000Z',
+  durationSeconds: 900,
+  source: 'window',
+  interruptedTaskKey: 'MG-12',
+  index: 2,
+  ofRun: 3
+};
+const NEXT: InterruptionToPlaceDTO = { ...WAITING, id: 'int_2', title: 'Call with Marc', name: 'Call with Marc', index: 3 };
+
+/** Rows of the day: an earlier interruption's entry still says it waits. */
+describe('Work History, rows', () => {
+  it('Row_Unsorted_SaysToPlace', async () => {
     await history([INTERRUPTION, NAMED]);
 
-    expect(screen.getAllByText('To sort')).toHaveLength(1);
+    expect(screen.getAllByText('To place')).toHaveLength(1);
   });
 
   it('Row_AdHoc_IsRenamedInPlace_AndTheDayIsReadAgain', async () => {
@@ -53,7 +81,6 @@ describe('Work History, interruptions to sort', () => {
 
     expect(bridge.api.renameAdHocTask).toHaveBeenCalledWith('adhoc_1_x', 'Call with Marc');
     await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(2));
-    expect(bridge.api.getUnsortedWorklogs).toHaveBeenCalledTimes(2);
   });
 
   it('Row_ProviderTask_KeepsItsName', async () => {
@@ -63,75 +90,135 @@ describe('Work History, interruptions to sort', () => {
     expect(screen.queryByRole('button', { name: /Rename/ })).toBeNull();
     expect(screen.getByText('Rework the pause menu')).toBeTruthy();
   });
+});
 
-  it('ToSort_NothingWaiting_NoList', async () => {
+/** Interruptions that ended wait here to be placed on a task, kept off, or discarded (P6). */
+describe('Work History, interruptions to place', () => {
+  it('List_NothingWaiting_NoList', async () => {
     await history([NAMED]);
 
-    expect(screen.queryByRole('region', { name: 'Interruptions to sort' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
   });
 
-  it('ToSort_FromAnyDay_OneEntryPerInterruptionWithItsTime', async () => {
-    // Two pieces of one interruption -- split at midnight -- are one entry.
-    const piece = { ...INTERRUPTION, id: 'w4', startedAtUtc: '2026-11-08T22:00:00.000Z', durationSeconds: 600 };
-    await history([], [INTERRUPTION, piece]);
+  it('List_Each_WithWhatItInterruptedAndItsPlaceInTheRun', async () => {
+    await history([], [WAITING]);
 
-    const list = screen.getByRole('region', { name: 'Interruptions to sort' });
-    expect(within(list).getByText('Interruptions to sort (1)')).toBeTruthy();
-    expect(within(list).getByText('25m')).toBeTruthy();
-    // The day it began, which the entry jumps to.
-    expect(within(list).getByRole('button', { name: formatDay(localDateKey(new Date(piece.startedAtUtc))) })).toBeTruthy();
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+    expect(within(list).getByText('Interruptions to place (1)')).toBeTruthy();
+    expect(within(list).getByText('15m')).toBeTruthy();
+    expect(list.textContent).toMatch(/during MG-12/);
+    expect(list.textContent).toMatch(/2 of 3/);
   });
 
-  it('ToSort_TheDay_JumpsToIt', async () => {
-    const earlier = { ...INTERRUPTION, startedAtUtc: '2026-11-02T09:00:00.000Z' };
+  it('List_AnotherDay_JumpsToIt', async () => {
+    const earlier = { ...WAITING, startedAtUtc: '2026-11-02T09:00:00.000Z' };
     const bridge = await history([], [earlier]);
     const dateKey = localDateKey(new Date(earlier.startedAtUtc));
 
-    fireEvent.click(screen.getByRole('button', { name: formatDay(dateKey) }));
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(formatDay(dateKey)) }));
 
     await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenLastCalledWith(dateKey));
   });
 
-  it('ToSort_Renamed_IsNamedLikeTheRow', async () => {
-    const bridge = await history([], [INTERRUPTION]);
-    const list = screen.getByRole('region', { name: 'Interruptions to sort' });
+  it('Rename_NamesTheInterruption', async () => {
+    const bridge = await history([], [WAITING]);
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
 
     fireEvent.click(within(list).getByRole('button', { name: 'Rename Interruption 10:30' }));
     const field = within(list).getByLabelText('Name this work');
     fireEvent.change(field, { target: { value: 'Printer jam' } });
     fireEvent.blur(field);
 
-    expect(bridge.api.renameAdHocTask).toHaveBeenCalledWith('adhoc_1_x', 'Printer jam');
+    expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Printer jam');
   });
 
-  it('ToSort_ReadFails_HistoryStillShowsTheDay', async () => {
+  it('Place_OnTheTaskPicked', async () => {
+    const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+    await pick();
+
+    await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_1', 'T-9'));
+  });
+
+  it('PlaceAll_OneTaskForEveryOne', async () => {
+    const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING, NEXT]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Place all' }));
+    await pick();
+
+    await waitFor(() => expect(bridge.api.placeInterruptions).toHaveBeenCalledWith(['int_1', 'int_2'], 'T-9'));
+  });
+
+  it('Place_Refused_SaysWhy', async () => {
+    installElectronApi(withProjects({
+      getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]),
+      placeInterruption: vi.fn().mockRejectedValue(new Error("Error invoking remote method 'interruption:place': Error: The provider records at least 1 minute(s)."))
+    }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+    await pick();
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Not done: .*at least 1 minute/);
+  });
+
+  it('Place_ClosedWeekTime_AsksFirst', async () => {
+    const bridge = installElectronApi({
+      getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]),
+      getLastWeekClosed: vi.fn().mockResolvedValue('2026-11-09')
+    });
+    render(<WorklogHistoryView />);
+    await waitFor(() => expect(bridge.api.getLastWeekClosed).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+
+    expect(screen.getByRole('alertdialog', { name: 'Place Interruption 10:30?' }).textContent).toMatch(/timesheet/);
+    expect(screen.queryByRole('heading', { name: /Move to a Task/ })).toBeNull();
+  });
+
+  it('KeepOff_NamesTheProvider', async () => {
+    const bridge = await history([], [WAITING]);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Keep off .*: Interruption 10:30$/ }));
+
+    expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_1');
+  });
+
+  it('Discard_ThatOne', async () => {
+    const bridge = await history([], [WAITING]);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard Interruption 10:30' }));
+
+    expect(bridge.api.discardInterruption).toHaveBeenCalledWith('int_1');
+  });
+
+  it('PlacedElsewhere_TheListFollowsMain', async () => {
+    const bridge = await history([], [WAITING]);
+    await screen.findByRole('region', { name: 'Interruptions to place' });
+
+    act(() => bridge.emit('onInterruptionsUpdated', []));
+
+    expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
+  });
+
+  it('List_ReadFails_HistoryStillShowsTheDay', async () => {
     // If the code checks a result, there is a test where it is the bad one.
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     installElectronApi({
       getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]),
-      getUnsortedWorklogs: vi.fn().mockRejectedValue(new Error('database closed'))
+      getInterruptionsToPlace: vi.fn().mockRejectedValue(new Error('database closed'))
     });
     render(<WorklogHistoryView />);
 
     expect(await screen.findByText('MG-12')).toBeTruthy();
-    expect(screen.queryByRole('region', { name: 'Interruptions to sort' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
   });
 });
 
 describe('Work History, moving time to another task', () => {
-  /** Picks project P-1, then task T-9, in the picker History opened. */
-  const pick = async () => {
-    const dialog = await screen.findByRole('heading', { name: /Move to a Task/ });
-    expect(dialog).toBeTruthy();
-    fireEvent.click(await screen.findByText('Sprint'));
-    fireEvent.click(await screen.findByText('SPR-9'));
-  };
-  const withProjects = (overrides: Record<string, unknown>) => ({
-    getProjects: vi.fn().mockResolvedValue([{ id: 'P-1', key: 'SPR', name: 'Sprint' }]),
-    getTasks: vi.fn().mockResolvedValue([{ id: 'T-9', projectId: 'P-1', key: 'SPR-9', title: 'The real task', status: 'todo' }]),
-    ...overrides
-  });
-
   it('Move_ARow_SendsItToTheTaskPicked', async () => {
     const bridge = installElectronApi(withProjects({ getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]) }));
     render(<WorklogHistoryView />);
@@ -141,19 +228,6 @@ describe('Work History, moving time to another task', () => {
 
     await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w3', 'T-9'));
     await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(2));
-  });
-
-  it('Assign_AnInterruption_MovesEveryPieceOfIt', async () => {
-    const piece = { ...INTERRUPTION, id: 'w4', startedAtUtc: '2026-11-08T22:00:00.000Z' };
-    const bridge = installElectronApi(withProjects({ getUnsortedWorklogs: vi.fn().mockResolvedValue([INTERRUPTION, piece]) }));
-    render(<WorklogHistoryView />);
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Assign Interruption 10:30 to a task' }));
-    await pick();
-
-    await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledTimes(2));
-    expect(bridge.api.moveWorklog).toHaveBeenNthCalledWith(1, 'w1', 'T-9');
-    expect(bridge.api.moveWorklog).toHaveBeenNthCalledWith(2, 'w4', 'T-9');
   });
 
   it('Move_Refused_SaysWhy', async () => {
@@ -253,38 +327,49 @@ describe('Work History, time in a closed week', () => {
   });
 });
 
-describe('the wrap-up, interruptions to sort', () => {
+describe('the wrap-up, interruptions to place', () => {
   const summary = (items: Array<Record<string, unknown>>) => ({ date: '2026-11-09', totalSeconds: 900, tasksCount: items.length, items });
+  const wrapUp = () => render(<EodWrapUpModal isOpen onClose={vi.fn()} onConfirmEod={vi.fn().mockResolvedValue(undefined)} />);
 
-  it('WrapUp_TodaysUnsorted_ListedToName', async () => {
+  it('WrapUp_Waiting_ListedToPlace', async () => {
     const bridge = installElectronApi({
       getDailyWorklogSummary: vi.fn().mockResolvedValue(summary([
-        { taskId: 'adhoc_1_x', key: 'ADHOC', title: 'Interruption 10:30', durationSeconds: 900, comment: '', unsorted: true },
         { taskId: '10001', key: 'MG-12', title: 'Rework the pause menu', durationSeconds: 3600, comment: '' }
-      ]))
+      ])),
+      getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING])
     });
-    render(<EodWrapUpModal isOpen onClose={vi.fn()} onConfirmEod={vi.fn().mockResolvedValue(undefined)} />);
+    wrapUp();
 
-    const list = await screen.findByLabelText('Interruptions to sort');
-    expect(within(list).getByText('Interruptions to sort (1)')).toBeTruthy();
-    fireEvent.click(within(list).getByRole('button', { name: 'Rename Interruption 10:30' }));
-    const field = within(list).getByLabelText('Name this work');
-    fireEvent.change(field, { target: { value: 'Call with Marc' } });
-    fireEvent.keyDown(field, { key: 'Enter' });
-
-    expect(bridge.api.renameAdHocTask).toHaveBeenCalledWith('adhoc_1_x', 'Call with Marc');
-    await waitFor(() => expect(bridge.api.getDailyWorklogSummary).toHaveBeenCalledTimes(2));
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+    expect(within(list).getByText('Interruptions to place (1)')).toBeTruthy();
+    fireEvent.click(within(list).getByRole('button', { name: /^Keep off .*: Interruption 10:30$/ }));
+    expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_1');
   });
 
-  it('WrapUp_NothingToSort_NoList', async () => {
+  it('WrapUp_OnePlaced_TheDayIsReadAgain', async () => {
+    // Placed, its time joins the day's summary.
+    const bridge = installElectronApi({
+      getDailyWorklogSummary: vi.fn().mockResolvedValue(summary([])),
+      getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING])
+    });
+    wrapUp();
+    await screen.findByRole('region', { name: 'Interruptions to place' });
+
+    act(() => bridge.emit('onInterruptionsUpdated', []));
+
+    await waitFor(() => expect(bridge.api.getDailyWorklogSummary).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
+  });
+
+  it('WrapUp_NothingWaiting_NoList', async () => {
     installElectronApi({
       getDailyWorklogSummary: vi.fn().mockResolvedValue(summary([
         { taskId: '10001', key: 'MG-12', title: 'Rework the pause menu', durationSeconds: 3600, comment: '' }
       ]))
     });
-    render(<EodWrapUpModal isOpen onClose={vi.fn()} onConfirmEod={vi.fn().mockResolvedValue(undefined)} />);
+    wrapUp();
 
     await screen.findByText('MG-12:');
-    expect(screen.queryByLabelText('Interruptions to sort')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
   });
 });
