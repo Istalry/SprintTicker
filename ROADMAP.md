@@ -1135,7 +1135,51 @@ cup and a moon taken from their scenes' sprites.
 
 ---
 
-## 6. Next
+## 6. The 2026-11 redesign
+
+**Blocked on:** the work pending in side worktrees landing on `main`: the
+Unity removal and the banner fix (phase P0). The plan's six decisions were
+taken on 2026-11-10.
+
+A new face and new flows for every surface: the window, the mini timer,
+the tray, the bar and the Stream Deck. The target is drawn in
+[`Redesign-2026-11-screens.html`](Documentation/design-history/Redesign-2026-11-screens.html)
+(41 screens, a glossary, and a table of states × surfaces), and argued in
+[`Redesign-2026-11.md`](Documentation/design-history/Redesign-2026-11.md).
+It was reviewed in thirteen rounds by reviewers who had never seen the
+app: a newcomer and a heavy user each time.
+
+The model, in one sentence: one timer runs your task; when something
+interrupts you, ⚡ times it apart, one interruption after another;
+afterwards you place each one on a task, or keep it off the provider; time
+reaches the provider when you stop, after 10 s to undo.
+
+**The plan of record is [`Documentation/REDESIGN-PLAN.md`](Documentation/REDESIGN-PLAN.md)**:
+fifteen phases, each landing working, tested and documented, with the
+files, migrations, IPC and tests each one touches. Three releases:
+
+- **1.5, the new face.** The grey look and type, then the four places
+  (Today, Tasks, History, Settings in six groups), the header, and the
+  developer tools hidden. Behaviour does not change.
+- **1.6, the new flows.**
+  - Every send waits 10 s and can be undone.
+  - An overlapping entry is held.
+  - In Progress and assignment come after two minutes of timing.
+  - Interruptions become fragments in a row, and the task they interrupt
+    waits as it was.
+  - One picker, with Recent, Starred and Previous, in its own window.
+  - Prompts never take the focus; Lunch and Away pause the task.
+  - The window closes to the tray.
+- **1.7, the rest.** History's week, timeline and Check my week; Add time
+  and Split; End my day, with the PC shutdown after the undo; the first-run
+  setup; the bar's new menus, each measured on a bar; and the Stream Deck
+  plugin 0.6.0 on protocol 2.
+
+Each phase's status is kept in the plan's last section, not here.
+
+---
+
+## 7. Next
 
 Ordered; each says what has to be true first.
 

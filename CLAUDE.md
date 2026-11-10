@@ -1309,6 +1309,7 @@ Which document depends on what moved:
 | A command, a threshold, a requirement, a feature | `README.md` |
 | Anything at all worth a release note | `CHANGELOG.md` § Unreleased |
 | The plan, or an item finished or abandoned | `ROADMAP.md` |
+| A phase of the 2026-11 redesign landed, changed or dropped | `Documentation/REDESIGN-PLAN.md`, its Status table and the phase's text |
 | A trap, a constraint, or a rule the next agent must not break | this file |
 | What a provider server must offer | `Documentation/PROVIDER-API.md`, **before** the client or the fake server |
 

@@ -1,0 +1,1282 @@
+# The 2026-11 redesign: implementation plan
+
+Written 2026-11-10, after thirteen review rounds. This is the plan of record
+for building the redesign. Unlike `design-history/`, it is **maintained**:
+each phase updates its status here, in the same commit that lands it, and an
+abandoned step says so rather than disappearing.
+
+**What it builds.** The target is three documents, read in this order:
+
+- [`design-history/Redesign-2026-11-screens.html`](design-history/Redesign-2026-11-screens.html)
+  -- 41 screens (S1–S31), the glossary, and the table of states × surfaces.
+  Where the plan and the screens disagree, the screens win, and the plan is
+  corrected.
+- [`design-history/Redesign-2026-11.md`](design-history/Redesign-2026-11.md)
+  -- why each screen is the way it is. §34 (interruptions in a row), §37
+  (one model, one word) and §39–§41 are the latest word.
+- `CLAUDE.md` -- the rules every phase must keep, §4 and §5 above all.
+
+**How it is built.** Fifteen phases, each landing working, tested and
+documented on its own. Most of the order is forced:
+
+- the send pipeline and the interruption model come before the screens that
+  show them;
+- the devices come last, because they show what the app decides.
+
+Six decisions shape the phases (§2). The user took all six, as
+recommended, on 2026-11-10.
+
+---
+
+## 1. Where we start
+
+### 1.1 What is built
+
+What the redesign can stand on:
+
+- **Interrupt** (`df31d74`, 2026-11-09): migration 13 (`tasks.unsorted`),
+  `ContextScheduleService.switchSettingAside`, Interrupt on the window, mini
+  timer, tray, bar paused menu and deck, and rename / assign / move of an
+  interruption.
+- **Any worklog can move** (`6198cf6`): DELETE, then a CREATE held behind it,
+  through the queue (`WorklogCorrectionService.reassign`).
+- **A closed week warns** (`b569fdc`, `shared/closed-week.ts`).
+- **The Interrupt shortcut** (`c14c86e`, `InterruptShortcutService`; off by
+  default today).
+- **Interruptions already follow each other.** Interrupting an interruption
+  ends the first and starts the next, and the set-aside keeps the original
+  task (`InterruptDuringAnInterruption_AsksAboutTheFirstTask`). What is
+  missing is the link between the fragments, and holding the task instead of
+  logging it.
+
+### 1.2 What is pending, outside `main`
+
+Work that sits in side worktrees, uncommitted, as of 2026-11-10:
+
+| Worktree | What | State |
+| :--- | :--- | :--- |
+| `.claude/worktrees/busy-euclid-228d43` | Removing all Unity support (§10.4 of the proposal) | ~100 files changed, uncommitted |
+| `.claude/worktrees/trusting-goodall-74b184` | Unity removal, plus the stand-up stress cases | ~105 files changed, partly staged |
+| `.claude/worktrees/dreamy-leavitt-ddc9a0` | A banner queued during a screen: `display-renderer.ts` fix and its scripted case | 3 files, uncommitted |
+
+The redesign itself is uncommitted too: rounds 7–13 of the proposal and the
+screens, since `d82ce55`.
+
+### 1.3 The size of the gap
+
+From the code map of 2026-11-10:
+
+- **Renderer** (`src/renderer`, ~9,900 lines in 55 files).
+  - There is no router: `App.tsx` (438 lines) switches on `activeTab` across
+    nine tabs and owns every modal flag.
+  - Colours are Tailwind tokens (`tailwind.config.js`), so the palette swap
+    is cheap for the names. It is expensive for meaning: `accent-blue` has
+    223 uses and `accent-purple` 75, mostly meaning "selected" or "primary".
+  - 200 `font-mono` classes, whole views included, wait for the move to
+    Inter.
+  - 224 tests query by visible text, so every change of wording breaks some
+    of them.
+- **Main.**
+  - An interruption **stops and logs** the task it interrupts. The redesign
+    holds it.
+  - Lunch **stops** the session. The redesign pauses it.
+  - Sends leave at once, with no undo.
+  - In Progress and assignment happen at the start, not after two minutes.
+  - Done is set per provider, not per project.
+  - Missing entirely: stars, recent, previous task, add time, split, any
+    overlap rule, close to the tray, a standalone picker window, Back /
+    Switch / Previous shortcuts, a crash during the day, and every "still
+    …?" reminder.
+- **Bar.**
+  - The picker is project → task, with no Recent or Starred.
+  - A wheel click while idle opens two pickers: the bar's, and the window's
+    through `TRIGGER_TASK_SELECTOR_MODAL`.
+  - The window is raised without `ForegroundRaiser`.
+  - Several of the screens' labels do not fit (D5).
+- **Deck.**
+  - The protocol (`DECK_PROTOCOL_VERSION` 1) carries no interruption, owner,
+    count or previous task.
+  - B reads NOT DONE.
+  - DONE takes two presses only for a task that is not yours.
+
+---
+
+## 2. Decisions to take first
+
+Each phase names the decisions it rests on. The decision taken is in bold.
+
+| # | Decision | Why it is open | Recommendation | Blocks |
+| :--- | :--- | :--- | :--- | :--- |
+| D1 | **Lunch and Away pause the task** instead of stopping it | §5 of `CLAUDE.md` is written around Lunch *stopping* the session: `lunch_resume`, `lunch_skipped_date`, "Lunch stops the session under Away too". Pausing rewrites those rules and 29 `lunch-resume` tests | **Pause**, as the screens say: one entry per morning, no restart. A pause of 15 min or more still splits the worklog (`splitPauseMinutes`), so Jira's timesheet is unchanged | P8 |
+| D2 | **An interruption holds the task as it was**: no log or send at the start, and Back resumes it running or paused | Today the start stops, logs and queues the task (`INTERRUPTED`). Holding it needs a new model (§7.1) and a migration | **Hold**, with fragments in their own table (§7.1) | P6, P13, P14 |
+| D3 | **The stand-up is timed on a task you choose** (e.g. OPS-4) and sent | Today it is the local ad-hoc "Daily Standup", never sent | **Optional**: no task chosen keeps it local as today; a chosen task sends it like any entry | P8 |
+| D4 | **What the bar shows when nothing is timing in working hours** | S28 draws NOTHING TIMING and an app-drawn "17:42 / 3 TO PLACE". That replaces the firmware clock (`clearDisplay`, the one deliberate screen close), adds a frame upload every minute all day, and moves screen closes to the hours boundary (§4) | **Keep the firmware clock.** NOTHING TIMING is drawn once when the "nothing timing" reminder fires, and released at the answer, with no clock of our own. No count on the idle clock | P14 |
+| D5 | **The bar's words that do not fit** (measured 2026-11-10): "3 TO PLACE IN APP" (61 px of 55), "NOTHING TIMING" (63), "STAND-UP 00:11" (58), "BACK TO SPR-1428" (60) | Measured from the generated fonts | **Shorter words, chosen on the bar** with `pnpm probe:busybar --font-sheet`: "3 TO PLACE", NOTHING TIMING without the icon, STAND-UP over a row-1 time, BACK + key cut by `fitToWidth` | P14 |
+| D6 | **Undo on Windows toasts** | Electron's plain `Notification` has no buttons. Actions need `toastXml`, untested here; the AUMID trap of §5 applies | **Undo lives in the app**: a bar at the foot of the window and a row on the mini timer, for 10 s. The toast's click opens it there. A `toastXml` Undo button is a spike, kept only if it works on a packaged build | P5 |
+
+**Decided 2026-11-10 by the user: all six, as recommended.**
+
+On D1 the user noted why Lunch stops today: stopping logs the morning at
+once, for precise tracking, and a pause logs nothing. **Pausing keeps the
+time exactly as precise.**
+
+- The lunch pause is excluded from the session.
+- At the stop, the session is split at any pause of `splitPauseMinutes` or
+  more (15 by default). The provider gets the same two entries as today,
+  09:00–12:30 and 13:30–the stop, to the second.
+
+What changes is **when** the morning is sent: at the task's stop, not at
+12:30. Until then it sits in the open session, which is stored in the
+database, so a crash over lunch loses nothing.
+
+If seeing the morning in Jira at lunchtime matters, P8 can log and send the
+finished piece at the start of the lunch pause and keep the session paused.
+That is noted here as an option, not planned.
+
+Smaller defaults the plan assumes, to be confirmed in passing:
+
+- **Undo of Stop reopens the session as it was**, so the timer runs on.
+- **Undo of Discard brings the session back.**
+- **Undo of End my day reopens the day:** nothing sent, no shutdown.
+- **Saved bar bindings are reset once to the new defaults on upgrade.** The
+  `hardware_bindings` setting holds user overrides, so an old binding would
+  otherwise fight the new menus. The release note says so.
+- **The shortcuts are on by default:** Interrupt Ctrl+Alt+Shift+I, Switch S,
+  Previous P, Back B. A chord another app holds reads "taken", never on
+  (`InterruptShortcutService` rule).
+- **Close hides to the tray** (decided in the proposal, §3.5). Quit is in
+  the tray's menu, and only Quit clears the bar.
+
+---
+
+## 3. Rules every phase keeps
+
+From `CLAUDE.md`, restated where they bite here:
+
+- **Documentation in the same commit** (§9). Each phase lists its documents.
+  Wording changes update `USER-GUIDE.md` and remake the pictures
+  (`pnpm docs:images`, run only after asking: it needs SprintTicker and Unity
+  closed).
+- **Never delete the working path in the commit that adds the new one**
+  (§6). The new picker, prompts and interruption model land beside the old
+  ones, behind the new screen. The old path is removed in a later commit,
+  once the new one has run.
+- **Every migration is checked on real data before it ships**
+  (`pnpm db:check-migration`, run by the user from an ordinary terminal). An
+  agent's shell may not see the real database (§7).
+- **A rule kept by callers is kept by luck.** New rules go in `src/shared/`
+  as pure functions, read by the renderer, main, the bar and the deck:
+  the word for a state, whether an entry may be sent, what "previous task"
+  is. The deck imports only `shared/deck-protocol.ts`.
+- **One event, one `evaluateRequest`; its end, one render** (§5). Every new
+  bar menu, question and hand-back is checked against it, and against the
+  `queueMicrotask` trap for anything started from an engine listener.
+- **Bar changes are measured on a real bar** (§4), one at a time, asking
+  first. Deck changes are tried on Stream Deck Mobile, with the plugin
+  version raised.
+- **Tests** are named `Method_State_Expected`. A failure branch gets a test
+  that reaches it. Display tests run on `FirmwareSimulator` and end with
+  `expectClean()`. A bug a stress seed finds becomes a scripted case in
+  `display-handback.test.ts`. A bridge method added to the preload is added
+  to `tests/renderer/electron-api-mock.ts`.
+- **Coverage stays at or above the floor** (92 / 93.5 / 90 / 85). The
+  renderer is outside `coverage.include`, so its tests are the only guard on
+  it: each new view gets one.
+
+---
+
+## 4. The phases at a glance
+
+| Phase | What | Depends on | Size | Release |
+| :--- | :--- | :--- | :--- | :--- |
+| P0 | Land the pending work; commit the redesign | -- | S | -- |
+| P1 | Shared vocabulary, provider names, capabilities | P0 | S | 1.5 |
+| P2 | The grey look and the type | P1 | M | 1.5 |
+| P3 | The shell: four places, header, Settings in six groups, developer tools hidden | P2 | L | 1.5 |
+| P4 | Data for the new flows: stars, recent, previous, provider name, settings | P1 | M | 1.6 |
+| P5 | The send pipeline: 10 s hold and undo, overlaps, delayed side effects, Done per project | P4, D6 | L | 1.6 |
+| P6 | Interruptions in a row: the model, Back, Another, place, keep off | P5, D2 | L | 1.6 |
+| P7 | One picker, its own window, and the command palette | P4 | L | 1.6 |
+| P8 | Today and the prompts: cards, no focus stealing, Lunch / Away / stand-up, reminders | P6, P7, D1, D3 | L | 1.6 |
+| P9 | History: day, timeline, week, Check my week, add time, split | P5 | L | 1.7 |
+| P10 | End my day, overnight and crash | P5, P8 | M | 1.7 |
+| P11 | First run, and the states that are not normal (S31) | P3, P7 | M | 1.7 |
+| P12 | Outside the window: close to tray, tray, toasts, mini timer | P6, P8 | M | 1.6 |
+| P13 | Stream Deck plugin 0.6.0 | P6, P8 | M | 1.7 |
+| P14 | The bar | P6, P8, D4, D5 | L | 1.7 |
+| P15 | Documents, pictures, release | each phase | M | each |
+
+Phases that can run side by side, in separate worktrees, once their
+dependencies have landed:
+
+- P2 and P4;
+- P7 and P5;
+- P9 with P10–P12;
+- P13 and P14.
+
+Two writers never touch the same files: P3 owns `App.tsx` and the views'
+layout, P6 owns `time-tracking-engine.ts`, and P14 owns `input-decoder.ts`
+and `display-renderer.ts`.
+
+Three releases, so that a user meets one change of habit at a time:
+
+- **1.5 -- the new face.** Looks and places change; behaviour does not.
+- **1.6 -- the new flows.** Undo, interruptions in a row, the picker, the
+  prompts, the tray. The Stream Deck keeps working with protocol 1.
+- **1.7 -- the rest.** History, End my day, first run, and the devices.
+
+---
+
+## 5. P0 -- Land the pending work
+
+**Goal:** `main` holds everything the redesign builds on, and nothing
+half-done sits in a worktree.
+
+1. **The Unity removal** (worktree `busy-euclid-228d43`, or its sibling
+   `trusting-goodall-74b184`, whichever is the finished one).
+   - Review the diff and run `pnpm test`, `pnpm typecheck` and `pnpm lint`.
+   - Check that `WebhookServer` still hosts the deck socket. Its Unity routes
+     go; the socket stays.
+   - Check that `tests/support/desk.ts` and `display-stress.test.ts` no
+     longer build a Unity service.
+   - Merge only on the user's word (side branches are merged by the user's
+     decision).
+2. **The banner fix** (worktree `dreamy-leavitt-ddc9a0`). Same checks, and
+   its scripted case must fail on the code before the fix.
+3. **Commit the redesign documents**: rounds 7–13, the screens, and this
+   plan.
+4. ~~**Close the pending decisions** of §2.~~ Done 2026-11-10: all six
+   taken as recommended.
+
+**Done when:** `main` is green and the worktrees are cleaned up.
+
+---
+
+## 6. P1 -- Shared vocabulary, provider names, capabilities
+
+**Goal:** the words, the provider's name and what the provider can do are
+decided in one place, so every later phase only reads them.
+
+- **`src/shared/words.ts`** (new): the glossary of the screens as constants
+  and small functions, never as copies in views.
+  - The verbs: Start, Switch, Previous, Pause, Resume, Stop, Done, Discard,
+    Interrupt, Another, Back, Place, Move, Keep off, Later, Not now.
+  - The states: Nothing timing, Running, Paused, To place, Waiting, Sent.
+  - Their bar and deck forms: STOP, DISCARD ⚡, NOT TIMING, NOTHING TIMING.
+  - `keepOffLabel(providerName)` → "Keep off Jira".
+  - A test pins each bar and deck string's width in its font
+    (`measureText` with `ROW0_FONT` / `ROW1_FONT`), so a word that stops
+    fitting fails here, not on the bar.
+- **`src/shared/provider-names.ts`** (new): `providerDisplayName(providerId,
+  settings)`.
+  - Jira → "Jira", OpenProject → "OpenProject".
+  - A custom server → the name the user gave it, or the server's own.
+  - It replaces the hard-coded `providerName` strings ("Jira Cloud",
+    "Ad-Hoc / Custom Fallback"), the fixed list in `provider:get-all`,
+    `SettingsView`'s `PROVIDER_NAMES`, and the literal "Jira or OpenProject"
+    in `EditWorklogModal`, `TaskSelectionModal`, `CeremoniesView` and
+    `EodWrapUpModal` ("logged to Jira").
+- **`ProviderCapabilitiesDTO`** (new, in `shared/dtos.ts`), from the active
+  provider's optional methods: `canAssign`, `canTransition`, `canFindWorklog`,
+  `canFetchByKey`, `hasHolidays`.
+  - New IPC `provider:get-capabilities`, added to the preload, the typed
+    bridge and the renderer mock.
+  - A capability the provider lacks hides its control (never greyed). The
+    proposal's rule.
+- **`'MISC-1'`**, hard-coded three times in the renderer, reads the default
+  from `shared/provider-settings.ts`.
+
+**Tests:**
+
+- `words.test.ts`: widths; one word per state; no smart quotes or non-ASCII
+  in bar strings (`sanitizeAsciiText` would change them).
+- `provider-names.test.ts`.
+- The registry test for the new channel.
+
+**Docs:** `API.md` (the channel), `ARCHITECTURE.md` (where words and names
+live), `CLAUDE.md` (a line: words and the provider's name come from shared,
+never from a view).
+
+**Done when:** no view or service spells a provider's name or a state's word
+itself. Check with a grep for `'Jira'` in `src/renderer` and `src/main`
+outside the providers.
+
+---
+
+## 7. P2 -- The grey look and the type
+
+**Goal:** the app looks like the screens, and nothing else changes: same
+places, same flows. The proposal's §5 has the tokens.
+
+- **`tailwind.config.js`**: the new hex values under the existing token
+  names (`dark.900/800/700`, `border.dark`, `text.*`), plus a `muted` token
+  and `primary` (light grey, dark text). `accent.blue` and `accent.purple`
+  are **not** remapped to grey wholesale. Each of their ~300 uses is one of
+  three things:
+  - a primary button → `primary`;
+  - selection or focus → the new outline and fill tokens;
+  - a meaning → green, amber or red.
+
+  Do them file by file, starting with the heaviest: `SettingsView`,
+  `NotificationSettingsView`, `DeviceDiagnosticsView` and
+  `ProjectTaskManagerView`.
+- **`index.css`**: body and scrollbar colours from the tokens. Remove the
+  blue `#3B82F6` scrollbar hover.
+- **Type**:
+  - Inter by default.
+  - `font-mono` only on times and task keys. Remove the view-level
+    `font-mono` wrappers, about 200 uses.
+  - No uppercase-tracked headings except a page's kicker (39 `uppercase`).
+- **Broken classes the swap would otherwise hide**:
+  - `bg-dark-600` and `text-dark-400` / `dark-500` are not defined.
+  - `animate-in fade-in slide-in-*` needs a plugin that is not installed:
+    drop it or install `tailwindcss-animate`, subject to the release-age rule
+    of `CLAUDE.md` §2.
+  - The typo `text-text-text-secondary` (`WorklogHistoryView`, line 275).
+- **Hard-coded colours**:
+  - ~65 default-palette classes (`bg-blue-600`, `text-purple-400`, …) go to
+    tokens.
+  - The 22 hex values in TSX stay only where they are the bar's own colours
+    (`HardwareDisplayEmulator`, `AnimationDebugPanel`). The LED preview
+    shows what the bar shows.
+- **Purple goes.** The wrap-up is grey; high priority is amber
+  (`PriorityRulesView`).
+
+**Tests:** the renderer suite still passes. The look has no unit test; the
+check is visual, one screenshot per tab against the screens, in the
+packaged app run on a database copy.
+
+**Docs:** `USER-GUIDE.md` pictures (`pnpm docs:images`, asked first);
+`README.md` screenshot.
+
+**Done when:** a grep finds no `accent-blue`, `accent-purple` or default
+blue or purple classes in `src/renderer`, and the tabs match the screens'
+colours.
+
+---
+
+## 8. P3 -- The shell: four places, the header, Settings in six groups
+
+**Goal:** Today, Tasks, History and Settings, as in S4–S24, with every
+existing feature in its new home. The flows are still today's (the picker,
+the end dialog and the prompts change in later phases), so this phase is
+moving, not rewriting.
+
+- **Split `App.tsx`**:
+  - `AppShell` (sidebar, header, and the view switch, still without a
+    router);
+  - `TodayView`, which takes the inline "Today's work" table out of
+    `App.tsx`, lines 155–210;
+  - a `useModals` hook for the global modal flags.
+- **Sidebar**: Today (with the ⚡ count), Tasks, History, and Settings at
+  the bottom. `BAR_ONLY_TABS` goes: nothing appears or disappears without a
+  bar (proposal §2.3).
+- **Header** (S5):
+  - the logo;
+  - the LED preview, only with a bar, with the remote pad moved out;
+  - the **mode chip** Work / Lunch / Away, with its menu and tooltips. It
+    replaces the mode switch hidden in `PriorityRulesView`, and reads and
+    writes through `priority:get-user-mode` / `set-user-mode`;
+  - **▭ Mini timer**;
+  - **☾ End my day** (it opens today's `EodWrapUpModal` until P10);
+  - the **status entry**, "All good ▾", which opens the panel of S27.
+- **The status panel** (`StatusPanel`, new). The rows S27 shows, each from
+  an existing source:
+  - the bar's state (`useDeviceStatus`);
+  - entries waiting (`provider:get-sync-queue`);
+  - the update (`updates:*`);
+  - "What you missed": the provider events and mirrored notifications
+    already logged (`provider-events:*`, `notifications:*`).
+
+  The header's word follows the worst row: "All good", "2 waiting",
+  "Sending stopped", "Update". The old badge's tooltip pointed at "the sync
+  queue in Settings", which no longer exists.
+- **Settings in six groups** (S19–S24), one page each with a side list and a
+  search box. Every existing card moves; none is rewritten:
+  - **General**: `LaunchAtLoginCard`, `InterruptShortcutCard`,
+    `UpdateSettingsCard`, close behaviour (P12), Run setup again.
+  - **Account**: `SettingsView`'s provider, credentials, scope, transitions,
+    ad-hoc key, `ProviderEventsSection`. `SyncQueuePanel` is folded.
+  - **My workday**: `CeremoniesView`, whole.
+  - **Desk devices**:
+    - from `DeviceDiagnosticsView`: status, key colour, connection (folded),
+      idle clock, use without a bar;
+    - `NotificationSettingsView` (the per-app rules);
+    - `PriorityRulesView` as "What the bar shows first", without its mode
+      switch;
+    - the Stream Deck block.
+  - **Data**: Export logs, Erase everything.
+  - **Developer**, hidden until "Show developer tools" (General): the remote
+    pad, `AnimationDebugPanel`, the notification debug triggers, the input
+    console, the listener diagnostics, display health.
+- **The fixes of the proposal's §7 that this phase touches**:
+  - `AnimationDebugPanel` stops calling the real `pauseSession` and
+    `setUserMode`, or says plainly that it does (S24 keeps the warning).
+  - "Build 2026.07" is replaced by the bar's reported firmware.
+  - The wizard's dead links ("Settings > Device", "Settings > Task
+    Providers") point at the new homes.
+  - Project edit and delete stop being hover-only, and deleting a task asks
+    first.
+- **The bar's two pickers**: `App.tsx` stops opening the window's picker on
+  `TRIGGER_TASK_SELECTOR_MODAL` when the bar has opened its own (the
+  decoder sends that action only when the window's picker is meant). The
+  rest of the bar waits for P14.
+
+**Tests:**
+
+- The existing renderer tests move with their components. Text queries
+  change only where a label moved, not where it was reworded.
+- New tests: `app-shell.test.tsx` (four places, no tab hidden without a
+  bar), `status-panel.test.tsx` (the worst row wins), and
+  `settings-groups.test.tsx` (every former setting is reachable; search
+  finds it).
+
+**Docs:** `USER-GUIDE.md` (structure and navigation), `ARCHITECTURE.md`
+(renderer layout), `README.md` (feature list), `CHANGELOG.md`.
+
+**Done when:** every item of the proposal's §8 inventory has its home
+(checked off in the PR), and a run without a bar shows the same four
+places.
+
+---
+
+## 9. P4 -- Data for the new flows
+
+**Goal:** the stores the new flows read, in one migration, before any screen
+needs them.
+
+**Migration 14:**
+
+- `task_stars (provider_id, task_key, task_id NULL, starred_at_utc)`. Keyed
+  by provider and **key**, not id alone, so a star survives a task being
+  retired and fetched again. "Starred" reads join on key.
+- `active_sessions.previous_task_id`: the task the session replaced, set by
+  `startTask` when it stops one. "Previous task" is the most recent
+  completed session's task that is not the current one: a pure function in
+  `shared/previous-task.ts` over the last sessions, with the stored column as
+  its fast path.
+- Settings keys (`settings` table, JSON; no schema change):
+  - `provider_display_name`;
+  - `start_side_effects` `{ enabled: boolean, afterSeconds: 120 }`;
+  - `done_state_by_project` `{ default, overrides: { [projectId]: state } }`;
+  - `prompt_delays` `{ nothingTiming: 10, longPause: 30, standupRunning: 25,
+    interruptionRunning: 20 }` (minutes);
+  - `shortcuts` `{ interrupt, switch, previous, back }`;
+  - `close_to_tray: true`;
+  - `standup_task`.
+
+**Recent tasks** need no table: the last six distinct tasks from
+`active_sessions`, newest first. Unnamed interruptions are left out (S7).
+This is `TaskRepository.getRecent(limit)`.
+
+**IPC (new):** `tasks:star`, `tasks:unstar`, `tasks:get-starred`,
+`tasks:get-recent`, `session:get-previous`. Each goes in the preload, the
+bridge and the mock.
+
+**Tests:**
+
+- `migrations.test.ts`: 14 applies on 13; stars survive retire and re-fetch.
+- `previous-task.test.ts`.
+- `TaskRepository` recent and stars tests.
+- `pnpm db:check-migration` run by the user on a copy of the real database:
+  no worklog or second lost.
+
+**Docs:** `ARCHITECTURE.md` (data model), `API.md` (channels).
+
+---
+
+## 10. P5 -- The send pipeline
+
+**Goal:**
+
+- every send waits 10 s and can be undone;
+- an overlap holds its later entry;
+- In Progress and assignment wait for two minutes of timing;
+- Done goes to the project's own state.
+
+The glossary's "Logged · Sent · Waiting" becomes true.
+
+### 10.1 The hold and the undo
+
+- **Queue rows get a hold.** `enqueue` writes `next_attempt_at_utc = now +
+  UNDO_WINDOW_MS` (10 000, in `sync-constants.ts`) for every CREATE, UPDATE
+  and DELETE that comes from a user action. `getPendingQueueItems` already
+  skips rows not yet due, so the worker needs no new branch. The immediate
+  `processPendingQueue` after `finishSession` becomes a dispatch at the end
+  of the hold.
+- **`UndoService`** (new, `src/main/services/undo-service.ts`): holds the
+  last action for 10 s, as `{ kind, label, expiresAt, undo() }`.
+  - **Stop** → delete the queue rows and worklogs written by `finishSession`
+    and reopen the session. Same id, pauses kept.
+  - **Discard** → `discardSession` becomes a soft delete for 10 s.
+  - **Place / Move / Correct / Delete** → drop the queued rows and restore
+    the local rows.
+  - **End my day** → the stop's undo, plus no shutdown (P10, §15).
+
+  Only one action is undoable at a time. A new one commits the previous at
+  once, so two holds never chain.
+- **No undo after the hold.** A row the worker has claimed
+  (`claimSyncItem`) cannot be undone. The undo's expiry and the claim read
+  the same clock, so there is no race. A test proves an undo at 9.9 s wins
+  and one at 10.1 s is refused.
+- **Where Undo shows** (D6): a bar at the foot of the window, a row on the
+  mini timer, and the OS toast's click (which opens the window on that bar).
+  IPC: `undo:get`, `undo:run`, `undo:on-changed`.
+
+### 10.2 Overlaps
+
+- **`shared/overlap.ts`** (new): `findOverlaps(worklogs)` on local wall
+  time, and `heldByOverlap(worklog, sameDay)`. The **later** entry of an
+  overlap is held (S15b: "the later entry is not sent until the overlap is
+  fixed").
+- `getPendingQueueItems` skips CREATE rows whose worklog is held. The
+  worklog's `syncState` reads a new value, `held-overlap`, which shows as
+  "waiting · overlaps PF-31".
+- **Add time and Correct warn before saving** (S16, S16b). Saved anyway, the
+  entry is held. Fixing the overlap releases it at the next dispatch.
+- Overlaps already sent stay sent. The rule applies to what is not yet
+  sent, and Check my week lists both kinds.
+
+### 10.3 Side effects after two minutes
+
+- `TimeTrackingEngine.takeUpTask` and `claimTask` no longer run in
+  `startTask`. A `SideEffectScheduler` (new, owned by the engine) fires them
+  once a session has been **TRACKING** for `start_side_effects.afterSeconds`
+  in total. Paused time does not count, and a stop or switch before then
+  cancels them: "a glance moves nothing" (S20).
+- `start_side_effects.enabled = false` → neither ever runs. The setup
+  question (S1) and Settings › Account write it.
+- The toast "Started MG-15 · After 2 min of timing it moves to In Progress"
+  (S26) is the scheduler's first fire.
+
+### 10.4 Done per project
+
+- `done_state_by_project`: Jira's `configuredTransitionFor` and OpenProject's
+  completion action read the project's override, then the default. The UI is
+  S20's "All projects: To Review ▾ · 3 projects differ…".
+- A state the project's workflow lacks fails the transition. That is
+  reported like any failed transition, and the time is still sent.
+
+**Tests:**
+
+- `sync-queue.test.ts` (rows are not due before 10 s; dispatch at the end of
+  the hold), `undo-service.test.ts` (each kind; the 9.9 s / 10.1 s boundary;
+  one undo at a time), `overlap.test.ts`, `side-effect-scheduler.test.ts`
+  (fires after 120 s of tracking; never after a stop at 119 s; paused time
+  does not count), and the existing `task-claim` and
+  `tracked-task-reassigned` suites adjusted.
+- `display-stress`: Stop and Undo crossing a dispatch.
+
+**Docs:**
+
+- `ARCHITECTURE.md`: the send pipeline.
+- `USER-GUIDE.md`: Undo, waiting, overlaps.
+- `CLAUDE.md`, three rules:
+  - every user send waits `UNDO_WINDOW_MS`, and only `UndoService` undoes;
+  - side effects run from the scheduler, never from `startTask`;
+  - an overlapping entry is held, never sent.
+
+---
+
+## 11. P6 -- Interruptions in a row
+
+**Goal:** the model of §34 and S9–S12b. The interrupted task waits as it
+was, each ⚡ is a fragment in a row, and each fragment is placed on a task,
+kept off the provider, or left for later.
+
+### 11.1 The model (D2)
+
+An interruption is no longer a session on an ad-hoc task. It is a
+**fragment**, and the interrupted session is **paused, with a reason**:
+
+- **Migration 15: `interruptions`.**
+  - Identity and time: `id`, `started_at_utc`, `ended_at_utc NULL`.
+  - Description: `name NULL`, `source` (`window | mini | tray | bar | deck |
+    shortcut | notification`).
+  - Its run: `interrupted_session_id NULL`, `interrupted_was_paused`, and
+    `after_id NULL` (the fragment before it in the same run).
+  - Its fate: `placed_task_id NULL`, `placed_worklog_id NULL`, `kept_off`,
+    `discarded_at_utc NULL`.
+- **`paused_intervals.reason`**: `user | interruption | lunch | away`,
+  default `user`. The interrupted session gets a pause with reason
+  `interruption`, started at the fragment's start, so backdating is
+  `pauseSessionAt`, which already exists.
+- **One fragment runs at a time.** A unique partial index on
+  `ended_at_utc IS NULL` enforces it, as migration 6 does for sessions.
+- **Placing** writes a worklog on the chosen task (the fragment's span and
+  name as the note) and queues it, with the hold of P5. **Keep off** writes
+  nothing to the provider: the fragment stays in history. **Later** is
+  simply unplaced.
+- **Legacy data.** Unsorted ad-hoc tasks (migration 13) with their worklogs
+  become fragments, placed or not. The ad-hoc tasks and rows are kept until
+  `db:check-migration` proves the copy loses nothing; a later migration
+  retires them.
+
+### 11.2 The actions
+
+These go in `InterruptionService` (new). `ContextScheduleService.interrupt`
+calls it instead of `engine.startInterruption`.
+
+| Action | Effect |
+| :--- | :--- |
+| **Interrupt** (`startedAt?`) | Pause the running session with reason `interruption` at `startedAt` (default now; never before the session's start); open a fragment. Nothing is logged or sent |
+| **Another** | Close the running fragment; open the next, `after_id` set, same interrupted session |
+| **Back** (`addGapMinutes?`) | Close the fragment; resume the interrupted session if it was running, leave it paused if it was paused. "Back +6m" ends the pause 6 min earlier |
+| **Stop** | Close the fragment; the interrupted session stays paused; "Back?" is asked (S10) |
+| **Switch task** (`taskId`, `takeAlong`) | Close the fragment; stop the interrupted session (it stays open at the provider); start `taskId`. With `takeAlong`, place the fragment on `taskId` |
+| **Discard** | Mark the fragment discarded; 10 s undo |
+| **Rename, Place, Keep off, Later** | On any unplaced fragment, any day |
+
+- **`switchSettingAside` is not used by interruptions any more.** It stays
+  for the stand-up, and Lunch keeps its rule of taking over a set-aside
+  task. The interaction rules of `CLAUDE.md` §5 ("once, the same day, not over an open
+  session, Lunch takes it over") are re-read against the new model, and
+  `CLAUDE.md` §5 is rewritten in the same commit.
+- **Time adds up.** The interrupted session's total excludes the fragment,
+  because it was paused. The fragment's time is its own. Nothing is counted
+  twice, and `splitWork` still splits the session at a pause of
+  `splitPauseMinutes`.
+
+### 11.3 The prompts and shortcuts it brings
+
+- **"Back to MG-12?"** (S10): after Stop, once, with "↩ Back", "↩ Back, add
+  the 6 min" and "Not now". A toast after 10 min with no answer in working
+  hours. `ResumePromptDTO.after = 'interruption'` keeps its name.
+- **"Still on it?"** after `prompt_delays.interruptionRunning`: once per
+  fragment.
+- **Shortcuts.** `InterruptShortcutService` becomes `ShortcutService`, with
+  four chords from `shortcuts`:
+  - **Back** does nothing outside an interruption;
+  - **Interrupt** during an interruption is Another;
+  - **Switch** opens the picker (P7);
+  - **Previous** switches to the previous task (P4).
+
+  Its recording and "taken" rules apply to each chord.
+
+### 11.4 What the surfaces read
+
+`ActiveSessionDTO` gains:
+
+- `interruption { id, name, startedAt, index, ofRun, source, interruptedTaskKey }`;
+- `toPlace { count, seconds }`;
+- `previousTask`.
+
+The renderer, the tray, the mini timer, the bar and the deck read only
+these. Nothing re-derives them.
+
+**IPC (new):** `interruption:start` (replaces `session:start-interruption`,
+which stays as an alias for one release), `another`, `back`, `stop`,
+`switch`, `discard`, `rename`, `place`, `place-many`, `keep-off`,
+`get-to-place`, `on-updated`.
+
+**Tests:**
+
+- `interruption.test.ts`, rewritten around the model: the Marc, Ana, Marc
+  case gives 3 fragments; Back resumes a running task, and leaves a paused
+  one paused; backdating comes off the task; Switch with and without
+  `takeAlong`; Stop then Back +6m; Lunch during an interruption.
+- `migrations.test.ts`: legacy unsorted tasks become fragments.
+- `interrupt-shortcut.test.ts` grows into `shortcut-service.test.ts`.
+- `display-stress`: Interrupt, Another and Back join the sources, through
+  `InputDecoder` as well as IPC.
+- `pnpm db:check-migration` by the user.
+
+**Docs:**
+
+- `ARCHITECTURE.md`: the interruption model.
+- `USER-GUIDE.md`: interruptions in a row.
+- `API.md`: channels.
+- `CLAUDE.md` §5: interruptions are fragments; the interrupted session is
+  paused with a reason, never stopped.
+- `AUDIT-INTERRUPTIONS.md`: a status line saying the model was replaced.
+
+---
+
+## 12. P7 -- One picker, its own window, the command palette
+
+**Goal:** S7–S8 and S12–S12b. One picker, for Start, Switch, Place and
+Move, opened in the window, or as its own small window from the tray, the
+mini timer and the deck.
+
+- **`TaskPicker`** (new, replacing `TaskSelectionModal`'s two steps). Modes
+  `start | switch | place | move | place-many`. Search first, across all
+  projects. The groups, in order:
+  - the previous task;
+  - Recent (6);
+  - Starred (★, ☆ on hover);
+  - Assigned to me, open across projects (in progress first, then to do by
+    priority);
+  - All projects, starred first, then most used.
+
+  The rules:
+  - **Typing a key and a space filters to a project** (S7c).
+  - The show pills (mine / unassigned / teammates') are
+    `shared/task-visibility.ts`, unchanged. The order is
+    `shared/task-order.ts`.
+  - **"Fetch MG-77 from Jira"** appears when the search looks like a key and
+    nothing matches. It needs `ITaskProvider.getTaskByKey?` (new, optional;
+    Jira `/issue/{key}`, OpenProject by id), and `canFetchByKey` hides it.
+  - **"Put 'Call with Marc, again' on it too"** (S7) shows only when opened
+    from an interruption. It maps to P6's `takeAlong`.
+  - **Place mode** (S12b): each row's menu opens on Starred, then Recent with
+    the tasks just chosen first. Nothing is preselected (§19 and §29 of the
+    proposal). An unnamed fragment asks for a name when its task is chosen.
+  - The old "Create Custom / Ad-Hoc Task" path stays, as "+ A task of my own".
+- **A picker window**: `PickerWindowManager` (new, `src/main/windows/`),
+  a small frameless window loading the same bundle at `#picker`, as the
+  mini timer does at `#mini`.
+  - The tray, the mini timer, the deck, the shortcut and the bar's "open in
+    the window" open it.
+  - It is raised with `ForegroundRaiser`, never `focus()` alone. The press
+    reaches another app (`CLAUDE.md` §3).
+  - `openTaskPickerInMainWindow` stays as the fallback until the window has
+    run on a packaged build.
+- **The command palette** (S30, Ctrl+K in the window): renderer only. It
+  lists the actions of the glossary that the current state allows, from
+  `shared/words.ts` and the session DTO, and the settings by name. Typing
+  "sort" or "assign" finds Place: synonyms are listed, so the old words still
+  lead somewhere.
+- **The Projects tab's own Start / Switch buttons and its second
+  `FinishSessionModal` go.** The rows open the picker's actions, so there is
+  one flow.
+
+**Tests:**
+
+- `task-picker.test.tsx` (each mode; groups and order; a key and space;
+  fetch by key shown only with the capability; nothing preselected in place
+  mode; just-chosen first), `picker-window.test.ts` (the window opens, is
+  raised with `ForegroundRaiser`, and falls back), `command-palette.test.tsx`
+  and `jira-provider` / `openproject-provider` `getTaskByKey`.
+
+**Docs:** `USER-GUIDE.md` (finding a task), `API.md` (`getTaskByKey`,
+channels), `PROVIDER-API.md` (fetch one task by key, **before** the client:
+`CLAUDE.md` §9).
+
+---
+
+## 13. P8 -- Today and the prompts
+
+**Goal:**
+
+- S4–S6 and S25's prompt rows;
+- a prompt never takes the focus;
+- Lunch and Away pause;
+- the stand-up has "joined ▾";
+- the reminders ask once.
+
+### 13.1 Today
+
+- **The session card** (S5):
+  - Pause / Resume;
+  - **■ Stop ▾**, a split button whose menu (S11) holds ✓ Done and
+    Discard…, replacing "Finish & Log Hours" and `FinishSessionModal`'s
+    three choices;
+  - ⚡ Interrupt, ⇄ Switch task, "Previous task: PF-31";
+  - "sent to Jira when you stop, after 10 s to undo".
+
+  During an interruption it becomes S9: the name, "started now ▾", Back,
+  Switch task…, Stop and ⚡ Another.
+- **The interruptions card**: to place, from any day, with ↳ Place… and ⋯
+  (Rename, Keep off), Place all, and ticked rows.
+- **Today's entries**: one row per entry, with ⋯ (Correct, ↳ Move, Delete),
+  and a Jira column (sent / waiting / held).
+- **The morning card** (S4b), the first time the window opens on a working
+  day:
+  - Continue the last task;
+  - yesterday's fragments to place;
+  - the stand-up's time;
+  - the tasks in progress.
+- **The reassigned card** (S5b): Keep timing / ↳ Move my 1h 24m… / ⇄ Switch.
+  The owner is checked **every minute** for the running task, not only after
+  a sync. A single-task read (`getTaskStanding`) on a timer in the engine,
+  skipped when the provider cannot answer it.
+
+### 13.2 Prompts without focus
+
+- **Remove `show()` + `focus()`** from `triggerStandupPrompt`,
+  `triggerEodPrompt`, `ForgottenSessionService.send(bringForward)` and the
+  bar's window callback. A prompt is:
+  - a card on Today;
+  - a row on the mini timer;
+  - a toast, only if the window is hidden.
+
+  The toast's click opens the window on the card (P12).
+- `StandupPromptModal` (closes itself after 10 s) becomes a card that stays
+  until Join, Skip or Remind me in 10 min.
+- `ResumeAfterLunchPrompt` becomes the Lunch / Away card and the "Back at
+  your desk?" row.
+
+### 13.3 Lunch, Away and the stand-up (D1, D3)
+
+- **Lunch pauses** the running session with reason `lunch`:
+  - `enterLunchMode` pauses instead of stopping;
+  - `exitLunchMode` asks "Back at your desk?" (Resume / I worked through it
+    / Not now). "I worked through it" withdraws the lunch pause
+    (`withdrawPause` exists) and resumes.
+  - The rules of `CLAUDE.md` §5 are rewritten with it: "a session going
+    TRACKING during lunch ends Lunch for the day", "Lunch stops the session
+    under Away too", and "AWAY to LUNCH lets go of Away's lock". The
+    priority-engine side (locks, `setUserMode`) does not change; only what
+    happens to the session does.
+- **Away pauses** with reason `away` and shows its card (S6). Leaving Away
+  asks the same question.
+- **Presence still never pauses** (proposal §31). Away is the mode, entered
+  by locking the PC or by the chip; being away from the PC is not.
+- **The stand-up**:
+  - `joinStandup` takes `joinedAt` ("joined ▾ now / 2 / 5 / 10 / other…").
+    The minutes come off the task, as an interruption's do.
+  - `standup_task` set → the stand-up is timed on that task and sent;
+    unset → the local "Daily Standup" as today.
+  - "Still in it?" after `prompt_delays.standupRunning`; ending it then can
+    end it at its usual length.
+- **A question during an interruption** (S25): "Start lunch? It ends 'Call
+  with Marc'" / "Join? It ends …". Answering yes closes the fragment, which
+  waits to be placed.
+
+### 13.4 The reminders
+
+`ReminderService` (new; evaluated on `ContextScheduleService`'s 30 s tick,
+in working hours only) asks each of these **once**:
+
+- **Nothing timing** for `prompt_delays.nothingTiming`;
+- **Still paused?** after `longPause`;
+- **Still on it?** for an interruption (P6);
+- **Still in the stand-up?**
+
+Each is a row on the mini timer, a card on Today and, with the window
+hidden, a toast. "Not now" is final for that occurrence; the tray stays
+amber while nothing times.
+
+**Tests:**
+
+- `lunch-resume.test.ts`, rewritten for pause: one entry per morning, split
+  at the lunch pause; I worked through it; Lunch under Away; a session
+  started during lunch.
+- `standup-switch.test.ts` (joined at; on a task; local).
+- `reminder-service.test.ts` (each once; working hours; Not now).
+- `no-focus.test.ts` (no prompt path calls `focus()`).
+- `display-handback.test.ts`: Lunch pausing while the bar shows the task.
+  The sandwich scene and the paused frame must not cross, so this has a
+  scripted case.
+- The renderer tests for every card.
+
+**Docs:** `USER-GUIDE.md` (Lunch, Away, the stand-up, reminders),
+`ARCHITECTURE.md`, `CLAUDE.md` §5 (Lunch and Away pause; prompts never take
+focus).
+
+---
+
+## 14. P9 -- History
+
+**Goal:** S14–S16c. The day as a list and as a timeline, the week as a
+timesheet, Check my week, and the corrections that were missing.
+
+- **IPC (new)**:
+  - `worklogs:get-range(from, to)`;
+  - `worklog:create-manual` (Add time);
+  - `worklog:split(id, at, taskId)`, which shortens one entry and creates
+    another, in that order, through the queue;
+  - `worklogs:export-csv(from, to)`.
+- **The day** (S14): summary, per-task breakdown, the list with ⋯
+  (Correct, Move, Delete), the older fragments to place, and the Jira
+  column. Pieces already in `WorklogHistoryView` (metrics, breakdown,
+  `SYNC_BADGE`) move to `shared/` where main or Check my week also need
+  them.
+- **The timeline** (S14b): the working hours as a strip.
+  - Each block names its task; ⚡ marks a fragment; untracked time is
+    hatched.
+  - A click on a gap opens Add time, pre-filled.
+  - Gaps come from `shared/day-gaps.ts` (new; working hours minus entries
+    minus lunch).
+- **The week** (S15): grouped by project with subtotals. A Day row and an
+  "In Jira" row, which leaves out what is held, waiting or to place. The
+  amber cells say why.
+- **Check my week** (S15b): `shared/week-issues.ts` (new, pure) lists, each
+  with its fix:
+  - fragments to place;
+  - unsent corrections;
+  - days under target;
+  - overlaps;
+  - changes to a closed week.
+
+  The week's close (`onWeekEnded`) opens it.
+- **Add time** (S16b), **Split in two** (S16c) and **Correct** (S16) warn
+  about an overlap and a closed week before saving (`isInClosedWeek`, which
+  warns and never refuses).
+
+**Tests:**
+
+- `week-issues.test.ts`, `day-gaps.test.ts`, `worklog-split-manual.test.ts`
+  (order of the queue rows; a closed week warns).
+- `worklog-correction` additions.
+- Renderer tests for the timeline (a gap opens Add time with its times) and
+  the week (In Jira excludes held entries).
+
+**Docs:** `USER-GUIDE.md` (History), `API.md`.
+
+---
+
+## 15. P10 -- End my day, overnight, and a crash during the day
+
+- **End my day** (S17) replaces `EodWrapUpModal`:
+  - it lists **every** entry, with nothing folded;
+  - it places the fragments, one menu per row;
+  - it shows the gaps as a hint;
+  - its button says exactly what it sends: "End my day · send 1h 45m · 45m
+    left to place".
+
+  It stops the session through `stopForWrapUp`, which drops every stored
+  restart.
+  - The hard-coded checklist (`http://localhost:8081`, "saveAll CLI") and
+    "logged to Jira" go.
+  - The Unity scene save went in P0.
+- **The PC shutdown is optional** and never ticked for you. It runs only
+  after the 10 s undo has passed and the queue has answered:
+  `SystemAutomationService.scheduleShutdown` is called from the undo's
+  expiry plus a queue drain with a timeout (30 s, then shut down anyway with
+  the entries kept). Today it runs right after the stop.
+  - `App.tsx` ignores `shouldShutdown` today (code map); fix it here.
+  - Undo of End my day cancels the shutdown.
+- **Overnight** (S18): `ForgottenSessionService` gets "Decide later". The
+  timer stays paused at the last activity, nothing is logged, and the card
+  stays on Today and the mini timer. Its answers are unchanged.
+- **A crash or close during the day** (S31):
+  - at start, `TimeTrackingEngine.reconcileStartupState` compares the last
+    presence (`last_user_presence_utc`) with now;
+  - a gap of more than `FORGOTTEN_MIN_GAP_MS` on the same day pauses the
+    session at the last activity and asks the overnight question, worded for
+    the day;
+  - today the gap silently counts as work.
+
+**Tests:**
+
+- `eod.test.ts`: the shutdown waits for the undo and the drain; Undo
+  cancels it.
+- `forgotten-session.test.ts`: Decide later; the crash during the day.
+- Renderer tests for End my day: the button's figures match the list.
+
+**Docs:** `USER-GUIDE.md`, `ARCHITECTURE.md`, `CLAUDE.md` (the shutdown
+waits for the undo and the drain).
+
+---
+
+## 16. P11 -- First run, and the states that are not normal
+
+- **First run** (S1–S3) replaces `OnboardingWizardModal`. It opens on its
+  own at the first launch, and from Settings › General after that.
+  - **S1, your tasks**:
+    - Jira, OpenProject, a SprintTicker server (shown only once
+      `PROVIDER-API.md` §15 ships), or no account;
+    - **Test connection**, with its failures written out: an address not
+      found, a refused token with "make a new one ↗", and a network error;
+    - then the start question ("should SprintTicker change it in Jira?"),
+      which writes `start_side_effects`.
+  - **S2, your desk**: the bar (USB tested, Wi-Fi asks the address) and the
+    Stream Deck ("Install the plugin"). Only what was found starts ticked.
+  - **S3, your day**: working days, the stand-up and its task, lunch, the end
+    of the day, and the "How it works" card.
+  - It ends on Today with the picker open.
+  - The Unity step went in P0.
+- **S31's states**, each a card with what still works:
+  - the first sync's progress;
+  - the provider not answering;
+  - the token refused;
+  - no network;
+  - the bar unplugged;
+  - updated to a new version;
+  - the first-day picker (opens on Assigned to me);
+  - the app closed while a task ran (P10);
+  - the provider refusing one entry;
+  - no account yet.
+
+  **Refusing one entry** needs the worker to tell a permanent refusal (a
+  403/400 on that issue) from a failure. It parks the row as `refused` with
+  the provider's reason, and the entry offers ↳ Move… or Keep off. If the
+  queue's status column is constrained, this is a migration, checked like
+  the others.
+
+**Tests:**
+
+- `first-run.test.tsx`: opens once; each failure message; the question
+  writes the setting.
+- `sync-queue.test.ts`: a refused entry is parked, not retried.
+- Renderer tests for the S31 cards.
+
+**Docs:** `USER-GUIDE.md` (getting started, troubleshooting), `README.md`.
+
+---
+
+## 17. P12 -- Outside the window
+
+- **Close hides to the tray.**
+  - `window-all-closed` no longer quits. The first close shows "SprintTicker
+    is still running".
+  - Quit is in the tray's menu, and does what quitting does today: clears
+    the bar, stops the socket.
+  - Electron does not await `will-quit`, so keep `preventDefault()` +
+    `app.exit(0)` (`CLAUDE.md` §6).
+  - A setting in General: "When I close the window: Keep running ▾".
+- **The tray** (S26):
+  - **Click.** A single click opens the window.
+  - **Menu.**
+    - Open SprintTicker;
+    - Switch task…;
+    - Previous task (hidden during an interruption);
+    - Pause / Resume;
+    - Stop;
+    - Interrupt, or ↩ Back to MG-12 during an interruption;
+    - Lunch, Away, End my day…;
+    - ✓ Mini timer, ✓ Start with Windows;
+    - Quit.
+  - **Icon.** A mark as well as a colour (▶ ⚡ ❚❚ ! ○), drawn as small
+    images in `build/`, plus a number for the entries waiting.
+- **Toasts that lead somewhere.**
+  - `ElectronToastPresenter` handles the click by opening the window on the
+    toast's subject (a route: `today`, `undo`, `account`, `history/<day>`).
+    Provider events still open the provider's page.
+  - Every toast of S26 maps to one route.
+  - The AUMID rule of `CLAUDE.md` §5 is unchanged.
+- **The mini timer** (S25): its states come from the session DTO of P6:
+  - running, paused, an interruption with its name field and "started now ▾";
+  - from the deck, nothing timing, Back? with +6m;
+  - not yours, the lunch and stand-up questions, still paused, still on it,
+    still in the stand-up;
+  - stopping, in the devices' order: Done / Stop / Discard;
+  - the Undo row.
+
+  Its size grows for the name field. `MINI_WINDOW_SIZE` and the comment that
+  still says 360×56 are corrected together.
+
+**Tests:**
+
+- `tray-manager.test.ts` (menu per state; single click).
+- `toast-presenter.test.ts` (each toast's route).
+- `mini-window.test.ts` and `mini-bar.test.tsx` (each state's buttons).
+- `main-window-close.test.ts` (close hides; Quit clears the bar).
+
+**Docs:** `USER-GUIDE.md` (the tray, the mini timer), `CLAUDE.md` (close
+hides; only Quit clears the bar).
+
+---
+
+## 18. P13 -- Stream Deck plugin 0.6.0
+
+**Goal:** S29 and the deck column of the states table.
+
+- **Protocol 2** (`shared/deck-protocol.ts`, `DECK_PROTOCOL_VERSION = 2`).
+  - `DeckSession` gains `interruption`, `toPlace`, `previousTask`,
+    `ownerName`, `standupRunning` and `nothingTimingInHours`.
+  - The app answers a version-1 plugin with the version-1 state, so a user
+    who updates the app first keeps a working deck.
+- **The keys**:
+  - **A, says yes.** DONE takes **two presses always**. The app's
+    `act('finish')` refuses an unconfirmed finish always, not only when
+    `finishNeedsConfirmation`, so the plugin cannot skip it. A is also BACK
+    during an interruption, JOIN, RESUME, END STAND-UP and DONE ANYWAY.
+  - **B, stops or waits.** It reads **STOP**, not NOT DONE. It is also SKIP
+    and NOT NOW.
+  - **C, throws away.** DISCARD, or **DISCARD ⚡** during an interruption,
+    and blank when there is nothing to discard.
+  - **Interrupt** reads ANOTHER during an interruption, and carries "3 to
+    place".
+  - **Session** reads NOT TIMING (amber, press opens the picker) in working
+    hours, the ⚡ timer during an interruption, and NOT YOURS (amber) for a
+    reassigned task.
+  - **Previous task**: a new action, `previous`. Hidden during an
+    interruption.
+  - **Recent 1–3**: optional actions, `start-recent`, which start the n-th
+    recent task.
+  - New `DECK_ACTIONS`: `back`, `another`, `previous`, `start-recent`,
+    `end-standup`. `DeckActionService` maps each to the service the window
+    uses (`InterruptionService`, `startTask`), so no rule is copied
+    (`CLAUDE.md` §3).
+  - Nothing is removed. The five hidden actions stay hidden.
+- **The version**: 0.6.0, in `manifest.json` and `package.json` together
+  (`package.test.ts`). `check-deck-release.js` refuses the tag otherwise.
+- **Tried on Stream Deck Mobile**: every state of S29, reconnecting after
+  either app restarts, and a version-1 plugin against the new app.
+
+**Tests:**
+
+- `faces.test.ts` (every kind × state, including DISCARD ⚡ and NOT
+  TIMING), `controller.test.ts` (two presses for DONE always), and
+  `deck-action-service.test.ts` (unconfirmed finish refused; back, another,
+  previous).
+- `deck-protocol.test.ts` (a version-1 state for a version-1 plugin), and
+  `package.test.ts`.
+- `pnpm deck:validate`.
+
+**Docs:** `USER-GUIDE.md` (the deck), `API.md` (protocol 2),
+`streamdeck-plugin/README`, `CLAUDE.md` §3 (DONE always takes two presses).
+
+---
+
+## 19. P14 -- The bar
+
+**Goal:** S28 and the bar column of the states table, within the hardware
+contract.
+
+Each item below is one change, measured on the bar before the next. The
+display rules are `CLAUDE.md` §4–§5:
+
+- one `evaluateRequest` per event, and one render at its end;
+- menus are renderer sub-states or `BAR_MENU_EVENT` background screens,
+  never queued;
+- no picker-style BACK that draws twice.
+
+1. **The two pickers** (started in P3): the decoder stops sending
+   `TRIGGER_TASK_SELECTOR_MODAL` when it opens its own. The window is raised
+   with `ForegroundRaiser` wherever the bar raises it.
+2. **The picker's levels**:
+   - RECENT (1/6), STARRED, MINE, then "15 PROJECTS / MORE: IN WINDOW";
+   - BACK goes up one level.
+   - From `getRecent`, the stars and `orderTasksForSelection`; nothing is
+     copied.
+3. **The wheel menu while timing**: INTERRUPT, PAUSE, PREV, SWITCH, STOP. A
+   renderer sub-state of `ACTIVE_TRACKER_EVENT`, like the paused menu. It
+   shows two choices at a time with more-markers, as the paused menu does.
+4. **The paused menu**:
+   - DONE / STOP / DISCARD (A, B, C's order), then INTERRUPT, opening on
+     STOP;
+   - DROP becomes DISCARD;
+   - `PAUSED_CHOICES` and `PAUSED_MENU_OPENS_ON` change, and
+     `paused-menu-layout.test.ts` with them.
+5. **During an interruption**: BACK TO MG-12 (the key cut by
+   `fitToWidth`), ANOTHER, SWITCH, STOP. A ⚡ icon needs:
+   - a new `.anim` in **both** formats (`build-anims.js`);
+   - its first frame equal to the static icon (`animation-assets.test.ts`);
+   - drawing from scratch, per `packages/anim-studio/STYLE-GUIDE.md`.
+6. **Hold BACK opens the end choices** instead of marking the task done
+   (proposal §3.2). The `hardware_bindings` defaults change, and saved
+   bindings are reset once (§2).
+7. **❚❚ on the paused screen**: the fonts are ASCII only, so ❚❚ is two
+   drawn rectangles (as `paintMoreMarker` draws), not text. Paused row 0 is
+   already full for an 8-character key, so the key is cut by `fitToWidth`
+   with the font it is drawn in.
+8. **The words of D5**, each measured, then pinned by `words.test.ts` (P1):
+   - "3 TO PLACE" on the timing screen moves the time to row 0, as the
+     paused layout does;
+   - "MG-12 > RIN";
+   - STAND-UP with the time on row 1 and OK=END;
+   - NOTHING TIMING / MG-12? OK=YES.
+9. **Nothing timing in working hours (D4)**: by the recommendation, one
+   frame when the reminder fires, released at the answer through the
+   existing hand-back (`releaseActiveLock` → the mode). The firmware clock
+   stays the idle screen; no app-drawn clock.
+
+**Tests:**
+
+- `hardware-decoder.test.ts` (each state's inputs), `paused-menu-layout`,
+  `display-renderer`, and `proportional-text` (every new string with its
+  font).
+- `display-handback.test.ts`: a scripted case for each new menu and
+  question, including a banner arriving under each.
+- `display-stress.test.ts`: the new inputs (wheel menu, Back, Another,
+  Previous) as sources, on both firmware versions, ending with
+  `expectSettledScreen`.
+
+**On the bar**, asked first, one at a time:
+
+- `pnpm probe:busybar --font-sheet` for the new words;
+- a real day on the packaged build with a database copy: upload medians
+  in `displayHealth`, no screen close outside `clearDisplay`, no hang.
+
+**Docs:** `USER-GUIDE.md` (the bar), `API.md` (the device contract, if a
+draw changes), `CLAUDE.md` §4 (the new menus and their lock rules).
+
+---
+
+## 20. P15 -- Documents, pictures, release
+
+Each phase updates its documents as it lands (§3). This phase does what is
+left once the screens are real:
+
+- **`pnpm docs:images`** for every changed screen, asked first (it needs
+  SprintTicker and Unity closed, and never captures the real profile).
+- **`USER-GUIDE.md`**, read end to end as the newcomer of the reviews,
+  against the glossary: one word per action.
+- **`README.md`**: the feature list, the requirements, and any figures
+  quoted. Grep for each old value: `CLAUDE.md` §9.
+- **`CHANGELOG.md`**: one entry per release (1.5, 1.6, 1.7), written for a
+  user who has the previous version, with the reset bar bindings and the
+  changed Lunch named.
+- **`docs/index.html`**: `pnpm docs:build`, then `pnpm docs:check`.
+- **A release candidate on the real bar and Stream Deck Mobile**, as 1.3.0
+  was: a day's use, a database copy, and the packaged build.
+
+---
+
+## 21. Verification, all phases
+
+| What | How | When |
+| :--- | :--- | :--- |
+| Unit and component tests | `pnpm test`, `pnpm typecheck`, `pnpm lint` | every commit |
+| Coverage floor | `pnpm test:coverage`, 92 / 93.5 / 90 / 85, never lowered | every phase |
+| Migrations on real data | `pnpm db:check-migration`, run by the user | P4, P6, any later migration |
+| Display rules | `FirmwareSimulator` + `expectClean()`, `display-stress` (`STRESS_RUNS=2000` before a release) | P6, P8, P14 |
+| The bar | `pnpm probe:busybar` and a real day, asked first | P14, the release candidate |
+| The deck | Stream Deck Mobile, every state | P13 |
+| The look | screenshots against the screens, packaged build on a database copy | P2, P3, each release |
+| Real use | the user, a few days on each release candidate | 1.5, 1.6, 1.7 |
+
+---
+
+## 22. Risks
+
+- **The interruption model (P6) touches the engine's core.** The set-aside,
+  Lunch and the stand-up all interact with it, and `CLAUDE.md` §5 records
+  how often that has shipped bugs. Mitigation:
+  - the old path stays reachable until the new one has run;
+  - the stress test gains the new sources before the old path goes;
+  - every bug a seed finds becomes a scripted case.
+- **Lunch as a pause (D1)** changes what a user's morning looks like in
+  Jira. Split at 15 min, it is the same two entries, but a user with
+  `splitPauseMinutes = 0` gets one entry spanning lunch with the lunch
+  excluded. The release note says so.
+- **The undo hold delays every send by 10 s.** A crash inside the hold must
+  not lose the row: the row is written before the hold, and on restart a row
+  past its hold is simply due.
+- **The bar's words and menus** cannot be judged off the device. D5 and
+  P14 are measured, and nothing ships on a width computed alone.
+- **Text-based renderer tests** (224 queries by text) break with every
+  wording change. Rewrite them against the glossary's constants, so the next
+  wording change is one edit.
+- **Three releases** mean three upgrades for the user. Each must be usable
+  alone: 1.5 changes nothing in behaviour, and 1.6 keeps the deck on
+  protocol 1.
+
+---
+
+## 23. Out of scope
+
+From the reviews, kept out on purpose (proposal §38 and §40):
+
+- suggesting a task for an interruption;
+- placing from the bar or the deck;
+- merging a task's entries within a day;
+- pausing on a break, since presence never pauses;
+- refusing changes to a closed week;
+- sprint and due-date views, calendar import, statistics per colleague.
+
+---
+
+## 24. Status
+
+| Phase | Status | Landed in |
+| :--- | :--- | :--- |
+| P0 | not started | |
+| P1 | not started | |
+| P2 | not started | |
+| P3 | not started | |
+| P4 | not started | |
+| P5 | not started | |
+| P6 | not started | |
+| P7 | not started | |
+| P8 | not started | |
+| P9 | not started | |
+| P10 | not started | |
+| P11 | not started | |
+| P12 | not started | |
+| P13 | not started | |
+| P14 | not started | |
+| P15 | not started | |

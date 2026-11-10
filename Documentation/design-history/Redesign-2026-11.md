@@ -1210,3 +1210,881 @@ compare with earlier rounds.
 **Gaps at End my day are a hint, never a gate (the user, 2026-11-09).**
 The line has Skip beside "Check them…". Skipping leaves the gaps
 untracked and sends what is on a task.
+
+## 25. Seventh blind round, the last before production (2026-11-10)
+
+The same two Sonnet reviewers and the same briefs as round 6, on the
+committed screens.
+
+**Verdicts:** mostly / with fixes, as in every round. The heavy user
+counted about 130 interactions a day, the same as round 6 by the same
+method. Interruptions take 46% of them, about 6 each.
+
+**Would they use it every day?**
+
+- **Newcomer: "Yes, probably, with conditions."**
+  - What wins them: Start, Interrupt and Back replace rebuilding the
+    week from memory on Friday. "Sent" on each entry, the week against
+    Jira and the overnight prompt show the app cares about accuracy.
+  - What would make them stop: Jira statuses and assignments changed
+    without asking (In Progress, "assigned to you"), the "not on a task
+    yet" reminders after every interruption, or wrong time in Jira.
+- **Heavy user: "Yes, with a short list of conditions."**
+  - What wins them: one press to start an interruption and one to go
+    back, which catches the minutes nobody rebuilds at 17:30.
+  - What would make them stop: one week where the manager's figure is
+    wrong because a sort was skipped, or a gap nobody noticed.
+
+**Mock fixes:**
+
+- S5's running row started at 16:11 under a timer at 01:24; it now
+  starts at 15:30, when OPS-4 ended.
+- S17's gaps and overlap named times taken by S5's entries.
+- S15b's fixes now say where each opens.
+- S31 lacked the refused token, and the header's words lacked "Sending
+  stopped".
+
+**Not findings:**
+
+- the newcomer read the Interrupt shortcut as "off by default
+  elsewhere", which no screen says;
+- they also took the unticked shutdown box for a ticked one.
+
+**Valid findings, for the user to decide:**
+
+1. **Say once, before the first start, that starting changes Jira**
+   (In Progress, and assigned to you if nobody has it). This was the
+   newcomer's first "would stop" reason. The setting exists (S20), but
+   nothing points to it before it happens.
+2. **Explain ⚡ the first time.** The first interruption shows one line
+   on what happens to its time and the four choices: choose a task,
+   later, keep off Jira, sort.
+3. **S2 says what the devices are for** and has "I have neither" as the
+   plain way on.
+4. **S10: "Add the 6 min to MG-12"** beside Resume. The user chooses, so
+   nothing is assumed. Today it needs Add time.
+5. **The Switch and Previous task shortcuts on by default**, like
+   Interrupt.
+6. **The window's Stop in one click for "not done"**, a split button, as
+   the deck and the mini timer already do.
+7. **End my day says what happens to the running task**: it stops, not
+   done.
+8. **"What you missed" (S27): start a backdated interruption from a
+   row**, for a Slack question answered a minute ago.
+9. **Naming from the mini timer.** An interruption started from the bar
+   or the deck shows a name field on the mini timer, which never steals
+   focus. The bar and the deck still only start and stop.
+
+**Against the user's rules, not reopened:**
+
+- gating End my day until every interruption is placed (§19, §24);
+- a task pre-filled or suggested for an interruption, or templates
+  (§19);
+- "nothing timing" repeated, or always shown on the bar (§19);
+- merging adjacent entries (§22);
+- idle detection.
+
+**Out of scope:** calendar import, a worklog preview in Jira's format,
+and bulk edit in History.
+
+## 26. Round 7 applied (the user: "apply all nine", 2026-11-10)
+
+1. **Starting changes Jira, said once.** S4 shows "Starting a task changes
+   it in Jira: it moves to In Progress, and becomes yours if nobody has
+   it", with Got it and a pointer to Settings › Account. It shows until Got
+   it or the first start, and never again.
+2. **The first interruption explains itself.** In S9, one line says its
+   time comes off the task and nothing goes to Jira until its task is
+   chosen. It names the three ways to end it and says several can be
+   sorted at once.
+3. **S2 says what the devices are for**, and works without them. Neither
+   now reads "I have neither: nothing to set up".
+4. **S10 offers "↩ Resume, add the 6 min"** beside plain Resume and Stay
+   stopped. The user picks; nothing is added by default.
+5. **The Switch task and Previous task shortcuts are on by default**
+   (`Ctrl+Alt+Shift+S`, `Ctrl+Alt+Shift+P`), like Interrupt. This
+   replaces "off by default" in §17.
+6. **The window's Stop is a split button.** "■ Stop, not done" stops in
+   one click, and ▾ opens S11 for Done or Discard. Done keeps its
+   explicit choice in the window and its two presses on the deck.
+7. **End my day says what happens to the running task.** MG-12 stops as
+   not done, stays open in Jira, and its time is sent.
+8. **"What you missed" can start an interruption.** A Slack row has
+   "⚡ Interruption since 14:05", backdated and taken off the task that
+   ran.
+9. **Naming from the mini timer.** An interruption started from the bar
+   or the deck shows the mini timer with a name field. It never takes the
+   focus, and the name can wait until the time is placed (§24).
+
+## 27. Eighth blind round, on round 7 applied (2026-11-10)
+
+The same two Sonnet reviewers and the same briefs.
+
+**Verdicts:** mostly / with fixes. The heavy user counted about 115
+interactions a day, down from about 130. About 70% go to interruptions:
+35 to start and end them and 45 to place them.
+
+**Would they use it every day?**
+
+- **Newcomer: "Yes, probably."**
+  - Why: it beats rebuilding the day from memory at 17:30, and the 10 s
+    undo and "sent" per entry make it feel safe. They would check Jira by
+    hand the first week.
+  - What would make them stop: wrong time sent unnoticed, interruptions
+    piling up "not on a task", or a pause they did not expect.
+- **Heavy user: "Yes, with caveats."**
+  - Why: they estimate it saves about 20 minutes a day. 1-press
+    interruptions and "Check my week" against what the manager sees beat
+    hand-logging and Toggl.
+  - What would make them stop: a Done pressed by habit on a colleague's
+    ticket, or a short week from unplaced time.
+
+**What round 7 changed:**
+
+- "Stop, not done" in one click and the Jira note before the first start
+  were read as intended.
+- Placing remains the main cost.
+
+**Mock fixes:**
+
+- S25's deck interruption has the same buttons as any interruption.
+- S22 says a question or NOTHING TIMING stays on the bar, so it no longer
+  contradicts S28.
+- S28's wheel menu has PAUSE, as the bar's own rule says.
+- S5's placed OPS-4 entry no longer shares Marc's name with an unplaced
+  one, which read as double counting.
+- S17's task choices include Keep off Jira.
+- S29's DISCARD asks a second press, like DONE, as the deck does today.
+- S21 says which task the stand-up is timed on, as S3 does.
+
+**Not findings:** the newcomer read S19's toggles as identical. They are
+all on now, and the off style differs.
+
+**Valid findings, for the user to decide:**
+
+1. **The ⚡ count includes older unplaced interruptions**, not only
+   today's, on Today, the mini timer and the bar. Today a Wednesday one
+   shows only in History and can reach Friday unseen.
+2. **The bar keeps "3 TO PLACE" on its idle line** while anything is
+   unplaced. This shows a state; it is not a prompt.
+3. **The running task's owner is checked every minute**, not at the next
+   sync. The reassignment was noticed "4 min ago".
+4. **The Mode chip explains itself.** A tooltip on Work, Lunch and Away
+   says what each does to the timer. This is the newcomer's second round
+   asking.
+5. **In S18, "Log and restart MG-12" is set apart from "Log and stop".**
+
+**Against the user's rules, not reopened:**
+
+- remembering or suggesting a task per name or person;
+- pre-selecting the interrupted task;
+- a default task for all rows (§19);
+- a nag at a fixed hour (§19);
+- an undo on End my day (§20, decision 13);
+- idle detection.
+
+**Out of scope:** calendar import, submission or approval status,
+rounding, searching descriptions.
+
+## 28. Round 8 applied (the user: "apply the five fixes", 2026-11-10)
+
+1. **The ⚡ count covers every day.** Today, the mini timer and the bar
+   count an unplaced interruption from any day until it is placed.
+2. **The bar's idle clock keeps "3 TO PLACE"** on its second row while
+   anything is unplaced. It shows a state and asks nothing.
+3. **The running task's owner is checked every minute**, not only at the
+   sync, so S5b reads "1 min ago".
+4. **The Mode chip says what each mode does** to the timer, on hover.
+5. **S18 sets "Log and restart MG-12" apart.** "Log and stop" is the main
+   button on its own; restart sits with "Decide later".
+
+## 29. Favourites instead of presets (the user, 2026-11-10)
+
+The user's answer to the presets that every heavy-user round asked for:
+**starred tasks, put first wherever time is placed.**
+
+A preset decides for the user; a star only shortens the list they choose
+from. So the rule of §19 holds: nothing is suggested or preselected, and
+every interruption still takes a click on its task.
+
+- **Move to a task (S12)** lists Starred first, then Recent, then the
+  projects.
+- **Each row's menu in Sort interruptions (S12b) and End my day (S17)**
+  opens on the starred tasks. Eight are shown and the rest fold under
+  "all". Search and Keep off Jira sit below them.
+- **Starring is the one way to add a favourite:** ☆ on any task, in the
+  pickers and in Tasks.
+
+The usual places, such as OPS-4 "Team discussions and meetings" and PF-2
+"support and questions", become one click from the menu: about 2
+interactions per interruption instead of 3 or 4.
+
+## 30. Ninth blind round, with starred tasks first (2026-11-10)
+
+The same two Sonnet reviewers and the same briefs.
+
+**Verdicts:** mostly / with fixes. The heavy user counted about 105
+interactions on a normal day and about 120 on Friday, down from about 115
+in round 8. Interruptions still take 57%, about 6 each, mostly naming and
+placing.
+
+**Would they use it every day?**
+
+- **Newcomer: "Yes, with conditions."**
+  - What wins them: one click to start, a timer they can see, time
+    reaching Jira without typing it, and the week's "In Jira · what your
+    manager sees".
+  - What would make them stop: unplaced interruptions to keep sorting, a
+    Lunch pause when they did not take lunch, or a forgotten timer.
+  - What they want: assigning and In Progress asked, not only told.
+- **Heavy user: "Yes, conditionally."**
+  - What wins them: Previous task, Fetch by key, and the week check
+    against Jira ("saves the Friday reconstruction"). It beats Tempo and
+    Toggl on interruptions and the devices.
+  - What would make them stop: piles of unnamed "Interruption at 14:02",
+    hours left unsent, or a mis-pressed DISCARD.
+
+**Mock fixes:**
+
+- S9 had "held and logged" beside "taken off MG-12". It now reads "its
+  time so far stays logged" and "those minutes come off MG-12", never
+  earlier than its start.
+- S26 has the overnight toast, which S18 assumed.
+- S3 chooses the stand-up's task, which S6 and S21 used.
+- S29's stand-up Session key showed the hour, 09:30, as if it were a
+  timer.
+
+**Not findings:** the newcomer again read S19's toggles as all on. They
+are on; the job "turn on the shortcut" predates it being on by default.
+
+**Valid findings, for the user to decide:**
+
+1. **Done in two clicks.** ▾ beside "Stop, not done" opens a short menu,
+   Done… and Discard…, instead of the S11 dialog. Today Done takes 3
+   clicks.
+2. **The first start asks, rather than tells**, whether to move the task
+   to In Progress and assign it. The answer is saved, and can be changed
+   in Settings › Account.
+3. **The tray menu gets Stop, not done; Back to MG-12 during an
+   interruption; and Lunch and Away.**
+4. **The deck and the bar show NOTHING TIMING in working hours, and a
+   running stand-up with END.** The bar already shows NOTHING TIMING; the
+   deck's Session key does not, and neither device can end a stand-up.
+5. **One order for NOT DONE and DONE.** The bar lists NOT DONE first; the
+   deck puts DONE on A, the green key that carries on. One surface would
+   change.
+6. **A 10 s undo on DISCARD**, on the deck, the bar and the window, as
+   sends have.
+7. **The week's task × day cells open that day** at that task (S15).
+8. **End my day lists every row before sending**, instead of "+ 8 more".
+
+**Against the user's rules, not reopened:**
+
+- a task suggested from the name or the person, "same as last time", or
+  a hint taken from the active window or Slack (§19, §29);
+- the nothing-timing prompt repeated (§19);
+- lock or idle detection;
+- an undo on End my day (§20).
+
+**Out of scope:** calendar or Teams capture, estimates, sprint ranking,
+and submission status.
+
+## 31. Round 9 applied, and three answers (the user, 2026-11-10)
+
+**The eight findings:**
+
+1. **Done in two clicks.** ▾ beside "Stop, not done" opens a short menu:
+   Done, and Discard…, which asks once more. The S11 radio dialog is
+   gone.
+2. **The first start asks**: "When you start a task, should SprintTicker
+   change it in Jira?", with Yes, update Jira / No, only time it. The
+   answer is kept, and can be changed in Settings › Account.
+3. **The tray menu has Stop, not done; Lunch; and Away.** During an
+   interruption, Interrupt reads "↩ Back to MG-12".
+4. **The deck's Session key reads NOT TIMING in amber** in working hours,
+   and a press opens the picker. **A running stand-up ends from the deck
+   (A) and the bar (OK=END).**
+5. **One order: DONE, NOT DONE, DISCARD**, the deck's A, B and C. The
+   bar's paused menu now lists them in that order, with the cursor
+   starting on NOT DONE.
+6. **DISCARD has a 10 s undo** on the app's toast, from the window, the
+   deck or the bar.
+7. **A task's cell in the week opens that day at that task.**
+8. **End my day lists every entry**, with nothing folded, before
+   anything is sent.
+
+**Undo on End my day (replaces the exception of decision 13).** End my
+day now waits 10 s for Undo like every send. The PC shutdown is
+scheduled only once the undo has passed and Jira has answered, with 30 s
+to cancel. So the user's condition still holds: the undo never breaks the
+end-of-day shutdown.
+
+**Presence is read, and never pauses (correcting §25 to §30).** The
+reviewers listed "lock or idle detection" as missing, and this proposal
+filed it under the user's rules. Both were wrong: the app reads presence
+already.
+
+- Time is wall clock. An absence during the day counts as work: a
+  meeting, a coffee, the toilet.
+- Only an absence across midnight is asked about, from the last activity
+  (S18).
+- S21 now says so, beside the overnight setting.
+
+**Suggestions from the name or the active window are not just against the
+rule; they don't work.** An interruption is usually unnamed when it
+starts, from the bar, the deck or the shortcut, and is named only when it
+is placed. A call runs in Teams whatever project it is about, and a
+question at the desk has no window at all. Starred tasks (§29) are the
+answer.
+
+## 32. Tenth blind round, on round 9 applied (2026-11-10)
+
+The same two Sonnet reviewers and the same briefs.
+
+**Verdicts:** mostly / with fixes, as in all ten rounds. The heavy user
+counted about 115 interactions, against about 105 in round 9. Their
+per-flow counts barely moved, so the gap is counting noise. Interruptions
+take about 60 of the 115, about 40 of those for placing and naming.
+
+**Would they use it every day?**
+
+- **Newcomer: "Yes, probably, with conditions."**
+  - What wins them: one-click start, Previous task, and the end-of-day
+    send with an undo window.
+  - What would make them stop: the app changing their tickets silently,
+    a pile of unsorted ⚡, or a wrong entry going out unnoticed.
+  - They trusted it more for the tray behaviour and "Undo for 10 s".
+  - What still wears on them: the number of prompts and the words to
+    learn.
+- **Heavy user: "Yes, but only if placing gets cheaper."**
+  - What wins them: Previous task, the Interrupt chord and one-press deck
+    keys, "better than anything I have used", and the Friday check.
+  - What would make them stop: a missing hour found on Friday with no
+    warning, or duplicate or wrong-ticket entries in Jira.
+
+**Mock fixes:**
+
+- S4's question had Yes as the main button, a nudge; both answers now
+  look the same.
+- S26's toast now says the timer keeps running in the tray.
+- S28 said the bar's picker runs Recent, Mine, Starred, while the window
+  runs Recent, Starred, Mine; it now matches the window.
+
+**Valid findings, for the user to decide:**
+
+1. **S10's two Resume buttons weigh the same.** Plain Resume as the main
+   button reads as "drop the 6 min" by default, and adding them as the
+   main button would assume they were work. Equal buttons make it a
+   choice.
+2. **An overlap is caught when it is made.** Add time, Correct and a
+   backdated start warn before saving an entry that overlaps another.
+   Today it shows only at End my day and in the week check, by which time
+   it may be in Jira.
+3. **A new ticket assigned to you offers Start**, on its toast and in
+   "What you missed".
+4. **In a nested interruption, the deck offers "back to MG-12"** in one
+   press, as the window's "End both, back to MG-12" does. Today A goes
+   back one step, and B stops both with nothing running.
+
+**Against the user's rules, or shown not to work, not reopened:**
+
+- a task suggested from the note, the project or "same as last time";
+- stars learned automatically, which is a suggestion (§29, §31);
+- a button that puts the time back on the interrupted task, which is
+  already in Recent, labelled;
+- the week's close blocked until everything is placed (§24);
+- nags at lunch, or a repeated nothing-timing prompt (§19);
+- merging adjacent entries (§22);
+- a daytime idle prompt (§31: presence never pauses).
+
+**Out of scope:** calendar import, sprint ranking, a weekly target.
+
+## 33. Round 10 applied (the user: "apply all four", 2026-11-10)
+
+1. **S10's "↩ Resume" and "↩ Resume, add the 6 min" weigh the same**, so
+   neither is the default.
+2. **Overlaps are caught when made.** Add time (S16b) shows the overlap
+   and offers to end the entry where the next one starts; Add stays off
+   until it fits. Correct (S16) says the same before Save.
+3. **A new ticket assigned to you offers Start**, on its toast and in
+   "What you missed".
+4. **The deck in a nested interruption:** B goes back to MG-12 with both
+   left to place, as the window's "End both" does. A still goes back one
+   step.
+
+**Open: what Interrupt is (the user, 2026-11-10).** The user's model:
+
+- Interrupt is pressed when someone interrupts, or when something else
+  must be done, such as a test.
+- Several people may come one after another, for different reasons.
+- Each fragment is seen and placed afterwards, one by one.
+- Then the user goes back to the base task, or switches to a new one.
+
+The screens differ in two places:
+
+- **"⚡ Another interruption" nests.** It opens S9b, and Back returns to
+  the previous interruption, not to the base task. Ana arriving as Marc
+  leaves would put Ana on top of Marc, and Back would resume Marc's
+  finished conversation.
+- **An interruption has no "Switch task".** Its way out is Back, Stop
+  (nothing runs, then S10), or Another.
+
+## 34. Interruptions in a row (the user, 2026-11-10)
+
+**What Interrupt is.** It is pressed when someone interrupts, or when
+something else must be done, such as a test. Interruptions are fragments
+of time that follow each other, and each is placed on its own.
+
+The user's case: they work on MG-12. Marc comes to talk (⚡). While Marc
+is there, Ana comes (⚡ Another). Ana leaves and the talk with Marc goes
+on (⚡ Another). Marc leaves, and the user goes back to MG-12 (↩). That
+leaves **three fragments to place**:
+
+- "Call with Marc", 8m;
+- "Ana's question", 5m;
+- "Call with Marc, again", 12m.
+
+**What changed:**
+
+- **⚡ Another closes the fragment running and starts the next.**
+  Nothing is stacked, and S9b's "interruption of an interruption" is
+  gone. S9b now shows a run: the fragments so far, the one running, and
+  the ways out.
+- **↩ Back always returns to the task the run interrupted**, as it was,
+  running or paused.
+- **⇄ Switch task leaves the run for another task**, a more urgent one
+  for example. The fragment ends and waits to be placed, and MG-12 stops
+  as not done, its time logged. This is in S9, S9b and the mini timer;
+  the bar's SWITCH and the deck's held Session key do the same.
+- **Sort lists each fragment on its own row**, saying which came before
+  ("after 'Call with Marc'"). Each row's menu opens on Starred, then
+  Recent, with the tasks just chosen above first. So "Call with Marc,
+  again" has the task chosen for the first talk one click away, without
+  anything being preselected (§19, §29).
+- **The devices:** ⚡ during an interruption always starts the next one.
+  On the deck, A goes back to the task; the nested-interruption row and
+  "BACK CALL" are gone. The bar's wheel menu during an interruption is
+  BACK TO MG-12, ANOTHER, SWITCH, STOP.
+
+This replaces the nested model of §17 and the deck rows of §24 and §33.
+
+## 35. Eleventh blind round, on interruptions in a row (2026-11-10)
+
+The same two Sonnet reviewers and the same briefs.
+
+**Verdicts:** mostly / with fixes.
+
+**The heavy user counted about 80 interactions**, against about 115 in
+round 10, the largest drop of any round.
+
+- **Interruptions:** about 3 each.
+- **An interruption during an interruption:** one press, ⚡ Another.
+- **Sorting the seven left at the end of the day:** 2 clicks each.
+- **Interruptions and sorting together:** about 50 of the 80.
+
+They call the ⚡ and one-press-back flow "the best thing I've seen in a
+tracker".
+
+**Would they use it every day?**
+
+- **Newcomer: "Yes, probably."**
+  - Why: the timer, Add time, and the overnight and lunch prompts handle
+    forgetting.
+  - What would make them stop: the ⚡ badge nagging, time that didn't
+    reach Jira, or a surprise change to a ticket.
+- **Heavy user: "Yes, conditionally."**
+  - Why: Previous task, the bar and deck, the interruption flow, and the
+    week check against Jira. About 80 interactions is 4-6 minutes spread
+    over the day, against 25-30 minutes of guessing by hand.
+  - What would make them stop: Jira transitions on tasks only glanced at,
+    deck or bar interruptions that can't be backdated, or 20 unplaced
+    items every night.
+
+**Mock fixes:**
+
+- S6 said MG-12 "stays as it is, paused here" until Join, which read as
+  paused. S6 and S25 now say it keeps running until Join, as S21's "Show
+  me" does.
+- S25's "not yours now" mini timer lacked ⚡.
+- S15 showed Friday fully in Jira while S15b listed MG-14 unsent that
+  day. Friday's In Jira is now 7h 05m (36h 37m for the week), and the
+  note names MG-14.
+
+**Not findings:** the newcomer again cited an "off by default" shortcut
+the screens never mention.
+
+**Valid findings, for the user to decide:**
+
+1. **Backdating on the mini timer.** An interruption started from the
+   shortcut, bar or deck opens the mini timer. Beside its name field, add
+   "started ▾ now / 2 / 5 / 10 min ago", which today is only in S9.
+2. **Moving to In Progress waits until the task has run a few minutes**
+   (2 by default). A task opened for a glance doesn't move on the board;
+   assigning it follows the same rule.
+3. **The Done transition per project** (S20). With 15 workflows, "To
+   Review" is not right everywhere.
+4. **The deck shows the count of unplaced interruptions** on the
+   Interrupt key, as the mini timer and the bar do.
+5. **The mini timer has an idle state**, "Nothing running", with ▶ Start
+   and ⚡, instead of disappearing when nothing runs and nothing is asked.
+
+**Against the user's rules, or shown not to work, not reopened:**
+
+- "send all unsorted to my catch-all", or a per-person default task
+  (§19, §29);
+- stars ranked automatically by use, when Recent already does that and
+  stars are the user's choice;
+- merging adjacent entries (§22);
+- a daytime idle prompt (§31);
+- the nothing-timing prompt repeated (§19);
+- moving DONE off A on the deck: the A/B/C logic is the user's (§22).
+
+**Out of scope:** calendar import, budgets by project, bulk reassign
+across days.
+
+## 36. Round 11 applied (the user: "apply all five", 2026-11-10)
+
+1. **Backdating on the mini timer.** An interruption started from the
+   shortcut, the bar or the deck shows the mini timer with its name field
+   and "started now ▾" (2, 5 or 10 min ago, taken off the task it
+   interrupted).
+2. **Jira changes wait 2 minutes of timing.** Starting a task moves it
+   to In Progress and takes it only once it has run 2 minutes, a setting
+   in Settings › Account. A task opened for a glance and stopped sooner
+   leaves Jira untouched.
+   - This replaces the 10 s Undo on the "Started" toast (§21): the delay
+     does the undo's work.
+   - The first-start question (S4) says it.
+3. **The Done transition per project.** S20 has one state for all
+   projects, and "3 projects differ…" for the workflows that need
+   another.
+4. **The deck's Interrupt key shows "3 to place"**, as the mini timer
+   and the bar do.
+5. **The mini timer has an idle state**, "Nothing running", with the
+   count to place, ▶ Start and ⚡. It no longer disappears when nothing
+   runs.
+
+## 37. One model, one word per action (2026-11-10)
+
+**Why.** After eleven rounds, most of what came back had two causes:
+
+- **No single written model of the flow.** Each of the six surfaces was
+  drawn and patched on its own, so every round found contradictions
+  between them.
+- **Several words for one action.** The newcomer's list of unclear words
+  hardly changed from round 1.
+
+The screens page now opens with **"The model, the words and the
+states"**, and every screen is checked against it.
+
+**The model, in one sentence, said once in first run (S3):** one timer
+runs your task; when something interrupts you, ⚡ times it apart, one
+interruption after another; afterwards you place each one on a task, or
+keep it off the provider; time reaches the provider when you stop, after
+10 s to undo.
+
+**The words, one meaning each, on every surface:**
+
+- **Stop** ■ / STOP ends the timer, and the task stays open. It replaces
+  "Stop, not done" and NOT DONE. **Done** ✓ moves the task to its done
+  state. **Discard** keeps nothing.
+- **Place** ↳ puts an interruption's time on a task; "Place all 3…" and
+  "Place interruptions" replace Sort. **Move** ↳ is only for an entry
+  already on a task.
+- **To place** (⚡ 3 to place, 3 TO PLACE) replaces "not on a task (yet)"
+  and "stays here".
+- **Back** ↩ returns from an interruption to the task it interrupted,
+  including after "Nothing running, back to MG-12?". **Resume** follows
+  only a pause, Lunch or Away.
+- **Not now** answers no to any question. It replaces "Stay stopped" and
+  "Not yet". **Later** only leaves an interruption to place later.
+- **Keep off Jira**, Interrupt, Another, Switch, Previous and Mode are
+  unchanged; each has one meaning.
+
+**States × surfaces.** One table gives what the window, the mini timer,
+the tray, the bar and the deck show and do in each state, with the same
+verbs. Eleven states: idle, timing, paused, interruption, back?, to
+place, not yours, stand-up, lunch or away, a question during an
+interruption, and overnight. A state not in the table does not exist.
+
+**Providers (the user, 2026-11-10).** "Jira" in the screens stands for
+the user's provider: Jira, OpenProject, or a custom provider on the
+SprintTicker Provider API.
+
+- **A custom provider is given a name** in first run (S1). The default is
+  the server's own name, such as "Forge Tracker", and that name replaces
+  "Jira" in every label.
+- **A step the provider cannot do is not shown:** assignment, the Done
+  transition, Fetch by key.
+- **Keys follow the provider:** MG-77 in Jira, #1234 in OpenProject.
+- **Task** covers a Jira issue, an OpenProject work package and a custom
+  provider's task.
+
+**What did not change:** the mini timer's ■ still opens Stop · Done ·
+Discard. It is the one place where Done is reached without the window,
+so Stop there takes two clicks, against one in the window.
+
+## 38. Twelfth blind round, on the aligned words (2026-11-10)
+
+The same two Sonnet reviewers and the same briefs.
+
+**Verdicts:** mostly / with fixes.
+
+**Did the words help?** The newcomer's list of unclear words shrank.
+Stop, Sort, Move, "not on a task", Stay stopped and Not yet no longer
+appear in it. "Place", "held" (now changed) and the icons remain.
+
+**The heavy user counted about 145 interactions**, against 80 in round
+11. Their per-flow costs did not rise: an interruption still costs 3 to
+5 presses, and placing still costs 2 per row. The total rose because
+this round counted work earlier rounds left out:
+
+- switching through the bar's wheel, about 18;
+- fixing the day's gaps, about 8;
+- the whole Friday fix-up, about 30 against 9.
+
+So the two totals do not compare.
+
+**Would they use it every day?**
+
+- **Newcomer: "Probably yes, but not on day one."**
+  - Why: the timer, the 10 s undo and the week check mean they never
+    rebuild the day from memory. "No account" and "Set up later" make a
+    first try low-risk.
+  - What would make them stop: wrong time sent unnoticed, or placing
+    interruptions feeling like homework. They would answer "No, only
+    time it" to the Jira question.
+- **Heavy user: "Yes, but only just, after the fixes."**
+  - Why: Previous and Interrupt in one key, reassignment noticed, and
+    the week's "In Jira" row, "the best feature".
+  - The comparison: by hand is about 90 clicks from memory, wrong by
+    30-60 minutes; this is about 145, accurate to the minute.
+
+**Mock fixes:**
+
+- S9 and S9b said MG-12 "is held". They now say it "waits", and that ↩
+  Back returns to it.
+- S18's preselected answer is drawn ●, and Discard says it has 10 s to
+  undo.
+- The run of S9b and S12b started at 10:32, where S5 had a 25-minute
+  "Call with Marc". It now runs from 16:02.
+- The tray's Previous task is hidden during an interruption, as on the
+  deck.
+
+**Valid findings, for the user to decide:**
+
+1. **Switch from an interruption can put it on the new task.** When ⇄
+   is pressed during an interruption, the picker shows an unticked "Put
+   'Call with Marc' (12m) on it too". Today the interruption stays to
+   place at full length.
+2. **Backdating goes past 10 minutes:** "started ▾ now / 2 / 5 / 10 /
+   other…". Other takes any time since the task started.
+3. **"Still paused?" is asked once** after a pause longer than a set time
+   (30 min by default), like "Still on it?".
+4. **Today shows a Lunch card**: "Lunch until 13:30 · MG-12 paused · I'm
+   back". The newcomer found nothing in the window saying what Lunch
+   does.
+5. **"Check my week" has a button** on the week view, as well as Ctrl+K
+   and the week's close.
+
+**Against the user's rules, not reopened:**
+
+- adding the gap by default in S10 (the user made both buttons equal,
+  §33);
+- the nothing-timing prompt repeated, or a daily nudge to place (§19);
+- remembering who interrupts, autocompleting tasks, or rules and
+  templates (§19, §29, §31);
+- search on the bar: the devices are shortcuts (§16).
+
+**Out of scope:** calendar import, statistics per person, dragging time
+on a timeline.
+
+## 39. Round 12 applied, and the blind rounds stop (the user, 2026-11-10)
+
+1. **Switching from an interruption can take it along.** When ⇄ opens
+   the picker from an interruption, the picker shows an unticked "Put
+   'Call with Marc, again' (12m) on it too". Left unticked, the
+   interruption stays to place.
+2. **Backdating goes past 10 minutes:** "started ▾ now / 2 / 5 / 10 /
+   other…", any time since the task started. This works in S9 and on
+   the mini timer.
+3. **"Still paused?" is asked once**, after 30 minutes by default (a My
+   workday setting). It shows on the mini timer, with Still paused / ▶
+   Resume.
+4. **Today shows a Lunch card**: "Lunch until 13:30 · MG-12 is paused,
+   its time logged. Lunch is not timed", with ▶ Resume MG-12. The mode
+   menu said "starts it again after", which contradicted "Back at your
+   desk?". It now says "after, asks if you are back".
+5. **"Check my week…" has a button** on the week view.
+
+The states table follows all five.
+
+**The blind rounds stop here.**
+
+- Twelve rounds plateaued at "mostly / with fixes" and "yes, with
+  conditions".
+- The interaction counts vary by about 50% with what each reviewer
+  counts.
+- What remains is either the user's accepted cost (placing is the
+  user's choice, never suggested), or polish that static screens cannot
+  judge.
+
+The next evidence is real use: a few days on the built app.
+
+## 40. Thirteenth round, on Opus 5.5, before the roadmap (2026-11-10)
+
+The user asked for one last pair on a stronger model before the roadmap
+and implementation plan. The two briefs are the same as before, with
+seven product questions added at the end: UI, UX, execution flow,
+incoherences, what is missing, what to remove, and the top 5 changes.
+
+**Verdicts.**
+
+- **Newcomer:** "mostly". Daily use: "probably yes, for a two-week
+  trial". They would stop if placing became evening homework, or at one
+  surprise in Jira.
+- **Heavy user:** "with fixes". Daily use: "not yet". About 127
+  interactions a day, 146 on a Friday; interruptions take 65% of them.
+  They would stop "the first time my manager sees overlapping worklogs,
+  or a lunch I worked through goes missing".
+
+The stronger model found more contradictions between screens than the
+previous rounds did. Those were fixed in the mock, as each round's are:
+
+- S6 showed the Lunch card under "Mode: Work", beside a 09:30 stand-up.
+  It now has a frame of its own, under "Mode: Lunch".
+- S17 said 7h 05m was both "sent" and "to send", and its MG-12 had not
+  moved since S5. It now reads 5h 20m sent, 1h 45m to send (MG-12
+  running), 45m to place.
+- S14b's second gap was S5's 15:10 call. It is now 12:20–12:30, as in
+  S17, and the call is drawn.
+- MG-14 on Friday was a "change", a "25m" and "1 entry". It is now one
+  +25m correction, named the same way in S14, S15 and S15b.
+- S14 said the Wednesday interruption was "counted in ⚡ on Today",
+  which Today's ⚡ 3 did not count.
+- S20's fetch scope left out the teammates' tasks that the picker lists.
+  It now says "and teammates' tasks in progress", which is the sync's
+  real scope.
+- MG-15 had two titles (S13 is now MG-25). S7c's "14 left are yours"
+  was S7's figure for 6 projects.
+- S7's "click ☆" had no ☆ on any row. The hovered row now shows one.
+- S25's stop row is now in the devices' order, Done / Stop / Discard,
+  and no longer says "logged either way" beside Discard.
+- S29's "A · carries on" column held DONE; A now "says yes".
+- S7b and S28 now give the bar's picker order the same way.
+- The bar's "3 TO PLACE OK=APP" while a task runs collided with OK
+  opening the menu. It now reads "3 TO PLACE IN APP".
+- "Nothing running" and "Nothing timing" are now one word: timing.
+- S21 said a closed week "asks first"; it warns first. It also used
+  "Away" for not being at the PC, which is the mode's word.
+
+**Findings, for the user to decide** (my recommendation in brackets):
+
+1. **Overlaps can be sent.** S17 calls an overlap "only a hint", so
+   the same minutes reach Jira twice. [Apply: an overlapping entry
+   waits, like one still to place, until it is fixed. Gaps stay a
+   hint.]
+2. **Lunch worked through is lost.** [Apply: "Back at your desk?" also
+   offers "I worked through it", which adds the lunch to the paused
+   task.]
+3. **The stand-up:** a late Join bills the wait to the task, and a
+   forgotten End bills the stand-up all morning. [Apply: "joined at
+   ▾", as an interruption's start; and "Still in the stand-up?" once,
+   after its usual length.]
+4. **"↩ Back, add the 6 min" exists only in the window.** [Apply on
+   the mini timer; the bar and the deck stay shortcuts.]
+5. **No shortcut ends an interruption.** [Apply: a Back chord, active
+   only during an interruption.]
+6. **The deck's PLACE IN APP / LATER takes over the answer keys after
+   every interruption**, and its C reads DISCARD without saying what it
+   discards. [Apply: drop that state. The Interrupt key carries the
+   count, and A/B/C return at once.]
+7. **When time is sent is not visible**, and "its time so far is
+   logged" (S9) reads as sent. [Apply: S9 says "MG-12 waits, as it
+   was; nothing is sent", and the running card says "sent when you
+   stop".]
+8. **S9 shows "5 min ago" as if it were the default.** [Apply: show
+   "now"; backdating stays one click away.]
+9. **The Jira question (S4) arrives together with the first picker.**
+   [Apply: ask it in setup.]
+10. **States without an exit or a "when":** Away has no card; "Not
+    now", "Later" and "Decide later" don't say when they come back.
+    [Apply: an Away card like Lunch's, and each of them says when it
+    asks again.]
+11. **Colour alone:** the tray dot, the mini timer's stripe, the bar's
+    paused state, the toggles, and S14b's grey shades. [Apply: a
+    word or a glyph beside each colour; S14b labels its segments.]
+12. **S5 is dense:** six buttons, then three text buttons on every row.
+    [Apply: rows show ↳ Place… and keep the rest under ⋯.]
+13. **States never drawn:** a crash mid-day, Jira refusing one
+    worklog, a first-day picker with no Recent, a failed Test
+    connection, and connecting Jira later. [Apply: add them to S31,
+    reusing S18's question for the crash.]
+
+**Against the user's rules** (my recommendation: do not apply):
+
+- A suggested task per interruption, "Place all as suggested", or a
+  default catch-all task. Nothing is preselected (§19, §29).
+- Placing from the bar or the deck. Devices are shortcuts, and placing
+  happens in the app.
+- Merging the same task's entries within a day. The pause split is a
+  setting.
+- A break counted as a pause. Presence never pauses (§31).
+- Refusing changes to a closed week. It warns.
+- Removing the PC shutdown. The user kept it, with its undo.
+- Sprint and due-date views, calendar import, and statistics per
+  colleague. These stay out of scope (§38); they belong on the roadmap
+  if anywhere.
+
+## 41. Round 13 applied (the user: "apply the 13 suggestions", 2026-11-10)
+
+1. **An overlapping entry waits.** The later entry of an overlap is not
+   sent until the overlap is fixed, so Jira never gets the same minutes
+   twice. This is shown on S15b (OPS-4's 20m on Tuesday), on S15 (Tuesday
+   In Jira 7h 35m, the week 36h 17m), and on S16, where an entry saved
+   with an overlap waits. A gap stays a hint (S17).
+2. **"I worked through it"** after lunch, on the mini timer and on the
+   toast. It adds 12:30–13:30 to the paused task and resumes it.
+3. **The stand-up** has "joined ▾ now / 2 / 5 / 10 / other…", and the
+   minutes move from the task to the stand-up. It asks "Still in it?" once,
+   after 25 min (a My workday setting), and can end the stand-up at its
+   usual length.
+4. **"↩ Back +6m" on the mini timer**, beside ↩ Back and Not now.
+5. **A Back shortcut**, Ctrl+Alt+Shift+B, on by default. It does nothing
+   outside an interruption.
+6. **The deck has no "place in app" state.** After an interruption, A/B/C
+   are DONE / STOP / DISCARD again at once, and the Interrupt key carries
+   the count. During an interruption, C reads DISCARD ⚡.
+7. **When time is sent is said where it matters.** The running card says
+   "sent to Jira when you stop, after 10 s to undo". The interruption,
+   the Lunch card and the toast say "MG-12 waits, as it was; nothing is
+   sent".
+8. **An interruption starts "now ▾".** Backdating is one click away:
+   "set it earlier, and those minutes come off MG-12".
+9. **The Jira question moved into setup (S1)**, under Test connection.
+   Today no longer asks it.
+10. **Away has a card, like Lunch** (S6). Each "Not now", "Later" and
+    "Decide later" now says what happens next:
+    - Not now is not asked again, and the tray stays amber.
+    - Later waits on Today, in End my day and in the week.
+    - Decide later keeps the question on Today and the mini timer.
+11. **Never colour alone:**
+    - the toggles say On;
+    - the tray icon carries a mark: ▶ ⚡ ❚❚ ! ○;
+    - the mini timer has a "❚❚ Paused" row;
+    - the bar's paused screen starts with ❚❚;
+    - S14b names each block.
+12. **Today is lighter.** An interruption row shows ↳ Place… and ⋯
+    (Rename, Keep off Jira). An entry row shows ⋯ (Correct, Move,
+    Delete).
+13. **S31 draws the missing states:**
+    - a failed Test connection;
+    - the first-day picker (opens on Assigned to me);
+    - the app closed while a task ran (S18's question);
+    - Jira refusing one entry (Move or Keep off Jira);
+    - no account yet.
+
+**The PC shutdown is optional**, and the screens now say so. It is an
+unticked box in End my day, "never ticked for you", and it runs only
+after the undo and Jira's answer. The glossary and the states table
+follow all of the above.

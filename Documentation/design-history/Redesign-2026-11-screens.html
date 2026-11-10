@@ -44,6 +44,7 @@
   .btn.w{color:var(--amber);border-color:#5a4316;background:#241c0d}
   .btn.d{color:var(--red);border-color:#5b2323;background:#241010}
   .btn.s{padding:4px 9px;font-size:12px}
+.split{display:inline-flex}.split .btn:first-child{border-radius:8px 0 0 8px}.split .btn+.btn{border-radius:0 8px 8px 0;margin-left:-1px;padding-left:8px;padding-right:8px}
   .stat{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px #22c55e22}
   .stat.amber{background:var(--amber);box-shadow:0 0 0 4px #f59e0b22}
   .shell{display:grid;grid-template-columns:180px 1fr;min-height:430px}
@@ -169,9 +170,9 @@
   <a href="#S7b"><rect class="box" x="290" y="180" width="220" height="34"/><text x="302" y="201.5">My open tasks</text></a>
   <a href="#S7c"><rect class="box" x="290" y="220" width="220" height="34"/><text x="302" y="241.5">One project</text></a>
   <a href="#S8"><rect class="box" x="290" y="260" width="220" height="34"/><text x="302" y="281.5">Search · fetch by key</text></a>
-  <a href="#S11"><rect class="box" x="290" y="320" width="220" height="34"/><text x="302" y="341.5">Stop: not done / done / discard</text></a>
-  <a href="#S12"><rect class="box main" x="290" y="370" width="220" height="34"/><text x="302" y="391.5">Move to a task…</text></a>
-  <a href="#S12b"><rect class="box main" x="290" y="420" width="220" height="34"/><text x="302" y="441.5">Sort interruptions</text></a>
+  <a href="#S11"><rect class="box" x="290" y="320" width="220" height="34"/><text x="302" y="341.5">Stop · Done · Discard</text></a>
+  <a href="#S12"><rect class="box main" x="290" y="370" width="220" height="34"/><text x="302" y="391.5">Place on a task…</text></a>
+  <a href="#S12b"><rect class="box main" x="290" y="420" width="220" height="34"/><text x="302" y="441.5">Place interruptions</text></a>
   <a href="#S16"><rect class="box" x="290" y="480" width="220" height="34"/><text x="302" y="501.5">Correct an entry</text></a>
   <a href="#S16b"><rect class="box" x="290" y="525" width="220" height="34"/><text x="302" y="546.5">Add time</text></a>
   <a href="#S16c"><rect class="box" x="290" y="570" width="220" height="34"/><text x="302" y="591.5">Split in two</text></a>
@@ -185,8 +186,8 @@
   <a href="#S5b"><rect class="box" x="580" y="195" width="220" height="34"/><text x="592" y="216.5">Task now someone else's</text></a>
   <a href="#S6"><rect class="box" x="580" y="235" width="220" height="34"/><text x="592" y="256.5">Paused · stand-up · mode</text></a>
   <a href="#S9"><rect class="box main" x="580" y="290" width="220" height="34"/><text x="592" y="311.5">Interruption running</text></a>
-  <a href="#S9b"><rect class="box" x="580" y="335" width="220" height="34"/><text x="592" y="356.5">Interruption in one</text></a>
-  <a href="#S10"><rect class="box" x="580" y="375" width="220" height="34"/><text x="592" y="396.5">Nothing running: back?</text></a>
+  <a href="#S9b"><rect class="box" x="580" y="335" width="220" height="34"/><text x="592" y="356.5">Interruptions in a row</text></a>
+  <a href="#S10"><rect class="box" x="580" y="375" width="220" height="34"/><text x="592" y="396.5">Nothing timing: back?</text></a>
   <a href="#S13"><rect class="box main" x="580" y="440" width="220" height="34"/><text x="592" y="461.5">Tasks</text></a>
   <a href="#S14"><rect class="box main" x="580" y="500" width="220" height="34"/><text x="592" y="521.5">History · day</text></a>
   <a href="#S14b"><rect class="box" x="580" y="545" width="220" height="34"/><text x="592" y="566.5">Day timeline · gaps</text></a>
@@ -244,27 +245,55 @@
 
 <div class="toc">
   <a href="#S1">S1–S3 First run</a><a href="#S4">S4 Today, first day</a><a href="#S5">S5 Today, a heavy day</a><a href="#S5b">S5b Your task is someone else's</a><a href="#S6">S6 Paused, stand-up, mode menu</a>
-  <a href="#S7">S7 Picker</a><a href="#S7b">S7b My open tasks</a><a href="#S7c">S7c One project</a><a href="#S8">S8 Picker, searching</a><a href="#S9">S9 Interruption running</a><a href="#S9b">S9b An interruption of an interruption</a><a href="#S10">S10 Nothing running</a>
-  <a href="#S11">S11 Stop</a><a href="#S12">S12 Move to a task</a><a href="#S13">S13 Tasks</a><a href="#S14">S14 History, day</a><a href="#S15">S15 History, week</a>
+  <a href="#S7">S7 Picker</a><a href="#S7b">S7b My open tasks</a><a href="#S7c">S7c One project</a><a href="#S8">S8 Picker, searching</a><a href="#S9">S9 Interruption running</a><a href="#S9b">S9b Interruptions in a row</a><a href="#S10">S10 Nothing timing</a>
+  <a href="#S11">S11 Stop</a><a href="#S12">S12 Place on a task</a><a href="#S13">S13 Tasks</a><a href="#S14">S14 History, day</a><a href="#S15">S15 History, week</a>
   <a href="#S12b">S12b Sort all</a><a href="#S16">S16 Correct an entry</a><a href="#S16b">S16b Add time</a><a href="#S16c">S16c Split</a><a href="#S17">S17 End my day</a><a href="#S18">S18 Overnight</a><a href="#S19">S19–S24 Settings</a>
   <a href="#S25">S25 Mini timer</a><a href="#S26">S26 Tray and toasts</a><a href="#S27">S27 Status panel</a><a href="#S28">S28 Bar</a><a href="#S29">S29 Stream Deck</a><a href="#S4b">S4b Morning</a><a href="#S14b">S14b Timeline</a><a href="#S15b">S15b Check my week</a><a href="#S30">S30 Ctrl+K</a><a href="#S31">S31 Not normal</a><a href="#words">The words</a>
 </div>
 
 <!-- ===================== WORDS ===================== -->
-<h2 class="part" id="words">The words, fixed after review</h2>
-<p>The newcomer review found words that collided. Each word below now means one thing, on every surface.</p>
+<h2 class="part" id="words">The model, the words and the states</h2>
+<p><b>The model, in one sentence, said once in first run (S3):</b> one timer runs your task; when something interrupts you, ⚡ times it apart, one interruption after another; afterwards you place each one on a task, or keep it off the provider; time reaches the provider when you stop, after 10 s to undo. Every screen below is checked against this page: one meaning per word, one word per action, on every surface.</p>
+<p><b>"Jira" in these screens stands for the user's provider.</b> The app shows the provider's own name wherever the screens say Jira: <b>Jira</b>, <b>OpenProject</b>, or the name the user gave a <b>custom provider</b> (a server on the SprintTicker Provider API; the server's own name by default, e.g. "Forge Tracker"). A step the provider cannot do is not shown, never greyed: no assignment, no Done transition, no Fetch by key if its API has none. Keys follow the provider: MG-77 in Jira, #1234 in OpenProject.</p>
+
 <div class="card" style="width:1040px"><table>
-  <tr><th>Word</th><th>Means exactly</th><th>Never used for</th></tr>
-  <tr><td><b>Start a task</b> / <b>Switch task</b></td><td>Change what the timer runs. "Start" when nothing runs, "Switch" when something does. The picker's title follows.</td><td>Moving time already logged</td></tr>
-  <tr><td><b>Move to a task…</b> <span class="mono">↳</span></td><td>Put time that was logged, or an interruption, on another task</td><td>The running task. Its icon is ↳; ⇄ is only ever Switch</td></tr>
-  <tr><td><b>Done</b></td><td>Stop, and mark the task done in Jira</td><td>Ending an interruption, which is <b>Back to MG-12</b> ↩</td></tr>
-  <tr><td><b>Not done</b></td><td>Stop and log; the task stays open</td><td>--</td></tr>
-  <tr><td><b>Discard</b></td><td>Stop, keep nothing, send nothing. Always asks once more</td><td>--</td></tr>
-  <tr><td><b>Interruption</b> · <b>Not on a task</b></td><td>Timed before you knew what it was about. It is <b>not on a task</b> until it is on a Jira task, or you chose <b>Keep off Jira</b>, so it is not sent</td><td>Naming alone does not sort it: a name is a note</td></tr>
-  <tr><td><b>Logged</b> · <b>Sent</b></td><td>Logged: saved on this computer. Sent: Jira has it</td><td>--</td></tr>
-  <tr><td><b>My own task</b></td><td>A task made in SprintTicker. Its time stays on this computer</td><td>--</td></tr>
-  <tr><td><b>Later</b> / <b>Stay stopped</b> / <b>No bar</b></td><td>The three things "Not now" used to mean</td><td>--</td></tr>
+  <tr><th>Word</th><th>Label (window · device)</th><th>Means exactly</th><th>Never used for</th></tr>
+  <tr><td><b>Provider</b></td><td>its name: Jira, OpenProject, Forge Tracker…</td><td>Where tasks and time live. Its name replaces "Jira" in every label</td><td>A generic "Jira" or "custom" in the app</td></tr>
+  <tr><td><b>Task</b></td><td>its key and title</td><td>A Jira issue, an OpenProject work package, a custom provider's task, or a task of my own (kept on this computer)</td><td>An interruption</td></tr>
+  <tr><td><b>Start</b> ▶ · <b>Switch</b> ⇄ · <b>Previous</b> ⟲</td><td>Start a task… · START / Switch task… · SWITCH / Previous task · PREV</td><td>Change what the timer runs. Start when nothing runs, Switch when something does (the one before stops and stays open), Previous goes back to the task before</td><td>Time already logged</td></tr>
+  <tr><td><b>Pause</b> ❚❚ · <b>Resume</b> ▶</td><td>Pause · Resume / PAUSE · RESUME</td><td>Hold the timer, and go on with the same entry. Resume follows only a pause, Lunch or Away</td><td>Ending an interruption, which is Back</td></tr>
+  <tr><td><b>Stop</b> ■</td><td>■ Stop · STOP</td><td>End the timer. The task stays open; the time is logged, then sent after 10 s to undo. On a task, Stop is "not done"</td><td>Finishing the task, which is Done</td></tr>
+  <tr><td><b>Done</b> ✓</td><td>✓ Done (▾ beside Stop) · DONE, two presses</td><td>Stop, and move the task to its project's done state at the provider</td><td>Ending an interruption. Shown only where the provider can move tasks</td></tr>
+  <tr><td><b>Discard</b></td><td>Discard… · DISCARD, two presses</td><td>Stop, and keep and send nothing. 10 s to undo</td><td>--</td></tr>
+  <tr><td><b>Interrupt</b> ⚡ · <b>Another</b> ⚡</td><td>⚡ Interrupt · INTERRUPT / ⚡ Another interruption · ANOTHER</td><td>Time something apart from the task, which waits as it was. Another ends the interruption running and starts the next: interruptions follow each other, never stack</td><td>--</td></tr>
+  <tr><td><b>Back</b> ↩</td><td>↩ Back to MG-12 · BACK · Ctrl+Alt+Shift+B</td><td>End the interruption and return to the task it interrupted, as it was</td><td>Resuming a pause</td></tr>
+  <tr><td><b>To place</b></td><td>⚡ 3 to place · 3 TO PLACE</td><td>An interruption whose time is not on a task yet. It waits, is counted on ⚡ everywhere, and is not sent</td><td>A task's time</td></tr>
+  <tr><td><b>Place</b> ↳</td><td>↳ Place… · Place all 3… · in the app only</td><td>Put an interruption's time on a task. Then it is sent like any entry</td><td>An entry already on a task, which is Move</td></tr>
+  <tr><td><b>Move</b> ↳</td><td>↳ Move</td><td>Put an entry already on a task onto another task (a delete then a create at the provider)</td><td>An interruption, which is Place</td></tr>
+  <tr><td><b>Keep off Jira</b></td><td>Keep off Jira (the provider's name)</td><td>Keep an interruption on this computer only, never sent</td><td>Leaving it for later, which is Later</td></tr>
+  <tr><td><b>Later</b></td><td>Later · LATER</td><td>Leave an interruption to place later</td><td>Answering a question</td></tr>
+  <tr><td><b>Not now</b></td><td>Not now · NOT NOW</td><td>Answer no to a question; nothing changes</td><td>Skipping the stand-up, which is Skip</td></tr>
+  <tr><td><b>Logged</b> · <b>Sent</b></td><td>logged · sent · waiting to send</td><td>Logged: saved here. Sent: the provider has it. Waiting: it will be sent when the provider answers, or once an overlap is fixed. A running task is sent when you stop it, never before</td><td>--</td></tr>
+  <tr><td><b>Mode</b></td><td>Mode: Work · Lunch · Away</td><td>What the day is doing. Lunch and Away pause the task; Work times as you set it</td><td>--</td></tr>
 </table></div>
+
+<h3 style="margin-top:22px">States, and what every surface does in each</h3>
+<p>One row per state, the same verbs in every cell. A state not in this table does not exist; a surface that does nothing in a state says so.</p>
+<div class="card" style="width:1040px;font-size:12px"><table>
+  <tr><th>State</th><th>Window (Today)</th><th>Mini timer</th><th>Tray</th><th>BUSY Bar</th><th>Stream Deck (Session · Interrupt · A B C)</th></tr>
+  <tr><td><b>Idle</b>: nothing runs, nothing asked</td><td>▶ Start a task · ⚡ Interrupt</td><td>Nothing timing · ▶ Start… · ⚡</td><td>Start a task… · Interrupt · Lunch · Away; icon ! amber in hours</td><td>its clock (outside hours); NOTHING TIMING OK=PICK (in hours)</td><td>NOT TIMING, press = picker · INTERRUPT · blank</td></tr>
+  <tr><td><b>Timing</b> a task</td><td>❚❚ Pause · ■ Stop ▾ (✓ Done, Discard…) · ⚡ Interrupt · ⇄ Switch · ⟲ Previous</td><td>❚❚ ■ (then Stop · ✓ Done · Discard) ⚡ ⇄ ⟲</td><td>Pause · Stop · Interrupt · Switch… · Previous</td><td>wheel: INTERRUPT PAUSE PREV SWITCH STOP</td><td>press = pause, hold = picker · INTERRUPT · DONE · STOP · DISCARD</td></tr>
+  <tr><td><b>Paused</b></td><td>▶ Resume, the rest as timing · "Still paused?" once, after 30 min</td><td>❚❚ Paused · ▶ ■ ⚡ ⇄ ⟲</td><td>Resume, the rest as timing; icon ❚❚</td><td>❚❚ MG-12 · DONE ▸STOP DISCARD INTERRUPT</td><td>press = resume · INTERRUPT · DONE · STOP · DISCARD</td></tr>
+  <tr><td><b>Interruption</b> running (one or a row)</td><td>name · started ▾ (now … other) · ↩ Back to MG-12 · ⇄ Switch task… (can take the interruption with it) · ■ Stop · ⚡ Another</td><td>name · started ▾ · ↩ ↳ ⇄ ⚡ ■</td><td>↩ Back to MG-12 · Stop · Another; icon ⚡ · Ctrl+Alt+Shift+B goes back</td><td>BACK TO MG-12 · ANOTHER · SWITCH · STOP</td><td>⚡ timer · ANOTHER · BACK · STOP · DISCARD ⚡</td></tr>
+  <tr><td><b>Back?</b>: an interruption stopped, nothing runs (asked once)</td><td>↩ Back to MG-12 · ↩ Back, add the 6 min · Not now</td><td>amber, ↩ Back · ↩ Back +6m · Not now</td><td>icon ! amber</td><td>NOTHING TIMING MG-12? OK=YES</td><td>amber · INTERRUPT · BACK · NOT NOW · blank</td></tr>
+  <tr><td><b>To place</b> (beside any state)</td><td>⚡ 3 on Today · ↳ Place… · Place all 3… · Keep off Jira · Later</td><td>⚡3, ↳ on an interruption</td><td>--</td><td>3 TO PLACE IN APP; on the idle clock OK=APP</td><td>INTERRUPT key: "3 to place"; the answer keys are never taken for it</td></tr>
+  <tr><td><b>Not yours</b>: the task was reassigned</td><td>Keep timing · ↳ Move my 1h 24m… · ⇄ Switch</td><td>amber "Rin's now", ❚❚ ■ ⚡ ⇄</td><td>as timing</td><td>MG-12 &gt; RIN</td><td>NOT YOURS · DONE ANYWAY (two presses) · STOP</td></tr>
+  <tr><td><b>Stand-up</b> asked · running</td><td>joined ▾ · Join · Skip / End stand-up · "Still in it?" once, after 25 min</td><td>Join · Skip / End stand-up · Still in it?</td><td>--</td><td>OK=JOIN / OK=END</td><td>JOIN · SKIP / END STAND-UP</td></tr>
+  <tr><td><b>Lunch · Away</b> (modes) · back after</td><td>Mode chip; a Lunch or Away card, ▶ Resume · "Back at your desk?" Resume · I worked through it · Not now</td><td>same question</td><td>Lunch · Away; icon ❚❚</td><td>the mode's scene; after it, the question, OK=YES</td><td>RESUME · NOT NOW</td></tr>
+  <tr><td><b>A question during an interruption</b> (lunch, stand-up, 20 min still on it)</td><td>Start lunch / Join / Still on it · Not now / ↩ Back</td><td>same, never taking the focus</td><td>--</td><td>the question, OK=YES</td><td>A = yes · B = NOT NOW</td></tr>
+  <tr><td><b>Overnight</b> (at the next launch)</td><td>"MG-12 ran all night": when you stopped · Log and stop · Log and restart · Decide later</td><td>card until answered</td><td>toast</td><td>--</td><td>--</td></tr>
+</table></div>
+<p class="note" style="margin-top:6px">Provider-dependent cells: Done, and the move to In Progress and assignment at Start (after 2 min of timing), appear only where the provider can do them. Fetch by key takes the provider's key format.</p>
 
 <!-- ===================== FIRST RUN ===================== -->
 <h2 class="part">First run</h2>
@@ -279,9 +308,10 @@
     <div class="lab">Your email</div><div class="f">alex.moreau@studio.com</div>
     <div class="lab">API token: a password for apps, made in your Atlassian account in a minute · <u>make one</u> ↗</div><div class="f">••••••••••••••••</div>
     <div class="row" style="margin-top:10px"><span class="btn s">Test connection</span><span class="pill run">✓ Connected as Alex Moreau · 15 projects</span></div>
+    <div class="card" style="margin:12px 0 4px;padding:10px 14px"><span class="note"><b>When you start a task, should SprintTicker change it in Jira?</b> Once it has run 2 minutes: move it to In Progress, and make it yours if nobody has it.</span><div class="row" style="margin-top:8px"><span class="btn s">Yes, update Jira</span><span class="btn s">No, only time it</span><span class="note">Change it later in Settings › Account.</span></div></div>
   </div>
   <span class="ch"><b>OpenProject</b><span>Your server's address and an API key.</span></span>
-  <span class="ch"><b>Another tracker, through a SprintTicker server</b><span>Your team runs a server built to the SprintTicker Provider API. Its address and a token. Test connection reads what the server can do, and the steps it can't do disappear.</span></span>
+  <span class="ch"><b>Another tracker, through a SprintTicker server</b><span>Your team runs a server built to the SprintTicker Provider API. Its address, a token, and the name your team calls it -- the server's own name by default. That name replaces "Jira" everywhere: "Keep off Forge Tracker". Test connection reads what the server can do, and the steps it can't do disappear.</span></span>
   <span class="ch"><b>No account -- my own tasks only</b><span>Time stays on this computer. You can add an account later in Settings › Account.</span></span>
   <div class="between" style="margin-top:16px"><span class="btn g" title="Opens the app with nothing set up; run setup any time from Settings">Set up later</span><span class="btn p">Continue</span></div>
 </div></div></div>
@@ -290,10 +320,10 @@
 <section class="shot" id="S2"><h3><span class="id">S2</span>What's on your desk? <span class="changed">revised after review</span></h3>
 <p>Only a device that was found starts ticked. Ticking the Stream Deck shows "Install the plugin". If nothing is found, the step says so in one line and offers Continue.</p>
 <div class="frame"><div class="stage"><div class="dlg" style="width:580px">
-  <div class="kick">Set up · 2 of 3</div><h4>What's on your desk?</h4><p class="note">SprintTicker can show your task on a desk display and take presses from keys. Both are optional.</p>
+  <div class="kick">Set up · 2 of 3</div><h4>What's on your desk?</h4><p class="note">Optional extras: a display that shows your timer at a glance, and keys that start, stop and interrupt in one press. SprintTicker works fully without them.</p>
   <span class="ch sel"><b><span class="chk on"></span>&nbsp; A BUSY Bar</b><span>A small LED display for your desk that shows your task and time. <b style="display:inline;color:var(--green)">One was found on USB</b>, so it is ticked. <u>Mine is on Wi-Fi</u></span></span>
   <span class="ch"><b><span class="chk"></span>&nbsp; A Stream Deck</b><span>Elgato's programmable keys. Not found on this computer.</span></span>
-  <span class="ch"><b><span class="chk"></span>&nbsp; Neither</b><span>Add either one later, in Settings › Desk devices.</span></span>
+  <span class="ch"><b><span class="chk"></span>&nbsp; I have neither</b><span>Nothing to set up. Add one later, in Settings › Desk devices.</span></span>
   <div class="between" style="margin-top:14px"><span class="btn g">Back</span><span class="btn p">Continue</span></div>
 </div></div></div>
 <p class="links">"Install the plugin" opens the <code>.streamDeckPlugin</code> that ships with the app, so Stream Deck asks to install it. The line turns green once a deck connects over the app's socket. → <a href="#S3">S3</a></p></section>
@@ -303,10 +333,11 @@
 <div class="frame"><div class="stage"><div class="dlg" style="width:600px">
   <div class="kick">Set up · 3 of 3</div><h4>Your day</h4><p class="note">Change any of these later in Settings › My workday.</p>
   <div class="set"><div class="l"><b>Working days</b></div><span class="row"><span class="pill on">✓ Mon</span><span class="pill on">✓ Tue</span><span class="pill on">✓ Wed</span><span class="pill on">✓ Thu</span><span class="pill on">✓ Fri</span><span class="pill off">Sat</span><span class="pill off">Sun</span></span></div>
-  <div class="set"><div class="l"><b>Stand-up</b><span>A reminder. Join times it on your stand-up task, then goes back to what you were doing.</span></div><span class="sel2 mono">09:30</span></div>
+  <div class="set"><div class="l"><b>Stand-up</b><span>A reminder. Join times it on the task you choose here, then goes back to what you were doing.</span></div><span class="row"><span class="sel2 mono">09:30</span><span class="sel2 muted">on: Choose a task ▾</span></span></div>
   <div class="set"><div class="l"><b>Lunch</b><span>Your task pauses. After, you are asked if you are back.</span></div><span class="sel2 mono">12:30 – 13:30</span></div>
   <div class="set"><div class="l"><b>End of day</b><span>Offers to check today's time and send it.</span></div><span class="sel2 mono">17:30</span></div>
   
+  <div class="card" style="margin:12px 0 0;padding:10px 14px"><span class="note"><b>How it works.</b> One timer runs your task. When something interrupts you, ⚡ times it apart, one interruption after another. Afterwards you place each one on a task, or keep it off Jira. Time reaches Jira when you stop, after 10 s to undo.</span></div>
   <div class="between" style="margin-top:14px"><span class="btn g">Back</span><span class="btn p">Start my first task</span></div>
 </div></div></div><p class="links">→ <a href="#S4">S4</a> with the picker open</p></section>
 
@@ -316,11 +347,11 @@
 
 <section class="shot" id="S4"><h3><span class="id">S4</span>Today, first day: nothing running</h3>
 <div class="frame">
-  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
   <div class="shell"><div class="side"><div class="nav on">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main">
     <div class="card" style="padding:26px">
-      <span class="pill grey">Nothing running</span>
+      <span class="pill grey">Nothing timing</span>
       <div class="ttl" style="margin-top:8px">What are you working on?</div>
       <div class="row" style="margin-top:16px"><span class="btn go">▶ Start a task</span><span class="btn w" title="Also Ctrl+Alt+Shift+I, from any app">⚡ Interrupt</span></div>
       <p class="note" style="margin-top:14px;max-width:640px"><b>Start a task</b> times one of your Jira tasks. <b>Interrupt</b> starts timing at once, for when someone comes to your desk, and you choose the task afterwards. <br><span class="muted">From any app: <kbd>Ctrl+Alt+Shift+I</kbd> starts an interruption.</span></p>
@@ -331,13 +362,13 @@
 
 <section class="shot" id="S4b"><h3><span class="id">S4b</span>Today, the first look in the morning <span class="changed">new in v4</span></h3>
 <p>The first time the window opens on a working day, Today starts with what yesterday left. Each line is one press, and the card goes once anything starts.</p>
-<div class="frame"><div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+<div class="frame"><div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
   <div class="shell"><div class="side"><div class="nav on">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main">
     <div class="card">
       <div class="kick">Good morning · Tuesday 10 November</div>
-      <div class="between" style="margin-top:6px"><div><b>Carry on with MG-12?</b><br><span class="note">Fix the lantern glow at dusk · you stopped it at 17:31, not done</span></div><span class="btn go">▶ Continue MG-12</span></div>
-      <div class="set"><div class="l"><b>⚡ 2 interruptions from yesterday are not on a task</b><span>Call with Marc (25m) · Interruption at 14:02 (8m)</span></div><span class="btn s">Sort them…</span></div>
+      <div class="between" style="margin-top:6px"><div><b>Carry on with MG-12?</b><br><span class="note">Fix the lantern glow at dusk · you stopped it at 17:31, still open</span></div><span class="btn go">▶ Continue MG-12</span></div>
+      <div class="set"><div class="l"><b>⚡ 2 interruptions from yesterday to place</b><span>Call with Marc (25m) · Interruption at 14:02 (8m)</span></div><span class="btn s">Place them…</span></div>
       <div class="set"><div class="l"><b>Stand-up at 09:30</b><span>In 22 minutes. The reminder comes then.</span></div></div>
       <div class="set"><div class="l"><b>Your 3 tasks in progress</b><span>MG-22 Grass shader wind · PF-31 Hammer and quench sounds · SR-11 Lap timer UI</span></div><span class="btn s g">Pick another…</span></div>
     </div>
@@ -346,61 +377,75 @@
 </div></section>
 
 <section class="shot" id="S5"><h3><span class="id">S5</span>Today, a heavy day <span class="changed">revised after review</span></h3>
-<p>What changed: the LED box is labelled and only shown with a bar, the status has a word, and the "left your list" warning is back on the card. The interruptions card lists only what is not on a task yet. Each row says what it interrupted and where it was started, so it still makes sense at 18:00. Row actions are words.</p>
+<p>What changed: the LED box is labelled and only shown with a bar, the status has a word, and the "left your list" warning is back on the card. The interruptions card lists only what is still to place. Each row says what it interrupted and where it was started, so it still makes sense at 18:00. Row actions are words.</p>
 <div class="frame">
-  <div class="hdr"><span class="logo">SprintTicker</span><div><div class="led"><span>⏱</span><div><small>MG-12: Fix the lan…</small>01:24</div></div><div class="ledcap">on your BUSY Bar</div></div><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
-  <div class="shell"><div class="side"><div class="nav on">◷ Today <span class="n" title="3 interruptions not on a task yet">⚡ 3</span></div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
+  <div class="hdr"><span class="logo">SprintTicker</span><div><div class="led"><span>⏱</span><div><small>MG-12: Fix the lan…</small>01:24</div></div><div class="ledcap">on your BUSY Bar</div></div><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="shell"><div class="side"><div class="nav on">◷ Today <span class="n" title="3 interruptions to place, from any day">⚡ 3</span></div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main">
     <div class="card">
-      <div class="row"><span class="pill run">● Running</span><span class="key">MG-12 · Moonlight Garden</span><span class="tbtn">Open in Jira ↗</span></div>
+      <div class="row"><span class="pill run">● Running</span><span class="key">MG-12 · Moonlight Garden</span><span class="tbtn">Open in Jira ↗</span><span class="note" style="margin-left:auto">sent to Jira when you stop, after 10 s to undo</span></div>
       <div class="ttl">Fix the lantern glow at dusk</div>
       <div class="timer">01:24:07</div>
-      <div class="row"><span class="btn p">❚❚ Pause</span><span class="btn">■ Stop…</span><span class="btn w">⚡ Interrupt</span><span class="btn g">⇄ Switch task</span><span class="btn g" title="Switches back to the task you ran before this one">Previous task: PF-31</span></div>
+      <div class="row"><span class="btn p">❚❚ Pause</span><span class="split"><span class="btn" title="The task stays open; the time is logged">■ Stop</span><span class="btn" title="Done, or discard…">▾</span></span><span class="btn w">⚡ Interrupt</span><span class="btn g">⇄ Switch task</span><span class="btn g" title="Switches back to the task you ran before this one">Previous task: PF-31</span></div>
     </div>
     <div class="card amb">
-      <div class="between"><div><div class="kick" style="color:var(--amber)">⚡ Interruptions not on a task yet · 3 · 45m</div><span class="note">Jira gets this time once it is on a task. <b>Keep off Jira</b> keeps one in your history, never sent. Tick some to move them together.</span></div><span class="row"><span class="btn s">Sort all 3…</span><span class="btn s p">↳ Move 2 to a task…</span></span></div>
+      <div class="between"><div><div class="kick" style="color:var(--amber)">⚡ Interruptions to place · 3 · 45m</div><span class="note">Jira gets this time once it is on a task. <b>Keep off Jira</b> keeps one in your history, never sent. Tick some to place them together. ⋯ renames one, or keeps it off Jira.</span></div><span class="row"><span class="btn s">Place all 3…</span><span class="btn s p">↳ Place 2…</span></span></div>
       <table style="margin-top:8px">
-        <tr><td style="width:24px"><span class="chk on"></span></td><td>Call with Marc<div class="ctx">during MG-12 · from the Stream Deck</div></td><td class="m">25m</td><td class="m muted">10:32</td><td class="r"><span class="tbtn">Rename</span><span class="tbtn">↳ Move…</span><span class="tbtn" title="It stays in your history and is never sent">Keep off Jira</span></td></tr>
-        <tr><td><span class="chk on"></span></td><td>Build broken on PF<div class="ctx">during PF-31 · from the shortcut</div></td><td class="m">12m</td><td class="m muted">11:05</td><td class="r"><span class="tbtn">Rename</span><span class="tbtn">↳ Move…</span><span class="tbtn" title="It stays in your history and is never sent">Keep off Jira</span></td></tr>
-        <tr><td><span class="chk"></span></td><td class="t2">Interruption at 14:02 <span class="muted">· no name</span><div class="ctx">during PF-31 · from the bar</div></td><td class="m">8m</td><td class="m muted">14:02</td><td class="r"><span class="tbtn">Rename</span><span class="tbtn">↳ Move…</span><span class="tbtn" title="It stays in your history and is never sent">Keep off Jira</span></td></tr>
+        <tr><td style="width:24px"><span class="chk on"></span></td><td>Call with Marc<div class="ctx">during MG-12 · from the Stream Deck</div></td><td class="m">25m</td><td class="m muted">10:32</td><td class="r"><span class="tbtn">↳ Place…</span><span class="tbtn" title="Rename · Keep off Jira (stays in your history, never sent)">⋯</span></td></tr>
+        <tr><td><span class="chk on"></span></td><td>Build broken on PF<div class="ctx">during PF-31 · from the shortcut</div></td><td class="m">12m</td><td class="m muted">11:05</td><td class="r"><span class="tbtn">↳ Place…</span><span class="tbtn" title="Rename · Keep off Jira (stays in your history, never sent)">⋯</span></td></tr>
+        <tr><td><span class="chk"></span></td><td class="t2">Interruption at 14:02 <span class="muted">· no name</span><div class="ctx">during PF-31 · from the bar</div></td><td class="m">8m</td><td class="m muted">14:02</td><td class="r"><span class="tbtn">↳ Place…</span><span class="tbtn" title="Rename · Keep off Jira (stays in your history, never sent)">⋯</span></td></tr>
       </table>
     </div>
-    <div class="card"><div class="between"><b>Today</b><span class="row"><span style="display:inline-block;width:120px;height:6px;border-radius:3px;background:var(--raised)"><span style="display:block;width:81%;height:6px;border-radius:3px;background:#a1a1a8"></span></span><span class="note">6h 05m of 7h 30m · 5h 20m sent · 45m not on a task</span><span class="btn s g">+ Add time</span></span></div>
+    <div class="card"><div class="between"><b>Today</b><span class="row"><span style="display:inline-block;width:120px;height:6px;border-radius:3px;background:var(--raised)"><span style="display:block;width:81%;height:6px;border-radius:3px;background:#a1a1a8"></span></span><span class="note">6h 05m of 7h 30m · 5h 20m sent · 45m to place</span><span class="btn s g">+ Add time</span></span></div>
       <table style="margin-top:8px"><tr><th>Task</th><th>Note</th><th>Time</th><th>Started</th><th>Jira</th><th></th></tr>
-        <tr><td class="m">MG-12</td><td>Fix the lantern glow at dusk</td><td class="m" style="color:var(--green)">running</td><td class="m">16:11</td><td></td><td class="r"></td></tr>
-        <tr class="int"><td class="m">⚡ OPS-4</td><td>Tables balance with Marc</td><td class="m">20m</td><td class="m">15:10</td><td class="muted">sent</td><td class="r"><span class="tbtn">Correct</span><span class="tbtn">↳ Move</span><span class="tbtn">Delete…</span></td></tr>
-        <tr><td class="m">PF-31</td><td>Hammer and quench sounds</td><td class="m">1h 40m</td><td class="m">13:30</td><td class="muted">sent</td><td class="r"><span class="tbtn">Correct</span><span class="tbtn">↳ Move</span><span class="tbtn">Delete…</span></td></tr>
+        <tr><td class="m">MG-12</td><td>Fix the lantern glow at dusk</td><td class="m" style="color:var(--green)">running</td><td class="m">15:30</td><td></td><td class="r"></td></tr>
+        <tr class="int"><td class="m">⚡ OPS-4</td><td>Economy tables with Sam</td><td class="m">20m</td><td class="m">15:10</td><td class="muted">sent</td><td class="r"><span class="tbtn" title="Correct · ↳ Move · Delete…">⋯</span></td></tr>
+        <tr><td class="m">PF-31</td><td>Hammer and quench sounds</td><td class="m">1h 40m</td><td class="m">13:30</td><td class="muted">sent</td><td class="r"><span class="tbtn" title="Correct · ↳ Move · Delete…">⋯</span></td></tr>
         <tr><td colspan="6" class="muted" style="text-align:center">+ 7 more · <u>show all</u> &nbsp;·&nbsp; ⚡ marks time that started as an interruption</td></tr>
       </table></div>
   </div></div>
-</div><p class="links">Switch task → <a href="#S7">S7</a> · Stop… → <a href="#S11">S11</a> · Move → <a href="#S12">S12</a> · Correct → <a href="#S16">S16</a> · "Previous task" switches back in one press</p></section>
+</div><p class="links">Switch task → <a href="#S7">S7</a> · ■ Stop stops in one click and the task stays open; ▾ → <a href="#S11">S11</a> · ⋯ on an entry → Correct (<a href="#S16">S16</a>), ↳ Move (<a href="#S12">S12</a>), Delete · "Previous task" switches back in one press</p></section>
 
 <section class="shot" id="S5b"><h3><span class="id">S5b</span>The task you're timing was given to someone else <span class="changed">new after blind review</span></h3>
 <p>Shown the moment the sync sees it, not at Stop. The timer keeps running, since what you are doing has not changed. But Done is not offered on a task that is not yours, and every surface says so.</p>
-<div class="frame"><div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+<div class="frame"><div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
   <div class="shell" style="min-height:280px"><div class="side"><div class="nav on">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main">
-    <div class="card alert"><div class="between"><div><b>MG-12 was given to Rin Okada, 4 min ago</b><br><span class="note">Your 1h 24m so far stays on MG-12, where you did it. Keep going, or switch.</span></div><div class="row"><span class="btn s g">Keep timing on it</span><span class="btn s">↳ Move my 1h 24m…</span><span class="btn s">⇄ Switch task</span></div></div></div>
+    <div class="card alert"><div class="between"><div><b>MG-12 was given to Rin Okada, 1 min ago</b><br><span class="note">Your 1h 24m so far stays on MG-12, where you did it. Keep going, or switch.</span></div><div class="row"><span class="btn s g">Keep timing on it</span><span class="btn s">↳ Move my 1h 24m…</span><span class="btn s">⇄ Switch task</span></div></div></div>
     <div class="card"><div class="row"><span class="pill run">● Running</span><span class="key">MG-12 · Moonlight Garden</span><span class="pill wait">now Rin Okada's</span></div><div class="ttl">Fix the lantern glow at dusk</div><div class="timer">01:24:07</div>
-      <div class="row"><span class="btn p">❚❚ Pause</span><span class="btn">■ Stop…</span><span class="btn w">⚡ Interrupt</span><span class="btn g">⇄ Switch task</span></div></div>
+      <div class="row"><span class="btn p">❚❚ Pause</span><span class="split"><span class="btn" title="The task stays open; the time is logged">■ Stop</span><span class="btn" title="Done, or discard…">▾</span></span><span class="btn w">⚡ Interrupt</span><span class="btn g">⇄ Switch task</span></div></div>
   </div></div>
 </div>
-<p class="links">The same state elsewhere: the mini timer's key turns amber and reads "MG-12 · Rin's now" (S25); the bar shows "MG-12 &gt; RIN" on row 1 (S28); the Session key turns amber and reads NOT YOURS (S29). A task closed in Jira reads "closed in Jira", and Stop then logs without moving it.</p></section>
+<p class="links">The running task's owner is checked every minute, not only at the sync. The same state elsewhere: the mini timer's key turns amber and reads "MG-12 · Rin's now" (S25); the bar shows "MG-12 &gt; RIN" on row 1 (S28); the Session key turns amber and reads NOT YOURS (S29). A task closed in Jira reads "closed in Jira", and Stop then logs without moving it.</p></section>
 
 <section class="shot" id="S6"><h3><span class="id">S6</span>Paused, with the stand-up card and the mode menu open <span class="changed">revised after review</span></h3>
 <p>Nothing takes the focus. The stand-up waits on Today and in the mini timer until it is answered. If the window is hidden, a toast opens it. The mode chip opens and says what each mode does.</p>
 <div class="frame">
-  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
   <div class="shell"><div class="side"><div class="nav on">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main" style="position:relative">
     <div class="menu" style="position:absolute;right:250px;top:-6px;width:300px;z-index:2">
       <div class="hl"><b>Work</b><br><span class="note">The normal day.</span></div>
-      <div><b>Lunch</b><br><span class="note">Pauses your task, and starts it again after.</span></div>
+      <div><b>Lunch</b><br><span class="note">Pauses your task; after, asks if you are back.</span></div>
       <div><b>Away</b><br><span class="note">Pauses your task. The bar shows that you're away.</span></div>
     </div>
-    <div class="card amb"><div class="between"><div><b>Stand-up at 09:30</b><br><span class="note">MG-12 stays as it is, paused here, until you press Join. Join times the stand-up on "Daily stand-up", then MG-12 starts again.</span></div><div class="row"><span class="btn s g">Remind me in 10 min</span><span class="btn s g">Skip today</span><span class="btn s p">Join</span></div></div></div>
+    <div class="card amb"><div class="between"><div><b>Stand-up at 09:30</b><br><span class="note">MG-12 keeps running until you press Join. Join pauses it there, times the stand-up on its task, then MG-12 starts again. Joined late? Say when, and the minutes move.</span></div><div class="row"><span class="btn s g">Remind me in 10 min</span><span class="btn s g">Skip today</span><span class="sel2" title="now, 2, 5 or 10 min ago, or other…: those minutes move from MG-12 to the stand-up">joined now ▾</span><span class="btn s p">Join</span></div></div></div>
     <div class="card"><div class="row"><span class="pill wait">❚❚ Paused</span><span class="key">MG-12 · Moonlight Garden</span></div><div class="ttl">Fix the lantern glow at dusk</div><div class="timer" style="color:var(--text2)">00:42:10</div>
-      <div class="row"><span class="btn go">▶ Resume</span><span class="btn">■ Stop…</span><span class="btn w">⚡ Interrupt</span><span class="btn g">⇄ Switch task</span></div></div>
+      <div class="row"><span class="btn go">▶ Resume</span><span class="split"><span class="btn" title="The task stays open; the time is logged">■ Stop</span><span class="btn" title="Done, or discard…">▾</span></span><span class="btn w">⚡ Interrupt</span><span class="btn g">⇄ Switch task</span></div></div>
+  </div></div>
+</div>
+<p class="links">The same window at 12:40, in Lunch, and at 15:05, in Away:</p>
+<div class="frame">
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Lunch ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="shell"><div class="side"><div class="nav on">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
+  <div class="main">
+    <div class="card" style="background:#1d170b;border-color:#5a4316"><div class="between"><div><b>Lunch until 13:30</b><br><span class="note">MG-12 is paused, as it was; nothing is sent. Lunch is not timed. At 13:30 you are asked if you are back.</span></div><span class="btn s go">▶ Resume MG-12</span></div></div>
+  </div></div>
+</div><div class="frame">
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Away ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="shell"><div class="side"><div class="nav on">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
+  <div class="main">
+    <div class="card" style="background:#1d170b;border-color:#5a4316"><div class="between"><div><b>Away since 14:50</b><br><span class="note">MG-12 is paused, as it was; nothing is sent. Away is not timed, and the bar shows you are away. Leave it from here, the mode chip, the tray, the bar or the deck.</span></div><span class="btn s go">▶ Back: resume MG-12</span></div></div>
   </div></div>
 </div></section>
 
@@ -413,13 +458,14 @@
 <div class="frame"><div class="stage"><div class="dlg" style="width:580px">
   <div class="between"><h4>Switch task</h4><span class="row"><span class="note">Lists show</span><span class="pill on">✓ mine</span><span class="pill on">✓ unassigned</span><span class="pill off">teammates'</span></span></div>
   <div class="f on" style="margin:12px 0 6px">⌕ <span class="muted">Search all 452 tasks, teammates' too -- key, title or project</span></div>
+  <div class="card" style="margin:0 0 8px;padding:8px 12px"><span class="row"><span class="chk"></span><span class="note"><b>Put "Call with Marc, again" (12m) on it too</b> -- shown only when the picker opens from an interruption; unticked, it stays to place</span></span></div>
   <div class="opt sel"><span class="k">PF-31</span>Hammer and quench sounds<span class="pr">previous task</span></div>
   <div class="grp"><span>Recent</span></div>
-  <div class="opt"><span class="k">MG-15</span>Boids, first pass<span class="pr">Moonlight Garden · in progress · 40m today</span></div>
+  <div class="opt"><span class="k">MG-15</span>Boids, first pass<span class="pr">Moonlight Garden · in progress · 40m today <span class="star" style="opacity:.6" title="Star it">☆</span></span></div>
   <div class="opt"><span class="k">SR-8</span>Boost trail shader<span class="pr">Starlight Racer · 15m today</span></div>
   <div class="opt"><span class="k">TP-3</span>Tide pool spawn rules<span class="pr">Tide Pool</span></div>
   <div class="opt muted">+ 3 more recent</div>
-  <div class="grp"><span>Starred ★</span><span>click ☆ on any task to star it</span></div>
+  <div class="grp"><span>Starred ★</span><span>hover a task, click its ☆</span></div>
   <div class="opt"><span class="k">OPS-4</span><span class="star">★</span> Team discussions and meetings<span class="pr">Studio Ops</span></div>
   <div class="opt"><span class="k">PF-2</span><span class="star">★</span> Pixel Forge -- support and questions<span class="pr">Pixel Forge</span></div>
   <div class="grp"><span>Assigned to me · open</span><span>14 in 6 projects</span></div>
@@ -448,7 +494,7 @@
   <div class="opt"><span class="k">TP-9</span>Crab pathing near rocks<span class="pr">high · Tide Pool</span></div>
   <div class="opt"><span class="k">MG-14</span>Pond ripple shader<span class="pr">medium · Moonlight Garden</span></div>
   <div class="opt muted">+ 8 more</div>
-  <div class="between" style="margin-top:8px"><span class="note">The bar's picker offers the same list as MINE, after RECENT</span><span class="tbtn">Refresh from Jira</span></div>
+  <div class="between" style="margin-top:8px"><span class="note">The bar's picker offers the same list as MINE, after RECENT and STARRED</span><span class="tbtn">Refresh from Jira</span></div>
 </div></div></div>
 <p class="links">The order is the one the lists already use (<code>shared/task-order.ts</code>: yours first, then status, then <code>priorityRank</code>, which the Jira sync already reads). What is new is the list across projects.</p></section>
 
@@ -457,7 +503,7 @@
 <div class="frame"><div class="stage"><div class="dlg" style="width:600px">
   <div class="between"><h4>Switch task</h4><span class="row"><span class="note">Lists show</span><span class="pill on">✓ mine</span><span class="pill on">✓ unassigned</span><span class="pill off">teammates'</span></span></div>
   <div class="f on" style="margin:12px 0 6px;display:flex;gap:8px;align-items:center"><span class="chip">Pixel Forge ▾ &nbsp;✕</span><span class="muted">Search in Pixel Forge</span></div>
-  <div class="row" style="margin:4px 0 8px"><span class="note">41 tasks:</span><span class="pill on">✓ 3 in progress</span><span class="pill on">✓ 12 to do</span><span class="pill off">26 done</span><span class="note">· 14 left are yours</span></div>
+  <div class="row" style="margin:4px 0 8px"><span class="note">41 tasks:</span><span class="pill on">✓ 3 in progress</span><span class="pill on">✓ 12 to do</span><span class="pill off">26 done</span><span class="note">· 4 left are yours</span></div>
   <div class="grp"><span>In progress</span><span>3</span></div>
   <div class="opt sel"><span class="k">PF-31</span>Hammer and quench sounds<span class="pr">mine · 1h 40m today</span></div>
   <div class="opt"><span class="k">PF-36</span>Ember particles<span class="pr">mine</span></div>
@@ -492,7 +538,7 @@
 <div class="frame"><div class="stage"><div class="dlg" style="width:560px">
   <div class="f on" style="margin-bottom:8px">› sort</div>
   <div class="grp"><span>Actions</span></div>
-  <div class="opt sel"><span class="k">⚡</span>Sort interruptions not on a task<span class="pr">3 today</span></div>
+  <div class="opt sel"><span class="k">⚡</span>Place interruptions<span class="pr">3 today</span></div>
   <div class="opt"><span class="k">⇥</span>Check my week<span class="pr"></span></div>
   <div class="grp"><span>Tasks</span></div>
   <div class="opt"><span class="k">PF-2</span>Pixel Forge -- support and questions<span class="pr">switch to it</span></div>
@@ -506,36 +552,43 @@
 <section class="shot" id="S9"><h3><span class="id">S9</span>An interruption running <span class="changed">revised after review</span></h3>
 <p>What changed: ending it is <b>Back to MG-12</b>, never Done. The task chips only choose where the time goes, and the timer keeps running, as the line under them says. The name is a note sent with the time.</p>
 <div class="frame">
-  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
-  <div class="shell" style="min-height:300px"><div class="side"><div class="nav on">◷ Today <span class="n" title="3 interruptions not on a task yet">⚡ 3</span></div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="shell" style="min-height:300px"><div class="side"><div class="nav on">◷ Today <span class="n" title="3 interruptions to place, from any day">⚡ 3</span></div><div class="nav">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main">
     <div class="card amb">
-      <div class="row"><span class="pill run">● Running</span><span class="pill wait">⚡ Interruption</span><span class="note">MG-12 is held and logged so far; you go back to it as it was, running or paused</span></div>
-      <div class="row" style="justify-content:space-between"><div class="lab">What is it about? Jira shows it as the note.</div><div class="lab">Started <span class="sel2">5 min ago ▾</span> <span class="muted">-- taken off MG-12</span></div></div>
+      <div class="row"><span class="pill run">● Running</span><span class="pill wait">⚡ Interruption</span><span class="note">MG-12 waits, as it was: nothing is sent. ↩ Back returns to it, running or paused.</span></div>
+      <div class="row" style="justify-content:space-between"><div class="lab">What is it about? Jira shows it as the note.</div><div class="lab">Started <span class="sel2" title="now, 2, 5 or 10 min ago, or other…: any time since MG-12 started">now ▾</span> <span class="muted" title="Never earlier than MG-12's start: the minutes come off MG-12, which was running, so nothing is counted twice">-- set it earlier, and those minutes come off MG-12</span></div></div>
       <div class="f on" style="font-size:15px;color:var(--text)">Call with Marc</div>
-      <div class="lab">Which task is it for? You choose, now or when you are back.</div><div class="row"><span class="btn s">Choose a task…</span><span class="btn s g">Later</span></div>
-      <div class="timer">00:04:32</div>
-      <div class="row"><span class="btn p">↩ Back to MG-12</span><span class="btn">■ Stop</span><span class="btn w">⚡ Another interruption</span></div>
+      <div class="lab">Which task is it for? You choose, now or when you are back.</div><div class="row"><span class="btn s">Choose a task…</span><span class="btn s g" title="It waits on Today, in End my day and in the week until it is placed">Later</span><span class="note">Later: it waits on Today until placed.</span></div>
+      <div class="card" style="margin:10px 0 0;padding:10px 14px;background:#1d170b;border-color:#5a4316"><div class="between"><span class="note"><b>Your first interruption.</b> Its time comes off MG-12. When it ends, put it on a task, leave it for later, or keep it off Jira; several can be placed at once. Nothing goes to Jira until you choose its task.</span><span class="btn s g">Got it</span></div></div>
+      <div class="timer">00:00:32</div>
+      <div class="row"><span class="btn p">↩ Back to MG-12</span><span class="btn">⇄ Switch task…</span><span class="btn">■ Stop</span><span class="btn w" title="Ends this one, which waits to be placed, and starts the next">⚡ Another interruption</span></div>
     </div>
   </div></div>
-</div><p class="links">↩ ends it, on the task you clicked or not placed yet, and resumes MG-12 in one press · ■ Stop ends it and leaves nothing running → <a href="#S10">S10</a> · Another interruption → <a href="#S9b">S9b</a></p></section>
+</div><p class="links">↩ ends it, on the task you clicked or not placed yet, and resumes MG-12 in one press · ■ Stop ends it and leaves nothing running → <a href="#S10">S10</a> · ⇄ Switch task ends it and starts a task from the picker (<a href="#S7">S7</a>); MG-12 stops (it stays open), its time logged · ⚡ Another ends this one and starts the next → <a href="#S9b">S9b</a> · The "first interruption" line shows once.</p></section>
 
-<section class="shot" id="S9b"><h3><span class="id">S9b</span>An interruption of an interruption <span class="changed">new after review</span></h3>
-<p>Today only the first task set aside is kept, so ending the second interruption skipped the first. Here the way back is a list, and either step is one press.</p>
+<section class="shot" id="S9b"><h3><span class="id">S9b</span>Interruptions in a row <span class="changed">reworked: one after another, never stacked</span></h3>
+<p>Marc comes to talk; while he is there Ana comes; Ana leaves and the talk with Marc goes on; Marc leaves. Each ⚡ Another closes the fragment running and starts the next, so the morning leaves three fragments, each placed on its own task. Back always returns to the task you were on, never to an earlier fragment.</p>
 <div class="frame"><div class="stage">
-  <div class="card amb" style="width:620px">
-    <div class="row"><span class="pill run">● Running</span><span class="pill wait">⚡ Interruption</span><span class="key">00:02:10</span></div>
-    <div class="f on" style="margin-top:10px;color:var(--text)">Build broken on PF</div>
-    <div class="lab">Go back to</div>
-    <div class="row"><span class="btn p">↩ Back to "Call with Marc"</span><span class="btn">End both, back to MG-12</span></div>
+  <div class="card amb" style="width:640px">
+    <div class="row"><span class="pill run">● Running</span><span class="pill wait">⚡ Interruption 3 of 3</span><span class="note">MG-12 waits as it was</span></div>
+    <div class="f on" style="margin-top:10px;color:var(--text)">Call with Marc, again</div>
+    <table style="margin-top:8px">
+      <tr><td class="m muted">1</td><td>Call with Marc</td><td class="m muted">16:02–16:10</td><td class="m">8m</td><td class="r muted">waits to be placed</td></tr>
+      <tr><td class="m muted">2</td><td>Ana's question</td><td class="m muted">16:10–16:15</td><td class="m">5m</td><td class="r muted">waits to be placed</td></tr>
+      <tr><td class="m muted">3</td><td>Call with Marc, again</td><td class="m muted">since 16:15</td><td class="m" style="color:var(--amber)">running</td><td class="r"></td></tr>
+    </table>
+    <div class="timer">00:12:04</div>
+    <div class="row"><span class="btn p">↩ Back to MG-12</span><span class="btn">⇄ Switch task…</span><span class="btn">■ Stop</span><span class="btn w" title="Ends this one, which waits to be placed, and starts the next">⚡ Another interruption</span></div>
   </div>
-</div></div></section>
+</div></div>
+<p class="links">↩ ends the third and resumes MG-12 as it was; the three wait to be placed (<a href="#S12b">S12b</a>) · ⇄ Switch task ends it and starts a more urgent task from the picker (<a href="#S7">S7</a>); MG-12 stops and stays open · The bar, the deck, the mini timer and the shortcut do the same: ⚡ during an interruption always starts the next one.</p></section>
 
-<section class="shot" id="S10"><h3><span class="id">S10</span>Nothing running: back to MG-12? <span class="changed">revised after review</span></h3>
+<section class="shot" id="S10"><h3><span class="id">S10</span>Nothing timing: back to MG-12? <span class="changed">revised after review</span></h3>
 <p>If nobody answers for 10 minutes in working hours, a toast asks once more, and the tray icon stays amber. Shown when an interruption ends any other way than ↩, from the bar, the deck or ■ Stop. Prompts no longer take the focus, so this state is made loud everywhere until it is answered: an amber stripe on the mini timer, the question kept on the bar, the Session key amber. Otherwise untracked time slips through.</p>
 <div class="frame"><div class="stage" style="flex-direction:column;align-items:center;gap:14px">
-  <div class="card alert" style="width:620px"><div class="between"><div><b>Nothing is running. Back to MG-12?</b><br><span class="note">Fix the lantern glow at dusk · paused 6 min ago for "Call with Marc". The 6 min since stay untracked; add them with Add time if they were work</span></div><div class="row"><span class="btn s g">Stay stopped</span><span class="btn s p">↩ Resume MG-12</span></div></div></div>
-  <div class="card alert" style="width:620px"><div class="between"><div><b>"Call with Marc" is not on a task yet</b><br><span class="note">Put it on one now, while you remember?</span></div><div class="row"><span class="btn s">Choose a task…</span><span class="btn s g">Later</span></div></div></div>
+  <div class="card alert" style="width:620px"><div class="between"><div><b>Nothing is running. Back to MG-12?</b><br><span class="note">Fix the lantern glow at dusk · paused 6 min ago for "Call with Marc". The 6 min since are untracked unless you add them.</span></div><div class="row"><span class="btn s g" title="Not asked again; the tray stays amber while nothing times in working hours">Not now</span><span class="btn s">↩ Back to MG-12</span><span class="btn s">↩ Back, add the 6 min</span></div></div></div>
+  <div class="card alert" style="width:620px"><div class="between"><div><b>"Call with Marc" is still to place</b><br><span class="note">Put it on one now, while you remember?</span></div><div class="row"><span class="btn s">Choose a task…</span><span class="btn s g" title="It waits on Today, in End my day and in the week until it is placed">Later</span></div></div></div>
 </div></div></section>
 
 <!-- ===================== ENDING, SORTING, CORRECTING ===================== -->
@@ -544,46 +597,52 @@
 
 <section class="shot" id="S11"><h3><span class="id">S11</span>Stop <span class="changed">revised after review</span></h3>
 <div class="frame"><div class="stage"><div class="dlg">
-  <h4>Stop MG-12</h4><p class="note">The 1h 24m is logged either way, and sent to Jira.</p>
-  <span class="ch sel"><b>○ Not done</b><span>The task stays open for later.</span></span>
-  <span class="ch"><b style="color:var(--green)">○ Done</b><span>Jira moves it to "To Review".</span></span>
-  <span class="ch"><b style="color:var(--red)">○ Discard</b><span>Nothing is kept or sent.</span></span>
-  <div class="between" style="margin-top:12px"><span class="btn g">Cancel, keep it running</span><span class="btn p">Stop -- not done</span></div>
+  <span class="split"><span class="btn">■ Stop</span><span class="btn" style="border-color:var(--text2)">▴</span></span>
+  <div class="menu" style="margin-top:6px;min-width:420px;white-space:nowrap"><div><b style="color:var(--green)">✓ Done</b> <span class="muted">-- logs 1h 24m, Jira moves it to "To Review"</span></div><div><b style="color:var(--red)">Discard…</b> <span class="muted">-- nothing kept or sent</span></div></div>
 </div>
-<div class="dlg" style="width:340px"><h4>Discard 1h 24m?</h4><p class="note">Nothing of this session is kept or sent. It cannot be undone.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><span class="btn g">Keep it</span><span class="btn d">Discard 1h 24m</span></div></div>
+<div class="dlg" style="width:340px"><h4>Discard 1h 24m?</h4><p class="note">Nothing of this session is kept or sent. Undo stays on the toast for 10 s.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><span class="btn g">Keep it</span><span class="btn d">Discard 1h 24m</span></div></div>
 <div class="dlg"><h4>Done -- but MG-12 is no longer yours</h4><p class="note">Rin Okada was given it while you worked on it. Marking it done moves their task to "To Review".</p>
-  <div class="row" style="justify-content:flex-end;margin-top:14px"><span class="btn g">Back</span><span class="btn">Stop -- not done</span><span class="btn p">Mark it done anyway</span></div></div>
-</div></div><p class="links">An interruption on a shared task like OPS-4 never offers Done, so a catch-all can't be moved to "To Review" by mistake.</p></section>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><span class="btn g">Back</span><span class="btn">Stop</span><span class="btn p">Mark it done anyway</span></div></div>
+</div></div><p class="links">▾ beside "Stop" opens this short menu: Done is two clicks, Discard asks once more. The time of either is sent after the 10 s undo. An interruption on a shared task like OPS-4 never offers Done, so a catch-all can't be moved to "To Review" by mistake.</p></section>
 
-<section class="shot" id="S12"><h3><span class="id">S12</span>Move to a task… <span class="changed">revised: no suggested task</span></h3>
+<section class="shot" id="S12"><h3><span class="id">S12</span>Place on a task… <span class="changed">revised: no suggested task</span></h3>
 <p>The picker in its third mode. Nothing is suggested or preselected: an interruption can be about anything, so you choose the project and the task. The button names the task only once you have picked it.</p>
 <div class="frame"><div class="stage"><div class="dlg" style="width:580px">
-  <h4>Move "Call with Marc" to a task</h4><p class="note">25m · 10:32 · during MG-12. Its note goes to Jira with it.</p>
+  <h4>Place "Call with Marc" on a task</h4><p class="note">25m · 10:32 · during MG-12. Its note goes to Jira with it.</p>
   <div class="f on" style="margin:10px 0 6px">⌕ <span class="muted">Search tasks, or type a project key and a space</span></div>
+  <div class="grp"><span>Starred ★</span><span>your usual places for time · ☆ on any task stars it</span></div>
+  <div class="opt"><span class="k">OPS-4</span><span class="star">★</span> Team discussions and meetings<span class="pr">Studio Ops</span></div>
+  <div class="opt"><span class="k">PF-2</span><span class="star">★</span> Pixel Forge -- support and questions<span class="pr">Pixel Forge</span></div>
+  <div class="opt"><span class="k">MG-7</span><span class="star">★</span> Lantern art review<span class="pr">Moonlight Garden</span></div>
   <div class="grp"><span>Recent</span></div>
   <div class="opt"><span class="k">PF-31</span>Hammer and quench sounds<span class="pr">Pixel Forge</span></div>
   <div class="opt"><span class="k">MG-12</span>Fix the lantern glow at dusk<span class="pr">Moonlight Garden · the task it interrupted</span></div>
-  <div class="grp"><span>Starred ★</span></div>
-  <div class="opt"><span class="k">OPS-4</span><span class="star">★</span> Team discussions and meetings<span class="pr">Studio Ops</span></div>
   <div class="grp"><span>All projects · starred first, then most used</span><span>15</span></div><div class="opt muted">▸ Moonlight Garden · ▸ Pixel Forge · … 13 more</div>
   <div class="between" style="margin-top:12px"><span class="btn g">Keep off Jira</span><span class="row"><span class="btn g">Cancel</span><span class="btn p" style="opacity:.45">Choose a task</span></span></div>
 </div></div></div>
-<p class="links">Several ticked rows can go to one task, but only one you pick for them; nothing is preselected.</p></section>
+<p class="links">Several ticked rows can go to one task, but only one you pick for them; nothing is preselected. The same picker moves an entry already on a task, as ↳ Move.</p></section>
 
-<section class="shot" id="S12b"><h3><span class="id">S12b</span>Sort interruptions <span class="changed">revised: no suggested task</span></h3>
-<p>From "Sort all…" on Today, the morning card, End my day and the week. Each interruption has its own row and its own choice. Rows keep their context so they can still be told apart at 18:00. One you leave is not sent.</p>
-<div class="frame"><div class="stage"><div class="dlg" style="width:640px">
-  <h4>Sort 6 interruptions · 1h 20m</h4><p class="note">Choose a task for each, or keep one off Jira. Leave one, and it waits here.</p>
+<section class="shot" id="S12b"><h3><span class="id">S12b</span>Place interruptions <span class="changed">revised: no suggested task</span></h3>
+<p>From "Place all…" on Today, the morning card, End my day and the week. Each interruption has its own row and its own choice. Rows keep their context, and fragments of one run say which came before, so they can still be told apart at 18:00. One you leave is not sent.</p>
+<div class="frame"><div class="stage"><div class="dlg" style="width:660px">
+  <h4>Place 4 interruptions · 33m</h4><p class="note">Choose a task for each, or keep one off Jira. Leave one, and it waits here.</p>
   <table>
-    <tr><td>Call with Marc<div class="ctx">10:32 · 25m · during MG-12</div></td><td class="r"><span class="sel2">MG-7 Lantern art review ▾</span></td></tr>
-    <tr><td>Lantern colours with Ana<div class="ctx">11:40 · 12m · during MG-12</div></td><td class="r"><span class="sel2 muted">Choose a task ▾</span></td></tr>
-    <tr><td>Build broken on PF<div class="ctx">11:05 · 12m · during PF-31 · from the shortcut</div></td><td class="r"><span class="sel2">PF-45 CI build fix ▾</span></td></tr>
+    <tr><td>Call with Marc<div class="ctx">16:02 · 8m · during MG-12</div></td><td class="r"><span class="sel2">MG-19 Firefly timing ▾</span></td></tr>
+    <tr><td>Ana's question<div class="ctx">16:10 · 5m · during MG-12 · after "Call with Marc"</div></td><td class="r"><span class="sel2">PF-2 Pixel Forge -- support ▾</span></td></tr>
+    <tr><td>Call with Marc, again<div class="ctx">16:15 · 12m · during MG-12 · after "Ana's question"</div></td><td class="r"><span class="sel2 muted" style="border-color:var(--text2)">Choose a task ▴</span></td></tr>
+    <tr><td colspan="2" style="padding:0 0 8px"><div class="card" style="margin:0 0 0 auto;width:380px;padding:8px 10px">
+      <div class="grp" style="margin-top:0"><span>Starred ★</span><span>8 shown · ▸ all 11</span></div>
+      <div class="opt"><span class="k">OPS-4</span><span class="star">★</span> Team discussions and meetings</div>
+      <div class="opt"><span class="k">PF-2</span><span class="star">★</span> Pixel Forge -- support and questions</div>
+      <div class="opt muted">… 6 more starred</div>
+      <div class="grp"><span>Recent</span><span>just chosen first</span></div>
+      <div class="opt"><span class="k">MG-19</span>Firefly timing<span class="pr">just chosen for "Call with Marc"</span></div>
+      <div class="opt"><span class="k">PF-31</span>Hammer and quench sounds</div>
+      <div class="opt t2">⌕ Search all tasks…</div><div class="opt t2">Keep off Jira</div></div></td></tr>
     <tr><td>Interruption at 14:02<div class="ctx">8m · during PF-31 · from the bar · <u>name it</u></div></td><td class="r"><span class="sel2 muted">Choose a task ▾</span></td></tr>
-    <tr><td>Forge save bug<div class="ctx">15:20 · 15m · during PF-31</div></td><td class="r"><span class="sel2 muted">Choose a task ▾</span></td></tr>
-    <tr><td>Interruption at 16:40<div class="ctx">8m · during MG-12 · from the Stream Deck · <u>name it</u></div></td><td class="r"><span class="tbtn">Keep off Jira</span></td></tr>
   </table>
-  <p class="note" style="margin:8px 0 0">An unnamed one asks for a name when you choose its task: Jira would otherwise show "Interruption at 14:02" as the note.</p>
-  <div class="between" style="margin-top:12px"><span class="note">2 chosen · 1 kept off Jira · 3 left</span><span class="row"><span class="btn g">Close</span><span class="btn p">Move the 2 chosen · 37m</span></span></div>
+  <p class="note" style="margin:8px 0 0">Each row's menu opens on your starred tasks, then the recent ones, with the tasks just chosen above first: a talk that came back is one click from its first part. Nothing is chosen until you click. An unnamed one asks for a name when you choose its task: Jira would otherwise show "Interruption at 14:02" as the note.</p>
+  <div class="between" style="margin-top:12px"><span class="note">2 chosen · 2 left</span><span class="row"><span class="btn g">Close</span><span class="btn p">Place the 2 chosen · 13m</span></span></div>
 </div></div></div></section>
 
 <section class="shot" id="S16"><h3><span class="id">S16</span>Correct an entry <span class="changed">revised after review</span></h3>
@@ -593,7 +652,7 @@
   <div class="card alert" style="padding:8px 12px;margin:6px 0 4px"><span class="note" style="color:var(--amber)">This entry is in last week, which closed Friday at 17:30. Your manager may have seen it. Saving changes it in Jira too.</span></div>
   <div class="row"><div><div class="lab">Duration</div><div class="row"><div class="f" style="width:80px">2 h</div><div class="f" style="width:90px">10 min</div></div></div><div style="flex:1"><div class="lab">Started</div><div class="f">Fri 6 Nov, 09:02</div></div></div>
   <div class="lab">Note, shown in Jira</div><div class="f">Anvil sound pass</div>
-  <p class="note" style="margin-top:10px">Ends at 11:12. To put it on another task, use ↳ Move.</p>
+  <p class="note" style="margin-top:10px">Ends at 11:12. To put it on another task, use ↳ Move. A change that would overlap another entry says so here before Save, as Add time does; saved anyway, the entry waits, unsent, until the overlap is gone.</p>
   <div class="between" style="margin-top:12px"><span class="row"><span class="btn d s">Delete this entry…</span><span class="btn s g">Split in two…</span></span><span class="row"><span class="btn g">Cancel</span><span class="btn p">Save the change</span></span></div>
 </div></div></div></section>
 
@@ -604,8 +663,8 @@
   <div class="lab">Task</div><div class="f">⌕ <span class="muted">Search, or pick a recent task</span></div>
   <div class="row"><div><div class="lab">Duration</div><div class="row"><div class="f" style="width:80px">0 h</div><div class="f" style="width:90px">30 min</div></div></div><div style="flex:1"><div class="lab">Started</div><div class="f">Mon 9 Nov, 08:30</div></div></div>
   <div class="lab">Note, shown in Jira</div><div class="f"><span class="muted">What you did</span></div>
-  <p class="note" style="margin-top:10px">It must not overlap time already logged. If it does, the overlap is shown here before you can save.</p>
-  <div class="row" style="justify-content:flex-end;margin-top:12px"><span class="btn g">Cancel</span><span class="btn p">Add 30m</span></div>
+  <div class="card alert" style="padding:8px 12px;margin:10px 0 0"><span class="note" style="color:var(--amber)">Overlaps PF-31, which starts at 08:45. <u>End it at 08:45 (15m)</u> or change the times.</span></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><span class="btn g">Cancel</span><span class="btn p" style="opacity:.45">Add 30m</span></div>
 </div></div></div></section>
 
 <section class="shot" id="S16c"><h3><span class="id">S16c</span>Split an entry in two <span class="changed">new in v4</span></h3>
@@ -628,28 +687,29 @@
 <section class="shot" id="S17"><h3><span class="id">S17</span>End my day <span class="changed">revised after review</span></h3>
 <p>Each interruption is placed by you, one by one, here or later; nothing is suggested. The totals match Today. Shutting down is a separate, explicit choice. The bar and the deck keep their two-press confirm.</p>
 <div class="frame"><div class="stage"><div class="dlg" style="width:620px">
-  <h4>End my day -- Monday 9 November</h4><p class="note">7h 50m logged · 7h 05m sent to Jira · 45m not on a task</p>
-  <div class="card amb" style="margin-top:10px;padding:12px 14px"><div class="between"><b>⚡ 3 interruptions not on a task · 45m</b><span class="btn s">Sort them…</span></div><table style="margin-top:6px"><tr><td>Call with Marc <span class="ctx">10:32 · during MG-12</span></td><td class="m">25m</td><td class="r"><span class="sel2 muted">Choose a task ▾</span></td></tr><tr><td>Build broken on PF <span class="ctx">11:05 · during PF-31</span></td><td class="m">12m</td><td class="r"><span class="sel2 muted">Choose a task ▾</span></td></tr><tr><td>Interruption at 14:02 <span class="ctx">from the bar · during PF-31</span></td><td class="m">8m</td><td class="r"><span class="sel2 muted">Choose a task ▾</span></td></tr></table><p class="note" style="margin:6px 0 0">Each one is sent once you choose its task. Those you leave stay here, unsent, and the morning card and the week list them.</p></div>
+  <h4>End my day -- Monday 9 November</h4><p class="note">7h 50m logged · 5h 20m sent to Jira · 1h 45m to send · 45m to place</p>
+  <div class="card amb" style="margin-top:10px;padding:12px 14px"><div class="between"><b>⚡ 3 interruptions to place · 45m</b><span class="btn s">Place them…</span></div><table style="margin-top:6px"><tr><td>Call with Marc <span class="ctx">10:32 · during MG-12</span></td><td class="m">25m</td><td class="r"><span class="sel2 muted" title="Opens on your starred tasks; any task, or Keep off Jira">Choose a task ▾</span></td></tr><tr><td>Build broken on PF <span class="ctx">11:05 · during PF-31</span></td><td class="m">12m</td><td class="r"><span class="sel2 muted" title="Opens on your starred tasks; any task, or Keep off Jira">Choose a task ▾</span></td></tr><tr><td>Interruption at 14:02 <span class="ctx">from the bar · during PF-31</span></td><td class="m">8m</td><td class="r"><span class="sel2 muted" title="Opens on your starred tasks; any task, or Keep off Jira">Choose a task ▾</span></td></tr></table><p class="note" style="margin:6px 0 0">Each one is sent once you choose its task. Those you leave stay here, unsent, and the morning card and the week list them.</p></div>
   <table style="margin-top:10px"><tr><th>Task</th><th>Time</th><th>Jira</th></tr>
     <tr><td><span class="mono">PF-31</span> Hammer and quench sounds</td><td class="m">1h 40m</td><td class="muted">sent</td></tr>
-    <tr><td><span class="mono">MG-12</span> Fix the lantern glow at dusk</td><td class="m">1h 24m</td><td class="t2">running · sent when it stops, here at the end of the day</td></tr>
-    <tr><td colspan="3" class="muted">+ 8 more</td></tr></table>
-  <div class="set"><div class="l"><b>2 untracked gaps (40m) and 1 overlap today</b><span>09:00-09:30 and 15:10-15:30 · PF-31 and OPS-4 at 14:00 · only a hint: nothing here stops you ending the day</span></div><span class="row"><span class="btn s g">Skip</span><span class="btn s">Check them…</span></span></div>
-  <p class="note" style="margin:10px 0 4px">Ending your day stops the timer and sends everything on a task at once, without the 10 s undo. Anything Jira refuses stays here, and tomorrow says so.</p>
-  <div class="row" style="margin:6px 0"><span class="chk"></span><span class="note">Then shut down the PC, once Jira has answered (30 s to cancel)</span></div>
-  <div class="between" style="margin-top:8px"><span class="btn g">Later</span><span class="btn p">End my day · send 7h 05m · 45m stays here</span></div>
+    <tr><td><span class="mono">MG-12</span> Fix the lantern glow at dusk</td><td class="m">1h 45m</td><td class="t2">running · stops, stays open, and is sent</td></tr>
+    <tr><td colspan="3" class="muted">8 more below · every entry is listed, nothing folded, before anything is sent</td></tr></table>
+  <div class="set"><div class="l"><b>2 untracked gaps today (40m)</b><span>09:00-09:30 and 12:20-12:30 · only a hint: a gap never stops you ending the day. An overlap would show here too, and its entry waits, unsent, until it is fixed.</span></div><span class="row"><span class="btn s g">Skip</span><span class="btn s">Check them…</span></span></div>
+  <p class="note" style="margin:10px 0 4px">Ending your day stops MG-12 (it stays open in Jira) and sends everything on a task after the 10 s undo, like any send. Anything Jira refuses stays here, and tomorrow says so.</p>
+  <div class="row" style="margin:6px 0"><span class="chk"></span><span class="note">Optional: then shut down the PC, once the undo has passed and Jira has answered (30 s to cancel). Never ticked for you.</span></div>
+  <div class="between" style="margin-top:8px"><span class="btn g">Later</span><span class="btn p">End my day · send 1h 45m · 45m left to place</span></div>
 </div></div></div></section>
 
 <section class="shot" id="S18"><h3><span class="id">S18</span>A session left running overnight <span class="changed">revised after review</span></h3>
 <p>All of today's answers are kept, including "at the end of that day". Decide later keeps the timer paused at your last activity, and asks again as a card on Today and the mini timer, not every minute.</p>
 <div class="frame"><div class="stage"><div class="dlg" style="width:560px">
   <h4>MG-12 ran all night</h4><p class="note">You were last active yesterday at 18:04. The timer is paused there until you say.</p>
-  <span class="ch sel"><b>○ I stopped at 18:04, my last activity</b><span>Logs 4h 10m, yesterday.</span></span>
+  <span class="ch sel"><b>● I stopped at 18:04, my last activity</b><span>Logs 4h 10m, yesterday.</span></span>
   <span class="ch"><b>○ I stopped at the end of my day, 17:30</b><span>Logs 3h 36m.</span></span>
   <span class="ch"><b>○ At another time…</b></span>
   <span class="ch"><b>○ I was working all along</b><span style="color:var(--amber)">Logs 18h 40m, to now -- the whole night.</span></span>
-  <span class="ch"><b style="color:var(--red)">○ Discard it</b></span>
-  <div class="between" style="margin-top:12px"><span class="btn g">Decide later</span><span class="row"><span class="btn">Log and stop</span><span class="btn p">Log and restart MG-12</span></span></div>
+  <span class="ch"><b style="color:var(--red)">○ Discard it</b><span>Nothing kept or sent. 10 s to undo.</span></span>
+  <div class="between" style="margin-top:12px"><span class="row"><span class="btn g">Decide later</span><span class="btn g">Log and restart MG-12</span></span><span class="btn p">Log and stop</span></div>
+  <p class="note" style="margin:8px 0 0">Decide later: the timer stays paused at 18:04, nothing is logged, and Today and the mini timer keep this question until you answer.</p>
 </div></div></div></section>
 
 <!-- ===================== TASKS / HISTORY ===================== -->
@@ -658,7 +718,7 @@
 <section class="shot" id="S13"><h3><span class="id">S13</span>Tasks <span class="changed">revised after review</span></h3>
 <p>Projects are searchable and starrable, and show what is open. Tasks are a sortable table with filters that show their state. A project's ⋯ holds Import, Rename and Delete. Only tasks of your own can be deleted, and deleting asks first.</p>
 <div class="frame">
-  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
   <div class="shell"><div class="side"><div class="nav">◷ Today</div><div class="nav on">☰ Tasks</div><div class="nav">↺ History</div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main" style="display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start">
     <div class="card" style="padding:12px">
@@ -674,29 +734,29 @@
       <div class="between"><div><b>Moonlight Garden</b> <span class="note">· from Jira · 34 tasks</span></div><span class="row"><span class="btn s">+ Task of my own</span><span class="btn s g">⋯</span></span></div>
       <div class="row" style="margin:10px 0"><div class="f" style="flex:1">⌕ Search this project</div><span class="pill on">✓ mine</span><span class="pill on">✓ unassigned</span><span class="pill off">teammates'</span><span class="sel2">Open ▾</span></div>
       <table><tr><th></th><th>Key</th><th>Title</th><th>Jira status</th><th>Who</th><th></th></tr>
-        <tr><td class="star">★</td><td class="m">MG-12</td><td>Fix the lantern glow at dusk <span class="pill run">timing</span></td><td class="t2">In Progress</td><td class="t2">me</td><td class="r"><span class="btn s">Stop…</span></td></tr>
+        <tr><td class="star">★</td><td class="m">MG-12</td><td>Fix the lantern glow at dusk <span class="pill run">timing</span></td><td class="t2">In Progress</td><td class="t2">me</td><td class="r"><span class="btn s">Stop</span></td></tr>
         <tr><td class="muted">☆</td><td class="m">MG-22</td><td>Grass shader wind</td><td class="t2">In Progress</td><td class="t2">me</td><td class="r"><span class="btn s">Switch</span></td></tr>
         <tr><td class="muted">☆</td><td class="m">MG-14</td><td>Pond ripple shader</td><td class="t2">To Do</td><td class="t2">me</td><td class="r"><span class="btn s">Switch</span></td></tr>
-        <tr><td class="muted">☆</td><td class="m">MG-15</td><td>Firefly flocking</td><td class="t2">To Do</td><td class="muted">nobody</td><td class="r"><span class="btn s">Switch</span></td></tr>
+        <tr><td class="muted">☆</td><td class="m">MG-25</td><td>Firefly flocking</td><td class="t2">To Do</td><td class="muted">nobody</td><td class="r"><span class="btn s">Switch</span></td></tr>
         <tr><td colspan="6" class="muted" style="text-align:center">30 more · scroll</td></tr></table>
     </div>
   </div></div>
 </div></section>
 
 <section class="shot" id="S14"><h3><span class="id">S14</span>History, a day <span class="changed">revised after review</span></h3>
-<p>The day's summary and its per-task breakdown are back. Older interruptions not on a task yet show here.</p>
+<p>The day's summary and its per-task breakdown are back. Older interruptions still to place show here.</p>
 <div class="frame">
-  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
-  <div class="shell"><div class="side"><div class="nav">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav on">↺ History <span class="n" title="1 interruption not on a task yet">⚡ 1</span></div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
+  <div class="hdr"><span class="logo">SprintTicker</span><span class="sp"></span><span class="chip" title="Work: timing as you set it · Lunch: pauses your task, then asks if you are back · Away: pauses your task, and the bar shows you are away">Mode: Work ▾</span><span class="btn g">▭ Mini timer</span><span class="btn">☾ End my day</span><span class="statw"><span class="stat"></span>All good ▾</span></div>
+  <div class="shell"><div class="side"><div class="nav">◷ Today</div><div class="nav">☰ Tasks</div><div class="nav on">↺ History <span class="n" title="1 interruption to place">⚡ 1</span></div><div class="bot"><div class="nav">⚙ Settings</div></div></div>
   <div class="main">
     <div class="between"><span class="row"><span class="btn s g">‹</span><b>Friday 6 November</b><span class="btn s g">›</span><span class="btn s g">Today</span></span><span class="row"><span class="pill on">Day</span><span class="pill off">Week</span></span></div>
-    <div class="card amb" style="padding:12px 16px"><div class="between"><span><b>1 older interruption not on a task</b> <span class="note">· "Interruption at 16:20", Wednesday 4 Nov, during SR-8 · 18m</span></span><span class="btn s p">↳ Move to a task…</span></div></div>
-    <div class="card"><div class="between"><b>7h 30m · 6 tasks · 9 entries</b><span class="row"><span class="note">all sent but 1 change</span><span class="btn s g">+ Add time</span></span></div>
+    <div class="card amb" style="padding:12px 16px"><div class="between"><span><b>1 older interruption to place</b> <span class="note">· "Interruption at 16:20", Wednesday 4 Nov, during SR-8 · 18m · listed here, in the week and on the morning card until it is placed</span></span><span class="btn s p">↳ Place…</span></div></div>
+    <div class="card"><div class="between"><b>7h 30m · 6 tasks · 9 entries</b><span class="row"><span class="note">all sent but 1 correction</span><span class="btn s g">+ Add time</span></span></div>
       <p class="note" style="margin:6px 0 0">PF-31 2h 10m · MG-14 1h 25m · OPS-4 1h 05m · SR-8 1h 00m · + 2</p>
       <table style="margin-top:6px"><tr><th>Task</th><th>Note</th><th>Time</th><th>Started</th><th>Jira</th><th></th></tr>
         <tr><td class="m">PF-31</td><td>Anvil sound pass</td><td class="m">2h 10m</td><td class="m">09:02</td><td class="muted">sent</td><td class="r"><span class="tbtn">Correct</span><span class="tbtn">↳ Move</span><span class="tbtn">Delete…</span></td></tr>
         <tr class="int"><td class="m">⚡ OPS-4</td><td>Call with Marc</td><td class="m">25m</td><td class="m">11:15</td><td class="muted">sent</td><td class="r"><span class="tbtn">Correct</span><span class="tbtn">↳ Move</span><span class="tbtn">Delete…</span></td></tr>
-        <tr><td class="m">MG-14</td><td>Pond ripple shader</td><td class="m">1h 25m</td><td class="m">13:40</td><td style="color:var(--amber)">change waiting for Jira<div class="ctx">tries again in 1 min · <u>retry now</u></div></td><td class="r"><span class="tbtn">Correct</span><span class="tbtn">↳ Move</span><span class="tbtn">Delete…</span></td></tr>
+        <tr><td class="m">MG-14</td><td>Pond ripple shader</td><td class="m">1h 25m</td><td class="m">13:40</td><td style="color:var(--amber)">correction (+25m) waiting for Jira<div class="ctx">tries again in 1 min · <u>retry now</u></div></td><td class="r"><span class="tbtn">Correct</span><span class="tbtn">↳ Move</span><span class="tbtn">Delete…</span></td></tr>
       </table></div>
   </div></div>
 </div><p class="links">Correct → <a href="#S16">S16</a> · Move → <a href="#S12">S12</a> · Week → <a href="#S15">S15</a></p></section>
@@ -709,17 +769,18 @@
     <div class="between"><b>7h 50m logged · 40m untracked in working hours</b><span class="note">09:00 – 17:30</span></div>
     <div style="position:relative;height:46px;margin:14px 0 4px;border-radius:6px;background:var(--raised);overflow:hidden;display:flex">
       <div style="width:6%;background:repeating-linear-gradient(45deg,#2a2a2e 0 6px,#232326 6px 12px)" title="09:00-09:30 untracked"></div>
-      <div style="width:6%;background:#3f3f46" title="Stand-up"></div>
-      <div style="width:22%;background:#52525b" title="MG-12"></div>
-      <div style="width:5%;background:#f59e0b" title="Call with Marc"></div>
-      <div style="width:13%;background:#52525b" title="MG-12"></div>
-      <div style="width:12%;background:#1d1d20" title="Lunch"></div>
-      <div style="width:20%;background:#71717a" title="PF-31"></div>
-      <div style="width:4%;background:repeating-linear-gradient(45deg,#2a2a2e 0 6px,#232326 6px 12px)" title="15:10-15:30 untracked"></div>
-      <div style="width:12%;background:#52525b" title="MG-12"></div>
+      <div style="width:6%;background:#3f3f46;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="Stand-up on OPS-4">Stand-up</div>
+      <div style="width:22%;background:#52525b;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="MG-12">MG-12</div>
+      <div style="width:5%;background:#f59e0b;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="Call with Marc">⚡ Marc</div>
+      <div style="width:13%;background:#52525b;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="MG-12">MG-12</div>
+      <div style="width:2%;background:repeating-linear-gradient(45deg,#2a2a2e 0 6px,#232326 6px 12px)" title="12:20-12:30 untracked"></div>
+      <div style="width:12%;background:#1d1d20;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="Lunch">Lunch</div>
+      <div style="width:18%;background:#71717a;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="PF-31">PF-31</div>
+      <div style="width:4%;background:#f59e0b;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="Economy tables with Sam">⚡ Sam</div>
+      <div style="width:12%;background:#52525b;color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden" title="MG-12">MG-12</div>
     </div>
     <div class="between note"><span>09:00</span><span>11:00</span><span>13:00</span><span>15:00</span><span>17:30</span></div>
-    <div class="row" style="margin-top:10px"><span class="pill grey">▨ 09:00–09:30 untracked · <u>add time</u></span><span class="pill grey">▨ 15:10–15:30 untracked · <u>add time</u></span><span class="note">Grey shades are tasks · amber is an interruption · lunch is dark</span></div>
+    <div class="row" style="margin-top:10px"><span class="pill grey">▨ 09:00–09:30 untracked · <u>add time</u></span><span class="pill grey">▨ 12:20–12:30 untracked · <u>add time</u></span><span class="note">Each block names its task · ⚡ marks an interruption · hatched is untracked</span></div>
   </div>
 </div></div>
 <p class="links">A click on a block opens Correct (S16). A click on a hatched gap opens Add time (S16b) at that time. List shows the table of S14.</p></section>
@@ -727,7 +788,7 @@
 <section class="shot" id="S15"><h3><span class="id">S15</span>History, a week: the timesheet <span class="changed">revised after review</span></h3>
 <p>Grouped by project with subtotals, measured against your working day, with whatever is not sent or not sorted marked on its day. A day's cell opens that day. The week-over card lands here.</p>
 <div class="frame"><div class="main">
-  <div class="between"><span class="row"><span class="btn s g">‹</span><b>Week of 2 November</b><span class="pill grey">closed Friday 17:30</span><span class="btn s g">›</span></span><span class="row"><span class="btn s g">Export CSV</span><span class="pill off">Day</span><span class="pill on">Week</span></span></div>
+  <div class="between"><span class="row"><span class="btn s g">‹</span><b>Week of 2 November</b><span class="pill grey">closed Friday 17:30</span><span class="btn s g">›</span></span><span class="row"><span class="btn s">Check my week…</span><span class="btn s g">Export CSV</span><span class="pill off">Day</span><span class="pill on">Week</span></span></div>
   <div class="card"><table class="tsheet"><tr><th>Project / task</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Total</th></tr>
     <tr><td><b>Pixel Forge</b></td><td></td><td></td><td></td><td></td><td></td><td><b>11h 05m</b></td></tr>
     <tr><td>&nbsp;&nbsp;<span class="mono">PF-31</span> Hammer and quench sounds</td><td>2h 10m</td><td>1h 05m</td><td></td><td>3h 00m</td><td>2h 10m</td><td>8h 25m</td></tr>
@@ -735,8 +796,8 @@
     <tr><td><b>Moonlight Garden</b></td><td></td><td></td><td></td><td></td><td></td><td><b>9h 20m</b></td></tr>
     <tr><td><b>Studio Ops</b></td><td></td><td></td><td></td><td></td><td></td><td><b>4h 40m</b></td></tr>
     <tr><td class="muted">▸ 4 more projects · <u>show all</u></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-    <tr><td><b>Day</b> <span class="muted">/ 7h 30m</span></td><td><b>7h 40m</b></td><td><b>7h 55m</b></td><td><b style="color:var(--amber)">7h 05m</b><div class="ctx" style="color:var(--amber)"><u>18m not on a task</u></div></td><td><b>7h 10m</b></td><td><b>7h 30m</b></td><td><b>37h 20m</b> <span class="muted">/ 37h 30m</span></td></tr><tr><td>In Jira <span class="muted">· what your manager sees</span></td><td>7h 40m</td><td>7h 55m</td><td style="color:var(--amber)">6h 47m</td><td>7h 10m</td><td>7h 30m</td><td>37h 02m</td></tr><tr><td style="color:var(--amber)">⚡ Not on a task</td><td></td><td></td><td style="color:var(--amber)">18m</td><td></td><td></td><td><span class="btn s">Sort all 1…</span></td></tr></table>
-    <p class="note" style="margin:8px 0 0">All sent, except 18m on Wednesday that is not on a task. Click a day's total to open that day.</p></div>
+    <tr><td><b>Day</b> <span class="muted">/ 7h 30m</span></td><td><b>7h 40m</b></td><td><b>7h 55m</b></td><td><b style="color:var(--amber)">7h 05m</b><div class="ctx" style="color:var(--amber)"><u>18m to place</u></div></td><td><b>7h 10m</b></td><td><b>7h 30m</b></td><td><b>37h 20m</b> <span class="muted">/ 37h 30m</span></td></tr><tr><td>In Jira <span class="muted">· what your manager sees</span></td><td>7h 40m</td><td style="color:var(--amber)">7h 35m</td><td style="color:var(--amber)">6h 47m</td><td>7h 10m</td><td style="color:var(--amber)">7h 05m</td><td>36h 17m</td></tr><tr><td style="color:var(--amber)">⚡ To place</td><td></td><td></td><td style="color:var(--amber)">18m</td><td></td><td></td><td><span class="btn s">Place all 1…</span></td></tr></table>
+    <p class="note" style="margin:8px 0 0">All sent, except OPS-4's 20m on Tuesday, held by an overlap, 18m on Wednesday still to place, and MG-14's +25m correction on Friday, which Jira did not answer. Click a day's total to open that day, or a task's cell to open that day at that task.</p></div>
 </div></div></section>
 
 <!-- ===================== SETTINGS ===================== -->
@@ -747,24 +808,26 @@
 <p>From the week view and from the week's close. Every problem of the week in one list, each with its fix, so nothing has to be hunted across Today, History and End my day.</p>
 <div class="frame"><div class="stage"><div class="dlg" style="width:620px">
   <h4>Check my week · 2 – 6 November</h4><p class="note">37h 20m logged against 37h 30m. 4 things to look at.</p>
-  <div class="set"><div class="l"><b>⚡ 18m not on a task</b><span>Wednesday · Interruption at 16:20, during SR-8</span></div><span class="btn s">Sort…</span></div>
-  <div class="set"><div class="l"><b>1 entry not sent</b><span>MG-14 · Friday · Jira did not answer</span></div><span class="btn s">Send now</span></div>
+  <div class="set"><div class="l"><b>⚡ 18m to place</b><span>Wednesday · Interruption at 16:20, during SR-8</span></div><span class="btn s">Place…</span></div>
+  <div class="set"><div class="l"><b>1 correction not sent</b><span>MG-14 · Friday · +25m · Jira did not answer</span></div><span class="btn s">Send now</span></div>
   <div class="set"><div class="l"><b>Wednesday is 25m under your day</b><span>7h 05m of 7h 30m · 2 untracked gaps</span></div><span class="btn s">Open Wednesday</span></div>
-  <div class="set"><div class="l"><b>2 entries overlap</b><span>Tuesday 14:00–14:20 · PF-31 and OPS-4</span></div><span class="btn s">Fix…</span></div>
+  <div class="set"><div class="l"><b>2 entries overlap · OPS-4's 20m waits</b><span>Tuesday 14:00–14:20, with PF-31. The later entry is not sent until the overlap is fixed, so Jira never gets the same minutes twice.</span></div><span class="btn s">Fix…</span></div>
   <div class="set"><div class="l"><b style="color:var(--green)">✓ No change to a closed week</b><span>Nothing your manager saw has moved.</span></div></div>
   <div class="between" style="margin-top:12px"><span class="btn s g">Export CSV</span><span class="btn p">Done</span></div>
-</div></div></div></section>
+</div></div></div>
+<p class="links">Each fix opens where it is made: Place… opens Place interruptions (S12b), Open Wednesday and Fix… open that day in History (S14), at the gap or the overlap, where the entries are corrected (S16).</p></section>
 
 <section class="shot" id="S19"><h3><span class="id">S19</span>Settings · General <span class="changed">revised after review</span></h3>
 <div class="frame"><div class="main"><div class="sgrid">
   <div><div class="f" style="margin-bottom:8px">⌕ Search settings</div><div class="sub on">General</div><div class="sub">Account</div><div class="sub">My workday</div><div class="sub">Desk devices</div><div class="sub">Data</div><div class="sub dim">Developer</div></div>
   <div class="card">
-    <div class="set"><div class="l"><b>Start with Windows</b><span>Opens in the tray when you sign in, with no window.</span></div><span class="tg"></span></div>
+    <div class="set"><div class="l"><b>Start with Windows</b><span>Opens in the tray when you sign in, with no window.</span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
     <div class="set"><div class="l"><b>When I close the window</b><span>SprintTicker keeps timing in the tray. Quit from the tray's menu.</span></div><span class="sel2">Keep running ▾</span></div>
-    <div class="set"><div class="l"><b>Interrupt shortcut</b><span>On. <kbd>Ctrl+Alt+Shift+I</kbd> starts an interruption from any app. <span class="btn s">Change keys</span></span></div><span class="tg"></span></div>
-    <div class="set"><div class="l"><b>Switch task shortcut</b><span>Off. Opens the picker from any app. <kbd>Ctrl+Alt+Shift+S</kbd></span></div><span class="tg off"></span></div>
-    <div class="set"><div class="l"><b>Previous task shortcut</b><span>Off. Goes back to the task before, from any app. <kbd>Ctrl+Alt+Shift+P</kbd></span></div><span class="tg off"></span></div>
-    <div class="set"><div class="l"><b>Check for updates</b><span>Asks GitHub once a day. You have 1.4.0; 1.5.0 is out.</span></div><span class="row"><span class="btn s g">Check now</span><span class="tg"></span></span></div>
+    <div class="set"><div class="l"><b>Interrupt shortcut</b><span>On. <kbd>Ctrl+Alt+Shift+I</kbd> starts an interruption from any app. <span class="btn s">Change keys</span></span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
+    <div class="set"><div class="l"><b>Back shortcut</b><span>On. <kbd>Ctrl+Alt+Shift+B</kbd> ends the interruption and goes back to the task, from any app. It does nothing when no interruption runs. <span class="btn s">Change keys</span></span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
+    <div class="set"><div class="l"><b>Switch task shortcut</b><span>On. <kbd>Ctrl+Alt+Shift+S</kbd> opens the picker from any app. <span class="btn s">Change keys</span></span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
+    <div class="set"><div class="l"><b>Previous task shortcut</b><span>On. <kbd>Ctrl+Alt+Shift+P</kbd> goes back to the task before, from any app. <span class="btn s">Change keys</span></span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
+    <div class="set"><div class="l"><b>Check for updates</b><span>Asks GitHub once a day. You have 1.4.0; 1.5.0 is out.</span></div><span class="row"><span class="btn s g">Check now</span><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></span></div>
     <div class="set"><div class="l"><b>Set up again</b><span>The first-run questions: account, bar, your day.</span></div><span class="btn s">Run setup</span></div>
     <div class="fold">▸ Show developer tools <span class="note">-- the display debugger, test notifications, logs</span></div>
   </div></div></div></div></section>
@@ -777,9 +840,9 @@
     <div class="card alert" style="padding:12px 14px;margin-bottom:6px"><b>Jira refused your token.</b> <span class="note">Your 3 entries (2h 05m) are kept and go out as soon as it works.</span>
       <div class="row" style="margin-top:8px"><div class="f" style="flex:1">New API token</div><span class="btn s p">Save and send</span><span class="tbtn">get a token ↗</span></div></div>
     <div class="set"><div class="l"><b>Jira · studio.atlassian.net</b><span>Alex Moreau. 15 projects, 452 tasks. Last refreshed 2 min ago.</span></div><span class="row"><span class="btn s g">Refresh now</span><span class="btn s g">Change account</span></span></div>
-    <div class="set"><div class="l"><b>Tasks to fetch from Jira</b><span>Assigned to me, plus open tasks nobody has.</span></div><span class="sel2">Mine + unassigned ▾</span></div>
-    <div class="set"><div class="l"><b>When I start a task</b><span>Moves it to In Progress, and takes it if nobody has it.</span></div><span class="sel2">In Progress ▾</span></div>
-    <div class="set"><div class="l"><b>When I mark a task done</b><span>Where it goes in Jira.</span></div><span class="sel2">To Review ▾</span></div>
+    <div class="set"><div class="l"><b>Tasks to fetch from Jira</b><span>Assigned to me, open tasks nobody has, and teammates' tasks in progress.</span></div><span class="sel2">My scope ▾</span></div>
+    <div class="set"><div class="l"><b>When I start a task</b><span>Moves it to In Progress, and takes it if nobody has it, once it has run this long. A glance moves nothing.</span></div><span class="row"><span class="sel2">In Progress ▾</span><span class="sel2">after 2 min ▾</span></span></div>
+    <div class="set"><div class="l"><b>When I mark a task done</b><span>Where it goes in Jira, per project: each workflow has its own states.</span></div><span class="row"><span class="sel2">All projects: To Review ▾</span><span class="tbtn">3 projects differ…</span></span></div>
     <div class="set"><div class="l"><b>Jira notifications</b><span>Assigned, mentioned, comments: as a Windows notification, on the bar, or both.</span></div><span class="btn s">Choose…</span></div>
     <div class="fold">▸ Advanced: custom JQL · the key for tasks of my own (MISC-1) · every entry waiting to send, with Retry</div>
   </div></div></div></div></section>
@@ -789,13 +852,15 @@
   <div><div class="sub">General</div><div class="sub">Account</div><div class="sub on">My workday</div><div class="sub">Desk devices</div><div class="sub">Data</div><div class="sub dim">Developer</div></div>
   <div class="card">
     <div class="set"><div class="l"><b>Working days</b><span>No reminders on other days, nor on public holidays.</span></div><span class="row"><span class="pill on">✓ Mon–Fri</span></span></div>
-    <div class="set"><div class="l"><b>Stand-up</b><span>A reminder. Join times it, then goes back to your task.</span></div><span class="row"><span class="sel2 mono">09:30</span><span class="btn s g" title="Shows the reminder now. Your timer is not touched unless you press Join.">Show me</span></span></div>
+    <div class="set"><div class="l"><b>Stand-up</b><span>A reminder. Join times it on the task you chose, then goes back to your task.</span></div><span class="row"><span class="sel2 mono">09:30</span><span class="sel2">on OPS-4 ▾</span><span class="btn s g" title="Shows the reminder now. Your timer is not touched unless you press Join.">Show me</span></span></div>
     <div class="set"><div class="l"><b>Lunch</b><span>Your task pauses. After, you are asked if you are back.</span></div><span class="sel2 mono">12:30 – 13:30</span></div>
     <div class="set"><div class="l"><b>End of day</b><span>Offers to check today's time and send it.</span></div><span class="row"><span class="sel2 mono">17:30</span><span class="btn s g">Show me</span></span></div>
-    <div class="set"><div class="l"><b>My week closes</b><span>At the end of your last working day. It shows the week, with anything not on a task. Changing a closed week asks first, once per week.</span></div><span class="sel2">Friday, end of day</span></div>
+    <div class="set"><div class="l"><b>My week closes</b><span>At the end of your last working day. It shows the week, with anything still to place. Changing a closed week warns first, once per week.</span></div><span class="sel2">Friday, end of day</span></div>
     <div class="set"><div class="l"><b>Nothing timing in working hours</b><span>Asks once, after this long, whether you meant to stop.</span></div><span class="sel2">10 min ▾</span></div>
+    <div class="set"><div class="l"><b>A pause that runs long</b><span>Asks once, after this long, whether you are still paused.</span></div><span class="sel2">30 min ▾</span></div>
+    <div class="set"><div class="l"><b>A stand-up still running</b><span>Asks once, after this long, whether it is still going on. Ending it then can end it at its usual length.</span></div><span class="sel2">25 min ▾</span></div>
     <div class="set"><div class="l"><b>An interruption still running</b><span>Asks once, after this long, whether it is still going on.</span></div><span class="sel2">20 min ▾</span></div>
-    <div class="set"><div class="l"><b>A timer left running overnight</b><span>Asks how long you really worked.</span></div><span class="tg"></span></div>
+    <div class="set"><div class="l"><b>A timer left running overnight</b><span>Asks how long you really worked. Not at the PC during the day still counts as work -- a meeting, a coffee, a break -- and nothing pauses; only an absence across midnight is asked about, from your last activity.</span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
     <div class="set"><div class="l"><b>A long pause starts a new entry</b><span>From 15 minutes on, so Jira's timesheet shows the gap.</span></div><span class="sel2">15 min ▾</span></div>
   </div></div></div></div></section>
 
@@ -806,7 +871,7 @@
   <div class="card">
     <div class="set"><div class="l"><b>Connected on USB</b><span>Firmware 1.2.4 · battery 82 % · brightness 80 %</span></div><span class="row"><span class="btn s g">Use without a bar</span></span></div>
     <div class="set"><div class="l"><b>Task key color</b><span>The color of the task key on the bar.</span></div><span class="sel2">Blue ▾</span></div>
-    <div class="set"><div class="l"><b>When nothing runs</b><span>The bar shows its own clock.</span></div><span class="tg"></span></div>
+    <div class="set"><div class="l"><b>When nothing runs</b><span>The bar shows its own clock. A question ("Back to MG-12?") or NOTHING TIMING in working hours stays on it until answered.</span></div><span class="row" style="gap:6px;flex:none"><span class="note">On</span><span class="tg"></span></span></div>
     <div class="set"><div class="l"><b>Windows notifications on the bar</b><span><span style="color:var(--amber)">Windows access needed</span> · then choose which apps show: 8 apps known.</span></div><span class="row"><span class="btn s p">Grant access</span><span class="btn s">Choose apps…</span></span></div>
     <div class="set"><div class="l"><b>What the bar shows first</b><span>When two things want it: a call, a build, your timer. Levels and arrows, per mode.</span></div><span class="btn s">Open…</span></div>
     
@@ -840,98 +905,110 @@
 <h2 class="part">Outside the window</h2>
 
 <section class="shot" id="S25"><h3><span class="id">S25</span>Mini timer, in its states <span class="changed">revised after review</span></h3>
-<p>Every button has a hover label, and the first time the mini timer opens, a one-line tour names them. Interruptions get ⚡ for another one, ↩ to go back, and ↳ to place the time. "Nothing running" is loud.</p>
+<p>Every button has a hover label, and the first time the mini timer opens, a one-line tour names them. Interruptions get ⚡ for another one, ↩ to go back, and ↳ to place the time. "Nothing timing" is loud.</p>
 <div class="frame"><div class="stage" style="flex-direction:column;align-items:flex-start;gap:12px">
-  <div class="row"><span class="mono muted" style="width:130px">running</span><div class="mini"><span class="st"></span><span>⏱</span><div class="tx"><div class="k">MG-12</div><div class="n">Fix the lantern glow at dusk</div></div><span class="clk">01:24:10</span><span class="pill wait" title="3 interruptions, 45m, not on a task: click to sort">⚡3</span><span class="ib" title="Pause">❚❚</span><span class="ib" title="Stop…">■</span><span class="ib" title="Interrupt">⚡</span><span class="ib" title="Switch task">⇄</span><span class="ib" title="Previous task: PF-31">⟲</span><span class="ib" title="Hide the mini timer">✕</span></div></div>
-  <div class="row"><span class="mono muted" style="width:130px">interruption</span><div class="mini"><span class="st a"></span><span>⚡</span><div class="tx"><div class="k">not on a task yet · type a note</div><div class="n" style="border-bottom:1px dashed #55555c">Call with Marc▏</div></div><span class="clk">00:04:32</span><span class="ib" title="Back to MG-12">↩</span><span class="ib" title="Move to a task…">↳</span><span class="ib" title="Another interruption">⚡</span><span class="ib" title="Stop">■</span></div></div>
-  <div class="row"><span class="mono muted" style="width:130px">nothing running</span><div class="mini" style="border-color:#5a4316;background:#1d170b"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k" style="color:var(--amber)">Nothing running</div><div class="n">Back to MG-12?</div></div><span class="btn s g">Stay stopped</span><span class="btn s p">↩ Resume</span></div></div>
-  <div class="row"><span class="mono muted" style="width:130px">not yours now</span><div class="mini" style="border-color:#5a4316"><span class="st"></span><span>⏱</span><div class="tx"><div class="k" style="color:var(--amber)">MG-12 · Rin's now</div><div class="n">Fix the lantern glow at dusk</div></div><span class="clk">01:24:10</span><span class="ib" title="Pause">❚❚</span><span class="ib" title="Stop…">■</span><span class="ib" title="Switch task">⇄</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">running</span><div class="mini"><span class="st"></span><span>⏱</span><div class="tx"><div class="k">MG-12</div><div class="n">Fix the lantern glow at dusk</div></div><span class="clk">01:24:10</span><span class="pill wait" title="3 interruptions, 45m, to place: click to place them">⚡3</span><span class="ib" title="Pause">❚❚</span><span class="ib" title="Stop">■</span><span class="ib" title="Interrupt">⚡</span><span class="ib" title="Switch task">⇄</span><span class="ib" title="Previous task: PF-31">⟲</span><span class="ib" title="Hide the mini timer">✕</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">paused</span><div class="mini"><span class="st a"></span><span>❚❚</span><div class="tx"><div class="k">❚❚ Paused · MG-12</div><div class="n">Fix the lantern glow at dusk</div></div><span class="clk" style="color:var(--text2)">00:42:10</span><span class="ib" title="Resume">▶</span><span class="ib" title="Stop">■</span><span class="ib" title="Interrupt">⚡</span><span class="ib" title="Switch task">⇄</span><span class="ib" title="Previous task: PF-31">⟲</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">interruption</span><div class="mini"><span class="st a"></span><span>⚡</span><div class="tx"><div class="k">to place · type a note</div><div class="n" style="border-bottom:1px dashed #55555c">Call with Marc▏</div></div><span class="clk">00:04:32</span><span class="ib" title="Back to MG-12">↩</span><span class="ib" title="Place on a task…">↳</span><span class="ib" title="Switch task: ends it; MG-12 stops and stays open">⇄</span><span class="ib" title="Another: ends this one, starts the next">⚡</span><span class="ib" title="Stop">■</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">from the deck</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><span>⚡</span><div class="tx"><div class="k">from the deck · started <span title="now, 2, 5 or 10 min ago, or other…: the minutes come off MG-12" style="text-decoration:underline dotted">now ▾</span></div><div class="n" style="border-bottom:1px dashed #55555c;color:var(--muted)">click to name it</div></div><span class="clk">00:00:12</span><span class="ib" title="Back to MG-12">↩</span><span class="ib" title="Place on a task…">↳</span><span class="ib" title="Switch task: ends it; MG-12 stops and stays open">⇄</span><span class="ib" title="Another: ends this one, starts the next">⚡</span><span class="ib" title="Stop">■</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">idle</span><div class="mini"><span class="st" style="background:var(--muted)"></span><div class="tx" style="padding-left:6px"><div class="k">Nothing timing</div><div class="n">⚡ 3 to place</div></div><span class="btn s go">▶ Start…</span><span class="ib" title="Interrupt">⚡</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">nothing timing, back?</span><div class="mini" style="border-color:#5a4316;background:#1d170b"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k" style="color:var(--amber)">Nothing timing</div><div class="n">Back to MG-12? 6 min untracked</div></div><span class="btn s g" title="Not asked again; the tray stays amber while nothing times in working hours">Not now</span><span class="btn s">↩ Back</span><span class="btn s p" title="Back to MG-12, with the 6 min since added">↩ Back +6m</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">not yours now</span><div class="mini" style="border-color:#5a4316"><span class="st"></span><span>⏱</span><div class="tx"><div class="k" style="color:var(--amber)">MG-12 · Rin's now</div><div class="n">Fix the lantern glow at dusk</div></div><span class="clk">01:24:10</span><span class="ib" title="Pause">❚❚</span><span class="ib" title="Stop">■</span><span class="ib" title="Interrupt">⚡</span><span class="ib" title="Switch task">⇄</span></div></div>
   <div class="row"><span class="mono muted" style="width:130px">lunch, interrupted</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">Lunch time · you are in an interruption</div><div class="n">Start lunch? It ends "Call with Marc"</div></div><span class="btn s g">Not now</span><span class="btn s p">Start lunch</span></div></div>
-  <div class="row"><span class="mono muted" style="width:130px">after lunch</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">Lunch is over</div><div class="n">Back at your desk?</div></div><span class="btn s g">Not yet</span><span class="btn s p">▶ Resume MG-12</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">after lunch</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">Lunch is over</div><div class="n">Back at your desk?</div></div><span class="btn s g" title="The card stays until you resume or start something">Not now</span><span class="btn s" title="Adds 12:30–13:30 to MG-12 and resumes it">I worked through it</span><span class="btn s p">▶ Resume MG-12</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">long pause</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">❚❚ 30 min paused on MG-12</div><div class="n">Still paused?</div></div><span class="btn s g">Still paused</span><span class="btn s p">▶ Resume</span></div></div>
   <div class="row"><span class="mono muted" style="width:130px">long interruption</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">⚡ 20 min on "Call with Marc"</div><div class="n">Still on it?</div></div><span class="btn s g">Still on it</span><span class="btn s p">↩ Back to MG-12</span></div></div>
   <div class="row"><span class="mono muted" style="width:130px">stand-up, interrupted</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">Stand-up · you are in an interruption</div><div class="n">Join? It ends "Call with Marc"</div></div><span class="btn s g">Not now</span><span class="btn s p">Join</span></div></div>
   <div class="row"><span class="mono muted" style="width:130px">stand-up running</span><div class="mini"><span class="st"></span><span>☷</span><div class="tx"><div class="k">Daily stand-up</div><div class="n">then back to MG-12, as it was</div></div><span class="clk">00:11:40</span><span class="btn s p">End stand-up</span></div></div>
-  <div class="row"><span class="mono muted" style="width:130px">prompt</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">Stand-up at 09:30</div><div class="n">MG-12 stays as it is until you Join</div></div><span class="btn s g">Skip</span><span class="btn s p">Join</span></div></div>
-  <div class="row"><span class="mono muted" style="width:130px">stopping</span><div class="mini"><span class="st"></span><div class="tx" style="padding-left:6px"><div class="k">Stop MG-12</div><div class="n">1h 24m logged either way</div></div><span class="btn s">Not done</span><span class="btn s" style="color:var(--green)">Done</span><span class="btn s" style="color:var(--red)">Discard…</span><span class="ib" title="Cancel, keep it running">✕</span></div></div>
-</div></div><p class="links">⇄ → <a href="#S7">S7</a> as its own small window · ↳ → <a href="#S12">S12</a> · ✕ only hides the mini timer; it never stops anything</p></section>
+  <div class="row"><span class="mono muted" style="width:130px">stand-up, still on?</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><span>☷</span><div class="tx" style="padding-left:6px"><div class="k">☷ 25 min in the stand-up</div><div class="n">Still in it?</div></div><span class="btn s g">Still in it</span><span class="btn s p" title="Ends it at its usual length, 15 min, or now">End stand-up ▾</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">prompt</span><div class="mini" style="border-color:#5a4316"><span class="st a"></span><div class="tx" style="padding-left:6px"><div class="k">Stand-up at 09:30</div><div class="n">MG-12 keeps running until you Join</div></div><span class="btn s g">Skip</span><span class="btn s p">Join</span></div></div>
+  <div class="row"><span class="mono muted" style="width:130px">stopping</span><div class="mini"><span class="st"></span><div class="tx" style="padding-left:6px"><div class="k">Stop MG-12</div><div class="n">Done or Stop logs 1h 24m · Discard keeps nothing</div></div><span class="btn s" style="color:var(--green)">Done</span><span class="btn s">Stop</span><span class="btn s" style="color:var(--red)">Discard…</span><span class="ib" title="Cancel, keep it running">✕</span></div></div>
+</div></div><p class="links">An interruption started from the bar, the deck or the shortcut shows the mini timer with a name field and "started now ▾" (2, 5 or 10 min ago, or other…, taken off the task it interrupted); it never takes the focus, and the name can wait. ⇄ → <a href="#S7">S7</a> as its own small window · ↳ → <a href="#S12">S12</a> · ✕ only hides the mini timer; it never stops anything</p></section>
 
 <section class="shot" id="S26"><h3><span class="id">S26</span>Tray, and the toasts <span class="changed">revised after review</span></h3>
 <p>A single click opens the window. The first time the window closes, a toast says where the app went, and Windows is asked to keep the icon visible. A toast opens SprintTicker on its subject. One about Jira opens Jira.</p>
 <div class="frame"><div class="stage" style="justify-content:flex-start">
-  <div class="menu"><div class="hl">Open SprintTicker</div><div class="sep"></div><div>Switch task…</div><div>Previous task: PF-31</div><div>Pause</div><div>Interrupt</div><div>End my day…</div><div class="sep"></div><div>✓ Mini timer</div><div>✓ Start with Windows</div><div class="sep"></div><div>Quit</div></div>
-  <div class="menu" style="min-width:230px"><div class="hl"><b>The tray icon</b></div><div><span class="dot"></span> timing</div><div><span class="dot amber"></span> nothing timing, in working hours</div><div><span class="dot grey"></span> outside working hours</div><div>a number: entries waiting to send</div></div>
+  <div class="menu"><div class="hl">Open SprintTicker</div><div class="sep"></div><div>Switch task…</div><div title="Hidden during an interruption, as on the deck">Previous task: PF-31</div><div>Pause</div><div>Stop</div><div>Interrupt</div><div class="sep"></div><div>Lunch</div><div>Away</div><div>End my day…</div><div class="sep"></div><div>✓ Mini timer</div><div>✓ Start with Windows</div><div class="sep"></div><div>Quit</div></div>
+  <div class="menu" style="min-width:260px"><div class="hl"><b>The tray icon</b> <span class="note">a mark, and its colour</span></div><div><span class="dot"></span> ▶ timing a task</div><div><span class="dot amber"></span> ⚡ an interruption</div><div><span class="dot amber"></span> ❚❚ paused, Lunch or Away</div><div><span class="dot amber"></span> ! nothing timing, in working hours</div><div><span class="dot grey"></span> ○ outside working hours</div><div>a number: entries waiting to send</div></div>
   <div style="display:flex;flex-direction:column;gap:10px">
-    <div class="toast"><b>Interruption started</b><span>MG-12 is paused, its time logged. Click to say what it's about.</span></div>
+    <div class="toast"><b>Interruption started</b><span>MG-12 waits, as it was; nothing is sent. Click to say what it's about.</span></div>
+    <div class="toast"><b>MG-77 is assigned to you</b><span>New in Moonlight Garden. <u>Start it</u> · click to open</span></div>
     <div class="toast"><b>MG-12 is now Rin Okada's</b><span>Your 1h 24m stays on it. Click to keep timing, move it, or switch.</span></div>
-    <div class="toast"><b>Started MG-15</b><span>Moved to In Progress and assigned to you in 10 s. <u>Undo</u></span></div>
+    <div class="toast"><b>Started MG-15</b><span>After 2 min of timing it moves to In Progress and becomes yours. Stop before then, and Jira is not touched.</span></div>
     <div class="toast"><b>MG-12 stopped · 1h 24m logged</b><span>Goes to Jira in 10 s. <u>Undo</u></span></div>
-    <div class="toast"><b>Moved 37m to PF-2</b><span>2 interruptions. <u>Undo</u></span></div>
+    <div class="toast"><b>Placed 37m on PF-2</b><span>2 interruptions. <u>Undo</u></span></div>
     <div class="toast"><b>Entry deleted · PF-31, 1h 40m</b><span>Jira is told in 10 s. <u>Undo</u></span></div>
+    <div class="toast"><b>Discarded · MG-12, 1h 24m</b><span>Nothing kept or sent. <u>Undo</u> for 10 s.</span></div>
+    <div class="toast"><b>Day ended · 7h 05m to Jira</b><span>Sent in 10 s, then the PC shuts down. <u>Undo</u></span></div>
     <div class="toast"><b>Stand-up at 09:30</b><span>Click to join or skip.</span></div>
     <div class="toast"><b>Lunch -- MG-12 paused</b><span>At 13:30 you are asked if you are back. Click to keep working instead.</span></div>
     <div class="toast"><b>Lunch time -- you are in an interruption</b><span>Start lunch? It ends "Call with Marc", which waits to be placed. Start lunch · Not now</span></div>
-    <div class="toast"><b>Lunch is over. Back at your desk?</b><span>MG-12 starts when you say. Resume · Not yet</span></div>
+    <div class="toast"><b>Lunch is over. Back at your desk?</b><span>MG-12 starts when you say. Resume · I worked through it · Not now</span></div>
+    <div class="toast"><b>MG-12 ran all night</b><span>Paused at your last activity, 18:04. Click to say when you stopped; nothing is logged until you do.</span></div>
     <div class="toast"><b>Sending time to Jira stopped</b><span>Jira refused the saved token. Your time is kept. Click to enter a new one.</span></div>
-    <div class="toast"><b>SprintTicker is still running</b><span>It's in the tray, by the clock. Quit from its menu.</span></div>
+    <div class="toast"><b>SprintTicker is still running</b><span>It's in the tray, by the clock, and your timer keeps running. Quit from its menu.</span></div>
   </div>
-</div></div><p class="links">The tray menu says Pause or Resume, whichever applies. "Previous task" switches back to it.</p></section>
+</div></div><p class="links">The tray menu says Pause or Resume, whichever applies. During an interruption, Interrupt reads "↩ Back to MG-12" and Stop stops the interruption. "Previous task" switches back to it.</p></section>
 
 <section class="shot" id="S27"><h3><span class="id">S27</span>The status panel, from the header</h3>
-<p>One entry in the header, with a word: "All good", "2 waiting", "Update". The panel says what is wrong and where to fix it.</p>
+<p>One entry in the header, with a word: "All good", "2 waiting", "Sending stopped", "Update". The panel says what is wrong and where to fix it.</p>
 <div class="frame"><div class="stage" style="justify-content:flex-end">
   <div class="panel"><div class="kick">Status</div>
     <div class="set"><div class="l"><b><span class="dot"></span> BUSY Bar connected</b><span>USB · answers in 6 ms</span></div></div>
     <div class="set"><div class="l"><b><span class="dot amber"></span> 2 entries waiting to send</b><span>Jira did not answer. Trying again in 1 min.</span></div><span class="btn s g">Try now</span></div>
-    <div class="kick" style="margin-top:12px">What you missed</div><div class="set"><div class="l"><b>Slack · Marc Dubois</b><span>14:05 · "Can you look at the lantern bug?" · was on the bar 10 s</span></div><span class="tbtn">Open</span></div><div class="set"><div class="l"><b>Jira · MG-12 given to Rin Okada</b><span>15:42</span></div><span class="tbtn">Open</span></div><div class="note" style="margin:4px 0 10px"><u>See today's 14 notifications</u></div>
+    <div class="kick" style="margin-top:12px">What you missed</div><div class="set"><div class="l"><b>Jira · MG-77 assigned to you</b><span>14:30 · Moonlight Garden</span></div><span class="row"><span class="tbtn">▶ Start</span><span class="tbtn">Open</span></span></div><div class="set"><div class="l"><b>Slack · Marc Dubois</b><span>14:05 · "Can you look at the lantern bug?" · was on the bar 10 s</span></div><span class="row"><span class="tbtn" title="Starts an interruption backdated to 14:05, taken off the task that ran">⚡ Interruption since 14:05</span><span class="tbtn">Open</span></span></div><div class="set"><div class="l"><b>Jira · MG-12 given to Rin Okada</b><span>15:42</span></div><span class="tbtn">Open</span></div><div class="note" style="margin:4px 0 10px"><u>See today's 14 notifications</u></div>
     <div class="set"><div class="l"><b><span class="dot grey"></span> Version 1.5.0 is out</b><span>What's new ↗</span></div><span class="btn s">Get it</span></div>
   </div>
 </div></div></section>
 
 <section class="shot" id="S28"><h3><span class="id">S28</span>The bar <span class="changed">revised after review</span></h3>
 <p><b>The bar and the deck are shortcuts to the app, not a second app</b> (the user's rule, 2026-11-09). They do in one press what is done most often -- start a recent task, pause, stop, interrupt, go back, previous task -- and they show what is happening and what needs you. Naming and placing time is done in the app: the device brings it to the front, open on the right screen.</p>
-<p>The bar's picker holds what is used most: Recent first, then Mine and Starred, and anything else in the window. Every word has to fit the bar's proportional font, and every input change is checked on a real bar before it ships.</p>
+<p>The bar's picker holds what is used most, in the window's order: Recent, Starred, then Mine; anything else is in the window. Every word has to fit the bar's proportional font, and every input change is checked on a real bar before it ships.</p>
 <div class="frame"><div class="stage" style="justify-content:flex-start;gap:18px">
   <div><div class="note" style="margin-bottom:6px">Picker, first level: Recent</div><div class="barled"><div class="r0">RECENT 1/6</div><div class="r1">MG-15 Boids</div></div></div>
   <div><div class="note" style="margin-bottom:6px">…then the last entry</div><div class="barled"><div class="r0">15 PROJECTS</div><div class="r1">MORE: IN WINDOW</div></div></div>
   <div><div class="note" style="margin-bottom:6px">Wheel click while timing: a short menu</div><div class="barled"><div class="r0">MG-12 01:24</div><div class="r1">▸INTERRUPT PREV</div></div></div>
-  <div><div class="note" style="margin-bottom:6px">Paused: the same words as everywhere</div><div class="barled"><div class="r0" style="color:#f5b041">MG-12 00:42</div><div class="r1" style="color:#f5b041">▸NOT DONE DONE</div></div></div>
+  <div><div class="note" style="margin-bottom:6px">Paused: the same words as everywhere</div><div class="barled"><div class="r0" style="color:#f5b041">❚❚ MG-12 00:42</div><div class="r1" style="color:#f5b041">DONE ▸STOP</div></div></div>
   <div><div class="note" style="margin-bottom:6px">During an interruption: no DONE</div><div class="barled"><div class="r0" style="color:#f5b041">⚡ 00:04</div><div class="r1" style="color:#f5b041">▸BACK TO MG-12</div></div></div>
-  <div><div class="note" style="margin-bottom:6px">Interruption over, back on MG-12</div><div class="barled"><div class="r0">MG-12 01:25</div><div class="r1" style="color:#f5b041">3 TO PLACE OK=APP</div></div></div>
+  <div><div class="note" style="margin-bottom:6px">Interruption over, back on MG-12</div><div class="barled"><div class="r0">MG-12 01:25</div><div class="r1" style="color:#f5b041">3 TO PLACE IN APP</div></div></div>
   <div><div class="note" style="margin-bottom:6px">Your task is someone else's now</div><div class="barled"><div class="r0">MG-12 01:24</div><div class="r1" style="color:#f5b041">MG-12 &gt; RIN</div></div></div>
-  <div><div class="note" style="margin-bottom:6px">Nothing running, kept until answered</div><div class="barled"><div class="r0" style="color:#f5b041">NOTHING RUNNING</div><div class="r1">MG-12? OK=YES</div></div></div>
+  <div><div class="note" style="margin-bottom:6px">Nothing timing, kept until answered</div><div class="barled"><div class="r0" style="color:#f5b041">NOTHING TIMING</div><div class="r1">MG-12? OK=YES</div></div></div>
   <div><div class="note" style="margin-bottom:6px">Nothing timing, working hours</div><div class="barled"><div class="r0" style="color:#f5b041">NOTHING TIMING</div><div class="r1">OK=PICK BACK=CLOCK</div></div></div>
+  <div><div class="note" style="margin-bottom:6px">Idle clock, time left to place</div><div class="barled"><div class="r0">17:42</div><div class="r1" style="color:#f5b041">3 TO PLACE OK=APP</div></div></div>
   <div><div class="note" style="margin-bottom:6px">Stand-up, with its words</div><div class="barled"><div class="r0">STAND-UP 09:30</div><div class="r1">OK=JOIN</div></div></div>
+  <div><div class="note" style="margin-bottom:6px">Stand-up running</div><div class="barled"><div class="r0">STAND-UP 00:11</div><div class="r1">OK=END</div></div></div>
 </div></div>
 <p class="links">The inputs:</p>
 <ul class="links">
-  <li>A wheel click while a task runs opens a short menu: INTERRUPT, PREV (the task before, PF-31), SWITCH (Recent), STOP.</li>
+  <li>A wheel click while a task runs opens a short menu: INTERRUPT, PAUSE, PREV (the task before, PF-31), SWITCH (Recent), STOP.</li>
   <li>Holding BACK opens the end choices; today it marks the task done.</li>
   <li>BACK in the picker goes up one level.</li>
   <li>After an interruption the bar goes straight back to the task, in one press, and keeps "3 TO PLACE" on row 1. OK brings SprintTicker to the front on that interruption (S12). Nothing is placed from the bar.</li>
-  <li>The paused menu's choices are NOT DONE / DONE / DISCARD, and INTERRUPT.</li>
+  <li>During an interruption the wheel menu is BACK TO MG-12, ANOTHER (ends this one, starts the next), SWITCH, STOP.</li>
+  <li>The paused menu's choices are DONE / STOP / DISCARD, the deck's A, B and C in that order, with the cursor starting on STOP; then INTERRUPT.</li>
   <li>"OK" is the wheel click, as the bar's own menus name it. Check the label on the device.</li>
 </ul></section>
 
 <section class="shot" id="S29"><h3><span class="id">S29</span>Stream Deck <span class="changed">revised: one meaning per key</span></h3>
-<p>The same logic as today -- Answer A, B and C show whichever answers apply -- with one meaning per position, and one colour. <b>A, green, carries on</b>: it finishes, goes back, joins or places. <b>B, blue-grey, stops or waits, keeping the time.</b> <b>C, red, throws away</b>, and is blank when there is nothing to throw. A key that changes Jira (DONE) always asks a second press, so a habit learned on BACK can never mark a ticket done.</p>
+<p>The same logic as today -- Answer A, B and C show whichever answers apply -- with one meaning per position, and one colour. <b>A, green, says yes</b>: it finishes, goes back, joins or resumes. <b>B, blue-grey, stops or waits, keeping the time.</b> <b>C, red, throws away</b>, and is blank when there is nothing to throw. A key that changes Jira (DONE) always asks a second press, so a habit learned on BACK can never mark a ticket done.</p>
 <p><b>The bar and the deck are shortcuts to the app, not a second app</b> (the user's rule, 2026-11-09). They start a recent task, pause, stop, interrupt, go back, and switch to the previous task in one press, and they show what is happening. Naming and placing time is done in the app, which the deck brings to the front.</p>
 <div class="frame"><div class="stage" style="justify-content:flex-start;gap:32px;flex-wrap:wrap">
   <div><div class="note" style="margin-bottom:8px">Timing a task</div><div class="deck">
     <div class="keyb" style="color:var(--green)">MG-12<span style="font-size:15px">01:24</span><small>Session</small></div>
-    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<small>Interrupt</small></div>
+    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<br><span style="font-size:9px">3 to place</span><small>Interrupt</small></div>
     <div class="keyb" style="color:var(--text2)">PREV<br>PF-31<small>Previous task</small></div>
     <div class="keyb" style="color:var(--green)">DONE<br><span style="font-size:9px">press twice</span><small>Answer A</small></div>
-    <div class="keyb" style="color:#9ab">NOT DONE<small>Answer B</small></div>
-    <div class="keyb" style="color:var(--red)">DISCARD<small>Answer C</small></div>
+    <div class="keyb" style="color:#9ab">STOP<small>Answer B</small></div>
+    <div class="keyb" style="color:var(--red)">DISCARD<br><span style="font-size:9px">press twice</span><small>Answer C</small></div>
   </div></div>
 
   <div><div class="note" style="margin-bottom:8px">DONE pressed once</div><div class="deck">
     <div class="keyb" style="color:var(--green)">MG-12<span style="font-size:15px">01:24</span><small>Session</small></div>
-    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<small>Interrupt</small></div>
+    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<br><span style="font-size:9px">3 to place</span><small>Interrupt</small></div>
     <div class="keyb" style="color:var(--text2)">PREV<br>PF-31<small>Previous task</small></div>
     <div class="keyb" style="color:var(--green)">DONE?<br>AGAIN<small>Answer A</small></div>
-    <div class="keyb" style="color:#9ab">NOT DONE<small>Answer B</small></div>
-    <div class="keyb" style="color:var(--red)">DISCARD<small>Answer C</small></div>
+    <div class="keyb" style="color:#9ab">STOP<small>Answer B</small></div>
+    <div class="keyb" style="color:var(--red)">DISCARD<br><span style="font-size:9px">press twice</span><small>Answer C</small></div>
   </div></div>
 
   <div><div class="note" style="margin-bottom:8px">During an interruption</div><div class="deck">
@@ -940,21 +1017,12 @@
     <div class="keyb" style="color:var(--muted);opacity:.35">·<small>Previous task</small></div>
     <div class="keyb" style="color:var(--green)">↩ BACK<br>MG-12<small>Answer A</small></div>
     <div class="keyb" style="color:#9ab">STOP<small>Answer B</small></div>
-    <div class="keyb" style="color:var(--red)">DISCARD<small>Answer C</small></div>
-  </div></div>
-
-  <div><div class="note" style="margin-bottom:8px">Interruption over, not on a task</div><div class="deck">
-    <div class="keyb" style="color:var(--green)">MG-12<span style="font-size:15px">01:25</span><small>Session</small></div>
-    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<small>Interrupt</small></div>
-    <div class="keyb" style="color:var(--text2)">PREV<br>PF-31<small>Previous task</small></div>
-    <div class="keyb" style="color:var(--green)">PLACE<br>IN APP<small>Answer A</small></div>
-    <div class="keyb" style="color:#9ab">LATER<small>Answer B</small></div>
-    <div class="keyb" style="color:var(--red)">DISCARD<small>Answer C</small></div>
+    <div class="keyb" style="color:var(--red)">DISCARD ⚡<br><span style="font-size:9px">press twice</span><small>Answer C</small></div>
   </div></div>
 
   <div><div class="note" style="margin-bottom:8px">A question: stand-up</div><div class="deck">
-    <div class="keyb" style="color:var(--green)">MG-12<span style="font-size:15px">09:30</span><small>Session</small></div>
-    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<small>Interrupt</small></div>
+    <div class="keyb" style="color:var(--green)">MG-12<span style="font-size:15px">00:28</span><small>Session</small></div>
+    <div class="keyb" style="color:var(--amber)">⚡<br>INTERRUPT<br><span style="font-size:9px">3 to place</span><small>Interrupt</small></div>
     <div class="keyb" style="color:var(--text2)">PREV<br>PF-31<small>Previous task</small></div>
     <div class="keyb" style="color:var(--green)">JOIN<small>Answer A</small></div>
     <div class="keyb" style="color:#9ab">SKIP<small>Answer B</small></div>
@@ -968,27 +1036,33 @@
   </div></div>
 </div></div>
 <div class="card" style="width:1040px"><table>
-  <tr><th>State</th><th style="color:var(--green)">A · carries on</th><th style="color:#9ab">B · stops or waits, keeps the time</th><th style="color:var(--red)">C · throws away</th></tr>
-  <tr><td>Timing a task</td><td>DONE (two presses)</td><td>NOT DONE</td><td>DISCARD</td></tr>
-  <tr><td>Paused</td><td>DONE (two presses)</td><td>NOT DONE</td><td>DISCARD</td></tr>
-  <tr><td>An interruption inside an interruption</td><td>BACK CALL, one step back</td><td>STOP both; nothing runs, both wait to be placed</td><td>DISCARD the current one</td></tr>
-  <tr><td>During an interruption</td><td>BACK to the task, as it was</td><td>STOP</td><td>DISCARD</td></tr>
-  <tr><td>Interruption over, not on a task</td><td>PLACE IN APP</td><td>LATER</td><td>DISCARD</td></tr>
-  <tr><td>Nothing running, back?</td><td>RESUME</td><td>STAY STOPPED</td><td>--</td></tr>
+  <tr><th>State</th><th style="color:var(--green)">A · yes</th><th style="color:#9ab">B · stops or waits, keeps the time</th><th style="color:var(--red)">C · throws away</th></tr>
+  <tr><td>Timing a task</td><td>DONE (two presses)</td><td>STOP</td><td>DISCARD (two presses)</td></tr>
+  <tr><td>Paused</td><td>DONE (two presses)</td><td>STOP</td><td>DISCARD (two presses)</td></tr>
+  <tr><td>During an interruption</td><td>BACK to the task, as it was</td><td>STOP</td><td>DISCARD ⚡, the interruption (two presses)</td></tr>
+    <tr><td>Nothing timing, back?</td><td>BACK</td><td>NOT NOW</td><td>--</td></tr>
   <tr><td>Stand-up</td><td>JOIN</td><td>SKIP</td><td>--</td></tr>
-  <tr><td>After lunch</td><td>RESUME</td><td>NOT YET</td><td>--</td></tr>
+  <tr><td>Stand-up running</td><td>END STAND-UP, back to the task as it was</td><td>--</td><td>--</td></tr>
+  <tr><td>Nothing timing, working hours (Session key amber: NOT TIMING, a press opens the picker)</td><td>--</td><td>--</td><td>--</td></tr>
+  <tr><td>After lunch</td><td>RESUME</td><td>NOT NOW</td><td>--</td></tr>
   <tr><td>Lunch during an interruption</td><td>START LUNCH</td><td>NOT NOW</td><td>--</td></tr>
-  <tr><td>Task no longer yours, DONE</td><td>DONE ANYWAY (two presses)</td><td>NOT DONE</td><td>--</td></tr>
+  <tr><td>Task no longer yours, DONE</td><td>DONE ANYWAY (two presses)</td><td>STOP</td><td>--</td></tr>
 </table></div>
-<p class="links">The Session key pauses and resumes in one press, and opens the picker when held. Previous task is hidden during an interruption: going back is A. Hidden, never removed, as every deck action.</p></section>
+<p class="links">⚡ ANOTHER during an interruption ends it and starts the next; A always goes back to the task you were on. After an interruption, A, B and C are DONE, STOP and DISCARD again at once: what is left to place is counted on the Interrupt key, and placed in the app. DISCARD names what it throws away: ⚡ for an interruption. A DISCARD, from any key, shows Undo on the app's toast for 10 s, as a send does. The Session key pauses and resumes in one press, and opens the picker when held. Previous task is hidden during an interruption: going back is A. Hidden, never removed, as every deck action.</p></section>
 
 <section class="shot" id="S31"><h3><span class="id">S31</span>When things are not normal <span class="changed">new in v4</span></h3>
 <p>The states a newcomer meets early. Each one says what still works, so nobody stops timing because something else is down.</p>
 <div class="frame"><div class="stage" style="flex-direction:column;align-items:stretch;gap:12px">
   <div class="card"><div class="kick">First sync</div><b>Fetching your tasks from Jira… 6 of 15 projects</b><div style="height:6px;border-radius:3px;background:var(--raised);margin:8px 0"><div style="width:40%;height:6px;border-radius:3px;background:#a1a1a8"></div></div><span class="note">You can start a task of your own now; Jira's tasks appear as they arrive.</span></div>
   <div class="card alert"><b>Jira is not answering</b><span class="note"> · since 10:42. Timing works; 2 entries wait and go out when it answers. <u>Try now</u></span></div>
+  <div class="card alert"><b>Jira refused your token</b><span class="note"> · Timing works; 3 entries (2h 05m) wait. The header reads "Sending stopped" until you <u>enter a new one</u> (S20).</span></div>
   <div class="card alert"><b>No network</b><span class="note"> · Timing works. The task list is from 09:12. Nothing is lost.</span></div>
   <div class="card"><b>BUSY Bar unplugged</b><span class="note"> · Your timer keeps running here. The bar shows the current screen when it is back.</span></div>
+  <div class="card"><div class="kick">Setup: Test connection failed</div><b>studio.atlasian.net was not found</b><span class="note"> · Check the address: it is the one in your browser when you open Jira. A refused token says "Jira refused this token · <u>make a new one</u> ↗" instead.</span></div>
+  <div class="card"><div class="kick">First day: nothing recent yet</div><b>The picker opens on "Assigned to me"</b><span class="note"> · in progress first, then to do by priority. Recent and Starred appear once you have used a task or starred one.</span></div>
+  <div class="card alert"><b>SprintTicker closed while MG-12 ran</b><span class="note"> · at 14:02, last activity 13:58. The timer is paused there, nothing logged: the same question as a night left running (S18), on Today and the mini timer. <u>Answer</u></span></div>
+  <div class="card alert"><b>Jira refused 1 entry</b><span class="note"> · PF-44, 30m: time tracking is off on this issue. It stays here, unsent, and the week lists it. <u>↳ Move…</u> · <u>Keep off Jira</u></span></div>
+  <div class="card"><div class="kick">No account yet</div><b>Connect one in Settings › Account</b><span class="note"> · Jira, OpenProject or your team's server. Your own tasks and their time stay as they are; nothing already logged is sent.</span></div>
   <div class="card"><b>Updated to 1.5.0</b><span class="note"> · 3 things changed. <u>What's new</u> · <u>Not now</u></span></div>
 </div></div></section>
 
