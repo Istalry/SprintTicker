@@ -81,6 +81,8 @@ export interface RunningInterruptionDTO {
   interruptedTaskTitle: string | null;
   /** The held session was paused already: Back leaves it paused. */
   interruptedWasPaused: boolean;
+  /** The task chosen for its time while it runs (S9): placed there when it ends. */
+  chosenTask?: { id: string; key: string; title: string };
 }
 
 /** An interruption that ended and waits to be placed, kept off, or left for later. */

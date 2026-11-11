@@ -861,21 +861,40 @@
       <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>Back to
       MG-12</strong>, <strong>Stop the Interruption</strong> and <strong>Another Interruption</strong>.</p>
       <ul>
-      <li><strong>Lunch time during an interruption</strong> asks first, on Today and the mini
+      <li><p><strong>Lunch time during an interruption</strong> asks first, on Today and the mini
       timer: <em>Start lunch? It ends &quot;Call with Marc&quot;, which waits to be placed.</em>
       <strong>Start lunch</strong> ends it; the task that waited stays paused, now for lunch,
       and <strong>Back at your desk?</strong> offers it again when lunch ends. <strong>Not now</strong>
       keeps the call going, and lunch does not start again that day -- nor does
       it if you go <strong>Back</strong> to your task during lunch&#39;s hour. <strong>Away</strong> -- locking
       Windows -- leaves an interruption running: a call goes on away from the
-      desk, and lunch asks when you are back.</li>
-      <li><strong>The stand-up during an interruption</strong>: its card says <em>Join? It ends
-      &quot;Call with Marc&quot;</em>; Join ends it, and it waits to be placed.</li>
-      <li><strong>The end-of-day wrap-up</strong> ends an interruption and the task it held,
-      without asking.</li>
-      <li><strong>Name it</strong> while it runs: click its title on Today&#39;s session card or
-      in the mini timer, type, and press Enter (Escape keeps the name). It is
-      called after the time it started, <strong>Interruption 14:32</strong>, until you do.</li>
+      desk, and lunch asks when you are back.</p>
+      </li>
+      <li><p><strong>The stand-up during an interruption</strong>: its card says <em>Join? It ends
+      &quot;Call with Marc&quot;</em>; Join ends it, and it waits to be placed.</p>
+      </li>
+      <li><p><strong>The end-of-day wrap-up</strong> ends an interruption and the task it held,
+      without asking.</p>
+      </li>
+      <li><p><strong>While it runs</strong>, Today&#39;s session card asks three things, none of which
+      stops the timer:</p>
+      <ul>
+      <li><strong>What is it about?</strong> -- type a name and press Enter; your provider
+      shows it as the note with its time.</li>
+      <li><strong>Started now ▾</strong> -- 2, 5 or 10 min ago, when you pressed late. Those
+      minutes come off the task that waits, never before it started, so
+      nothing counts twice.</li>
+      <li><strong>Which task is it for?</strong> -- <strong>Choose a task…</strong>, and its time goes there
+      when it ends, sent like any entry; <strong>Later</strong> takes the choice back, and
+      it waits to be placed.</li>
+      </ul>
+      <p>The first time, a line says what happens to its time; <strong>Got it</strong> puts it
+      away for good.</p>
+      </li>
+      <li><p><strong>Name it</strong> while it runs: in that field, or click its title in the mini
+      timer, type, and press Enter (Escape keeps the name). It is
+      called after the time it started, <strong>Interruption 14:32</strong>, until you do.</p>
+      </li>
       </ul>
       <h5>Interruptions to place</h5>
       <p>An interruption that ended is on no task yet, and <strong>its time is sent
@@ -2778,7 +2797,11 @@
       back. Interruptions of the model before -- ad-hoc tasks marked <code>unsorted</code>
       (migration 13) and their worklogs -- became fragments in migration 15 with
       <code>legacy_worklog_id</code>; placing one moves that worklog
-      (<code>WorklogCorrectionService.reassign</code>). A worklog read says when it came from
+      (<code>WorklogCorrectionService.reassign</code>). While one runs (S9), the engine moves
+      its start earlier (<code>moveInterruptionStart</code>, the held task&#39;s open pause with
+      it, so the minutes come off the task) and keeps a task chosen for it
+      (<code>chooseTaskForInterruption</code>), which <code>tellInterruptionEnded</code> places it on
+      before telling the listeners -- for every end but a discard. A worklog read says when it came from
       one (<code>fromInterruption</code>: an <code>interruptions</code> row names it as
       <code>placed_worklog_id</code> or <code>legacy_worklog_id</code>), and Today marks it ⚡. In the
       renderer, Today, History and the wrap-up share <code>InterruptionsToPlace</code> (its
@@ -3324,6 +3347,14 @@
       <td align="left"><code>(id, name)</code>: names a fragment, running or waiting; <code>checkAdHocTitle</code> rules</td>
       </tr>
       <tr>
+      <td align="left"><code>interruption:move-start</code></td>
+      <td align="left"><code>(atUtc)</code>: the running fragment began then (S9&#39;s &quot;started 5 min ago&quot;), held between what it takes its minutes from -- the held session&#39;s start and last pause, the fragment before it in the run -- and now; over a running task the task&#39;s pause moves with it. Answers the session</td>
+      </tr>
+      <tr>
+      <td align="left"><code>interruption:choose-task</code></td>
+      <td align="left"><code>(taskId | null)</code>: where the running fragment&#39;s time goes when it ends -- placed there at Back, Stop, Another or a switch, never at a discard; null is Later. Kept in memory: after a restart it waits to be placed. The choice is <code>interruption.chosenTask</code> on the session</td>
+      </tr>
+      <tr>
       <td align="left"><code>interruption:place</code> / <code>interruption:place-many</code></td>
       <td align="left"><code>(id, taskId)</code> / <code>(ids, taskId)</code>: a worklog of each fragment&#39;s span on the task, queued with the hold; an interruption of the model before has its worklog moved. Refused for one not waiting. Ten seconds to undo</td>
       </tr>
@@ -3397,7 +3428,7 @@
       </tr>
       <tr>
       <td align="left"><code>flow-settings:get</code></td>
-      <td align="left">A setting of the redesigned flows (<code>shared/flow-settings.ts</code>: <code>start_side_effects</code>, <code>done_state_by_project</code>, <code>prompt_delays</code>, <code>shortcuts</code>, <code>close_to_tray</code>, <code>standup_task</code>, <code>provider_display_name</code>), read through its reader -- whole and valid, the default when unset. Another key throws</td>
+      <td align="left">A setting of the redesigned flows (<code>shared/flow-settings.ts</code>: <code>start_side_effects</code>, <code>done_state_by_project</code>, <code>prompt_delays</code>, <code>shortcuts</code>, <code>close_to_tray</code>, <code>standup_task</code>, <code>provider_display_name</code>, <code>first_interruption_seen</code>), read through its reader -- whole and valid, the default when unset. Another key throws</td>
       </tr>
       <tr>
       <td align="left"><code>flow-settings:save</code></td>

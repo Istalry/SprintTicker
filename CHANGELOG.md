@@ -54,6 +54,11 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **An interruption, told as it runs.** Today's session card asks what it
+  is about (the note your provider shows), when it started -- 2, 5 or 10
+  minutes ago, those minutes coming off the task that waits -- and which
+  task its time goes to when it ends, all without stopping the timer. The
+  first one explains itself, once.
 - **Your task given to someone else, seen within a minute.** The task you
   are timing is checked every minute; when it is reassigned, closed or
   deleted, a card on Today says so and offers to keep timing, to move the

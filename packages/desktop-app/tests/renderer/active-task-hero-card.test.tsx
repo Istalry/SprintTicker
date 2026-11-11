@@ -385,7 +385,7 @@ describe('ActiveTaskHeroCard', () => {
       />
     );
 
-    expect(screen.getByText(/during SPR-142, which waits paused/)).toBeTruthy();
+    expect(screen.getByText(/SPR-142 waits, as it was: nothing is sent/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'More ways to stop' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Switch task…' })).toBeTruthy();

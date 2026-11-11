@@ -21,6 +21,10 @@ export enum IPCChannel {
   /** The running one, or one waiting (`id`): ten seconds to undo. */
   INTERRUPTION_DISCARD = 'interruption:discard',
   INTERRUPTION_RENAME = 'interruption:rename',
+  /** The running one began earlier: an ISO time ("started 5 min ago", S9). */
+  INTERRUPTION_MOVE_START = 'interruption:move-start',
+  /** The task the running one's time goes to when it ends, or null for Later (S9). */
+  INTERRUPTION_CHOOSE_TASK = 'interruption:choose-task',
   INTERRUPTION_PLACE = 'interruption:place',
   INTERRUPTION_PLACE_MANY = 'interruption:place-many',
   INTERRUPTION_KEEP_OFF = 'interruption:keep-off',

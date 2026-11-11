@@ -26,7 +26,9 @@ export const FlowSettingKey = {
   /** Whether closing the window hides it to the tray. */
   CLOSE_TO_TRAY: 'close_to_tray',
   /** The task the stand-up is timed on, or none: an ad-hoc task kept here. */
-  STANDUP_TASK: 'standup_task'
+  STANDUP_TASK: 'standup_task',
+  /** Whether the first interruption's explanation was put away (S9): it shows once. */
+  FIRST_INTERRUPTION_SEEN: 'first_interruption_seen'
 } as const;
 
 export interface StartSideEffectsSetting {
@@ -181,6 +183,7 @@ export interface FlowSettingValues {
   shortcuts: ShortcutsSetting;
   close_to_tray: boolean;
   standup_task: StandupTaskDTO | null;
+  first_interruption_seen: boolean;
 }
 
 export type FlowSettingKeyValue = keyof FlowSettingValues;
@@ -192,7 +195,8 @@ const FLOW_READERS: { [K in FlowSettingKeyValue]: (stored: unknown) => FlowSetti
   prompt_delays: readPromptDelays,
   shortcuts: readShortcuts,
   close_to_tray: readCloseToTray,
-  standup_task: readStandupTask
+  standup_task: readStandupTask,
+  first_interruption_seen: stored => stored === true
 };
 
 export function isFlowSettingKey(key: unknown): key is FlowSettingKeyValue {

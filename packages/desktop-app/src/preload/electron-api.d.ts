@@ -106,6 +106,10 @@ export interface IElectronAPI {
   /** The running interruption, or one waiting (`id`); ten seconds to undo. */
   discardInterruption: (id?: string) => Promise<boolean>;
   renameInterruption: (id: string, name: string) => Promise<void>;
+  /** The running interruption began at `atUtc` (S9's "started 5 min ago"); clamped by main. */
+  moveInterruptionStart: (atUtc: string) => Promise<ActiveSessionDTO>;
+  /** Where the running interruption's time goes when it ends; null is Later. */
+  chooseInterruptionTask: (taskId: string | null) => Promise<ActiveSessionDTO>;
   placeInterruption: (id: string, taskId: string) => Promise<void>;
   placeInterruptions: (ids: string[], taskId: string) => Promise<void>;
   keepInterruptionOff: (id: string) => Promise<void>;

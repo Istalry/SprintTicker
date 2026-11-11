@@ -345,6 +345,15 @@ export class IPCHandlerRegistry {
       this.interruptions().rename(id, checkAdHocTitle(name));
       this.broadcastInterruptions();
     });
+    ipcMain.handle(IPCChannel.INTERRUPTION_MOVE_START, async (_event, atUtc: unknown) => {
+      const at = typeof atUtc === 'string' ? new Date(atUtc) : null;
+      if (!at || Number.isNaN(at.getTime())) throw new ArgumentException('Not a time.', 'atUtc');
+      return this.engine.moveInterruptionStart(at);
+    });
+    ipcMain.handle(IPCChannel.INTERRUPTION_CHOOSE_TASK, async (_event, taskId: unknown) => {
+      if (taskId !== null && (typeof taskId !== 'string' || !taskId)) throw new ArgumentException('Choosing needs a task id, or null.', 'taskId');
+      return this.engine.chooseTaskForInterruption(taskId);
+    });
     ipcMain.handle(IPCChannel.INTERRUPTION_PLACE, async (_event, id: unknown, taskId: unknown) => {
       if (typeof id !== 'string' || !id || typeof taskId !== 'string' || !taskId) {
         throw new ArgumentException('Placing needs an interruption and a task.');

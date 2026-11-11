@@ -361,8 +361,21 @@ MG-12**, **Stop the Interruption** and **Another Interruption**.
   "Call with Marc"*; Join ends it, and it waits to be placed.
 - **The end-of-day wrap-up** ends an interruption and the task it held,
   without asking.
-- **Name it** while it runs: click its title on Today's session card or
-  in the mini timer, type, and press Enter (Escape keeps the name). It is
+- **While it runs**, Today's session card asks three things, none of which
+  stops the timer:
+  - **What is it about?** -- type a name and press Enter; your provider
+    shows it as the note with its time.
+  - **Started now ▾** -- 2, 5 or 10 min ago, when you pressed late. Those
+    minutes come off the task that waits, never before it started, so
+    nothing counts twice.
+  - **Which task is it for?** -- **Choose a task…**, and its time goes there
+    when it ends, sent like any entry; **Later** takes the choice back, and
+    it waits to be placed.
+
+  The first time, a line says what happens to its time; **Got it** puts it
+  away for good.
+- **Name it** while it runs: in that field, or click its title in the mini
+  timer, type, and press Enter (Escape keeps the name). It is
   called after the time it started, **Interruption 14:32**, until you do.
 
 #### Interruptions to place

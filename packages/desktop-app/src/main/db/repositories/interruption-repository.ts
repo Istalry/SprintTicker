@@ -95,6 +95,11 @@ export class InterruptionRepository {
     return row ? toRecord(row) : null;
   }
 
+  /** Moves a running fragment's start ("started 5 min ago"); an ended one keeps its span. */
+  public setStart(id: string, startedAtUtc: string): void {
+    this._db.getDb().prepare('UPDATE interruptions SET started_at_utc = ? WHERE id = ? AND ended_at_utc IS NULL').run(startedAtUtc, id);
+  }
+
   public close(id: string, endedAtUtc: string): void {
     this._db.getDb().prepare('UPDATE interruptions SET ended_at_utc = ? WHERE id = ? AND ended_at_utc IS NULL').run(endedAtUtc, id);
   }

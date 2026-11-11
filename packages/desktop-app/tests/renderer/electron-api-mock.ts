@@ -128,6 +128,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     switchFromInterruption: vi.fn().mockResolvedValue(null),
     discardInterruption: vi.fn().mockResolvedValue(true),
     renameInterruption: vi.fn().mockResolvedValue(undefined),
+    moveInterruptionStart: vi.fn().mockResolvedValue(TRACKING_SESSION),
+    chooseInterruptionTask: vi.fn().mockResolvedValue(TRACKING_SESSION),
     placeInterruption: vi.fn().mockResolvedValue(undefined),
     placeInterruptions: vi.fn().mockResolvedValue(undefined),
     keepInterruptionOff: vi.fn().mockResolvedValue(undefined),

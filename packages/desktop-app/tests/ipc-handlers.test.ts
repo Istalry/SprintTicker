@@ -543,6 +543,21 @@ describe('IPC handlers', () => {
       await expect(move({}, worklogId, taskId)).rejects.toThrow();
     });
 
+    it('InterruptionWhileItRuns_StartAndTaskReachTheEngine_BadArgumentsRefused', async () => {
+      const moveStart = vi.spyOn(engine, 'moveInterruptionStart').mockReturnValue(null as never);
+      const choose = vi.spyOn(engine, 'chooseTaskForInterruption').mockReturnValue(null as never);
+
+      await invoke(IPCChannel.INTERRUPTION_MOVE_START, '2026-11-10T09:25:00.000Z');
+      await invoke(IPCChannel.INTERRUPTION_CHOOSE_TASK, 'T-9');
+      await invoke(IPCChannel.INTERRUPTION_CHOOSE_TASK, null);
+
+      expect(moveStart).toHaveBeenCalledWith(new Date('2026-11-10T09:25:00.000Z'));
+      expect(choose.mock.calls).toEqual([['T-9'], [null]]);
+      await expect(invoke(IPCChannel.INTERRUPTION_MOVE_START, 'soon')).rejects.toThrow(/Not a time/);
+      await expect(invoke(IPCChannel.INTERRUPTION_CHOOSE_TASK, '')).rejects.toThrow(/task id/);
+      await expect(invoke(IPCChannel.INTERRUPTION_CHOOSE_TASK, 7)).rejects.toThrow(/task id/);
+    });
+
     it.each([[undefined], [7], ['']])('MoveSession_NotATaskId_IsRefused_%#', async taskId => {
       await expect(invoke(IPCChannel.MOVE_SESSION, taskId)).rejects.toThrow(/task id/);
     });

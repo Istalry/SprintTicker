@@ -249,6 +249,26 @@ export class SessionRepository {
     return result.changes > 0;
   }
 
+  /**
+   * Moves the start of the session's open pause from `fromUtc` to `toUtc`,
+   * with the session's own copy of it: an interruption backdated while it
+   * holds the session, whose minutes come off the task. Only the latest
+   * row, and only while it is open and starts where it is said to.
+   *
+   * @returns false when there was no such pause.
+   */
+  public moveOpenPauseStart(sessionId: string, fromUtc: string, toUtc: string): boolean {
+    const db = this.dbConn.getDb();
+    const moved = db.prepare(`
+      UPDATE paused_intervals SET paused_at_utc = ?
+      WHERE id = (SELECT MAX(id) FROM paused_intervals WHERE session_id = ?)
+        AND resumed_at_utc IS NULL AND paused_at_utc = ?
+    `).run(toUtc, sessionId, fromUtc);
+    if (moved.changes === 0) return false;
+    db.prepare('UPDATE active_sessions SET last_pause_start_utc = ? WHERE id = ? AND last_pause_start_utc = ?').run(toUtc, sessionId, fromUtc);
+    return true;
+  }
+
   /** The session's pauses, oldest first; `resumedAtUtc` is null while one is open. */
   public getPauseIntervals(sessionId: string): Array<{ pausedAtUtc: string; resumedAtUtc: string | null }> {
     return this.dbConn.getDb().prepare<[string], { pausedAtUtc: string; resumedAtUtc: string | null }>(`

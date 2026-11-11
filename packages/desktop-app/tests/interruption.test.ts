@@ -337,6 +337,112 @@ describe('Interruptions in a row', () => {
     });
   });
 
+  describe('while it runs (S9, P8e3)', () => {
+    it('StartedEarlier_TheMinutesComeOffTheTask', () => {
+      interruptA();
+
+      engine.moveInterruptionStart(new Date(2026, 9, 14, 10, 25));
+      engine.backFromInterruption();
+      at(11, 0);
+      engine.stopSession();
+
+      // 10:00-10:25 and 10:45-11:00 on A -- two entries, cut at a pause of
+      // 15 min or more -- and the interruption from 10:25 to 10:45.
+      expect(logged(A.id)).toEqual([minutes(15), minutes(25)]);
+      expect(engine.getInterruptionsToPlace().map(f => [f.startedAtUtc, f.durationSeconds])).toEqual([
+        [new Date(2026, 9, 14, 10, 25).toISOString(), minutes(20)]
+      ]);
+    });
+
+    it('StartedEarlier_NeverBeforeTheTaskBegan_NorInTheFuture', () => {
+      interruptA();
+
+      engine.moveInterruptionStart(new Date(2026, 9, 14, 9, 0));
+      expect(session()?.interruption?.startedAtUtc).toBe(new Date(2026, 9, 14, 10, 0).toISOString());
+
+      engine.moveInterruptionStart(new Date(2026, 9, 14, 12, 0));
+      expect(session()?.interruption?.startedAtUtc).toBe(new Date(2026, 9, 14, 10, 45).toISOString());
+    });
+
+    it('StartedEarlier_NeverBeforeTheTasksLastPause', () => {
+      at(10, 0);
+      startA();
+      at(10, 10);
+      engine.pauseSession();
+      at(10, 20);
+      engine.resumeSession();
+      at(10, 30);
+      service.interrupt();
+
+      engine.moveInterruptionStart(new Date(2026, 9, 14, 10, 5));
+
+      expect(session()?.interruption?.startedAtUtc).toBe(new Date(2026, 9, 14, 10, 20).toISOString());
+    });
+
+    it('StartedEarlier_TheSecondOfARun_NeverOverTheFirst', () => {
+      interruptA();
+      engine.anotherInterruption();
+
+      engine.moveInterruptionStart(new Date(2026, 9, 14, 10, 35));
+
+      expect(session()?.interruption?.startedAtUtc).toBe(new Date(2026, 9, 14, 10, 45).toISOString());
+    });
+
+    it('ChosenTask_TheTimerRuns_ItsTimeGoesThereAtTheEnd', () => {
+      interruptA();
+
+      engine.chooseTaskForInterruption(B.id);
+      expect(session()?.interruption?.chosenTask).toEqual({ id: B.id, key: B.key, title: B.title });
+      expect(session()?.status).toBe('TRACKING');
+      engine.backFromInterruption();
+
+      expect(logged(B.id)).toEqual([minutes(15)]);
+      expect(queued(B.id)).toHaveLength(1);
+      expect(engine.getInterruptionsToPlace()).toEqual([]);
+    });
+
+    it('ChosenThenLater_WaitsToBePlaced', () => {
+      interruptA();
+
+      engine.chooseTaskForInterruption(B.id);
+      engine.chooseTaskForInterruption(null);
+      engine.stopInterruption();
+
+      expect(logged(B.id)).toEqual([]);
+      expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+    });
+
+    it('ChosenTask_Another_OnlyThatOneGoesThere', () => {
+      interruptA();
+      engine.chooseTaskForInterruption(B.id);
+
+      engine.anotherInterruption();
+      at(10, 50);
+      engine.stopInterruption();
+
+      expect(logged(B.id)).toEqual([minutes(15)]);
+      expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+    });
+
+    it('ChosenTask_Discarded_NothingPlaced', () => {
+      interruptA();
+      engine.chooseTaskForInterruption(B.id);
+
+      engine.discardInterruption();
+
+      expect(logged(B.id)).toEqual([]);
+    });
+
+    it.each([
+      ['ad-hoc work', 'adhoc_1_x', /ad-hoc/],
+      ['an unknown task', 'nope', /No task/]
+    ])('ChooseTask_%s_Refused', (_name, taskId, message) => {
+      interruptA();
+
+      expect(() => engine.chooseTaskForInterruption(taskId)).toThrow(message);
+    });
+  });
+
   describe('place, keep off, discard', () => {
     const endedOne = () => {
       interruptA();

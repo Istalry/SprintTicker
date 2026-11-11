@@ -793,7 +793,11 @@ queued) or discards one, each behind a restore point so Undo puts the rows
 back. Interruptions of the model before -- ad-hoc tasks marked `unsorted`
 (migration 13) and their worklogs -- became fragments in migration 15 with
 `legacy_worklog_id`; placing one moves that worklog
-(`WorklogCorrectionService.reassign`). A worklog read says when it came from
+(`WorklogCorrectionService.reassign`). While one runs (S9), the engine moves
+its start earlier (`moveInterruptionStart`, the held task's open pause with
+it, so the minutes come off the task) and keeps a task chosen for it
+(`chooseTaskForInterruption`), which `tellInterruptionEnded` places it on
+before telling the listeners -- for every end but a discard. A worklog read says when it came from
 one (`fromInterruption`: an `interruptions` row names it as
 `placed_worklog_id` or `legacy_worklog_id`), and Today marks it ⚡. In the
 renderer, Today, History and the wrap-up share `InterruptionsToPlace` (its

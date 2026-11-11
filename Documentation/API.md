@@ -42,6 +42,8 @@ Everything else is a request/response `invoke`.
 | `interruption:switch` | `(taskId, takeAlong)`: ends the fragment, stops the held session, starts `taskId`; with `takeAlong` the fragment is placed on it |
 | `interruption:discard` | `(id?)`: the running fragment, or one waiting; ten seconds to undo |
 | `interruption:rename` | `(id, name)`: names a fragment, running or waiting; `checkAdHocTitle` rules |
+| `interruption:move-start` | `(atUtc)`: the running fragment began then (S9's "started 5 min ago"), held between what it takes its minutes from -- the held session's start and last pause, the fragment before it in the run -- and now; over a running task the task's pause moves with it. Answers the session |
+| `interruption:choose-task` | `(taskId \| null)`: where the running fragment's time goes when it ends -- placed there at Back, Stop, Another or a switch, never at a discard; null is Later. Kept in memory: after a restart it waits to be placed. The choice is `interruption.chosenTask` on the session |
 | `interruption:place` / `interruption:place-many` | `(id, taskId)` / `(ids, taskId)`: a worklog of each fragment's span on the task, queued with the hold; an interruption of the model before has its worklog moved. Refused for one not waiting. Ten seconds to undo |
 | `interruption:keep-off` | `(id)`: keeps it off the provider, as a local ad-hoc worklog |
 | `interruption:get-to-place` | Every fragment that ended and waits, any day, oldest first: `{ id, name, title, startedAtUtc, endedAtUtc, durationSeconds, source, interruptedTaskKey, index, ofRun }` |
@@ -60,7 +62,7 @@ Everything else is a request/response `invoke`.
 | `undo:get` | The last action Undo can take back -- `{ kind, label, expiresAtUtc }`, `kind` one of `stop`, `discard`, `correct`, `move`, `delete`, `end-day` -- or null |
 | `undo:run` | Takes it back: a stop or discard reopens the session as it was, an edit puts the worklog and its queue rows back. `false` when its ten seconds are over, a row was sent meanwhile, or (for a stop) another session runs |
 | `undo:on-changed` | **Event** -- an action was offered, undone or became final |
-| `flow-settings:get` | A setting of the redesigned flows (`shared/flow-settings.ts`: `start_side_effects`, `done_state_by_project`, `prompt_delays`, `shortcuts`, `close_to_tray`, `standup_task`, `provider_display_name`), read through its reader -- whole and valid, the default when unset. Another key throws |
+| `flow-settings:get` | A setting of the redesigned flows (`shared/flow-settings.ts`: `start_side_effects`, `done_state_by_project`, `prompt_delays`, `shortcuts`, `close_to_tray`, `standup_task`, `provider_display_name`, `first_interruption_seen`), read through its reader -- whole and valid, the default when unset. Another key throws |
 | `flow-settings:save` | Stores one, made whole and valid by the same reader, and answers what was stored |
 | `session:on-updated` | **Event** — the session changed |
 

@@ -9,6 +9,7 @@ import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { TaskPageButton } from './TaskPageButton';
 import { SessionTitle } from './SessionTitle';
+import { InterruptionDetails } from './InterruptionDetails';
 import { StopMenu } from './StopMenu';
 import { isAdHocSession } from '../../shared/interruption';
 import { StateWord, Verb } from '../../shared/words';
@@ -125,6 +126,9 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         {sendLine && !interruption && <span className="text-text-secondary truncate">{sendLine}</span>}
       </div>
 
+      {interruption ? (
+        <InterruptionDetails key={interruption.id} interruption={interruption} />
+      ) : (
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">
           {session ? (
@@ -137,13 +141,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             'No task running'
           )}
         </h2>
-        {interruption ? (
-          <div className="mt-1 text-xs text-accent-amber">
-            {interruption.interruptedTaskKey
-              ? `Interruption ${interruption.index} during ${interruption.interruptedTaskKey}, which waits paused: nothing is sent. Place it on a task when it ends.`
-              : `Interruption ${interruption.index}. Place it on a task when it ends.`}
-          </div>
-        ) : session?.unsorted && (
+        {session?.unsorted && (
           <div className="mt-1 text-xs text-accent-amber">
             Interruption -- name it, or assign it to a task so its time reaches your provider.
           </div>
@@ -158,6 +156,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           </div>
         )}
       </div>
+      )}
 
       <div className="text-4xl font-extrabold font-mono text-white tracking-widest" aria-label="Elapsed time">
         {formatSeconds(session?.elapsedSeconds || 0)}

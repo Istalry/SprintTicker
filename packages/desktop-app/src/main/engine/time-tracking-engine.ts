@@ -78,6 +78,12 @@ export class TimeTrackingEngine extends EventEmitter {
   private _trackedOwnership: { sessionId: string; owner: TaskOwnershipValue } | null = null;
   /** When the open session's task was first seen leaving the list; cleared when it comes back. */
   private _leftSeen: { sessionId: string; atUtc: string } | null = null;
+  /**
+   * The task chosen for the running interruption's time (S9), placed there
+   * when it ends. In memory: after a restart the fragment waits to be placed,
+   * which is what Later is anyway.
+   */
+  private _chosenTask: { fragmentId: string; taskId: string } | null = null;
   /** The minute check of the task being timed (P8e2): when it last asked, and whether it waits on an answer. */
   private _standingCheck: { sessionId: string; lastMs: number; inFlight: boolean } | null = null;
   private _claimListeners: Set<(report: TaskClaimReport) => void> = new Set();
@@ -748,6 +754,7 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   private tellInterruptionEnded(id: string, how: InterruptionEnded['how']): void {
+    if (how !== 'discard') this.placeOnChosenTask(id);
     const fragment = this._interruptions.get(id);
     if (!fragment) return;
     const session = this.sessionView();
@@ -759,6 +766,76 @@ export class TimeTrackingEngine extends EventEmitter {
         console.error('[TimeTrackingEngine] Interruption listener failed:', err);
       }
     }
+  }
+
+  /**
+   * An interruption that ends with a task chosen for it goes there, as
+   * "↳ Place…" would put it: its time sent like any entry, held for Undo.
+   * A refusal leaves it to place, which is never worse than not choosing.
+   */
+  private placeOnChosenTask(id: string): void {
+    const chosen = this._chosenTask;
+    if (chosen?.fragmentId !== id) return;
+    const fragment = this._interruptions.get(id);
+    if (!fragment || !fragment.endedAtUtc || fragment.placedTaskId || fragment.keptOff || fragment.discardedAtUtc) return;
+    try {
+      this.placeInterruption(id, chosen.taskId);
+    } catch (err) {
+      console.warn(`[TimeTrackingEngine] ${id} could not go to the task chosen for it; it waits to be placed.`, err);
+    }
+  }
+
+  /**
+   * "Which task is it for?" while it runs (S9): the timer keeps running, and
+   * the time goes to `taskId` when it ends -- Back, Stop, Another or a
+   * switch. Null is Later: it waits to be placed.
+   */
+  public chooseTaskForInterruption(taskId: string | null): ActiveSessionDTO {
+    const running = this.requireRunningFragment();
+    if (taskId === null) {
+      this._chosenTask = null;
+    } else {
+      if (!taskId) throw new ArgumentNullException('taskId');
+      if (isAdHocTaskId(taskId)) throw new ArgumentException('Place it on a task, not on other ad-hoc work.', 'taskId');
+      if (!this._taskRepo.getTaskById(taskId)) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+      this._chosenTask = { fragmentId: running.id, taskId };
+    }
+    this.notifyListeners();
+    return this.getCurrentSession()!;
+  }
+
+  /**
+   * "Started 5 min ago ▾" (S9): the running interruption began earlier than
+   * the press. Never before what it takes its minutes from -- the start of
+   * the session it holds, that session's last pause, the fragment before it
+   * in the run -- nor after now. Over a running task the task's pause moves
+   * with it, so those minutes come off the task and nothing counts twice.
+   */
+  public moveInterruptionStart(at: Date): ActiveSessionDTO {
+    if (!(at instanceof Date) || !Number.isFinite(at.getTime())) throw new ArgumentException('The start must be a time.', 'at');
+    const running = this.requireRunningFragment();
+    const view = this.sessionView();
+    const held = view && view.sessionId === running.interruptedSessionId ? view : null;
+    let floor = Number.NEGATIVE_INFINITY;
+    if (held) {
+      floor = Date.parse(held.startTimeUtc);
+      for (const pause of this._sessionRepo.getPauseIntervals(held.sessionId)) {
+        if (pause.resumedAtUtc) floor = Math.max(floor, Date.parse(pause.resumedAtUtc));
+      }
+    }
+    const before = running.afterId ? this._interruptions.get(running.afterId) : null;
+    if (before?.endedAtUtc) floor = Math.max(floor, Date.parse(before.endedAtUtc));
+    const startIso = new Date(Math.max(Math.min(at.getTime(), Date.now()), floor)).toISOString();
+    if (startIso === running.startedAtUtc) return this.getCurrentSession()!;
+
+    // Only the first of a run took its pause at its own start.
+    if (held && !running.interruptedWasPaused && !running.afterId) {
+      this._sessionRepo.moveOpenPauseStart(held.sessionId, running.startedAtUtc, startIso);
+      this._currentSession = this._sessionRepo.getActiveSession();
+    }
+    this._interruptions.setStart(running.id, startIso);
+    this.notifyListeners();
+    return this.getCurrentSession()!;
   }
 
   private requireRunningFragment(): InterruptionRecord {
@@ -787,6 +864,13 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /** The running fragment as the session every surface reads. */
+  /** The task chosen for a running fragment, as its view names it. */
+  private chosenTaskOf(fragmentId: string): { chosenTask?: { id: string; key: string; title: string } } {
+    if (this._chosenTask?.fragmentId !== fragmentId) return {};
+    const task = this._taskRepo.getTaskById(this._chosenTask.taskId);
+    return task ? { chosenTask: { id: task.id, key: task.key, title: task.title } } : {};
+  }
+
   private fragmentView(running: InterruptionRecord): ActiveSessionDTO {
     const session = this.sessionView();
     const held = session && session.sessionId === running.interruptedSessionId ? session : null;
@@ -810,7 +894,8 @@ export class TimeTrackingEngine extends EventEmitter {
         interruptedSessionId: held?.sessionId ?? null,
         interruptedTaskKey: held?.taskKey ?? null,
         interruptedTaskTitle: held?.taskTitle ?? null,
-        interruptedWasPaused: running.interruptedWasPaused
+        interruptedWasPaused: running.interruptedWasPaused,
+        ...this.chosenTaskOf(running.id)
       },
       status: 'TRACKING',
       startTimeUtc: running.startedAtUtc,
