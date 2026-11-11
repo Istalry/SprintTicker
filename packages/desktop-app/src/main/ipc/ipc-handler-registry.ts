@@ -720,14 +720,17 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.GET_RESUME_PROMPT, async () => this.contextScheduleService.getResumePrompt());
 
-    ipcMain.handle(IPCChannel.ANSWER_RESUME_PROMPT, async (_event, resume: unknown, addGapMinutes: unknown) => {
+    ipcMain.handle(IPCChannel.ANSWER_RESUME_PROMPT, async (_event, resume: unknown, addGapMinutes: unknown, workedThrough: unknown) => {
       if (typeof resume !== 'boolean') {
         throw new ArgumentException(`The answer must be true or false, got ${String(resume)}.`, 'resume');
       }
       if (addGapMinutes !== undefined && (typeof addGapMinutes !== 'number' || !Number.isFinite(addGapMinutes) || addGapMinutes < 0)) {
         throw new ArgumentException(`The gap must be a number of minutes, got ${String(addGapMinutes)}.`, 'addGapMinutes');
       }
-      return this.contextScheduleService.answerResumePrompt(resume, addGapMinutes ?? 0);
+      if (workedThrough !== undefined && typeof workedThrough !== 'boolean') {
+        throw new ArgumentException(`"Worked through it" must be true or false, got ${String(workedThrough)}.`, 'workedThrough');
+      }
+      return this.contextScheduleService.answerResumePrompt(resume, addGapMinutes ?? 0, workedThrough ?? false);
     });
 
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {

@@ -54,6 +54,12 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **Lunch and Away pause the task, and ask "Back at your desk?"** They used
+  to stop it and start it again. Now the task is paused, the break untimed,
+  and its time still goes in as two worklogs at the stop. When the break
+  ends the window and the bar ask: Resume, **I worked through it** (the
+  break counts as work), or Not now. Away -- locking Windows -- pauses the
+  same way, and leaves an interruption running.
 - **Stop ▾ on Today.** The session card stops in one click, the task left
   open; ✓ Done and Discard… are in the ▾ beside it, each a step away, in
   place of "Finish & Log Hours" and its dialog. The card says when the time

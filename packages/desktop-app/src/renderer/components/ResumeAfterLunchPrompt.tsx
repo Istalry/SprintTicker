@@ -28,6 +28,9 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
 
   if (!prompt) return null;
   const standup = prompt.after === 'standup';
+  // After Lunch or Away the task is paused, not stopped (P8b).
+  const held = prompt.held === true;
+  const breakName = prompt.after === 'away' ? 'Away' : 'Lunch';
   const task = (
     <>
       <span className="font-mono text-text-primary font-bold">{prompt.taskKey}</span>
@@ -35,9 +38,9 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
     </>
   );
 
-  const answer = (resume: boolean, addGapMinutes?: number) => {
+  const answer = (resume: boolean, addGapMinutes?: number, workedThrough?: boolean) => {
     setPrompt(null);
-    window.electronAPI.answerResumePrompt(resume, addGapMinutes)
+    window.electronAPI.answerResumePrompt(resume, addGapMinutes, workedThrough)
       .catch(err => console.warn('[ResumeAfterLunchPrompt] Could not answer:', err));
   };
   // The minutes since the interruption ended, read at the click: Back then
@@ -50,10 +53,16 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
       <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
         <ConfirmPanel
           title={
-            prompt.after === 'interruption' ? 'Back to your task?' : standup ? 'Resume after the stand-up?' : 'Resume after lunch?'
+            held ? 'Back at your desk?'
+              : prompt.after === 'interruption' ? 'Back to your task?' : standup ? 'Resume after the stand-up?' : 'Resume after lunch?'
           }
           message={
-            prompt.after === 'interruption' ? (
+            held ? (
+              <>
+                {task} is paused, as it was: {breakName} is not timed, and nothing was sent.
+                {prompt.unlisted && <> It is no longer assigned to you: it was reassigned, closed or moved meanwhile.</>}
+              </>
+            ) : prompt.after === 'interruption' ? (
               <>
                 {task} waited paused through the interruption.
                 {prompt.unlisted && <> It is no longer assigned to you: it was reassigned, closed or moved meanwhile.</>}
@@ -66,11 +75,23 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
               </>
             )
           }
-          confirmLabel="Resume it"
-          cancelLabel="Leave it"
+          confirmLabel={held ? `Resume ${prompt.taskKey}` : 'Resume it'}
+          cancelLabel={held ? 'Not now' : 'Leave it'}
           onConfirm={() => answer(true)}
           onCancel={() => answer(false)}
         />
+        {held && (
+          <div className="flex justify-end pt-3">
+            <button
+              type="button"
+              onClick={() => answer(true, undefined, true)}
+              title={`Resume it, and count the ${breakName.toLowerCase()} as work on it: the pause is taken back`}
+              className="text-xs text-text-secondary hover:text-white underline-offset-2 hover:underline"
+            >
+              I worked through it
+            </button>
+          </div>
+        )}
         {prompt.after === 'interruption' && !Number.isNaN(endedAt) && (
           <div className="flex justify-end pt-3">
             <button

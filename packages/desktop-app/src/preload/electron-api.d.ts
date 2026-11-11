@@ -208,7 +208,7 @@ export interface IElectronAPI {
   getResumePrompt: () => Promise<ResumePromptDTO | null>;
   /** Resumes the task, or leaves it. False when the question had already been answered. */
   /** `addGapMinutes`: after an interruption, the time since it ended counted as work on the task. */
-  answerResumePrompt: (resume: boolean, addGapMinutes?: number) => Promise<boolean>;
+  answerResumePrompt: (resume: boolean, addGapMinutes?: number, workedThrough?: boolean) => Promise<boolean>;
   onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => () => void;
 
   // Provider events: toasts and bar banners for Jira / OpenProject activity

@@ -46,7 +46,7 @@ export type EventName =
   /** The bar's task picker, opened with nothing running, and BACK out of it. */
   | 'openPicker' | 'closePicker'
   | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd'
-  /** Lunch beginning under Away, which stops the session and stays Away; and unlocking into it. */
+  /** Lunch beginning under Away, which takes over Away's pause and stays Away; and unlocking into it. */
   | 'lunchStartUnderAway' | 'awayEndIntoLunch'
   /** The bar unreachable, back, or rebooted while unreachable. */
   | 'barDrop' | 'barBack' | 'barReboot'
@@ -255,18 +255,22 @@ export class Desk {
         }
         return;
       }
-      case 'lunchStart': return this.enterMode('LUNCH');
+      case 'lunchStart':
+        this.pauseForBreak();
+        return this.enterMode('LUNCH');
       case 'lunchStartUnderAway':
-        if (this.mode !== 'AWAY' || this.session?.status !== 'TRACKING') return;
-        // The engine's subscriber draws the empty session; no scene, since
-        // the user did not stop it.
-        this.session = null;
-        this.renderer.renderActiveSession(null);
+        if (this.mode !== 'AWAY') return;
+        // Away paused the task already; Lunch takes the pause over
+        // (relabelPause) and notifies nobody. Only a task started under
+        // Away is paused here, and drawn so.
+        this.pauseForBreak();
         return;
       case 'awayEndIntoLunch':
         if (this.mode !== 'AWAY') return;
         return this.enterMode('LUNCH');
-      case 'awayStart': return this.enterMode('AWAY');
+      case 'awayStart':
+        this.pauseForBreak();
+        return this.enterMode('AWAY');
       case 'lunchEnd':
       case 'awayEnd':
         if (this.mode !== (event === 'lunchEnd' ? 'LUNCH' : 'AWAY')) return;
@@ -300,6 +304,17 @@ export class Desk {
    */
   private workThroughLunch(): void {
     if (this.mode === 'LUNCH') this.enterMode('WORK');
+  }
+
+  /**
+   * Lunch and Away pause the running task (P8b): ContextScheduleService
+   * pauses it before it switches the mode, so the IPC registry's render of
+   * the paused session comes first and the mode's scene lands over it.
+   */
+  private pauseForBreak(): void {
+    if (this.session?.status !== 'TRACKING') return;
+    this.session = { ...this.session, status: 'PAUSED' };
+    this.renderer.renderActiveSession(this.session);
   }
 
   private closePicker(): void {

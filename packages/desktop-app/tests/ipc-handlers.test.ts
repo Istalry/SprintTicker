@@ -255,7 +255,7 @@ describe('IPC handlers', () => {
 
       expect(await invoke(IPCChannel.GET_RESUME_PROMPT)).toEqual({ taskKey: 'SCRUM-2', taskTitle: 'Tache 2', after: 'lunch' });
       expect(await invoke(IPCChannel.ANSWER_RESUME_PROMPT, false)).toBe(true);
-      expect(answerResumePrompt).toHaveBeenCalledWith(false, 0);
+      expect(answerResumePrompt).toHaveBeenCalledWith(false, 0, false);
     });
 
     it('AnswerResumePrompt_WithTheGap_PassesItsMinutes_RefusesANegativeOne', async () => {
@@ -263,9 +263,20 @@ describe('IPC handlers', () => {
       build({ contextScheduleService: { answerResumePrompt, getResumePrompt: vi.fn() } });
 
       await handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, 6);
-      expect(answerResumePrompt).toHaveBeenCalledWith(true, 6);
+      expect(answerResumePrompt).toHaveBeenCalledWith(true, 6, false);
       await expect(handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, -6)).rejects.toThrow(/minutes/);
       await expect(handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, '6')).rejects.toThrow(/minutes/);
+      expect(answerResumePrompt).toHaveBeenCalledTimes(1);
+    });
+
+    it('AnswerResumePrompt_WorkedThrough_ReachesTheScheduleService_ANonBooleanIsRefused', async () => {
+      // "I worked through it" after Lunch or Away (P8b).
+      const answerResumePrompt = vi.fn().mockReturnValue(true);
+      build({ contextScheduleService: { answerResumePrompt, getResumePrompt: vi.fn() } });
+
+      await handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, undefined, true);
+      expect(answerResumePrompt).toHaveBeenCalledWith(true, 0, true);
+      await expect(handler(IPCChannel.ANSWER_RESUME_PROMPT)({}, true, undefined, 'yes')).rejects.toThrow(/Worked through/);
       expect(answerResumePrompt).toHaveBeenCalledTimes(1);
     });
 
@@ -534,16 +545,17 @@ describe('IPC handlers', () => {
   });
 
   describe('user mode', () => {
-    it('SetUserMode_LunchThenWork_SplitsTheSessionAndResumesIt', async () => {
+    it('SetUserMode_LunchThenWork_PausesTheSessionAndAsksAfter', async () => {
+      // P8b: the chip's Lunch pauses the task; Work asks "Back at your desk?".
       engine.startTask('T-1', true, 'Ad hoc');
 
       await invoke(IPCChannel.SET_USER_MODE, 'LUNCH');
       expect(priorityEngine.getUserMode()).toBe('LUNCH');
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(engine.getCurrentSession()).toMatchObject({ taskTitle: 'Ad hoc', status: 'PAUSED' });
 
       await invoke(IPCChannel.SET_USER_MODE, 'WORK');
       expect(priorityEngine.getUserMode()).toBe('WORK');
-      expect(engine.getCurrentSession()?.taskTitle).toBe('Ad hoc');
+      expect(await invoke(IPCChannel.GET_RESUME_PROMPT)).toMatchObject({ taskTitle: 'Ad hoc', after: 'lunch', held: true });
     });
 
     it('SetUserMode_Away_IsReportedToTheRenderer', async () => {

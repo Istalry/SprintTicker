@@ -788,9 +788,24 @@ changing it:
   START during lunch opened it invisibly. It has a rule now, above Lunch, and
   passes `queueOnPreempt: false`: a copy queued under Away replayed after the
   user had closed it, holding the display for nothing.
+- **Lunch and Away pause; they never stop** (D1, redesign P8b). The
+  running session is paused with a `paused_intervals` row of reason `lunch`
+  or `away`, and `lunch_resume` keeps the held session's id
+  (`heldSessionId`, `pausedFor`). The morning is not logged at 12:30 but at
+  the task's stop, where `splitWork` cuts at the break (`splitPauseMinutes`)
+  -- the provider gets the same two entries, to the second. When the break
+  ends, "Back at your desk?" asks about that session (Resume / I worked
+  through it / Not now); nothing restarts. "I worked through it" is
+  `withdrawPause`, which deletes the open pause *row* too, or the split
+  would still cut there. Pause before the mode switch: the paused frame is
+  what the scene covers. An interruption ends at lunch and its held task
+  takes Lunch's pause (`relabelPause`); Away leaves an interruption
+  running. An entry with no held session is a task to *start* again -- the
+  stand-up stopped by lunch, or one stored by a version that stopped.
 - **Lunch never overrides the user.** `ContextScheduleService` listens to the
   engine: a session *going* TRACKING during lunch ends Lunch for the day
-  (`lunch_skipped_date`) and drops the stored restart (`lunch_resume`). Its
+  (`lunch_skipped_date`) and drops the stored entry (`lunch_resume`) --
+  resuming the paused task is going TRACKING. Its
   own restart runs after the switch to WORK, which is how it is told apart.
   **The engine's listeners hear every tick**, once a second while a session
   runs, so "going TRACKING" means a new session id or a resume, never a
@@ -836,11 +851,12 @@ changing it:
   never for a task paused before the interruption, which Back would leave
   paused. The LOGGED scene does not play for a fragment's stop
   (`completeSession` checks `isInterrupted`): nothing was logged.
-- **Lunch stops the session under Away too.** Lunch never *leaves* Away --
-  Away outranks it -- and that used to mean it never began at all: locked at
-  12:30, the session ran on and the break was logged as work. The check now
-  stops it and keeps the restart while staying Away, and `exitAwayMode`
-  goes straight to LUNCH during the lunch hours (stopping a session the
+- **Lunch takes over Away's pause.** Lunch never *leaves* Away -- Away
+  outranks it -- and that used to mean it never began at all: locked at
+  12:30, the session ran on and the break was logged as work. Away pauses
+  now, and the check at lunch relabels the stored entry `pausedFor: 'lunch'`
+  while staying Away, so the question after it is lunch's; `exitAwayMode`
+  goes straight to LUNCH during the lunch hours (pausing a session the
   machine slept through the start of), never WORK first: WORK and then LUNCH
   at the next check is two renders, and a session started in between reads
   as working through lunch. **AWAY to LUNCH lets go of Away's lock**

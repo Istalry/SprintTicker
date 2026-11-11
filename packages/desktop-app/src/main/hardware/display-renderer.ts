@@ -1088,11 +1088,11 @@ export class DisplayRenderer {
    * It is not restarted without asking. OK resumes it and BACK leaves it, in
    * InputDecoder; the window asks the same question.
    */
-  public renderResumePrompt(after: ResumePromptDTO['after'] = 'lunch', taskKey?: string): DisplayPayload {
-    // After an interruption the question is asked of any task, so it names
-    // the one it would bring back; the key comes first and is cut, never
-    // the answer hint.
-    const interruption = after === 'interruption';
+  public renderResumePrompt(after: ResumePromptDTO['after'] = 'lunch', taskKey?: string, held = after === 'interruption'): DisplayPayload {
+    // After an interruption, Lunch or Away the question is asked of any task
+    // held, so it names the one it would bring back; the key comes first and
+    // is cut, never the answer hint.
+    const interruption = held;
     return this.requestRender(RESUME_PROMPT_EVENT, () => {
       this.paintIconAndTwoRows(
         getBitmapById(interruption ? 'task_in_progress' : after === 'standup' ? 'clock' : 'burger'),

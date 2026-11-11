@@ -79,26 +79,30 @@ describe('ContextScheduleService Unit Tests', () => {
     expect(() => new ContextScheduleService(null as unknown as PriorityPreemptionEngine, mockSettingsRepo as unknown as SettingsRepository, mockEngine as unknown as TimeTrackingEngine, mockRenderer as unknown as DisplayRenderer)).toThrowError('Argument cannot be null or undefined: priorityEngine');
   });
 
-  it('EnterLunchMode_ActiveTrackingSession_AutoStopsSessionAndRendersLunchScreen', () => {
-    mockEngine.getCurrentSession.mockReturnValue({ status: 'TRACKING', taskId: '123', isAdHoc: false, taskTitle: 'Test', projectId: 'P1', taskKey: 'P1-123' });
+  it('EnterLunchMode_ActiveTrackingSession_PausesItForLunchAndRendersLunchScreen', () => {
+    // D1 (P8b): lunch pauses the task; it never stops it.
+    mockEngine.getCurrentSession.mockReturnValue({ sessionId: 'S1', status: 'TRACKING', taskId: '123', isAdHoc: false, taskTitle: 'Test', projectId: 'P1', taskKey: 'P1-123' });
 
     service.enterLunchMode();
 
-    expect(mockEngine.stopSession).toHaveBeenCalledWith('Auto-completed for Lunch Break split', false);
+    expect(mockEngine.pauseSession).toHaveBeenCalledWith('lunch');
+    expect(mockEngine.stopSession).not.toHaveBeenCalled();
     expect(mockPriorityEngine.setUserMode).toHaveBeenCalledWith('LUNCH');
     expect(mockRenderer.renderLunchMode).toHaveBeenCalledTimes(1);
   });
 
-  it('ExitLunchMode_WasAutoStoppedForLunch_ResumesSessionWithStartTask', () => {
-    mockEngine.getCurrentSession.mockReturnValue({ status: 'TRACKING', taskId: '123', isAdHoc: false, taskTitle: 'Test', projectId: 'P1', taskKey: 'P1-123' });
+  it('ExitLunchMode_TheTaskLunchPaused_AsksRatherThanRestarting', () => {
+    const held = { sessionId: 'S1', status: 'TRACKING', taskId: '123', isAdHoc: false, taskTitle: 'Test', projectId: 'P1', taskKey: 'P1-123' };
+    mockEngine.getCurrentSession.mockReturnValue(held);
     service.enterLunchMode();
-
-    mockEngine.getCurrentSession.mockReturnValue(null); // No task running during lunch
+    mockEngine.getCurrentSession.mockReturnValue({ ...held, status: 'PAUSED' });
+    (mockRenderer as Record<string, unknown>).renderResumePrompt = vi.fn();
 
     service.exitLunchMode();
 
     expect(mockPriorityEngine.setUserMode).toHaveBeenCalledWith('WORK');
-    expect(mockEngine.startTask).toHaveBeenCalledWith('123', false, 'Test', 'P1', 'P1-123');
+    expect(mockEngine.startTask).not.toHaveBeenCalled();
+    expect(service.getResumePrompt()).toEqual({ taskKey: 'P1-123', taskTitle: 'Test', after: 'lunch', held: true });
   });
 
   it('ExitLunchMode_WasNotAutoStoppedForLunch_RendersActiveSession', () => {

@@ -65,7 +65,7 @@ describe('resume after lunch', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: label }));
 
-    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(resume, undefined);
+    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(resume, undefined, undefined);
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
@@ -100,7 +100,38 @@ describe('resume after lunch', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Resume, and count the time since as work' }));
 
-    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, 12);
+    expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, 12, undefined);
+  });
+
+  describe('back at your desk (P8b)', () => {
+    const HELD = { ...QUESTION, after: 'lunch' as const, held: true as const };
+
+    it('AfterLunch_AsksBackAtYourDesk', async () => {
+      installElectronApi({ getResumePrompt: async () => HELD });
+      render(<ResumeAfterLunchPrompt />);
+
+      const dialog = await screen.findByRole('alertdialog', { name: 'Back at your desk?' });
+
+      expect(dialog.textContent).toMatch(/is paused, as it was: Lunch is not timed/);
+      expect(screen.getByRole('button', { name: `Resume ${QUESTION.taskKey}` })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Not now' })).toBeTruthy();
+    });
+
+    it('IWorkedThroughIt_TellsMainToTakeThePauseBack', async () => {
+      const bridge = installElectronApi({ getResumePrompt: async () => HELD });
+      render(<ResumeAfterLunchPrompt />);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'I worked through it' }));
+
+      expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, undefined, true);
+    });
+
+    it('AfterAway_SaysAway', async () => {
+      installElectronApi({ getResumePrompt: async () => ({ ...HELD, after: 'away' as const }) });
+      render(<ResumeAfterLunchPrompt />);
+
+      expect((await screen.findByRole('alertdialog')).textContent).toMatch(/Away is not timed/);
+    });
   });
 
   it('AfterLunch_NoGapToCount', async () => {

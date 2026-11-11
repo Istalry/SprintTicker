@@ -188,7 +188,8 @@ const electronAPI: IElectronAPI = {
   updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => ipcRenderer.invoke(IPCChannel.UPDATE_CEREMONY_PROMPT, { type, title }),
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes = 10) => ipcRenderer.invoke(IPCChannel.SNOOZE_CEREMONY, { type, minutes }),
   getResumePrompt: () => ipcRenderer.invoke(IPCChannel.GET_RESUME_PROMPT),
-  answerResumePrompt: (resume: boolean, addGapMinutes?: number) => ipcRenderer.invoke(IPCChannel.ANSWER_RESUME_PROMPT, resume, addGapMinutes),
+  answerResumePrompt: (resume: boolean, addGapMinutes?: number, workedThrough?: boolean) =>
+    ipcRenderer.invoke(IPCChannel.ANSWER_RESUME_PROMPT, resume, addGapMinutes, workedThrough),
   onResumePrompt: (callback: (prompt: ResumePromptDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, prompt: ResumePromptDTO | null) => callback(prompt);
     ipcRenderer.on(IPCChannel.ON_RESUME_PROMPT, handler);

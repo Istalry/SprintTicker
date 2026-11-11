@@ -289,6 +289,45 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
+    it('LunchPausesTheRunningTask_TheSandwichCoversThePausedFrame_BackAtYourDeskResumesIt', async () => {
+      // P8b: lunch pauses the task rather than stopping it. The paused frame
+      // is drawn first and the sandwich lands over it; neither may stay on
+      // top of the other once it is over.
+      await play('startTask', 1000, 'lunchStart', SETTLE_MS);
+
+      expect(desk.session?.status).toBe('PAUSED');
+      expect(lock()).toBe('lunchModePriority');
+      expect(desk.device.elements.get(FRONT_ELEMENT_IDS.SCENE)?.path ?? '').toMatch(/^lunch_sandwich_72x16/);
+      expectSettledScreen(desk);
+
+      // Lunch ends; "Back at your desk?" names the paused task, and its yes
+      // resumes the session under the question's lock.
+      await play('lunchEnd', 500);
+      desk.renderer.renderResumePrompt('lunch', desk.session?.taskKey, true);
+      await advance(1000);
+      expect(lock()).toBe(RESUME_PROMPT_EVENT);
+      expect(scene()).toBe(false);
+
+      await play('resume');
+      desk.priority.releaseActiveLock(RESUME_PROMPT_EVENT);
+      await advance(SETTLE_MS);
+
+      expect(desk.session?.status).toBe('TRACKING');
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('AwayPausesTheRunningTask_TheCoffeeCupCoversIt_UnlockingIntoLunchShowsTheSandwich', async () => {
+      await play('startTask', 1000, 'awayStart', SETTLE_MS);
+      expect(desk.session?.status).toBe('PAUSED');
+      expectSettledScreen(desk);
+
+      await play('lunchStartUnderAway', 500, 'awayEndIntoLunch', SETTLE_MS);
+      expect(desk.mode).toBe('LUNCH');
+      expect(desk.session?.status).toBe('PAUSED');
+      expectSettledScreen(desk);
+    });
+
     it('ResumeQuestionAnsweredYes_TheSessionTakesTheDisplay', async () => {
       // As ContextScheduleService answers: the session starts under the
       // question's lock, and the release draws it.

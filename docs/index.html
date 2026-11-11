@@ -831,8 +831,10 @@
       <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>Back to
       MG-12</strong>, <strong>Stop the Interruption</strong> and <strong>Another Interruption</strong>.</p>
       <ul>
-      <li><strong>Lunch during an interruption</strong> ends it. The task that waited stops for
-      lunch, and starts again when lunch ends, as lunch always does.</li>
+      <li><strong>Lunch during an interruption</strong> ends it; the interruption waits to be
+      placed. The task that waited stays paused, now for lunch, and <strong>Back at
+      your desk?</strong> offers it again when lunch ends. <strong>Away</strong> -- locking Windows
+      -- leaves an interruption running: a call goes on away from the desk.</li>
       <li><strong>The end-of-day wrap-up</strong> ends an interruption and the task it held,
       without asking.</li>
       <li><strong>Name it</strong> while it runs: click its title on Today&#39;s session card or
@@ -1157,11 +1159,22 @@
       meeting is asked about first: <strong>Resume after the stand-up?</strong> in the window,
       <strong>NOT YOURS / RESUME IT?</strong> on the bar. <strong>Dismiss</strong>, BACK, or leaving the prompt
       alone keeps your task running.</p>
-      <p>🥪 <strong>Lunch stops the task you are tracking and starts it again when lunch
-      ends</strong>, so the time goes in as two worklogs either side of the break. The task
-      to restart is kept in the database: closing the app over lunch, or leaving
-      Windows locked until after it ends, does not lose it -- it starts again when
-      you are back. Lunch never undoes what you do:</p>
+      <p>🥪 <strong>Lunch and Away pause the task you are tracking.</strong> Neither is timed,
+      and nothing is sent at the start of the break: when you stop the task, its
+      time goes in as two worklogs either side of a break of 15 minutes or more
+      (<em>A pause of … minutes or more starts a new worklog</em>, in <strong>My workday</strong>), to the second. When
+      the break ends -- lunch&#39;s hour is over, or you unlock Windows -- the window
+      asks <strong>Back at your desk?</strong>, naming the task, and the bar shows its key with
+      <strong>BACK? OK=YES</strong>:</p>
+      <ul>
+      <li><strong>Resume KEY</strong> starts timing again.</li>
+      <li><strong>I worked through it</strong> takes the break back as though you had never
+      paused: the time counts as work, in one worklog.</li>
+      <li><strong>Not now</strong> leaves the task paused.</li>
+      </ul>
+      <p>The paused session is kept in the database: closing the app over lunch, or
+      leaving Windows locked until after it ends, does not lose it -- the question
+      comes when you are back, that day. Lunch never undoes what you do:</p>
       <ul>
       <li><strong>Working through lunch.</strong> Start a task, resume a paused one or switch tasks
       during lunch -- in the window, the mini timer or on the bar -- and Lunch ends
@@ -1177,10 +1190,10 @@
       leaves it. Starting another task answers no. Resuming it tracks your time
       and nothing else: the task stays out of your lists, is not moved to In
       Progress on the provider, and marking it done still asks first.</li>
-      <li><strong>Locked when lunch begins.</strong> The bar stays on Away, but your task still
-      stops at the start of lunch -- it does not count the break as work because
-      Windows was locked. Unlock during lunch and the bar goes straight to Lunch;
-      unlock after it and your task starts again.</li>
+      <li><strong>Locked when lunch begins.</strong> The bar stays on Away; your task, paused
+      when you locked, stays paused for lunch. Unlock during lunch and the bar
+      goes straight to Lunch; unlock after it and <strong>Back at your desk?</strong> asks
+      about your task.</li>
       </ul>
       <p>Lunch must start and end on the same day, start first: <strong>My workday</strong>
       says so and saves nothing until it does. A window across midnight never began.</p>
@@ -2552,16 +2565,28 @@
       <h4><code>ContextScheduleService</code> — <code>src/main/services/</code></h4>
       <p>Runs the day: the stand-up and end-of-day prompts, Lunch, and Away on lock or
       suspend, from a check every 30 seconds.</p>
-      <p>Lunch stops a running session and restarts it when lunch ends, which files the
-      time as two worklogs either side of the break. The task to restart is the
-      <code>lunch_resume</code> setting, with the day it was stored: in a field, a restart
-      during lunch forgot it. It is restarted when lunch ends, or at the first check
-      in WORK after the end -- the app was closed, or Windows stayed locked, since
-      Away never leaves for Lunch&#39;s end -- and dropped if it is another day&#39;s or if
-      anything is open by then. A task no longer listed (<code>TaskRepository.isListed</code>)
-      is not restarted but asked about, in the window (<code>schedule:on-resume-prompt</code>)
-      and on the bar under <code>resumePromptPriority</code>; the entry is kept until answered,
-      so a restart asks again.</p>
+      <p>Lunch and Away pause a running session (<code>pauseSession(&#39;lunch&#39; | &#39;away&#39;)</code>,
+      the reason on its <code>paused_intervals</code> row), before the mode switches so the
+      scene lands over the paused frame. Nothing is logged then: at the task&#39;s
+      stop <code>splitWork</code> cuts the worklog at the break, which files the time as two
+      worklogs either side of it. The paused session is the <code>lunch_resume</code> setting,
+      with the day it was stored, the session id (<code>heldSessionId</code>) and the break
+      (<code>pausedFor</code>). When lunch ends, or at the first check in WORK after the end
+      -- the app was closed, or Windows stayed locked, since Away never leaves for
+      Lunch&#39;s end -- or when Away ends, the service asks &quot;Back at your desk?&quot; in
+      the window (<code>schedule:on-resume-prompt</code>, <code>held: true</code>) and on the bar under
+      <code>resumePromptPriority</code>, while that session is still open and paused; an
+      entry of another day, or one whose session was resumed, stopped or replaced,
+      is dropped. The answer (<code>schedule:answer-resume-prompt</code>) resumes the session,
+      or with <code>workedThrough</code> withdraws the pause -- its row deleted, so nothing
+      splits there -- or leaves it paused. Lunch beginning under Away relabels the
+      entry as lunch&#39;s. An interruption ends at lunch and the task it held takes
+      Lunch&#39;s pause (<code>relabelPause</code>); Away leaves it running.</p>
+      <p>An entry with no session id is a task to start again: the stand-up&#39;s, ended
+      by lunch, or one stored by a version whose Lunch stopped the task. It is
+      restarted at the same moments unless anything is open by then; a task no
+      longer listed (<code>TaskRepository.isListed</code>) is asked about first, and the entry
+      is kept until answered, so a restart asks again.</p>
       <p>The service also listens to the engine. A session going TRACKING during lunch
       -- a new session, or one resumed; not the engine&#39;s tick, which tells its
       listeners every second while a session runs and used to skip lunch whenever
@@ -2618,8 +2643,8 @@
       service asks &quot;Back to MG-12?&quot; from it after a Stop or a Discard -- never
       over lunch or the wrap-up, never for a task paused before -- and its Yes is
       Back, with the gap counted when asked (<code>interruptionEndedAtUtc</code>). Lunch
-      during an interruption stops it, and stops the held task too if it was
-      running, storing its restart as lunch does; the wrap-up stops both.</p>
+      during an interruption stops it, and the held task, if it was running before,
+      takes Lunch&#39;s pause; Away leaves it running; the wrap-up stops both.</p>
       <p>A fragment that ended waits to be <strong>placed</strong>: <code>InterruptionService</code> lists
       them (<code>getInterruptionsToPlace</code>, every day), places one or several on a
       task -- a worklog of its span through <code>logSpan</code>, the path <code>finishSession</code>

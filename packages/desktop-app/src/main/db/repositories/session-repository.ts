@@ -234,6 +234,21 @@ export class SessionRepository {
     return result.changes > 0;
   }
 
+  /**
+   * Removes the session's latest pause if it is still open and began at
+   * `pausedAtUtc`: a pause taken back as though it never happened ("I
+   * worked through it"). Only that row -- an older open row is a pause
+   * recorded before resumes were, and its length lives in the total.
+   */
+  public deleteOpenPause(sessionId: string, pausedAtUtc: string): boolean {
+    const result = this.dbConn.getDb().prepare(`
+      DELETE FROM paused_intervals
+      WHERE id = (SELECT MAX(id) FROM paused_intervals WHERE session_id = ?)
+        AND resumed_at_utc IS NULL AND paused_at_utc = ?
+    `).run(sessionId, pausedAtUtc);
+    return result.changes > 0;
+  }
+
   /** The session's pauses, oldest first; `resumedAtUtc` is null while one is open. */
   public getPauseIntervals(sessionId: string): Array<{ pausedAtUtc: string; resumedAtUtc: string | null }> {
     return this.dbConn.getDb().prepare<[string], { pausedAtUtc: string; resumedAtUtc: string | null }>(`

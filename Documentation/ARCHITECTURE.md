@@ -663,16 +663,29 @@ process, so without it a button press could take the whole app down.
 Runs the day: the stand-up and end-of-day prompts, Lunch, and Away on lock or
 suspend, from a check every 30 seconds.
 
-Lunch stops a running session and restarts it when lunch ends, which files the
-time as two worklogs either side of the break. The task to restart is the
-`lunch_resume` setting, with the day it was stored: in a field, a restart
-during lunch forgot it. It is restarted when lunch ends, or at the first check
-in WORK after the end -- the app was closed, or Windows stayed locked, since
-Away never leaves for Lunch's end -- and dropped if it is another day's or if
-anything is open by then. A task no longer listed (`TaskRepository.isListed`)
-is not restarted but asked about, in the window (`schedule:on-resume-prompt`)
-and on the bar under `resumePromptPriority`; the entry is kept until answered,
-so a restart asks again.
+Lunch and Away pause a running session (`pauseSession('lunch' | 'away')`,
+the reason on its `paused_intervals` row), before the mode switches so the
+scene lands over the paused frame. Nothing is logged then: at the task's
+stop `splitWork` cuts the worklog at the break, which files the time as two
+worklogs either side of it. The paused session is the `lunch_resume` setting,
+with the day it was stored, the session id (`heldSessionId`) and the break
+(`pausedFor`). When lunch ends, or at the first check in WORK after the end
+-- the app was closed, or Windows stayed locked, since Away never leaves for
+Lunch's end -- or when Away ends, the service asks "Back at your desk?" in
+the window (`schedule:on-resume-prompt`, `held: true`) and on the bar under
+`resumePromptPriority`, while that session is still open and paused; an
+entry of another day, or one whose session was resumed, stopped or replaced,
+is dropped. The answer (`schedule:answer-resume-prompt`) resumes the session,
+or with `workedThrough` withdraws the pause -- its row deleted, so nothing
+splits there -- or leaves it paused. Lunch beginning under Away relabels the
+entry as lunch's. An interruption ends at lunch and the task it held takes
+Lunch's pause (`relabelPause`); Away leaves it running.
+
+An entry with no session id is a task to start again: the stand-up's, ended
+by lunch, or one stored by a version whose Lunch stopped the task. It is
+restarted at the same moments unless anything is open by then; a task no
+longer listed (`TaskRepository.isListed`) is asked about first, and the entry
+is kept until answered, so a restart asks again.
 
 The service also listens to the engine. A session going TRACKING during lunch
 -- a new session, or one resumed; not the engine's tick, which tells its
@@ -735,8 +748,8 @@ itself. `onInterruptionEnded` tells who ended one and how; the schedule
 service asks "Back to MG-12?" from it after a Stop or a Discard -- never
 over lunch or the wrap-up, never for a task paused before -- and its Yes is
 Back, with the gap counted when asked (`interruptionEndedAtUtc`). Lunch
-during an interruption stops it, and stops the held task too if it was
-running, storing its restart as lunch does; the wrap-up stops both.
+during an interruption stops it, and the held task, if it was running before,
+takes Lunch's pause; Away leaves it running; the wrap-up stops both.
 
 A fragment that ended waits to be **placed**: `InterruptionService` lists
 them (`getInterruptionsToPlace`, every day), places one or several on a

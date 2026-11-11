@@ -433,7 +433,9 @@ describe('Interruptions in a row', () => {
   });
 
   describe('lunch, the wrap-up, a restart', () => {
-    it('Lunch_EndsTheInterruption_StopsTheTask_ThatComesBackAfter', async () => {
+    it('Lunch_EndsTheInterruption_TheTaskItHeldTakesLunchsPause', async () => {
+      // P8b: the interruption waits to be placed; the task stays paused,
+      // now for lunch, and "Back at your desk?" resumes it after.
       at(12, 0);
       startA();
       at(12, 20);
@@ -443,15 +445,21 @@ describe('Interruptions in a row', () => {
       service.evaluateSchedule();
       await settle();
 
-      expect(session()).toBeNull();
+      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(engine.openPauseReason()).toBe('lunch');
       expect(prompts()).toEqual([]);
-      expect(logged(A.id)).toEqual([minutes(20)]);
+      expect(logged(A.id)).toEqual([]);
       expect(engine.getInterruptionsToPlace()).toHaveLength(1);
 
       at(13, 31);
       service.evaluateSchedule();
+      expect(service.getResumePrompt()).toMatchObject({ taskKey: A.key, after: 'lunch', held: true });
+      service.answerResumePrompt(true);
 
       expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+      at(14, 31);
+      engine.stopSession('Done');
+      expect(logged(A.id).sort((a, b) => a - b)).toEqual([minutes(20), minutes(60)]);
     });
 
     it('WrapUp_EndsTheInterruptionAndTheTaskItHeld', () => {

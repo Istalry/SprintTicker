@@ -274,7 +274,7 @@ export interface ResumePromptDTO {
    * an interruption -- which asks every time, not only for a task that left
    * the user's lists.
    */
-  after: 'lunch' | 'standup' | 'interruption';
+  after: 'lunch' | 'away' | 'standup' | 'interruption';
   /**
    * After an interruption, the task has also left the user's lists. Lunch
    * and the stand-up ask only then, so for them it goes without saying.
@@ -285,6 +285,12 @@ export interface ResumePromptDTO {
    * add the 6 min" counts as work on the task.
    */
   interruptionEndedAtUtc?: string;
+  /**
+   * After Lunch or Away (P8b): the task is paused, not stopped -- "Back at
+   * your desk?". Resume ends the pause; "I worked through it" takes it back,
+   * so the break counts as work.
+   */
+  held?: true;
 }
 
 /** A pause of a session, closed: from when to when. */

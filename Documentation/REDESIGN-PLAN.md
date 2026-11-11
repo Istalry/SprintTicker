@@ -1147,6 +1147,26 @@ card's ticked rows and ⋯).
   and the picture `app-session-tracking.png` still shows the old card --
   `pnpm docs:images` must run with SprintTicker closed, the user's call.
 
+**As landed: P8b, Lunch and Away pause (2026-11-11).**
+
+- `ContextScheduleService.pauseForBreak(reason)` replaces the stop for
+  lunch: a running session is paused with reason `lunch` or `away` before
+  the mode switches, and `lunch_resume` keeps `heldSessionId` and
+  `pausedFor`. Lunch under Away relabels the entry; an interruption ends at
+  lunch and its held task takes Lunch's pause (`relabelPause`, new on the
+  engine); Away leaves an interruption running. The stand-up running at
+  lunch is still stopped, its set-aside task becoming lunch's restart.
+- "Back at your desk?" (`ResumePromptDTO.after` gains `'away'`, `held:
+  true`) is asked when lunch or Away ends, only while that session is open
+  and paused. Resume, **I worked through it** (`withdrawPause`, which now
+  deletes the open pause row, `deleteOpenPause`) or Not now. The IPC answer
+  takes a third argument, `workedThrough`. The bar shows the task's key with
+  BACK? OK=YES.
+- `CLAUDE.md` §5 rewritten: "Lunch and Away pause; they never stop", and
+  "Lunch takes over Away's pause".
+- Not yet: S6's Away card on Today, and prompts that never take focus
+  (P8c).
+
 ---
 
 ## 14. P9 -- History
@@ -1617,7 +1637,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | in progress: P8a (the session card, Stop ▾) done; P8b-P8e next -- see §13 "Split" | P8a (2026-11-11) |
+| P8 | in progress: P8a (the session card, Stop ▾) and P8b (Lunch and Away pause) done; P8c-P8e next -- see §13 "Split" | P8a, P8b (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |

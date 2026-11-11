@@ -15,19 +15,19 @@ import { IPCChannel } from '../src/shared/ipc-channels';
 import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
 
 /**
- * Lunch never undoes what the user does.
+ * Lunch and Away pause the task (redesign P8b, D1) and never undo what the
+ * user does.
  *
- * It stops the running session when it starts and restarts it when it ends.
- * That restart used to live in a field, and three things went wrong with it:
- * a restart of the app during lunch forgot it; a task started or resumed
- * during lunch stayed under the lunch screen, and if the user stopped it the
- * old task came back at the end anyway; and a task reassigned over the break
- * was restarted without a word.
+ * Lunch pauses the running session when it starts and asks "Back at your
+ * desk?" when it ends: Resume, I worked through it, or Not now. The question
+ * is kept in the database, so a restart of the app asks it still; the user
+ * resuming, stopping or starting a task during lunch answers it, and skips
+ * lunch for the day.
  *
  * Real engine, real priority engine, real settings, on a database in memory;
  * only the renderer is a stand-in, and the clock is faked.
  */
-describe('Lunch and the session it stops', () => {
+describe('Lunch and Away pause the task', () => {
   let dbConn: DatabaseConnection;
   let settings: SettingsRepository;
   let engine: TimeTrackingEngine;
@@ -106,19 +106,78 @@ describe('Lunch and the session it stops', () => {
     vi.restoreAllMocks();
   });
 
+  const open = () => engine.getCurrentSession();
+  const worklogs = () => new WorklogRepository(dbConn).getWorklogsByDate('2026-10-14');
+  /** A paused session, waiting on "Back at your desk?". */
+  const heldPrompt = (after: 'lunch' | 'away' = 'lunch') => ({ taskKey: A.key, taskTitle: A.title, after, held: true });
+
   describe('the plain day', () => {
-    it('EvaluateSchedule_LunchEnds_RestartsTheTaskLunchStopped', () => {
+    it('EvaluateSchedule_LunchStarts_PausesTheTask_LogsNothing', () => {
+      startA();
+
+      check(12, 45);
+
+      expect(priority.getUserMode()).toBe('LUNCH');
+      expect(open()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(engine.openPauseReason()).toBe('lunch');
+      expect(worklogs()).toEqual([]);
+    });
+
+    it('EvaluateSchedule_LunchEnds_AsksBackAtYourDesk_NothingResumesAlone', () => {
       startA();
       check(12, 45);
-      expect(engine.getCurrentSession()).toBeNull();
 
       check(13, 31);
 
       expect(priority.getUserMode()).toBe('WORK');
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, taskKey: A.key, status: 'TRACKING' });
+      expect(open()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(service.getResumePrompt()).toEqual(heldPrompt());
+      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, heldPrompt());
+      expect(renderer.renderResumePrompt).toHaveBeenCalledWith('lunch', A.key, true);
     });
 
-    it('EvaluateSchedule_ATickBeforeTheCheck_LunchStillStops', () => {
+    it('Resume_TheMorningAndTheAfternoon_TwoEntries_TheLunchHourNotWork', () => {
+      // D1: one session, split at the stop at the lunch pause -- the
+      // provider gets 09:00-12:30 and 13:31-15:00, as when lunch stopped it.
+      startA();
+      check(12, 30);
+      check(13, 31);
+      service.answerResumePrompt(true);
+      expect(open()?.status).toBe('TRACKING');
+
+      at(15, 0);
+      engine.stopSession('Done for today');
+
+      const pieces = worklogs().map(w => w.durationSeconds).sort((a, b) => b - a);
+      expect(pieces).toEqual([3.5 * 3600, 89 * 60]);
+    });
+
+    it('IWorkedThroughIt_TakesThePauseBack_OneEntry', () => {
+      startA();
+      check(12, 30);
+      check(13, 30);
+
+      service.answerResumePrompt(true, 0, true);
+      at(14, 0);
+      engine.stopSession('Done');
+
+      expect(worklogs().map(w => w.durationSeconds)).toEqual([5 * 3600]);
+    });
+
+    it('NotNow_LeavesItPaused_AndNothingAsksAgain', () => {
+      startA();
+      check(12, 45);
+      check(13, 31);
+
+      service.answerResumePrompt(false);
+      check(13, 40);
+
+      expect(open()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
+      expect(service.getResumePrompt()).toBeNull();
+      expect(renderer.renderResumePrompt).toHaveBeenCalledTimes(1);
+    });
+
+    it('EvaluateSchedule_ATickBeforeTheCheck_LunchStillPauses', () => {
       // The engine tells its listeners every second while a session runs, and
       // the check runs every 30: a tick in the first seconds of lunch was
       // read as the user starting work, and lunch was skipped for the day.
@@ -130,47 +189,46 @@ describe('Lunch and the session it stops', () => {
       service.evaluateSchedule();
 
       expect(priority.getUserMode()).toBe('LUNCH');
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(open()?.status).toBe('PAUSED');
       expect(settings.getSetting(ContextScheduleService.LUNCH_SKIPPED_KEY, null)).toBeNull();
     });
 
-    it('EvaluateSchedule_LunchEnds_RestartsItOnlyOnce', () => {
+    it('PausedBeforeLunch_LunchLeavesItAndAsksNothing', () => {
+      // The user's own pause is not lunch's to end.
       startA();
+      engine.pauseSession();
       check(12, 45);
       check(13, 31);
-      engine.stopSession('Done for now');
 
-      check(13, 32);
-
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(engine.openPauseReason()).toBe('user');
+      expect(service.getResumePrompt()).toBeNull();
     });
   });
 
   describe('a restart of the app', () => {
-    it('Restart_DuringLunch_TheTaskStillComesBackAtTheEnd', () => {
-      // The resume was a field, and a restart during lunch forgot it.
+    it('Restart_DuringLunch_StillAsksAtTheEnd', () => {
       startA();
       check(12, 45);
       restart();
 
-      check(12, 50); // back in LUNCH, with nothing running: the stored resume stays
+      check(12, 50);
       expect(priority.getUserMode()).toBe('LUNCH');
       check(13, 31);
 
-      expect(engine.getCurrentSession()?.taskId).toBe(A.id);
+      expect(service.getResumePrompt()).toEqual(heldPrompt());
     });
 
-    it('Restart_AfterLunchEnded_TheFirstCheckRestartsIt', () => {
+    it('Restart_AfterLunchEnded_TheFirstCheckAsks', () => {
       startA();
       check(12, 45);
       restart();
 
       check(14, 0);
 
-      expect(engine.getCurrentSession()?.taskId).toBe(A.id);
+      expect(service.getResumePrompt()).toEqual(heldPrompt());
     });
 
-    it('Restart_NextDay_YesterdaysResumeIsDropped', () => {
+    it('Restart_NextDay_YesterdaysQuestionIsDropped_TheSessionStaysPaused', () => {
       startA();
       check(12, 45);
       restart();
@@ -178,42 +236,74 @@ describe('Lunch and the session it stops', () => {
       at(14, 0, 15);
       service.evaluateSchedule();
 
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(service.getResumePrompt()).toBeNull();
+      expect(open()?.status).toBe('PAUSED');
       expect(settings.getSetting(ContextScheduleService.LUNCH_RESUME_KEY, 'unset')).toBeNull();
     });
   });
 
-  describe('Away over the end of lunch', () => {
-    it('ExitAwayMode_AfterLunchEnded_RestartsTheTaskThen', () => {
-      // Locking Windows to go and eat: Away, which lunch never leaves, so the
-      // restart had nobody to run it and was lost.
+  describe('Away', () => {
+    it('EnterAwayMode_PausesTheTask_LeavingAsksBackAtYourDesk', () => {
+      startA();
+      at(15, 0);
+
+      service.enterAwayMode();
+      expect(open()?.status).toBe('PAUSED');
+      expect(engine.openPauseReason()).toBe('away');
+
+      at(15, 20);
+      service.exitAwayMode();
+
+      expect(priority.getUserMode()).toBe('WORK');
+      expect(service.getResumePrompt()).toEqual(heldPrompt('away'));
+      service.answerResumePrompt(true, 0, true);
+      expect(open()?.status).toBe('TRACKING');
+    });
+
+    it('EnterAwayMode_Twice_PausesOnce', () => {
+      // Windows sends lock-screen and suspend for one absence.
+      startA();
+      service.enterAwayMode();
+      service.enterAwayMode();
+
+      expect(engine.openPauseReason()).toBe('away');
+    });
+
+    it('EnterAwayMode_DuringAnInterruption_LeavesItRunning', () => {
+      // A call goes on away from the desk.
+      startA();
+      engine.startInterruption(new Date(), 'window');
+
+      service.enterAwayMode();
+
+      expect(open()?.interruption).toBeDefined();
+      expect(open()?.status).toBe('TRACKING');
+    });
+
+    it('ExitAwayMode_AfterLunchEnded_AsksAboutTheTaskThen', () => {
       startA();
       check(12, 45);
       service.enterAwayMode();
       check(13, 31);
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(service.getResumePrompt()).toBeNull();
 
       service.exitAwayMode();
-      check(13, 40);
 
-      expect(engine.getCurrentSession()?.taskId).toBe(A.id);
+      expect(service.getResumePrompt()).toEqual(heldPrompt());
     });
 
-    it('EvaluateSchedule_LockedWhenLunchStarts_StopsTheSessionAndKeepsItForAfter', () => {
-      // Lunch never leaves Away, so it used to leave the session too: it ran
-      // on behind the lock, and the lunch hour was logged as work.
+    it('LockedWhenLunchStarts_PausedByAway_LunchAsksAfter', () => {
       startA();
       at(12, 20);
       service.enterAwayMode();
 
       check(12, 31);
 
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(open()?.status).toBe('PAUSED');
       expect(priority.getUserMode()).toBe('AWAY');
       at(13, 40);
       service.exitAwayMode();
-      check(13, 41);
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+      expect(service.getResumePrompt()).toEqual(heldPrompt('lunch'));
     });
 
     it('ExitAwayMode_DuringLunch_ShowsLunchStraightAway', () => {
@@ -229,24 +319,10 @@ describe('Lunch and the session it stops', () => {
 
       expect(priority.getUserMode()).toBe('LUNCH');
       expect(renderer.setContextMode.mock.calls).toEqual([['LUNCH']]);
+      expect(service.getResumePrompt()).toBeNull();
     });
 
-    it('ExitAwayMode_AsleepWhenLunchStarted_StopsTheSessionThen', () => {
-      // No check ran over the start of lunch: the machine was asleep.
-      startA();
-      at(12, 20);
-      service.enterAwayMode();
-      at(12, 50);
-
-      service.exitAwayMode();
-
-      expect(engine.getCurrentSession()).toBeNull();
-      expect(priority.getUserMode()).toBe('LUNCH');
-      check(13, 31);
-      expect(engine.getCurrentSession()?.taskId).toBe(A.id);
-    });
-
-    it('ExitAwayMode_DuringALunchWorkedThrough_GoesBackToWork', () => {
+    it('ExitAwayMode_DuringALunchWorkedThrough_GoesBackToWorkAndAsks', () => {
       check(12, 35);
       startA();
       at(12, 40);
@@ -257,7 +333,7 @@ describe('Lunch and the session it stops', () => {
       service.exitAwayMode();
 
       expect(priority.getUserMode()).toBe('WORK');
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+      expect(service.getResumePrompt()).toEqual(heldPrompt('away'));
     });
   });
 
@@ -272,57 +348,53 @@ describe('Lunch and the session it stops', () => {
       expect(renderer.setContextMode).toHaveBeenLastCalledWith('WORK');
     });
 
-    it('StartTask_DuringLunch_TheNextCheckDoesNotStopIt', () => {
+    it('StartTask_DuringLunch_TheNextCheckDoesNotPauseIt', () => {
       check(12, 45);
       engine.startTask(B.id, false, B.title, B.projectId, B.key);
 
       check(12, 46);
 
       expect(priority.getUserMode()).toBe('WORK');
-      expect(engine.getCurrentSession()?.taskId).toBe(B.id);
+      expect(open()).toMatchObject({ taskId: B.id, status: 'TRACKING' });
     });
 
-    it('SwitchTask_DuringLunch_TheNewTaskIsStillRunningAfterIt', () => {
+    it('SwitchTask_DuringLunch_NothingAskedAtTheEnd', () => {
       startA();
       check(12, 45);
       engine.startTask(B.id, false, B.title, B.projectId, B.key);
 
       check(13, 31);
 
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: B.id, status: 'TRACKING' });
+      expect(open()).toMatchObject({ taskId: B.id, status: 'TRACKING' });
+      expect(service.getResumePrompt()).toBeNull();
     });
 
-    it('StartThenStop_DuringLunch_NothingRestartsAtTheEnd', () => {
-      // The old task came back at the end, over the user's own choice.
+    it('ResumeTheLunchPause_DuringLunch_LeavesLunch_NothingAskedAtTheEnd', () => {
       startA();
       check(12, 45);
-      engine.startTask(B.id, false, B.title, B.projectId, B.key);
-      engine.stopSession('Quick fix done');
-
-      check(13, 31);
-
-      expect(engine.getCurrentSession()).toBeNull();
-    });
-
-    it('ResumePausedSession_DuringLunch_TheSessionIsUntouchedAfterIt', () => {
-      // Paused before lunch, so lunch had nothing to stop.
-      startA();
-      engine.pauseSession();
-      check(12, 45);
-      const sessionId = engine.getCurrentSession()?.sessionId;
+      const sessionId = open()?.sessionId;
 
       engine.resumeSession();
       expect(priority.getUserMode()).toBe('WORK');
       check(13, 0);
       check(13, 31);
 
-      expect(priority.getUserMode()).toBe('WORK');
-      expect(engine.getCurrentSession()).toMatchObject({ sessionId, status: 'TRACKING' });
+      expect(open()).toMatchObject({ sessionId, status: 'TRACKING' });
+      expect(service.getResumePrompt()).toBeNull();
     });
 
-    it('StartTask_DuringLunchHoursAfterAwayEnded_TheNextCheckDoesNotStopIt', () => {
-      // Unlocked mid-lunch: back into LUNCH, and a session started then is
-      // working through it -- the next check must not stop it.
+    it('StopTheLunchPausedTask_DuringLunch_NothingAskedAtTheEnd', () => {
+      startA();
+      check(12, 45);
+      engine.stopSession('Done before lunch');
+
+      check(13, 31);
+
+      expect(open()).toBeNull();
+      expect(service.getResumePrompt()).toBeNull();
+    });
+
+    it('StartTask_DuringLunchHoursAfterAwayEnded_TheNextCheckDoesNotPauseIt', () => {
       check(12, 35);
       service.enterAwayMode();
       at(12, 50);
@@ -331,7 +403,7 @@ describe('Lunch and the session it stops', () => {
 
       check(12, 51);
 
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: B.id, status: 'TRACKING' });
+      expect(open()).toMatchObject({ taskId: B.id, status: 'TRACKING' });
     });
 
     it('StartTask_OutsideLunch_ChangesNothing', () => {
@@ -355,7 +427,7 @@ describe('Lunch and the session it stops', () => {
   });
 
   describe('a task that left the list over the break', () => {
-    /** Lunch stops A; the provider stops listing A; lunch ends. */
+    /** Lunch pauses A; the provider stops listing A; lunch ends. */
     const reassignOverLunch = async () => {
       startA();
       check(12, 45);
@@ -364,16 +436,13 @@ describe('Lunch and the session it stops', () => {
       check(13, 31);
     };
 
-    it('LunchEnds_TaskNoLongerListed_AsksInsteadOfRestarting', async () => {
+    it('LunchEnds_TaskNoLongerListed_SaysSoInTheQuestion', async () => {
       await reassignOverLunch();
 
-      expect(engine.getCurrentSession()).toBeNull();
-      expect(renderer.renderResumePrompt).toHaveBeenCalledTimes(1);
-      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'lunch' });
-      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, { taskKey: A.key, taskTitle: A.title, after: 'lunch' });
+      expect(service.getResumePrompt()).toEqual({ ...heldPrompt(), unlisted: true });
     });
 
-    it('LunchEnds_TaskNoLongerListed_AsksOnlyOnceAcrossChecks', async () => {
+    it('LunchEnds_AsksOnlyOnceAcrossChecks', async () => {
       await reassignOverLunch();
 
       check(13, 32);
@@ -382,39 +451,18 @@ describe('Lunch and the session it stops', () => {
       expect(renderer.renderResumePrompt).toHaveBeenCalledTimes(1);
     });
 
-    it('AnswerResumePrompt_Yes_ResumesItAndClosesTheQuestion', async () => {
-      await reassignOverLunch();
-
-      expect(service.answerResumePrompt(true)).toBe(true);
-
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: A.id, taskKey: A.key, status: 'TRACKING' });
-      expect(service.getResumePrompt()).toBeNull();
-      expect(send).toHaveBeenLastCalledWith(IPCChannel.ON_RESUME_PROMPT, null);
-    });
-
-    it('AnswerResumePrompt_Yes_TracksItWithoutTakingItBack', async () => {
-      // The sync archived it over lunch. Restarting it used to bring it back
-      // into the lists and move it to In Progress on the provider -- a task
-      // now someone else's.
+    it('AnswerResumePrompt_Yes_ResumesItWithoutTakingItBack', async () => {
+      // The sync left it unlisted over lunch; resuming moves nothing at the
+      // provider -- a task now someone else's.
       await reassignOverLunch();
       statusPushes = [];
 
-      service.answerResumePrompt(true);
+      expect(service.answerResumePrompt(true)).toBe(true);
 
-      expect(engine.isTaskListed(A.id)).toBe(false);
+      expect(open()).toMatchObject({ taskId: A.id, status: 'TRACKING', taskUnlisted: true });
       expect(statusPushes).toEqual([]);
-      expect(engine.getCurrentSession()?.taskUnlisted).toBe(true);
-    });
-
-    it('AnswerResumePrompt_No_LeavesItAndNothingAsksAgain', async () => {
-      await reassignOverLunch();
-
-      service.answerResumePrompt(false);
-      restart();
-      check(13, 40);
-
-      expect(engine.getCurrentSession()).toBeNull();
       expect(service.getResumePrompt()).toBeNull();
+      expect(send).toHaveBeenLastCalledWith(IPCChannel.ON_RESUME_PROMPT, null);
     });
 
     it('AnswerResumePrompt_Twice_TheSecondAnswerFindsNothing', async () => {
@@ -423,7 +471,7 @@ describe('Lunch and the session it stops', () => {
       service.answerResumePrompt(false);
 
       expect(service.answerResumePrompt(true)).toBe(false);
-      expect(engine.getCurrentSession()).toBeNull();
+      expect(open()?.status).toBe('PAUSED');
     });
 
     it('Restart_WhileAsking_AsksAgain', async () => {
@@ -432,7 +480,7 @@ describe('Lunch and the session it stops', () => {
       restart();
       check(13, 40);
 
-      expect(service.getResumePrompt()).toEqual({ taskKey: A.key, taskTitle: A.title, after: 'lunch' });
+      expect(service.getResumePrompt()).toEqual({ ...heldPrompt(), unlisted: true });
     });
 
     it('StartAnotherTask_WhileAsking_ClosesTheQuestion', async () => {
@@ -444,19 +492,19 @@ describe('Lunch and the session it stops', () => {
       expect(send).toHaveBeenLastCalledWith(IPCChannel.ON_RESUME_PROMPT, null);
       restart();
       check(13, 40);
-      expect(engine.getCurrentSession()?.taskId).toBe(B.id);
+      expect(open()?.taskId).toBe(B.id);
+    });
+  });
+
+  it('LegacyStoppedResume_FromAnEarlierVersion_StillRestartsTheTask', () => {
+    // Stored by a version where lunch stopped the session: no held session.
+    settings.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, {
+      taskId: A.id, isAdHoc: false, customTitle: A.title, projectId: A.projectId, taskKey: A.key, dateKey: '2026-10-14'
     });
 
-    it('LunchEnds_AdHocTask_RestartsWithoutAsking', () => {
-      // The provider never lists ad-hoc work; that is not news.
-      engine.startTask('', true, 'Code review');
-      check(12, 45);
+    check(13, 31);
 
-      check(13, 31);
-
-      expect(engine.getCurrentSession()).toMatchObject({ isAdHoc: true, taskTitle: 'Code review' });
-      expect(renderer.renderResumePrompt).not.toHaveBeenCalled();
-    });
+    expect(open()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
   });
 
   it('EvaluateSchedule_ACorruptStoredResume_IsDroppedRatherThanStarted', () => {
@@ -464,7 +512,7 @@ describe('Lunch and the session it stops', () => {
 
     check(14, 0);
 
-    expect(engine.getCurrentSession()).toBeNull();
+    expect(open()).toBeNull();
     expect(settings.getSetting(ContextScheduleService.LUNCH_RESUME_KEY, 'unset')).toBeNull();
   });
 });

@@ -317,8 +317,10 @@ While it runs, the session card says which task waits, and offers:
 The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **Back to
 MG-12**, **Stop the Interruption** and **Another Interruption**.
 
-- **Lunch during an interruption** ends it. The task that waited stops for
-  lunch, and starts again when lunch ends, as lunch always does.
+- **Lunch during an interruption** ends it; the interruption waits to be
+  placed. The task that waited stays paused, now for lunch, and **Back at
+  your desk?** offers it again when lunch ends. **Away** -- locking Windows
+  -- leaves an interruption running: a call goes on away from the desk.
 - **The end-of-day wrap-up** ends an interruption and the task it held,
   without asking.
 - **Name it** while it runs: click its title on Today's session card or
@@ -631,11 +633,22 @@ meeting is asked about first: **Resume after the stand-up?** in the window,
 **NOT YOURS / RESUME IT?** on the bar. **Dismiss**, BACK, or leaving the prompt
 alone keeps your task running.
 
-🥪 **Lunch stops the task you are tracking and starts it again when lunch
-ends**, so the time goes in as two worklogs either side of the break. The task
-to restart is kept in the database: closing the app over lunch, or leaving
-Windows locked until after it ends, does not lose it -- it starts again when
-you are back. Lunch never undoes what you do:
+🥪 **Lunch and Away pause the task you are tracking.** Neither is timed,
+and nothing is sent at the start of the break: when you stop the task, its
+time goes in as two worklogs either side of a break of 15 minutes or more
+(*A pause of … minutes or more starts a new worklog*, in **My workday**), to the second. When
+the break ends -- lunch's hour is over, or you unlock Windows -- the window
+asks **Back at your desk?**, naming the task, and the bar shows its key with
+**BACK? OK=YES**:
+
+- **Resume KEY** starts timing again.
+- **I worked through it** takes the break back as though you had never
+  paused: the time counts as work, in one worklog.
+- **Not now** leaves the task paused.
+
+The paused session is kept in the database: closing the app over lunch, or
+leaving Windows locked until after it ends, does not lose it -- the question
+comes when you are back, that day. Lunch never undoes what you do:
 
 - **Working through lunch.** Start a task, resume a paused one or switch tasks
   during lunch -- in the window, the mini timer or on the bar -- and Lunch ends
@@ -651,10 +664,10 @@ you are back. Lunch never undoes what you do:
   leaves it. Starting another task answers no. Resuming it tracks your time
   and nothing else: the task stays out of your lists, is not moved to In
   Progress on the provider, and marking it done still asks first.
-- **Locked when lunch begins.** The bar stays on Away, but your task still
-  stops at the start of lunch -- it does not count the break as work because
-  Windows was locked. Unlock during lunch and the bar goes straight to Lunch;
-  unlock after it and your task starts again.
+- **Locked when lunch begins.** The bar stays on Away; your task, paused
+  when you locked, stays paused for lunch. Unlock during lunch and the bar
+  goes straight to Lunch; unlock after it and **Back at your desk?** asks
+  about your task.
 
 Lunch must start and end on the same day, start first: **My workday**
 says so and saves nothing until it does. A window across midnight never began.

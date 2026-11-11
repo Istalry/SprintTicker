@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { SessionRepository } from '../db/repositories/session-repository';
+import { PauseReason, SessionRepository } from '../db/repositories/session-repository';
 import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository, retireTasks } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
@@ -1174,9 +1174,10 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /// <summary>
-  /// Pauses the current active session.
+  /// Pauses the current active session. `reason` says why (migration 15):
+  /// the user, or Lunch and Away, which ask "Back at your desk?" after.
   /// </summary>
-  public pauseSession(): ActiveSessionDTO {
+  public pauseSession(reason: PauseReason = 'user'): ActiveSessionDTO {
     // An interruption has no pause of its own: pausing it is its Stop.
     if (this._interruptions.getRunning()) return this.stopInterruption() ?? this.getCurrentSession()!;
     const active = this.sessionView();
@@ -1186,7 +1187,7 @@ export class TimeTrackingEngine extends EventEmitter {
 
     const nowIso = new Date().toISOString();
     this._sessionRepo.updateStatus(active.sessionId, 'PAUSED', active.totalPausedSeconds, nowIso);
-    this._sessionRepo.recordPauseInterval(active.sessionId, nowIso);
+    this._sessionRepo.recordPauseInterval(active.sessionId, nowIso, undefined, reason);
 
     this._currentSession = this._sessionRepo.getActiveSession();
     this.stopTickLoop();
@@ -1259,6 +1260,33 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /**
+   * Why the open session is paused, or null when it is not paused or the
+   * pause predates reasons. The session held by an interruption answers
+   * `interruption`.
+   */
+  public openPauseReason(): PauseReason | null {
+    const active = this._currentSession;
+    if (!active || active.status !== 'PAUSED') return null;
+    return this._sessionRepo.getOpenPauseReason(active.sessionId);
+  }
+
+  /**
+   * Gives the pause in progress another reason from now: the paused time
+   * so far stays the old pause, closed now, and a new one opens. The
+   * session stays PAUSED and nobody is notified -- nothing they show
+   * changes. For Lunch taking over the pause of the task an interruption
+   * held, so "Back at your desk?" resumes it rather than Back.
+   */
+  public relabelPause(reason: PauseReason): void {
+    const active = this._currentSession;
+    if (!active || active.status !== 'PAUSED' || this._interruptions.getRunning()) return;
+    const nowIso = new Date().toISOString();
+    if (this._sessionRepo.closeLatestPause(active.sessionId, nowIso)) {
+      this._sessionRepo.recordPauseInterval(active.sessionId, nowIso, undefined, reason);
+    }
+  }
+
+  /**
    * Takes back the pause in progress as though it never happened: its whole
    * length counts as work. For the retroactive pause, when the user says they
    * were working all along; it has no row to remove.
@@ -1268,6 +1296,9 @@ export class TimeTrackingEngine extends EventEmitter {
     if (!active || active.status !== 'PAUSED') {
       throw new Error('No paused session available to resume');
     }
+    // A pause with a row -- Lunch's, Away's -- goes with its row, or the
+    // split at the stop would still cut the worklog there.
+    if (active.lastPauseStartUtc) this._sessionRepo.deleteOpenPause(active.sessionId, active.lastPauseStartUtc);
     // The stored total, without the live length of this pause.
     const pausedSeconds = this._sessionRepo.getStoredPausedSeconds(active.sessionId);
     this._sessionRepo.updateStatus(active.sessionId, 'TRACKING', pausedSeconds, undefined);
