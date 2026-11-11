@@ -21,6 +21,7 @@ import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
 import { WindowPromptOutlet } from './windows/prompt-outlet';
 import { ReminderService } from './services/reminder-service';
+import { MorningService } from './services/morning-service';
 import { WorkingCalendar } from './services/working-calendar';
 import { APP_USER_MODEL_ID } from './app-identity';
 import { BitmapIconId } from '../shared/dtos';
@@ -406,6 +407,18 @@ async function startApplication(): Promise<void> {
   });
   const reminders = reminderService;
   daySchedule.onChecked(() => reminders.evaluate());
+  // The morning card (P8e2): read by Today when it opens.
+  const morning = new MorningService({
+    isWorkingDay: dateKey => calendar.isWorkingDay(dateKey),
+    getSetting: (key, fallback) => settingsRepo.getSetting(key, fallback),
+    setSetting: (key, value) => settingsRepo.setSetting(key, value),
+    hasSession: () => tracker.getCurrentSession() !== null,
+    loggedOn: dateKey => worklogRepo.getWorklogsByDate(dateKey).length > 0,
+    recentTasks: limit => taskRepo.getRecent(limit),
+    lastEndOf: taskId => worklogRepo.getLastEndOf(taskId),
+    listedTasks: () => taskRepo.getAllListed(),
+    schedule: () => settingsRepo.getSetting('schedule_settings', {})
+  });
   const forgotten = forgottenSessionService;
   const presence = presenceMonitor;
   // Back at the machine: look before anything records the new presence.
@@ -505,6 +518,7 @@ async function startApplication(): Promise<void> {
     contextScheduleService,
     forgottenSessionService,
     reminders: reminderService,
+    morning,
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
       // Wakes the worker when the hold ends, as a stop does: a correction
       // should not wait out the five-minute interval to reach the provider.

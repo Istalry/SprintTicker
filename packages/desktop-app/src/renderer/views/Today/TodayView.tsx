@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActiveSessionDTO, TaskDTO, WorklogDTO } from '../../../shared/dtos';
 import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { PickerMode } from '../../hooks/useModals';
-import { useCeremonyPrompt, useReminder, useUserMode } from '../../hooks/usePrompts';
+import { useCeremonyPrompt, useMorning, useReminder, useUserMode } from '../../hooks/usePrompts';
+import { MorningCard } from '../../components/MorningCard';
 import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
@@ -49,6 +50,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [reminder, setReminder] = useReminder();
   const [mode, setMode] = useUserMode();
   const { providerName } = useProviderCapabilities();
+  const [morning, putMorningAway] = useMorning();
+  // When Today opened: the morning card's "in 22 minutes" counts from it.
+  const [openedAt] = useState(() => new Date());
   const provider = providerName || 'The provider';
   const toPlaceHint = `${provider} gets this time once it is on a task. ${keepOffLabel(providerName)} keeps one in your history, never sent. Tick some to place them together.`;
   const leaveAway = () => {
@@ -57,6 +61,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   };
   return (
   <div className="space-y-6">
+    {morning && !session && <MorningCard morning={morning} now={openedAt} onOpenPicker={() => onOpenPicker('start')} onPutAway={putMorningAway} />}
     {ceremony?.type === 'STANDUP' && <StandupCard prompt={ceremony} session={session} />}
     {ceremony?.type === 'LUNCH' && <LunchQuestionCard prompt={ceremony} />}
     <ResumeAfterLunchPrompt />

@@ -203,6 +203,16 @@ differ -- under **Settings, Account** › *When I mark a task done*. Stopping
 without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
 
+☀️ **The morning card.** The first time you open Today on a working day,
+before anything is timed, it starts with what yesterday left: **Carry on
+with MG-12?** -- the last task you timed, still open and yours, with
+**▶ Continue MG-12**; the interruptions from earlier days still to place,
+with **Place them…**, which takes you to their list; the stand-up's time
+while it is still to come; and your tasks in progress, each one press to
+start, with **Pick another…** for the picker. It goes as soon as anything
+starts -- here, on the bar or on the Stream Deck -- or when you put it
+away with **×**, and does not come back that day.
+
 📋 **Today's entries** are under the session card, newest first, one row
 each: the task, its note, its time, when it started, and where it stands
 with your provider -- **Sent**, **Sending**, **Waiting · overlaps PF-31**,

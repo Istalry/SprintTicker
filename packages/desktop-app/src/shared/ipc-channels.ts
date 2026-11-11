@@ -125,6 +125,8 @@ export enum IPCChannel {
   GET_REMINDER = 'reminders:get',
   DISMISS_REMINDER = 'reminders:dismiss',
   ON_REMINDER = 'reminders:on-changed',
+  GET_MORNING = 'morning:get',
+  MORNING_SEEN = 'morning:seen',
   ANSWER_LUNCH_QUESTION = 'schedule:answer-lunch-question',
   GET_STANDUP_TASK = 'schedule:get-standup-task',
   SET_STANDUP_TASK = 'schedule:set-standup-task',

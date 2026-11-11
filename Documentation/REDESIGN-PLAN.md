@@ -1264,6 +1264,22 @@ minute check) and P8e3 (S9's extras).
   bar against a daily target (no target setting; P16 if wanted). History's
   rows keep their own icons until P9.
 
+**As landed: P8e2a, the morning card (2026-11-11).** P8e2 split in two: the
+morning card here, the reassigned card with its minute check next (P8e2b).
+
+- `MorningService` (new): `morning:get` / `morning:seen`, `MorningDTO`,
+  `morning_seen_date`; `WorklogRepository.getLastEndOf`.
+- `MorningCard` on Today, above the questions, while nothing runs:
+  Continue, the earlier interruptions (Place them… scrolls to their card),
+  the stand-up's time, the tasks in progress as one-press chips, Pick
+  another…, and × to put it away. `useMorning` drops it at the first
+  session update that carries a session, wherever it started, and tells
+  main.
+- "The first time the window opens" is read as the first look at Today
+  before anything is timed: a card not seen stays until something starts.
+- Not built: the target in "Nothing logged yet · target 7h 30m" (no target
+  setting; with P8e1's).
+
 ---
 
 ## 14. P9 -- History
@@ -1734,7 +1750,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | in progress: P8a-P8e1 done (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions); P8e2-P8e3 next -- see §13 "Split" | P8a-P8e1 (2026-11-11) |
+| P8 | in progress: P8a-P8e2a done (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card); P8e2b-P8e3 next -- see §13 "Split" | P8a-P8e2a (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |

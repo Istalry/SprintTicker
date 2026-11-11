@@ -5,6 +5,7 @@ import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { isFlowSettingKey, readFlowSetting } from '../../shared/flow-settings';
 import type { ReminderService } from '../services/reminder-service';
+import type { MorningService } from '../services/morning-service';
 import { isInterruptionSource } from '../../shared/interruption';
 import { InterruptionService } from '../services/interruption-service';
 import { IPCChannel } from '../../shared/ipc-channels';
@@ -100,6 +101,8 @@ export interface IPCHandlerRegistryDeps {
   forgottenSessionService?: ForgottenSessionService;
   /** The "still...?" reminders (P8d); without it, none is ever asked. */
   reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
+  /** The morning card (P8e2); without it, Today never shows one. */
+  morning?: Pick<MorningService, 'getMorning' | 'markSeen'>;
   /** Corrects and deletes worklogs; without it, both channels refuse. */
   worklogCorrections?: WorklogCorrectionService;
   windowsNotificationService?: WindowsNotificationListenerService;
@@ -160,6 +163,7 @@ export class IPCHandlerRegistry {
   private miniWindow?: MiniWindowController;
   private pickerWindow?: PickerWindowController;
   private reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
+  private morning?: Pick<MorningService, 'getMorning' | 'markSeen'>;
   private undo?: UndoService;
   private sessionEnding: SessionEnding;
 
@@ -213,6 +217,7 @@ export class IPCHandlerRegistry {
     this.miniWindow = miniWindow;
     this.pickerWindow = deps.pickerWindow;
     this.reminders = deps.reminders;
+    this.morning = deps.morning;
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
     // The default is never started and shows nothing: it serves the settings
@@ -854,6 +859,11 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.DISMISS_REMINDER, async (_event, id: unknown) => {
       if (typeof id !== 'string' || id === '') throw new ArgumentException(`Not a reminder: ${String(id)}.`, 'id');
       return this.reminders?.dismiss(id) ?? false;
+    });
+
+    ipcMain.handle(IPCChannel.GET_MORNING, async () => this.morning?.getMorning() ?? null);
+    ipcMain.handle(IPCChannel.MORNING_SEEN, async () => {
+      this.morning?.markSeen();
     });
 
     ipcMain.handle(IPCChannel.SNOOZE_CEREMONY, async (_event, payload: { type: 'STANDUP' | 'EOD'; minutes: number }) => {

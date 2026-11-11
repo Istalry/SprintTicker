@@ -1,4 +1,5 @@
 import { DatabaseConnection } from '../database-connection';
+import { ArgumentNullException } from '../../../shared/dtos';
 import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
 import { WorklogCorrectionDTO, WorklogSyncState } from '../../../shared/worklog-correction';
 import { hasTaskPage } from '../../../shared/task-page';
@@ -772,6 +773,17 @@ export class WorklogRepository {
    * one. See local-date.ts for why the bounds are computed in JavaScript rather
    * than in SQL.
    */
+  /** When the task's latest entry ended (its start plus its time), or null when it has none. */
+  public getLastEndOf(taskId: string): string | null {
+    if (!taskId) throw new ArgumentNullException('taskId');
+    const row = this.dbConn.getDb()
+      .prepare<[string], { started_at_utc: string; duration_seconds: number }>(
+        'SELECT started_at_utc, duration_seconds FROM worklogs WHERE task_id = ? ORDER BY started_at_utc DESC LIMIT 1'
+      )
+      .get(taskId);
+    return row ? new Date(Date.parse(row.started_at_utc) + row.duration_seconds * 1000).toISOString() : null;
+  }
+
   public getWorklogsByDate(dateString: string): WorklogRecord[] {
     if (!dateString) return this.getTodaysWorklogs();
 

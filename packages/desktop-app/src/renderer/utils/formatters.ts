@@ -78,6 +78,12 @@ export function formatDay(dateKey: string): string {
   return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+/** `Tuesday 10 November`, in the regional format, from a local date key: the morning card's day. */
+export function formatLongDay(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 /** "1 task", "4 tasks": a count with its noun, never "task(s)". */
 export function countOf(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;

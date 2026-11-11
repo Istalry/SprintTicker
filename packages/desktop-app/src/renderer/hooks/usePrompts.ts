@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CeremonyPromptDTO, ReminderDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
+import { CeremonyPromptDTO, MorningDTO, ReminderDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
 
 /**
  * The questions main is asking (redesign P8c), for Today's cards and the mini
@@ -56,4 +56,43 @@ export function useUserMode(): [UserMode, (mode: UserMode) => void] {
   const api = window.electronAPI;
   const [mode, setMode] = useFollowed<UserMode>(api?.getUserMode, api?.onUserModeUpdated, 'the mode');
   return [mode ?? 'WORK', setMode];
+}
+
+/**
+ * The morning card (S4b), read once when Today opens; null once the day has
+ * begun. It goes as soon as a session starts, wherever it was started -- the
+ * bar, the deck, the picker -- and the second value puts it away: either
+ * way main is told, so it is not shown again today.
+ */
+export function useMorning(): [MorningDTO | null, () => void] {
+  const [morning, setMorning] = useState<MorningDTO | null>(null);
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.getMorning) return undefined;
+    let live = true;
+    let shown = false;
+    api.getMorning()
+      .then(current => {
+        if (!live) return;
+        shown = current !== null;
+        setMorning(current);
+      })
+      .catch(err => console.warn('[usePrompts] Could not read the morning:', err));
+    // Once a second while a task runs: only the first one after the card was shown counts.
+    const off = api.onSessionUpdated?.(session => {
+      if (!live || !session || !shown) return;
+      shown = false;
+      setMorning(null);
+      api.markMorningSeen().catch(err => console.warn('[usePrompts] Could not mark the morning seen:', err));
+    });
+    return () => {
+      live = false;
+      off?.();
+    };
+  }, []);
+  const putAway = () => {
+    setMorning(null);
+    window.electronAPI.markMorningSeen().catch(err => console.warn('[usePrompts] Could not mark the morning seen:', err));
+  };
+  return [morning, putAway];
 }

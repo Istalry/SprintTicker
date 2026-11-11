@@ -54,6 +54,10 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **A morning card.** The first look at Today on a working day offers to
+  carry on with yesterday's last task, points at the interruptions still to
+  place, says when the stand-up is, and lists your tasks in progress, each
+  one press to start. It goes once anything starts.
 - **Today's entries and interruptions, as in History.** Today lists the
   day's entries newest first, with where each stands with the provider and
   **⋯** for Correct, Move and Delete; ⚡ marks time that started as an

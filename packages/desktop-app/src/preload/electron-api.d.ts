@@ -34,6 +34,7 @@ import type {
   CeremonyPromptDTO,
   StandupTaskDTO,
   ReminderDTO,
+  MorningDTO,
   WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
@@ -217,6 +218,10 @@ export interface IElectronAPI {
   /** Not now, Still paused, Still on it, Still in it: final for that occurrence. */
   dismissReminder: (id: string) => Promise<boolean>;
   onReminder: (callback: (reminder: ReminderDTO | null) => void) => () => void;
+  /** The morning card (S4b): null once the day has begun, on a day off, or once seen. */
+  getMorning: () => Promise<MorningDTO | null>;
+  /** The card was seen -- a start, or put away: not shown again today. */
+  markMorningSeen: () => Promise<void>;
   /** The ceremony waiting on an answer, for a window opened after it was asked (P8c). */
   getCeremonyPrompt: () => Promise<CeremonyPromptDTO | null>;
   /** A ceremony asked, or null once it is answered anywhere. */

@@ -300,6 +300,29 @@ export interface ReminderDTO {
   heldTaskKey?: string;
 }
 
+/** A task as the morning card names it. */
+export interface MorningTaskDTO {
+  id: string;
+  key: string;
+  title: string;
+}
+
+/**
+ * The morning card (S4b, redesign P8e2): the first look at Today on a
+ * working day. Null from `morning:get` once the day has begun or the card
+ * was seen.
+ */
+export interface MorningDTO {
+  /** The local day it is for. */
+  dateKey: string;
+  /** The last task timed, still open and the user's, and when its last entry ended. */
+  lastTask: (MorningTaskDTO & { stoppedAtUtc: string }) | null;
+  /** The stand-up's time while it is still to come today ("09:30"); null when off or past. */
+  standupAt: string | null;
+  /** The user's tasks in progress, the last task left out. */
+  inProgress: MorningTaskDTO[];
+}
+
 /**
  * The task the stand-up is timed on and sent to (D3, redesign P8c2); none
  * keeps it on the local "Daily Standup", never sent. Its key and title are

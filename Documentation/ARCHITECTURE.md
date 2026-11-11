@@ -837,6 +837,18 @@ in WORK closes the week before if that wrap-up was missed, and a week is
 never closed twice. A first run sets it without closing anything, and a week
 with no working day is marked closed without a notice.
 
+### `MorningService` — `src/main/services/`
+
+The morning card (S4b, P8e2), read by Today when it opens (`morning:get`).
+It answers null on a day off, once a session is open or anything is logged
+today, and once the card was seen -- `morning:seen`, sent by the window when
+a session starts or the card is put away, stores the day as
+`morning_seen_date`. Otherwise: the last task timed that is still the
+user's and open (`TaskRepository.getRecent`, ad-hoc work left out) with its
+last entry's end (`WorklogRepository.getLastEndOf`), the stand-up's time
+while it is still to come, and the user's tasks in progress. The
+interruptions from earlier days come from the window's own list.
+
 ### `ReminderService` — `src/main/services/`
 
 The "still...?" questions (P8d). `dueReminder` is pure: from the session,

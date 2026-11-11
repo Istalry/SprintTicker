@@ -204,6 +204,8 @@ const electronAPI: IElectronAPI = {
   getCeremonyPrompt: () => ipcRenderer.invoke(IPCChannel.GET_CEREMONY_PROMPT),
   getReminder: () => ipcRenderer.invoke(IPCChannel.GET_REMINDER),
   dismissReminder: (id: string) => ipcRenderer.invoke(IPCChannel.DISMISS_REMINDER, id),
+  getMorning: () => ipcRenderer.invoke(IPCChannel.GET_MORNING),
+  markMorningSeen: () => ipcRenderer.invoke(IPCChannel.MORNING_SEEN),
   onReminder: (callback: (reminder: ReminderDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, reminder: ReminderDTO | null) => callback(reminder);
     ipcRenderer.on(IPCChannel.ON_REMINDER, handler);

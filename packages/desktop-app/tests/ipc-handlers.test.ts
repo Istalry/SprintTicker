@@ -251,6 +251,19 @@ describe('IPC handlers', () => {
       expect(await invoke(IPCChannel.DISMISS_REMINDER, 'x')).toBe(false);
     });
 
+    it('Morning_ReadAndSeenThroughTheService_NoneWithout', async () => {
+      const day = { dateKey: '2026-11-10', lastTask: null, standupAt: '09:30', inProgress: [] };
+      const markSeen = vi.fn();
+      build({ morning: { getMorning: vi.fn().mockReturnValue(day), markSeen } });
+
+      expect(await invoke(IPCChannel.GET_MORNING)).toEqual(day);
+      await invoke(IPCChannel.MORNING_SEEN);
+      expect(markSeen).toHaveBeenCalledTimes(1);
+
+      build({});
+      expect(await invoke(IPCChannel.GET_MORNING)).toBeNull();
+    });
+
     it('StandupTask_ReadAndSetThroughTheService', async () => {
       const task = { taskId: '10002', taskKey: 'OPS-4', title: 'Team ceremonies' };
       const setStandupTask = vi.fn();

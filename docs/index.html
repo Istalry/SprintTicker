@@ -727,6 +727,15 @@
       differ -- under <strong>Settings, Account</strong> › <em>When I mark a task done</em>. Stopping
       without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
+      <p>☀️ <strong>The morning card.</strong> The first time you open Today on a working day,
+      before anything is timed, it starts with what yesterday left: <strong>Carry on
+      with MG-12?</strong> -- the last task you timed, still open and yours, with
+      <strong>▶ Continue MG-12</strong>; the interruptions from earlier days still to place,
+      with <strong>Place them…</strong>, which takes you to their list; the stand-up&#39;s time
+      while it is still to come; and your tasks in progress, each one press to
+      start, with <strong>Pick another…</strong> for the picker. It goes as soon as anything
+      starts -- here, on the bar or on the Stream Deck -- or when you put it
+      away with <strong>×</strong>, and does not come back that day.</p>
       <p>📋 <strong>Today&#39;s entries</strong> are under the session card, newest first, one row
       each: the task, its note, its time, when it started, and where it stands
       with your provider -- <strong>Sent</strong>, <strong>Sending</strong>, <strong>Waiting · overlaps PF-31</strong>,
@@ -2805,6 +2814,16 @@
       in WORK closes the week before if that wrap-up was missed, and a week is
       never closed twice. A first run sets it without closing anything, and a week
       with no working day is marked closed without a notice.</p>
+      <h4><code>MorningService</code> — <code>src/main/services/</code></h4>
+      <p>The morning card (S4b, P8e2), read by Today when it opens (<code>morning:get</code>).
+      It answers null on a day off, once a session is open or anything is logged
+      today, and once the card was seen -- <code>morning:seen</code>, sent by the window when
+      a session starts or the card is put away, stores the day as
+      <code>morning_seen_date</code>. Otherwise: the last task timed that is still the
+      user&#39;s and open (<code>TaskRepository.getRecent</code>, ad-hoc work left out) with its
+      last entry&#39;s end (<code>WorklogRepository.getLastEndOf</code>), the stand-up&#39;s time
+      while it is still to come, and the user&#39;s tasks in progress. The
+      interruptions from earlier days come from the window&#39;s own list.</p>
       <h4><code>ReminderService</code> — <code>src/main/services/</code></h4>
       <p>The &quot;still...?&quot; questions (P8d). <code>dueReminder</code> is pure: from the session,
       when nothing started running, the day&#39;s start and the <code>prompt_delays</code>, it
@@ -3608,6 +3627,10 @@
       <tr>
       <td align="left">Ceremonies</td>
       <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
+      </tr>
+      <tr>
+      <td align="left">Morning card</td>
+      <td align="left"><code>morning:get</code> answers the morning card (<code>{ dateKey, lastTask: { id, key, title, stoppedAtUtc } | null, standupAt, inProgress: [{ id, key, title }] }</code>), or null on a day off, once the day has begun (a session open, anything logged today) or once seen; <code>morning:seen</code> stores today as seen</td>
       </tr>
       <tr>
       <td align="left">Reminders</td>
