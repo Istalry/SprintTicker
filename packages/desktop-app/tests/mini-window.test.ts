@@ -388,6 +388,27 @@ describe('IPCHandlerRegistry with the mini timer', () => {
     });
   });
 
+  it('OpenPickers_WithPickerWindow_OpenItInEachMode', async () => {
+    // P7b: the mini timer's buttons open the picker's own window.
+    const dashboard = fakeWindow();
+    const pickerWindow = { open: vi.fn(() => true) };
+    buildRegistry({ getWindow: () => dashboard, pickerWindow });
+
+    expect(await handlerFor(IPCChannel.OPEN_TASK_PICKER)({})).toBe(true);
+    expect(await handlerFor(IPCChannel.OPEN_ASSIGN_PICKER)({})).toBe(true);
+
+    expect(pickerWindow.open).toHaveBeenNthCalledWith(1, 'start');
+    expect(pickerWindow.open).toHaveBeenNthCalledWith(2, 'assign');
+    expect(dashboard.show).not.toHaveBeenCalled();
+  });
+
+  it('OpenPicker_PickerWindowFails_AnswersItsAnswer', async () => {
+    const pickerWindow = { open: vi.fn(() => false) };
+    buildRegistry({ getWindow: () => null, pickerWindow });
+
+    expect(await handlerFor(IPCChannel.OPEN_TASK_PICKER)({})).toBe(false);
+  });
+
   it('OpenTaskPicker_NoDashboard_AnswersFalse', async () => {
     buildRegistry({ getWindow: () => null });
 

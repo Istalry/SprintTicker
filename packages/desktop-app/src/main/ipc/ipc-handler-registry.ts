@@ -31,6 +31,7 @@ import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
+import type { PickerWindowController } from '../windows/picker-window-manager';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
@@ -85,6 +86,11 @@ export interface IPCHandlerRegistryDeps {
    */
   getWindows?: () => BrowserWindow[];
   miniWindow?: MiniWindowController;
+  /**
+   * The picker as its own window (P7b), for the mini timer's ⇄ and ↳.
+   * Without it, the main window's picker opens.
+   */
+  pickerWindow?: PickerWindowController;
   worklogRepo?: WorklogRepository;
   providerEvents?: ProviderEventService;
   priorityEngine?: PriorityPreemptionEngine;
@@ -149,6 +155,7 @@ export class IPCHandlerRegistry {
   private getWindow: () => BrowserWindow | null;
   private getWindows: () => BrowserWindow[];
   private miniWindow?: MiniWindowController;
+  private pickerWindow?: PickerWindowController;
   private undo?: UndoService;
   private sessionEnding: SessionEnding;
 
@@ -200,6 +207,7 @@ export class IPCHandlerRegistry {
       return win ? [win] : [];
     });
     this.miniWindow = miniWindow;
+    this.pickerWindow = deps.pickerWindow;
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
     // The default is never started and shows nothing: it serves the settings
@@ -1197,8 +1205,10 @@ export class IPCHandlerRegistry {
     // simply never open.
     ipcMain.handle(IPCChannel.MINI_TOGGLE, async (): Promise<boolean> => this.miniWindow?.toggle() ?? false);
     ipcMain.handle(IPCChannel.MINI_IS_OPEN, async (): Promise<boolean> => this.miniWindow?.isOpen() ?? false);
-    ipcMain.handle(IPCChannel.OPEN_TASK_PICKER, async (): Promise<boolean> => openTaskPickerInMainWindow(this.getWindow()));
-    ipcMain.handle(IPCChannel.OPEN_ASSIGN_PICKER, async (): Promise<boolean> => openTaskPickerInMainWindow(this.getWindow(), undefined, 'assign'));
+    ipcMain.handle(IPCChannel.OPEN_TASK_PICKER, async (): Promise<boolean> =>
+      this.pickerWindow ? this.pickerWindow.open('start') : openTaskPickerInMainWindow(this.getWindow()));
+    ipcMain.handle(IPCChannel.OPEN_ASSIGN_PICKER, async (): Promise<boolean> =>
+      this.pickerWindow ? this.pickerWindow.open('assign') : openTaskPickerInMainWindow(this.getWindow(), undefined, 'assign'));
     this.miniWindow?.subscribe(open => this.broadcast(IPCChannel.ON_MINI_VISIBILITY, open));
 
     ipcMain.handle(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS, async (): Promise<boolean> =>

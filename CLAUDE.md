@@ -213,7 +213,7 @@ what a click or a press already does.** `DeckActionService` holds no rule of
 its own, and must not grow one: ending a session is `completeSession`, shared
 with the window's IPC; a prompt is answered by OK or BACK through
 `InputDecoder`, so the wrap-up's two presses and the stand-up's switch stay
-in one place; the picker is the tray's. A key with its own copy of a rule
+in one place; the picker is the tray's (the picker window, P7b). A key with its own copy of a rule
 is the duplicated-constant hazard below, with a session at stake. Four more
 things about it:
 - **`Origin` is the whole defence of the socket.** A browser opens a
@@ -235,7 +235,10 @@ things about it:
   (`AttachThreadInput` from PowerShell, ~0.8 s) works. Measuring it needs
   another app in front that the *user* chose: a process this shell starts
   while the agent's own window has the foreground inherits the right to it,
-  and every method then passes.
+  and every method then passes. The picker window is raised the same way
+  when the deck opens it (`PickerWindowManager.open(mode, { raise: true })`);
+  a click on the tray or the mini timer needs no raise, and gets none --
+  each raise is a PowerShell process.
 
 **The plugin itself, `packages/streamdeck-plugin`, runs inside Elgato's
 app, so nothing here sees it on a deck**, and replayed events passing say

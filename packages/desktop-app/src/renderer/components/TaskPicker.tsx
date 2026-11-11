@@ -325,8 +325,10 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     ? `Search in ${project.name}`
     : `Search all ${tasks.length} tasks -- key, title or project`;
 
+  // As its own window it is frameless: the border is its only edge against
+  // a dark desktop or a dark app behind it.
   const frame = asWindow
-    ? 'h-screen w-screen bg-dark-800 flex flex-col overflow-hidden select-none'
+    ? 'h-screen w-screen bg-dark-800 border border-border-dark flex flex-col overflow-hidden select-none'
     : 'w-full max-w-xl max-h-[85vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col';
 
   const body = (

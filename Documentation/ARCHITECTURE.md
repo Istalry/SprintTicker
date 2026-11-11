@@ -88,9 +88,22 @@ recorded the last frame as sent. The queued frame is not replayed: a clear
 asked for meanwhile would have ended it. A row saved before the field existed
 reads as `true`.
 
-**Two windows, one renderer bundle.** The dashboard and the **mini timer** load
-the same `index.html`; the mini timer loads it at `#mini`, and `main.tsx` mounts
-`MiniBar` instead of `App` for that hash. Both get the same web preferences and
+**Three windows, one renderer bundle.** The dashboard, the **mini timer** and
+the **picker window** load the same `index.html`; the mini timer loads it at
+`#mini`, and `main.tsx` mounts `MiniBar` instead of `App` for that hash. The
+picker window (redesign P7b) loads it at `#picker` -- `#picker?mode=assign`
+to assign the ad-hoc session (`shared/picker-window.ts`) -- and mounts
+`PickerWindow`: the window's `TaskPicker`, its pick done by the same
+`utils/pick-task.ts` as the dashboard's. `PickerWindowManager` owns it: one at
+a time, centred on the display under the pointer, frameless and on top,
+shown on `ready-to-show` and raised with `ForegroundRaiser` when the press
+reached another app (the deck). It closes on a pick, Escape or ✕ (the
+renderer's `window.close()`, after main has answered the pick) and on
+`blur`. A window that cannot be made falls back to the dashboard's picker
+(`openTaskPickerInMainWindow`), kept until the window has run packaged. The
+tray, the deck's `openPicker` and `mini:open-task-picker` /
+`mini:open-assign-picker` open it; the bar keeps raising the dashboard with
+its picker until P14. Both get the same web preferences and
 the same navigation lock (`secureAndLoad` in `index.ts`), so the second window
 cannot end up laxer than the first. `MiniWindowManager` owns the mini timer: it
 builds it through an injected factory, remembers its position and whether it

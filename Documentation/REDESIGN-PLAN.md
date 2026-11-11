@@ -948,29 +948,32 @@ channels), `PROVIDER-API.md` (fetch one task by key, **before** the client:
 - The picker lists only projects with a task, always; the "only projects
   with tasks" switch stays in Tasks and the bar's picker.
 
-**Next, P7b -- the picker window (designed, not started):**
+**As landed: P7b, the picker window (2026-11-11).**
 
-- `shared/picker-window.ts`: `PICKER_WINDOW_HASH = 'picker'` and the mode
-  in the hash (`#picker?mode=assign`), read by `main.tsx` as `#mini` is.
-- `src/main/windows/picker-window-manager.ts`, modelled on
-  `MiniWindowManager`: injected `createWindow(bounds, mode)`, `screen`,
-  `raiser` (`ForegroundRaiser`) and `fallback(mode)`
-  (`openTaskPickerInMainWindow`). `open(mode)`: one window at a time,
-  centred on the primary work area, frameless and on top; shown and raised
-  on `ready-to-show`, never `focus()` alone; a throw falls back to the
-  window's picker. `dispose()` beside the mini timer's, at quit.
-- `createPickerWindow` in `index.ts` beside `createMiniWindow`. Callers:
-  the tray's picker entry (a new optional `TrayManager` argument), the deck's
-  `openPicker`, and `mini:open-task-picker` / `mini:open-assign-picker`
-  (a new optional registry dep). The bar keeps raising the window with its
-  picker until P14.
-- Renderer: `components/PickerWindow.tsx` renders `TaskPicker asWindow`,
-  mode from the hash and the session (start or switch), and closes the
-  window after a pick. Move `pickTask` out of `App.tsx` into
-  `utils/pick-task.ts` so both use it.
-- Tests: `picker-window.test.ts` (opens, one at a time, raised on
-  ready-to-show, a throw falls back), the renderer route, the tray and the
-  registry wiring.
+- `shared/picker-window.ts`: `PICKER_WINDOW_HASH`, `pickerWindowHash(mode)`
+  and `readPickerWindowHash`; `#picker` or `#picker?mode=assign`, read by
+  `main.tsx`, which mounts `components/PickerWindow.tsx` (`TaskPicker
+  asWindow`; Start or Switch from the session, Assign from the hash).
+- `src/main/windows/picker-window-manager.ts`, as designed, with two
+  departures: the window is centred on the display **under the pointer**,
+  not the primary one -- the tray, the mini timer and the user are there --
+  and it **closes on `blur`**, as a launcher does, so a picker forgotten on
+  top of the user's work does not stay. Opening it again in the same mode
+  brings it forward; in the other mode, replaces it. The raise is asked
+  only for the deck (`{ raise: true }`): a click on the tray or the mini
+  timer already gives the app the foreground, and each raise is a
+  PowerShell process.
+- `pickTask` moved to `renderer/utils/pick-task.ts` and now settles once
+  main has answered; the window closes after that, never before.
+- Callers: the tray's picker entry (a sixth, optional `TrayManager`
+  argument), the deck's `openPicker`, `mini:open-task-picker` and
+  `mini:open-assign-picker` (`pickerWindow`, an optional registry dep). The
+  bar still raises the dashboard with its picker (P14). The tray entry keeps
+  its old label until the tray's phase.
+- Checked against S7 in the browser pane, at the window's 600 × 640: the
+  same groups and order; a border was added, the window's only edge.
+  Still unlike S7, from P7a: the footer has no "A click starts the task"
+  hint, and the Starred heading no "hover a task, click its ☆".
 
 **Then, P7c:** the command palette (Ctrl+K, S30); the Tasks tab's own Start
 / Switch buttons and its second `FinishSessionModal` removed; S12b, placing
@@ -1561,7 +1564,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P4 | done; `pnpm db:check-migration` passed on the real database (13 to 14: 20 worklogs, 7 queue rows, nothing lost), run by the user | `e9e2e38` (2026-11-10) |
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
-| P7 | in progress: P7a done (the picker, fetch by key); P7b picker window and P7c palette, Tasks tab, S12b next -- see §12 "Next" | `12bca71` (2026-11-10) |
+| P7 | in progress: P7a (the picker, fetch by key) and P7b (the picker window) done; P7c palette, Tasks tab, S12b next -- see §12 "Then, P7c" | `12bca71` (2026-11-10), P7b (2026-11-11) |
 | P8 | not started | |
 | P9 | not started | |
 | P10 | not started | |

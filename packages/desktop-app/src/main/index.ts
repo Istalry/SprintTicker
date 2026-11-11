@@ -41,7 +41,9 @@ import { PresenceMonitor } from './services/presence-monitor';
 import { ForgottenSessionService } from './services/forgotten-session-service';
 import { TrayManager } from './tray/tray-manager';
 import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
+import { PickerWindowManager } from './windows/picker-window-manager';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
+import { PickerWindowMode, pickerWindowHash } from '../shared/picker-window';
 import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
 import { DeviceConfigDTO, ScheduleSettingsDTO } from '../shared/dtos';
@@ -71,6 +73,7 @@ let forgottenSessionService: ForgottenSessionService | null = null;
 let updateChecker: UpdateChecker | null = null;
 let updateCheckTimer: NodeJS.Timeout | null = null;
 let miniWindowManager: MiniWindowManager | null = null;
+let pickerWindowManager: PickerWindowManager | null = null;
 let providerEventService: ProviderEventService | null = null;
 let interruptShortcut: InterruptShortcutService | null = null;
 
@@ -161,6 +164,31 @@ function createMiniWindow(bounds: Rectangle): BrowserWindow {
 }
 
 /**
+ * Builds the picker window (redesign P7b): frameless, on top, in the taskbar
+ * while open so Alt+Tab reaches it. Hidden until `ready-to-show`; the
+ * manager shows and raises it.
+ */
+function createPickerWindow(bounds: Rectangle, mode: PickerWindowMode): BrowserWindow {
+  const win = new BrowserWindow({
+    ...bounds,
+    frame: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    show: false,
+    title: 'SprintTicker',
+    backgroundColor: '#0F172A',
+    webPreferences: WINDOW_WEB_PREFERENCES
+  });
+  win.setAlwaysOnTop(true, 'floating');
+  win.setMenu(null);
+  secureAndLoad(win, pickerWindowHash(mode));
+  return win;
+}
+
+/**
  * The bar icon for a provider's banners. Anything unlisted gets the bell,
  * which makes the banner spend a row naming the app instead.
  */
@@ -194,6 +222,7 @@ const createWindow = (hidden: boolean = false): void => {
     // With the dashboard, or the always-on-top timer would keep the app
     // running with no way back to it but the tray.
     miniWindowManager?.dispose();
+    pickerWindowManager?.dispose();
   });
 };
 
@@ -380,6 +409,20 @@ async function startApplication(): Promise<void> {
 
   miniWindowManager = new MiniWindowManager({ createWindow: createMiniWindow, screen, settings: settingsRepo });
 
+  // A press on a Stream Deck key reaches Stream Deck, not this app, so
+  // Windows would keep a window it opens behind whatever is in front: the
+  // raiser asks for it.
+  const foregroundRaiser = new ForegroundRaiser();
+  // The picker as its own window, for the tray, the mini timer and the deck.
+  // The main window's picker stays its fallback until it has run packaged.
+  pickerWindowManager = new PickerWindowManager({
+    createWindow: createPickerWindow,
+    screen,
+    raiser: foregroundRaiser,
+    fallback: (mode, raise) => openTaskPickerInMainWindow(mainWindow, raise ? foregroundRaiser : undefined, mode)
+  });
+  const pickers = pickerWindowManager;
+
   // Interrupt from any app, on the user's chord; off until they turn it on.
   const schedule = contextScheduleService;
   const minis = miniWindowManager;
@@ -424,6 +467,7 @@ async function startApplication(): Promise<void> {
     getWindow: () => mainWindow,
     getWindows: () => BrowserWindow.getAllWindows(),
     miniWindow: miniWindowManager,
+    pickerWindow: pickers,
     worklogRepo,
     providerEvents: providerEventService,
     priorityEngine,
@@ -453,16 +497,13 @@ async function startApplication(): Promise<void> {
   // The Stream Deck plugin's socket, on the same port. After the registry:
   // a prompt key answers through InputDecoder, whose answers the registry
   // routes to the ceremonies.
-  // A key press reaches Stream Deck, not this app, so Windows would keep
-  // the window behind whatever is in front: the raiser asks for it.
-  const foregroundRaiser = new ForegroundRaiser();
   const interrupting = contextScheduleService;
   deckServer = new DeckServer(new DeckActionService({
     engine,
     renderer,
     priorityEngine,
     inputDecoder,
-    openPicker: () => openTaskPickerInMainWindow(mainWindow, foregroundRaiser),
+    openPicker: () => pickers.open('start', { raise: true }),
     interrupt: () => {
       // A refusal the key shows, never a press that does nothing.
       if (!interrupting) throw new Error('The schedule service is not running.');
@@ -479,7 +520,7 @@ async function startApplication(): Promise<void> {
   createWindow(launchedHidden(process.argv));
   if (mainWindow && engine) {
     const schedule = contextScheduleService;
-    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin, schedule ? () => { schedule.interrupt('tray'); } : undefined);
+    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin, schedule ? () => { schedule.interrupt('tray'); } : undefined, pickers);
     trayManager.initialize();
   }
   miniWindowManager.restore();
@@ -509,6 +550,7 @@ async function startApplication(): Promise<void> {
 // the user and stay closed at the next launch.
 app.on('before-quit', () => {
   miniWindowManager?.dispose();
+  pickerWindowManager?.dispose();
 });
 
 app.on('window-all-closed', () => {

@@ -12,3 +12,9 @@ export const MINI_WINDOW_MARGIN = 16;
 /** Settings key for the mini timer's position and whether it was open. */
 export const MINI_WINDOW_SETTING_KEY = 'mini_window';
 
+
+/**
+ * The picker window's size: the window's picker (S7) at its own width, tall
+ * enough for the previous task, Recent and Starred without scrolling.
+ */
+export const PICKER_WINDOW_SIZE = { width: 600, height: 640 } as const;

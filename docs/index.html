@@ -777,6 +777,11 @@
       </ul>
       <p>The picker shows the same tasks in the same order as Tasks and the bar&#39;s
       picker, and follows the same <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches.</p>
+      <p><strong>From the tray, the mini timer and the Stream Deck, the picker opens as its
+      own small window</strong>, in the middle of the screen your pointer is on, over
+      whatever you were doing -- the dashboard stays where it was. It is the same
+      picker: Start a task when nothing runs, Switch task while something does.
+      It closes after you pick, on Escape or ✕, and when you click elsewhere.</p>
       <h4>⚡ Interrupt: a timer at once</h4>
       <p>Someone at your desk, a call: press <strong>Interrupt</strong> and a timer starts there
       and then, with nothing to fill in. The task you were on <strong>waits, paused</strong>:
@@ -1547,7 +1552,8 @@
       </li>
       <li><p><strong>Yes and no are two keys</strong>, and neither changes meaning with how long you
       hold it. Session is the one key with a long press: held, it opens the task
-      picker -- to switch tasks without ending the one running. The wrap-up asks
+      picker in its own small window, in front of the app you are in -- to
+      switch tasks without ending the one running. The wrap-up asks
       twice, as on the bar: yes, then <strong>CONFIRM</strong>.</p>
       </li>
       <li><p><strong>offline under every key</strong> means the plugin cannot reach SprintTicker:
@@ -1856,9 +1862,22 @@
       recorded the last frame as sent. The queued frame is not replayed: a clear
       asked for meanwhile would have ended it. A row saved before the field existed
       reads as <code>true</code>.</p>
-      <p><strong>Two windows, one renderer bundle.</strong> The dashboard and the <strong>mini timer</strong> load
-      the same <code>index.html</code>; the mini timer loads it at <code>#mini</code>, and <code>main.tsx</code> mounts
-      <code>MiniBar</code> instead of <code>App</code> for that hash. Both get the same web preferences and
+      <p><strong>Three windows, one renderer bundle.</strong> The dashboard, the <strong>mini timer</strong> and
+      the <strong>picker window</strong> load the same <code>index.html</code>; the mini timer loads it at
+      <code>#mini</code>, and <code>main.tsx</code> mounts <code>MiniBar</code> instead of <code>App</code> for that hash. The
+      picker window (redesign P7b) loads it at <code>#picker</code> -- <code>#picker?mode=assign</code>
+      to assign the ad-hoc session (<code>shared/picker-window.ts</code>) -- and mounts
+      <code>PickerWindow</code>: the window&#39;s <code>TaskPicker</code>, its pick done by the same
+      <code>utils/pick-task.ts</code> as the dashboard&#39;s. <code>PickerWindowManager</code> owns it: one at
+      a time, centred on the display under the pointer, frameless and on top,
+      shown on <code>ready-to-show</code> and raised with <code>ForegroundRaiser</code> when the press
+      reached another app (the deck). It closes on a pick, Escape or ✕ (the
+      renderer&#39;s <code>window.close()</code>, after main has answered the pick) and on
+      <code>blur</code>. A window that cannot be made falls back to the dashboard&#39;s picker
+      (<code>openTaskPickerInMainWindow</code>), kept until the window has run packaged. The
+      tray, the deck&#39;s <code>openPicker</code> and <code>mini:open-task-picker</code> /
+      <code>mini:open-assign-picker</code> open it; the bar keeps raising the dashboard with
+      its picker until P14. Both get the same web preferences and
       the same navigation lock (<code>secureAndLoad</code> in <code>index.ts</code>), so the second window
       cannot end up laxer than the first. <code>MiniWindowManager</code> owns the mini timer: it
       builds it through an injected factory, remembers its position and whether it
@@ -3041,7 +3060,7 @@
       </tr>
       <tr>
       <td align="left"><code>mini:open-assign-picker</code></td>
-      <td align="left">Bring the dashboard forward with its task picker open in assign mode, for the open ad-hoc session. Answers whether there was a window</td>
+      <td align="left">Open the picker window (<code>#picker?mode=assign</code>) to choose the task the open ad-hoc session goes to. Answers whether a picker opened: when the window cannot be made, the dashboard&#39;s picker opens instead, and <code>false</code> means there was no dashboard either</td>
       </tr>
       <tr>
       <td align="left"><code>session:start-interruption</code></td>
@@ -3430,7 +3449,7 @@
       </tr>
       <tr>
       <td align="left">Mini timer</td>
-      <td align="left"><code>mini:toggle</code> (answers whether it is open afterwards), <code>mini:is-open</code>, <code>mini:on-visibility</code> (<strong>Event</strong>, to every window, however it was opened or closed), <code>mini:open-task-picker</code> (brings the dashboard forward with the picker open; <code>false</code> if there is no dashboard)</td>
+      <td align="left"><code>mini:toggle</code> (answers whether it is open afterwards), <code>mini:is-open</code>, <code>mini:on-visibility</code> (<strong>Event</strong>, to every window, however it was opened or closed), <code>mini:open-task-picker</code> (opens the picker window, <code>#picker</code>; the dashboard&#39;s picker when the window cannot be made, and <code>false</code> if there is no dashboard either)</td>
       </tr>
       </tbody></table></div>
       <hr>

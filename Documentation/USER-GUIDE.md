@@ -258,6 +258,12 @@ Arrow keys and Enter pick from the keyboard; Escape closes.
 The picker shows the same tasks in the same order as Tasks and the bar's
 picker, and follows the same **Unassigned** and **Teammates'** switches.
 
+**From the tray, the mini timer and the Stream Deck, the picker opens as its
+own small window**, in the middle of the screen your pointer is on, over
+whatever you were doing -- the dashboard stays where it was. It is the same
+picker: Start a task when nothing runs, Switch task while something does.
+It closes after you pick, on Escape or ✕, and when you click elsewhere.
+
 ### ⚡ Interrupt: a timer at once
 
 Someone at your desk, a call: press **Interrupt** and a timer starts there
@@ -927,7 +933,8 @@ as you like:
   a question arrives. Half a second, then they rest.
 - **Yes and no are two keys**, and neither changes meaning with how long you
   hold it. Session is the one key with a long press: held, it opens the task
-  picker -- to switch tasks without ending the one running. The wrap-up asks
+  picker in its own small window, in front of the app you are in -- to
+  switch tasks without ending the one running. The wrap-up asks
   twice, as on the bar: yes, then **CONFIRM**.
 - **offline under every key** means the plugin cannot reach SprintTicker:
   start it, and the keys come back by themselves within ten seconds. **update

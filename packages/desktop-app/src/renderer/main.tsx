@@ -4,15 +4,25 @@ import App from './App';
 import { MiniBar } from './components/MiniBar';
 import { setRegionalLocale } from './utils/formatters';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
+import { readPickerWindowHash } from '../shared/picker-window';
+import { PickerWindow } from './components/PickerWindow';
 import './index.css';
 
-// One bundle, two windows: main loads the mini timer at this hash.
+// One bundle, three windows: main loads the mini timer and the picker
+// window at their hashes.
 const isMiniWindow = window.location.hash === `#${MINI_WINDOW_HASH}`;
+const pickerMode = readPickerWindowHash(window.location.hash);
+
+const root = (): React.ReactElement => {
+  if (isMiniWindow) return <MiniBar />;
+  if (pickerMode) return <PickerWindow mode={pickerMode} />;
+  return <App />;
+};
 
 const render = () =>
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
-      {isMiniWindow ? <MiniBar /> : <App />}
+      {root()}
     </React.StrictMode>
   );
 

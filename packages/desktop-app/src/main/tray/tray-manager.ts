@@ -4,6 +4,7 @@ import fs from 'fs';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow, revealMainWindow } from '../windows/main-window-actions';
+import type { PickerWindowController } from '../windows/picker-window-manager';
 import type { LaunchAtLoginService } from '../services/launch-at-login';
 import { Verb } from '../../shared/words';
 
@@ -30,7 +31,9 @@ export class TrayManager {
     private readonly miniWindow?: MiniWindowController,
     private readonly launchAtLogin?: LaunchAtLoginService,
     /** Interrupt, as the window's button does it: `ContextScheduleService.interrupt`. */
-    private readonly interrupt?: () => void
+    private readonly interrupt?: () => void,
+    /** The picker as its own window (P7b); without it, the main window's. */
+    private readonly pickerWindow?: PickerWindowController
   ) {
     this.mainWindow = mainWindow;
     this.engine = engine;
@@ -163,7 +166,10 @@ export class TrayManager {
       },
       {
         label: 'Trigger Task Selector Modal',
-        click: () => openTaskPickerInMainWindow(this.mainWindow)
+        click: () => {
+          if (this.pickerWindow) this.pickerWindow.open('start');
+          else openTaskPickerInMainWindow(this.mainWindow);
+        }
       },
       ...(this.miniWindow
         ? [{

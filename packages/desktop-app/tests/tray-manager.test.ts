@@ -318,6 +318,20 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
+    it('TrayManager_ContextMenu_TaskSelector_WithPickerWindow_OpensItAndLeavesTheDashboard', () => {
+      // P7b: the picker as its own window, not the dashboard over the user's work.
+      const pickerWindow = { open: vi.fn(() => true) };
+      const manager = new TrayManager(mockWindow, engine, undefined, undefined, undefined, pickerWindow);
+      manager.initialize();
+
+      click('Trigger Task Selector Modal');
+
+      expect(pickerWindow.open).toHaveBeenCalledWith('start');
+      expect(mockWindow.show).not.toHaveBeenCalled();
+      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
+      manager.destroy();
+    });
+
     it('TrayManager_ContextMenu_NoMiniWindow_OffersNoMiniTimerEntry', () => {
       const manager = new TrayManager(mockWindow, engine);
       manager.initialize();

@@ -43,6 +43,11 @@
   project's key and a space narrows to it. A ticket made since the last sync
   is one **Fetch MG-77** away, from Jira or OpenProject, and switching away
   from an interruption can take its time along.
+- **The picker in its own window.** From the tray, the mini timer and the
+  Stream Deck, the task picker opens as a small window over what you are
+  doing, on the screen your pointer is on, instead of bringing the whole
+  dashboard forward. It closes after a pick, on Escape, or when you click
+  elsewhere.
 - **Interruptions to place.** An interruption's time goes nowhere until you
   say where: History lists every one waiting, whatever its day, with what it
   interrupted, and the wrap-up lists them too. **Place…** puts its time on a
