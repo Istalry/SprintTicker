@@ -810,9 +810,14 @@ changing it:
   through it / Not now); nothing restarts. "I worked through it" is
   `withdrawPause`, which deletes the open pause *row* too, or the split
   would still cut there. Pause before the mode switch: the paused frame is
-  what the scene covers. An interruption ends at lunch and its held task
-  takes Lunch's pause (`relabelPause`); Away leaves an interruption
-  running. An entry with no held session is a task to *start* again -- the
+  what the scene covers. **Lunch's hour asks before it ends an
+  interruption** (S25, P8c2): "Start lunch? It ends 'Call with Marc'" -- a
+  `LUNCH` ceremony prompt, in WORK and under Away alike, and unlocking into
+  lunch's hour in one goes to WORK with the question, never to LUNCH. Yes
+  (`answerLunchQuestion`) ends it and its held task takes Lunch's pause
+  (`relabelPause`); Not now is working through lunch for the day; Back is
+  too, as any resume during lunch. The mode chip's Lunch is the user's
+  choice and ends it unasked. Away leaves an interruption running. An entry with no held session is a task to *start* again -- the
   stand-up stopped by lunch, or one stored by a version that stopped.
 - **Lunch never overrides the user.** `ContextScheduleService` listens to the
   engine: a session *going* TRACKING during lunch ends Lunch for the day

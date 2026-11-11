@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { BreakCard, StandupCard } from '../../src/renderer/components/PromptCards';
+import { BreakCard, JOINED_MINUTES_AGO, LunchQuestionCard, StandupCard, joinedAt } from '../../src/renderer/components/PromptCards';
+import { MiniBar } from '../../src/renderer/components/MiniBar';
 import { TodayView } from '../../src/renderer/views/Today/TodayView';
 import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
 import { ActiveSessionDTO, CeremonyPromptDTO } from '../../src/shared/dtos';
@@ -24,7 +25,7 @@ describe('prompt cards', () => {
     });
 
     it.each([
-      ['Join', 'joinStandup', []],
+      ['Join', 'joinStandup', [undefined]],
       ['Skip today', 'cancelStandupPrompt', []],
       ['Remind me in 10 min', 'snoozeCeremony', ['STANDUP', 10]]
     ] as const)('%s_Clicked_AnswersMain', (label, method, args) => {
@@ -98,6 +99,54 @@ describe('prompt cards', () => {
       fireEvent.click(screen.getByRole('button', { name: "I'm back" }));
 
       expect(left).toEqual(['away']);
+    });
+  });
+
+  describe('joined late, and lunch during an interruption (P8c2)', () => {
+    it('JoinedAt_MinutesAgo_IsThatMuchBeforeNow_NowIsNothing', () => {
+      const now = Date.parse('2026-11-11T08:35:00.000Z');
+      expect(joinedAt(0, now)).toBeUndefined();
+      expect(joinedAt(5, now)).toBe('2026-11-11T08:30:00.000Z');
+      expect(JOINED_MINUTES_AGO).toEqual([0, 2, 5, 10, 15]);
+    });
+
+    it('Join_JoinedFiveMinutesAgo_SendsTheTime', () => {
+      const bridge = installElectronApi();
+      render(<StandupCard prompt={STANDUP} session={TRACKING_SESSION} />);
+
+      fireEvent.change(screen.getByLabelText('When you joined'), { target: { value: '5' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+      const sent = vi.mocked(bridge.api.joinStandup).mock.calls[0][0];
+      expect(Date.now() - Date.parse(sent ?? '')).toBeGreaterThanOrEqual(5 * 60_000 - 1000);
+      expect(Date.now() - Date.parse(sent ?? '')).toBeLessThan(5 * 60_000 + 1000);
+    });
+
+    it('StandupCard_DuringAnInterruption_SaysJoiningEndsIt', () => {
+      installElectronApi();
+      const during = { ...TRACKING_SESSION, taskTitle: 'Call with Marc', interruption: { index: 1 } as never };
+      render(<StandupCard prompt={STANDUP} session={during} />);
+
+      expect(screen.getByRole('region', { name: 'The stand-up' }).textContent).toMatch(/Join\? It ends "Call with Marc", which waits to be placed/);
+    });
+
+    it.each([['Start lunch', true], ['Not now', false]] as const)('LunchQuestion_%s_AnswersMain', (label, start) => {
+      const bridge = installElectronApi();
+      render(<LunchQuestionCard prompt={{ type: 'LUNCH', title: 'Lunch time', at: '12:30', endsInterruption: 'Call with Marc' }} />);
+
+      expect(screen.getByRole('region', { name: 'Lunch time' }).textContent).toMatch(/It ends "Call with Marc"/);
+      fireEvent.click(screen.getByRole('button', { name: label }));
+
+      expect(bridge.api.answerLunchQuestion).toHaveBeenCalledWith(start);
+    });
+
+    it('MiniBar_LunchQuestion_TakesTheRow', async () => {
+      const bridge = installElectronApi({ getCeremonyPrompt: async () => ({ type: 'LUNCH' as const, title: 'Lunch time', at: '12:30', endsInterruption: 'Call with Marc' }) });
+      render(<MiniBar />);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start lunch' }));
+
+      expect(bridge.api.answerLunchQuestion).toHaveBeenCalledWith(true);
     });
   });
 });

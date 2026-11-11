@@ -4,7 +4,7 @@ import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { formatClockTime, formatHoursAndMinutes as formatSeconds } from '../../utils/formatters';
 import { PickerMode } from '../../hooks/useModals';
 import { useCeremonyPrompt, useUserMode } from '../../hooks/usePrompts';
-import { BreakCard, StandupCard } from '../../components/PromptCards';
+import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
 
 interface TodayViewProps {
@@ -50,6 +50,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   return (
   <div className="space-y-6">
     {ceremony?.type === 'STANDUP' && <StandupCard prompt={ceremony} session={session} />}
+    {ceremony?.type === 'LUNCH' && <LunchQuestionCard prompt={ceremony} />}
     <ResumeAfterLunchPrompt />
     <BreakCard mode={mode} session={session} onLeaveAway={leaveAway} />
 

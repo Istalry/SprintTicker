@@ -212,6 +212,36 @@ describe('IPC handlers', () => {
       expect(await invoke(IPCChannel.JOIN_STANDUP)).toBe(true);
       expect(joinStandup).toHaveBeenCalledTimes(1);
     });
+
+    it('JoinStandup_JoinedEarlier_PassesTheTime_AndRefusesAnythingElse', async () => {
+      const joinStandup = vi.fn();
+      build({ contextScheduleService: { joinStandup } });
+      const at = '2026-11-11T08:25:00.000Z';
+
+      expect(await invoke(IPCChannel.JOIN_STANDUP, at)).toBe(true);
+      expect(joinStandup).toHaveBeenCalledWith(new Date(at));
+      await expect(invoke(IPCChannel.JOIN_STANDUP, 'soon')).rejects.toThrow(/must be a time/);
+      await expect(invoke(IPCChannel.JOIN_STANDUP, 5)).rejects.toThrow(/must be a time/);
+    });
+
+    it('AnswerLunchQuestion_ABoolean_ReachesTheService_AnythingElseIsRefused', async () => {
+      const answerLunchQuestion = vi.fn().mockReturnValue(true);
+      build({ contextScheduleService: { answerLunchQuestion } });
+
+      expect(await invoke(IPCChannel.ANSWER_LUNCH_QUESTION, false)).toBe(true);
+      expect(answerLunchQuestion).toHaveBeenCalledWith(false);
+      await expect(invoke(IPCChannel.ANSWER_LUNCH_QUESTION, 'yes')).rejects.toThrow(/true or false/);
+    });
+
+    it('StandupTask_ReadAndSetThroughTheService', async () => {
+      const task = { taskId: '10002', taskKey: 'OPS-4', title: 'Team ceremonies' };
+      const setStandupTask = vi.fn();
+      build({ contextScheduleService: { getStandupTask: vi.fn().mockReturnValue(task), setStandupTask } });
+
+      expect(await invoke(IPCChannel.GET_STANDUP_TASK)).toEqual(task);
+      expect(await invoke(IPCChannel.SET_STANDUP_TASK, null)).toBe(true);
+      expect(setStandupTask).toHaveBeenCalledWith(null);
+    });
   });
 
   describe('the days a session is filed under', () => {

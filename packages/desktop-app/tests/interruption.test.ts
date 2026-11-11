@@ -433,7 +433,97 @@ describe('Interruptions in a row', () => {
   });
 
   describe('lunch, the wrap-up, a restart', () => {
-    it('Lunch_EndsTheInterruption_TheTaskItHeldTakesLunchsPause', async () => {
+    it('LunchTime_DuringAnInterruption_AsksAndNothingChangesUntilAnswered', () => {
+      // S25 (P8c2): lunch would end the call the user is in, so it asks.
+      at(12, 0);
+      startA();
+      at(12, 20);
+      service.interrupt();
+
+      at(12, 31);
+      service.evaluateSchedule();
+      at(12, 32);
+      service.evaluateSchedule();
+
+      expect(service.getCeremonyPrompt()).toMatchObject({ type: 'LUNCH', endsInterruption: expect.any(String) });
+      expect(session()?.interruption).toBeTruthy();
+      expect(priority.getUserMode()).toBe('WORK');
+    });
+
+    it('LunchQuestion_NotNow_TheCallGoesOnAndLunchIsSkippedToday', () => {
+      at(12, 0);
+      startA();
+      at(12, 20);
+      service.interrupt();
+      at(12, 31);
+      service.evaluateSchedule();
+
+      expect(service.answerLunchQuestion(false)).toBe(true);
+      engine.backFromInterruption();
+      at(12, 45);
+      service.evaluateSchedule();
+
+      expect(service.getCeremonyPrompt()).toBeNull();
+      expect(priority.getUserMode()).toBe('WORK');
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+    });
+
+    it('LunchQuestion_BackToTheTaskInstead_IsWorkingThroughLunch', () => {
+      // Back resumes the task during lunch's hour: the user working through
+      // it, as any start or resume then is. The question goes with the call.
+      at(12, 0);
+      startA();
+      at(12, 20);
+      service.interrupt();
+      at(12, 31);
+      service.evaluateSchedule();
+
+      engine.backFromInterruption();
+      at(12, 32);
+      service.evaluateSchedule();
+
+      expect(service.getCeremonyPrompt()).toBeNull();
+      expect(priority.getUserMode()).toBe('WORK');
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+    });
+
+    it('LunchTime_LockedInAnInterruption_AsksAndUnlockingKeepsTheCallGoing', () => {
+      // Away leaves a call running; lunch asks rather than ending it, and
+      // unlocking during lunch goes to WORK with the question, not to LUNCH.
+      at(12, 0);
+      startA();
+      at(12, 20);
+      service.interrupt();
+      service.enterAwayMode();
+
+      at(12, 31);
+      service.evaluateSchedule();
+      expect(service.getCeremonyPrompt()).toMatchObject({ type: 'LUNCH' });
+      expect(session()?.interruption).toBeTruthy();
+
+      service.exitAwayMode();
+
+      expect(priority.getUserMode()).toBe('WORK');
+      expect(session()?.interruption).toBeTruthy();
+      expect(service.getCeremonyPrompt()).toMatchObject({ type: 'LUNCH' });
+    });
+
+    it('LunchQuestion_StillOpenWhenLunchEnds_Closes', () => {
+      at(12, 0);
+      startA();
+      at(12, 20);
+      service.interrupt();
+      at(12, 31);
+      service.evaluateSchedule();
+
+      at(13, 31);
+      service.evaluateSchedule();
+
+      expect(service.getCeremonyPrompt()).toBeNull();
+      expect(service.answerLunchQuestion(true)).toBe(false);
+    });
+
+    it('Lunch_StartedFromTheQuestion_EndsTheInterruption_TheTaskItHeldTakesLunchsPause', async () => {
       // P8b: the interruption waits to be placed; the task stays paused,
       // now for lunch, and "Back at your desk?" resumes it after.
       at(12, 0);
@@ -443,6 +533,7 @@ describe('Interruptions in a row', () => {
 
       at(12, 31);
       service.evaluateSchedule();
+      service.answerLunchQuestion(true);
       await settle();
 
       expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });

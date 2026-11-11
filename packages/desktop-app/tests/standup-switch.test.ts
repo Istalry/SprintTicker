@@ -307,4 +307,87 @@ describe('Joining the stand-up', () => {
       expect(settings.getSetting('standup_resume', 'unset')).toBeNull();
     });
   });
+
+  describe('joined late, and on a task of its own (P8c2)', () => {
+    const logs = () => worklogs.getWorklogsByDate('2026-10-14').map(w => [w.taskId, w.durationSeconds]);
+
+    it('JoinStandup_JoinedFiveMinutesAgo_TheMinutesComeOffTheTask', () => {
+      at(9, 0);
+      startA();
+      at(9, 35);
+
+      service.joinStandup(new Date(2026, 9, 14, 9, 30));
+
+      expect(logs()).toEqual([[A.id, 30 * 60]]);
+      expect(session()).toMatchObject({ taskTitle: DAILY_STANDUP_TITLE, startTimeUtc: new Date(2026, 9, 14, 9, 30).toISOString() });
+    });
+
+    it('JoinStandup_JoinedBeforeTheTaskBegan_StartsWhenTheTaskDid', () => {
+      at(9, 20);
+      startA();
+      at(9, 35);
+
+      service.joinStandup(new Date(2026, 9, 14, 9, 0));
+
+      expect(session()?.startTimeUtc).toBe(new Date(2026, 9, 14, 9, 20).toISOString());
+      // Nothing of A is left to log: the stand-up took all of it.
+      expect(logs().filter(([id]) => id === A.id).every(([, secs]) => secs === 0)).toBe(true);
+    });
+
+    it('JoinStandup_JoinedInTheFuture_StartsNow', () => {
+      at(9, 30);
+      service.joinStandup(new Date(2026, 9, 14, 10, 0));
+
+      expect(session()?.startTimeUtc).toBe(new Date(2026, 9, 14, 9, 30).toISOString());
+    });
+
+    it('JoinStandup_ATaskChosenForIt_TimesTheStandupOnThatTask_AndTheTaskBeforeComesBack', async () => {
+      service.setStandupTask({ taskId: B.id, taskKey: B.key, title: B.title });
+      at(9, 0);
+      startA();
+      at(9, 30);
+      service.joinStandup();
+
+      expect(session()).toMatchObject({ taskId: B.id, isAdHoc: false });
+
+      at(9, 45);
+      engine.stopSession('Stand-up over');
+      await settle();
+
+      expect(logs().sort()).toEqual([[A.id, 30 * 60], [B.id, 15 * 60]]);
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+    });
+
+    it('JoinStandup_TheChosenTaskLeftTheLists_FallsBackToTheLocalStandup', async () => {
+      service.setStandupTask({ taskId: B.id, taskKey: B.key, title: B.title });
+      remoteTasks = [A];
+      await sync();
+      at(9, 30);
+
+      service.joinStandup();
+
+      expect(session()).toMatchObject({ taskTitle: DAILY_STANDUP_TITLE, isAdHoc: true });
+    });
+
+    it('JoinStandup_AlreadyOnTheChosenTask_LeavesItRunning', () => {
+      service.setStandupTask({ taskId: B.id, taskKey: B.key, title: B.title });
+      at(9, 30);
+      service.joinStandup();
+      const first = session()?.sessionId;
+
+      service.joinStandup();
+
+      expect(session()?.sessionId).toBe(first);
+    });
+
+    it('SetStandupTask_NullKeepsItLocal_AndABadOneIsRefused', () => {
+      service.setStandupTask({ taskId: B.id, taskKey: B.key, title: B.title });
+      expect(service.getStandupTask()).toMatchObject({ taskId: B.id });
+
+      service.setStandupTask(null);
+      expect(service.getStandupTask()).toBeNull();
+
+      expect(() => service.setStandupTask({ taskId: '', taskKey: 'X', title: 'Y' })).toThrow(/needs an id/);
+    });
+  });
 });

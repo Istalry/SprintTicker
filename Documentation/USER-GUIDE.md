@@ -322,10 +322,16 @@ While it runs, the session card says which task waits, and offers:
 The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **Back to
 MG-12**, **Stop the Interruption** and **Another Interruption**.
 
-- **Lunch during an interruption** ends it; the interruption waits to be
-  placed. The task that waited stays paused, now for lunch, and **Back at
-  your desk?** offers it again when lunch ends. **Away** -- locking Windows
-  -- leaves an interruption running: a call goes on away from the desk.
+- **Lunch time during an interruption** asks first, on Today and the mini
+  timer: *Start lunch? It ends "Call with Marc", which waits to be placed.*
+  **Start lunch** ends it; the task that waited stays paused, now for lunch,
+  and **Back at your desk?** offers it again when lunch ends. **Not now**
+  keeps the call going, and lunch does not start again that day -- nor does
+  it if you go **Back** to your task during lunch's hour. **Away** -- locking
+  Windows -- leaves an interruption running: a call goes on away from the
+  desk, and lunch asks when you are back.
+- **The stand-up during an interruption**: its card says *Join? It ends
+  "Call with Marc"*; Join ends it, and it waits to be placed.
 - **The end-of-day wrap-up** ends an interruption and the task it held,
   without asking.
 - **Name it** while it runs: click its title on Today's session card or
@@ -636,7 +642,12 @@ when the computer is busy.
 🗣️ **Joining the stand-up switches your timer to it.** Press **Join** on
 Today's card or in the mini timer, or OK on the bar's prompt: the task you are tracking stops, its time
 logged, and a **Daily Standup** task starts -- one ad-hoc task, reused every
-day. The bar then shows its timer, with three people at a table in place of
+day, kept on this computer and never sent. Joined late? Pick **joined 2, 5,
+10 or 15 min ago** beside Join: the stand-up starts then, and those minutes
+come off the task before it. To have the stand-up sent to your provider,
+choose its task in **Settings, My workday** -- *Timed on* › **Choose a
+task…**; **Keep it here** goes back to Daily Standup. A chosen task that is
+no longer in your lists falls back to Daily Standup. The bar then shows its timer, with three people at a table in place of
 the stopwatch, taking turns to speak, so you can see the prompt has gone and
 the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
 again, by the same rules as after lunch: once, that day, and only if you have

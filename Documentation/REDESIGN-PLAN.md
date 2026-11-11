@@ -1121,10 +1121,11 @@ focus).
 `CLAUDE.md` §5); P8c prompts without focus and the stand-up (13.2, the rest
 of 13.3 -- itself split on 2026-11-11 into P8c1, the prompts without focus
 and the cards, and P8c2, the stand-up's joined-at and task, S25's question
-during an interruption and S9's extras); P8d the reminders (13.4); P8e
-Today's other cards (entries, the
-morning card, the reassigned card with its minute check, the interruptions
-card's ticked rows and ⋯).
+during an interruption; S9's extras moved to P8e); P8d the reminders
+(13.4); P8e Today's other cards (entries, the morning card, the reassigned
+card with its minute check, the interruptions card's ticked rows and ⋯) and
+S9's extras (the name field, "started now ▾", the task chips, the
+first-interruption line).
 
 **As landed: P8a, the session card (2026-11-11).**
 
@@ -1196,6 +1197,29 @@ card's ticked rows and ⋯).
   card); the forgotten-session question is still its dialog, unraised, with
   no mini timer row; Today's cards show only on Today, where the dialogs
   showed on every page; S25's "joined now ▾" is P8c2.
+
+**As landed: P8c2, the stand-up and lunch during an interruption
+(2026-11-11).**
+
+- `startTask` takes `{ startedAt }` (`StartOptions`): the session starts
+  then, held between the start of what it replaces and now, and what it
+  replaces stops there (`stopSessionAt`), or the interruption it closes
+  ends there. `startNamedAdHocTask` passes it on.
+- `joinStandup(joinedAt?)`, from `schedule:join-standup`'s ISO argument.
+  The card's "joined ▾" offers now, 2, 5, 10 and 15 min ago -- no "other…"
+  yet.
+- `standup_task` (`StandupTaskDTO`, `get/setStandupTask`, two channels): the
+  stand-up runs on that task when it is still listed, else on Daily
+  Standup. `isStandupSession` knows both. Chosen in Settings, My workday
+  (`StandupTaskSetting`, the picker in place mode); S21's "Show me" is P16.
+  The bar's meeting icon still follows a title containing "standup", so a
+  chosen task shows the stopwatch.
+- S25's question: a `LUNCH` ceremony prompt ("Start lunch? It ends …") on
+  Today (`LunchQuestionCard`) and the mini timer, with a toast; Not now
+  stores `lunch_skipped_date`. The stand-up's card and row say "Join? It
+  ends …" during an interruption. The bar does not ask; it keeps the
+  interruption's screen.
+- "Still in it?" for the stand-up is P8d's, with the other reminders.
 
 ---
 
@@ -1667,7 +1691,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | in progress: P8a (the session card, Stop ▾), P8b (Lunch and Away pause) and P8c1 (prompts without focus) done; P8c2-P8e next -- see §13 "Split" | P8a, P8b, P8c1 (2026-11-11) |
+| P8 | in progress: P8a (the session card, Stop ▾), P8b (Lunch and Away pause), P8c1 (prompts without focus) and P8c2 (the stand-up, lunch during an interruption) done; P8d-P8e next -- see §13 "Split" | P8a-P8c2 (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |

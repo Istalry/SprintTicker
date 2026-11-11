@@ -692,8 +692,13 @@ entry of another day, or one whose session was resumed, stopped or replaced,
 is dropped. The answer (`schedule:answer-resume-prompt`) resumes the session,
 or with `workedThrough` withdraws the pause -- its row deleted, so nothing
 splits there -- or leaves it paused. Lunch beginning under Away relabels the
-entry as lunch's. An interruption ends at lunch and the task it held takes
-Lunch's pause (`relabelPause`); Away leaves it running.
+entry as lunch's. Lunch's hour finding an interruption running asks first
+(S25): a `LUNCH` ceremony prompt naming it (`endsInterruption`), in WORK and
+under Away, closed when lunch's hour or the interruption ends;
+`answerLunchQuestion(true)` enters Lunch, which ends the interruption and
+gives its held task Lunch's pause (`relabelPause`), and `false` stores
+`lunch_skipped_date`. `exitAwayMode` in lunch's hour with an interruption
+running goes to WORK and asks. Away leaves an interruption running.
 
 An entry with no session id is a task to start again: the stand-up's, ended
 by lunch, or one stored by a version whose Lunch stopped the task. It is
@@ -713,7 +718,12 @@ apart from the user's.
 
 Joining the stand-up (`joinStandup`, from `schedule:join-standup` or OK on the
 bar's prompt) switches the timer to the ad-hoc **Daily Standup** task -- one
-row, found by title (`startNamedAdHocTask`) -- under the prompt's lock, then
+row, found by title (`startNamedAdHocTask`) -- or, when `standup_task` names a
+task still listed, to that task, whose time is sent like any entry (D3). It
+may be backdated (`joinedAt`, "joined 5 min ago"): `startTask`'s `startedAt`
+starts the new session then, never before what it replaces began, and stops
+that one there (`stopSessionAt`), so the minutes come off it. All of this
+happens under the prompt's lock, then
 releases it, which draws once: the session screen, with the meeting icon in
 place of the stopwatch, animated by the device like the stopwatch
 (`ANIMATED_ICONS.meeting`). The prompt's meeting scene used to stay, and joining

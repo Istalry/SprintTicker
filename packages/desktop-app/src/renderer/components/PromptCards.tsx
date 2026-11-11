@@ -5,6 +5,14 @@ import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { formatHoursMinutes } from '../utils/formatters';
 
 const STANDUP_REMIND_MINUTES = 10;
+/** "joined ▾": how long ago, in minutes; the minutes come off the task it replaces. */
+export const JOINED_MINUTES_AGO = [0, 2, 5, 10, 15] as const;
+const MS_PER_MINUTE = 60_000;
+
+/** The ISO time `minutesAgo` before now, or undefined for now. */
+export function joinedAt(minutesAgo: number, now: number = Date.now()): string | undefined {
+  return minutesAgo > 0 ? new Date(now - minutesAgo * MS_PER_MINUTE).toISOString() : undefined;
+}
 
 const warn = (what: string) => (err: unknown) => console.warn(`[PromptCards] ${what} failed:`, err);
 
@@ -19,8 +27,11 @@ const secondary = 'px-3 py-2 bg-dark-700 hover:bg-dark-600 text-text-secondary h
  */
 export const StandupCard: React.FC<{ prompt: CeremonyPromptDTO; session: ActiveSessionDTO | null }> = ({ prompt, session }) => {
   const api = window.electronAPI;
+  const [minutesAgo, setMinutesAgo] = useState<number>(0);
   // Only a running task is brought back after the stand-up; a paused one is not running to keep.
   const running = session && !session.interruption && session.status === 'TRACKING' ? session.taskKey : null;
+  // S25: joining during an interruption ends it, and it waits to be placed.
+  const interruption = session?.interruption ? session.taskTitle || 'the interruption' : null;
   return (
     <section aria-label="The stand-up" className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 space-y-3 select-none">
       <div className="flex items-center gap-2">
@@ -28,10 +39,13 @@ export const StandupCard: React.FC<{ prompt: CeremonyPromptDTO; session: ActiveS
         <h3 className="text-sm font-bold text-white">Stand-up at {prompt.at}</h3>
       </div>
       <p className="text-xs text-text-secondary leading-relaxed">
-        {running ? (
+        {interruption ? (
+          <>Join? It ends &quot;{interruption}&quot;, which waits to be placed.</>
+        ) : running ? (
           <>
             <span className="font-mono text-text-primary">{running}</span> keeps running until you press Join. Join stops it
             and times the stand-up, then <span className="font-mono text-text-primary">{running}</span> starts again when it ends.
+            Joined late? Say when, and the minutes come off it.
           </>
         ) : (
           <>Join times the stand-up until you stop it.</>
@@ -44,7 +58,16 @@ export const StandupCard: React.FC<{ prompt: CeremonyPromptDTO; session: ActiveS
         <button type="button" className={secondary} onClick={() => { api.cancelStandupPrompt().catch(warn('Skip today')); }}>
           Skip today
         </button>
-        <button type="button" className={primary} onClick={() => { api.joinStandup().catch(warn('Join')); }}>
+        <select
+          aria-label="When you joined"
+          title="Joined late? Say when, and the minutes come off the task before"
+          value={minutesAgo}
+          onChange={e => setMinutesAgo(Number(e.target.value))}
+          className="bg-dark-700 border border-border-dark rounded-lg px-2 py-2 text-xs text-text-primary"
+        >
+          {JOINED_MINUTES_AGO.map(m => <option key={m} value={m}>{m === 0 ? 'joined now' : `joined ${m} min ago`}</option>)}
+        </select>
+        <button type="button" className={primary} onClick={() => { api.joinStandup(joinedAt(minutesAgo)).catch(warn('Join')); }}>
           <Users className="w-3.5 h-3.5" />
           Join
         </button>
@@ -128,6 +151,35 @@ export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | n
           <button type="button" className={secondary} onClick={onLeaveAway}>I&apos;m back</button>
         </div>
       )}
+    </section>
+  );
+};
+
+/**
+ * "Start lunch? It ends 'Call with Marc'" (S25): lunch's hour found an
+ * interruption running, and lunch would end it. Yes ends it -- it waits to be
+ * placed -- and starts Lunch; Not now works through lunch today.
+ */
+export const LunchQuestionCard: React.FC<{ prompt: CeremonyPromptDTO }> = ({ prompt }) => {
+  const api = window.electronAPI;
+  const name = prompt.endsInterruption ?? 'the interruption';
+  return (
+    <section aria-label="Lunch time" className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 space-y-3 select-none">
+      <div className="flex items-center gap-2">
+        <UtensilsCrossed className="w-4 h-4 text-accent-amber" />
+        <h3 className="text-sm font-bold text-white">Lunch time · you are in an interruption</h3>
+      </div>
+      <p className="text-xs text-text-secondary leading-relaxed">
+        Start lunch? It ends &quot;{name}&quot;, which waits to be placed. Not now keeps it running, and lunch does
+        not start again today.
+      </p>
+      <div className="flex justify-end gap-2">
+        <button type="button" className={secondary} onClick={() => { api.answerLunchQuestion(false).catch(warn('Not now')); }}>Not now</button>
+        <button type="button" className={primary} onClick={() => { api.answerLunchQuestion(true).catch(warn('Start lunch')); }}>
+          <UtensilsCrossed className="w-3.5 h-3.5" />
+          Start lunch
+        </button>
+      </div>
     </section>
   );
 };

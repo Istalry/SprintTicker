@@ -13,6 +13,8 @@ const warn = (what: string) => (err: unknown) => console.warn(`[MiniPromptRow] $
 interface MiniPromptRowProps {
   resume: ResumePromptDTO | null;
   ceremony: CeremonyPromptDTO | null;
+  /** An interruption is running: joining the stand-up ends it (S25). */
+  inInterruption?: boolean;
   /** Hides the question at once on an answer, before main confirms. */
   onAnswered: () => void;
 }
@@ -23,7 +25,7 @@ interface MiniPromptRowProps {
  * questions no longer bring the dashboard forward (P8c), so the always-on-top
  * row is where they are seen while the user works. The answers are Today's.
  */
-export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({ resume, ceremony, onAnswered }) => {
+export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({ resume, ceremony, inInterruption = false, onAnswered }) => {
   const api = window.electronAPI;
   const answer = (yes: boolean, gap?: number, workedThrough?: boolean) => () => {
     onAnswered();
@@ -75,9 +77,18 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({ resume, ceremony, 
         </>
       );
     }
+  } else if (ceremony?.type === 'LUNCH') {
+    heading = 'Lunch time · in an interruption';
+    question = `Start lunch? It ends "${ceremony.endsInterruption ?? 'the interruption'}"`;
+    buttons = (
+      <>
+        <button type="button" className={quiet} onClick={() => { onAnswered(); api.answerLunchQuestion(false).catch(warn('Not now')); }}>Not now</button>
+        <button type="button" className={main} onClick={() => { onAnswered(); api.answerLunchQuestion(true).catch(warn('Start lunch')); }}>Start lunch</button>
+      </>
+    );
   } else if (ceremony?.type === 'STANDUP') {
     heading = `Stand-up at ${ceremony.at}`;
-    question = 'Your task keeps running until you Join';
+    question = inInterruption ? 'Join? It ends the interruption' : 'Your task keeps running until you Join';
     buttons = (
       <>
         <button type="button" className={quiet} onClick={() => { onAnswered(); api.cancelStandupPrompt().catch(warn('Skip')); }}>Skip</button>

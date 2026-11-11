@@ -836,10 +836,16 @@
       <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>Back to
       MG-12</strong>, <strong>Stop the Interruption</strong> and <strong>Another Interruption</strong>.</p>
       <ul>
-      <li><strong>Lunch during an interruption</strong> ends it; the interruption waits to be
-      placed. The task that waited stays paused, now for lunch, and <strong>Back at
-      your desk?</strong> offers it again when lunch ends. <strong>Away</strong> -- locking Windows
-      -- leaves an interruption running: a call goes on away from the desk.</li>
+      <li><strong>Lunch time during an interruption</strong> asks first, on Today and the mini
+      timer: <em>Start lunch? It ends &quot;Call with Marc&quot;, which waits to be placed.</em>
+      <strong>Start lunch</strong> ends it; the task that waited stays paused, now for lunch,
+      and <strong>Back at your desk?</strong> offers it again when lunch ends. <strong>Not now</strong>
+      keeps the call going, and lunch does not start again that day -- nor does
+      it if you go <strong>Back</strong> to your task during lunch&#39;s hour. <strong>Away</strong> -- locking
+      Windows -- leaves an interruption running: a call goes on away from the
+      desk, and lunch asks when you are back.</li>
+      <li><strong>The stand-up during an interruption</strong>: its card says <em>Join? It ends
+      &quot;Call with Marc&quot;</em>; Join ends it, and it waits to be placed.</li>
       <li><strong>The end-of-day wrap-up</strong> ends an interruption and the task it held,
       without asking.</li>
       <li><strong>Name it</strong> while it runs: click its title on Today&#39;s session card or
@@ -1162,7 +1168,12 @@
       <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> on
       Today&#39;s card or in the mini timer, or OK on the bar&#39;s prompt: the task you are tracking stops, its time
       logged, and a <strong>Daily Standup</strong> task starts -- one ad-hoc task, reused every
-      day. The bar then shows its timer, with three people at a table in place of
+      day, kept on this computer and never sent. Joined late? Pick <strong>joined 2, 5,
+      10 or 15 min ago</strong> beside Join: the stand-up starts then, and those minutes
+      come off the task before it. To have the stand-up sent to your provider,
+      choose its task in <strong>Settings, My workday</strong> -- <em>Timed on</em> › <strong>Choose a
+      task…</strong>; <strong>Keep it here</strong> goes back to Daily Standup. A chosen task that is
+      no longer in your lists falls back to Daily Standup. The bar then shows its timer, with three people at a table in place of
       the stopwatch, taking turns to speak, so you can see the prompt has gone and
       the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
       again, by the same rules as after lunch: once, that day, and only if you have
@@ -2609,8 +2620,13 @@
       is dropped. The answer (<code>schedule:answer-resume-prompt</code>) resumes the session,
       or with <code>workedThrough</code> withdraws the pause -- its row deleted, so nothing
       splits there -- or leaves it paused. Lunch beginning under Away relabels the
-      entry as lunch&#39;s. An interruption ends at lunch and the task it held takes
-      Lunch&#39;s pause (<code>relabelPause</code>); Away leaves it running.</p>
+      entry as lunch&#39;s. Lunch&#39;s hour finding an interruption running asks first
+      (S25): a <code>LUNCH</code> ceremony prompt naming it (<code>endsInterruption</code>), in WORK and
+      under Away, closed when lunch&#39;s hour or the interruption ends;
+      <code>answerLunchQuestion(true)</code> enters Lunch, which ends the interruption and
+      gives its held task Lunch&#39;s pause (<code>relabelPause</code>), and <code>false</code> stores
+      <code>lunch_skipped_date</code>. <code>exitAwayMode</code> in lunch&#39;s hour with an interruption
+      running goes to WORK and asks. Away leaves an interruption running.</p>
       <p>An entry with no session id is a task to start again: the stand-up&#39;s, ended
       by lunch, or one stored by a version whose Lunch stopped the task. It is
       restarted at the same moments unless anything is open by then; a task no
@@ -2627,7 +2643,12 @@
       apart from the user&#39;s.</p>
       <p>Joining the stand-up (<code>joinStandup</code>, from <code>schedule:join-standup</code> or OK on the
       bar&#39;s prompt) switches the timer to the ad-hoc <strong>Daily Standup</strong> task -- one
-      row, found by title (<code>startNamedAdHocTask</code>) -- under the prompt&#39;s lock, then
+      row, found by title (<code>startNamedAdHocTask</code>) -- or, when <code>standup_task</code> names a
+      task still listed, to that task, whose time is sent like any entry (D3). It
+      may be backdated (<code>joinedAt</code>, &quot;joined 5 min ago&quot;): <code>startTask</code>&#39;s <code>startedAt</code>
+      starts the new session then, never before what it replaces began, and stops
+      that one there (<code>stopSessionAt</code>), so the minutes come off it. All of this
+      happens under the prompt&#39;s lock, then
       releases it, which draws once: the session screen, with the meeting icon in
       place of the stopwatch, animated by the device like the stopwatch
       (<code>ANIMATED_ICONS.meeting</code>). The prompt&#39;s meeting scene used to stay, and joining
@@ -3512,7 +3533,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>

@@ -32,6 +32,7 @@ import type {
   ScheduleSettingsDTO,
   ResumePromptDTO,
   CeremonyPromptDTO,
+  StandupTaskDTO,
   WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
@@ -191,7 +192,13 @@ export interface IElectronAPI {
   triggerStandupPrompt: () => Promise<{ success: boolean }>;
   cancelStandupPrompt: () => Promise<boolean>;
   /** Switches the timer to the Daily Standup task; the task before it restarts when it ends. */
-  joinStandup: () => Promise<boolean>;
+  /** `joinedAt`, an ISO time: "joined 5 min ago" -- the minutes come off the task it replaces. */
+  joinStandup: (joinedAt?: string) => Promise<boolean>;
+  /** "Start lunch? It ends 'Call with Marc'": true starts it, false works through lunch today. */
+  answerLunchQuestion: (start: boolean) => Promise<boolean>;
+  /** The task the stand-up is timed on and sent to; null keeps it on the local Daily Standup. */
+  getStandupTask: () => Promise<StandupTaskDTO | null>;
+  setStandupTask: (task: StandupTaskDTO | null) => Promise<boolean>;
   /** The week just over, until dismissed; null otherwise. */
   getWeekEnded: () => Promise<WeekEndedDTO | null>;
   /** The Monday of the last week closed, or null: time up to its Sunday asks before it is changed. */

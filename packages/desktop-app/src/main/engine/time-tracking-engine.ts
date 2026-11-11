@@ -60,6 +60,11 @@ export interface StopOptions {
  * Core Time Tracking Engine managing finite state machine (Idle, Tracking, Paused),
  * absolute UTC timestamp delta calculations, crash/reboot resilience, and offline worklog buffering.
  */
+/** How a start begins; `startedAt` backdates it ("joined 5 min ago"). */
+export interface StartOptions {
+  startedAt?: Date;
+}
+
 export class TimeTrackingEngine extends EventEmitter {
   private _sessionRepo: SessionRepository;
   private _worklogRepo: WorklogRepository;
@@ -384,9 +389,9 @@ export class TimeTrackingEngine extends EventEmitter {
    * made for that name when there is one. `startTask` reuses an ad-hoc row
    * only when handed its id, so the stand-up made a new one every morning.
    */
-  public startNamedAdHocTask(title: string): ActiveSessionDTO {
+  public startNamedAdHocTask(title: string, options: StartOptions = {}): ActiveSessionDTO {
     if (!title) throw new ArgumentException('An ad-hoc task needs a name.', 'title');
-    return this.startTask(this._taskRepo.findAdHocTaskByTitle(title)?.id ?? '', true, title);
+    return this.startTask(this._taskRepo.findAdHocTaskByTitle(title)?.id ?? '', true, title, undefined, undefined, options);
   }
 
   /**
@@ -839,6 +844,19 @@ export class TimeTrackingEngine extends EventEmitter {
     return this._taskRepo.isListed(taskId);
   }
 
+  /**
+   * When a start begins: `startedAt`, held between `notBefore` -- the start
+   * of what it replaces -- and now; now without one.
+   */
+  private startOf(startedAt: Date | undefined, notBefore: string | undefined): string {
+    const nowMs = Date.now();
+    if (!startedAt) return new Date(nowMs).toISOString();
+    if (!Number.isFinite(startedAt.getTime())) throw new ArgumentException('The start must be a time.', 'startedAt');
+    let ms = Math.min(startedAt.getTime(), nowMs);
+    if (notBefore) ms = Math.max(ms, Date.parse(notBefore));
+    return new Date(ms).toISOString();
+  }
+
   /// <summary>
   /// Starts tracking a task session.
   /// </summary>
@@ -847,7 +865,8 @@ export class TimeTrackingEngine extends EventEmitter {
     isAdHoc: boolean = false,
     customTitle?: string,
     projectId: string = 'PROJ',
-    taskKey?: string
+    taskKey?: string,
+    options: StartOptions = {}
   ): ActiveSessionDTO {
     // A new ad-hoc task is the one case with no id to supply: the caller has a
     // title, and this process mints the row and its identifier below.
@@ -858,8 +877,13 @@ export class TimeTrackingEngine extends EventEmitter {
     // A start during an interruption is Switch task: the interruption ends,
     // waiting to be placed, and the session it held is stopped below.
     const running = this._interruptions.getRunning();
+    // "Joined 5 min ago" (P8c2): the new session starts then, and those
+    // minutes come off what it replaces, as an interruption's do. Never
+    // before what it replaces began, nor in the future.
+    const startIso = this.startOf(options.startedAt, running?.startedAtUtc ?? this._currentSession?.startTimeUtc);
+    const backdated = Date.parse(startIso) < Date.now();
     if (running) {
-      this._interruptions.close(running.id, new Date().toISOString());
+      this._interruptions.close(running.id, startIso);
       this.tellInterruptionEnded(running.id, 'switch');
     }
 
@@ -868,7 +892,10 @@ export class TimeTrackingEngine extends EventEmitter {
     let replacedTaskId: string | undefined;
     if (this._currentSession && this._currentSession.status !== 'COMPLETED') {
       replacedTaskId = this._currentSession.taskId;
-      this.stopSession(WORKLOG_COMMENTS.SWITCHED_TASK);
+      // Held by the interruption just closed, it stops now: its pause ran to
+      // the fragment's start, and the minutes after that are the fragment's.
+      if (backdated && !running) this.stopSessionAt(startIso, WORKLOG_COMMENTS.SWITCHED_TASK);
+      else this.stopSession(WORKLOG_COMMENTS.SWITCHED_TASK);
     }
 
     // Ad-hoc by its id as well as by the flag: a list offering an ad-hoc row
@@ -935,7 +962,7 @@ export class TimeTrackingEngine extends EventEmitter {
     // from, whatever provider is active by the time it ends.
     const providerId = adHoc ? undefined : this.providerOfProject(finalProjectId);
 
-    const startTimeUtc = new Date().toISOString();
+    const startTimeUtc = startIso;
     const sessionId = createId(IdPrefix.SESSION);
 
     const newSession: Omit<ActiveSessionDTO, 'elapsedSeconds'> = {

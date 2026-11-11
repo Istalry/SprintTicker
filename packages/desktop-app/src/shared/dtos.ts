@@ -272,10 +272,24 @@ export interface WeekEndedDTO {
  * takes the focus. The end-of-day one opens the wrap-up.
  */
 export interface CeremonyPromptDTO {
-  type: 'STANDUP' | 'EOD';
+  /** `LUNCH` is asked only when lunch's hour finds an interruption running (S25). */
+  type: 'STANDUP' | 'EOD' | 'LUNCH';
   title: string;
   /** When it is due, HH:MM, as the schedule says it. */
   at: string;
+  /** For `LUNCH`: the interruption that starting lunch ends ("Call with Marc"). */
+  endsInterruption?: string;
+}
+
+/**
+ * The task the stand-up is timed on and sent to (D3, redesign P8c2); none
+ * keeps it on the local "Daily Standup", never sent. Its key and title are
+ * as they were when chosen, for Settings to name it.
+ */
+export interface StandupTaskDTO {
+  taskId: string;
+  taskKey: string;
+  title: string;
 }
 
 export interface ResumePromptDTO {

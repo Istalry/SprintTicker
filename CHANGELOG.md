@@ -54,6 +54,13 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **The stand-up: joined late, and its own task.** "joined 5 min ago" beside
+  Join moves those minutes off the task before it. In Settings, My workday,
+  the stand-up can be timed on a task of yours and sent like any entry;
+  otherwise it stays on the local Daily Standup.
+- **Lunch asks before it ends a call.** Lunch's hour during an interruption
+  asks "Start lunch? It ends 'Call with Marc'" instead of ending it; Not now
+  keeps it going and skips lunch for the day.
 - **No prompt takes the window.** The stand-up, "Back at your desk?", the
   wrap-up and a session left running no longer bring SprintTicker up over
   what you are typing. A question is a card on Today and a row on the mini

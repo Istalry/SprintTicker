@@ -7,6 +7,7 @@ import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings } from '../../../share
 import { DEFAULT_WORKING_DAYS, WEEKDAYS_MONDAY_FIRST, checkWorkingDays } from '../../../shared/working-days';
 import { DEFAULT_SPLIT_PAUSE_MINUTES, MAX_SPLIT_PAUSE_MINUTES, checkSplitPauseMinutes } from '../../../shared/work-split';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
+import { StandupTaskSetting } from '../../components/StandupTaskSetting';
 
 export const CeremoniesView: React.FC = () => {
   const { capabilities, providerName } = useProviderCapabilities();
@@ -174,7 +175,7 @@ export const CeremoniesView: React.FC = () => {
             <Clock className="w-5 h-5 text-text-primary" />
             <h3>Daily Stand-Up Ceremonies</h3>
           </div>
-          <p className="text-xs text-text-secondary">Pops up a visual notification on your screen and the BUSY Bar to remind you that the Stand-Up is starting.</p>
+          <p className="text-xs text-text-secondary">A card on Today and the mini timer, and the bar, when the stand-up starts. It never takes the window.</p>
 
           <div className="space-y-3">
             <div>
@@ -186,6 +187,8 @@ export const CeremoniesView: React.FC = () => {
                 className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
+
+            <StandupTaskSetting providerName={providerName} />
 
             <div className="pt-1 flex items-center justify-between">
               <button

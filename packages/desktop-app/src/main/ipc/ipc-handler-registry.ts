@@ -25,7 +25,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO } from '../../shared/dtos';
+import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
@@ -809,8 +809,30 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    ipcMain.handle(IPCChannel.JOIN_STANDUP, async () => {
-      this.contextScheduleService.joinStandup();
+    // `joinedAt`: "joined 5 min ago", an ISO time; absent, now (P8c2).
+    ipcMain.handle(IPCChannel.JOIN_STANDUP, async (_event, joinedAt: unknown) => {
+      if (joinedAt === undefined || joinedAt === null) {
+        this.contextScheduleService.joinStandup();
+        return true;
+      }
+      const at = typeof joinedAt === 'string' ? new Date(joinedAt) : null;
+      if (!at || !Number.isFinite(at.getTime())) {
+        throw new ArgumentException(`When you joined must be a time, got ${String(joinedAt)}.`, 'joinedAt');
+      }
+      this.contextScheduleService.joinStandup(at);
+      return true;
+    });
+
+    ipcMain.handle(IPCChannel.ANSWER_LUNCH_QUESTION, async (_event, start: unknown) => {
+      if (typeof start !== 'boolean') {
+        throw new ArgumentException(`The answer must be true or false, got ${String(start)}.`, 'start');
+      }
+      return this.contextScheduleService.answerLunchQuestion(start);
+    });
+
+    ipcMain.handle(IPCChannel.GET_STANDUP_TASK, async () => this.contextScheduleService.getStandupTask());
+    ipcMain.handle(IPCChannel.SET_STANDUP_TASK, async (_event, task: unknown) => {
+      this.contextScheduleService.setStandupTask(task as StandupTaskDTO | null);
       return true;
     });
 

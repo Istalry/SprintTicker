@@ -4,7 +4,7 @@ import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { ScheduleSettingsDTO, ArgumentNullException, ActiveSessionDTO, CeremonyPromptDTO, ResumePromptDTO, WeekEndedDTO } from '../../shared/dtos';
+import { ScheduleSettingsDTO, ArgumentException, ArgumentNullException, ActiveSessionDTO, CeremonyPromptDTO, ResumePromptDTO, StandupTaskDTO, WeekEndedDTO } from '../../shared/dtos';
 import type { PromptAnnouncement, PromptOutlet } from '../windows/prompt-outlet';
 import { DAILY_STANDUP_TITLE, normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { addLocalDays, localDateKey } from '../../shared/local-date';
@@ -89,9 +89,19 @@ type ResumeQuestion = LunchResume & {
   interruptionEndedAtUtc?: string;
 };
 
-/** Whether the session is the stand-up the app switches to. */
-function isStandupSession(session: ActiveSessionDTO | null): boolean {
-  return Boolean(session?.isAdHoc && session.taskTitle === DAILY_STANDUP_TITLE);
+/**
+ * Whether the session is the stand-up the app switches to: the local Daily
+ * Standup, or the task the user chose for it (P8c2).
+ */
+function isStandupSession(session: ActiveSessionDTO | null, standupTask: StandupTaskDTO | null = null): boolean {
+  if (!session || session.interruption) return false;
+  if (standupTask && session.taskId === standupTask.taskId) return true;
+  return session.isAdHoc && session.taskTitle === DAILY_STANDUP_TITLE;
+}
+
+function isStandupTask(value: unknown): value is StandupTaskDTO {
+  const v = value as Partial<StandupTaskDTO> | null;
+  return typeof v?.taskId === 'string' && v.taskId !== '' && typeof v.taskKey === 'string' && typeof v.title === 'string';
 }
 
 /**
@@ -119,6 +129,8 @@ export class ContextScheduleService {
   public static readonly LAST_WEEK_CLOSED_KEY = 'last_week_closed';
   /** The week just over, until the user has seen it: it survives a restart. */
   public static readonly WEEK_ENDED_KEY = 'week_ended_notice';
+  /** The task the stand-up is timed on (D3); unset, the local Daily Standup. */
+  public static readonly STANDUP_TASK_KEY = 'standup_task';
 
   private readonly _priorityEngine: PriorityPreemptionEngine;
   private readonly _settingsRepo: SettingsRepository;
@@ -257,12 +269,18 @@ export class ContextScheduleService {
       // failed render -- so a lunch screen that could not be drawn used to take
       // the End-of-Day prompt down with it, on this tick and every tick after.
       try {
-        if (workingToday && isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
+        // Over when lunch is, or when the interruption it was about has ended.
+        if (!isLunchTime || !this.interruptionRunning()) this.closeCeremony('LUNCH');
+        if (workingToday && isLunchTime && currentMode !== 'LUNCH' && !workingThroughLunch && this.interruptionRunning()) {
+          // S25: lunch would end the call the user is in. It asks instead,
+          // in WORK and under Away alike, until answered or lunch is over.
+          this.askLunch();
+        } else if (workingToday && isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
           this.enterLunchMode();
         } else if (workingToday && isLunchTime && currentMode === 'AWAY' && !workingThroughLunch) {
-          // Locked when lunch began. Lunch never leaves Away, but a session
-          // still running behind the lock -- an interruption Away left
-          // alone -- pauses for it. Unlocking during the break shows LUNCH.
+          // Locked when lunch began. Lunch never leaves Away; it takes over
+          // Away's pause of the task (an interruption asks, above).
+          // Unlocking during the break shows LUNCH.
           this.pauseForBreak('lunch');
         } else if (!isLunchTime && currentMode === 'LUNCH') {
           this.exitLunchMode();
@@ -363,12 +381,35 @@ export class ContextScheduleService {
    * the lunch restart does -- one render, not the release's and the
    * session's. A stand-up already running is left as it is.
    */
-  public joinStandup(): void {
+  public joinStandup(joinedAt?: Date): void {
     this.closeCeremony('STANDUP');
-    if (!isStandupSession(this._engine.getCurrentSession())) {
-      this.switchSettingAside('standup', () => this._engine.startNamedAdHocTask(DAILY_STANDUP_TITLE));
+    const standupTask = this.getStandupTask();
+    if (!isStandupSession(this._engine.getCurrentSession(), standupTask)) {
+      // "Joined 5 min ago": the stand-up starts then, and the minutes come
+      // off the task it replaces (P8c2). On the task chosen for it, it is
+      // sent like any entry; one no longer listed falls back to the local
+      // Daily Standup rather than timing work on someone else's task.
+      const options = joinedAt ? { startedAt: joinedAt } : {};
+      const onTask = standupTask && this._engine.isTaskListed(standupTask.taskId) ? standupTask : null;
+      this.switchSettingAside('standup', () => onTask
+        ? this._engine.startTask(onTask.taskId, false, undefined, undefined, undefined, options)
+        : this._engine.startNamedAdHocTask(DAILY_STANDUP_TITLE, options));
     }
     this._priorityEngine.releaseActiveLock('standupPromptPriority');
+  }
+
+  /** The task the stand-up is timed on, or null for the local Daily Standup. */
+  public getStandupTask(): StandupTaskDTO | null {
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.STANDUP_TASK_KEY, null);
+    return isStandupTask(stored) ? stored : null;
+  }
+
+  /** Chooses the stand-up's task; null keeps it local. */
+  public setStandupTask(task: StandupTaskDTO | null): void {
+    if (task !== null && !isStandupTask(task)) {
+      throw new ArgumentException('The stand-up\'s task needs an id, a key and a title.', 'task');
+    }
+    this._settingsRepo.setSetting(ContextScheduleService.STANDUP_TASK_KEY, task);
   }
 
   /**
@@ -579,6 +620,7 @@ export class ContextScheduleService {
   /// restart during lunch, or Away ending in the middle of it.
   /// </summary>
   public enterLunchMode(): void {
+    this.closeCeremony('LUNCH');
     const running = this._engine.getCurrentSession();
     this.pauseForBreak('lunch');
 
@@ -627,7 +669,7 @@ export class ContextScheduleService {
       }
       return;
     }
-    if (reason === 'lunch' && session && isStandupSession(session)) {
+    if (reason === 'lunch' && session && isStandupSession(session, this.getStandupTask())) {
       // The meeting is over at lunch: stopped and logged, and the task it set
       // aside becomes lunch's restart (`resumeAfterSetAside`).
       this._engine.stopSession(WORKLOG_COMMENTS.LUNCH, false);
@@ -725,7 +767,15 @@ export class ContextScheduleService {
   /// </summary>
   public exitAwayMode(): void {
     if (this._priorityEngine.getUserMode() === 'AWAY' && this.isLunchHour() && !this.isWorkingThroughLunch()) {
-      this.enterLunchMode();
+      if (!this.interruptionRunning()) {
+        this.enterLunchMode();
+        return;
+      }
+      // Back from Away in an interruption at lunch time: WORK, and the
+      // question, rather than ending the call unasked (S25).
+      this._priorityEngine.setUserMode('WORK');
+      this._renderer.setContextMode('WORK');
+      this.askLunch();
       return;
     }
     this._priorityEngine.setUserMode('WORK');
@@ -955,6 +1005,43 @@ export class ContextScheduleService {
   }
 
   /** The user started work during today's lunch, so it does not start again. */
+  private interruptionRunning(): boolean {
+    return Boolean(this._engine.getCurrentSession()?.interruption);
+  }
+
+  /**
+   * "Start lunch? It ends 'Call with Marc'" (S25): asked once, and kept until
+   * answered, the interruption ends another way, or lunch is over.
+   */
+  private askLunch(): void {
+    if (this._ceremonyPrompt?.type === 'LUNCH') return;
+    const session = this._engine.getCurrentSession();
+    const name = session?.taskTitle || 'the interruption';
+    const settings = this.schedule();
+    const at = settings.lunchStartTime || settings.lunchStart || '12:30';
+    this.askCeremony({ type: 'LUNCH', title: 'Lunch time', at, endsInterruption: name }, {
+      title: 'Lunch time -- you are in an interruption',
+      body: `Start lunch? It ends "${name}", which waits to be placed.`
+    });
+  }
+
+  /**
+   * The answer to "Start lunch?": yes ends the interruption -- it waits to be
+   * placed -- and starts Lunch; Not now is working through lunch, as a task
+   * started during it is, so it is not asked again today. False when nothing
+   * was asked.
+   */
+  public answerLunchQuestion(start: boolean): boolean {
+    if (this._ceremonyPrompt?.type !== 'LUNCH') return false;
+    this.closeCeremony('LUNCH');
+    if (start) {
+      this.enterLunchMode();
+    } else {
+      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_SKIPPED_KEY, localDateKey(new Date()));
+    }
+    return true;
+  }
+
   private isWorkingThroughLunch(): boolean {
     return this._settingsRepo.getSetting<string | null>(ContextScheduleService.LUNCH_SKIPPED_KEY, null) === localDateKey(new Date());
   }

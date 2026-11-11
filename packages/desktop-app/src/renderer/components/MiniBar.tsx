@@ -40,7 +40,8 @@ export const MiniBar: React.FC = () => {
   const ceremony = useCeremonyPrompt();
   const [resumePrompt, setResumePrompt] = useResumePrompt();
   const [answeredCeremony, setAnsweredCeremony] = useState<typeof ceremony>(null);
-  const asking = resumePrompt !== null || (ceremony?.type === 'STANDUP' && ceremony !== answeredCeremony);
+  const asking = resumePrompt !== null
+    || ((ceremony?.type === 'STANDUP' || ceremony?.type === 'LUNCH') && ceremony !== answeredCeremony);
   /**
    * Stop opens the three ways to end a session, in place of the buttons:
    * the window is one row, with no room for a dialog. It used to log the time
@@ -88,6 +89,7 @@ export const MiniBar: React.FC = () => {
         <MiniPromptRow
           resume={resumePrompt}
           ceremony={ceremony}
+          inInterruption={Boolean(session?.interruption)}
           onAnswered={() => {
             if (resumePrompt) setResumePrompt(null);
             else setAnsweredCeremony(ceremony);
