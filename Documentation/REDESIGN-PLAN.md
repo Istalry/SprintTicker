@@ -1119,7 +1119,10 @@ focus).
 **Split (2026-11-11), each committed on its own:** P8a the session card
 (S5, S9's buttons, S11); P8b Lunch and Away pause (13.3's first half, with
 `CLAUDE.md` §5); P8c prompts without focus and the stand-up (13.2, the rest
-of 13.3); P8d the reminders (13.4); P8e Today's other cards (entries, the
+of 13.3 -- itself split on 2026-11-11 into P8c1, the prompts without focus
+and the cards, and P8c2, the stand-up's joined-at and task, S25's question
+during an interruption and S9's extras); P8d the reminders (13.4); P8e
+Today's other cards (entries, the
 morning card, the reassigned card with its minute check, the interruptions
 card's ticked rows and ⋯).
 
@@ -1166,6 +1169,33 @@ card's ticked rows and ⋯).
   "Lunch takes over Away's pause".
 - Not yet: S6's Away card on Today, and prompts that never take focus
   (P8c).
+
+**As landed: P8c1, prompts without focus (2026-11-11).**
+
+- `PromptOutlet` (`windows/prompt-outlet.ts`, new): `send` to every window,
+  `announce` a toast only while the dashboard is hidden or minimised, its
+  click opening it (`ToastRequest.onClick`, new). `ContextScheduleService`
+  and `ForgottenSessionService` take it by setter; neither calls `show()`,
+  `focus()` or `restore()` any more.
+- The ceremony is kept in main (`CeremonyPromptDTO`, `getCeremonyPrompt`,
+  `schedule:get-ceremony-prompt`), closed by Join, `skipStandup`, snooze and
+  `closeEodPrompt`. `CANCEL_STANDUP_PROMPT` no longer renders the session
+  after its release (the double render of `CLAUDE.md` §5).
+- Today: `StandupCard` (Remind me in 10 min / Skip today / Join; stays
+  until answered), `BreakCard` (Lunch until 13:30 / Away since, with Resume
+  or Back: resume, which also leaves Away; "I'm back" with nothing paused),
+  and `ResumeAfterLunchPrompt` as a card instead of an overlay.
+  `StandupPromptModal` and its test are deleted.
+- The mini timer: `MiniPromptRow` takes the row while a question is open
+  (the stand-up, Back at your desk?, Back to MG-12?, Resume it anyway?).
+  The key moved into the heading to fit 360 px.
+- The bar: OK on the stand-up's prompt and START pausing no longer raise the
+  window. The wrap-up's confirm and a wheel click while timing still do.
+- The mode chip's hints are S6's.
+- Not as drawn: the wrap-up is still its dialog (opened in place, not a
+  card); the forgotten-session question is still its dialog, unraised, with
+  no mini timer row; Today's cards show only on Today, where the dialogs
+  showed on every page; S25's "joined now ▾" is P8c2.
 
 ---
 
@@ -1637,7 +1667,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | in progress: P8a (the session card, Stop ▾) and P8b (Lunch and Away pause) done; P8c-P8e next -- see §13 "Split" | P8a, P8b (2026-11-11) |
+| P8 | in progress: P8a (the session card, Stop ▾), P8b (Lunch and Away pause) and P8c1 (prompts without focus) done; P8c2-P8e next -- see §13 "Split" | P8a, P8b, P8c1 (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |

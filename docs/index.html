@@ -637,6 +637,10 @@
       title to name it, and the link button to put it on a task.</li>
       <li>📋 The <strong>list</strong> button brings the window forward with the task picker open:
       that is how you start or switch a task from it.</li>
+      <li>❓ <strong>A question takes the row</strong> until you answer it, with an amber edge:
+      the stand-up (<strong>Skip</strong>, <strong>Join</strong>), <strong>Back at your desk?</strong> (<strong>Not now</strong>,
+      <strong>Worked through</strong>, <strong>▶ Resume</strong>) and <strong>Back to MG-12?</strong> (<strong>Not now</strong>,
+      <strong>Back +time</strong>, <strong>↩ Back</strong>). Answered anywhere, it goes everywhere.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
       that was on a monitor you have since unplugged, it comes back in the
       bottom-right corner of the main one.</li>
@@ -736,7 +740,8 @@
       -- is caught when you come back. If your last activity on the computer (or a
       press on the bar) was on an earlier day, at least two hours ago, the session
       is paused at that moment and nothing is logged. The window asks when you
-      stopped working on it: at your last activity, at your end-of-day hour that
+      stopped working on it -- without coming forward; a notification says so
+      while the window is hidden: at your last activity, at your end-of-day hour that
       day, or at a time you pick, each with the time it would log. Then <strong>Log and
       stop</strong>, <strong>Log and restart it now</strong> (asking first if the task is no longer
       assigned to you), <strong>Discard</strong>, or <strong>I was working all along</strong>, which counts
@@ -1102,7 +1107,7 @@
       <tbody><tr>
       <td align="left">🗣️ <strong>Stand-up prompt</strong></td>
       <td align="left">09:30</td>
-      <td align="left">Prompts you; <strong>Join</strong> switches your timer to Daily Standup</td>
+      <td align="left">A card on Today; <strong>Join</strong> switches your timer to Daily Standup</td>
       </tr>
       <tr>
       <td align="left">🥪 <strong>Lunch</strong></td>
@@ -1117,6 +1122,13 @@
       </tbody></table></div>
       <p>Both prompts can be confirmed or dismissed <strong>from the bar itself</strong> — see the
       hardware controls below.</p>
+      <p>🔕 <strong>No prompt takes the window.</strong> SprintTicker never comes up over what you
+      are typing. A question waits as a card at the top of <strong>Today</strong> and in the
+      mini timer&#39;s row until you answer it, and, while the window is hidden in the
+      tray or minimised, a Windows notification says so; clicking it opens the
+      window. The stand-up&#39;s card offers <strong>Join</strong>, <strong>Skip today</strong> and <strong>Remind me in
+      10 min</strong>, and stays until you choose. The end-of-day wrap-up opens in the
+      window without bringing it forward.</p>
       <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>, on
       teal. In Away mode it shows a steaming coffee beside <strong>AWAY</strong>, on purple. At the
       stand-up prompt it shows three people round a table taking turns to speak,
@@ -1147,8 +1159,8 @@
       <td align="center">🌙 End of day</td>
       </tr>
       </tbody></table></div>
-      <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> in the
-      window, or OK on the bar&#39;s prompt: the task you are tracking stops, its time
+      <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> on
+      Today&#39;s card or in the mini timer, or OK on the bar&#39;s prompt: the task you are tracking stops, its time
       logged, and a <strong>Daily Standup</strong> task starts -- one ad-hoc task, reused every
       day. The bar then shows its timer, with three people at a table in place of
       the stopwatch, taking turns to speak, so you can see the prompt has gone and
@@ -1157,21 +1169,25 @@
       not started something else meanwhile, and never when the end-of-day wrap-up
       is what stopped it. A task that left your list during the
       meeting is asked about first: <strong>Resume after the stand-up?</strong> in the window,
-      <strong>NOT YOURS / RESUME IT?</strong> on the bar. <strong>Dismiss</strong>, BACK, or leaving the prompt
-      alone keeps your task running.</p>
+      <strong>NOT YOURS / RESUME IT?</strong> on the bar. <strong>Leave it</strong>, BACK, or leaving the
+      question alone keeps your task running.</p>
       <p>🥪 <strong>Lunch and Away pause the task you are tracking.</strong> Neither is timed,
       and nothing is sent at the start of the break: when you stop the task, its
       time goes in as two worklogs either side of a break of 15 minutes or more
       (<em>A pause of … minutes or more starts a new worklog</em>, in <strong>My workday</strong>), to the second. When
-      the break ends -- lunch&#39;s hour is over, or you unlock Windows -- the window
-      asks <strong>Back at your desk?</strong>, naming the task, and the bar shows its key with
-      <strong>BACK? OK=YES</strong>:</p>
+      the break ends -- lunch&#39;s hour is over, or you unlock Windows -- Today and
+      the mini timer ask <strong>Back at your desk?</strong>, naming the task, and the bar shows
+      its key with <strong>BACK? OK=YES</strong>:</p>
       <ul>
       <li><strong>Resume KEY</strong> starts timing again.</li>
       <li><strong>I worked through it</strong> takes the break back as though you had never
       paused: the time counts as work, in one worklog.</li>
       <li><strong>Not now</strong> leaves the task paused.</li>
       </ul>
+      <p>During the break, Today has a <strong>Lunch until 13:30</strong> or <strong>Away</strong> card saying
+      the task is paused and nothing is sent, with <strong>Resume KEY</strong> -- resuming
+      during lunch is working through it -- or, for Away, <strong>Back: resume KEY</strong>,
+      which also leaves Away.</p>
       <p>The paused session is kept in the database: closing the app over lunch, or
       leaving Windows locked until after it ends, does not lose it -- the question
       comes when you are back, that day. Lunch never undoes what you do:</p>
@@ -1945,8 +1961,11 @@
       keeps <code>open</code> for the next launch), because Windows quits an app only when its
       last window is gone. Every broadcast -- the registry&#39;s and the engine tick&#39;s
       <code>session:on-updated</code> -- goes to all windows, or the mini timer would keep
-      showing a session that has ended; targeted sends such as the ceremony prompt
-      still reach the dashboard alone. Picking a task from the tray or the mini timer
+      showing a session that has ended. The schedule&#39;s questions -- the ceremonies,
+      the resume question, a session left running -- go to every window as well,
+      through a <code>PromptOutlet</code> (<code>windows/prompt-outlet.ts</code>), which also shows a
+      toast while the dashboard is hidden. Nothing that asks brings a window
+      forward (P8c). Picking a task from the tray or the mini timer
       goes through <code>openTaskPickerInMainWindow</code>, which sends the picker&#39;s hardware
       action on <code>input:on-hardware-event</code> with <code>inputKey: &#39;app&#39;</code>.</p>
       <p><strong>The window is four places and a header</strong> (<code>AppShell</code>): Today, Tasks,
@@ -2565,6 +2584,16 @@
       <h4><code>ContextScheduleService</code> — <code>src/main/services/</code></h4>
       <p>Runs the day: the stand-up and end-of-day prompts, Lunch, and Away on lock or
       suspend, from a check every 30 seconds.</p>
+      <p>Its questions never take the focus (P8c). A ceremony asked is kept
+      (<code>getCeremonyPrompt</code>, a <code>CeremonyPromptDTO</code> with its time) and sent on
+      <code>schedule:on-ceremony-prompt</code> to every window through the <code>PromptOutlet</code>,
+      with a toast while the dashboard is hidden; Join, Skip today (<code>skipStandup</code>,
+      which releases the bar&#39;s prompt and draws nothing itself), Remind me
+      (<code>snoozeCeremony</code>) and the wrap-up&#39;s end or cancel (<code>closeEodPrompt</code>) close
+      it with a null. Today shows the stand-up as a card and the mini timer as its
+      row; the wrap-up still opens its dialog, without coming forward. Lunch
+      starting over a running task, and every resume question, are announced the
+      same way.</p>
       <p>Lunch and Away pause a running session (<code>pauseSession(&#39;lunch&#39; | &#39;away&#39;)</code>,
       the reason on its <code>paused_intervals</code> row), before the mode switches so the
       scene lands over the paused frame. Nothing is logged then: at the task&#39;s
@@ -3483,7 +3512,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:on-ceremony-prompt</code>, <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code>, <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>

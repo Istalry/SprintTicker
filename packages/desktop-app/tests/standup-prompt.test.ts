@@ -76,9 +76,10 @@ describe('Standup & Ceremony Snooze Unit Tests', () => {
     svc.evaluateSchedule();
 
     expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('STANDUP', 'Daily Stand-Up');
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'STANDUP', title: 'Daily Stand-Up' });
-    expect(mockWindow.show).toHaveBeenCalled();
-    expect(mockWindow.focus).toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'STANDUP', title: 'Daily Stand-Up', at: '10:00' });
+    // P8c: the card waits on Today; the window is not brought forward.
+    expect(mockWindow.show).not.toHaveBeenCalled();
+    expect(mockWindow.focus).not.toHaveBeenCalled();
 
     svc.dispose();
     vi.useRealTimers();

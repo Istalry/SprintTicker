@@ -31,6 +31,7 @@ import type {
   UserMode,
   ScheduleSettingsDTO,
   ResumePromptDTO,
+  CeremonyPromptDTO,
   WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
@@ -203,7 +204,10 @@ export interface IElectronAPI {
   cancelEodWrapUp: () => Promise<boolean>;
   updateCeremonyPrompt: (type: 'STANDUP' | 'LUNCH' | 'EOD', title: string) => Promise<boolean>;
   snoozeCeremony: (type: 'STANDUP' | 'EOD', minutes?: number) => Promise<boolean>;
-  onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => () => void;
+  /** The ceremony waiting on an answer, for a window opened after it was asked (P8c). */
+  getCeremonyPrompt: () => Promise<CeremonyPromptDTO | null>;
+  /** A ceremony asked, or null once it is answered anywhere. */
+  onCeremonyPrompt: (callback: (prompt: CeremonyPromptDTO | null) => void) => () => void;
   /** After lunch: the task stopped for it is no longer the user's. Null when nothing is asked. */
   getResumePrompt: () => Promise<ResumePromptDTO | null>;
   /** Resumes the task, or leaves it. False when the question had already been answered. */

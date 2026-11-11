@@ -788,6 +788,18 @@ changing it:
   START during lunch opened it invisibly. It has a rule now, above Lunch, and
   passes `queueOnPreempt: false`: a copy queued under Away replayed after the
   user had closed it, holding the display for nothing.
+- **A prompt never takes the focus** (redesign P8c). The stand-up, the
+  wrap-up, "Back at your desk?" and a session left running used to
+  `show()` + `focus()` the dashboard, which came up over whatever the user
+  was typing into. A question now goes through a `PromptOutlet`
+  (`windows/prompt-outlet.ts`): `send` to every window -- a card on Today, a
+  row on the mini timer -- and `announce`, a toast only while the dashboard
+  is hidden or minimised, whose click (the user's) opens it. Main keeps the
+  question until it is answered (`getCeremonyPrompt`, `getResumePrompt`), so
+  a window opened later still shows it. A bar press that answers a prompt
+  does not raise the window either; the ones that still do are the wrap-up's
+  confirm and a wheel click while timing, which ask for the app. Anything
+  new that asks goes through the outlet -- never `show()` or `focus()`.
 - **Lunch and Away pause; they never stop** (D1, redesign P8b). The
   running session is paused with a `paused_intervals` row of reason `lunch`
   or `away`, and `lunch_resume` keeps the held session's id

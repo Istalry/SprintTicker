@@ -121,6 +121,7 @@ export enum IPCChannel {
   DISMISS_WEEK_ENDED = 'schedule:dismiss-week-ended',
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',
+  GET_CEREMONY_PROMPT = 'schedule:get-ceremony-prompt',
   UPDATE_CEREMONY_PROMPT = 'schedule:update-ceremony-prompt',
   GET_RESUME_PROMPT = 'schedule:get-resume-prompt',
   ANSWER_RESUME_PROMPT = 'schedule:answer-resume-prompt',

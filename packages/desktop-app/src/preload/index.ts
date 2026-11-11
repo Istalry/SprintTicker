@@ -17,6 +17,7 @@ import type {
   ProviderSettingsUpdateDTO,
   ScheduleSettingsDTO,
   ResumePromptDTO,
+  CeremonyPromptDTO,
   WeekEndedDTO,
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
@@ -195,9 +196,9 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.on(IPCChannel.ON_RESUME_PROMPT, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_RESUME_PROMPT, handler);
   },
-  onCeremonyPrompt: (callback: (prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) => void) => {
-    const handler = (_event: IpcRendererEvent, prompt: { type: 'STANDUP' | 'LUNCH' | 'EOD'; title: string }) =>
-      callback(prompt);
+  getCeremonyPrompt: () => ipcRenderer.invoke(IPCChannel.GET_CEREMONY_PROMPT),
+  onCeremonyPrompt: (callback: (prompt: CeremonyPromptDTO | null) => void) => {
+    const handler = (_event: IpcRendererEvent, prompt: CeremonyPromptDTO | null) => callback(prompt);
     ipcRenderer.on(IPCChannel.ON_CEREMONY_PROMPT, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_CEREMONY_PROMPT, handler);
   },

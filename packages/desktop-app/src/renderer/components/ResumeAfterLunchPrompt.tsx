@@ -1,30 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { ResumePromptDTO } from '../../shared/dtos';
+import React from 'react';
 import { ConfirmPanel } from './ConfirmPanel';
+import { useResumePrompt } from '../hooks/usePrompts';
 
 const MS_PER_MINUTE = 60_000;
 
 /**
- * "Resume it anyway?", asked when lunch or the stand-up ends and the task it
- * stopped has left the user's lists meanwhile -- reassigned, closed or moved.
- * It is not restarted without asking. After an interruption it is asked every
- * time: "Back to your task?".
+ * A card on Today (redesign P8c): "Back at your desk?" after Lunch or Away,
+ * "Back to your task?" after an interruption, and "Resume it anyway?" when
+ * the stand-up's task left the user's lists. It used to be a dialog over the
+ * window, which main brought forward to ask; a question no longer takes the
+ * focus, so it waits here, on the mini timer, and in a toast while the window
+ * is hidden.
  *
  * Follows main rather than owning the question: the bar asks it too, and an
- * answer there closes it here. Read once on mount as well, for a window opened
- * after the question was asked.
+ * answer there closes it here.
  */
 export const ResumeAfterLunchPrompt: React.FC = () => {
-  const [prompt, setPrompt] = useState<ResumePromptDTO | null>(null);
-
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.onResumePrompt) return undefined;
-    api.getResumePrompt()
-      .then(setPrompt)
-      .catch(err => console.warn('[ResumeAfterLunchPrompt] Could not read the question:', err));
-    return api.onResumePrompt(setPrompt);
-  }, []);
+  const [prompt, setPrompt] = useResumePrompt();
 
   if (!prompt) return null;
   const standup = prompt.after === 'standup';
@@ -49,8 +41,8 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
   const answerWithGap = () => answer(true, Math.max(0, Math.round((Date.now() - endedAt) / MS_PER_MINUTE)));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
-      <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
+    <section aria-label="A question" className="select-none">
+      <div className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5">
         <ConfirmPanel
           title={
             held ? 'Back at your desk?'
@@ -105,6 +97,6 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 };

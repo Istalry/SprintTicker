@@ -251,7 +251,7 @@ describe('ContextScheduleService Unit Tests', () => {
     svc.evaluateSchedule(); // Scheduled evaluation at 10:00 -> prompt triggered!
 
     expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('STANDUP', 'Daily Stand-Up');
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'STANDUP', title: 'Daily Stand-Up' });
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'STANDUP', title: 'Daily Stand-Up' }));
 
     svc.dispose();
     vi.useRealTimers();
@@ -280,7 +280,7 @@ describe('ContextScheduleService Unit Tests', () => {
     svc.evaluateSchedule(); // Scheduled evaluation at 18:00 -> prompt triggered!
 
     expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'EOD', title: 'End-of-Day Wrap-Up' });
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'EOD', title: 'End-of-Day Wrap-Up' }));
 
     svc.dispose();
     vi.useRealTimers();
@@ -309,10 +309,11 @@ describe('ContextScheduleService Unit Tests', () => {
     svc.triggerEodPrompt();
 
     expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
-    expect(mockWindow.restore).toHaveBeenCalledTimes(1);
-    expect(mockWindow.show).toHaveBeenCalledTimes(1);
-    expect(mockWindow.focus).toHaveBeenCalledTimes(1);
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, { type: 'EOD', title: 'End-of-Day Wrap-Up' });
+    // P8c: a prompt never takes the focus, even of a minimised window.
+    expect(mockWindow.restore).not.toHaveBeenCalled();
+    expect(mockWindow.show).not.toHaveBeenCalled();
+    expect(mockWindow.focus).not.toHaveBeenCalled();
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'EOD', title: 'End-of-Day Wrap-Up' }));
 
     svc.dispose();
   });

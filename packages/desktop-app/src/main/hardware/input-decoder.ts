@@ -243,9 +243,8 @@ export class InputDecoder {
         normalizedKey === 'custom';
 
       if (isConfirmPress && (event.type === 'press' || !event.type)) {
-        if (this._windowFocusCallback) {
-          this._windowFocusCallback();
-        }
+        // The window is not brought forward: joining needs nothing from it,
+        // and the user is on their way to the meeting (P8c).
         // Joining is ContextScheduleService's, through the action handlers:
         // it switches the timer to the stand-up under the prompt's lock and
         // releases it, which draws once. Releasing here first drew the old
@@ -475,10 +474,9 @@ export class InputDecoder {
         if (!active) {
           this.startTaskSelection();
         } else if (active.status === 'TRACKING') {
+          // Paused from the bar, with the bar's paused menu to answer: the
+          // window stays where it is (P8c).
           this._engine.pauseSession();
-          if (this._windowFocusCallback) {
-            this._windowFocusCallback();
-          }
         } else if (active.status === 'PAUSED') {
           this._engine.resumeSession();
         }

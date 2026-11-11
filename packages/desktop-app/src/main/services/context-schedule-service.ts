@@ -4,7 +4,8 @@ import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { ScheduleSettingsDTO, ArgumentNullException, ActiveSessionDTO, ResumePromptDTO, WeekEndedDTO } from '../../shared/dtos';
+import { ScheduleSettingsDTO, ArgumentNullException, ActiveSessionDTO, CeremonyPromptDTO, ResumePromptDTO, WeekEndedDTO } from '../../shared/dtos';
+import type { PromptAnnouncement, PromptOutlet } from '../windows/prompt-outlet';
 import { DAILY_STANDUP_TITLE, normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { addLocalDays, localDateKey } from '../../shared/local-date';
 import { weekStartKey } from '../../shared/working-days';
@@ -125,6 +126,10 @@ export class ContextScheduleService {
   private readonly _renderer: DisplayRenderer;
 
   private _getWindow?: () => BrowserWindow | null;
+  /** Every window, and a toast when the dashboard is hidden; `_getWindow` alone without it. */
+  private _outlet: PromptOutlet | null = null;
+  /** The ceremony waiting on an answer: it stays on Today and the mini timer until one. */
+  private _ceremonyPrompt: CeremonyPromptDTO | null = null;
   private _lastEodPromptDateString: string | null = null;
   private _lastStandupPromptDateString: string | null = null;
   private _standupSnoozeUntilTimestamp: number | null = null;
@@ -182,6 +187,14 @@ export class ContextScheduleService {
   /// </summary>
   public setWindowGetter(getWindow: () => BrowserWindow | null): void {
     this._getWindow = getWindow;
+  }
+
+  /**
+   * Where the questions go: every window, and a toast while the dashboard is
+   * hidden. Never the focus (P8c).
+   */
+  public setPromptOutlet(outlet: PromptOutlet): void {
+    this._outlet = outlet;
   }
 
   /// <summary>
@@ -300,22 +313,45 @@ export class ContextScheduleService {
   /// </summary>
   public triggerStandupPrompt(): void {
     this._renderer.renderCeremonyPrompt('STANDUP', 'Daily Stand-Up');
+    const at = this.schedule().standupTime || '10:00';
+    // No show(), no focus() (P8c): the card waits on Today and the mini
+    // timer until it is answered, and a toast says so if the window is hidden.
+    this.askCeremony({ type: 'STANDUP', title: 'Daily Stand-Up', at }, {
+      title: `Stand-up at ${at}`,
+      body: 'Click to join or skip.'
+    });
+  }
 
-    if (this._getWindow) {
-      const win = this._getWindow();
-      if (win && !win.isDestroyed()) {
-        if (typeof win.isMinimized === 'function' && win.isMinimized()) {
-          win.restore();
-        }
-        if (typeof win.show === 'function') win.show();
-        if (typeof win.focus === 'function') win.focus();
+  /** The ceremony waiting on an answer, for a window opened after it was asked. */
+  public getCeremonyPrompt(): CeremonyPromptDTO | null {
+    return this._ceremonyPrompt;
+  }
 
-        win.webContents.send(IPCChannel.ON_CEREMONY_PROMPT, {
-          type: 'STANDUP',
-          title: 'Daily Stand-Up'
-        });
-      }
-    }
+  /**
+   * Skip today, from the card or the window: the bar's prompt goes too. Its
+   * release hands the display back itself; drawing the session after it was
+   * the double render of CLAUDE.md §5.
+   */
+  public skipStandup(): void {
+    this.closeCeremony('STANDUP');
+    this._priorityEngine.releaseActiveLock('standupPromptPriority');
+  }
+
+  /** The end-of-day prompt is answered: the wrap-up was done, or put off. */
+  public closeEodPrompt(): void {
+    this.closeCeremony('EOD');
+  }
+
+  private askCeremony(prompt: CeremonyPromptDTO, announcement: PromptAnnouncement): void {
+    this._ceremonyPrompt = prompt;
+    this.send(IPCChannel.ON_CEREMONY_PROMPT, prompt);
+    this._outlet?.announce(announcement);
+  }
+
+  private closeCeremony(type: CeremonyPromptDTO['type']): void {
+    if (this._ceremonyPrompt?.type !== type) return;
+    this._ceremonyPrompt = null;
+    this.send(IPCChannel.ON_CEREMONY_PROMPT, null);
   }
 
   /**
@@ -328,6 +364,7 @@ export class ContextScheduleService {
    * session's. A stand-up already running is left as it is.
    */
   public joinStandup(): void {
+    this.closeCeremony('STANDUP');
     if (!isStandupSession(this._engine.getCurrentSession())) {
       this.switchSettingAside('standup', () => this._engine.startNamedAdHocTask(DAILY_STANDUP_TITLE));
     }
@@ -503,6 +540,7 @@ export class ContextScheduleService {
   /// Postpones ceremony prompt evaluation by specified minutes.
   /// </summary>
   public snoozeCeremony(type: 'STANDUP' | 'EOD', minutes: number = 10): void {
+    this.closeCeremony(type);
     const until = Date.now() + minutes * 60 * 1000;
     if (type === 'STANDUP') {
       this._standupSnoozeUntilTimestamp = until;
@@ -518,22 +556,13 @@ export class ContextScheduleService {
   /// </summary>
   public triggerEodPrompt(): void {
     this._renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
-
-    if (this._getWindow) {
-      const win = this._getWindow();
-      if (win && !win.isDestroyed()) {
-        if (typeof win.isMinimized === 'function' && win.isMinimized()) {
-          win.restore();
-        }
-        if (typeof win.show === 'function') win.show();
-        if (typeof win.focus === 'function') win.focus();
-
-        win.webContents.send(IPCChannel.ON_CEREMONY_PROMPT, {
-          type: 'EOD',
-          title: 'End-of-Day Wrap-Up'
-        });
-      }
-    }
+    const settings = this.schedule();
+    const at = settings.eodWrapUpTime || settings.eodTime || '18:00';
+    // The window opens the wrap-up where it is, without coming forward (P8c).
+    this.askCeremony({ type: 'EOD', title: 'End-of-Day Wrap-Up', at }, {
+      title: 'Time to end your day',
+      body: 'Click to review today and send it.'
+    });
   }
 
   /// <summary>
@@ -550,10 +579,20 @@ export class ContextScheduleService {
   /// restart during lunch, or Away ending in the middle of it.
   /// </summary>
   public enterLunchMode(): void {
+    const running = this._engine.getCurrentSession();
     this.pauseForBreak('lunch');
 
     this._priorityEngine.setUserMode('LUNCH');
     this._renderer.setContextMode('LUNCH');
+    // Said with a toast only while the window is hidden; Today has its card.
+    if (running?.status === 'TRACKING' && !running.interruption) {
+      const settings = this.schedule();
+      const end = settings.lunchEndTime || settings.lunchEnd || '13:30';
+      this._outlet?.announce({
+        title: `Lunch -- ${running.taskKey} paused`,
+        body: `At ${end} you are asked if you are back. Click to keep working instead.`
+      });
+    }
   }
 
   /**
@@ -986,24 +1025,51 @@ export class ContextScheduleService {
   }
 
   private sendToWindow(channel: IPCChannel, payload: unknown): void {
+    this.send(channel, payload);
+  }
+
+  /** To every window through the outlet; to the dashboard alone without one. */
+  private send(channel: IPCChannel, payload: unknown): void {
+    if (this._outlet) {
+      this._outlet.send(channel, payload);
+      return;
+    }
     const win = this._getWindow?.();
     if (!win || win.isDestroyed()) return;
     win.webContents.send(channel, payload);
+  }
+
+  private schedule(): ScheduleSettingsDTO {
+    return normalizeScheduleSettings(this._settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {}));
   }
 
   private forgetSetAside(): void {
     this._settingsRepo.setSetting(ContextScheduleService.SET_ASIDE_KEY, null);
   }
 
-  /** Brings the window up to ask, as the ceremonies do; null closes the dialog. */
+  /**
+   * Asks on Today and the mini timer, and with a toast while the window is
+   * hidden; null closes the question everywhere. It used to show() the
+   * window, which came up over whatever the user was doing (P8c).
+   */
   private sendResumePrompt(prompt: ResumePromptDTO | null): void {
-    const win = this._getWindow?.();
-    if (!win || win.isDestroyed()) return;
-    if (prompt) {
-      if (typeof win.isMinimized === 'function' && win.isMinimized()) win.restore();
-      if (typeof win.show === 'function') win.show();
+    this.send(IPCChannel.ON_RESUME_PROMPT, prompt);
+    if (prompt) this._outlet?.announce(ContextScheduleService.announcementOf(prompt));
+  }
+
+  /** The toast's words for each question (S26). */
+  private static announcementOf(prompt: ResumePromptDTO): PromptAnnouncement {
+    if (prompt.held) {
+      const what = prompt.after === 'away' ? 'Away' : 'Lunch';
+      return { title: `${what} is over. Back at your desk?`, body: `${prompt.taskKey} starts when you say.` };
     }
-    win.webContents.send(IPCChannel.ON_RESUME_PROMPT, prompt);
+    if (prompt.after === 'interruption') {
+      return { title: `Nothing is running. Back to ${prompt.taskKey}?`, body: 'Click to go back to it, or leave it.' };
+    }
+    return {
+      title: `Resume ${prompt.taskKey}?`,
+      body: 'It is no longer assigned to you. Click to resume it anyway, or leave it.'
+    };
   }
 
   /** Unlisted goes without saying after lunch and the stand-up, which ask only then. */

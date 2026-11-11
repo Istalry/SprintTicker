@@ -266,6 +266,18 @@ export interface WeekEndedDTO {
  * the user's: reassigned, closed or moved over the break. Null when nothing
  * is being asked.
  */
+/**
+ * A ceremony waiting on the user (redesign P8c): a card on Today and a row on
+ * the mini timer until it is answered -- it never closes itself, and never
+ * takes the focus. The end-of-day one opens the wrap-up.
+ */
+export interface CeremonyPromptDTO {
+  type: 'STANDUP' | 'EOD';
+  title: string;
+  /** When it is due, HH:MM, as the schedule says it. */
+  at: string;
+}
+
 export interface ResumePromptDTO {
   taskKey: string;
   taskTitle: string;

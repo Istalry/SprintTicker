@@ -19,8 +19,8 @@ export function windowPickerWanted(inputKey: string, sessionRunning: boolean): b
 }
 
 /**
- * The window's global dialogs: the picker, the stand-up and end-of-day
- * prompts, and the setup wizard. Main opens some of them -- a ceremony
+ * The window's global dialogs: the picker, the end-of-day wrap-up, and the
+ * setup wizard. Main opens some of them -- a ceremony
  * prompt, a picker request from the bar, the tray or the mini timer -- so
  * their flags live here rather than in the views.
  */
@@ -28,15 +28,14 @@ export function useModals(sessionRunning: boolean) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState<PickerMode>('start');
   const [eodOpen, setEodOpen] = useState(false);
-  const [standupOpen, setStandupOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
-  // Ceremony prompts from the schedule service.
+  // The wrap-up opens where the window is, without coming forward (P8c).
+  // The stand-up is a card on Today, which follows the prompt itself.
   useEffect(() => {
     if (!window.electronAPI?.onCeremonyPrompt) return undefined;
     return window.electronAPI.onCeremonyPrompt(prompt => {
-      if (prompt.type === 'EOD') setEodOpen(true);
-      else if (prompt.type === 'STANDUP') setStandupOpen(true);
+      if (prompt?.type === 'EOD') setEodOpen(true);
     });
   }, []);
 
@@ -44,7 +43,7 @@ export function useModals(sessionRunning: boolean) {
   useEffect(() => {
     if (!window.electronAPI?.onHardwareInputEvent) return undefined;
     return window.electronAPI.onHardwareInputEvent(event => {
-      const busy = eodOpen || standupOpen;
+      const busy = eodOpen;
       if (event.actionAssigned === 'TRIGGER_TASK_SELECTOR_MODAL' && !busy && windowPickerWanted(event.inputKey, sessionRunning)) {
         setPickerMode('start');
         setPickerOpen(true);
@@ -54,12 +53,8 @@ export function useModals(sessionRunning: boolean) {
         setPickerMode('assign');
         setPickerOpen(true);
       }
-      // Answered on the bar: main has joined or dismissed it already.
-      if (event.actionAssigned === 'CONFIRM_STANDUP_PROMPT' || event.actionAssigned === 'DISMISS_STANDUP_PROMPT') {
-        setStandupOpen(false);
-      }
     });
-  }, [eodOpen, standupOpen, sessionRunning]);
+  }, [eodOpen, sessionRunning]);
 
   const openPicker = (mode: PickerMode): void => {
     setPickerMode(mode);
@@ -78,7 +73,6 @@ export function useModals(sessionRunning: boolean) {
   return {
     picker: { open: pickerOpen, mode: pickerMode, show: openPicker, close: () => setPickerOpen(false) },
     eod: { open: eodOpen, show: openEod, close: () => setEodOpen(false) },
-    standup: { open: standupOpen, close: () => setStandupOpen(false) },
     onboarding: { open: onboardingOpen, show: () => setOnboardingOpen(true), close: () => setOnboardingOpen(false) }
   };
 }

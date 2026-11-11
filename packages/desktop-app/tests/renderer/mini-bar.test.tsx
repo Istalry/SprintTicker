@@ -328,4 +328,55 @@ describe('mini timer: the screen icon', () => {
     expect(screen.getByRole('img', { name: 'LUNCH' })).toBeTruthy();
     expect(screen.queryByRole('img', { name: 'COMPILING' })).toBeNull();
   });
+
+  describe('a question (P8c)', () => {
+    const HELD = { taskKey: 'SPR-142', taskTitle: 'Rework the pause menu', after: 'lunch' as const, held: true as const };
+
+    it('BackAtYourDesk_TakesTheRowUntilAnswered', async () => {
+      const bridge = installElectronApi({ getCurrentSession: async () => ({ ...TRACKING_SESSION, status: 'PAUSED' as const }), getResumePrompt: async () => HELD });
+      render(<MiniBar />);
+
+      expect(await screen.findByText('Back at your desk?')).toBeTruthy();
+      expect(screen.getByText('Lunch over · SPR-142')).toBeTruthy();
+      expect(screen.queryByLabelText('Resume')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Worked through' }));
+
+      expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, undefined, true);
+      expect(screen.queryByText('Back at your desk?')).toBeNull();
+      expect(await screen.findByLabelText('Resume')).toBeTruthy();
+    });
+
+    it('BackAtYourDesk_ResumeAndNotNow_AnswerMain', async () => {
+      const bridge = installElectronApi({ getResumePrompt: async () => HELD });
+      render(<MiniBar />);
+
+      fireEvent.click(await screen.findByRole('button', { name: '▶ Resume' }));
+
+      expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, undefined, undefined);
+    });
+
+    it('Standup_JoinFromTheRow', async () => {
+      const bridge = installElectronApi({ getCeremonyPrompt: async () => ({ type: 'STANDUP' as const, title: 'Daily Stand-Up', at: '09:30' }) });
+      render(<MiniBar />);
+
+      expect(await screen.findByText('Stand-up at 09:30')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+      expect(bridge.api.joinStandup).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Stand-up at 09:30')).toBeNull();
+    });
+
+    it('Asked_WhileTheWindowIsOpen_AppearsAndGoesWhenAnsweredElsewhere', async () => {
+      const bridge = installElectronApi();
+      render(<MiniBar />);
+      await screen.findByText('No task running');
+
+      act(() => bridge.emit('onResumePrompt', { ...HELD, after: 'interruption' as const, held: undefined }));
+      expect(screen.getByText('Back to SPR-142?')).toBeTruthy();
+
+      act(() => bridge.emit('onResumePrompt', null));
+      expect(screen.queryByText('Back to SPR-142?')).toBeNull();
+    });
+  });
 });

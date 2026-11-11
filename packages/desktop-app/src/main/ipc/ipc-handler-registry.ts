@@ -736,6 +736,7 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
       // Through the schedule service, which drops the restarts first: a
       // stand-up ended by the wrap-up must not bring its task back overnight.
+      this.contextScheduleService.closeEodPrompt();
       this.contextScheduleService.stopForWrapUp();
 
       // 1. Instruct open code editors (VS Code, Cursor) to save open dirty files
@@ -786,6 +787,7 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.CANCEL_EOD_WRAP_UP, async () => {
+      this.contextScheduleService.closeEodPrompt();
       this.priorityEngine.releaseActiveLock('standupPromptPriority');
       this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
       if (this.systemAutomationService.isShutdownPending()) {
@@ -812,12 +814,14 @@ export class IPCHandlerRegistry {
       return true;
     });
 
+    // Skip today. The release hands the display back itself: rendering the
+    // session after it drew twice (CLAUDE.md §5).
     ipcMain.handle(IPCChannel.CANCEL_STANDUP_PROMPT, async () => {
-      this.priorityEngine.releaseActiveLock('standupPromptPriority');
-      const activeSession = this.engine.getCurrentSession();
-      this.renderer.renderActiveSession(activeSession);
+      this.contextScheduleService.skipStandup();
       return true;
     });
+
+    ipcMain.handle(IPCChannel.GET_CEREMONY_PROMPT, async () => this.contextScheduleService.getCeremonyPrompt());
 
     ipcMain.handle(IPCChannel.SNOOZE_CEREMONY, async (_event, payload: { type: 'STANDUP' | 'EOD'; minutes: number }) => {
       this.contextScheduleService.snoozeCeremony(payload.type, payload.minutes);

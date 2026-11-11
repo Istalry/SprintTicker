@@ -124,6 +124,10 @@ Timer** in the header or **Show Mini Timer** in the tray menu.
   title to name it, and the link button to put it on a task.
 - 📋 The **list** button brings the window forward with the task picker open:
   that is how you start or switch a task from it.
+- ❓ **A question takes the row** until you answer it, with an amber edge:
+  the stand-up (**Skip**, **Join**), **Back at your desk?** (**Not now**,
+  **Worked through**, **▶ Resume**) and **Back to MG-12?** (**Not now**,
+  **Back +time**, **↩ Back**). Answered anywhere, it goes everywhere.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
   that was on a monitor you have since unplugged, it comes back in the
   bottom-right corner of the main one.
@@ -213,7 +217,8 @@ next sync after that.
 -- is caught when you come back. If your last activity on the computer (or a
 press on the bar) was on an earlier day, at least two hours ago, the session
 is paused at that moment and nothing is logged. The window asks when you
-stopped working on it: at your last activity, at your end-of-day hour that
+stopped working on it -- without coming forward; a notification says so
+while the window is hidden: at your last activity, at your end-of-day hour that
 day, or at a time you pick, each with the time it would log. Then **Log and
 stop**, **Log and restart it now** (asking first if the task is no longer
 assigned to you), **Discard**, or **I was working all along**, which counts
@@ -599,12 +604,20 @@ Working hours, and the three scheduled events:
 
 | | Default | Does |
 | :--- | :--- | :--- |
-| 🗣️ **Stand-up prompt** | 09:30 | Prompts you; **Join** switches your timer to Daily Standup |
+| 🗣️ **Stand-up prompt** | 09:30 | A card on Today; **Join** switches your timer to Daily Standup |
 | 🥪 **Lunch** | 12:30–13:30 | Switches to Lunch mode |
 | 🌙 **End-of-day wrap-up** | 17:30 | Prompts to wrap up; can save open editors and schedule a shutdown |
 
 Both prompts can be confirmed or dismissed **from the bar itself** — see the
 hardware controls below.
+
+🔕 **No prompt takes the window.** SprintTicker never comes up over what you
+are typing. A question waits as a card at the top of **Today** and in the
+mini timer's row until you answer it, and, while the window is hidden in the
+tray or minimised, a Windows notification says so; clicking it opens the
+window. The stand-up's card offers **Join**, **Skip today** and **Remind me in
+10 min**, and stays until you choose. The end-of-day wrap-up opens in the
+window without bringing it forward.
 
 During Lunch the bar shows a sandwich building itself beside **LUNCH**, on
 teal. In Away mode it shows a steaming coffee beside **AWAY**, on purple. At the
@@ -620,8 +633,8 @@ when the computer is busy.
 | <img src="../docs/images/bar-scene-meeting.webp" width="304" alt="MEETING: three people round a table on blue"> | <img src="../docs/images/bar-scene-eod.webp" width="304" alt="SEE YOU!: a moon rising on a dusk gradient"> |
 | 🗣️ Stand-up | 🌙 End of day |
 
-🗣️ **Joining the stand-up switches your timer to it.** Press **Join** in the
-window, or OK on the bar's prompt: the task you are tracking stops, its time
+🗣️ **Joining the stand-up switches your timer to it.** Press **Join** on
+Today's card or in the mini timer, or OK on the bar's prompt: the task you are tracking stops, its time
 logged, and a **Daily Standup** task starts -- one ad-hoc task, reused every
 day. The bar then shows its timer, with three people at a table in place of
 the stopwatch, taking turns to speak, so you can see the prompt has gone and
@@ -630,21 +643,26 @@ again, by the same rules as after lunch: once, that day, and only if you have
 not started something else meanwhile, and never when the end-of-day wrap-up
 is what stopped it. A task that left your list during the
 meeting is asked about first: **Resume after the stand-up?** in the window,
-**NOT YOURS / RESUME IT?** on the bar. **Dismiss**, BACK, or leaving the prompt
-alone keeps your task running.
+**NOT YOURS / RESUME IT?** on the bar. **Leave it**, BACK, or leaving the
+question alone keeps your task running.
 
 🥪 **Lunch and Away pause the task you are tracking.** Neither is timed,
 and nothing is sent at the start of the break: when you stop the task, its
 time goes in as two worklogs either side of a break of 15 minutes or more
 (*A pause of … minutes or more starts a new worklog*, in **My workday**), to the second. When
-the break ends -- lunch's hour is over, or you unlock Windows -- the window
-asks **Back at your desk?**, naming the task, and the bar shows its key with
-**BACK? OK=YES**:
+the break ends -- lunch's hour is over, or you unlock Windows -- Today and
+the mini timer ask **Back at your desk?**, naming the task, and the bar shows
+its key with **BACK? OK=YES**:
 
 - **Resume KEY** starts timing again.
 - **I worked through it** takes the break back as though you had never
   paused: the time counts as work, in one worklog.
 - **Not now** leaves the task paused.
+
+During the break, Today has a **Lunch until 13:30** or **Away** card saying
+the task is paused and nothing is sent, with **Resume KEY** -- resuming
+during lunch is working through it -- or, for Away, **Back: resume KEY**,
+which also leaves Away.
 
 The paused session is kept in the database: closing the app over lunch, or
 leaving Windows locked until after it ends, does not lose it -- the question

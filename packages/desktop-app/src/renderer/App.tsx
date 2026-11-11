@@ -14,10 +14,8 @@ import { WorklogHistoryView } from './views/History/WorklogHistoryView';
 import { SettingsPage } from './views/Settings/SettingsPage';
 import { SettingsGroupId } from './views/Settings/settings-groups';
 import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
-import { StandupPromptModal } from './views/Standup/StandupPromptModal';
 import { WeekEndedNotice } from './components/WeekEndedNotice';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
-import { ResumeAfterLunchPrompt } from './components/ResumeAfterLunchPrompt';
 import { ForgottenSessionModal } from './components/ForgottenSessionModal';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { UpdateBanner } from './components/UpdateNotice';
@@ -217,26 +215,6 @@ export const App: React.FC = () => {
         onPickTask={task => { void pickTask('start', session, { task, takeAlong: false }, startTask); }}
       />
 
-      <StandupPromptModal
-        isOpen={modals.standup.open}
-        onClose={async () => {
-          modals.standup.close();
-          if (window.electronAPI?.cancelStandupPrompt) {
-            await window.electronAPI.cancelStandupPrompt();
-          }
-        }}
-        onSnooze={async (minutes) => {
-          modals.standup.close();
-          if (window.electronAPI?.snoozeCeremony) {
-            await window.electronAPI.snoozeCeremony('STANDUP', minutes);
-          }
-        }}
-        onJoin={async () => {
-          modals.standup.close();
-          await window.electronAPI?.joinStandup?.();
-        }}
-      />
-
       <EodWrapUpModal
         isOpen={modals.eod.open}
         onClose={async () => {
@@ -256,7 +234,6 @@ export const App: React.FC = () => {
         }}
       />
 
-      <ResumeAfterLunchPrompt />
       <WeekEndedNotice onOpenHistory={() => setPlace('history')} />
       <ForgottenSessionModal />
 

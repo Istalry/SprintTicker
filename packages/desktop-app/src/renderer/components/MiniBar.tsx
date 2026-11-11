@@ -9,6 +9,8 @@ import { isAdHocSession } from '../../shared/interruption';
 import { SessionTitle } from './SessionTitle';
 import { useUndo } from './UndoBar';
 import { Verb } from '../../shared/words';
+import { useCeremonyPrompt, useResumePrompt } from '../hooks/usePrompts';
+import { MiniPromptRow } from './MiniPromptRow';
 
 /**
  * The always-on-top mini timer: what the BUSY Bar shows, on screen.
@@ -34,6 +36,11 @@ export const MiniBar: React.FC = () => {
   const undo = useUndo();
   const screenIcon = useScreenIcon();
   const api = window.electronAPI;
+  // A question main is asking takes the row until it is answered (P8c).
+  const ceremony = useCeremonyPrompt();
+  const [resumePrompt, setResumePrompt] = useResumePrompt();
+  const [answeredCeremony, setAnsweredCeremony] = useState<typeof ceremony>(null);
+  const asking = resumePrompt !== null || (ceremony?.type === 'STANDUP' && ceremony !== answeredCeremony);
   /**
    * Stop opens the three ways to end a session, in place of the buttons:
    * the window is one row, with no room for a dialog. It used to log the time
@@ -46,7 +53,7 @@ export const MiniBar: React.FC = () => {
 
   const tracking = session?.status === 'TRACKING';
   const paused = session?.status === 'PAUSED';
-  const stripe = tracking ? 'bg-accent-green' : paused ? 'bg-accent-amber' : 'bg-border-dark';
+  const stripe = asking || paused ? 'bg-accent-amber' : tracking ? 'bg-accent-green' : 'bg-border-dark';
 
   // Failures are reported, not thrown into React: the session itself comes
   // back from main on its own channel, so a failed click leaves the display
@@ -77,6 +84,17 @@ export const MiniBar: React.FC = () => {
 
       {screenIcon && <ScreenIcon icon={screenIcon} className="w-8 h-8" />}
 
+      {asking && !choosing ? (
+        <MiniPromptRow
+          resume={resumePrompt}
+          ceremony={ceremony}
+          onAnswered={() => {
+            if (resumePrompt) setResumePrompt(null);
+            else setAnsweredCeremony(ceremony);
+          }}
+        />
+      ) : (
+      <>
       <div className="flex-1 min-w-0 leading-tight">
         {session ? (
           <>
@@ -257,6 +275,8 @@ export const MiniBar: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

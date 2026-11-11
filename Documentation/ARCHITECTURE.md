@@ -127,8 +127,11 @@ always-on-top window off-screen. It closes with the dashboard (`dispose`, which
 keeps `open` for the next launch), because Windows quits an app only when its
 last window is gone. Every broadcast -- the registry's and the engine tick's
 `session:on-updated` -- goes to all windows, or the mini timer would keep
-showing a session that has ended; targeted sends such as the ceremony prompt
-still reach the dashboard alone. Picking a task from the tray or the mini timer
+showing a session that has ended. The schedule's questions -- the ceremonies,
+the resume question, a session left running -- go to every window as well,
+through a `PromptOutlet` (`windows/prompt-outlet.ts`), which also shows a
+toast while the dashboard is hidden. Nothing that asks brings a window
+forward (P8c). Picking a task from the tray or the mini timer
 goes through `openTaskPickerInMainWindow`, which sends the picker's hardware
 action on `input:on-hardware-event` with `inputKey: 'app'`.
 
@@ -662,6 +665,17 @@ process, so without it a button press could take the whole app down.
 
 Runs the day: the stand-up and end-of-day prompts, Lunch, and Away on lock or
 suspend, from a check every 30 seconds.
+
+Its questions never take the focus (P8c). A ceremony asked is kept
+(`getCeremonyPrompt`, a `CeremonyPromptDTO` with its time) and sent on
+`schedule:on-ceremony-prompt` to every window through the `PromptOutlet`,
+with a toast while the dashboard is hidden; Join, Skip today (`skipStandup`,
+which releases the bar's prompt and draws nothing itself), Remind me
+(`snoozeCeremony`) and the wrap-up's end or cancel (`closeEodPrompt`) close
+it with a null. Today shows the stand-up as a card and the mini timer as its
+row; the wrap-up still opens its dialog, without coming forward. Lunch
+starting over a running task, and every resume question, are announced the
+same way.
 
 Lunch and Away pause a running session (`pauseSession('lunch' | 'away')`,
 the reason on its `paused_intervals` row), before the mode switches so the

@@ -691,18 +691,17 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(engine.getCurrentSession()).toBeNull();
   });
 
-  it('HandleHardwareInput_StartButtonPress_CallsWindowFocusCallbackWhenPausing', () => {
-    // Arrange
+  it('HandleHardwareInput_StartButtonPress_PausesWithoutBringingTheWindowForward', () => {
+    // P8c: pausing from the bar leaves the window where it is; the bar's
+    // paused menu is what answers next.
     engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
     let focusCalled = false;
     decoder.setWindowFocusCallback(() => { focusCalled = true; });
 
-    // Act: Press start button to pause task
     decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
 
-    // Assert
     expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-    expect(focusCalled).toBe(true);
+    expect(focusCalled).toBe(false);
   });
   it('HandleHardwareInput_StartButtonPress_ResumesPausedSession', () => {
     // Arrange: Start and pause
@@ -1504,15 +1503,17 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(picker).not.toHaveBeenCalled();
     });
 
-    it('HandleHardwareInput_StandupConfirmed_BringsTheAppForward', () => {
-      // Confirming the stand-up is the cue to go and write it.
+    it('HandleHardwareInput_StandupConfirmed_LeavesTheWindowWhereItIs', () => {
+      // P8c: no prompt takes the focus. Joining needs nothing from the
+      // window; the user is on their way to the meeting.
       showing = 'standupPromptPriority';
       const focus = vi.fn();
       decoder.setWindowFocusCallback(focus);
 
-      decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: at() });
+      const action = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: at() });
 
-      expect(focus).toHaveBeenCalledTimes(1);
+      expect(action).toBe('CONFIRM_STANDUP_PROMPT');
+      expect(focus).not.toHaveBeenCalled();
     });
 
     it('HandleHardwareInput_EodPromptGoneAndBack_StartsTheConfirmationOver', () => {

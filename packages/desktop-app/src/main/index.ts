@@ -19,6 +19,7 @@ import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { followBar } from './services/follow-bar';
 import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
+import { WindowPromptOutlet } from './windows/prompt-outlet';
 import { WorkingCalendar } from './services/working-calendar';
 import { APP_USER_MODEL_ID } from './app-identity';
 import { BitmapIconId } from '../shared/dtos';
@@ -31,7 +32,7 @@ import { defaultAnimationsDir, loadAnimationSequence } from './hardware/animatio
 import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
 import { UndoService } from './services/undo-service';
 import { undoableSessionEnding } from './services/undoable-commands';
-import { openTaskPickerInMainWindow } from './windows/main-window-actions';
+import { openTaskPickerInMainWindow, revealMainWindow } from './windows/main-window-actions';
 import { ForegroundRaiser } from './windows/foreground-raiser';
 import { ProviderManager } from './providers/provider-manager';
 
@@ -373,8 +374,19 @@ async function startApplication(): Promise<void> {
     new WorkingCalendar(settingsRepo, (from, to) => providerManager.getNonWorkingDays(from, to))
   );
 
+  // Questions reach every window and, while the dashboard is hidden, a toast
+  // whose click opens it. Nothing here takes the focus (P8c).
+  const promptOutlet = new WindowPromptOutlet({
+    getWindows: () => BrowserWindow.getAllWindows(),
+    getDashboard: () => mainWindow,
+    toasts,
+    openDashboard: () => { revealMainWindow(mainWindow); }
+  });
+  contextScheduleService.setPromptOutlet(promptOutlet);
+
   presenceMonitor = new PresenceMonitor(settingsRepo, () => powerMonitor.getSystemIdleTime());
   forgottenSessionService = new ForgottenSessionService(engine, settingsRepo, presenceMonitor, () => mainWindow);
+  forgottenSessionService.setPromptOutlet(promptOutlet);
   const forgotten = forgottenSessionService;
   const presence = presenceMonitor;
   // Back at the machine: look before anything records the new presence.

@@ -54,6 +54,13 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **No prompt takes the window.** The stand-up, "Back at your desk?", the
+  wrap-up and a session left running no longer bring SprintTicker up over
+  what you are typing. A question is a card on Today and a row on the mini
+  timer until you answer it, and a Windows notification while the window is
+  hidden. The stand-up's card stays until Join, Skip today or Remind me in 10
+  min -- the dialog it replaces closed itself after 10 s. Today also shows a
+  Lunch or Away card with Resume.
 - **Lunch and Away pause the task, and ask "Back at your desk?"** They used
   to stop it and start it again. Now the task is paused, the break untimed,
   and its time still goes in as two worklogs at the stop. When the break

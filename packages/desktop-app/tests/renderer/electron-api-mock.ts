@@ -234,6 +234,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     cancelEodWrapUp: vi.fn().mockResolvedValue(true),
     updateCeremonyPrompt: vi.fn().mockResolvedValue(true),
     snoozeCeremony: vi.fn().mockResolvedValue(true),
+    getCeremonyPrompt: vi.fn().mockResolvedValue(null),
     onCeremonyPrompt: subscribe('onCeremonyPrompt'),
     getResumePrompt: vi.fn().mockResolvedValue(null),
     answerResumePrompt: vi.fn().mockResolvedValue(true),

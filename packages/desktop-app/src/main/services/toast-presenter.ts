@@ -3,6 +3,8 @@ export interface ToastRequest {
   body: string;
   /** Opened when the toast is clicked -- only if it is an http(s) link. */
   url?: string;
+  /** Run when the toast is clicked: a prompt's opens the dashboard on it. */
+  onClick?: () => void;
 }
 
 export interface ToastPresenter {
@@ -75,6 +77,7 @@ export class ElectronToastPresenter implements ToastPresenter {
     notification.on('click', () => {
       this.release(notification);
       if (toast.url) this.open(toast.url);
+      toast.onClick?.();
     });
     notification.on('close', () => this.release(notification));
     notification.on('failed', (_event: unknown, error: unknown) => {

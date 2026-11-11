@@ -3,6 +3,9 @@ import { ActiveSessionDTO, TaskDTO, WorklogDTO } from '../../../shared/dtos';
 import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { formatClockTime, formatHoursAndMinutes as formatSeconds } from '../../utils/formatters';
 import { PickerMode } from '../../hooks/useModals';
+import { useCeremonyPrompt, useUserMode } from '../../hooks/usePrompts';
+import { BreakCard, StandupCard } from '../../components/PromptCards';
+import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
 
 interface TodayViewProps {
   session: ActiveSessionDTO | null;
@@ -20,8 +23,10 @@ interface TodayViewProps {
 }
 
 /**
- * Today (S4, S5): the task running and today's entries. Moved out of `App`
- * as it was; the cards of the redesign arrive with the flows they belong to.
+ * Today (S4, S5, S6): the questions waiting on the user, the task running,
+ * and today's entries. The questions are cards here, never dialogs that
+ * take the window (P8c): the stand-up, Lunch or Away, and "Back at your
+ * desk?".
  */
 export const TodayView: React.FC<TodayViewProps> = ({
   session,
@@ -35,8 +40,19 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onStopInterruption,
   onOpenPicker,
   onPrevious
-}) => (
+}) => {
+  const ceremony = useCeremonyPrompt();
+  const [mode, setMode] = useUserMode();
+  const leaveAway = () => {
+    setMode('WORK');
+    window.electronAPI.setUserMode('WORK').catch(err => console.warn('[TodayView] Leaving Away failed:', err));
+  };
+  return (
   <div className="space-y-6">
+    {ceremony?.type === 'STANDUP' && <StandupCard prompt={ceremony} session={session} />}
+    <ResumeAfterLunchPrompt />
+    <BreakCard mode={mode} session={session} onLeaveAway={leaveAway} />
+
     <ActiveTaskHeroCard
       session={session}
       onPause={onPause}
@@ -103,4 +119,5 @@ export const TodayView: React.FC<TodayViewProps> = ({
       </div>
     </section>
   </div>
-);
+  );
+};

@@ -3,6 +3,7 @@ import { IPCChannel } from '../../shared/ipc-channels';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { PresenceMonitor } from './presence-monitor';
+import type { PromptOutlet } from '../windows/prompt-outlet';
 import {
   ActiveSessionDTO,
   ArgumentException,
@@ -42,6 +43,7 @@ export class ForgottenSessionService {
   private readonly _settings: SettingsRepository;
   private readonly _presence: PresenceMonitor;
   private readonly _getWindow?: () => BrowserWindow | null;
+  private _outlet: PromptOutlet | null = null;
   private readonly _unsubscribe: () => void;
   private _timer?: NodeJS.Timeout;
 
@@ -186,7 +188,13 @@ export class ForgottenSessionService {
     this._engine.pauseSessionAt(lastPresenceUtc);
     const stored: StoredReview = { sessionId: session.sessionId, lastPresenceUtc };
     this._settings.setSetting(FORGOTTEN_REVIEW_KEY, stored);
-    this.send(this.getReview(), { bringForward: true });
+    this.send(this.getReview());
+    // The question waits in the window, which no longer comes forward to ask
+    // it (P8c); a toast says so while it is hidden.
+    this._outlet?.announce({
+      title: `${session.taskKey} ran all night`,
+      body: `Paused at your last activity, ${localClock(lastPresenceUtc)}. Click to say when you stopped; nothing is logged until you do.`
+    });
   }
 
   /** Anything else done to the session answers the question: a stop, a resume, a discard. */
@@ -211,18 +219,29 @@ export class ForgottenSessionService {
     return normalizeScheduleSettings(this._settings.getSetting<ScheduleSettingsDTO>('schedule_settings', {}));
   }
 
-  private send(review: ForgottenSessionReviewDTO | null, options: { bringForward?: boolean } = {}): void {
+  /** Where the question goes, and its toast while the window is hidden (P8c). */
+  public setPromptOutlet(outlet: PromptOutlet): void {
+    this._outlet = outlet;
+  }
+
+  /** Never brings the window forward: it used to show() and focus() it (P8c). */
+  private send(review: ForgottenSessionReviewDTO | null): void {
+    if (this._outlet) {
+      this._outlet.send(IPCChannel.ON_FORGOTTEN_SESSION_REVIEW, review);
+      return;
+    }
     const win = this._getWindow?.();
     if (!win || win.isDestroyed()) return;
-    if (options.bringForward) {
-      if (typeof win.isMinimized === 'function' && win.isMinimized()) win.restore();
-      if (typeof win.show === 'function') win.show();
-      if (typeof win.focus === 'function') win.focus();
-    }
     win.webContents.send(IPCChannel.ON_FORGOTTEN_SESSION_REVIEW, review);
   }
 
   private static isUnderReview(session: ActiveSessionDTO | null, stored: StoredReview): session is ActiveSessionDTO {
     return session !== null && session.sessionId === stored.sessionId && session.status === 'PAUSED';
   }
+}
+
+/** `18:04`, local: the toast's time, in main, which has no regional format. */
+function localClock(iso: string): string {
+  const at = new Date(iso);
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
 }
