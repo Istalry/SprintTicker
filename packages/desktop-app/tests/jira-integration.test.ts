@@ -44,6 +44,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
   let activity: ReturnType<typeof createFakeJira>['activity'];
   let worklogs: ReturnType<typeof createFakeJira>['worklogs'];
   let fakeOptions: ReturnType<typeof createFakeJira>['options'];
+  let issues: ReturnType<typeof createFakeJira>['issues'];
   let origin: string;
 
   beforeAll(async () => {
@@ -58,6 +59,7 @@ describe('JiraProvider against a live Jira-shaped server', () => {
     activity = fake.activity;
     worklogs = fake.worklogs;
     fakeOptions = fake.options;
+    issues = fake.issues;
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -418,7 +420,32 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       ['FAKE1-4', 'closed'],
       ['FAKE9-999', 'gone']
     ])('GetTaskStanding_%s_Is%s', async (key, expected) => {
-      expect(await (await configured()).getTaskStanding(key)).toBe(expected);
+      expect((await (await configured()).getTaskStanding(key)).state).toBe(expected);
+    });
+
+    it('GetTaskStanding_OpenIssues_SayWhoseTheyAre', async () => {
+      const issue = issues.find(i => i.key === 'FAKE1-2')!;
+      const before = issue.fields.assignee;
+      try {
+        const provider = await configured();
+        expect(await provider.getTaskStanding('FAKE1-1')).toEqual({ state: 'open', ownership: 'mine' });
+
+        issue.fields.assignee = { accountId: 'rin-1', displayName: 'Rin Okada' };
+        expect(await provider.getTaskStanding('FAKE1-2')).toEqual({ state: 'open', ownership: 'other', assigneeName: 'Rin Okada' });
+
+        issue.fields.assignee = null;
+        expect(await provider.getTaskStanding('FAKE1-2')).toEqual({ state: 'open', ownership: 'unassigned' });
+      } finally {
+        issue.fields.assignee = before;
+      }
+      expect(requests.find(r => r.pathname === '/rest/api/3/issue/FAKE1-2')?.fields).toBe('status,assignee');
+    });
+
+    it('GetTaskStanding_RefusedToken_FailsRatherThanGone', async () => {
+      // Jira answers an expired token as an anonymous caller, whose 404 for
+      // a private issue would read as deleted: every minute's check would
+      // then say the task the user is timing is gone.
+      await expect((await configured({}, true)).getTaskStanding('FAKE1-1')).rejects.toThrow();
     });
 
     it('GetTaskByKey_TypedLowerCase_TheIssueWithItsProject', async () => {

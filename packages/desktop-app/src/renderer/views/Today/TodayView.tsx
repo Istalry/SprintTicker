@@ -4,6 +4,7 @@ import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { PickerMode } from '../../hooks/useModals';
 import { useCeremonyPrompt, useMorning, useReminder, useUserMode } from '../../hooks/usePrompts';
 import { MorningCard } from '../../components/MorningCard';
+import { TaskLeftCard } from '../../components/TaskLeftCard';
 import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
@@ -67,6 +68,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
     <ResumeAfterLunchPrompt />
     <BreakCard mode={mode} session={session} onLeaveAway={leaveAway} />
     {reminder && <ReminderCard reminder={reminder} openPicker={() => onOpenPicker('start')} onAnswered={() => setReminder(null)} />}
+
+    {session?.taskUnlisted && !session.interruption && (
+      <TaskLeftCard key={`${session.sessionId}-${session.taskLeftBecause ?? 'reassigned'}`} session={session} onSwitch={() => onOpenPicker('start')} />
+    )}
 
     <ActiveTaskHeroCard
       session={session}

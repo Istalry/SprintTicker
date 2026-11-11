@@ -45,7 +45,7 @@ describe('A tracked task the provider stops listing', () => {
     remoteProjects = [{ id: '10000', key: 'SCRUM', name: 'My Software Team' }];
     remoteTasks = { '10000': [MINE, OTHER] };
     statusPushes = [];
-    getTaskStanding = vi.fn(async () => 'open');
+    getTaskStanding = vi.fn(async () => ({ state: 'open', ownership: 'mine' }));
     const manager = {
       getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60, getTaskStanding }),
       getProjects: async () => remoteProjects,
@@ -191,7 +191,7 @@ describe('A tracked task the provider stops listing', () => {
     ])('Sync_ProviderSaysTheTaskIs%s_TheSessionSays%s', async (standing, reason) => {
       engine.startTask(MINE.id);
       remoteTasks['10000'] = [OTHER];
-      getTaskStanding.mockResolvedValue(standing);
+      getTaskStanding.mockResolvedValue({ state: standing });
 
       await sync();
 
@@ -208,7 +208,7 @@ describe('A tracked task the provider stops listing', () => {
       await sync();
       const heard: Array<string | undefined> = [];
       engine.subscribe(session => heard.push(session?.taskLeftBecause));
-      getTaskStanding.mockResolvedValue('closed');
+      getTaskStanding.mockResolvedValue({ state: 'closed' });
 
       await sync();
 
@@ -234,7 +234,7 @@ describe('A tracked task the provider stops listing', () => {
       vi.spyOn(console, 'warn').mockImplementation(() => undefined);
       engine.startTask(MINE.id);
       remoteTasks['10000'] = [OTHER];
-      getTaskStanding.mockResolvedValue('closed');
+      getTaskStanding.mockResolvedValue({ state: 'closed' });
       await sync();
       getTaskStanding.mockRejectedValue(new Error('ECONNRESET'));
 
@@ -261,7 +261,7 @@ describe('A tracked task the provider stops listing', () => {
       const heard: Array<string | undefined> = [];
       engine.subscribe(session => heard.push(session?.taskLeftBecause));
       remoteTasks['10000'] = [OTHER];
-      getTaskStanding.mockResolvedValue('closed');
+      getTaskStanding.mockResolvedValue({ state: 'closed' });
 
       await sync();
 
@@ -273,7 +273,7 @@ describe('A tracked task the provider stops listing', () => {
       // it out of Closed again.
       engine.startTask(MINE.id);
       remoteTasks['10000'] = [OTHER];
-      getTaskStanding.mockResolvedValue('closed');
+      getTaskStanding.mockResolvedValue({ state: 'closed' });
       await sync();
 
       engine.stopSession('Finished', true);
@@ -285,7 +285,7 @@ describe('A tracked task the provider stops listing', () => {
     it('Sync_TaskListedAgain_ForgetsTheReason', async () => {
       engine.startTask(MINE.id);
       remoteTasks['10000'] = [OTHER];
-      getTaskStanding.mockResolvedValue('closed');
+      getTaskStanding.mockResolvedValue({ state: 'closed' });
       await sync();
 
       remoteTasks['10000'] = [MINE, OTHER];
@@ -380,7 +380,7 @@ describe('Tasks that are not the user\'s', () => {
     taskRepo = new TaskRepository(dbConn);
     remoteTasks = [MINE, FREE, ALICES];
     statusPushes = [];
-    getTaskStanding = vi.fn(async () => 'open');
+    getTaskStanding = vi.fn(async () => ({ state: 'open', ownership: 'mine' }));
     const manager = {
       getActiveProvider: () => ({ providerId: 'jira', minimumLoggableSeconds: 60, getTaskStanding }),
       getProjects: async () => [{ id: '20000', key: 'TEAM', name: 'Team', providerId: 'jira' }],
@@ -443,6 +443,117 @@ describe('Tasks that are not the user\'s', () => {
 
     expect(engine.getCurrentSession()).toMatchObject({ taskUnlisted: true, taskLeftBecause: 'reassigned' });
     expect(getTaskStanding).not.toHaveBeenCalled();
+  });
+
+  describe('the minute check (P8e2)', () => {
+    const RIN = { state: 'open', ownership: 'other', assigneeName: 'Rin Okada' };
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 10, 10, 14, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('GivenToSomeoneElse_TheSessionSaysSoWithinAMinute', async () => {
+      getTaskStanding.mockResolvedValue(RIN);
+      engine.startTask(MINE.id);
+      const told = vi.fn();
+      engine.subscribe(told);
+
+      await vi.advanceTimersByTimeAsync(59_000);
+      expect(getTaskStanding).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(3_000);
+
+      expect(getTaskStanding).toHaveBeenCalledWith(MINE.id);
+      expect(engine.getCurrentSession()).toMatchObject({
+        taskUnlisted: true, taskLeftBecause: 'reassigned', taskOwnerName: 'Rin Okada', taskLeftAtUtc: expect.any(String)
+      });
+      expect(told).toHaveBeenCalledWith(expect.objectContaining({ taskOwnerName: 'Rin Okada' }));
+    });
+
+    it('ClosedThere_SaysClosed', async () => {
+      getTaskStanding.mockResolvedValue({ state: 'closed' });
+      engine.startTask(MINE.id);
+
+      await vi.advanceTimersByTimeAsync(61_000);
+
+      expect(engine.getCurrentSession()).toMatchObject({ taskUnlisted: true, taskLeftBecause: 'closed' });
+    });
+
+    it('ReadFails_KeepsWhatWasKnown_AsksAgainNextMinute', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      getTaskStanding.mockRejectedValue(new Error('ECONNRESET'));
+      engine.startTask(MINE.id);
+
+      await vi.advanceTimersByTimeAsync(121_000);
+
+      expect(engine.getCurrentSession()?.taskUnlisted).toBeUndefined();
+      expect(getTaskStanding).toHaveBeenCalledTimes(2);
+    });
+
+    it('GivenBack_TheSessionIsTheUsersAgain', async () => {
+      getTaskStanding.mockResolvedValue(RIN);
+      engine.startTask(MINE.id);
+      await vi.advanceTimersByTimeAsync(61_000);
+      expect(engine.getCurrentSession()?.taskUnlisted).toBe(true);
+
+      getTaskStanding.mockResolvedValue({ state: 'open', ownership: 'mine' });
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(engine.getCurrentSession()?.taskUnlisted).toBeUndefined();
+      expect(engine.getCurrentSession()?.taskLeftAtUtc).toBeUndefined();
+    });
+
+    it('AdHocWork_NeverAsks', async () => {
+      engine.startTask('', true, 'Reading mail');
+
+      await vi.advanceTimersByTimeAsync(121_000);
+
+      expect(getTaskStanding).not.toHaveBeenCalled();
+    });
+
+    it('MoveSessionTo_TheTimeGoesToTheTaskWhichRuns', async () => {
+      getTaskStanding.mockResolvedValue(RIN);
+      engine.startTask(MINE.id);
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      const moved: Array<[string, string]> = [];
+
+      const next = engine.moveSessionTo(FREE.id, (worklogId, taskId) => { moved.push([worklogId, taskId]); });
+
+      const logged = new WorklogRepository(dbConn).getWorklogsByDate('2026-11-10');
+      expect(logged.map(w => [w.taskId, w.durationSeconds])).toEqual([[MINE.id, 300]]);
+      expect(moved).toEqual([[logged[0].id, FREE.id]]);
+      expect(next).toMatchObject({ taskId: FREE.id, status: 'TRACKING' });
+    });
+
+    it('MoveSessionTo_ShorterThanTheProviderRecords_RefusedBeforeAnythingStops', () => {
+      engine.startTask(MINE.id);
+      const reassign = vi.fn();
+
+      expect(() => engine.moveSessionTo(FREE.id, reassign)).toThrow(/at least 1 minute/);
+
+      expect(engine.getCurrentSession()?.taskId).toBe(MINE.id);
+      expect(reassign).not.toHaveBeenCalled();
+    });
+
+    it('MoveSessionTo_MoveRefused_TheTaskStillRuns_AndTheRefusalIsSaid', async () => {
+      engine.startTask(MINE.id);
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+
+      expect(() => engine.moveSessionTo(FREE.id, () => { throw new Error('at Jira, which cannot be corrected'); })).toThrow(/cannot be corrected/);
+
+      expect(engine.getCurrentSession()?.taskId).toBe(FREE.id);
+    });
+
+    it.each([
+      ['the same task', () => MINE.id, /already/],
+      ['ad-hoc work', () => 'adhoc_1_x', /not to ad-hoc/]
+    ])('MoveSessionTo_%s_Refused', (_name, target, message) => {
+      engine.startTask(MINE.id);
+
+      expect(() => engine.moveSessionTo(target(), vi.fn())).toThrow(message);
+    });
   });
 
   it('Sync_TrackedTaskChangesHands_TheScreensAreToldOnce', async () => {

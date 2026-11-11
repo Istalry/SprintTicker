@@ -15,6 +15,7 @@ import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/prov
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
+import { TASK_STANDING_CHECK_MS } from '../sync/sync-constants';
 import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
 import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
 import { hasTaskPage } from '../../shared/task-page';
@@ -75,6 +76,10 @@ export class TimeTrackingEngine extends EventEmitter {
   private _currentSession: ActiveSessionDTO | null = null;
   /** Whose the tracked task was at the last sync, for the session it was read for. */
   private _trackedOwnership: { sessionId: string; owner: TaskOwnershipValue } | null = null;
+  /** When the open session's task was first seen leaving the list; cleared when it comes back. */
+  private _leftSeen: { sessionId: string; atUtc: string } | null = null;
+  /** The minute check of the task being timed (P8e2): when it last asked, and whether it waits on an answer. */
+  private _standingCheck: { sessionId: string; lastMs: number; inFlight: boolean } | null = null;
   private _claimListeners: Set<(report: TaskClaimReport) => void> = new Set();
   private _tickTimer: NodeJS.Timeout | null = null;
   private _syncWorker: OfflineSyncWorker;
@@ -217,6 +222,7 @@ export class TimeTrackingEngine extends EventEmitter {
         // The held session, not an interruption's view of it: a take-up
         // waiting on the task waits through the interruption, paused.
         this._sideEffects.onTick(this.sessionView());
+        this.checkStandingEveryMinute();
       } catch {
         this.stopTickLoop();
       }
@@ -325,19 +331,101 @@ export class TimeTrackingEngine extends EventEmitter {
       const someoneElses = this.isSomeoneElses(session);
       const reason = someoneElses ? 'reassigned' : this._syncWorker.unlistedReason(session.taskId);
       const ownerName = someoneElses ? this._taskRepo.getTaskById(session.taskId)?.assigneeName : undefined;
+      // Seen here first, whichever read found it: the sync or the minute check.
+      if (this._leftSeen?.sessionId !== session.sessionId) {
+        this._leftSeen = { sessionId: session.sessionId, atUtc: new Date().toISOString() };
+      }
       return {
         ...session,
         taskUnlisted: true,
+        taskLeftAtUtc: this._leftSeen.atUtc,
         ...(reason ? { taskLeftBecause: reason } : {}),
         ...(ownerName ? { taskOwnerName: ownerName } : {})
       };
     }
+    if (this._leftSeen?.sessionId === session?.sessionId) this._leftSeen = null;
     // An interruption not yet named nor assigned says so: read from its task
     // row, which naming it clears, so the session never holds a stale copy.
     if (session && (session.isAdHoc || isAdHocTaskId(session.taskId)) && this._taskRepo.getTaskById(session.taskId)?.unsorted) {
       return { ...session, unsorted: true };
     }
     return session;
+  }
+
+  /**
+   * Reads the task being timed once a minute (P8e2), from the tick: a
+   * reassignment, a close or a deletion shows within a minute rather than at
+   * the next sync. Not during an interruption -- the held task waits -- nor
+   * for ad-hoc work; the worker skips what no provider can answer. The first
+   * read is a minute in, so a glance at a task reads nothing.
+   */
+  private checkStandingEveryMinute(): void {
+    if (this._interruptions.getRunning()) return;
+    const open = this._currentSession;
+    if (!open || open.isAdHoc || isAdHocTaskId(open.taskId)) return;
+    const nowMs = Date.now();
+    if (this._standingCheck?.sessionId !== open.sessionId) {
+      this._standingCheck = { sessionId: open.sessionId, lastMs: nowMs, inFlight: false };
+      return;
+    }
+    const check = this._standingCheck;
+    if (check.inFlight || nowMs - check.lastMs < TASK_STANDING_CHECK_MS) return;
+    check.lastMs = nowMs;
+    check.inFlight = true;
+    this._syncWorker.checkStanding(open.taskId).then(
+      changed => {
+        check.inFlight = false;
+        // The session may have ended or moved on while the read was out.
+        if (!changed || this._currentSession?.sessionId !== open.sessionId) return;
+        // The sync's own comparison then has nothing new to say.
+        this._trackedOwnership = { sessionId: open.sessionId, owner: this._taskRepo.ownershipOf(open.taskId) ?? TaskOwnership.MINE };
+        this.notifyListeners();
+      },
+      err => {
+        check.inFlight = false;
+        console.warn('[TimeTrackingEngine] The minute check of the task failed:', err);
+      }
+    );
+  }
+
+  /**
+   * "↳ Move my 1h 24m…" (S5b): the time so far on a task that left the
+   * user's list goes to another task, and the timer goes on there. The
+   * session is stopped as a switch stops it -- logged, its sends held --
+   * then each of its entries is moved (`reassign`, the correction service's,
+   * which turns an unsent send towards the new task), then the task starts.
+   *
+   * Refused before anything moves for an interruption (placed, not moved),
+   * ad-hoc work (assigned), the same task, or a time shorter than the new
+   * provider records. A move refused after the stop still starts the task:
+   * the time stays on the first, and the refusal is rethrown.
+   */
+  public moveSessionTo(taskId: string, reassign: (worklogId: string, taskId: string) => void): ActiveSessionDTO {
+    if (!taskId) throw new ArgumentNullException('taskId');
+    if (typeof reassign !== 'function') throw new ArgumentNullException('reassign');
+    if (this._interruptions.getRunning()) throw new ArgumentException('An interruption is placed on a task, not moved.', 'taskId');
+    const open = this.sessionView();
+    if (!open) throw new ArgumentException('Nothing is timing.', 'taskId');
+    if (open.isAdHoc || isAdHocTaskId(open.taskId)) throw new ArgumentException('Ad-hoc work is assigned to a task, not moved.', 'taskId');
+    if (open.taskId === taskId) throw new ArgumentException('The time is on that task already.', 'taskId');
+    if (isAdHocTaskId(taskId)) throw new ArgumentException('Move it to a task, not to ad-hoc work.', 'taskId');
+    const destination = this.sendDestinationOfTask(taskId);
+    if (destination && open.elapsedSeconds < destination.minimumSeconds) {
+      throw new ArgumentException(
+        `The provider records at least ${Math.ceil(destination.minimumSeconds / 60)} minute(s); the time so far cannot be moved there yet.`,
+        'taskId'
+      );
+    }
+    this.stopSession(WORKLOG_COMMENTS.SWITCHED_TASK);
+    let refusal: unknown = null;
+    try {
+      for (const log of this._worklogRepo.getWorklogsOfSession(open.sessionId)) reassign(log.id, taskId);
+    } catch (err) {
+      refusal = err;
+    }
+    const next = this.startTask(taskId);
+    if (refusal) throw refusal;
+    return next;
   }
 
   /// <summary>

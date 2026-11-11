@@ -749,7 +749,10 @@ asks why, and tells the user which it was:
 | `404` | Says the task is gone; the time is kept locally |
 
 The client asks at every sync while the session runs, since a task reassigned
-can be closed afterwards.
+can be closed afterwards -- and once a minute for the task being timed, so a
+reassignment shows within a minute. An open task's `assignee` says whose it
+is, read against `/me` as the task list's is: given to someone else, the
+client offers to keep timing, to move the time so far, or to switch.
 
 **Status codes:** `200`; `404`; `401`.
 
@@ -1188,7 +1191,7 @@ ships with its tests and documents. Paths are relative to
    | `updateTaskStatus('in_progress')` | `transitions {start}` |
    | `updateTaskStatus('done' / 'to_test' / 'to_review')` | `transitions {finish}` |
    | `assignToMe` | `assignment` (`assign`) |
-   | `getTaskStanding` | `GET /tasks/{id}` (`task_state`) |
+   | `getTaskStanding` | `GET /tasks/{id}` (`task_state`); an open task's ownership from `assignee.id` against `/me` |
    | `getNonWorkingDays` | `calendar` |
    | `getEventsSince`, `getEventsInboxUrl` | `events`, `eventsInboxUrl` |
    | `getTaskPageUrl` | the task's `url`, checked against `siteUrl` |

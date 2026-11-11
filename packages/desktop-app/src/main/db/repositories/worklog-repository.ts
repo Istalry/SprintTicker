@@ -773,6 +773,15 @@ export class WorklogRepository {
    * one. See local-date.ts for why the bounds are computed in JavaScript rather
    * than in SQL.
    */
+  /** A session's entries, in order: one, or a piece per day and long pause (`splitWork`). */
+  public getWorklogsOfSession(sessionId: string): WorklogRecord[] {
+    if (!sessionId) throw new ArgumentNullException('sessionId');
+    return this.dbConn.getDb()
+      .prepare<[string], WorklogRow>(`${SELECT_WORKLOGS} WHERE w.session_id = ? ORDER BY w.started_at_utc`)
+      .all(sessionId)
+      .map(toRecord);
+  }
+
   /** When the task's latest entry ended (its start plus its time), or null when it has none. */
   public getLastEndOf(taskId: string): string | null {
     if (!taskId) throw new ArgumentNullException('taskId');

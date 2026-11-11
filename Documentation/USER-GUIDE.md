@@ -226,7 +226,11 @@ entries; **show all** shows the rest.
 
 🔀 **A task that leaves your list while you track it** -- reassigned to someone
 else, closed or moved on Jira or OpenProject -- keeps running, and your time
-is logged as usual. SprintTicker asks the provider why, and the panel and the
+is logged as usual. The task you are timing is checked every minute, so a
+card on Today says so within a minute -- *MG-12 was given to Rin Okada at
+14:32* -- with **Keep timing on it**, **↳ Move my 1h 24m…**, which puts
+the time so far on the task you pick and goes on timing there, and
+**⇄ Switch task**. SprintTicker asks the provider why, and the panel and the
 mini timer say so: **No longer assigned to you**, **Closed on the provider**,
 or **No longer on the provider** when it was deleted or you can no longer see
 it. Marking it done asks first, since your completion transition would move a

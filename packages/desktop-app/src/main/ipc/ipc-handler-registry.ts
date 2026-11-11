@@ -293,6 +293,20 @@ export class IPCHandlerRegistry {
       return this.engine.startTask(payload.taskId, payload.isAdHoc, payload.customTitle);
     });
 
+    // "↳ Move my 1h 24m…" on a task that left the list (S5b): its time so
+    // far goes to the task picked, which then runs. Each entry moves as
+    // `worklogs:move` moves one, so its send goes to the new task.
+    ipcMain.handle(IPCChannel.MOVE_SESSION, async (_event, taskId: unknown) => {
+      if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('A move needs a task id.', 'taskId');
+      const corrections = this.worklogCorrections;
+      if (!corrections) throw new Error('Moving time is unavailable.');
+      try {
+        return this.engine.moveSessionTo(taskId, (worklogId, target) => corrections.reassign(worklogId, target));
+      } finally {
+        this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      }
+    });
+
     // Interruptions in a row (P6). Start goes through the schedule service,
     // the one place every surface's Interrupt meets; the rest are the
     // engine's, which holds the interrupted task, and the interruption

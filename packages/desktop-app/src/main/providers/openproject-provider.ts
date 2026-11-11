@@ -1,4 +1,4 @@
-import { ITaskProvider, WorklogPayload } from './task-provider-interface';
+import { ITaskProvider, TaskStanding, WorklogPayload } from './task-provider-interface';
 import { ProviderId, providerDisplayName } from '../../shared/provider-names';
 import { ProjectDTO, TaskDTO, OpStatusDTO, ArgumentException } from '../../shared/dtos';
 import { ProviderEventDTO, ProviderEventKind } from '../../shared/provider-events';
@@ -659,12 +659,13 @@ export class OpenProjectProvider implements ITaskProvider {
     return days.map(day => day.date).filter((date): date is string => typeof date === 'string');
   }
 
-  /** Where a work package stands: closed when its status says `isClosed`. */
-  public async getTaskStanding(taskId: string): Promise<'open' | 'closed' | 'gone'> {
+  /** Where a work package stands: closed when its status says `isClosed`; whose it is from its assignee. */
+  public async getTaskStanding(taskId: string): Promise<TaskStanding> {
     this.requireConfigured();
     if (!taskId) throw new ArgumentException('taskId is required to read where a task stands.');
 
     const id = OpenProjectProvider.workPackageId(taskId);
+    const me = await this.myUserId();
     try {
       const res = await providerFetch(
         this.providerId,
@@ -673,12 +674,21 @@ export class OpenProjectProvider implements ITaskProvider {
         `Reading the status of work package ${id}`,
         this._http
       );
-      const wp = (await res.json()) as { _embedded?: { status?: { isClosed?: boolean } } };
+      const wp = (await res.json()) as {
+        _embedded?: { status?: { isClosed?: boolean } };
+        _links?: { assignee?: { href?: string | null; title?: string } };
+      };
       // `isClosed` is set per status by the instance's administrator, so it
       // is the instance's own answer -- the name is not.
-      return wp._embedded?.status?.isClosed === true ? 'closed' : 'open';
+      if (wp._embedded?.status?.isClosed === true) return { state: 'closed' };
+      // Read as the sync reads it (toTask): a user's href ends in their id.
+      const assigneeHref = wp._links?.assignee?.href ?? null;
+      const assigneeId = assigneeHref ? (USER_HREF.exec(assigneeHref)?.[1] ?? assigneeHref) : null;
+      const ownership = ownershipOf(assigneeId, me);
+      const assigneeName = ownership === TaskOwnership.OTHER ? wp._links?.assignee?.title?.trim() : undefined;
+      return { state: 'open', ownership, ...(assigneeName ? { assigneeName } : {}) };
     } catch (err) {
-      if (err instanceof ProviderRequestError && err.status === 404) return 'gone';
+      if (err instanceof ProviderRequestError && err.status === 404) return { state: 'gone' };
       throw err;
     }
   }

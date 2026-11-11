@@ -54,6 +54,10 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **Your task given to someone else, seen within a minute.** The task you
+  are timing is checked every minute; when it is reassigned, closed or
+  deleted, a card on Today says so and offers to keep timing, to move the
+  time so far to another task, or to switch.
 - **A morning card.** The first look at Today on a working day offers to
   carry on with yesterday's last task, points at the interruptions still to
   place, says when the stand-up is, and lists your tasks in progress, each

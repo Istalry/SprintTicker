@@ -4,7 +4,7 @@ import { createId, IdPrefix, isAdHocTaskId } from '../id-generator';
 import { TOMBSTONE_PROJECT_ID } from '../migrations';
 import { ArgumentException, ArgumentNullException, TaskDTO } from '../../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../../shared/adhoc-project';
-import { parseTaskOwnership, TaskOwnership } from '../../../shared/task-ownership';
+import { parseTaskOwnership, TaskOwnership, TaskOwnershipValue } from '../../../shared/task-ownership';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
 import { StarIdentity, starIdentity } from '../../../shared/task-stars';
 import { ProviderId } from '../../../shared/provider-names';
@@ -172,6 +172,20 @@ export class TaskRepository {
       )
       .get(taskId);
     return (row?.n ?? 0) > 0;
+  }
+
+  /**
+   * Records whose the task is, as a single read of it said (the minute
+   * check, P8e2). True when that changed the row; the assignee's name is
+   * kept only for someone else's task, as the sync keeps it.
+   */
+  public setOwnership(taskId: string, ownership: TaskOwnershipValue, assigneeName?: string): boolean {
+    if (!taskId) throw new ArgumentNullException('taskId');
+    const name = ownership === TaskOwnership.OTHER ? (assigneeName ?? null) : null;
+    const result = this.dbConn.getDb()
+      .prepare('UPDATE tasks SET ownership = ?, assignee_name = ? WHERE id = ? AND (ownership IS NOT ? OR assignee_name IS NOT ?)')
+      .run(ownership, name, taskId, ownership, name);
+    return result.changes > 0;
   }
 
   /** Whose the task is; the user's for a task with no row, as for one from before ownership. */

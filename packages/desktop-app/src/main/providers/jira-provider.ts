@@ -1,4 +1,4 @@
-import { ITaskProvider, WorklogPayload } from './task-provider-interface';
+import { ITaskProvider, TaskStanding, WorklogPayload } from './task-provider-interface';
 import { ProviderId, providerDisplayName } from '../../shared/provider-names';
 import { ProjectDTO, TaskDTO, ArgumentException } from '../../shared/dtos';
 import { ProviderEventDTO, PROVIDER_EVENT_SUMMARY_MAX_CHARS } from '../../shared/provider-events';
@@ -620,23 +620,35 @@ export class JiraProvider implements ITaskProvider {
     );
   }
 
-  /** Where an issue stands: done when its status is in Jira's `done` category. */
-  public async getTaskStanding(taskId: string): Promise<'open' | 'closed' | 'gone'> {
+  /**
+   * Where an issue stands: done when its status is in Jira's `done`
+   * category, and whose it is from its assignee. `/myself` first, through
+   * its cache: Jira answers an expired token as an anonymous caller, and the
+   * 404 that caller gets for a private issue would read as `gone`.
+   */
+  public async getTaskStanding(taskId: string): Promise<TaskStanding> {
     this.requireConfigured();
     if (!taskId) throw new ArgumentException('taskId is required to read where a task stands.');
 
+    const me = await this.authenticatedAccountId();
     const url = new URL(`${this.getBaseUrl()}/rest/api/3/issue/${encodeURIComponent(taskId)}`);
-    url.searchParams.set('fields', 'status');
+    url.searchParams.set('fields', 'status,assignee');
     const context = `Reading the status of ${taskId}`;
     try {
       const res = await providerFetch(this.providerId, url.toString(), { headers: this.headers() }, context, this._http);
-      const body = await this.readJson<{ fields?: { status?: { statusCategory?: { key?: string } } } }>(res, context);
+      const body = await this.readJson<{
+        fields?: { status?: { statusCategory?: { key?: string } }; assignee?: JiraUser | null };
+      }>(res, context);
       // The category, never the name: a workflow can call done anything.
-      return body.fields?.status?.statusCategory?.key === 'done' ? 'closed' : 'open';
+      if (body.fields?.status?.statusCategory?.key === 'done') return { state: 'closed' };
+      const assignee = body.fields?.assignee;
+      const ownership = ownershipOf(assignee?.accountId, me);
+      const assigneeName = ownership === TaskOwnership.OTHER ? assignee?.displayName?.trim() : undefined;
+      return { state: 'open', ownership, ...(assigneeName ? { assigneeName } : {}) };
     } catch (err) {
       // Jira answers 404 alike for a deleted issue and one the user may no
       // longer see.
-      if (err instanceof ProviderRequestError && err.status === 404) return 'gone';
+      if (err instanceof ProviderRequestError && err.status === 404) return { state: 'gone' };
       throw err;
     }
   }

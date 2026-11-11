@@ -12,6 +12,9 @@ import { ProjectRepository } from '../db/repositories/project-repository';
 import { TaskRepository } from '../db/repositories/task-repository';
 import { ProviderManager } from '../providers/provider-manager';
 import { isAdHocTaskId } from '../db/id-generator';
+import { TaskStanding } from '../providers/task-provider-interface';
+import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { ArgumentNullException } from '../../shared/dtos';
 
 /**
  * Background worker service managing offline worklog retry queueing, periodic network sync,
@@ -353,7 +356,7 @@ export class OfflineSyncWorker {
       if (!provider?.getTaskStanding) continue;
       try {
         const standing = await provider.getTaskStanding(id);
-        const reason: TaskLeftReason = standing === 'open' ? 'reassigned' : standing;
+        const reason: TaskLeftReason = standing.state === 'open' ? 'reassigned' : standing.state;
         if (this.unlistedReasons.get(id) !== reason) changed = true;
         this.unlistedReasons.set(id, reason);
       } catch (err) {
@@ -361,6 +364,40 @@ export class OfflineSyncWorker {
       }
     }
     return changed;
+  }
+
+  /**
+   * Reads where the task being timed stands, between syncs (P8e2): the
+   * owner, every minute, so "given to Rin" shows within a minute rather than
+   * at the next sync. A task closed or gone joins the unlisted set with its
+   * reason, as the sync would put it; an open one has its owner written to
+   * its row, which is what the session reads. True when either changed.
+   *
+   * Skipped -- false -- offline, for ad-hoc work and the app's own
+   * projects, which no provider has, and for a provider with no single
+   * read. A failed read keeps what was known: the next minute asks again.
+   */
+  public async checkStanding(taskId: string): Promise<boolean> {
+    if (!taskId) throw new ArgumentNullException('taskId');
+    if (!this.isOnline || isAdHocTaskId(taskId)) return false;
+    const projectId = this.taskRepo.getTaskById(taskId)?.projectId;
+    if (projectId && this.projectRepo.getProviderIdOf(projectId) === OWN_PROJECT_PROVIDER_ID) return false;
+    const provider = this.providerOfTask(taskId);
+    if (!provider?.getTaskStanding) return false;
+    let standing: TaskStanding;
+    try {
+      standing = await provider.getTaskStanding(taskId);
+    } catch (err) {
+      console.warn(`[OfflineSyncWorker] Could not check where ${taskId} stands; keeping what was known.`, err);
+      return false;
+    }
+    if (standing.state !== 'open') {
+      if (this.unlistedTaskIds.has(taskId) && this.unlistedReasons.get(taskId) === standing.state) return false;
+      this.unlistedTaskIds = new Set([...this.unlistedTaskIds, taskId]);
+      this.unlistedReasons.set(taskId, standing.state);
+      return true;
+    }
+    return standing.ownership ? this.taskRepo.setOwnership(taskId, standing.ownership, standing.assigneeName) : false;
   }
 
   /** The provider a task came from, by its project; the active one when that is not known. */

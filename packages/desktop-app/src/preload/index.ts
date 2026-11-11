@@ -129,6 +129,7 @@ const electronAPI: IElectronAPI = {
   getPreviousTask: () => ipcRenderer.invoke(IPCChannel.GET_PREVIOUS_TASK),
   renameAdHocTask: (taskId: string, title: string) => ipcRenderer.invoke(IPCChannel.RENAME_AD_HOC_TASK, taskId, title),
   moveWorklog: (worklogId: string, taskId: string) => ipcRenderer.invoke(IPCChannel.MOVE_WORKLOG, worklogId, taskId),
+  moveSessionTo: (taskId: string) => ipcRenderer.invoke(IPCChannel.MOVE_SESSION, taskId),
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) =>
     ipcRenderer.invoke(IPCChannel.UPDATE_WORKLOG, worklogId, correction),
   deleteWorklog: (worklogId: string) => ipcRenderer.invoke(IPCChannel.DELETE_WORKLOG, worklogId),

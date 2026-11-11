@@ -22,6 +22,13 @@ export const UNDO_WINDOW_MS = 10_000;
 export const SYNC_INTERVAL_MS = 300_000; // 5 minutes
 
 /**
+ * How often the task being timed is read on its own (P8e2): a reassignment
+ * shows within a minute instead of at the next sync. One request a minute,
+ * and only while a provider's task is timing.
+ */
+export const TASK_STANDING_CHECK_MS = 60_000;
+
+/**
  * Attempts before a row is parked as FAILED.
  *
  * FAILED is no longer terminal -- a schema migration requeues such rows on

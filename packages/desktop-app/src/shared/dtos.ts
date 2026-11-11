@@ -56,6 +56,8 @@ export interface ActiveSessionDTO {
    * pick and the start. Absent when unknown or the user's.
    */
   taskOwnerName?: string;
+  /** When this app first saw the task leave the user's list, for "given to Rin at 14:32" (S5b). */
+  taskLeftAtUtc?: string;
 }
 
 /** Why a tracked task left the provider's list: see `ActiveSessionDTO.taskLeftBecause`. */

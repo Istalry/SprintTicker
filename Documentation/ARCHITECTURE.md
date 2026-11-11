@@ -372,6 +372,16 @@ ends retires it as usual. Why it left (`getTaskStanding`, `taskLeftBecause`)
 is asked at every sync while it is unlisted, and the session re-sent only
 when the answer changes: asked once, a task reassigned and then closed kept
 "reassigned", and FINISH sent its transition to a closed work package.
+Between syncs the engine reads the task being timed once a minute
+(`checkStandingEveryMinute`, on its tick; `TASK_STANDING_CHECK_MS`) through
+`OfflineSyncWorker.checkStanding`: a task closed or gone joins the unlisted
+set with its reason, an open one has its owner written to its row
+(`TaskRepository.setOwnership`), and the session is re-sent when either
+changed. Not during an interruption, for ad-hoc work or the app's own
+projects, offline, or for a provider without the read; a failed read keeps
+what was known. The session says when the task was first seen leaving
+(`taskLeftAtUtc`), and `moveSessionTo` moves its time so far to another
+task -- stop, `reassign` each entry, start -- for Today's card (S5b).
 
 A pass that arrives mid-pass does not get dropped: the single-dispatcher guard
 **coalesces**, setting a flag so the new row drains before the current pass

@@ -382,7 +382,20 @@ describe('Correcting a time entry on a live OpenProject-shaped server', () => {
     fake.deletedWorkPackages.clear();
     arrange();
 
-    expect(await provider.getTaskStanding('OP-108')).toBe(expected);
+    expect((await provider.getTaskStanding('OP-108')).state).toBe(expected);
+  });
+
+  it('GetTaskStanding_OpenWorkPackages_SayWhoseTheyAre', async () => {
+    fake.closedWorkPackages.clear();
+    fake.deletedWorkPackages.clear();
+    expect(await provider.getTaskStanding('OP-108')).toEqual({ state: 'open', ownership: 'mine' });
+
+    fake.assignees.set(108, { id: 12, name: 'Alice Martin' });
+    expect(await provider.getTaskStanding('OP-108')).toEqual({ state: 'open', ownership: 'other', assigneeName: 'Alice Martin' });
+
+    fake.assignees.set(108, null);
+    expect(await provider.getTaskStanding('OP-108')).toEqual({ state: 'open', ownership: 'unassigned' });
+    fake.assignees.clear();
   });
 
   it.each([['OP-1001'], ['#1001'], ['1001']])('GetTaskByKey_%s_TheWorkPackageWithItsProject', async typed => {

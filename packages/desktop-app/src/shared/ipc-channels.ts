@@ -6,6 +6,7 @@ export enum IPCChannel {
   // Session & Timer Controls
   GET_CURRENT_SESSION = 'session:get-current',
   START_TASK = 'session:start-task',
+  MOVE_SESSION = 'session:move-to',
   /** Interrupt: a timer at once on a new ad-hoc task, the task it stops asked about at its end. */
   /** Kept as an alias of `interruption:start` for one release (P6). */
   START_INTERRUPTION = 'session:start-interruption',

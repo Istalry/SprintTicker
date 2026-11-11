@@ -30,6 +30,7 @@ Everything else is a request/response `invoke`.
 | :--- | :--- |
 | `session:get-current` | The live session, or `null` |
 | `session:start-task` | Start tracking a task |
+| `session:move-to` | `(taskId)`. "↳ Move my 1h 24m…" (S5b): stops the open session as a switch does, moves each of its entries to the task as `worklogs:move` does, and starts that task; answers the new session. Refused before anything stops for an interruption, ad-hoc work, the same task, or less time than the new provider records; a move refused after the stop still starts the task and rejects with the reason |
 | `session:rename` | Name the open ad-hoc session, and its task (so History follows): a string, trimmed, at most 120 characters (`checkAdHocTitle`). Clears the task's unsorted mark. Refused for a provider's task, which keeps the provider's name. Answers the session |
 | `session:assign` | Assign the open ad-hoc session to a task, by id, in place: the session keeps its start and pauses, takes the task's project, key and title, and gets the task's provider -- ad-hoc work had none. The task is taken up as a start takes it up (In Progress, or claimed when nobody has it); the ad-hoc row is retired. Refused for a provider task's session, an ad-hoc target, or an unknown task. Answers the session |
 | `mini:open-assign-picker` | Open the picker window (`#picker?mode=assign`) to choose the task the open ad-hoc session goes to. Answers whether a picker opened: when the window cannot be made, the dashboard's picker opens instead, and `false` means there was no dashboard either |
@@ -292,9 +293,12 @@ interface ITaskProvider {
   updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void>;
   deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
 
-  // Optional: where one task stands, for a tracked task that left the list.
-  // 404 is 'gone'; any other failure throws.
-  getTaskStanding?(taskId: string): Promise<'open' | 'closed' | 'gone'>;
+  // Optional: where one task stands -- for a tracked task that left the
+  // list, and once a minute for the task being timed. 404 is 'gone'; an
+  // open task carries its ownership (and the assignee's name when it is
+  // someone else's); any other failure throws. Checks the credentials
+  // first, so a refused token never reads as 'gone'.
+  getTaskStanding?(taskId: string): Promise<TaskStanding>; // { state: 'open' | 'closed' | 'gone'; ownership?; assigneeName? }
 
   // Optional: one task by the key the user typed in the picker -- Jira's
   // /issue/{key}; OpenProject's work package by OP-1234, #1234 or 1234 --

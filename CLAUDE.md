@@ -1358,6 +1358,14 @@ sending one moved an OpenProject work package out of Closed again. Every
 place that decides goes through `finishNeedsConfirmation` in
 `shared/task-left.ts`, so the window, the mini timer and the bar cannot
 disagree.
+**The task being timed is also read once a minute** (P8e2,
+`OfflineSyncWorker.checkStanding` from the engine's tick), so "given to
+Rin" shows within a minute: the same `getTaskStanding`, which now answers
+the owner of an open task too. **That read checks the credentials first**
+(Jira's `/myself`, cached): Jira answers an expired token as an anonymous
+caller, whose 404 for a private issue would read as `gone` every minute.
+Never for ad-hoc work or the app's own projects -- the active-provider
+fallback would ask Jira about a local id and read its 404 as `gone`.
 
 **Ad-hoc time is never queued.** It has no ticket on any provider: queued
 for the active one, Jira was asked to log time on an issue called

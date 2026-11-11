@@ -543,6 +543,30 @@ describe('IPC handlers', () => {
       await expect(move({}, worklogId, taskId)).rejects.toThrow();
     });
 
+    it.each([[undefined], [7], ['']])('MoveSession_NotATaskId_IsRefused_%#', async taskId => {
+      await expect(invoke(IPCChannel.MOVE_SESSION, taskId)).rejects.toThrow(/task id/);
+    });
+
+    it('MoveSession_EachEntryMovedThroughTheCorrections_TheDayIsResent', async () => {
+      const reassign = vi.fn();
+      const moveSessionTo = vi.spyOn(engine, 'moveSessionTo').mockImplementation((_taskId, move) => {
+        move('w1', 'T-9');
+        return null as never;
+      });
+      build({ worklogCorrections: { reassign } });
+
+      await invoke(IPCChannel.MOVE_SESSION, 'T-9');
+
+      expect(moveSessionTo).toHaveBeenCalledWith('T-9', expect.any(Function));
+      expect(reassign).toHaveBeenCalledWith('w1', 'T-9');
+    });
+
+    it('MoveSession_NoCorrections_Refused', async () => {
+      build({});
+
+      await expect(invoke(IPCChannel.MOVE_SESSION, 'T-9')).rejects.toThrow(/unavailable/);
+    });
+
     it.each([[undefined], [7], ['']])('AssignSession_NotATaskId_IsRefused_%#', async taskId => {
       await invoke(IPCChannel.START_INTERRUPTION);
 

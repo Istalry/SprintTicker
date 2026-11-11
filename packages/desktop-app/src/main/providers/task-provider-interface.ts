@@ -1,6 +1,20 @@
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ProviderEventDTO } from '../../shared/provider-events';
 import { TaskClaim } from '../../shared/task-claim';
+import { TaskOwnershipValue } from '../../shared/task-ownership';
+
+/**
+ * Where one task stands, read on its own: `open`, `closed` (done on the
+ * provider) or `gone` -- deleted, or no longer visible to the user, which
+ * the provider answers alike with a 404. An open task says whose it is, read
+ * from its assignee as the sync reads it (`ownershipOf`), with the
+ * assignee's name when it is someone else's.
+ */
+export interface TaskStanding {
+  state: 'open' | 'closed' | 'gone';
+  ownership?: TaskOwnershipValue;
+  assigneeName?: string;
+}
 
 export interface WorklogPayload {
   taskId: string;
@@ -124,13 +138,15 @@ export interface ITaskProvider {
   getTaskPageUrl?(task: Pick<TaskDTO, 'id' | 'key'>): string | null;
 
   /**
-   * Where one task stands, read on its own: `open`, `closed` (done on the
-   * provider), or `gone` -- deleted, or no longer visible to the user, which
-   * the provider answers alike with a 404. For a tracked task that left the
-   * list, so the user is told which of those it was. Throws on any other
-   * failure; optional, since a provider without a remote has no answer.
+   * Where one task stands (`TaskStanding`), read on its own: for a tracked
+   * task that left the list, so the user is told which way, and once a
+   * minute for the task being timed (P8e2), so a reassignment is seen
+   * before the next sync. Checks the credentials first where a provider
+   * answers a refused token as an anonymous caller, whose 404 would read as
+   * `gone`. Throws on any other failure; optional, since a provider without
+   * a remote has no answer.
    */
-  getTaskStanding?(taskId: string): Promise<'open' | 'closed' | 'gone'>;
+  getTaskStanding?(taskId: string): Promise<TaskStanding>;
 
   /**
    * What happened to the user's tasks after `sinceUtc` (exclusive): assigned,

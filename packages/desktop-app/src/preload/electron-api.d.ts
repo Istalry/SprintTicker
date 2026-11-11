@@ -151,6 +151,8 @@ export interface IElectronAPI {
   renameAdHocTask: (taskId: string, title: string) => Promise<void>;
   /** Moves a worklog to another task, here and at the providers through the queue. Rejects with the reason when refused. */
   moveWorklog: (worklogId: string, taskId: string) => Promise<WorklogDTO>;
+  /** The time so far on the open session goes to `taskId`, which then runs (S5b). */
+  moveSessionTo: (taskId: string) => Promise<ActiveSessionDTO>;
   /** Corrects a worklog here and queues the change for its provider. Rejects with the reason when refused. */
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) => Promise<WorklogDTO>;
   /** Deletes a worklog here and queues its deletion at the provider. */
