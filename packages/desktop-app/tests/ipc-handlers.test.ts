@@ -71,7 +71,7 @@ describe('IPC handlers', () => {
     if (!found) throw new Error(`No handler for ${channel}`);
     return found[1] as (event: unknown, payload?: unknown) => Promise<unknown>;
   };
-  const invoke = (channel: string, payload?: unknown) => handler(channel)({}, payload);
+  const invoke = (channel: string, ...payload: unknown[]) => handler(channel)({}, ...payload);
   const sentOn = (channel: string) => sent.filter(s => s.channel === channel).map(s => s.payload);
 
   /**
@@ -952,6 +952,32 @@ describe('IPC handlers', () => {
   });
 
   describe('diagnostics export', () => {
+    it('ExportWorklogsCsv_PathChosen_WritesTheWeekThere_CancelWritesNothing', async () => {
+      const file = path.join(dir, 'week.csv');
+      electron.dialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: file });
+
+      await expect(invoke(IPCChannel.EXPORT_WORKLOGS_CSV, '2026-11-02', '2026-11-08')).resolves.toBe(file);
+      expect(fs.readFileSync(file, 'utf-8')).toBe('Date,Start,End,Duration,Hours,Project,Task,Title,Note,Sent' + String.fromCharCode(13, 10));
+      expect(electron.dialog.showSaveDialog.mock.calls[0][1].defaultPath).toBe('sprintticker-2026-11-02-to-2026-11-08.csv');
+
+      electron.dialog.showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined });
+      await expect(invoke(IPCChannel.EXPORT_WORKLOGS_CSV, '2026-11-02', '2026-11-08')).resolves.toBeNull();
+    });
+
+    it.each([
+      ['no days', undefined, undefined],
+      ['a day not a key', 'Monday', '2026-11-08'],
+      ['the wrong way round', '2026-11-08', '2026-11-02']
+    ])('WorklogRange_%s_IsRefused', async (_name, from, to) => {
+      await expect(invoke(IPCChannel.GET_WORKLOGS_RANGE, from, to)).rejects.toThrow(/two days/);
+      await expect(invoke(IPCChannel.EXPORT_WORKLOGS_CSV, from, to)).rejects.toThrow(/two days/);
+      expect(electron.dialog.showSaveDialog).not.toHaveBeenCalled();
+    });
+
+    it('WorklogRange_AWeek_AnswersItsEntries', async () => {
+      await expect(invoke(IPCChannel.GET_WORKLOGS_RANGE, '2026-11-02', '2026-11-08')).resolves.toEqual([]);
+    });
+
     it('ExportDiagnostics_PathChosen_WritesTheBundleThere', async () => {
       const file = path.join(dir, 'bundle.json');
       electron.dialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: file });

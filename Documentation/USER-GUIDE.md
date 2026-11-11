@@ -514,6 +514,21 @@ moves or deletes it. The arrow beside a task opens it on Jira or
 OpenProject, as on Today and in Tasks. Interruptions still to place, of any
 day, are listed above the day.
 
+📅 **The week** (**Week**, beside **Day**): a timesheet of the week the day
+falls in. Each project with its total, the largest open and the others a
+click away; under it each task's time on each day. Then the **Day** row,
+and **In Jira** (or OpenProject) -- *what your manager sees*: only what your
+provider holds, so an entry held by an overlap, still sending or refused is
+not in it, and a correction not answered yet still counts its old value.
+A day that differs is amber and says why: *20m held*, *18m to place*,
+*correction waiting*. The line under the sheet names each exception. Click
+a day's total, or a task's time, to open that day. Weekends show when they
+have time.
+
+**Export CSV** saves the week as a spreadsheet where you choose: one row per
+entry with its date, start and end in your local time, its length (also in
+decimal hours), project, task, note, and whether it was sent.
+
 ▨ **The day as a timeline.** Under the day's figures, a strip shows your
 working hours -- from the stand-up to the wrap-up, as set in **Settings, My
 workday** -- with each entry a block named by its task, ⚡ for time that began

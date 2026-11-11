@@ -81,6 +81,10 @@ export enum IPCChannel {
   UPDATE_TASK = 'tasks:update',
   IMPORT_TASKS = 'tasks:import',
   GET_WORKLOGS_BY_DATE = 'worklogs:get-by-date',
+  /** The worklogs of local days `from` to `to`, both included, oldest first (S15). */
+  GET_WORKLOGS_RANGE = 'worklogs:get-range',
+  /** Saves those days' worklogs as CSV where the user chooses; answers the path, or null. */
+  EXPORT_WORKLOGS_CSV = 'worklogs:export-csv',
   GET_UNSORTED_WORKLOGS = 'worklogs:get-unsorted',
   RENAME_AD_HOC_TASK = 'tasks:rename-ad-hoc',
   /** Stars a task by its provider and key (migration 14); answers the starred list. */

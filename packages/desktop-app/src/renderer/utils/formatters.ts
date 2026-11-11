@@ -84,6 +84,18 @@ export function formatLongDay(dateKey: string): string {
   return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+/** `Mon` or `Monday`, in the regional format, from a local date key: the week's columns and sentences. */
+export function formatWeekday(dateKey: string, width: 'short' | 'long' = 'short'): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { weekday: width });
+}
+
+/** `2 November`, in the regional format, from a local date key: "Week of 2 November". */
+export function formatDayAndMonth(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { day: 'numeric', month: 'long' });
+}
+
 /** "1 task", "4 tasks": a count with its noun, never "task(s)". */
 export function countOf(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;

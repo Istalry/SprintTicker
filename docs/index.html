@@ -1026,6 +1026,19 @@
       moves or deletes it. The arrow beside a task opens it on Jira or
       OpenProject, as on Today and in Tasks. Interruptions still to place, of any
       day, are listed above the day.</p>
+      <p>📅 <strong>The week</strong> (<strong>Week</strong>, beside <strong>Day</strong>): a timesheet of the week the day
+      falls in. Each project with its total, the largest open and the others a
+      click away; under it each task&#39;s time on each day. Then the <strong>Day</strong> row,
+      and <strong>In Jira</strong> (or OpenProject) -- <em>what your manager sees</em>: only what your
+      provider holds, so an entry held by an overlap, still sending or refused is
+      not in it, and a correction not answered yet still counts its old value.
+      A day that differs is amber and says why: <em>20m held</em>, <em>18m to place</em>,
+      <em>correction waiting</em>. The line under the sheet names each exception. Click
+      a day&#39;s total, or a task&#39;s time, to open that day. Weekends show when they
+      have time.</p>
+      <p><strong>Export CSV</strong> saves the week as a spreadsheet where you choose: one row per
+      entry with its date, start and end in your local time, its length (also in
+      decimal hours), project, task, note, and whether it was sent.</p>
       <p>▨ <strong>The day as a timeline.</strong> Under the day&#39;s figures, a strip shows your
       working hours -- from the stand-up to the wrap-up, as set in <strong>Settings, My
       workday</strong> -- with each entry a block named by its task, ⚡ for time that began
@@ -2401,6 +2414,12 @@
       <td align="left">Here only</td>
       </tr>
       </tbody></table></div>
+      <p>History&#39;s week (S15) is <code>shared/week-sheet.ts</code> over <code>worklogs:get-range</code>:
+      each task&#39;s time per day grouped by project, the Day row, and the provider&#39;s
+      row, which sums <code>providerSeconds</code> -- the duration of the last <code>SYNCED</code> queue
+      row for the worklog on its current task, a <code>DELETE</code> counting as nothing. So
+      the row is what the provider holds, not what it will hold: a correction not
+      answered yet leaves the old value. Check my week (P9d) reads the same sheet.</p>
       <p>History&#39;s timeline (S14b) is drawn from <code>shared/day-gaps.ts</code>: a day&#39;s working
       window -- the stand-up to the wrap-up on a working day, the hours the
       reminders use (<code>inWorkingHours</code>) -- less its lunch, less every entry and, on
@@ -3622,6 +3641,14 @@
       <tr>
       <td align="left"><code>worklog:delete</code></td>
       <td align="left"><code>(worklogId)</code>. Deletes the worklog here at once and queues its deletion at the provider; answers <code>true</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklogs:get-range</code></td>
+      <td align="left"><code>(from, to)</code>: local days <code>YYYY-MM-DD</code>, both included, <code>from</code> not after <code>to</code>. The worklogs begun on them, oldest first, each with <code>projectId</code>, <code>projectName</code> and <code>providerSeconds</code> -- what its provider holds by the last send it answered (absent when it holds nothing; the old value while a correction waits). History&#39;s week (S15)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklogs:export-csv</code></td>
+      <td align="left"><code>(from, to)</code>, as <code>worklogs:get-range</code>. Asks where to save (<code>sprintticker-&lt;from&gt;-to-&lt;to&gt;.csv</code>) and writes those worklogs as CSV (<code>shared/worklog-csv.ts</code>: Date, Start, End, Duration, Hours, Project, Task, Title, Note, Sent; local times; RFC 4180 quoting; a cell starting <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> gets a leading <code>&#39;</code>). Answers the path, or null when cancelled</td>
       </tr>
       <tr>
       <td align="left"><code>worklog:create-manual</code></td>

@@ -1,5 +1,6 @@
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
 import { ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { worklogsToCsv } from '../../shared/worklog-csv';
 import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
@@ -133,6 +134,11 @@ function isWorklogCorrection(value: unknown): value is WorklogCorrectionDTO {
     typeof c.startedAtUtc === 'string' &&
     typeof c.comment === 'string'
   );
+}
+
+/** `YYYY-MM-DD`, a local day as the window names it. */
+function isDateKey(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function isManualWorklog(value: unknown): value is ManualWorklogDTO {
@@ -598,6 +604,27 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.RENAME_AD_HOC_TASK, async (_event, taskId: unknown, title: unknown) => {
       if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('A task id is required.', 'taskId');
       this.engine.renameAdHocTask(taskId, checkAdHocTitle(title));
+    });
+
+    ipcMain.handle(IPCChannel.GET_WORKLOGS_RANGE, async (_event, from: unknown, to: unknown) => {
+      if (!isDateKey(from) || !isDateKey(to) || from > to) throw new ArgumentException('A range needs two days, YYYY-MM-DD, the first not after the second.');
+      return this.worklogRepo.getWorklogsBetween(from, to);
+    });
+
+    // The window names the days; main writes the file, where the user says.
+    ipcMain.handle(IPCChannel.EXPORT_WORKLOGS_CSV, async (_event, from: unknown, to: unknown): Promise<string | null> => {
+      if (!isDateKey(from) || !isDateKey(to) || from > to) throw new ArgumentException('A range needs two days, YYYY-MM-DD, the first not after the second.');
+      const csv = worklogsToCsv(this.worklogRepo.getWorklogsBetween(from, to));
+      const win = this.getWindow();
+      if (!win) return null;
+      const { canceled, filePath } = await dialog.showSaveDialog(win, {
+        title: 'Export the worklogs as CSV',
+        defaultPath: `sprintticker-${from}-to-${to}.csv`,
+        filters: [{ name: 'CSV', extensions: ['csv'] }]
+      });
+      if (canceled || !filePath) return null;
+      await fs.promises.writeFile(filePath, csv, 'utf-8');
+      return filePath;
     });
 
     ipcMain.handle(IPCChannel.GET_WORKLOGS_BY_DATE, async (_event, payload: string | Record<string, string> | unknown) => {

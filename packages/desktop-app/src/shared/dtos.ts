@@ -511,6 +511,15 @@ export interface WorklogDTO {
   unsorted?: true;
   /** Time that started as an interruption, placed on this task: Today marks it ⚡ (P8e). */
   fromInterruption?: true;
+  /** Its task's project, for the week's groups (S15). */
+  projectId?: string;
+  projectName?: string;
+  /**
+   * What its provider holds, by the last send it answered -- the week's "In
+   * Jira" row. Absent when it holds nothing: never sent, waiting, or deleted.
+   * A correction not answered yet leaves the old value here.
+   */
+  providerSeconds?: number;
 }
 
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';

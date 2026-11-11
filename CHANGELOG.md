@@ -4,6 +4,10 @@
 
 ### Added
 
+- **The week as a timesheet.** History's **Week** groups the week by
+  project, with a Day row and a row of what Jira or OpenProject actually
+  holds -- what your manager sees -- and says on each day why the two
+  differ. **Export CSV** saves the week for a spreadsheet.
 - **The day as a timeline.** History draws your working hours as a strip:
   each entry a block, lunch, and what no entry covers hatched, with how much
   that is. A click on a hatched stretch opens Add time at its times; a click

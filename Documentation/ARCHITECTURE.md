@@ -412,6 +412,13 @@ What it queues depends on how far the send got:
 | Claimed or delivered | An `UPDATE` behind it; one unsent per worklog, the latest wins | A `DELETE` behind it, replacing any unsent `UPDATE` |
 | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
 
+History's week (S15) is `shared/week-sheet.ts` over `worklogs:get-range`:
+each task's time per day grouped by project, the Day row, and the provider's
+row, which sums `providerSeconds` -- the duration of the last `SYNCED` queue
+row for the worklog on its current task, a `DELETE` counting as nothing. So
+the row is what the provider holds, not what it will hold: a correction not
+answered yet leaves the old value. Check my week (P9d) reads the same sheet.
+
 History's timeline (S14b) is drawn from `shared/day-gaps.ts`: a day's working
 window -- the stand-up to the wrap-up on a working day, the hours the
 reminders use (`inWorkingHours`) -- less its lunch, less every entry and, on

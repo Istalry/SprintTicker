@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScheduleSettingsDTO, WorklogDTO } from '../../../shared/dtos';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 import { BREAKDOWN_SHOWN, describeSends, summarizeDay } from '../../../shared/day-summary';
-import { countOf, formatHoursAndMinutes, formatLongDay } from '../../utils/formatters';
+import { countOf, formatDayAndMonth, formatHoursAndMinutes, formatLongDay, ipcErrorMessage } from '../../utils/formatters';
+import { weekStartKey } from '../../../shared/working-days';
+import { WeekView } from './WeekView';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { useEntryActions } from '../../components/EntryActions';
 import { EntriesHead, EntryRow } from '../../components/EntryRow';
@@ -67,6 +69,9 @@ export const WorklogHistoryView: React.FC = () => {
   // Bumped after a change, so the day is read again.
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState<AddTimeStart | null>(null);
+  // The day, or the week it falls in (S15): one date for both, so switching keeps the place.
+  const [mode, setMode] = useState<'day' | 'week'>('day');
+  const [exported, setExported] = useState<{ ok: boolean; text: string } | null>(null);
   const { providerName } = useProviderCapabilities();
   const worklogs = day?.worklogs ?? [];
   const loading = day?.date !== selectedDate;
@@ -96,6 +101,28 @@ export const WorklogHistoryView: React.FC = () => {
   // Stepped by key: a Date built from a date-only string is UTC midnight,
   // which west of UTC is still the day before, and "next" went nowhere.
   const changeDateByDays = (days: number) => setSelectedDate(addLocalDays(selectedDate, days));
+  const monday = weekStartKey(selectedDate);
+  const openDay = (dateKey: string) => {
+    setSelectedDate(dateKey);
+    setMode('day');
+  };
+  const exportWeek = () => {
+    setExported(null);
+    window.electronAPI.exportWorklogsCsv(monday, addLocalDays(monday, 6)).then(
+      path => setExported(path ? { ok: true, text: `Saved to ${path}` } : null),
+      err => setExported({ ok: false, text: `Not exported: ${ipcErrorMessage(err)}` })
+    );
+  };
+  const switchButton = (to: 'day' | 'week', label: string) => (
+    <button
+      type="button"
+      aria-pressed={mode === to}
+      onClick={() => setMode(to)}
+      className={`px-2.5 py-1 rounded-md text-xs font-semibold ${mode === to ? 'bg-dark-700 text-white' : 'text-text-secondary hover:text-white'}`}
+    >
+      {label}
+    </button>
+  );
 
   const summary = summarizeDay(worklogs);
   const sends = describeSends(worklogs);
@@ -110,11 +137,11 @@ export const WorklogHistoryView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-dark-800 border border-border-dark rounded-lg p-1">
-            <button aria-label="The day before" onClick={() => changeDateByDays(-1)} className={nav}>
+            <button aria-label={mode === 'day' ? 'The day before' : 'The week before'} onClick={() => changeDateByDays(mode === 'day' ? -1 : -7)} className={nav}>
               <ChevronLeft className="w-4 h-4" />
             </button>
             <label className="relative px-2 text-sm font-bold text-white cursor-pointer">
-              {formatLongDay(selectedDate)}
+              {mode === 'day' ? formatLongDay(selectedDate) : `Week of ${formatDayAndMonth(monday)}`}
               <input
                 type="date"
                 aria-label="Day"
@@ -123,11 +150,11 @@ export const WorklogHistoryView: React.FC = () => {
                 className="absolute inset-0 opacity-0 cursor-pointer"
               />
             </label>
-            <button aria-label="The day after" onClick={() => changeDateByDays(1)} className={nav}>
+            <button aria-label={mode === 'day' ? 'The day after' : 'The week after'} onClick={() => changeDateByDays(mode === 'day' ? 1 : 7)} className={nav}>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          {selectedDate !== today && (
+          {(mode === 'day' ? selectedDate !== today : monday !== weekStartKey(today)) && (
             <button
               type="button"
               onClick={() => setSelectedDate(today)}
@@ -136,17 +163,36 @@ export const WorklogHistoryView: React.FC = () => {
               Today
             </button>
           )}
+          {mode === 'week' && (
+            <button
+              type="button"
+              onClick={exportWeek}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border-dark text-text-secondary hover:text-white hover:border-focus"
+            >
+              Export CSV
+            </button>
+          )}
+          <div role="group" aria-label="Show" className="flex items-center gap-0.5 bg-dark-800 border border-border-dark rounded-lg p-0.5">
+            {switchButton('day', 'Day')}
+            {switchButton('week', 'Week')}
+          </div>
         </div>
       </div>
 
+      {exported && (
+        <p role={exported.ok ? 'status' : 'alert'} className={`text-xs ${exported.ok ? 'text-text-secondary' : 'text-accent-red'}`}>{exported.text}</p>
+      )}
+
       <InterruptionsToPlace
         hint="Put each on the task it was for, and its time is sent there. Kept off, it stays in SprintTicker only."
-        onJumpToDay={setSelectedDate}
+        onJumpToDay={openDay}
       />
 
       {entries.moveError && <p role="alert" className="text-xs text-accent-red">Not moved: {entries.moveError}</p>}
 
-      <section aria-label="The day's entries" className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-3">
+      {mode === 'week' && <WeekView monday={monday} revision={revision} onOpenDay={openDay} />}
+
+      {mode === 'day' && <section aria-label="The day's entries" className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-md font-bold text-white">
             <span className="font-mono">{formatHoursAndMinutes(summary.totalSeconds)}</span>
@@ -215,7 +261,7 @@ export const WorklogHistoryView: React.FC = () => {
             Nothing logged on {formatLongDay(selectedDate)}. + Add time puts in what you did without the timer.
           </div>
         )}
-      </section>
+      </section>}
 
       {entries.dialogs}
       <AddTimeDialog

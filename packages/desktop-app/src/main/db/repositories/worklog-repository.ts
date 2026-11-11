@@ -30,6 +30,11 @@ export interface WorklogRecord {
   overlapsTaskKey?: string;
   /** Time that started as an interruption, placed on this task (Today's ⚡). Read-only; filled on reads. */
   fromInterruption?: true;
+  /** Its task's project. Read-only; filled on reads. */
+  projectId?: string;
+  projectName?: string;
+  /** What its provider holds, by the last send it answered; absent when it holds nothing. Read-only. */
+  providerSeconds?: number;
 }
 
 /**
@@ -65,6 +70,8 @@ interface WorklogRow {
   task_unsorted: number | null;
   task_project_id: string | null;
   project_provider_id: string | null;
+  project_name: string | null;
+  provider_seconds: number | null;
   create_status: SyncQueueStatus | null;
   correction_status: SyncQueueStatus | null;
   overlaps_task_key: string | null;
@@ -81,7 +88,10 @@ interface WorklogRow {
  */
 const SELECT_WORKLOGS = `
   SELECT w.*, t.key AS task_key, t.title AS task_title, t.unsorted AS task_unsorted,
-         t.project_id AS task_project_id, p.provider_id AS project_provider_id,
+         t.project_id AS task_project_id, p.provider_id AS project_provider_id, p.name AS project_name,
+         (SELECT CASE q.operation WHEN 'DELETE' THEN NULL ELSE q.duration_seconds END FROM worklog_sync_queue q
+           WHERE q.worklog_id = w.id AND q.task_id = w.task_id AND q.status = 'SYNCED'
+           ORDER BY q.rowid DESC LIMIT 1) AS provider_seconds,
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation = 'CREATE' AND q.task_id = w.task_id
            ORDER BY q.rowid DESC LIMIT 1) AS create_status,
@@ -135,6 +145,9 @@ function toRecord(r: WorklogRow): WorklogRecord {
   if (isAdHocTaskId(r.task_id)) record.adHoc = true;
   if (r.task_unsorted === 1) record.unsorted = true;
   if (r.from_interruption === 1) record.fromInterruption = true;
+  if (r.task_project_id !== null) record.projectId = r.task_project_id;
+  if (r.project_name !== null) record.projectName = r.project_name;
+  if (r.provider_seconds !== null) record.providerSeconds = r.provider_seconds;
   return record;
 }
 
@@ -791,6 +804,23 @@ export class WorklogRepository {
       )
       .get(taskId);
     return row ? new Date(Date.parse(row.started_at_utc) + row.duration_seconds * 1000).toISOString() : null;
+  }
+
+  /**
+   * The worklogs begun on the local days `fromKey` to `toKey`, both
+   * included, in the order worked: a week (S15) or an export.
+   */
+  public getWorklogsBetween(fromKey: string, toKey: string): WorklogRecord[] {
+    if (!fromKey) throw new ArgumentNullException('fromKey');
+    if (!toKey) throw new ArgumentNullException('toKey');
+    const { startUtc } = localDayBoundsUtc(fromKey);
+    const { endUtc } = localDayBoundsUtc(toKey);
+    return this.dbConn.getDb()
+      .prepare<[string, string], WorklogRow>(
+        `${SELECT_WORKLOGS} WHERE w.started_at_utc >= ? AND w.started_at_utc < ? ORDER BY w.started_at_utc`
+      )
+      .all(startUtc, endUtc)
+      .map(toRecord);
   }
 
   public getWorklogsByDate(dateString: string): WorklogRecord[] {

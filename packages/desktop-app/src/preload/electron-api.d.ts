@@ -137,6 +137,10 @@ export interface IElectronAPI {
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => Promise<WorklogDTO[]>;
+  /** The worklogs of local days `from` to `to` (YYYY-MM-DD, both included), oldest first: History's week (S15). */
+  getWorklogsRange: (from: string, to: string) => Promise<WorklogDTO[]>;
+  /** Saves those days' worklogs as CSV where the user chooses; the path, or null when cancelled. */
+  exportWorklogsCsv: (from: string, to: string) => Promise<string | null>;
   /** Every worklog of an interruption still to sort, newest first. */
   getUnsortedWorklogs: () => Promise<WorklogDTO[]>;
   /** Stars a task; answers the starred tasks the lists hold. */

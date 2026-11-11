@@ -123,6 +123,8 @@ const electronAPI: IElectronAPI = {
 
   // Worklog History & Reports
   getWorklogsByDate: (dateString: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_BY_DATE, dateString),
+  getWorklogsRange: (from: string, to: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_RANGE, from, to),
+  exportWorklogsCsv: (from: string, to: string) => ipcRenderer.invoke(IPCChannel.EXPORT_WORKLOGS_CSV, from, to),
   getUnsortedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_UNSORTED_WORKLOGS),
   starTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.STAR_TASK, taskId),
   unstarTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.UNSTAR_TASK, taskId),

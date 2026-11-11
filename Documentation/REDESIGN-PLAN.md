@@ -1422,6 +1422,25 @@ timesheet, Check my week, and the corrections that were missing.
   start at the stand-up. The strip and the list show together rather than
   behind a Day | List switch.
 
+**As landed: P9c, the week (2026-11-11).**
+
+- `worklogs:get-range` (`WorklogRepository.getWorklogsBetween`) and
+  `worklogs:export-csv` (`shared/worklog-csv.ts`, the save dialog in main).
+  Worklog reads now carry `projectId`, `projectName` and `providerSeconds`
+  (the last `SYNCED` row on the worklog's task; no migration).
+- `shared/week-sheet.ts`: `buildWeekSheet` (projects and tasks most time
+  first, per day; Day; provider; to place), `dayNotes` (the amber cell's
+  words) and `describeWeekExceptions` (the sentence under the sheet).
+- `WeekView` under a Day | Week switch in History's header; the date stays
+  one, so switching keeps the place, and ‹ › step a week. Monday to Friday
+  always, a weekend day when it has time. The largest project opens, three
+  are listed before "▸ N more projects · show all". A day's total or a task's
+  cell opens the day. Export CSV saves the week shown.
+- Not as drawn: no target in the Day row ("Day / 7h 30m", "37h 20m / 37h
+  30m") -- there is no daily target setting (§13, P16 if wanted); no "closed
+  Friday 17:30" in the header; the To place row has no "Place all…" (the
+  list above the sheet places); Check my week… comes with P9d.
+
 ---
 
 ## 15. P10 -- End my day, overnight, and a crash during the day
@@ -1843,7 +1862,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
-| P9 | in progress: P9a (the day, Add time), P9b (the timeline) done; P9c (the week) next -- see §14 "Split" | P9a-P9b (2026-11-11) |
+| P9 | in progress: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV) done; P9d (Check my week) next -- see §14 "Split" | P9a-P9c (2026-11-11) |
 | P10 | not started | |
 | P11 | not started | |
 | P12 | not started | |

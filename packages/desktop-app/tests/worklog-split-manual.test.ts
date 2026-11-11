@@ -111,6 +111,33 @@ describe('Adding time by hand', () => {
     expect(service.add(entry({ startedAtUtc: at(23, 30), durationSeconds: 30 * MINUTE })).durationSeconds).toBe(30 * MINUTE);
   });
 
+  it('ProviderSeconds_WhatTheProviderHolds_TheOldValueUntilACorrectionArrives', async () => {
+    const added = service.add(entry());
+    expect(worklogs.getWorklogById(added.id)?.providerSeconds).toBeUndefined();
+    await worker.processPendingQueue();
+    expect(worklogs.getWorklogById(added.id)?.providerSeconds).toBe(30 * MINUTE);
+
+    service.correct(added.id, { durationSeconds: 45 * MINUTE, startedAtUtc: added.startedAtUtc, comment: 'Review' });
+    expect(worklogs.getWorklogById(added.id)).toMatchObject({ durationSeconds: 45 * MINUTE, providerSeconds: 30 * MINUTE });
+    await worker.processPendingQueue();
+    await worker.processPendingQueue();
+    expect(worklogs.getWorklogById(added.id)?.providerSeconds).toBe(45 * MINUTE);
+
+    service.remove(added.id);
+    expect(worklogs.getWorklogById(added.id)).toBeNull();
+  });
+
+  it('Between_BothDaysIncluded_InTheOrderWorked', () => {
+    service.add(entry({ startedAtUtc: new Date(2026, 9, 14, 10).toISOString() }));
+    service.add(entry({ startedAtUtc: at(8, 30) }));
+    service.add(entry({ startedAtUtc: new Date(2026, 9, 15, 10).toISOString() }));
+    service.add(entry({ startedAtUtc: new Date(2026, 9, 12, 23, 0).toISOString() }));
+
+    const found = worklogs.getWorklogsBetween('2026-10-13', '2026-10-14').map(w => w.startedAtUtc);
+
+    expect(found).toEqual([at(8, 30), new Date(2026, 9, 14, 10).toISOString()]);
+  });
+
   it('Add_OverlappingAnEntry_SavedAndHeldUntilFixed', async () => {
     const first = service.add(entry({ startedAtUtc: at(8, 45), durationSeconds: 60 * MINUTE, comment: 'Earlier' }));
     await worker.processPendingQueue();
