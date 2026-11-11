@@ -3,7 +3,8 @@ import { ActiveSessionDTO, TaskDTO, WorklogDTO } from '../../../shared/dtos';
 import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { formatClockTime, formatHoursAndMinutes as formatSeconds } from '../../utils/formatters';
 import { PickerMode } from '../../hooks/useModals';
-import { useCeremonyPrompt, useUserMode } from '../../hooks/usePrompts';
+import { useCeremonyPrompt, useReminder, useUserMode } from '../../hooks/usePrompts';
+import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
 
@@ -42,6 +43,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onPrevious
 }) => {
   const ceremony = useCeremonyPrompt();
+  const [reminder, setReminder] = useReminder();
   const [mode, setMode] = useUserMode();
   const leaveAway = () => {
     setMode('WORK');
@@ -53,6 +55,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
     {ceremony?.type === 'LUNCH' && <LunchQuestionCard prompt={ceremony} />}
     <ResumeAfterLunchPrompt />
     <BreakCard mode={mode} session={session} onLeaveAway={leaveAway} />
+    {reminder && <ReminderCard reminder={reminder} openPicker={() => onOpenPicker('start')} onAnswered={() => setReminder(null)} />}
 
     <ActiveTaskHeroCard
       session={session}

@@ -800,6 +800,18 @@ changing it:
   does not raise the window either; the ones that still do are the wrap-up's
   confirm and a wheel click while timing, which ask for the app. Anything
   new that asks goes through the outlet -- never `show()` or `focus()`.
+- **A reminder asks once per occurrence** (P8d). `ReminderService` rides
+  the schedule's 30 s check (`onChecked`): nothing timing, still paused?,
+  still on it?, still in the stand-up?, each after its `prompt_delays`
+  minutes, in working hours only -- the stand-up's time to the wrap-up's,
+  on a working day, in WORK. An occurrence is its id (the idle start, the
+  pause's start, the fragment, the session): dismissing it is final for
+  that one, and it goes by itself when the state it is about ends, at the
+  engine's notification rather than the next tick. Its acting answers go
+  through the commands every surface uses (resume, Back, Stop's
+  `completeSession`), so it holds no rule of its own. Nothing timing is not
+  asked while "Back to MG-12?" is; that question gets one toast more
+  instead.
 - **Lunch and Away pause; they never stop** (D1, redesign P8b). The
   running session is paused with a `paused_intervals` row of reason `lunch`
   or `away`, and `lunch_resume` keeps the held session's id

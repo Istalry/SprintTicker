@@ -1221,6 +1221,25 @@ first-interruption line).
   interruption's screen.
 - "Still in it?" for the stand-up is P8d's, with the other reminders.
 
+**As landed: P8d, the reminders (2026-11-11).**
+
+- `ReminderService` (new) with the pure `dueReminder` and `inWorkingHours`,
+  evaluated on `ContextScheduleService.onChecked` (new). Working hours are
+  the stand-up's time to the wrap-up's, on a working day, in WORK.
+  `ReminderDTO`, `reminders:get` / `reminders:dismiss` /
+  `reminders:on-changed`.
+- Today's `ReminderCard` and the mini timer's row share `reminderView`; the
+  acting answers call resume, Back, Stop the interruption, or Stop
+  (`completeSession`) for the stand-up.
+- "Back to MG-12?" unanswered for `nothingTiming` minutes: one more toast
+  (S10).
+- `readStandupTask` now reads the `{ taskId, taskKey, title }` P8c2 stores;
+  it still read a bare id, so `flow:get standup_task` answered null.
+- Not yet: the tray's amber "nothing timing" mark (P12, with the tray's
+  icon states); "End stand-up ▾" at its usual length (only End now); the
+  delays in Settings (P16); the bar's NOTHING TIMING screen (P14). The
+  asked ids are in memory, so a restart may ask once more.
+
 ---
 
 ## 14. P9 -- History
@@ -1691,7 +1710,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | in progress: P8a (the session card, Stop ▾), P8b (Lunch and Away pause), P8c1 (prompts without focus) and P8c2 (the stand-up, lunch during an interruption) done; P8d-P8e next -- see §13 "Split" | P8a-P8c2 (2026-11-11) |
+| P8 | in progress: P8a-P8d done (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders); P8e next -- see §13 "Split" | P8a-P8d (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |

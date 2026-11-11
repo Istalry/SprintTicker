@@ -282,6 +282,25 @@ export interface CeremonyPromptDTO {
 }
 
 /**
+ * A "still...?" question (redesign P8d), asked once per occurrence in working
+ * hours: on Today, the mini timer, and a toast while the window is hidden.
+ */
+export interface ReminderDTO {
+  /** The occurrence: dismissing it is final for this one, never for the next. */
+  id: string;
+  kind: 'nothing-timing' | 'long-pause' | 'interruption-running' | 'standup-running';
+  /** Since when the state has lasted (the later of idle and the day's start, for nothing timing). */
+  sinceUtc: string;
+  minutes: number;
+  /** The paused task, or the stand-up's. */
+  taskKey?: string;
+  /** The interruption's name. */
+  name?: string;
+  /** The task an interruption holds, which Back returns to; absent when it holds none. */
+  heldTaskKey?: string;
+}
+
+/**
  * The task the stand-up is timed on and sent to (D3, redesign P8c2); none
  * keeps it on the local "Daily Standup", never sent. Its key and title are
  * as they were when chosen, for Settings to name it.

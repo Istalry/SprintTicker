@@ -233,6 +233,24 @@ describe('IPC handlers', () => {
       await expect(invoke(IPCChannel.ANSWER_LUNCH_QUESTION, 'yes')).rejects.toThrow(/true or false/);
     });
 
+    it('Reminders_ReadAndDismissedThroughTheService_ABadIdIsRefused', async () => {
+      const reminder = { id: 'long-pause:S1:x', kind: 'long-pause', sinceUtc: 'x', minutes: 30, taskKey: 'MG-12' };
+      const dismiss = vi.fn().mockReturnValue(true);
+      build({ reminders: { getReminder: vi.fn().mockReturnValue(reminder), dismiss } });
+
+      expect(await invoke(IPCChannel.GET_REMINDER)).toEqual(reminder);
+      expect(await invoke(IPCChannel.DISMISS_REMINDER, reminder.id)).toBe(true);
+      expect(dismiss).toHaveBeenCalledWith(reminder.id);
+      await expect(invoke(IPCChannel.DISMISS_REMINDER, '')).rejects.toThrow(/Not a reminder/);
+    });
+
+    it('Reminders_NoService_NothingAsked', async () => {
+      build({});
+
+      expect(await invoke(IPCChannel.GET_REMINDER)).toBeNull();
+      expect(await invoke(IPCChannel.DISMISS_REMINDER, 'x')).toBe(false);
+    });
+
     it('StandupTask_ReadAndSetThroughTheService', async () => {
       const task = { taskId: '10002', taskKey: 'OPS-4', title: 'Team ceremonies' };
       const setStandupTask = vi.fn();

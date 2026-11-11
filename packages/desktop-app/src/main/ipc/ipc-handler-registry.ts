@@ -4,6 +4,7 @@ import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { isFlowSettingKey, readFlowSetting } from '../../shared/flow-settings';
+import type { ReminderService } from '../services/reminder-service';
 import { isInterruptionSource } from '../../shared/interruption';
 import { InterruptionService } from '../services/interruption-service';
 import { IPCChannel } from '../../shared/ipc-channels';
@@ -97,6 +98,8 @@ export interface IPCHandlerRegistryDeps {
   contextScheduleService?: ContextScheduleService;
   /** Asks about a session left running overnight; without it, nothing is ever asked. */
   forgottenSessionService?: ForgottenSessionService;
+  /** The "still...?" reminders (P8d); without it, none is ever asked. */
+  reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   /** Corrects and deletes worklogs; without it, both channels refuse. */
   worklogCorrections?: WorklogCorrectionService;
   windowsNotificationService?: WindowsNotificationListenerService;
@@ -156,6 +159,7 @@ export class IPCHandlerRegistry {
   private getWindows: () => BrowserWindow[];
   private miniWindow?: MiniWindowController;
   private pickerWindow?: PickerWindowController;
+  private reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   private undo?: UndoService;
   private sessionEnding: SessionEnding;
 
@@ -208,6 +212,7 @@ export class IPCHandlerRegistry {
     });
     this.miniWindow = miniWindow;
     this.pickerWindow = deps.pickerWindow;
+    this.reminders = deps.reminders;
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
     // The default is never started and shows nothing: it serves the settings
@@ -844,6 +849,12 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.GET_CEREMONY_PROMPT, async () => this.contextScheduleService.getCeremonyPrompt());
+
+    ipcMain.handle(IPCChannel.GET_REMINDER, async () => this.reminders?.getReminder() ?? null);
+    ipcMain.handle(IPCChannel.DISMISS_REMINDER, async (_event, id: unknown) => {
+      if (typeof id !== 'string' || id === '') throw new ArgumentException(`Not a reminder: ${String(id)}.`, 'id');
+      return this.reminders?.dismiss(id) ?? false;
+    });
 
     ipcMain.handle(IPCChannel.SNOOZE_CEREMONY, async (_event, payload: { type: 'STANDUP' | 'EOD'; minutes: number }) => {
       this.contextScheduleService.snoozeCeremony(payload.type, payload.minutes);

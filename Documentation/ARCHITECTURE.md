@@ -831,6 +831,22 @@ in WORK closes the week before if that wrap-up was missed, and a week is
 never closed twice. A first run sets it without closing anything, and a week
 with no working day is marked closed without a notice.
 
+### `ReminderService` — `src/main/services/`
+
+The "still...?" questions (P8d). `dueReminder` is pure: from the session,
+when nothing started running, the day's start and the `prompt_delays`, it
+answers the reminder due -- nothing timing (counted from the later of the
+idle start and the stand-up time; not while "Back to MG-12?" is asked), a
+long pause, a long interruption, a long stand-up -- with an id naming the
+occurrence. The service evaluates it on `ContextScheduleService.onChecked`,
+in working hours only (`inWorkingHours`: a working day, the stand-up's time
+to the wrap-up's, and WORK), asks each id once through the `PromptOutlet`
+(`reminders:on-changed`, a toast while the window is hidden), and closes it
+on `reminders:dismiss`, outside working hours, or as soon as the engine
+reports a state the id no longer matches. A resume question after an
+interruption left `nothingTiming` minutes gets one more toast. The ids it
+asked are kept in memory: a restart may ask an occurrence once more.
+
 ### `PresenceMonitor` and `ForgottenSessionService` — `src/main/services/`
 
 Time is wall clock minus pauses, so a session forgotten on Friday read 62

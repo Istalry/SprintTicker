@@ -20,6 +20,7 @@ import { followBar } from './services/follow-bar';
 import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
 import { WindowPromptOutlet } from './windows/prompt-outlet';
+import { ReminderService } from './services/reminder-service';
 import { WorkingCalendar } from './services/working-calendar';
 import { APP_USER_MODEL_ID } from './app-identity';
 import { BitmapIconId } from '../shared/dtos';
@@ -77,6 +78,7 @@ let miniWindowManager: MiniWindowManager | null = null;
 let pickerWindowManager: PickerWindowManager | null = null;
 let providerEventService: ProviderEventService | null = null;
 let interruptShortcut: InterruptShortcutService | null = null;
+let reminderService: ReminderService | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -387,6 +389,23 @@ async function startApplication(): Promise<void> {
   presenceMonitor = new PresenceMonitor(settingsRepo, () => powerMonitor.getSystemIdleTime());
   forgottenSessionService = new ForgottenSessionService(engine, settingsRepo, presenceMonitor, () => mainWindow);
   forgottenSessionService.setPromptOutlet(promptOutlet);
+
+  // The "still...?" questions, asked once each on the schedule's tick (P8d).
+  const daySchedule = contextScheduleService;
+  const tracker = engine;
+  const calendar = new WorkingCalendar(settingsRepo, (from, to) => providerManager.getNonWorkingDays(from, to));
+  reminderService = new ReminderService({
+    getSession: () => tracker.getCurrentSession(),
+    subscribe: listener => tracker.subscribe(listener),
+    getSetting: (key, fallback) => settingsRepo.getSetting(key, fallback),
+    getUserMode: () => priorityEngine.getUserMode(),
+    isWorkingDay: dateKey => calendar.isWorkingDay(dateKey),
+    isStandupSession: session => daySchedule.isStandup(session),
+    getResumePrompt: () => daySchedule.getResumePrompt(),
+    outlet: () => promptOutlet
+  });
+  const reminders = reminderService;
+  daySchedule.onChecked(() => reminders.evaluate());
   const forgotten = forgottenSessionService;
   const presence = presenceMonitor;
   // Back at the machine: look before anything records the new presence.
@@ -485,6 +504,7 @@ async function startApplication(): Promise<void> {
     priorityEngine,
     contextScheduleService,
     forgottenSessionService,
+    reminders: reminderService,
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
       // Wakes the worker when the hold ends, as a stop does: a correction
       // should not wait out the five-minute interval to reach the provider.
@@ -632,6 +652,7 @@ app.on('will-quit', event => {
     console.warn('[Main] Could not record the last presence at quit:', err);
   }
   forgottenSessionService?.dispose();
+  reminderService?.dispose();
   // Makes the held action final: its rows are queued already and go at the
   // next start; its Done transition is asked for now.
   undoService?.dispose();

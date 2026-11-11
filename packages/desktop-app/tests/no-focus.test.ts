@@ -199,6 +199,29 @@ describe('Prompts without focus', () => {
       expect(release).toHaveBeenCalledWith('standupPromptPriority');
     });
 
+    it('Check_EveryTick_TellsItsListeners_AFailingOneDoesNotStopTheOthers', () => {
+      const failing = vi.fn(() => { throw new Error('boom'); });
+      const listener = vi.fn();
+      service.onChecked(failing);
+      const off = service.onChecked(listener);
+
+      service.evaluateSchedule();
+      off();
+      service.evaluateSchedule();
+
+      expect(failing).toHaveBeenCalledTimes(2);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('IsStandup_TheLocalStandupOrTheChosenTask', () => {
+      const local = engine.startNamedAdHocTask('Daily Standup');
+      expect(service.isStandup(local)).toBe(true);
+
+      service.setStandupTask({ taskId: 'T-9', taskKey: 'OPS-4', title: 'Team ceremonies' });
+      expect(service.isStandup({ ...local, taskId: 'T-9', isAdHoc: false, taskTitle: 'Team ceremonies' })).toBe(true);
+      expect(service.isStandup({ ...local, taskId: 'T-1', isAdHoc: false, taskTitle: 'Other' })).toBe(false);
+    });
+
     it('WrapUp_Due_TheWindowIsToldButNotRaised', () => {
       at(17, 30);
       service.evaluateSchedule();

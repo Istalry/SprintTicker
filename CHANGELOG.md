@@ -54,6 +54,10 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **Reminders that ask once.** Nothing timing for 10 min, a pause of 30 min,
+  an interruption of 20 min, the stand-up at 25 min: each is asked once, in
+  working hours, on Today, in the mini timer and by notification while the
+  window is hidden. "Back to MG-12?" left 10 min gets one more notification.
 - **The stand-up: joined late, and its own task.** "joined 5 min ago" beside
   Join moves those minutes off the task before it. In Settings, My workday,
   the stand-up can be timed on a task of yours and sent like any entry;

@@ -6,6 +6,7 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
 import { ScheduleSettingsDTO, ArgumentException, ArgumentNullException, ActiveSessionDTO, CeremonyPromptDTO, ResumePromptDTO, StandupTaskDTO, WeekEndedDTO } from '../../shared/dtos';
 import type { PromptAnnouncement, PromptOutlet } from '../windows/prompt-outlet';
+import { FlowSettingKey, readStandupTask } from '../../shared/flow-settings';
 import { DAILY_STANDUP_TITLE, normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { addLocalDays, localDateKey } from '../../shared/local-date';
 import { weekStartKey } from '../../shared/working-days';
@@ -99,10 +100,7 @@ function isStandupSession(session: ActiveSessionDTO | null, standupTask: Standup
   return session.isAdHoc && session.taskTitle === DAILY_STANDUP_TITLE;
 }
 
-function isStandupTask(value: unknown): value is StandupTaskDTO {
-  const v = value as Partial<StandupTaskDTO> | null;
-  return typeof v?.taskId === 'string' && v.taskId !== '' && typeof v.taskKey === 'string' && typeof v.title === 'string';
-}
+
 
 /**
  * Service that automatically monitors Windows session locks/sleep events and lunch schedules,
@@ -130,7 +128,7 @@ export class ContextScheduleService {
   /** The week just over, until the user has seen it: it survives a restart. */
   public static readonly WEEK_ENDED_KEY = 'week_ended_notice';
   /** The task the stand-up is timed on (D3); unset, the local Daily Standup. */
-  public static readonly STANDUP_TASK_KEY = 'standup_task';
+  public static readonly STANDUP_TASK_KEY = FlowSettingKey.STANDUP_TASK;
 
   private readonly _priorityEngine: PriorityPreemptionEngine;
   private readonly _settingsRepo: SettingsRepository;
@@ -160,6 +158,7 @@ export class ContextScheduleService {
   private _endingForLunch = false;
   private readonly _calendar: WorkingCalendar;
   private readonly _weekEndedListeners = new Set<(week: WeekEndedDTO) => void>();
+  private readonly _checkListeners = new Set<() => void>();
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,
@@ -324,6 +323,25 @@ export class ContextScheduleService {
       // never fired again until the app was restarted.
       this._isInitialCheck = false;
     }
+    // After the day's transitions, so a reminder reads the mode they left.
+    for (const listener of this._checkListeners) {
+      try {
+        listener();
+      } catch (err) {
+        console.warn('[ContextScheduleService] A check listener failed:', err);
+      }
+    }
+  }
+
+  /** Called after every check, every 30 s: the reminders ride on it (P8d). */
+  public onChecked(listener: () => void): () => void {
+    this._checkListeners.add(listener);
+    return () => this._checkListeners.delete(listener);
+  }
+
+  /** Whether the session is the stand-up: the local Daily Standup or its chosen task. */
+  public isStandup(session: ActiveSessionDTO): boolean {
+    return isStandupSession(session, this.getStandupTask());
   }
 
   /// <summary>
@@ -400,16 +418,16 @@ export class ContextScheduleService {
 
   /** The task the stand-up is timed on, or null for the local Daily Standup. */
   public getStandupTask(): StandupTaskDTO | null {
-    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.STANDUP_TASK_KEY, null);
-    return isStandupTask(stored) ? stored : null;
+    return readStandupTask(this._settingsRepo.getSetting<unknown>(ContextScheduleService.STANDUP_TASK_KEY, null));
   }
 
   /** Chooses the stand-up's task; null keeps it local. */
   public setStandupTask(task: StandupTaskDTO | null): void {
-    if (task !== null && !isStandupTask(task)) {
+    if (task !== null && readStandupTask(task) === null) {
       throw new ArgumentException('The stand-up\'s task needs an id, a key and a title.', 'task');
     }
-    this._settingsRepo.setSetting(ContextScheduleService.STANDUP_TASK_KEY, task);
+    // Stored as read back: extra fields from the window are not kept.
+    this._settingsRepo.setSetting(ContextScheduleService.STANDUP_TASK_KEY, task === null ? null : readStandupTask(task));
   }
 
   /**

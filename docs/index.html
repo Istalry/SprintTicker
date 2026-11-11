@@ -640,7 +640,9 @@
       <li>❓ <strong>A question takes the row</strong> until you answer it, with an amber edge:
       the stand-up (<strong>Skip</strong>, <strong>Join</strong>), <strong>Back at your desk?</strong> (<strong>Not now</strong>,
       <strong>Worked through</strong>, <strong>▶ Resume</strong>) and <strong>Back to MG-12?</strong> (<strong>Not now</strong>,
-      <strong>Back +time</strong>, <strong>↩ Back</strong>). Answered anywhere, it goes everywhere.</li>
+      <strong>Back +time</strong>, <strong>↩ Back</strong>), and, when nothing else is asked, a reminder
+      -- see <em>Reminders ask once</em>, with the ceremonies. Answered anywhere, it
+      goes everywhere.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
       that was on a monitor you have since unplugged, it comes back in the
       bottom-right corner of the main one.</li>
@@ -1135,6 +1137,43 @@
       window. The stand-up&#39;s card offers <strong>Join</strong>, <strong>Skip today</strong> and <strong>Remind me in
       10 min</strong>, and stays until you choose. The end-of-day wrap-up opens in the
       window without bringing it forward.</p>
+      <p>🔔 <strong>Reminders ask once.</strong> Between your stand-up time and your end of day, on
+      a working day and in Work mode, SprintTicker asks -- once each time, on Today,
+      in the mini timer, and by notification while the window is hidden:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">When</th>
+      <th align="left">It asks</th>
+      <th align="left">Answers</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left">Nothing timing for 10 min</td>
+      <td align="left"><em>Did you mean to stop?</em></td>
+      <td align="left"><strong>Not now</strong> · <strong>▶ Start a task…</strong></td>
+      </tr>
+      <tr>
+      <td align="left">A pause of 30 min</td>
+      <td align="left"><em>Still paused?</em></td>
+      <td align="left"><strong>Still paused</strong> · <strong>▶ Resume</strong></td>
+      </tr>
+      <tr>
+      <td align="left">An interruption of 20 min</td>
+      <td align="left"><em>Still on it?</em></td>
+      <td align="left"><strong>Still on it</strong> · <strong>↩ Back to MG-12</strong> (or <strong>■ Stop</strong>)</td>
+      </tr>
+      <tr>
+      <td align="left">The stand-up at 25 min</td>
+      <td align="left"><em>Still in it?</em></td>
+      <td align="left"><strong>Still in it</strong> · <strong>End stand-up</strong></td>
+      </tr>
+      </tbody></table></div>
+      <p>The quiet answer is final for that time: the same pause is not asked about
+      again, the next one is. Resuming, going back or starting a task answers it
+      too. <strong>Back to MG-12?</strong> left unanswered for 10 minutes gets one more
+      notification. The delays are <code>prompt_delays</code> in the settings; Settings
+      will show them.</p>
       <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>, on
       teal. In Away mode it shows a steaming coffee beside <strong>AWAY</strong>, on purple. At the
       stand-up prompt it shows three people round a table taking turns to speak,
@@ -2747,6 +2786,20 @@
       in WORK closes the week before if that wrap-up was missed, and a week is
       never closed twice. A first run sets it without closing anything, and a week
       with no working day is marked closed without a notice.</p>
+      <h4><code>ReminderService</code> — <code>src/main/services/</code></h4>
+      <p>The &quot;still...?&quot; questions (P8d). <code>dueReminder</code> is pure: from the session,
+      when nothing started running, the day&#39;s start and the <code>prompt_delays</code>, it
+      answers the reminder due -- nothing timing (counted from the later of the
+      idle start and the stand-up time; not while &quot;Back to MG-12?&quot; is asked), a
+      long pause, a long interruption, a long stand-up -- with an id naming the
+      occurrence. The service evaluates it on <code>ContextScheduleService.onChecked</code>,
+      in working hours only (<code>inWorkingHours</code>: a working day, the stand-up&#39;s time
+      to the wrap-up&#39;s, and WORK), asks each id once through the <code>PromptOutlet</code>
+      (<code>reminders:on-changed</code>, a toast while the window is hidden), and closes it
+      on <code>reminders:dismiss</code>, outside working hours, or as soon as the engine
+      reports a state the id no longer matches. A resume question after an
+      interruption left <code>nothingTiming</code> minutes gets one more toast. The ids it
+      asked are kept in memory: a restart may ask an occurrence once more.</p>
       <h4><code>PresenceMonitor</code> and <code>ForgottenSessionService</code> — <code>src/main/services/</code></h4>
       <p>Time is wall clock minus pauses, so a session forgotten on Friday read 62
       hours on Monday and its stop sent them all at once. <code>PresenceMonitor</code> keeps
@@ -3534,6 +3587,10 @@
       <tr>
       <td align="left">Ceremonies</td>
       <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
+      </tr>
+      <tr>
+      <td align="left">Reminders</td>
+      <td align="left"><code>reminders:get</code> answers the &quot;still...?&quot; reminder being asked (<code>{ id, kind, sinceUtc, minutes, taskKey?, name?, heldTaskKey? }</code>, <code>kind</code> one of <code>nothing-timing</code>, <code>long-pause</code>, <code>interruption-running</code>, <code>standup-running</code>), or null; <code>reminders:dismiss</code> takes its <code>id</code> and answers false when it is no longer asked; <code>reminders:on-changed</code> pushes it to every window, and null once answered or over</td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>

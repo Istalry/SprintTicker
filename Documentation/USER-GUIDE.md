@@ -127,7 +127,9 @@ Timer** in the header or **Show Mini Timer** in the tray menu.
 - ❓ **A question takes the row** until you answer it, with an amber edge:
   the stand-up (**Skip**, **Join**), **Back at your desk?** (**Not now**,
   **Worked through**, **▶ Resume**) and **Back to MG-12?** (**Not now**,
-  **Back +time**, **↩ Back**). Answered anywhere, it goes everywhere.
+  **Back +time**, **↩ Back**), and, when nothing else is asked, a reminder
+  -- see *Reminders ask once*, with the ceremonies. Answered anywhere, it
+  goes everywhere.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if
   that was on a monitor you have since unplugged, it comes back in the
   bottom-right corner of the main one.
@@ -624,6 +626,23 @@ tray or minimised, a Windows notification says so; clicking it opens the
 window. The stand-up's card offers **Join**, **Skip today** and **Remind me in
 10 min**, and stays until you choose. The end-of-day wrap-up opens in the
 window without bringing it forward.
+
+🔔 **Reminders ask once.** Between your stand-up time and your end of day, on
+a working day and in Work mode, SprintTicker asks -- once each time, on Today,
+in the mini timer, and by notification while the window is hidden:
+
+| When | It asks | Answers |
+| :--- | :--- | :--- |
+| Nothing timing for 10 min | *Did you mean to stop?* | **Not now** · **▶ Start a task…** |
+| A pause of 30 min | *Still paused?* | **Still paused** · **▶ Resume** |
+| An interruption of 20 min | *Still on it?* | **Still on it** · **↩ Back to MG-12** (or **■ Stop**) |
+| The stand-up at 25 min | *Still in it?* | **Still in it** · **End stand-up** |
+
+The quiet answer is final for that time: the same pause is not asked about
+again, the next one is. Resuming, going back or starting a task answers it
+too. **Back to MG-12?** left unanswered for 10 minutes gets one more
+notification. The delays are `prompt_delays` in the settings; Settings
+will show them.
 
 During Lunch the bar shows a sandwich building itself beside **LUNCH**, on
 teal. In Away mode it shows a steaming coffee beside **AWAY**, on purple. At the

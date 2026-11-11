@@ -1,4 +1,5 @@
 import { chordProblem, DEFAULT_INTERRUPT_ACCELERATOR } from './interrupt-shortcut';
+import type { StandupTaskDTO } from './dtos';
 
 /**
  * The settings the redesigned flows read (P4), with their defaults: one
@@ -158,8 +159,17 @@ export function readCloseToTray(stored: unknown): boolean {
   return typeof stored === 'boolean' ? stored : DEFAULT_CLOSE_TO_TRAY;
 }
 
-export function readStandupTask(stored: unknown): string | null {
-  return nonEmptyString(stored);
+/**
+ * The stand-up's task (D3): its id, key and title as chosen, or null for the
+ * local Daily Standup. A bare id -- the shape P4 planned and nothing wrote --
+ * or anything incomplete reads as none.
+ */
+export function readStandupTask(stored: unknown): StandupTaskDTO | null {
+  if (!isRecord(stored)) return null;
+  const taskId = nonEmptyString(stored.taskId);
+  const taskKey = nonEmptyString(stored.taskKey);
+  if (!taskId || !taskKey || typeof stored.title !== 'string') return null;
+  return { taskId, taskKey, title: stored.title };
 }
 
 /** Each flow setting's value, as its reader answers it. */
@@ -170,7 +180,7 @@ export interface FlowSettingValues {
   prompt_delays: PromptDelaysSetting;
   shortcuts: ShortcutsSetting;
   close_to_tray: boolean;
-  standup_task: string | null;
+  standup_task: StandupTaskDTO | null;
 }
 
 export type FlowSettingKeyValue = keyof FlowSettingValues;

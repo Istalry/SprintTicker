@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CeremonyPromptDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
+import { CeremonyPromptDTO, ReminderDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
 
 /**
  * The questions main is asking (redesign P8c), for Today's cards and the mini
@@ -43,6 +43,12 @@ export function useCeremonyPrompt(): CeremonyPromptDTO | null {
 export function useResumePrompt(): [ResumePromptDTO | null, (value: ResumePromptDTO | null) => void] {
   const api = window.electronAPI;
   return useFollowed<ResumePromptDTO>(api?.getResumePrompt, api?.onResumePrompt, 'the resume question');
+}
+
+/** The "still...?" reminder being asked (P8d). The setter hides it at once on an answer. */
+export function useReminder(): [ReminderDTO | null, (value: ReminderDTO | null) => void] {
+  const api = window.electronAPI;
+  return useFollowed<ReminderDTO>(api?.getReminder, api?.onReminder, 'the reminder');
 }
 
 /** Work, Lunch or Away, as main keeps it. */

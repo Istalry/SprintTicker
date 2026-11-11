@@ -56,7 +56,10 @@ describe('flow settings', () => {
     expect(readProviderDisplayName('  ')).toBeNull();
     expect(readProviderDisplayName(' Acme Tracker ')).toBe('Acme Tracker');
     expect(readStandupTask('')).toBeNull();
-    expect(readStandupTask('adhoc_1')).toBe('adhoc_1');
+    expect(readStandupTask('adhoc_1')).toBeNull();
+    expect(readStandupTask({ taskId: 'T-4', taskKey: 'OPS-4' })).toBeNull();
+    expect(readStandupTask({ taskId: 'T-4', taskKey: 'OPS-4', title: 'Team ceremonies' }))
+      .toEqual({ taskId: 'T-4', taskKey: 'OPS-4', title: 'Team ceremonies' });
     expect(readCloseToTray(false)).toBe(false);
   });
 });
