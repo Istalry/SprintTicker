@@ -1399,6 +1399,29 @@ timesheet, Check my week, and the corrections that were missing.
 - Not as drawn: no Day | Week switch yet (P9c brings the week), and the
   older-interruptions line is the existing "Interruptions to place" list.
 
+**As landed: P9b, the timeline (2026-11-11).**
+
+- `shared/day-gaps.ts`: `workingWindow` (the stand-up to the wrap-up on a
+  working day -- the reminders' hours, so there is one definition; lunch
+  clipped to them), `dayGaps` (less lunch, less every span, cut at now on
+  today, stretches under `DAY_GAP_MIN_SECONDS` (5 min) dropped),
+  `gapSeconds`, `spanOf`.
+- `DayTimeline` in History's day card, between the per-task line and the
+  list: the header "6h 50m logged · 40m untracked in working hours" and the
+  hours; blocks named by task key (⚡ for a placed interruption, the label
+  dropped under 4% of the strip), lunch, the running session on today
+  (green), hatched gaps; marks every two hours; each gap again as
+  "▨ 09:00–09:30 untracked · add time" with the legend. A gap opens Add time
+  pre-filled; a block opens Correct.
+- History reads the schedule and, on today, the session with the day; an
+  unread schedule leaves the strip without hours, never the day without
+  entries. Holidays are not read: a holiday on a working weekday shows its
+  hours as untracked.
+- Not as drawn: the mockup's working hours start before its stand-up (09:00
+  against a 09:30 stand-up); no separate work-start setting exists, so they
+  start at the stand-up. The strip and the list show together rather than
+  behind a Day | List switch.
+
 ---
 
 ## 15. P10 -- End my day, overnight, and a crash during the day
@@ -1820,7 +1843,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
-| P9 | in progress: P9a (the day, Add time) done; P9b (the timeline) next -- see §14 "Split" | P9a (2026-11-11) |
+| P9 | in progress: P9a (the day, Add time), P9b (the timeline) done; P9c (the week) next -- see §14 "Split" | P9a-P9b (2026-11-11) |
 | P10 | not started | |
 | P11 | not started | |
 | P12 | not started | |

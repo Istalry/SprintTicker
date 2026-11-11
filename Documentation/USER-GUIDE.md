@@ -514,6 +514,16 @@ moves or deletes it. The arrow beside a task opens it on Jira or
 OpenProject, as on Today and in Tasks. Interruptions still to place, of any
 day, are listed above the day.
 
+▨ **The day as a timeline.** Under the day's figures, a strip shows your
+working hours -- from the stand-up to the wrap-up, as set in **Settings, My
+workday** -- with each entry a block named by its task, ⚡ for time that began
+as an interruption, and lunch. What no entry covers is hatched, and the strip
+says how much: *6h 50m logged · 40m untracked in working hours*. A click on a
+hatched stretch opens Add time at its start and length; a click on a block
+corrects that entry. Nothing is guessed or logged from a gap -- it is only
+shown. Stretches under five minutes are not, on today the rest of the day is
+not missing yet, and a day off has no working hours, only its entries.
+
 ➕ **Add time you didn't time** with **+ Add time**, on any day here and on
 Today: pick the task, say how long and when it started, and add a note --
 it is what your provider shows. It opens on half an hour, ending now on

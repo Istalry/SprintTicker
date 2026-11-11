@@ -1026,6 +1026,15 @@
       moves or deletes it. The arrow beside a task opens it on Jira or
       OpenProject, as on Today and in Tasks. Interruptions still to place, of any
       day, are listed above the day.</p>
+      <p>▨ <strong>The day as a timeline.</strong> Under the day&#39;s figures, a strip shows your
+      working hours -- from the stand-up to the wrap-up, as set in <strong>Settings, My
+      workday</strong> -- with each entry a block named by its task, ⚡ for time that began
+      as an interruption, and lunch. What no entry covers is hatched, and the strip
+      says how much: <em>6h 50m logged · 40m untracked in working hours</em>. A click on a
+      hatched stretch opens Add time at its start and length; a click on a block
+      corrects that entry. Nothing is guessed or logged from a gap -- it is only
+      shown. Stretches under five minutes are not, on today the rest of the day is
+      not missing yet, and a day off has no working hours, only its entries.</p>
       <p>➕ <strong>Add time you didn&#39;t time</strong> with <strong>+ Add time</strong>, on any day here and on
       Today: pick the task, say how long and when it started, and add a note --
       it is what your provider shows. It opens on half an hour, ending now on
@@ -2392,6 +2401,11 @@
       <td align="left">Here only</td>
       </tr>
       </tbody></table></div>
+      <p>History&#39;s timeline (S14b) is drawn from <code>shared/day-gaps.ts</code>: a day&#39;s working
+      window -- the stand-up to the wrap-up on a working day, the hours the
+      reminders use (<code>inWorkingHours</code>) -- less its lunch, less every entry and, on
+      today, the session running and everything after now. Pure, and only shown:
+      nothing is logged from a gap.</p>
       <p>Time <strong>added by hand</strong> (<code>add</code>, S16b) is a worklog under a session id of its
       own (<code>IdPrefix.MANUAL_SESSION</code>: the column is NOT NULL, and there was no
       session) and a first send for its task&#39;s provider, held for the undo window

@@ -4,6 +4,10 @@
 
 ### Added
 
+- **The day as a timeline.** History draws your working hours as a strip:
+  each entry a block, lunch, and what no entry covers hatched, with how much
+  that is. A click on a hatched stretch opens Add time at its times; a click
+  on a block corrects it.
 - **History's day, and time you didn't time.** History shows what a day
   adds up to and where its sends stand, each task's share on one line, and
   every entry in the order worked with ⋯ for Correct, Move and Delete.

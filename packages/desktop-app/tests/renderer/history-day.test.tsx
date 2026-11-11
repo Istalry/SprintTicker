@@ -5,6 +5,7 @@ import { TodayEntries } from '../../src/renderer/components/TodayEntries';
 import { defaultStartFor } from '../../src/renderer/components/AddTimeDialog';
 import type { WorklogDTO } from '../../src/shared/dtos';
 import { addLocalDays, localDateKey } from '../../src/shared/local-date';
+import { normalizeScheduleSettings } from '../../src/shared/schedule-defaults';
 import { installElectronApi } from './electron-api-mock';
 
 const YESTERDAY = addLocalDays(localDateKey(), -1);
@@ -162,5 +163,82 @@ describe('Add time', () => {
 
     expect(defaultStartFor('2026-11-11', now)).toBe('2026-11-11T14:15');
     expect(defaultStartFor('2026-11-10', now)).toBe('2026-11-10T09:00');
+  });
+});
+
+/** The day as a timeline (S14b, P9b): working hours, blocks, untracked stretches hatched. */
+describe("History's timeline", () => {
+  // Every day worked, so yesterday's hours are there whatever day the suite runs.
+  const EVERY_DAY = normalizeScheduleSettings({
+    standupTime: '09:00', lunchStartTime: '12:30', lunchEndTime: '13:30', eodWrapUpTime: '17:30', workingDays: [0, 1, 2, 3, 4, 5, 6]
+  });
+  const dayOfYesterday = () => new Date(`${YESTERDAY}T12:00`).getDay();
+  const MOCKUP_DAY = [
+    entry('w1', 'MG-12', 9, 30, 170),
+    entry('w2', 'PF-31', 13, 30, 240, { fromInterruption: true })
+  ];
+
+  it('Timeline_TheMockupsDay_TotalsTheUntrackedAndListsEachStretch', async () => {
+    await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue(EVERY_DAY) });
+    const strip = screen.getByRole('group', { name: 'The day as a timeline' });
+
+    expect(strip.textContent).toMatch(/6h 50m logged · 40m untracked in working hours/);
+    expect(within(strip).getAllByRole('button', { name: /untracked: add time$/ })).toHaveLength(2);
+    expect(within(strip).getByRole('button', { name: /^Correct PF-31/ }).textContent).toBe('⚡ PF-31');
+    expect(within(strip).getByTitle('Lunch')).toBeTruthy();
+  });
+
+  it('Timeline_AGapClicked_OpensAddTimeWithItsTimes', async () => {
+    await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue(EVERY_DAY) });
+
+    fireEvent.click(within(screen.getByRole('group', { name: 'The day as a timeline' })).getAllByRole('button', { name: /untracked: add time$/ })[1]);
+
+    const dialog = screen.getByRole('dialog', { name: 'Add time' });
+    expect((within(dialog).getByLabelText('Started') as HTMLInputElement).value).toBe(`${YESTERDAY}T12:20`);
+    expect((within(dialog).getByLabelText('Minutes') as HTMLInputElement).value).toBe('10');
+    expect(within(dialog).getByRole('button', { name: 'Add 10m' })).toBeTruthy();
+  });
+
+  it('Timeline_ABlockClicked_OpensCorrect', async () => {
+    await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue(EVERY_DAY) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Correct MG-12, / }));
+
+    expect(screen.getByRole('dialog', { name: 'Correct a worklog' })).toBeTruthy();
+  });
+
+  it('Timeline_ADayOff_OnlyTheEntries_NothingUntracked', async () => {
+    await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue({ ...EVERY_DAY, workingDays: [(dayOfYesterday() + 1) % 7] }) });
+    const strip = screen.getByRole('group', { name: 'The day as a timeline' });
+
+    expect(strip.textContent).not.toMatch(/untracked in working hours/);
+    expect(within(strip).queryAllByRole('button', { name: /untracked/ })).toEqual([]);
+  });
+
+  it('Timeline_TheScheduleUnread_TheDayStillShows', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockRejectedValue(new Error('locked')) });
+
+    expect(screen.getAllByRole('button', { name: /^More for / })).toHaveLength(2);
+    const strip = screen.getByRole('group', { name: 'The day as a timeline' });
+    expect(strip.textContent).not.toMatch(/untracked in working hours/);
+    expect(within(strip).queryAllByRole('button', { name: /untracked/ })).toEqual([]);
+  });
+
+  it('Timeline_Today_TheSessionRunningIsCovered', async () => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    installElectronApi({
+      getScheduleSettings: vi.fn().mockResolvedValue(normalizeScheduleSettings({ standupTime: '00:00', eodWrapUpTime: '23:59', lunchStartTime: '23:57', lunchEndTime: '23:58', workingDays: [0, 1, 2, 3, 4, 5, 6] })),
+      getCurrentSession: vi.fn().mockResolvedValue({
+        sessionId: 'S', projectId: 'p', taskId: 't', taskKey: 'MG-12', taskTitle: 'x', isAdHoc: false, status: 'TRACKING',
+        startTimeUtc: startOfDay, totalPausedSeconds: 0, elapsedSeconds: 60
+      })
+    });
+    render(<WorklogHistoryView />);
+
+    const strip = await screen.findByRole('group', { name: 'The day as a timeline' });
+    expect(within(strip).getByTitle('MG-12 · running')).toBeTruthy();
+    expect(within(strip).queryAllByRole('button', { name: /untracked/ })).toEqual([]);
   });
 });

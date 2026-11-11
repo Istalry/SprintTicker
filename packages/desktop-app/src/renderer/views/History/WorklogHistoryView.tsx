@@ -1,31 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { WorklogDTO } from '../../../shared/dtos';
+import { ScheduleSettingsDTO, WorklogDTO } from '../../../shared/dtos';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 import { BREAKDOWN_SHOWN, describeSends, summarizeDay } from '../../../shared/day-summary';
 import { countOf, formatHoursAndMinutes, formatLongDay } from '../../utils/formatters';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { useEntryActions } from '../../components/EntryActions';
 import { EntriesHead, EntryRow } from '../../components/EntryRow';
-import { AddTimeDialog, AddTimeStart } from '../../components/AddTimeDialog';
+import { AddTimeDialog, AddTimeStart, toLocalInput } from '../../components/AddTimeDialog';
+import { DayTimeline, RunningSpan } from '../../components/DayTimeline';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 
 interface DayRead {
   date: string;
   worklogs: WorklogDTO[];
+  /** Its working hours and lunch come from it (S14b); null when it could not be read. */
+  schedule: ScheduleSettingsDTO | null;
+  /** On today, the session running: covered time, not untracked. */
+  running: RunningSpan | null;
+  /** When it was read: on today, the timeline ends there. */
+  readAtMs: number;
 }
 
-/** The day's entries, in the order they were worked. */
+/** The day's entries, in the order they were worked, with what its timeline needs. */
 async function readDay(date: string): Promise<DayRead> {
   const api = window.electronAPI;
-  const worklogs = api?.getWorklogsByDate ? await api.getWorklogsByDate(date) : [];
-  return { date, worklogs: [...worklogs].sort((a, b) => a.startedAtUtc.localeCompare(b.startedAtUtc)) };
+  const isToday = date === localDateKey();
+  const [worklogs, schedule, session] = await Promise.all([
+    api?.getWorklogsByDate ? api.getWorklogsByDate(date) : Promise.resolve([]),
+    // The timeline goes without hours rather than the day without entries.
+    api?.getScheduleSettings ? api.getScheduleSettings().catch(() => null) : Promise.resolve(null),
+    isToday && api?.getCurrentSession ? api.getCurrentSession().catch(() => null) : Promise.resolve(null)
+  ]);
+  const readAtMs = Date.now();
+  const running = session
+    ? { startMs: Date.parse(session.startTimeUtc), endMs: readAtMs, label: session.interruption ? '⚡' : session.taskKey }
+    : null;
+  return {
+    date,
+    worklogs: [...worklogs].sort((a, b) => a.startedAtUtc.localeCompare(b.startedAtUtc)),
+    schedule,
+    running,
+    readAtMs
+  };
+}
+
+/** Local midnight of a date key. */
+function dayOf(dateKey: string): Date {
+  const [year, month, date] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, date);
 }
 
 /**
  * History's day (S14, P9a): what the day adds up to and where its sends
  * stand, each task's share on one line, and every entry with ⋯ -- Correct,
- * ↳ Move, Delete -- plus "+ Add time" for what was never timed. The
+ * ↳ Move, Delete -- plus "+ Add time" for what was never timed, and the
+ * day as a timeline (S14b, P9b), whose untracked stretches open it. The
  * interruptions still to place, of any day, sit above it.
  */
 export const WorklogHistoryView: React.FC = () => {
@@ -53,7 +83,7 @@ export const WorklogHistoryView: React.FC = () => {
         // Without this the list never stopped loading: the read failed and
         // nothing ever marked the day as done.
         console.error('[WorklogHistoryView] Failed to read worklogs for', selectedDate, err);
-        if (current) setDay({ date: selectedDate, worklogs: [] });
+        if (current) setDay({ date: selectedDate, worklogs: [], schedule: null, running: null, readAtMs: 0 });
       }
     );
     return () => { current = false; };
@@ -144,6 +174,22 @@ export const WorklogHistoryView: React.FC = () => {
             ))}
             {more > 0 && ` · + ${more}`}
           </p>
+        )}
+
+        {!loading && day && (
+          <DayTimeline
+            day={dayOf(selectedDate)}
+            entries={worklogs}
+            schedule={day.schedule}
+            running={day.running}
+            untilMs={selectedDate === today ? day.readAtMs : undefined}
+            onEntry={log => entries.run(log, 'edit')}
+            onGap={gap => setAdding({
+              dateKey: selectedDate,
+              start: toLocalInput(new Date(gap.startMs)),
+              durationSeconds: Math.round((gap.endMs - gap.startMs) / 60_000) * 60
+            })}
+          />
         )}
 
         {loading ? (

@@ -412,6 +412,12 @@ What it queues depends on how far the send got:
 | Claimed or delivered | An `UPDATE` behind it; one unsent per worklog, the latest wins | A `DELETE` behind it, replacing any unsent `UPDATE` |
 | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
 
+History's timeline (S14b) is drawn from `shared/day-gaps.ts`: a day's working
+window -- the stand-up to the wrap-up on a working day, the hours the
+reminders use (`inWorkingHours`) -- less its lunch, less every entry and, on
+today, the session running and everything after now. Pure, and only shown:
+nothing is logged from a gap.
+
 Time **added by hand** (`add`, S16b) is a worklog under a session id of its
 own (`IdPrefix.MANUAL_SESSION`: the column is NOT NULL, and there was no
 session) and a first send for its task's provider, held for the undo window
