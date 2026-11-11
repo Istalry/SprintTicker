@@ -1369,6 +1369,36 @@ timesheet, Check my week, and the corrections that were missing.
 
 **Docs:** `USER-GUIDE.md` (History), `API.md`.
 
+**Split** (2026-11-11), each its own commit:
+
+- P9a: the day (S14) and Add time (S16b), on History and Today.
+- P9b: the timeline (S14b) and `shared/day-gaps.ts`; a gap opens Add time.
+- P9c: the week (S15), `worklogs:get-range`, `worklogs:export-csv`.
+- P9d: Check my week (S15b), `shared/week-issues.ts`, opened at the week's
+  close.
+- P9e: Split in two (S16c), `worklog:split`.
+
+**As landed: P9a, the day and Add time (2026-11-11).**
+
+- History's day: the date as "Tuesday, November 10" between ‹ and › (the
+  date input sits under it), **Today** when away from it; the summary line
+  and the sends (`shared/day-summary.ts`: `summarizeDay`, `describeSends`,
+  `BREAKDOWN_SHOWN` 4); the per-task line; the entries oldest first in
+  `EntryRow`, shared with Today's list, with ⋯ (`EntryMenu`) in place of the
+  three icon buttons. The three metric cards and the breakdown cards went;
+  the day is counted from its entries, not `worklogs:get-daily-summary`.
+- `worklog:create-manual` → `WorklogCorrectionService.add` /
+  `addUndoably` (Undo kind `add`, "Added to PF-31 · 30m"). The manual entry
+  has a session id `manual_…`; an empty note is `WORKLOG_COMMENTS.ADDED`.
+  `checkManualWorklog` adds "ends on the day it starts" to a correction's
+  rules.
+- `AddTimeDialog` (S16b): the picker in `move` mode, hours and minutes, the
+  start, the note; the overlap note offers "End it at 08:45 (15m)" when it
+  starts before the other entry and "Start it at 09:30" when inside it; the
+  closed-week note. It reads the entries of the start's own day.
+- Not as drawn: no Day | Week switch yet (P9c brings the week), and the
+  older-interruptions line is the existing "Interruptions to place" list.
+
 ---
 
 ## 15. P10 -- End my day, overnight, and a crash during the day
@@ -1790,7 +1820,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
-| P9 | not started | |
+| P9 | in progress: P9a (the day, Add time) done; P9b (the timeline) next -- see §14 "Split" | P9a (2026-11-11) |
 | P10 | not started | |
 | P11 | not started | |
 | P12 | not started | |

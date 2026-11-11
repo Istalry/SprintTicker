@@ -90,6 +90,8 @@ export enum IPCChannel {
   /** The last tasks timed, each once, newest first. */
   GET_RECENT_TASKS = 'tasks:get-recent',
   MOVE_WORKLOG = 'worklogs:move',
+  /** Time nobody timed, added by hand (S16b): a worklog and its send, with Undo. */
+  CREATE_MANUAL_WORKLOG = 'worklog:create-manual',
   GET_DAILY_WORKLOG_SUMMARY = 'worklogs:get-daily-summary',
   WIPE_ALL_DATA = 'db:wipe-all-data',
 

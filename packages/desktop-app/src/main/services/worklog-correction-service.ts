@@ -3,7 +3,8 @@ import { ProviderManager } from '../providers/provider-manager';
 import { ITaskProvider } from '../providers/task-provider-interface';
 import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
-import { checkWorklogCorrection, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { checkManualWorklog, checkWorklogCorrection, ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 
 /** Where time logged on a task is queued, and the least that provider records. */
 export interface SendDestination {
@@ -236,6 +237,57 @@ export class WorklogCorrectionService {
 
     if (worklog.adHoc) this._targets.retireAdHocIfUnused(worklog.taskId);
     if (queued) this._requestDispatch();
+    return this._worklogs.getWorklogById(worklogId)!;
+  }
+
+  /**
+   * Adds time nobody timed (S16b): a worklog here, and a first send to the
+   * task's provider through the queue, held for the undo window like a
+   * stop's. A project made here keeps it here. An empty note is
+   * `WORKLOG_COMMENTS.ADDED`, so the provider's entry says where it came
+   * from.
+   *
+   * An overlap or a closed week is warned about in the window and never
+   * refused: an overlapping entry is held by the queue's own rule.
+   *
+   * @throws ArgumentException when the task is ad-hoc or unknown, or the
+   *   entry fails `checkManualWorklog` against the provider's floor.
+   */
+  public add(entry: ManualWorklogDTO, worklogId: string = createId(IdPrefix.WORKLOG)): WorklogRecord {
+    if (!entry) throw new ArgumentNullException('entry');
+    if (!worklogId) throw new ArgumentNullException('worklogId');
+    if (!this._targets) throw new Error('Adding time is unavailable.');
+    if (isAdHocTaskId(entry.taskId)) throw new ArgumentException('Add time to a task, not to ad-hoc work.', 'taskId');
+    if (entry.taskId && !this._targets.getTask(entry.taskId)) throw new ArgumentException(`No task ${entry.taskId}.`, 'taskId');
+    const destination = entry.taskId ? this._targets.destinationOf(entry.taskId) : null;
+    const refusal = checkManualWorklog(entry, this._now(), destination?.minimumSeconds ?? 1);
+    if (refusal) throw new ArgumentException(refusal);
+
+    const comment = entry.comment.trim() || WORKLOG_COMMENTS.ADDED;
+    this.transaction(() => {
+      this._worklogs.saveWorklog({
+        id: worklogId,
+        sessionId: createId(IdPrefix.MANUAL_SESSION),
+        taskId: entry.taskId,
+        durationSeconds: entry.durationSeconds,
+        startedAtUtc: entry.startedAtUtc,
+        comment,
+        createdAtUtc: new Date(this._now()).toISOString()
+      });
+      if (destination) {
+        this._worklogs.enqueueSyncItem({
+          id: createId(IdPrefix.SYNC_ITEM),
+          providerId: destination.providerId,
+          taskId: entry.taskId,
+          durationSeconds: entry.durationSeconds,
+          startedAtUtc: entry.startedAtUtc,
+          comment,
+          worklogId
+        });
+      }
+    });
+
+    if (destination) this._requestDispatch();
     return this._worklogs.getWorklogById(worklogId)!;
   }
 

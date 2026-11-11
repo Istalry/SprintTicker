@@ -1,4 +1,4 @@
-import type { WorklogCorrectionDTO } from '../../src/shared/worklog-correction';
+import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../../src/shared/worklog-correction';
 import { vi } from 'vitest';
 import type { IElectronAPI } from '../../src/preload/electron-api';
 import type { ActiveSessionDTO, DeviceStatusDTO, HardwareDisplayStateDTO } from '../../src/shared/dtos';
@@ -194,6 +194,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     })),
     updateWorklog: vi.fn().mockImplementation(async (id: string, correction: WorklogCorrectionDTO) => ({
       id, sessionId: 's', taskId: 't', createdAtUtc: correction.startedAtUtc, syncState: 'local', ...correction
+    })),
+    addWorklog: vi.fn().mockImplementation(async (entry: ManualWorklogDTO) => ({
+      id: 'wl_added', sessionId: 'manual_1', createdAtUtc: entry.startedAtUtc, syncState: 'pending', ...entry
     })),
     deleteWorklog: vi.fn().mockResolvedValue(true),
     getDailyWorklogSummary: vi.fn().mockImplementation(async (date: string) => ({

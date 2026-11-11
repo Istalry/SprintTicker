@@ -4,6 +4,13 @@
 
 ### Added
 
+- **History's day, and time you didn't time.** History shows what a day
+  adds up to and where its sends stand, each task's share on one line, and
+  every entry in the order worked with ⋯ for Correct, Move and Delete.
+  **+ Add time**, there and on Today, puts in time the timer never saw: a
+  task, a length, a start and a note, sent like any entry with ten seconds
+  of Undo, and warned about before it overlaps another or lands in a closed
+  week.
 - **Done per project.** Each workflow has its own states, so a project can
   send Done somewhere other than the completion transition for all:
   **Settings, Account** › *When I mark a task done* lists your projects, a

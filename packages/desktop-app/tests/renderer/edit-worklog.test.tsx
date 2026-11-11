@@ -25,10 +25,15 @@ const LOCAL: WorklogDTO = { ...SENT, id: 'w2', taskKey: 'MISC-1', syncState: 'lo
 const open = async (worklogs: WorklogDTO[] = [SENT], overrides = {}) => {
   const bridge = installElectronApi({ getWorklogsByDate: vi.fn().mockResolvedValue(worklogs), ...overrides });
   render(<WorklogHistoryView />);
-  await screen.findByText('MG-12');
+  await screen.findByRole('button', { name: /^More for MG-12 at / });
   return bridge;
 };
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
+/** ⋯ on an entry's row, then one of its items (S14). */
+const entry = (key: string, item: 'Correct…' | 'Delete…') => {
+  click(new RegExp(`^More for ${key} at `));
+  fireEvent.click(screen.getByRole('menuitem', { name: item }));
+};
 
 /** Correcting and deleting a worklog from Work History. */
 describe('Work History corrections', () => {
@@ -51,7 +56,7 @@ describe('Work History corrections', () => {
     const other: WorklogDTO = { ...LOCAL, id: 'w4', sessionId: 's4', taskKey: 'PF-40', startedAtUtc: '2026-10-13T10:30:00.000Z', durationSeconds: 1800 };
     await open([SENT, other]);
 
-    click(/Correct MG-12/);
+    entry('MG-12', 'Correct…');
 
     const dialog = screen.getByRole('dialog', { name: 'Correct a worklog' });
     const note = within(dialog).getAllByRole('note').find(n => /It overlaps/.test(n.textContent ?? ''));
@@ -61,7 +66,7 @@ describe('Work History corrections', () => {
   it('Correct_NewDuration_IsSentAndTheDayIsReadAgain', async () => {
     const bridge = await open();
 
-    click(/Correct MG-12/);
+    entry('MG-12', 'Correct…');
     const dialog = screen.getByRole('dialog', { name: 'Correct a worklog' });
     fireEvent.change(within(dialog).getByLabelText('Minutes'), { target: { value: '30' } });
     click('Save');
@@ -78,7 +83,7 @@ describe('Work History corrections', () => {
   it('Correct_CommentOnly_KeepsTheSeconds', async () => {
     const bridge = await open();
 
-    click(/Correct MG-12/);
+    entry('MG-12', 'Correct…');
     fireEvent.change(screen.getByLabelText('Comment'), { target: { value: 'Pairing with Sam' } });
     click('Save');
 
@@ -90,7 +95,7 @@ describe('Work History corrections', () => {
     const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
     const pad = (n: number) => String(n).padStart(2, '0');
 
-    click(/Correct MG-12/);
+    entry('MG-12', 'Correct…');
     fireEvent.change(screen.getByLabelText('Started'), {
       target: { value: `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}T09:00` }
     });
@@ -108,7 +113,7 @@ describe('Work History corrections', () => {
     });
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    click(/Correct MG-12/);
+    entry('MG-12', 'Correct…');
     fireEvent.change(screen.getByLabelText('Hours'), { target: { value: '0' } });
     fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '0' } });
     // Zero is refused here before main is asked; one minute is main's to judge.
@@ -123,7 +128,7 @@ describe('Work History corrections', () => {
   it('Correct_Cancel_SendsNothing', async () => {
     const bridge = await open();
 
-    click(/Correct MG-12/);
+    entry('MG-12', 'Correct…');
     click('Cancel');
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -133,7 +138,7 @@ describe('Work History corrections', () => {
   it('Delete_SentWorklog_SaysItGoesAtTheProviderToo_ThenDeletes', async () => {
     const bridge = await open();
 
-    click(/Delete MG-12/);
+    entry('MG-12', 'Delete…');
     // The provider's name, once main has said which provider is active.
     await waitFor(() => expect(screen.getByRole('alertdialog').textContent).toMatch(/also deleted in OpenProject/));
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
@@ -145,7 +150,7 @@ describe('Work History corrections', () => {
   it('Delete_LocalWorklog_SaysItIsKeptNowhereElse', async () => {
     await open([SENT, LOCAL]);
 
-    click(/Delete MISC-1/);
+    entry('MISC-1', 'Delete…');
 
     expect(screen.getByRole('alertdialog').textContent).toMatch(/kept nowhere else/);
   });
@@ -153,7 +158,7 @@ describe('Work History corrections', () => {
   it('Delete_Back_DeletesNothing', async () => {
     const bridge = await open();
 
-    click(/Delete MG-12/);
+    entry('MG-12', 'Delete…');
     click('Back');
 
     expect(bridge.api.deleteWorklog).not.toHaveBeenCalled();

@@ -8,6 +8,7 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { UndoService } from '../src/main/services/undo-service';
 import { WorklogCorrectionService } from '../src/main/services/worklog-correction-service';
 import {
+  addUndoably,
   correctUndoably,
   deleteUndoably,
   discardUndoably,
@@ -299,6 +300,28 @@ describe('undoable commands', () => {
 
       expect(worklogs.getWorklogById(before.id)?.durationSeconds).toBe(before.durationSeconds);
       expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }]);
+    });
+
+    it('AddThenUndo_LeavesNothing', () => {
+      const yesterday = new Date(Date.now() - 24 * 3600_000).toISOString();
+
+      const added = addUndoably(edits, { taskId: A.id, durationSeconds: 1800, startedAtUtc: yesterday, comment: 'Review' });
+      expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'PENDING' }]);
+      expect(undo.current()?.label).toBe('Added to A-1 · 30m');
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(added.id)).toBeNull();
+      expect(queueRows()).toEqual([]);
+    });
+
+    it('Add_LeftAlone_SentAfterTheHold', async () => {
+      const yesterday = new Date(Date.now() - 24 * 3600_000).toISOString();
+
+      addUndoably(edits, { taskId: A.id, durationSeconds: 1800, startedAtUtc: yesterday, comment: 'Review' });
+      await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS);
+
+      await vi.waitFor(() => expect(sent).toEqual([{ taskId: A.id, durationSeconds: 1800 }]));
+      expect(undo.run()).toBe(false);
     });
 
     it('Delete_LeftAlone_DeletesAtTheProviderAfterTheHold', async () => {

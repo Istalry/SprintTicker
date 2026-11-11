@@ -1,5 +1,5 @@
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
-import { WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import * as fs from 'fs';
@@ -54,7 +54,7 @@ import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { selectableProviders } from '../../shared/provider-names';
 import { plainSessionEnding, SessionEnding } from '../services/session-commands';
 import { UndoService } from '../services/undo-service';
-import { correctUndoably, deleteUndoably, moveUndoably, WorklogEditDeps } from '../services/undoable-commands';
+import { addUndoably, correctUndoably, deleteUndoably, moveUndoably, WorklogEditDeps } from '../services/undoable-commands';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -133,6 +133,10 @@ function isWorklogCorrection(value: unknown): value is WorklogCorrectionDTO {
     typeof c.startedAtUtc === 'string' &&
     typeof c.comment === 'string'
   );
+}
+
+function isManualWorklog(value: unknown): value is ManualWorklogDTO {
+  return isWorklogCorrection(value) && typeof (value as Partial<ManualWorklogDTO>).taskId === 'string';
 }
 
 export class IPCHandlerRegistry {
@@ -1106,6 +1110,15 @@ export class IPCHandlerRegistry {
       const moved = edits ? moveUndoably(edits, worklogId, taskId) : this.worklogCorrections.reassign(worklogId, taskId);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return moved;
+    });
+
+    ipcMain.handle(IPCChannel.CREATE_MANUAL_WORKLOG, async (_event, entry: unknown) => {
+      if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
+      if (!isManualWorklog(entry)) throw new ArgumentException('Added time needs a task, a duration, a start and a note.');
+      const edits = this.worklogEdits();
+      const added = edits ? addUndoably(edits, entry) : this.worklogCorrections.add(entry);
+      this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return added;
     });
 
     ipcMain.handle(IPCChannel.DELETE_WORKLOG, async (_event, worklogId: unknown) => {

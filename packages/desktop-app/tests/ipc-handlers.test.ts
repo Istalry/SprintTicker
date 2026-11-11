@@ -398,6 +398,18 @@ describe('IPC handlers', () => {
       expect(correct).not.toHaveBeenCalled();
     });
 
+    it('AddWorklog_AWellFormedEntry_ReachesTheService_BadOnesRefused', async () => {
+      const add = vi.fn().mockReturnValue({ id: 'w9', taskId: 'T-1', ...correction });
+      build({ worklogCorrections: { add } });
+
+      expect(await invoke(IPCChannel.CREATE_MANUAL_WORKLOG, { taskId: 'T-1', ...correction })).toMatchObject({ id: 'w9' });
+      expect(add).toHaveBeenCalledWith({ taskId: 'T-1', ...correction });
+      expect(sentOn(IPCChannel.ON_WORKLOGS_UPDATED)).toHaveLength(1);
+      await expect(invoke(IPCChannel.CREATE_MANUAL_WORKLOG, correction)).rejects.toThrow(/needs a task/);
+      await expect(invoke(IPCChannel.CREATE_MANUAL_WORKLOG, null)).rejects.toThrow(/needs a task/);
+      expect(add).toHaveBeenCalledTimes(1);
+    });
+
     it('DeleteWorklog_AnId_ReachesTheServiceAndTheTableIsResent', async () => {
       const remove = vi.fn();
       build({ worklogCorrections: { remove } });

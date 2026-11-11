@@ -11,7 +11,7 @@
  */
 
 import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../shared/provider-events';
-import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
+import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { DayShare } from '../shared/work-split';
 import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
@@ -155,6 +155,8 @@ export interface IElectronAPI {
   renameAdHocTask: (taskId: string, title: string) => Promise<void>;
   /** Moves a worklog to another task, here and at the providers through the queue. Rejects with the reason when refused. */
   moveWorklog: (worklogId: string, taskId: string) => Promise<WorklogDTO>;
+  /** Adds time nobody timed (S16b), sent like any entry, with Undo. Rejects with the reason when refused. */
+  addWorklog: (entry: ManualWorklogDTO) => Promise<WorklogDTO>;
   /** The time so far on the open session goes to `taskId`, which then runs (S5b). */
   moveSessionTo: (taskId: string) => Promise<ActiveSessionDTO>;
   /** Corrects a worklog here and queues the change for its provider. Rejects with the reason when refused. */

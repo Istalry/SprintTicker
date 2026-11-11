@@ -11,5 +11,7 @@ export const WORKLOG_COMMENTS = {
   BAR_FINISH_CONFIRMED: 'Completed via BUSY Bar after confirming',
   BAR_LONG_PRESS: 'Completed via BUSY Bar Long Press',
   WRAP_UP: 'Finalized during End-of-Day Wrap-Up',
-  LUNCH: 'Auto-completed for Lunch Break split'
+  LUNCH: 'Auto-completed for Lunch Break split',
+  /** Time added by hand with no note (S16b). */
+  ADDED: 'Added in SprintTicker'
 } as const;

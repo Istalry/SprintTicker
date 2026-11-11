@@ -412,6 +412,13 @@ What it queues depends on how far the send got:
 | Claimed or delivered | An `UPDATE` behind it; one unsent per worklog, the latest wins | A `DELETE` behind it, replacing any unsent `UPDATE` |
 | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
 
+Time **added by hand** (`add`, S16b) is a worklog under a session id of its
+own (`IdPrefix.MANUAL_SESSION`: the column is NOT NULL, and there was no
+session) and a first send for its task's provider, held for the undo window
+like a stop's; Undo is a `RestorePoint` over the worklog's id, named before
+it is written. An overlap is not refused here: the queue's own rule holds the
+later entry.
+
 A **move** to another task (`reassign`) goes by the same send:
 
 | The send | A move |

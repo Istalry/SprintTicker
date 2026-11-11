@@ -47,7 +47,7 @@ describe('Work History', () => {
   it('Render_RowsWhoseTaskHasAPage_OnlyThoseHaveTheButton', async () => {
     const bridge = installElectronApi({ getWorklogsByDate: vi.fn().mockResolvedValue([log('a', 'MG-12', true), log('b', 'MISC-1', false)]) });
     render(<WorklogHistoryView />);
-    await screen.findByText('MG-12');
+    await screen.findByRole('button', { name: /^More for MG-12 at / });
 
     expect(openButton('MISC-1')).toBeNull();
     fireEvent.click(openButton('MG-12')!);

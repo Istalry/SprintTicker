@@ -3,9 +3,10 @@ import { ActiveSessionDTO, WorklogDTO } from '../../shared/dtos';
 import { localDateKey } from '../../shared/local-date';
 import { formatClockTime, formatHoursAndMinutes } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
-import { useEntryActions, EntryMenu } from './EntryActions';
+import { useEntryActions } from './EntryActions';
 import { useInterruptionsToPlace } from './InterruptionsToPlace';
-import { SyncBadge } from './SyncBadge';
+import { EntriesHead, EntryRow, ENTRY_CELL } from './EntryRow';
+import { AddTimeDialog, AddTimeStart } from './AddTimeDialog';
 
 /** Entries shown before "+ N more · show all": a heavy day stays one screen. */
 export const TODAY_ENTRIES_SHOWN = 5;
@@ -22,6 +23,7 @@ export const TODAY_ENTRIES_SHOWN = 5;
  */
 export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs: WorklogDTO[] }> = ({ session, worklogs }) => {
   const [showAll, setShowAll] = useState(false);
+  const [adding, setAdding] = useState<AddTimeStart | null>(null);
   const { providerName } = useProviderCapabilities();
   // Today's list follows main on its own (`onWorklogsUpdated`): nothing to read again here.
   const entries = useEntryActions(worklogs, () => undefined);
@@ -46,28 +48,28 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
     ...(toPlaceSeconds > 0 ? [`${formatHoursAndMinutes(toPlaceSeconds)} to place`] : [])
   ].join(' · ');
 
-  const cell = 'py-2.5 px-3';
+  const cell = ENTRY_CELL;
   return (
     <section aria-label="Today's entries" className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-3">
       <h3 className="text-md font-bold text-white flex items-center justify-between">
         <span>Today</span>
-        <span className="text-xs text-text-secondary font-normal font-mono">{summary}</span>
+        <span className="flex items-center gap-3">
+          <span className="text-xs text-text-secondary font-normal font-mono">{summary}</span>
+          <button
+            type="button"
+            onClick={() => setAdding({ dateKey: today })}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-border-dark text-text-secondary hover:text-white hover:border-focus"
+          >
+            + Add time
+          </button>
+        </span>
       </h3>
 
       {entries.moveError && <p role="alert" className="text-xs text-accent-red">Not moved: {entries.moveError}</p>}
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-border-dark text-text-secondary text-xs">
-              <th className={`${cell} font-semibold`}>Task</th>
-              <th className={`${cell} font-semibold`}>Note</th>
-              <th className={`${cell} font-semibold`}>Time</th>
-              <th className={`${cell} font-semibold`}>Started</th>
-              <th className={`${cell} font-semibold`}>{providerName || 'Sent'}</th>
-              <th className={cell}><span className="sr-only">Actions</span></th>
-            </tr>
-          </thead>
+          <EntriesHead providerName={providerName} />
           <tbody className="divide-y divide-border-dark text-sm">
             {session && (
               <tr className="bg-select">
@@ -86,21 +88,7 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
                 <td className={cell} />
               </tr>
             )}
-            {shown.map(log => (
-              <tr key={log.id} className={`transition-colors ${log.fromInterruption ? 'bg-accent-amber/5 hover:bg-accent-amber/10' : 'hover:bg-dark-700/50'}`}>
-                <td className={`${cell} font-mono font-bold text-text-primary whitespace-nowrap`}>
-                  {log.fromInterruption && <span title="Started as an interruption" className="text-accent-amber">⚡ </span>}
-                  {log.taskKey ?? log.taskId}
-                </td>
-                <td className={`${cell} text-text-primary`}>
-                  {log.comment || <span className="text-text-secondary">{log.taskTitle ?? ''}</span>}
-                </td>
-                <td className={`${cell} font-mono text-text-primary font-bold whitespace-nowrap`}>{formatHoursAndMinutes(log.durationSeconds)}</td>
-                <td className={`${cell} text-xs text-text-secondary font-mono`}>{formatClockTime(new Date(log.startedAtUtc))}</td>
-                <td className={cell}><SyncBadge log={log} /></td>
-                <td className={`${cell} text-right`}><EntryMenu log={log} onAction={action => entries.run(log, action)} /></td>
-              </tr>
-            ))}
+            {shown.map(log => <EntryRow key={log.id} log={log} onAction={action => entries.run(log, action)} />)}
             {!session && worklogs.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-xs text-text-secondary">
@@ -124,6 +112,7 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
       </div>
 
       {entries.dialogs}
+      <AddTimeDialog opening={adding} onClose={() => setAdding(null)} onAdded={() => setAdding(null)} />
     </section>
   );
 };

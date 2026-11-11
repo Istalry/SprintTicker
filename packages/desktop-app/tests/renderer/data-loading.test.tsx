@@ -47,10 +47,10 @@ describe('WorklogHistoryView', () => {
     answers['2026-09-02'].resolve([worklog('TASK-SECOND')]);
     answers['2026-09-01'].resolve([worklog('TASK-FIRST')]);
 
-    expect(await screen.findByText('TASK-SECOND')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /^More for TASK-SECOND at / })).toBeTruthy();
     // Let the late answer land, if anything would let it.
     await new Promise(r => setTimeout(r, 0));
-    expect(screen.queryByText('TASK-FIRST')).toBeNull();
+    expect(screen.queryAllByText('TASK-FIRST')).toEqual([]);
   });
 
   it('Render_ReadFails_StopsLoading', async () => {
@@ -60,7 +60,7 @@ describe('WorklogHistoryView', () => {
 
     render(<WorklogHistoryView />);
 
-    await waitFor(() => expect(screen.queryByText('Loading session history...')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Loading the day…')).toBeNull());
   });
 });
 

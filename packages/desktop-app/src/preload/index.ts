@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import type { ProviderEventSettingsDTO } from '../shared/provider-events';
-import type { WorklogCorrectionDTO } from '../shared/worklog-correction';
+import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type { InterruptionToPlaceDTO } from '../shared/interruption';
@@ -131,6 +131,7 @@ const electronAPI: IElectronAPI = {
   getPreviousTask: () => ipcRenderer.invoke(IPCChannel.GET_PREVIOUS_TASK),
   renameAdHocTask: (taskId: string, title: string) => ipcRenderer.invoke(IPCChannel.RENAME_AD_HOC_TASK, taskId, title),
   moveWorklog: (worklogId: string, taskId: string) => ipcRenderer.invoke(IPCChannel.MOVE_WORKLOG, worklogId, taskId),
+  addWorklog: (entry: ManualWorklogDTO) => ipcRenderer.invoke(IPCChannel.CREATE_MANUAL_WORKLOG, entry),
   moveSessionTo: (taskId: string) => ipcRenderer.invoke(IPCChannel.MOVE_SESSION, taskId),
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) =>
     ipcRenderer.invoke(IPCChannel.UPDATE_WORKLOG, worklogId, correction),

@@ -14,7 +14,9 @@ export const IdPrefix = {
   SESSION: 'sess_',
   WORKLOG: 'wl_',
   SYNC_ITEM: 'sync_',
-  INTERRUPTION: 'int_'
+  INTERRUPTION: 'int_',
+  /** The session of time added by hand: there was none, and the column is NOT NULL. */
+  MANUAL_SESSION: 'manual_'
 } as const;
 
 export type IdPrefixValue = (typeof IdPrefix)[keyof typeof IdPrefix];

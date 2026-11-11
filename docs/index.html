@@ -1017,9 +1017,24 @@
       <strong>Settings, Account</strong> refetches it, and <strong>Try now</strong> in the header&#39;s status
       panel does too.</p>
       <h4>📊 History</h4>
-      <p>Worklogs by date, with a daily summary and an end-of-day export. The arrow
-      beside a task opens it on Jira or OpenProject, as on Today and in
-      Tasks.</p>
+      <p>One day at a time: ‹ and › step through the days, a click on the date picks
+      one, and <strong>Today</strong> comes back. At the top, what the day adds up to -- <em>7h 30m
+      · 6 tasks · 9 entries</em> -- and where its sends stand (<em>all sent but 1
+      correction</em>); under it each task&#39;s share, the most time first. Then every
+      entry in the order you worked it: its task, the note your provider shows,
+      its time, when it started, and where it stands there. ⋯ on a row corrects,
+      moves or deletes it. The arrow beside a task opens it on Jira or
+      OpenProject, as on Today and in Tasks. Interruptions still to place, of any
+      day, are listed above the day.</p>
+      <p>➕ <strong>Add time you didn&#39;t time</strong> with <strong>+ Add time</strong>, on any day here and on
+      Today: pick the task, say how long and when it started, and add a note --
+      it is what your provider shows. It opens on half an hour, ending now on
+      today and from 09:00 on another day. It is sent like any entry, after the
+      same ten seconds of Undo. Before you add it, it says when it would overlap
+      an entry -- <em>Overlaps PF-31, which starts at 08:45</em> -- and offers the one
+      change that clears it; added anyway, the later of the two waits. It says so
+      too for a week already closed. An entry ends on the day it starts: add the
+      time after midnight as another.</p>
       <p align="center">
         <img src="images/app-history.png" width="80%" alt="History for one day: 4h 10m logged over four tasks, broken down by task">
       </p><p><strong>A worklog never spans midnight.</strong> Jira and OpenProject file a worklog under
@@ -1054,7 +1069,7 @@
       entries says <strong>Waiting · overlaps PF-31</strong> and is not sent until you correct
       one of them; then it goes. A correction that would make two entries overlap
       says so before you save it. Entries already sent stay as they are.</p>
-      <p>✏️ <strong>Correct or delete a worklog</strong> with the pencil and the bin on its row. A
+      <p>✏️ <strong>Correct or delete a worklog</strong> with <strong>Correct…</strong> and <strong>Delete…</strong> in ⋯ on its row. A
       correction changes the duration, the start or the comment. It applies here at once and
       reaches Jira or OpenProject through the sync queue, so it survives a lost
       connection or a restart; a worklog not sent yet is simply sent with the new
@@ -1062,7 +1077,7 @@
       Worklogs sent by an earlier version are found at the provider by the
       <code>[#xxxxxxxx]</code> tag at the end of their comment, so keep that tag if you edit the
       comment in Jira.</p>
-      <p>⇄ <strong>Move a worklog to another task</strong> with the arrows on its row: pick the
+      <p>⇄ <strong>Move a worklog to another task</strong> with <strong>↳ Move…</strong> in ⋯ on its row: pick the
       task, and the time is on it at once here. At Jira or OpenProject the entry is
       deleted where it was, then created on the new task -- in that order, so the
       time is never on both, and for a moment may be on neither while the move goes
@@ -2377,6 +2392,12 @@
       <td align="left">Here only</td>
       </tr>
       </tbody></table></div>
+      <p>Time <strong>added by hand</strong> (<code>add</code>, S16b) is a worklog under a session id of its
+      own (<code>IdPrefix.MANUAL_SESSION</code>: the column is NOT NULL, and there was no
+      session) and a first send for its task&#39;s provider, held for the undo window
+      like a stop&#39;s; Undo is a <code>RestorePoint</code> over the worklog&#39;s id, named before
+      it is written. An overlap is not refused here: the queue&#39;s own rule holds the
+      later entry.</p>
       <p>A <strong>move</strong> to another task (<code>reassign</code>) goes by the same send:</p>
       <div class="table-wrap"><table>
       <thead>
@@ -3587,6 +3608,10 @@
       <tr>
       <td align="left"><code>worklog:delete</code></td>
       <td align="left"><code>(worklogId)</code>. Deletes the worklog here at once and queues its deletion at the provider; answers <code>true</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklog:create-manual</code></td>
+      <td align="left"><code>(ManualWorklogDTO: { taskId, durationSeconds, startedAtUtc, comment })</code>. Adds time nobody timed (S16b, <code>WorklogCorrectionService.add</code>): a worklog here, under a session id of its own (<code>manual_…</code>), and a first send to the task&#39;s provider through the queue, held for the undo window with Undo (<code>Added to PF-31 · 30m</code>). A project made in SprintTicker keeps it here; an empty note is sent as <code>Added in SprintTicker</code>. Answers the worklog and resends <code>worklog:on-updated</code>. Rejects with the reason (<code>checkManualWorklog</code>): no task, ad-hoc work or an unknown task, under the provider&#39;s floor, ending in the future, or across local midnight. An overlap or a closed week is never refused -- the window warns, and the queue holds the later entry</td>
       </tr>
       <tr>
       <td align="left"><code>worklogs:move</code></td>

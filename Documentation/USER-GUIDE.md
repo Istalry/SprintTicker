@@ -504,9 +504,25 @@ panel does too.
 
 ### 📊 History
 
-Worklogs by date, with a daily summary and an end-of-day export. The arrow
-beside a task opens it on Jira or OpenProject, as on Today and in
-Tasks.
+One day at a time: ‹ and › step through the days, a click on the date picks
+one, and **Today** comes back. At the top, what the day adds up to -- *7h 30m
+· 6 tasks · 9 entries* -- and where its sends stand (*all sent but 1
+correction*); under it each task's share, the most time first. Then every
+entry in the order you worked it: its task, the note your provider shows,
+its time, when it started, and where it stands there. ⋯ on a row corrects,
+moves or deletes it. The arrow beside a task opens it on Jira or
+OpenProject, as on Today and in Tasks. Interruptions still to place, of any
+day, are listed above the day.
+
+➕ **Add time you didn't time** with **+ Add time**, on any day here and on
+Today: pick the task, say how long and when it started, and add a note --
+it is what your provider shows. It opens on half an hour, ending now on
+today and from 09:00 on another day. It is sent like any entry, after the
+same ten seconds of Undo. Before you add it, it says when it would overlap
+an entry -- *Overlaps PF-31, which starts at 08:45* -- and offers the one
+change that clears it; added anyway, the later of the two waits. It says so
+too for a week already closed. An entry ends on the day it starts: add the
+time after midnight as another.
 
 <p align="center">
   <img src="../docs/images/app-history.png" width="80%" alt="History for one day: 4h 10m logged over four tasks, broken down by task">
@@ -551,7 +567,7 @@ entries says **Waiting · overlaps PF-31** and is not sent until you correct
 one of them; then it goes. A correction that would make two entries overlap
 says so before you save it. Entries already sent stay as they are.
 
-✏️ **Correct or delete a worklog** with the pencil and the bin on its row. A
+✏️ **Correct or delete a worklog** with **Correct…** and **Delete…** in ⋯ on its row. A
 correction changes the duration, the start or the comment. It applies here at once and
 reaches Jira or OpenProject through the sync queue, so it survives a lost
 connection or a restart; a worklog not sent yet is simply sent with the new
@@ -560,7 +576,7 @@ Worklogs sent by an earlier version are found at the provider by the
 `[#xxxxxxxx]` tag at the end of their comment, so keep that tag if you edit the
 comment in Jira.
 
-⇄ **Move a worklog to another task** with the arrows on its row: pick the
+⇄ **Move a worklog to another task** with **↳ Move…** in ⋯ on its row: pick the
 task, and the time is on it at once here. At Jira or OpenProject the entry is
 deleted where it was, then created on the new task -- in that order, so the
 time is never on both, and for a moment may be on neither while the move goes

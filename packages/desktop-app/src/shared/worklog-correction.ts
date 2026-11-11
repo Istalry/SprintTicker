@@ -46,6 +46,31 @@ export type WorklogSyncState =
   | 'held-overlap';
 
 /**
+ * Time added by hand (S16b, "+ Add time"): an entry nobody timed, on a task,
+ * sent like any other.
+ */
+export interface ManualWorklogDTO extends WorklogCorrectionDTO {
+  taskId: string;
+}
+
+/**
+ * Why `entry` cannot be added, as a sentence, or null when it can: the rules
+ * of a correction, and one more -- it ends on the day it starts, as every
+ * worklog does (`splitWork`), since a provider files it under that day.
+ */
+export function checkManualWorklog(entry: ManualWorklogDTO, nowMs: number, minimumSeconds: number = 1): string | null {
+  if (!entry.taskId) return 'Choose the task the time goes to.';
+  const refusal = checkWorklogCorrection(entry, nowMs, minimumSeconds);
+  if (refusal) return refusal;
+  const start = new Date(entry.startedAtUtc);
+  const lastSecond = new Date(start.getTime() + (entry.durationSeconds - 1) * 1000);
+  if (start.toDateString() !== lastSecond.toDateString()) {
+    return 'An entry ends on the day it starts: add the time after midnight as another.';
+  }
+  return null;
+}
+
+/**
  * Why `correction` cannot be made, as a sentence for the user, or null when
  * it can.
  *

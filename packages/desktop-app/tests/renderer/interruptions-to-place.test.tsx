@@ -32,8 +32,15 @@ const history = async (day: WorklogDTO[], waiting: InterruptionToPlaceDTO[] = []
     getInterruptionsToPlace: vi.fn().mockResolvedValue(waiting)
   });
   render(<WorklogHistoryView />);
-  await screen.findByText('Chronological Session Log (' + day.length + ')');
+  await screen.findByRole('region', { name: "The day's entries" });
+  await waitFor(() => expect(screen.queryByText('Loading the day…')).toBeNull());
   return bridge;
+};
+
+/** ⋯ on an entry's row in History, then one of its items. */
+const entryMenu = async (key: string, item: string) => {
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(`^More for ${key} at `) }));
+  fireEvent.click(screen.getByRole('menuitem', { name: item }));
 };
 
 /** Picks task SPR-9 in the picker History opened, through its project. */
@@ -370,7 +377,7 @@ describe('Work History, interruptions to place', () => {
     });
     render(<WorklogHistoryView />);
 
-    expect(await screen.findByText('MG-12')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /^More for MG-12 at / })).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
   });
 });
@@ -380,7 +387,7 @@ describe('Work History, moving time to another task', () => {
     const bridge = installElectronApi(withProjects({ getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]) }));
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await entryMenu('MG-12', '↳ Move…');
     await pick();
 
     await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w3', 'T-9'));
@@ -394,7 +401,7 @@ describe('Work History, moving time to another task', () => {
     }));
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await entryMenu('MG-12', '↳ Move…');
     await pick();
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/Not moved: .*at least 1 minute/);
@@ -404,7 +411,7 @@ describe('Work History, moving time to another task', () => {
     installElectronApi(withProjects({ getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]) }));
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await entryMenu('MG-12', '↳ Move…');
     await screen.findByRole('dialog', { name: 'Move to a task' });
 
     expect(screen.queryByText(/A task of my own/)).toBeNull();
@@ -423,7 +430,7 @@ describe('Work History, time in a closed week', () => {
     render(<WorklogHistoryView />);
     await waitFor(() => expect(bridge.api.getLastWeekClosed).toHaveBeenCalled());
 
-    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await entryMenu('MG-12', '↳ Move…');
 
     const question = screen.getByRole('alertdialog', { name: 'Move time from a closed week?' });
     expect(question.textContent).toMatch(/timesheet/);
@@ -439,7 +446,7 @@ describe('Work History, time in a closed week', () => {
     });
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await entryMenu('MG-12', '↳ Move…');
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a task' }));
 
     expect(await screen.findByRole('dialog', { name: 'Move to a task' })).toBeTruthy();
@@ -452,7 +459,7 @@ describe('Work History, time in a closed week', () => {
     });
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Move MG-12 at .* to another task/ }));
+    await entryMenu('MG-12', '↳ Move…');
 
     expect(await screen.findByRole('dialog', { name: 'Move to a task' })).toBeTruthy();
     expect(screen.queryByRole('alertdialog', { name: 'Move time from a closed week?' })).toBeNull();
@@ -466,7 +473,7 @@ describe('Work History, time in a closed week', () => {
     render(<WorklogHistoryView />);
     await waitFor(() => expect(bridge.api.getLastWeekClosed).toHaveBeenCalled());
 
-    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`${action} MG-12`) }));
+    await entryMenu('MG-12', `${action}…`);
 
     expect(screen.getByRole('note').textContent).toMatch(/week already closed/);
   });
@@ -478,7 +485,7 @@ describe('Work History, time in a closed week', () => {
     });
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Correct MG-12/ }));
+    await entryMenu('MG-12', 'Correct…');
 
     expect(screen.queryByRole('note')).toBeNull();
   });

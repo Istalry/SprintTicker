@@ -8,7 +8,8 @@ import { UndoService } from './undo-service';
 import { completeSession, SessionEnding } from './session-commands';
 import { undoLabel } from '../../shared/words';
 import { formatHoursAndMinutes } from '../../shared/time-format';
-import { WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { createId, IdPrefix } from '../db/id-generator';
 
 /** What an undoable command reaches. */
 export interface UndoableDeps {
@@ -119,7 +120,7 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
 /** What the worklog edits reach, besides the undo. */
 export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
   worklogs: Pick<WorklogRepository, 'getWorklogById'>;
-  corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove'>;
+  corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove' | 'add'>;
   /** Called after an undo put rows back, so the window reads them again. */
   onRestored: () => void;
 }
@@ -127,7 +128,7 @@ export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
 function offerWorklogUndo(
   deps: WorklogEditDeps,
   point: RestorePoint,
-  kind: 'correct' | 'move' | 'delete',
+  kind: 'correct' | 'move' | 'delete' | 'add',
   label: string
 ): void {
   point.seal();
@@ -164,6 +165,16 @@ export function moveUndoably(deps: WorklogEditDeps, worklogId: string, taskId: s
   const moved = deps.corrections.reassign(worklogId, taskId);
   offerWorklogUndo(deps, point, 'move', undoLabel('move', moved.taskKey ?? moved.taskId, formatHoursAndMinutes(moved.durationSeconds)));
   return moved;
+}
+
+/** Time added by hand, held: Undo takes the entry and its send away again. */
+export function addUndoably(deps: WorklogEditDeps, entry: ManualWorklogDTO): WorklogRecord {
+  // Named before it exists, so the restore point covers the rows it adds.
+  const worklogId = createId(IdPrefix.WORKLOG);
+  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [entry.taskId]));
+  const added = deps.corrections.add(entry, worklogId);
+  offerWorklogUndo(deps, point, 'add', undoLabel('add', added.taskKey ?? added.taskId, formatHoursAndMinutes(added.durationSeconds)));
+  return added;
 }
 
 /** A deletion, held: Undo brings the worklog back with its sends. */
