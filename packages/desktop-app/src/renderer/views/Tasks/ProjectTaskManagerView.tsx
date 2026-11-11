@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FolderPlus, Plus, Trash2, Edit3, Upload, FileText, CheckCircle, AlertCircle, X, CheckCircle2, Clock } from 'lucide-react';
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
-import { triggerDesktopConfetti } from '../../utils/confetti-fx';
-import { FinishSessionModal } from '../../components/FinishSessionModal';
+import { pickTask } from '../../utils/pick-task';
+import { Verb } from '../../../shared/words';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { ProjectFilterToggle } from '../../components/ProjectFilterToggle';
 import { useOnlyProjectsWithTasks } from '../../hooks/useOnlyProjectsWithTasks';
@@ -36,7 +36,6 @@ export const ProjectTaskManagerView: React.FC = () => {
   const selectedProjectRef = useRef<string>('');
 
   // Modals
-  const [isFinishModalOpen, setIsFinishModalOpen] = useState<boolean>(false);
   const [isAddProjOpen, setIsAddProjOpen] = useState<boolean>(false);
   const [newProjKey, setNewProjKey] = useState<string>('');
   const [newProjName, setNewProjName] = useState<string>('');
@@ -436,26 +435,37 @@ export const ProjectTaskManagerView: React.FC = () => {
 
                       {activeSession?.taskId === task.id ? (
                         <button
-                          title="Stop Timer"
-                          onClick={() => setIsFinishModalOpen(true)}
-                          className="px-3 py-1 bg-accent-red/20 text-accent-red border border-accent-red/40 hover:bg-accent-red/30 font-bold text-xs rounded transition-colors"
+                          title="Stop the timer; the task stays open"
+                          onClick={() => {
+                            // One click, as Today's Stop: logged, the task left
+                            // open, and Undo for UNDO_WINDOW_MS. Done and
+                            // Discard are the session card's (redesign P7c:
+                            // one finish flow, not a second dialog here).
+                            window.electronAPI?.completeSession(undefined, false)
+                              .then(() => fetchTasks(selectedProjectId))
+                              .catch(err => console.warn('[Tasks] Stopping the session failed:', err));
+                          }}
+                          className="px-3 py-1 bg-dark-700 text-white border border-border-dark hover:bg-dark-600 font-bold text-xs rounded transition-colors"
                         >
-                          Stop
+                          {Verb.STOP}
                         </button>
                       ) : (
                         <button
-                          title="Start working on this task"
-                          onClick={async () => {
+                          title={activeSession ? 'Switch to this task' : 'Start this task'}
+                          onClick={() => {
                             if (!window.electronAPI) return;
-                            // No stop first: startTask logs a running session
-                            // itself. Stopping it here as well played the bar's
-                            // LOGGED scene only for the new task to cut it off.
-                            await window.electronAPI.startTask(task.id, false);
-                            await fetchTasks(selectedProjectId);
+                            // The picker's own pick (P7c): during an
+                            // interruption this is a switch from it, as
+                            // the picker does, never a start beside it.
+                            // No stop first: startTask logs a running
+                            // session itself.
+                            void pickTask('start', activeSession, { task, takeAlong: false }, (id, adHoc, title) =>
+                              window.electronAPI.startTask(id, adHoc, title)
+                            ).then(() => fetchTasks(selectedProjectId));
                           }}
                           className="px-3 py-1 bg-select text-text-primary border border-focus/40 hover:bg-dark-600 font-bold text-xs rounded transition-colors"
                         >
-                          {activeSession ? 'Switch' : 'Start'}
+                          {activeSession ? Verb.SWITCH : Verb.START}
                         </button>
                       )}
                     </div>
@@ -683,29 +693,6 @@ export const ProjectTaskManagerView: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Finish Session Modal */}
-      <FinishSessionModal 
-        isOpen={isFinishModalOpen} 
-        session={activeSession} 
-        onClose={() => setIsFinishModalOpen(false)} 
-        onFinishOption={async (markDone) => {
-          setIsFinishModalOpen(false);
-          if (!window.electronAPI) return;
-          await window.electronAPI.completeSession(undefined, markDone);
-          // The bar's DONE! comes from `session:complete`; see ActiveTaskHeroCard.
-          if (markDone) {
-            triggerDesktopConfetti();
-          }
-          await fetchTasks(selectedProjectId);
-        }}
-        onDiscard={async () => {
-          setIsFinishModalOpen(false);
-          if (!window.electronAPI) return;
-          await window.electronAPI.discardSession();
-          await fetchTasks(selectedProjectId);
-        }}
-      />
 
       {askingDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">

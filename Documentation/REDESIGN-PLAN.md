@@ -975,11 +975,32 @@ channels), `PROVIDER-API.md` (fetch one task by key, **before** the client:
   Still unlike S7, from P7a: the footer has no "A click starts the task"
   hint, and the Starred heading no "hover a task, click its ☆".
 
-**Then, P7c:** the command palette (Ctrl+K, S30); the Tasks tab's own Start
-/ Switch buttons and its second `FinishSessionModal` removed; S12b, placing
-several interruptions one row at a time, each with its own menu and an
-unnamed one asking for a name. Then P7's docs (USER-GUIDE: the picker window
-and the palette; API: the hash), its "As landed", and the Status row.
+**As landed: P7c, the palette, the Tasks rows and S12b (2026-11-11).**
+
+- **The command palette** (`components/CommandPalette.tsx`, rules in
+  `renderer/utils/palette-actions.ts`), Ctrl+K on the window (a `keydown`
+  listener, never a global chord). Actions from the session and the words
+  of `words.ts`, each with synonyms; settings by name from
+  `settings-groups.ts` once something is typed; tasks by `matchesSearch`
+  under the task visibility, six at most, "switch to it" / "start it".
+  Done and Discard are left out: each asks a question first, and P8's
+  Stop ▾ is their place. S30's "Check my week" waits for P9.
+- **Tasks**: the rows' Start / Switch go through `pickTask` (so during an
+  interruption it is `interruption:switch`), Stop is one click
+  (`completeSession(undefined, false)`, undoable), and the second
+  `FinishSessionModal` is gone. Today's still holds it until P8.
+- **S12b** (`components/PlaceInterruptionsDialog.tsx`): "Place all" opens
+  one row per interruption with its own choice, made in the place picker
+  (`justChosen`, the latest first), not an inline menu as drawn. Context:
+  time, length, "during", and "after '…'" while the one before is still
+  listed, else "N of M"; "from the bar" for an unnamed one. An unnamed row
+  asks a name once its task is chosen; left blank, it goes as it is.
+  Names are sent first, then one place per task, then the rows kept off;
+  a closed week asks once. Each place is its own undo: Undo takes back the
+  last one only.
+- Checked against S30 and S12b in the browser pane on a stub bridge: the
+  same layout and words; the subtitle's provider name was lowercased and
+  is fixed.
 
 ---
 
@@ -1564,7 +1585,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P4 | done; `pnpm db:check-migration` passed on the real database (13 to 14: 20 worklogs, 7 queue rows, nothing lost), run by the user | `e9e2e38` (2026-11-10) |
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
-| P7 | in progress: P7a (the picker, fetch by key) and P7b (the picker window) done; P7c palette, Tasks tab, S12b next -- see §12 "Then, P7c" | `12bca71` (2026-11-10), P7b (2026-11-11) |
+| P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, P7c (2026-11-11) |
 | P8 | not started | |
 | P9 | not started | |
 | P10 | not started | |

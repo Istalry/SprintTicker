@@ -48,6 +48,15 @@
   doing, on the screen your pointer is on, instead of bringing the whole
   dashboard forward. It closes after a pick, on Escape, or when you click
   elsewhere.
+- **Ctrl+K.** A command palette in the window: every action your state
+  allows, every setting and any task, by name. The old words still lead
+  somewhere -- *sort* finds Place.
+- **Place all, one row at a time.** Each interruption gets its own task,
+  starred and recent first with the ones you just chose on top; an unnamed
+  one asks what it was. The rows you leave stay to place.
+- **Tasks: one way to start and stop.** A task's Start or Switch is a pick,
+  so it switches from an interruption properly, and Stop is one click with
+  Undo -- the second finish dialog is gone.
 - **Interruptions to place.** An interruption's time goes nowhere until you
   say where: History lists every one waiting, whatever its day, with what it
   interrupted, and the wrap-up lists them too. **Place…** puts its time on a

@@ -264,6 +264,23 @@ whatever you were doing -- the dashboard stays where it was. It is the same
 picker: Start a task when nothing runs, Switch task while something does.
 It closes after you pick, on Escape or ✕, and when you click elsewhere.
 
+### ⌨️ Ctrl+K: everything by name
+
+**Ctrl+K**, anywhere in the window, opens the command palette: type, and it
+finds what the window can do now, every setting, and any task by key or
+title. Arrow keys and Enter do the one selected; Escape closes.
+
+- **Actions** are the ones your state allows -- Start a task… or Switch
+  task…, Previous task, Pause or Resume, Stop, Interrupt, or Back, Stop and
+  Another during an interruption -- then Place interruptions, End my day…,
+  the mini timer and the places. The old words still find them: *sort* or
+  *assign* finds Place, *finish* or *log* finds Stop.
+- **Settings** come by name once you type -- *lunch*, *token*, *colour* --
+  and open their group.
+- **Tasks** start, or are switched to, as a pick in the picker does.
+
+Done and Discard are not there: each asks first, on the session card.
+
 ### ⚡ Interrupt: a timer at once
 
 Someone at your desk, a call: press **Interrupt** and a timer starts there
@@ -315,7 +332,14 @@ you remember what they were. For each:
 
 - Click its name to give it one.
 - **Place…** puts its time on the task you pick: an entry, sent like any
-  other, with ten seconds to undo. **Place all** puts every one on one task.
+  other, with ten seconds to undo.
+- **Place all** opens them all in one list, each with its own **Choose a
+  task ▾**: your starred tasks first, then the recent ones, with the tasks
+  you just chose above -- so a talk that came back is one click from its
+  first part. Nothing is chosen until you click; **Keep off Jira** is in each
+  menu too. An unnamed one asks what it was once you choose its task, since
+  its name is the note the provider shows. **Place the N chosen** places
+  those; the others stay to place.
 - **Keep off Jira** -- your provider's name -- keeps its time in
   SprintTicker only, as ad-hoc work, never sent.
 - The bin discards it: its time is kept nowhere. Ten seconds to undo.
@@ -350,6 +374,12 @@ ad-hoc time.
 <p align="center">
   <img src="../docs/images/app-projects.png" width="80%" alt="Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
 </p>
+
+Each task has **Start**, or **Switch** while something runs -- the same as
+picking it in the picker, so during an interruption it switches from the
+interruption. The task being timed has **Stop**, one click as on Today:
+the time is logged, the task stays open, and Undo takes it back for ten
+seconds. Done and Discard are on Today's session card.
 
 A task from Jira or OpenProject shows the start of its description under its
 title, on one line. The task picker searches it too, so you can find a task by

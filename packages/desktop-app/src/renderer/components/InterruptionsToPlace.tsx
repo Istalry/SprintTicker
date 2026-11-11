@@ -9,6 +9,7 @@ import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { InlineRename } from './InlineRename';
 import { TaskPicker } from './TaskPicker';
 import { ConfirmPanel } from './ConfirmPanel';
+import { PlaceInterruptionsDialog } from './PlaceInterruptionsDialog';
 
 interface InterruptionsToPlaceProps {
   /** One line under the heading: what placing does, said for where the list is. */
@@ -41,6 +42,8 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
   // A place of closed-week time, waiting for the user to say go on.
   const [asking, setAsking] = useState<Placing | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Place all (S12b): each row its own task, in one dialog.
+  const [placingAll, setPlacingAll] = useState(false);
   const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
   const { providerName } = useProviderCapabilities();
 
@@ -106,8 +109,8 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
           <button
             type="button"
             className={small}
-            title="Put all of them on one task"
-            onClick={() => startPlacing(waiting, `${waiting.length} interruptions`)}
+            title="Choose a task for each, in one place"
+            onClick={() => { setError(null); setPlacingAll(true); }}
           >
             <Link2 className="w-3.5 h-3.5" />
             <span>{Verb.PLACE} all</span>
@@ -196,6 +199,16 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
             />
           </div>
         </div>
+      )}
+
+      {placingAll && (
+        <PlaceInterruptionsDialog
+          waiting={waiting}
+          providerName={providerName}
+          lastWeekClosed={lastWeekClosed}
+          onClose={() => setPlacingAll(false)}
+          onError={setError}
+        />
       )}
 
       <TaskPicker

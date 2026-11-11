@@ -25,7 +25,7 @@ interface SettingsPageProps {
   onRunSetup: () => void;
 }
 
-function readShowDeveloper(): boolean {
+export function readShowDeveloper(): boolean {
   try {
     return window.localStorage.getItem(SHOW_DEVELOPER_KEY) === 'true';
   } catch {

@@ -69,6 +69,57 @@ describe('the task list rows', () => {
     expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete SPR-143' })).toBeTruthy();
   });
+
+  it('Stop_OneClick_StopsAndLeavesTheTaskOpen_NoSecondDialog', async () => {
+    // P7c: one finish flow. Done and Discard are the session card's.
+    const bridge = installElectronApi({
+      getProjects: vi.fn().mockResolvedValue([PROJECT]),
+      getTasks: vi.fn().mockResolvedValue(TASKS),
+      getCurrentSession: vi.fn().mockResolvedValue(TRACKING_SESSION)
+    });
+    render(<ProjectTaskManagerView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop' }));
+
+    await waitFor(() => expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, false));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText(/Mark as Done/i)).toBeNull();
+  });
+
+  it('Start_StartsTheTask', async () => {
+    const bridge = installElectronApi({ getProjects: vi.fn().mockResolvedValue([PROJECT]), getTasks: vi.fn().mockResolvedValue(TASKS) });
+    render(<ProjectTaskManagerView />);
+    await screen.findByText('Pause menu sounds');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Start' })[1]);
+
+    await waitFor(() => expect(bridge.api.startTask).toHaveBeenCalledWith('T-2', false, 'Pause menu sounds'));
+  });
+
+  it('Switch_DuringAnInterruption_SwitchesFromIt_AsThePickerDoes', async () => {
+    // A start beside the interruption would leave it running under the task.
+    const during = {
+      ...TRACKING_SESSION,
+      sessionId: 'int_1', taskId: 'int_1', taskKey: 'ADHOC', taskTitle: 'Call with Marc', isAdHoc: true,
+      interruption: {
+        id: 'int_1', name: 'Call with Marc', title: 'Call with Marc', startedAtUtc: '2026-11-10T09:00:00.000Z', index: 1,
+        source: 'window' as const, interruptedSessionId: 'S-1', interruptedTaskKey: 'SPR-142',
+        interruptedTaskTitle: 'Rework the pause menu', interruptedWasPaused: false
+      }
+    };
+    const bridge = installElectronApi({
+      getProjects: vi.fn().mockResolvedValue([PROJECT]),
+      getTasks: vi.fn().mockResolvedValue(TASKS),
+      getCurrentSession: vi.fn().mockResolvedValue(during)
+    });
+    render(<ProjectTaskManagerView />);
+    await screen.findAllByRole('button', { name: 'Switch' });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Switch' })[1]);
+
+    await waitFor(() => expect(bridge.api.switchFromInterruption).toHaveBeenCalledWith('T-2', false));
+    expect(bridge.api.startTask).not.toHaveBeenCalled();
+  });
 });
 
 describe('Ceremonies', () => {

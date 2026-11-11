@@ -147,14 +147,108 @@ describe('Work History, interruptions to place', () => {
     await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_1', 'T-9'));
   });
 
-  it('PlaceAll_OneTaskForEveryOne', async () => {
-    const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING, NEXT]) }));
-    render(<WorklogHistoryView />);
+  describe('Place all (S12b)', () => {
+    const placeAll = async (overrides: Record<string, unknown> = {}) => {
+      const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING, NEXT]), ...overrides }));
+      render(<WorklogHistoryView />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Place all' }));
+      return { bridge, dialog: await screen.findByRole('dialog', { name: 'Place 2 interruptions' }) };
+    };
+    const chooseFor = async (name: string) => {
+      fireEvent.click(screen.getByRole('button', { name: `Choose a task for ${name}` }));
+      await pick();
+    };
+    const placeButton = () => screen.getByRole('button', { name: /^Place the \d+ chosen/ });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Place all' }));
-    await pick();
+    it('Opens_ARowEach_NothingChosen', async () => {
+      const { dialog } = await placeAll();
 
-    await waitFor(() => expect(bridge.api.placeInterruptions).toHaveBeenCalledWith(['int_1', 'int_2'], 'T-9'));
+      expect(within(dialog).getByText('0 chosen · 2 left')).toBeTruthy();
+      expect(within(dialog).getAllByText('Choose a task ▾')).toHaveLength(2);
+      expect((placeButton() as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('OneRowChosen_PlacesItAlone_TheOtherWaits', async () => {
+      const { bridge } = await placeAll();
+
+      await chooseFor('Call with Marc');
+      expect(screen.getByText('1 chosen · 1 left')).toBeTruthy();
+      fireEvent.click(placeButton());
+
+      await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_2', 'T-9'));
+      expect(bridge.api.placeInterruptions).not.toHaveBeenCalled();
+      expect(bridge.api.renameInterruption).not.toHaveBeenCalled();
+    });
+
+    it('UnnamedOne_AsksANameOnceItsTaskIsChosen_NamedBeforePlaced', async () => {
+      const { bridge } = await placeAll();
+
+      await chooseFor('Interruption 10:30');
+      const name = await screen.findByRole('textbox', { name: 'Name Interruption 10:30' });
+      fireEvent.change(name, { target: { value: 'Ana question' } });
+      fireEvent.click(placeButton());
+
+      await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_1', 'T-9'));
+      expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Ana question');
+      const renamed = vi.mocked(bridge.api.renameInterruption).mock.invocationCallOrder[0];
+      const placed = vi.mocked(bridge.api.placeInterruption).mock.invocationCallOrder[0];
+      expect(renamed).toBeLessThan(placed);
+    });
+
+    it('TwoRowsOnOneTask_PlacedTogether_TheJustChosenListedFirst', async () => {
+      const { bridge } = await placeAll();
+
+      await chooseFor('Call with Marc');
+      fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Interruption 10:30' }));
+      const picker = await screen.findByRole('dialog', { name: /on a task/ });
+      expect(await within(picker).findByText('just chosen first')).toBeTruthy();
+      fireEvent.click(await within(picker).findByText('SPR-9'));
+      fireEvent.click(placeButton());
+
+      await waitFor(() => expect(bridge.api.placeInterruptions).toHaveBeenCalledWith(['int_1', 'int_2'], 'T-9'));
+    });
+
+    it('KeepOff_ARow_KeptOffWhenPlaced', async () => {
+      const { bridge } = await placeAll();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Call with Marc' }));
+      const picker = await screen.findByRole('dialog', { name: /on a task/ });
+      fireEvent.click(await within(picker).findByRole('button', { name: /^Keep off/ }));
+      expect(screen.getByText('1 chosen · 1 left')).toBeTruthy();
+      fireEvent.click(placeButton());
+
+      await waitFor(() => expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_2'));
+      expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
+    });
+
+    it('Close_PlacesNothing', async () => {
+      const { bridge } = await placeAll();
+
+      await chooseFor('Call with Marc');
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+      expect(screen.queryByRole('dialog', { name: 'Place 2 interruptions' })).toBeNull();
+      expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
+    });
+
+    it('Refused_SaysWhyUnderTheList', async () => {
+      await placeAll({ placeInterruption: vi.fn().mockRejectedValue(new Error("Error invoking remote method 'interruption:place': Error: The provider records at least 1 minute(s).")) });
+
+      await chooseFor('Call with Marc');
+      fireEvent.click(placeButton());
+
+      expect((await screen.findByRole('alert')).textContent).toMatch(/Not done: .*at least 1 minute/);
+    });
+
+    it('ClosedWeekTime_AsksFirst', async () => {
+      const { bridge } = await placeAll({ getLastWeekClosed: vi.fn().mockResolvedValue('2026-11-09') });
+
+      await chooseFor('Call with Marc');
+      fireEvent.click(placeButton());
+
+      expect(screen.getByRole('alertdialog', { name: 'Place 1 interruptions?' }).textContent).toMatch(/timesheet/);
+      expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
+    });
   });
 
   it('Place_Refused_SaysWhy', async () => {

@@ -782,6 +782,21 @@
       whatever you were doing -- the dashboard stays where it was. It is the same
       picker: Start a task when nothing runs, Switch task while something does.
       It closes after you pick, on Escape or ✕, and when you click elsewhere.</p>
+      <h4>⌨️ Ctrl+K: everything by name</h4>
+      <p><strong>Ctrl+K</strong>, anywhere in the window, opens the command palette: type, and it
+      finds what the window can do now, every setting, and any task by key or
+      title. Arrow keys and Enter do the one selected; Escape closes.</p>
+      <ul>
+      <li><strong>Actions</strong> are the ones your state allows -- Start a task… or Switch
+      task…, Previous task, Pause or Resume, Stop, Interrupt, or Back, Stop and
+      Another during an interruption -- then Place interruptions, End my day…,
+      the mini timer and the places. The old words still find them: <em>sort</em> or
+      <em>assign</em> finds Place, <em>finish</em> or <em>log</em> finds Stop.</li>
+      <li><strong>Settings</strong> come by name once you type -- <em>lunch</em>, <em>token</em>, <em>colour</em> --
+      and open their group.</li>
+      <li><strong>Tasks</strong> start, or are switched to, as a pick in the picker does.</li>
+      </ul>
+      <p>Done and Discard are not there: each asks first, on the session card.</p>
       <h4>⚡ Interrupt: a timer at once</h4>
       <p>Someone at your desk, a call: press <strong>Interrupt</strong> and a timer starts there
       and then, with nothing to fill in. The task you were on <strong>waits, paused</strong>:
@@ -830,7 +845,14 @@
       <ul>
       <li>Click its name to give it one.</li>
       <li><strong>Place…</strong> puts its time on the task you pick: an entry, sent like any
-      other, with ten seconds to undo. <strong>Place all</strong> puts every one on one task.</li>
+      other, with ten seconds to undo.</li>
+      <li><strong>Place all</strong> opens them all in one list, each with its own <strong>Choose a
+      task ▾</strong>: your starred tasks first, then the recent ones, with the tasks
+      you just chose above -- so a talk that came back is one click from its
+      first part. Nothing is chosen until you click; <strong>Keep off Jira</strong> is in each
+      menu too. An unnamed one asks what it was once you choose its task, since
+      its name is the note the provider shows. <strong>Place the N chosen</strong> places
+      those; the others stay to place.</li>
       <li><strong>Keep off Jira</strong> -- your provider&#39;s name -- keeps its time in
       SprintTicker only, as ad-hoc work, never sent.</li>
       <li>The bin discards it: its time is kept nowhere. Ten seconds to undo.</li>
@@ -871,7 +893,12 @@
       </div>
       <p align="center">
         <img src="images/app-projects.png" width="80%" alt="Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
-      </p><p>A task from Jira or OpenProject shows the start of its description under its
+      </p><p>Each task has <strong>Start</strong>, or <strong>Switch</strong> while something runs -- the same as
+      picking it in the picker, so during an interruption it switches from the
+      interruption. The task being timed has <strong>Stop</strong>, one click as on Today:
+      the time is logged, the task stays open, and Undo takes it back for ten
+      seconds. Done and Discard are on Today&#39;s session card.</p>
+      <p>A task from Jira or OpenProject shows the start of its description under its
       title, on one line. The task picker searches it too, so you can find a task by
       what it is about.</p>
       <p>🔎 <strong>Only projects with tasks</strong> -- the switch above the project list, on by
@@ -1877,7 +1904,20 @@
       (<code>openTaskPickerInMainWindow</code>), kept until the window has run packaged. The
       tray, the deck&#39;s <code>openPicker</code> and <code>mini:open-task-picker</code> /
       <code>mini:open-assign-picker</code> open it; the bar keeps raising the dashboard with
-      its picker until P14. Both get the same web preferences and
+      its picker until P14.</p>
+      <p><strong>The command palette</strong> (<code>CommandPalette</code>, Ctrl+K, redesign P7c) is renderer
+      only. <code>utils/palette-actions.ts</code> lists the actions the session allows, in the
+      words of <code>shared/words.ts</code>, each with other words for it (&quot;sort&quot; finds
+      Place), and every setting of <code>settings-groups.ts</code>; <code>filterPalette</code> ranks
+      them. <code>App</code> runs an action as the window&#39;s own control for it does, and a
+      task picked there goes through <code>pickTask</code>, as the picker&#39;s. <strong>Placing
+      several interruptions</strong> (<code>PlaceInterruptionsDialog</code>, S12b) keeps a choice
+      per row and sends nothing until &quot;Place the N chosen&quot;: the names first
+      (<code>interruption:rename</code>), then one place per task (<code>interruption:place</code>, or
+      <code>interruption:place-many</code> for several), then
+      the rows kept off. The Tasks place&#39;s rows start and switch through
+      <code>pickTask</code> too, and its Stop is <code>session:complete</code> without Done, so the
+      window has one finish flow. Both get the same web preferences and
       the same navigation lock (<code>secureAndLoad</code> in <code>index.ts</code>), so the second window
       cannot end up laxer than the first. <code>MiniWindowManager</code> owns the mini timer: it
       builds it through an injected factory, remembers its position and whether it

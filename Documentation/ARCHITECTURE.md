@@ -103,7 +103,21 @@ renderer's `window.close()`, after main has answered the pick) and on
 (`openTaskPickerInMainWindow`), kept until the window has run packaged. The
 tray, the deck's `openPicker` and `mini:open-task-picker` /
 `mini:open-assign-picker` open it; the bar keeps raising the dashboard with
-its picker until P14. Both get the same web preferences and
+its picker until P14.
+
+**The command palette** (`CommandPalette`, Ctrl+K, redesign P7c) is renderer
+only. `utils/palette-actions.ts` lists the actions the session allows, in the
+words of `shared/words.ts`, each with other words for it ("sort" finds
+Place), and every setting of `settings-groups.ts`; `filterPalette` ranks
+them. `App` runs an action as the window's own control for it does, and a
+task picked there goes through `pickTask`, as the picker's. **Placing
+several interruptions** (`PlaceInterruptionsDialog`, S12b) keeps a choice
+per row and sends nothing until "Place the N chosen": the names first
+(`interruption:rename`), then one place per task (`interruption:place`, or
+`interruption:place-many` for several), then
+the rows kept off. The Tasks place's rows start and switch through
+`pickTask` too, and its Stop is `session:complete` without Done, so the
+window has one finish flow. Both get the same web preferences and
 the same navigation lock (`secureAndLoad` in `index.ts`), so the second window
 cannot end up laxer than the first. `MiniWindowManager` owns the mini timer: it
 builds it through an injected factory, remembers its position and whether it
