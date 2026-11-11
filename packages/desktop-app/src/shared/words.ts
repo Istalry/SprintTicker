@@ -1,5 +1,6 @@
 import { DECK_WORDS } from './deck-protocol';
 import { DISPLAY_CONSTANTS } from './render-constants';
+import type { InterruptionSource } from './interruption';
 
 /**
  * The words of the 2026-11 redesign: one meaning per word, one word per
@@ -72,6 +73,22 @@ export const StateWord = {
 
 /** Union of the state strings above. */
 export type StateWordValue = (typeof StateWord)[keyof typeof StateWord];
+
+/**
+ * Where an interruption was started, as its row says it (S5): "from the
+ * Stream Deck". So a list read at 18:00 still says which one it was. An
+ * interruption of the model before has no source to tell.
+ */
+export const INTERRUPTION_SOURCE_WORDS: Record<InterruptionSource, string | null> = {
+  window: 'from the window',
+  mini: 'from the mini timer',
+  tray: 'from the tray',
+  bar: 'from the bar',
+  deck: 'from the Stream Deck',
+  shortcut: 'from the shortcut',
+  notification: 'from a notification',
+  legacy: null
+};
 
 /**
  * "Keep off Jira": keep an interruption on this computer only, never sent.

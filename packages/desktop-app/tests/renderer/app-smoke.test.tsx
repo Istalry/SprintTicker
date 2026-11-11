@@ -22,7 +22,7 @@ describe('App', () => {
   it('Render_FirstLaunch_OpensOnTheActiveSession', async () => {
     render(<App />);
 
-    expect(await screen.findByText(/No worklogs recorded today yet/)).toBeTruthy();
+    expect(await screen.findByText(/Nothing logged today yet/)).toBeTruthy();
   });
 
   it.each(places)('Navigate_%s_MountsItsView', async (label, heading) => {
@@ -39,7 +39,7 @@ describe('App', () => {
 
     render(<App />);
 
-    const row = (await screen.findByText(/\(Active Session\)/)).closest('tr');
+    const row = (await screen.findByText('running')).closest('tr');
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText(TRACKING_SESSION.taskKey)).toBeTruthy();
   });
@@ -67,11 +67,11 @@ describe('App', () => {
     // reload -- a start from the bar shows up here this way.
     const bridge = installElectronApi();
     render(<App />);
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
 
     act(() => bridge.emit('onSessionUpdated', TRACKING_SESSION));
 
-    expect(await screen.findByText(/\(Active Session\)/)).toBeTruthy();
+    expect(await screen.findByText('running')).toBeTruthy();
   });
 
   it('EndMyDay_Click_PutsThePromptOnTheBarToo', async () => {

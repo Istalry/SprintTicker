@@ -203,6 +203,17 @@ differ -- under **Settings, Account** › *When I mark a task done*. Stopping
 without marking it done shows **LOGGED** on the bar
 instead: the time is kept and the task stays open.
 
+📋 **Today's entries** are under the session card, newest first, one row
+each: the task, its note, its time, when it started, and where it stands
+with your provider -- **Sent**, **Sending**, **Waiting · overlaps PF-31**,
+**Not sent**, or **Local only** for work never sent. **⋯** on a row holds
+**Correct…**, **↳ Move…** and **Delete…**, as in History. ⚡ marks time
+that started as an interruption and was placed on its task. The heading
+counts the day -- *6h 05m · 5h 20m sent · 45m to place*: everything done
+today, the session running included, what of it your provider has, and the
+interruptions of today still to place. A long day shows its five newest
+entries; **show all** shows the rest.
+
 🔀 **A task that leaves your list while you track it** -- reassigned to someone
 else, closed or moved on Jira or OpenProject -- keeps running, and your time
 is logged as usual. SprintTicker asks the provider why, and the panel and the
@@ -344,25 +355,28 @@ MG-12**, **Stop the Interruption** and **Another Interruption**.
 
 An interruption that ended is on no task yet, and **its time is sent
 nowhere until you say where it goes**. The ⚡ count beside Today says how
-many wait. **History** lists every one at the top, whatever its day, under
-**Interruptions to place**: what it interrupted (*during MG-12*), its place
-in its run (*2 of 3*), its time, and when it began -- click that to go to
-the day. The end-of-day wrap-up lists them too, so you can place them while
-you remember what they were. For each:
+many wait. **Today** and **History** list every one, whatever its day, under
+**Interruptions to place · 3 · 45m**: what it interrupted (*during MG-12*),
+where you started it (*from the Stream Deck*, *from the shortcut*, *from the
+bar*), its place in its run (*2 of 3*), its time, and when it began -- in
+History, click that to go to the day. The end-of-day wrap-up lists them too,
+so you can place them while you remember what they were. For each:
 
-- Click its name to give it one.
-- **Place…** puts its time on the task you pick: an entry, sent like any
+- Click its name to give it one, or **⋯** › **Rename…**.
+- **↳ Place…** puts its time on the task you pick: an entry, sent like any
   other, with ten seconds to undo.
-- **Place all** opens them all in one list, each with its own **Choose a
+- Tick some, and **↳ Place 2…** puts them all on one task.
+- **Place all 3…** opens them all in one list, each with its own **Choose a
   task ▾**: your starred tasks first, then the recent ones, with the tasks
   you just chose above -- so a talk that came back is one click from its
   first part. Nothing is chosen until you click; **Keep off Jira** is in each
   menu too. An unnamed one asks what it was once you choose its task, since
   its name is the note the provider shows. **Place the N chosen** places
   those; the others stay to place.
-- **Keep off Jira** -- your provider's name -- keeps its time in
+- **⋯** › **Keep off Jira** -- your provider's name -- keeps its time in
   SprintTicker only, as ad-hoc work, never sent.
-- The bin discards it: its time is kept nowhere. Ten seconds to undo.
+- **⋯** › **Discard** throws it away: its time is kept nowhere. Ten seconds
+  to undo.
 - Leave it there, and it waits for later.
 
 Interruptions timed by an earlier version are listed the same way;

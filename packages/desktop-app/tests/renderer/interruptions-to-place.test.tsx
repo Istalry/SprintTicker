@@ -109,10 +109,66 @@ describe('Work History, interruptions to place', () => {
     await history([], [WAITING]);
 
     const list = await screen.findByRole('region', { name: 'Interruptions to place' });
-    expect(within(list).getByText('Interruptions to place (1)')).toBeTruthy();
-    expect(within(list).getByText('15m')).toBeTruthy();
-    expect(list.textContent).toMatch(/during MG-12/);
-    expect(list.textContent).toMatch(/2 of 3/);
+    expect(within(list).getByRole('heading').textContent).toBe('Interruptions to place · 1 · 15m');
+    expect(list.textContent).toMatch(/during MG-12 · from the window · 2 of 3/);
+  });
+
+  it.each([
+    ['deck', 'from the Stream Deck'],
+    ['shortcut', 'from the shortcut'],
+    ['bar', 'from the bar']
+  ] as const)('List_StartedFrom_%s_SaysWhere', async (source, words) => {
+    await history([], [{ ...WAITING, source }]);
+
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+    expect(list.textContent).toContain(words);
+  });
+
+  it('List_Legacy_NothingTiming_SaysNoSource', async () => {
+    await history([], [{ ...WAITING, source: 'legacy', interruptedTaskKey: null }]);
+
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+    expect(list.textContent).toMatch(/with nothing timing · 2 of 3/);
+    expect(list.textContent).not.toMatch(/from the/);
+  });
+
+  it('Ticked_PlaceN_PutsTheTickedOnOneTask', async () => {
+    const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING, NEXT, { ...NEXT, id: 'int_3', title: 'Third' }]) }));
+    render(<WorklogHistoryView />);
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+    expect(within(list).queryByRole('button', { name: /^Place \d…$/ })).toBeNull();
+
+    fireEvent.click(within(list).getByRole('checkbox', { name: 'Tick Interruption 10:30' }));
+    fireEvent.click(within(list).getByRole('checkbox', { name: 'Tick Third' }));
+    fireEvent.click(within(list).getByRole('button', { name: 'Place 2…' }));
+    await pick();
+
+    expect(bridge.api.placeInterruptions).toHaveBeenCalledWith(['int_1', 'int_3'], 'T-9');
+  });
+
+  it('Ticked_PlacedElsewhere_LeavesTheCount', async () => {
+    const bridge = installElectronApi({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING, NEXT]) });
+    render(<WorklogHistoryView />);
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+    fireEvent.click(within(list).getByRole('checkbox', { name: 'Tick Interruption 10:30' }));
+    fireEvent.click(within(list).getByRole('checkbox', { name: 'Tick Call with Marc' }));
+
+    act(() => bridge.emit('onInterruptionsUpdated', [NEXT]));
+
+    expect(within(list).getByRole('button', { name: 'Place 1…' })).toBeTruthy();
+  });
+
+  it('MenuRename_OpensTheField', async () => {
+    const bridge = await history([], [WAITING]);
+    const list = await screen.findByRole('region', { name: 'Interruptions to place' });
+
+    fireEvent.click(within(list).getByRole('button', { name: 'More for Interruption 10:30' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename…' }));
+    const field = within(list).getByLabelText('Name this work');
+    fireEvent.change(field, { target: { value: 'Printer jam' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Printer jam');
   });
 
   it('List_AnotherDay_JumpsToIt', async () => {
@@ -151,7 +207,7 @@ describe('Work History, interruptions to place', () => {
     const placeAll = async (overrides: Record<string, unknown> = {}) => {
       const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING, NEXT]), ...overrides }));
       render(<WorklogHistoryView />);
-      fireEvent.click(await screen.findByRole('button', { name: 'Place all' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Place all 2…' }));
       return { bridge, dialog: await screen.findByRole('dialog', { name: 'Place 2 interruptions' }) };
     };
     const chooseFor = async (name: string) => {
@@ -281,7 +337,8 @@ describe('Work History, interruptions to place', () => {
   it('KeepOff_NamesTheProvider', async () => {
     const bridge = await history([], [WAITING]);
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Keep off .*: Interruption 10:30$/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'More for Interruption 10:30' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Keep off / }));
 
     expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_1');
   });
@@ -289,7 +346,8 @@ describe('Work History, interruptions to place', () => {
   it('Discard_ThatOne', async () => {
     const bridge = await history([], [WAITING]);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Discard Interruption 10:30' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'More for Interruption 10:30' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Discard' }));
 
     expect(bridge.api.discardInterruption).toHaveBeenCalledWith('int_1');
   });
@@ -440,8 +498,9 @@ describe('the wrap-up, interruptions to place', () => {
     wrapUp();
 
     const list = await screen.findByRole('region', { name: 'Interruptions to place' });
-    expect(within(list).getByText('Interruptions to place (1)')).toBeTruthy();
-    fireEvent.click(within(list).getByRole('button', { name: /^Keep off .*: Interruption 10:30$/ }));
+    expect(within(list).getByRole('heading').textContent).toBe('Interruptions to place · 1 · 15m');
+    fireEvent.click(within(list).getByRole('button', { name: 'More for Interruption 10:30' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Keep off / }));
     expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_1');
   });
 

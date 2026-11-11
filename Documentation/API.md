@@ -123,6 +123,8 @@ knows where to offer it.
 Worklogs come back with `taskKey` and `taskTitle` beside `taskId`, read from
 the task row, archived or not, and with `syncState`: `local` (never queued),
 `pending`, `failed`, `sent`, `correction-pending` or `correction-failed`.
+`fromInterruption: true` marks the worklog of an interruption placed on its
+task (or kept off the provider), which Today marks ⚡.
 
 | Channel | Purpose |
 | :--- | :--- |

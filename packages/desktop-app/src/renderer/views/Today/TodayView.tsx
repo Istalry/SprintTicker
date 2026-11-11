@@ -1,12 +1,15 @@
 import React from 'react';
 import { ActiveSessionDTO, TaskDTO, WorklogDTO } from '../../../shared/dtos';
 import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
-import { formatClockTime, formatHoursAndMinutes as formatSeconds } from '../../utils/formatters';
 import { PickerMode } from '../../hooks/useModals';
 import { useCeremonyPrompt, useReminder, useUserMode } from '../../hooks/usePrompts';
 import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
+import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
+import { TodayEntries } from '../../components/TodayEntries';
+import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
+import { keepOffLabel } from '../../../shared/words';
 
 interface TodayViewProps {
   session: ActiveSessionDTO | null;
@@ -25,7 +28,7 @@ interface TodayViewProps {
 
 /**
  * Today (S4, S5, S6): the questions waiting on the user, the task running,
- * and today's entries. The questions are cards here, never dialogs that
+ * the interruptions to place, from any day, and today's entries. The questions are cards here, never dialogs that
  * take the window (P8c): the stand-up, Lunch or Away, and "Back at your
  * desk?".
  */
@@ -45,6 +48,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const ceremony = useCeremonyPrompt();
   const [reminder, setReminder] = useReminder();
   const [mode, setMode] = useUserMode();
+  const { providerName } = useProviderCapabilities();
+  const provider = providerName || 'The provider';
+  const toPlaceHint = `${provider} gets this time once it is on a task. ${keepOffLabel(providerName)} keeps one in your history, never sent. Tick some to place them together.`;
   const leaveAway = () => {
     setMode('WORK');
     window.electronAPI.setUserMode('WORK').catch(err => console.warn('[TodayView] Leaving Away failed:', err));
@@ -71,57 +77,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
       onPrevious={onPrevious}
     />
 
-    <section className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">
-      <h3 className="text-md font-bold text-white flex items-center justify-between">
-        <span>Today&apos;s work</span>
-        <span className="text-xs text-text-secondary font-normal">
-          Total: <span className="font-mono">{formatSeconds(worklogs.reduce((acc, curr) => acc + curr.durationSeconds, 0))}</span>
-        </span>
-      </h3>
+    <InterruptionsToPlace hint={toPlaceHint} />
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-border-dark text-text-secondary text-xs">
-              <th className="py-3 px-4 font-semibold">Task Key</th>
-              <th className="py-3 px-4 font-semibold">Comment / Description</th>
-              <th className="py-3 px-4 font-semibold">Logged Duration</th>
-              <th className="py-3 px-4 font-semibold">Started</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-dark text-sm">
-            {session && (
-              <tr className="bg-select">
-                <td className="py-3 px-4 font-mono font-bold text-text-primary flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-accent-green animate-pulse" />
-                  <span className="font-mono">{session.taskKey}</span>
-                </td>
-                <td className="py-3 px-4 text-white font-medium">
-                  {session.taskTitle} <span className="text-xs text-text-primary">(Active Session)</span>
-                </td>
-                <td className="py-3 px-4 font-bold text-accent-green">Tracking...</td>
-                <td className="py-3 px-4 text-xs text-text-secondary">Real-time</td>
-              </tr>
-            )}
-            {worklogs.map(log => (
-              <tr key={log.id} className="hover:bg-dark-700/50 transition-colors">
-                <td className="py-3 px-4 font-mono font-bold text-text-primary">{log.taskKey ?? log.taskId}</td>
-                <td className="py-3 px-4 text-text-primary">{log.comment || 'No comment'}</td>
-                <td className="py-3 px-4 font-mono text-text-primary font-bold">{formatSeconds(log.durationSeconds)}</td>
-                <td className="py-3 px-4 text-xs text-text-secondary font-mono">{formatClockTime(new Date(log.startedAtUtc))}</td>
-              </tr>
-            ))}
-            {!session && worklogs.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-xs text-text-secondary">
-                  No worklogs recorded today yet. Select a task above to start tracking time!
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <TodayEntries session={session} worklogs={worklogs} />
   </div>
   );
 };

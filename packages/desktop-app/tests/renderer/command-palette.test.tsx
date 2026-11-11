@@ -181,7 +181,7 @@ describe('Ctrl+K in the window', () => {
   it('CtrlK_OpensThePalette_AndAgainClosesIt', async () => {
     installElectronApi();
     render(<App />);
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
 
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeTruthy();
@@ -193,7 +193,7 @@ describe('Ctrl+K in the window', () => {
   it('PaletteStart_OpensThePicker', async () => {
     installElectronApi();
     render(<App />);
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
 
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     fireEvent.change(await screen.findByLabelText('Command'), { target: { value: 'start' } });

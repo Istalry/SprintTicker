@@ -1,39 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle2, FileText, ChevronLeft, ChevronRight, Pencil, Trash2, ArrowRightLeft } from 'lucide-react';
 import { WorklogDTO } from '../../../shared/dtos';
-import { WorklogSyncState } from '../../../shared/worklog-correction';
 import { localDateKey, addLocalDays } from '../../../shared/local-date';
 import { formatClockTime } from '../../utils/formatters';
-import { EditWorklogModal } from '../../components/EditWorklogModal';
 import { TaskPageButton } from '../../components/TaskPageButton';
 import { InlineRename } from '../../components/InlineRename';
-import { TaskPicker } from '../../components/TaskPicker';
-import { countOf, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../../utils/formatters';
-import { ConfirmPanel } from '../../components/ConfirmPanel';
-import { closedWeekWarning, isInClosedWeek } from '../../../shared/closed-week';
-import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
+import { countOf, formatDay, formatHoursAndMinutes } from '../../utils/formatters';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { StateWord } from '../../../shared/words';
+import { SyncBadge } from '../../components/SyncBadge';
+import { useEntryActions } from '../../components/EntryActions';
 
 /** The badge of an earlier interruption's entry, still to place. */
 const TO_SORT_BADGE = 'px-1.5 py-0.5 border rounded text-[10px] text-accent-amber border-accent-amber/40';
-
-/** How each sync state reads on a row, and what its tooltip adds. */
-const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: string }> = {
-  local: { label: 'Local only', tone: 'text-text-secondary border-border-dark', hint: 'Kept in SprintTicker; never sent to a provider.' },
-  pending: { label: 'Sending', tone: 'text-accent-amber border-accent-amber/40', hint: 'Queued for the provider.' },
-  sent: { label: 'Sent', tone: 'text-accent-green border-accent-green/40', hint: 'At the provider.' },
-  failed: { label: 'Not sent', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see Entries waiting to send, in Settings, Account.' },
-  'correction-pending': { label: 'Correction pending', tone: 'text-accent-amber border-accent-amber/40', hint: 'A correction is on its way to the provider.' },
-  'correction-failed': { label: 'Correction failed', tone: 'text-accent-red border-accent-red/40', hint: 'Parked: see Entries waiting to send, in Settings, Account.' },
-  'held-overlap': { label: 'Waiting', tone: 'text-accent-amber border-accent-amber/40', hint: 'It overlaps an earlier entry, and is not sent until one of them is corrected.' }
-};
-
-/** "Waiting · overlaps PF-31" for an entry an overlap holds back; the state's own label otherwise. */
-function syncBadgeLabel(log: WorklogDTO): string {
-  const label = SYNC_BADGE[log.syncState!].label;
-  return log.syncState === 'held-overlap' && log.overlapsTaskKey ? `${label} · overlaps ${log.overlapsTaskKey}` : label;
-}
 
 interface DaySummary {
   totalSeconds: number;
@@ -64,17 +43,11 @@ export const WorklogHistoryView: React.FC = () => {
   const [day, setDay] = useState<DayRead | null>(null);
   // Bumped after a correction or deletion, so the day is read again.
   const [revision, setRevision] = useState(0);
-  const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
-  // The worklogs whose task is being picked, and the label of what moves.
-  const [moving, setMoving] = useState<{ worklogIds: string[]; label: string } | null>(null);
-  // A move of closed-week time, waiting for the user to say go on.
-  const [askingMove, setAskingMove] = useState<{ worklogIds: string[]; label: string } | null>(null);
-  const [moveError, setMoveError] = useState<string | null>(null);
-  const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
-  const { providerName } = useProviderCapabilities();
   const worklogs = day?.worklogs ?? [];
   const summary = day?.summary ?? EMPTY_SUMMARY;
   const loading = day?.date !== selectedDate;
+  const entries = useEntryActions(worklogs, () => setRevision(r => r + 1));
+  const moveError = entries.moveError;
 
   useEffect(() => {
     // Stepping through days quickly can answer out of order; only the read
@@ -91,41 +64,6 @@ export const WorklogHistoryView: React.FC = () => {
     );
     return () => { current = false; };
   }, [selectedDate, revision]);
-
-  useEffect(() => {
-    let current = true;
-    const read = window.electronAPI?.getLastWeekClosed;
-    if (!read) return undefined;
-    read().then(
-      monday => { if (current) setLastWeekClosed(monday); },
-      err => console.error('[WorklogHistoryView] Failed to read the last week closed:', err)
-    );
-    return () => { current = false; };
-  }, [revision]);
-
-  /** Opens the picker for these worklogs -- after asking, when any is closed-week time. */
-  const startMove = (logs: WorklogDTO[], label: string) => {
-    const request = { worklogIds: logs.map(log => log.id), label };
-    if (logs.some(log => isInClosedWeek(log.startedAtUtc, lastWeekClosed))) setAskingMove(request);
-    else setMoving(request);
-  };
-
-  /**
-   * Moves the worklogs to the task picked, one after the other: each is its
-   * own deletion and send. A refusal stops there and is shown; the ones
-   * moved before it stay moved.
-   */
-  const moveTo = async (worklogIds: string[], taskId: string) => {
-    setMoving(null);
-    setMoveError(null);
-    try {
-      for (const id of worklogIds) await window.electronAPI.moveWorklog(id, taskId);
-    } catch (err) {
-      setMoveError(ipcErrorMessage(err));
-    } finally {
-      setRevision(r => r + 1);
-    }
-  };
 
   /** Names ad-hoc work; the day and the list are read again with the name. */
   const renameTask = (taskId: string, name: string) =>
@@ -297,20 +235,13 @@ export const WorklogHistoryView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  {log.syncState && (
-                    <span
-                      title={SYNC_BADGE[log.syncState].hint}
-                      className={`px-1.5 py-0.5 border rounded text-[10px] ${SYNC_BADGE[log.syncState].tone}`}
-                    >
-                      {syncBadgeLabel(log)}
-                    </span>
-                  )}
+                  <SyncBadge log={log} />
                   <div className="font-mono font-bold text-text-primary">
                     {formatDuration(log.durationSeconds)}
                   </div>
                   <button
                     aria-label={`Correct ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))}`}
-                    onClick={() => setEditing({ worklog: log, mode: 'edit' })}
+                    onClick={() => entries.run(log, 'edit')}
                     className="p-1 text-text-secondary hover:text-white hover:bg-dark-700 rounded transition-colors"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -318,14 +249,14 @@ export const WorklogHistoryView: React.FC = () => {
                   <button
                     aria-label={`Move ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))} to another task`}
                     title="Move to another task"
-                    onClick={() => startMove([log], log.taskTitle ?? log.taskKey ?? log.taskId)}
+                    onClick={() => entries.run(log, 'move')}
                     className="p-1 text-text-secondary hover:text-white hover:bg-dark-700 rounded transition-colors"
                   >
                     <ArrowRightLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
                     aria-label={`Delete ${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))}`}
-                    onClick={() => setEditing({ worklog: log, mode: 'delete' })}
+                    onClick={() => entries.run(log, 'delete')}
                     className="p-1 text-text-secondary hover:text-accent-red hover:bg-dark-700 rounded transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -341,43 +272,7 @@ export const WorklogHistoryView: React.FC = () => {
         )}
       </div>
 
-      {askingMove && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
-          <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
-            <ConfirmPanel
-              title="Move time from a closed week?"
-              message={<><strong className="text-white">{askingMove.label}</strong>. {closedWeekWarning(providerName)}</>}
-              confirmLabel="Choose a task"
-              cancelLabel="Back"
-              onConfirm={() => { setMoving(askingMove); setAskingMove(null); }}
-              onCancel={() => setAskingMove(null)}
-            />
-          </div>
-        </div>
-      )}
-
-      <TaskPicker
-        isOpen={moving !== null}
-        mode="move"
-        subtitle={moving ? `${moving.label}: its time goes to the task you pick` : undefined}
-        onClose={() => setMoving(null)}
-        onPick={picked => { if (moving && picked.task) void moveTo(moving.worklogIds, picked.task.id); }}
-      />
-
-      {editing && (
-        <EditWorklogModal
-          key={`${editing.worklog.id}-${editing.mode}`}
-          worklog={editing.worklog}
-          mode={editing.mode}
-          sameDay={worklogs}
-          lastWeekClosed={lastWeekClosed}
-          onClose={() => setEditing(null)}
-          onDone={() => {
-            setEditing(null);
-            setRevision(r => r + 1);
-          }}
-        />
-      )}
+      {entries.dialogs}
     </div>
   );
 };

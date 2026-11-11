@@ -27,6 +27,8 @@ export interface WorklogRecord {
   unsorted?: true;
   /** The key of the earlier entry holding this one back (`held-overlap`). Read-only; filled on reads. */
   overlapsTaskKey?: string;
+  /** Time that started as an interruption, placed on this task (Today's ⚡). Read-only; filled on reads. */
+  fromInterruption?: true;
 }
 
 /**
@@ -65,6 +67,7 @@ interface WorklogRow {
   create_status: SyncQueueStatus | null;
   correction_status: SyncQueueStatus | null;
   overlaps_task_key: string | null;
+  from_interruption: number | null;
 }
 
 /**
@@ -85,7 +88,9 @@ const SELECT_WORKLOGS = `
            WHERE q.worklog_id = w.id AND q.operation <> 'CREATE' AND q.status <> 'SYNCED'
            ORDER BY q.rowid DESC LIMIT 1) AS correction_status,
          (SELECT ot.key FROM worklogs ow JOIN tasks ot ON ot.id = ow.task_id
-           WHERE ow.id = (${OVERLAPPING_EARLIER('w')} ORDER BY o.started_at_utc LIMIT 1)) AS overlaps_task_key
+           WHERE ow.id = (${OVERLAPPING_EARLIER('w')} ORDER BY o.started_at_utc LIMIT 1)) AS overlaps_task_key,
+         EXISTS (SELECT 1 FROM interruptions i
+           WHERE i.placed_worklog_id = w.id OR i.legacy_worklog_id = w.id) AS from_interruption
   FROM worklogs w
   LEFT JOIN tasks t ON t.id = w.task_id
   LEFT JOIN projects p ON p.id = t.project_id`;
@@ -128,6 +133,7 @@ function toRecord(r: WorklogRow): WorklogRecord {
   record.hasTaskPage = hasTaskPage(r.task_project_id, r.project_provider_id);
   if (isAdHocTaskId(r.task_id)) record.adHoc = true;
   if (r.task_unsorted === 1) record.unsorted = true;
+  if (r.from_interruption === 1) record.fromInterruption = true;
   return record;
 }
 

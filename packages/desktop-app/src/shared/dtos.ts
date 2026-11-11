@@ -484,6 +484,8 @@ export interface WorklogDTO {
   adHoc?: true;
   /** An interruption not yet named or assigned. */
   unsorted?: true;
+  /** Time that started as an interruption, placed on this task: Today marks it ⚡ (P8e). */
+  fromInterruption?: true;
 }
 
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';

@@ -727,6 +727,16 @@
       differ -- under <strong>Settings, Account</strong> › <em>When I mark a task done</em>. Stopping
       without marking it done shows <strong>LOGGED</strong> on the bar
       instead: the time is kept and the task stays open.</p>
+      <p>📋 <strong>Today&#39;s entries</strong> are under the session card, newest first, one row
+      each: the task, its note, its time, when it started, and where it stands
+      with your provider -- <strong>Sent</strong>, <strong>Sending</strong>, <strong>Waiting · overlaps PF-31</strong>,
+      <strong>Not sent</strong>, or <strong>Local only</strong> for work never sent. <strong>⋯</strong> on a row holds
+      <strong>Correct…</strong>, <strong>↳ Move…</strong> and <strong>Delete…</strong>, as in History. ⚡ marks time
+      that started as an interruption and was placed on its task. The heading
+      counts the day -- <em>6h 05m · 5h 20m sent · 45m to place</em>: everything done
+      today, the session running included, what of it your provider has, and the
+      interruptions of today still to place. A long day shows its five newest
+      entries; <strong>show all</strong> shows the rest.</p>
       <p>🔀 <strong>A task that leaves your list while you track it</strong> -- reassigned to someone
       else, closed or moved on Jira or OpenProject -- keeps running, and your time
       is logged as usual. SprintTicker asks the provider why, and the panel and the
@@ -857,25 +867,28 @@
       <h5>Interruptions to place</h5>
       <p>An interruption that ended is on no task yet, and <strong>its time is sent
       nowhere until you say where it goes</strong>. The ⚡ count beside Today says how
-      many wait. <strong>History</strong> lists every one at the top, whatever its day, under
-      <strong>Interruptions to place</strong>: what it interrupted (<em>during MG-12</em>), its place
-      in its run (<em>2 of 3</em>), its time, and when it began -- click that to go to
-      the day. The end-of-day wrap-up lists them too, so you can place them while
-      you remember what they were. For each:</p>
+      many wait. <strong>Today</strong> and <strong>History</strong> list every one, whatever its day, under
+      <strong>Interruptions to place · 3 · 45m</strong>: what it interrupted (<em>during MG-12</em>),
+      where you started it (<em>from the Stream Deck</em>, <em>from the shortcut</em>, <em>from the
+      bar</em>), its place in its run (<em>2 of 3</em>), its time, and when it began -- in
+      History, click that to go to the day. The end-of-day wrap-up lists them too,
+      so you can place them while you remember what they were. For each:</p>
       <ul>
-      <li>Click its name to give it one.</li>
-      <li><strong>Place…</strong> puts its time on the task you pick: an entry, sent like any
+      <li>Click its name to give it one, or <strong>⋯</strong> › <strong>Rename…</strong>.</li>
+      <li><strong>↳ Place…</strong> puts its time on the task you pick: an entry, sent like any
       other, with ten seconds to undo.</li>
-      <li><strong>Place all</strong> opens them all in one list, each with its own <strong>Choose a
+      <li>Tick some, and <strong>↳ Place 2…</strong> puts them all on one task.</li>
+      <li><strong>Place all 3…</strong> opens them all in one list, each with its own <strong>Choose a
       task ▾</strong>: your starred tasks first, then the recent ones, with the tasks
       you just chose above -- so a talk that came back is one click from its
       first part. Nothing is chosen until you click; <strong>Keep off Jira</strong> is in each
       menu too. An unnamed one asks what it was once you choose its task, since
       its name is the note the provider shows. <strong>Place the N chosen</strong> places
       those; the others stay to place.</li>
-      <li><strong>Keep off Jira</strong> -- your provider&#39;s name -- keeps its time in
+      <li><strong>⋯</strong> › <strong>Keep off Jira</strong> -- your provider&#39;s name -- keeps its time in
       SprintTicker only, as ad-hoc work, never sent.</li>
-      <li>The bin discards it: its time is kept nowhere. Ten seconds to undo.</li>
+      <li><strong>⋯</strong> › <strong>Discard</strong> throws it away: its time is kept nowhere. Ten seconds
+      to undo.</li>
       <li>Leave it there, and it waits for later.</li>
       </ul>
       <p>Interruptions timed by an earlier version are listed the same way;
@@ -2742,7 +2755,13 @@
       back. Interruptions of the model before -- ad-hoc tasks marked <code>unsorted</code>
       (migration 13) and their worklogs -- became fragments in migration 15 with
       <code>legacy_worklog_id</code>; placing one moves that worklog
-      (<code>WorklogCorrectionService.reassign</code>). The optional global
+      (<code>WorklogCorrectionService.reassign</code>). A worklog read says when it came from
+      one (<code>fromInterruption</code>: an <code>interruptions</code> row names it as
+      <code>placed_worklog_id</code> or <code>legacy_worklog_id</code>), and Today marks it ⚡. In the
+      renderer, Today, History and the wrap-up share <code>InterruptionsToPlace</code> (its
+      list from <code>useInterruptionsToPlace</code>), and Today&#39;s and History&#39;s entries
+      share <code>useEntryActions</code> -- Correct, Move and Delete with their dialogs and
+      the closed-week question -- and <code>SyncBadge</code>. The optional global
       shortcut is one more caller: <code>InterruptShortcutService</code> takes Electron&#39;s
       <code>globalShortcut</code> by constructor, registers the stored chord only when the user
       turned it on (<code>interrupt_shortcut</code>), reports a chord another app holds as
@@ -3483,7 +3502,9 @@
       knows where to offer it.
       Worklogs come back with <code>taskKey</code> and <code>taskTitle</code> beside <code>taskId</code>, read from
       the task row, archived or not, and with <code>syncState</code>: <code>local</code> (never queued),
-      <code>pending</code>, <code>failed</code>, <code>sent</code>, <code>correction-pending</code> or <code>correction-failed</code>.</p>
+      <code>pending</code>, <code>failed</code>, <code>sent</code>, <code>correction-pending</code> or <code>correction-failed</code>.
+      <code>fromInterruption: true</code> marks the worklog of an interruption placed on its
+      task (or kept off the provider), which Today marks ⚡.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>

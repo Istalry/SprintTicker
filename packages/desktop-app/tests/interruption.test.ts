@@ -356,6 +356,16 @@ describe('Interruptions in a row', () => {
       expect(engine.getInterruptionsToPlace()).toEqual([]);
     });
 
+    it('Place_TheEntryReadsAsAnInterruption_OthersDoNot', () => {
+      const fragment = endedOne();
+
+      engine.placeInterruption(fragment.id, B.id);
+
+      const day = worklogs.getWorklogsByDate(DAY);
+      expect(day.filter(w => w.taskId === B.id).map(w => w.fromInterruption)).toEqual([true]);
+      expect(day.filter(w => w.taskId !== B.id).every(w => w.fromInterruption === undefined)).toBe(true);
+    });
+
     it('KeepOff_InHistoryAsItsName_NeverSent', () => {
       const fragment = endedOne();
       engine.renameInterruption(fragment.id, 'Coffee with Sam');

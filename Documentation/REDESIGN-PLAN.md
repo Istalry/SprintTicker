@@ -1240,6 +1240,30 @@ first-interruption line).
   delays in Settings (P16); the bar's NOTHING TIMING screen (P14). The
   asked ids are in memory, so a restart may ask once more.
 
+P8e was split on 2026-11-11 into P8e1 (Today's entries and the
+interruptions card), P8e2 (the morning card, the reassigned card and its
+minute check) and P8e3 (S9's extras).
+
+**As landed: P8e1, Today's entries and interruptions (2026-11-11).**
+
+- `TodayEntries` (new) replaces Today's table: newest first, Task / Note /
+  Time / Started / the provider's name, `SyncBadge` and ⋯ (`EntryMenu`:
+  Correct…, ↳ Move…, Delete…), ⚡ and its legend, five rows then "+ N more
+  · show all". The heading counts entries + the session running + today's
+  interruptions to place, the sent part, and the part to place.
+- Shared with History: `useEntryActions` (the dialogs, the closed-week
+  question, the move one entry after another) and `SyncBadge`, moved out of
+  `WorklogHistoryView`; `RowMenu` for every ⋯.
+- `WorklogDTO.fromInterruption`, read from `interruptions.placed_worklog_id`
+  / `legacy_worklog_id` (a kept-off one counts too).
+- `InterruptionsToPlace` on Today: "· 3 · 45m" in its heading, tick boxes
+  and "↳ Place N…" for the ticked, "Place all N…", the source
+  (`INTERRUPTION_SOURCE_WORDS` in `shared/words.ts`), and ⋯ with Rename…,
+  Keep off and Discard; `useInterruptionsToPlace` is its list.
+- Not built: S5's "+ Add time" (no manual entry exists yet; P9's) and the
+  bar against a daily target (no target setting; P16 if wanted). History's
+  rows keep their own icons until P9.
+
 ---
 
 ## 14. P9 -- History
@@ -1710,7 +1734,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | in progress: P8a-P8d done (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders); P8e next -- see §13 "Split" | P8a-P8d (2026-11-11) |
+| P8 | in progress: P8a-P8e1 done (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions); P8e2-P8e3 next -- see §13 "Split" | P8a-P8e1 (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |

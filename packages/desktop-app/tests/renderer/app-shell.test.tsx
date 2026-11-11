@@ -19,7 +19,7 @@ describe('the app shell', () => {
     installElectronApi({ getDeviceStatus: async () => device });
     render(<App />);
 
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
     expect(placeNames()).toEqual(['Today', 'Tasks', 'History', 'Settings']);
   });
 
@@ -35,7 +35,7 @@ describe('the app shell', () => {
   it('Render_BarAddedLater_BringsTheLedPreviewBack', async () => {
     const bridge = installElectronApi({ getDeviceStatus: async () => NO_BAR_DEVICE });
     render(<App />);
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
 
     act(() => bridge.emit('onDeviceStatusChanged', CONNECTED_DEVICE));
 
@@ -78,7 +78,7 @@ describe('the app shell', () => {
     // The bar opens its own picker then; the window's on top took the same choice.
     const bridge = installElectronApi({ getCurrentSession: async () => null });
     render(<App />);
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
 
     act(() => bridge.emit('onHardwareInputEvent', { inputKey: 'ok', actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL' }));
 
@@ -88,7 +88,7 @@ describe('the app shell', () => {
   it('PickerRequestFromTheApp_NothingRunning_OpensTheWindowsPicker', async () => {
     const bridge = installElectronApi({ getCurrentSession: async () => null });
     render(<App />);
-    await screen.findByText(/No worklogs recorded today yet/);
+    await screen.findByText(/Nothing logged today yet/);
 
     act(() => bridge.emit('onHardwareInputEvent', { inputKey: 'app', actionAssigned: 'TRIGGER_TASK_SELECTOR_MODAL' }));
 
@@ -118,6 +118,6 @@ describe('the app shell', () => {
     installElectronApi({ getCurrentSession: vi.fn().mockResolvedValue(TRACKING_SESSION) });
     render(<App />);
 
-    expect(await screen.findByText(/\(Active Session\)/)).toBeTruthy();
+    expect(await screen.findByText('running')).toBeTruthy();
   });
 });

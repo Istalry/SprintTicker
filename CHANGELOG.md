@@ -54,6 +54,13 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **Today's entries and interruptions, as in History.** Today lists the
+  day's entries newest first, with where each stands with the provider and
+  **⋯** for Correct, Move and Delete; ⚡ marks time that started as an
+  interruption, and the heading counts the day, sent and still to place.
+  The interruptions to place are on Today too, each saying where it was
+  started; tick some to place them on one task, and **⋯** renames one,
+  keeps it off the provider or discards it.
 - **Reminders that ask once.** Nothing timing for 10 min, a pause of 30 min,
   an interruption of 20 min, the stand-up at 25 min: each is asked once, in
   working hours, on Today, in the mini timer and by notification while the

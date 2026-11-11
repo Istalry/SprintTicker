@@ -783,7 +783,13 @@ queued) or discards one, each behind a restore point so Undo puts the rows
 back. Interruptions of the model before -- ad-hoc tasks marked `unsorted`
 (migration 13) and their worklogs -- became fragments in migration 15 with
 `legacy_worklog_id`; placing one moves that worklog
-(`WorklogCorrectionService.reassign`). The optional global
+(`WorklogCorrectionService.reassign`). A worklog read says when it came from
+one (`fromInterruption`: an `interruptions` row names it as
+`placed_worklog_id` or `legacy_worklog_id`), and Today marks it ⚡. In the
+renderer, Today, History and the wrap-up share `InterruptionsToPlace` (its
+list from `useInterruptionsToPlace`), and Today's and History's entries
+share `useEntryActions` -- Correct, Move and Delete with their dialogs and
+the closed-week question -- and `SyncBadge`. The optional global
 shortcut is one more caller: `InterruptShortcutService` takes Electron's
 `globalShortcut` by constructor, registers the stored chord only when the user
 turned it on (`interrupt_shortcut`), reports a chord another app holds as

@@ -15,6 +15,11 @@ interface InlineRenameProps {
   /** For the title as text, and for the input while it is renamed. */
   className: string;
   inputClassName: string;
+  /**
+   * Opens with the field, for a Rename chosen from a menu: read once, when it
+   * mounts, so the caller asks again by changing the component's key.
+   */
+  startEditing?: boolean;
 }
 
 /**
@@ -24,8 +29,8 @@ interface InlineRenameProps {
  * Enter or leaving the field saves, Escape keeps the name, and an unchanged
  * or empty name saves nothing.
  */
-export const InlineRename: React.FC<InlineRenameProps> = ({ title, ownerId, onRename, className, inputClassName }) => {
-  const [editing, setEditing] = useState<{ ownerId: string; text: string } | null>(null);
+export const InlineRename: React.FC<InlineRenameProps> = ({ title, ownerId, onRename, className, inputClassName, startEditing = false }) => {
+  const [editing, setEditing] = useState<{ ownerId: string; text: string } | null>(() => (startEditing ? { ownerId, text: title } : null));
   const open = editing && editing.ownerId === ownerId ? editing : null;
 
   const save = () => {
