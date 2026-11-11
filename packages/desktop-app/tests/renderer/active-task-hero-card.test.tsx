@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ActiveTaskHeroCard } from '../../src/renderer/components/ActiveTaskHeroCard';
 import { TRACKING_SESSION, installElectronApi } from './electron-api-mock';
+import type { TaskDTO } from '../../src/shared/dtos';
 
 describe('ActiveTaskHeroCard', () => {
   const card = (session = TRACKING_SESSION, onComplete = vi.fn(), onDiscard = vi.fn(), onInterrupt = vi.fn()) => {
@@ -48,7 +49,7 @@ describe('ActiveTaskHeroCard', () => {
     card();
 
     expect(screen.queryByLabelText(/^Rename /)).toBeNull();
-    expect(screen.queryByText('Assign to Task')).toBeNull();
+    expect(screen.queryByText('Assign to a task…')).toBeNull();
   });
 
   it('Render_UnsortedInterruption_SaysWhatToDoWithIt', () => {
@@ -72,7 +73,7 @@ describe('ActiveTaskHeroCard', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Assign to Task'));
+    fireEvent.click(screen.getByText('Assign to a task…'));
 
     expect(onAssign).toHaveBeenCalledTimes(1);
   });
@@ -111,16 +112,16 @@ describe('ActiveTaskHeroCard', () => {
     );
 
     expect(screen.getByText('No task running')).toBeTruthy();
-    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['Start a Task', 'Interrupt']);
-    fireEvent.click(screen.getByText('Start a Task'));
+    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['Start a task', 'Interrupt']);
+    fireEvent.click(screen.getByText('Start a task'));
     expect(onOpenTaskModal).toHaveBeenCalledTimes(1);
   });
 
   it('Render_Tracking_SwitchOpensThePicker', () => {
     card();
 
-    expect(screen.getByText('Switch Task')).toBeTruthy();
-    expect(screen.queryByText('Start a Task')).toBeNull();
+    expect(screen.getByText('Switch task')).toBeTruthy();
+    expect(screen.queryByText('Start a task')).toBeNull();
   });
 
   it('Render_Paused_OffersResumeNotPause', () => {
@@ -130,26 +131,113 @@ describe('ActiveTaskHeroCard', () => {
     expect(screen.queryByText('Pause')).toBeNull();
   });
 
-  it('FinishAsDone_Always_LeavesTheBarsSceneToTheStop', () => {
+  const more = () => fireEvent.click(screen.getByRole('button', { name: 'More ways to stop' }));
+  const done = () => fireEvent.click(screen.getByRole('menuitem', { name: /^✓ Done/ }));
+
+  it('Stop_OneClick_LogsAndLeavesTheTaskOpen', () => {
+    const onComplete = card();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+
+    expect(onComplete).toHaveBeenCalledWith(undefined, false);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('Done_FromTheMenu_LeavesTheBarsSceneToTheStop', () => {
     // session:complete plays DONE! on the bar once it has stopped the
     // session. The card also asked for it, so the scene started twice: two
     // uploads of the same file, the second over the one the bar was playing.
     const onComplete = card();
 
-    fireEvent.click(screen.getByText('Finish & Log Hours'));
-    fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+    more();
+    done();
 
     expect(onComplete).toHaveBeenCalledWith(undefined, true);
     expect(window.electronAPI.triggerConfettiBurst).not.toHaveBeenCalled();
   });
 
-  it('FinishKeepingItOpen_Always_CompletesWithoutMarkingDone', () => {
-    const onComplete = card();
+  it('Render_SaysWhenTheTimeIsSent', () => {
+    card();
 
-    fireEvent.click(screen.getByText('Finish & Log Hours'));
-    fireEvent.click(screen.getByText(/Remain 'In Progress'/));
+    expect(screen.getByText(/when you stop, after 10 s to undo/)).toBeTruthy();
+  });
 
-    expect(onComplete).toHaveBeenCalledWith(undefined, false);
+  it('Render_AdHoc_SaysItStaysHere', () => {
+    card(INTERRUPTION);
+
+    expect(screen.getByText('kept on this computer, never sent')).toBeTruthy();
+  });
+
+  it('Done_ProviderCannotMoveTasks_NotOffered', async () => {
+    installElectronApi({
+      getProviderCapabilities: vi.fn().mockResolvedValue({
+        providerId: 'custom', canAssign: false, canTransition: false, canFindWorklog: false, canFetchByKey: false, hasHolidays: false
+      })
+    });
+    card();
+    await act(async () => undefined);
+
+    more();
+
+    expect(screen.queryByRole('menuitem', { name: /Done/ })).toBeNull();
+    expect(screen.getByRole('menuitem', { name: /Discard/ })).toBeTruthy();
+  });
+
+  it('Previous_OnePress_SwitchesBack', async () => {
+    const pf31 = { id: 'T-31', projectId: 'P', key: 'PF-31', title: 'Hammer and quench sounds', status: 'todo' } as TaskDTO;
+    installElectronApi({ getPreviousTask: vi.fn().mockResolvedValue(pf31) });
+    const onPrevious = vi.fn();
+    render(
+      <ActiveTaskHeroCard
+        session={TRACKING_SESSION}
+        onPause={vi.fn()}
+        onResume={vi.fn()}
+        onComplete={vi.fn()}
+        onDiscard={vi.fn()}
+        onOpenTaskModal={vi.fn()}
+        onInterrupt={vi.fn()}
+        onPrevious={onPrevious}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Previous task: PF-31' }));
+
+    expect(onPrevious).toHaveBeenCalledWith(pf31);
+  });
+
+  it('Previous_None_NoButton', async () => {
+    installElectronApi({ getPreviousTask: vi.fn().mockResolvedValue(null) });
+    card();
+    await waitFor(() => expect(window.electronAPI.getPreviousTask).toHaveBeenCalled());
+
+    expect(screen.queryByRole('button', { name: /Previous task/ })).toBeNull();
+  });
+
+  describe('across midnight', () => {
+    it('Menu_SaysWhichDaysTheTimeIsFiledUnder', async () => {
+      installElectronApi({
+        getSessionDays: vi.fn().mockResolvedValue([
+          { dateKey: '2026-10-16', seconds: 3600 },
+          { dateKey: '2026-10-17', seconds: 3600 }
+        ])
+      });
+      card();
+      more();
+
+      expect((await screen.findByText(/filed as/)).textContent).toMatch(/filed as 1h 00m on \S+, 1h 00m on \S+\./);
+    });
+
+    it('Menu_DaysCannotBeRead_TheChoicesStillWork', async () => {
+      installElectronApi({ getSessionDays: vi.fn().mockRejectedValue(new Error('gone')) });
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      card();
+      more();
+      await act(async () => undefined);
+
+      expect(screen.queryByText(/filed as/)).toBeNull();
+      expect(screen.getByRole('menuitem', { name: /Discard/ })).toBeTruthy();
+      warn.mockRestore();
+    });
   });
 
   describe('a task that is no longer the user\'s', () => {
@@ -170,23 +258,33 @@ describe('ActiveTaskHeroCard', () => {
     it('MarkDone_Unlisted_AsksBeforeFinishing', () => {
       const onComplete = card(UNLISTED);
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+      more();
+      done();
 
       expect(onComplete).not.toHaveBeenCalled();
-      fireEvent.click(screen.getByRole('button', { name: 'Mark done anyway' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Mark it done anyway' }));
       expect(onComplete).toHaveBeenCalledWith(undefined, true);
     });
 
     it('MarkDone_UnlistedThenBack_FinishesNothing', () => {
       const onComplete = card(UNLISTED);
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+      more();
+      done();
       fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
       expect(onComplete).not.toHaveBeenCalled();
-      expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
+      expect(screen.getByRole('menuitem', { name: /^✓ Done/ })).toBeTruthy();
+    });
+
+    it('MarkDone_UnlistedThenStopInstead_LeavesItOpen', () => {
+      const onComplete = card(UNLISTED);
+
+      more();
+      done();
+      fireEvent.click(screen.getByRole('button', { name: /Stop instead/ }));
+
+      expect(onComplete).toHaveBeenCalledWith(undefined, false);
     });
 
     it.each([
@@ -203,18 +301,17 @@ describe('ActiveTaskHeroCard', () => {
       // Nothing to move on a task already closed, so nothing to ask.
       const onComplete = card({ ...UNLISTED, taskLeftBecause: 'closed' });
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText(/Mark Task as 'Done'/));
+      more();
+      done();
 
       expect(onComplete).toHaveBeenCalledWith(undefined, true);
     });
 
-    it('RemainInProgress_Unlisted_DoesNotAsk', () => {
+    it('Stop_Unlisted_DoesNotAsk', () => {
       // Logging the time and leaving the task open moves nothing remote.
       const onComplete = card(UNLISTED);
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText(/Remain 'In Progress'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
 
       expect(onComplete).toHaveBeenCalledWith(undefined, false);
     });
@@ -225,39 +322,38 @@ describe('ActiveTaskHeroCard', () => {
       const onDiscard = vi.fn();
       const onComplete = card(TRACKING_SESSION, vi.fn(), onDiscard);
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText('Discard this session'));
-      // The question names the task and the time it would throw away.
-      expect(screen.getByRole('alertdialog', { name: 'Discard this session?' }).textContent).toMatch(/SPR-142/);
-      fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      more();
+      fireEvent.click(screen.getByRole('menuitem', { name: /Discard/ }));
+      // The question names the time and the task it would throw away.
+      expect(screen.getByRole('alertdialog', { name: 'Discard 1h 23m?' }).textContent).toMatch(/SPR-142/);
+      fireEvent.click(screen.getByRole('button', { name: 'Discard 1h 23m' }));
 
       expect(onDiscard).toHaveBeenCalledTimes(1);
       expect(onComplete).not.toHaveBeenCalled();
     });
 
-    it('Discard_Cancelled_DiscardsNothingAndOffersTheChoicesAgain', () => {
+    it('Discard_KeepIt_DiscardsNothingAndOffersTheChoicesAgain', () => {
       const onDiscard = vi.fn();
       card(TRACKING_SESSION, vi.fn(), onDiscard);
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText('Discard this session'));
+      more();
+      fireEvent.click(screen.getByRole('menuitem', { name: /Discard/ }));
       fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
 
       expect(onDiscard).not.toHaveBeenCalled();
-      expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
+      expect(screen.getByRole('menuitem', { name: /Discard/ })).toBeTruthy();
     });
 
     it('Reopen_AfterStartingADiscard_OffersTheChoicesNotTheQuestion', () => {
-      // The dialog mounts afresh on every opening; a question left from the
-      // last one would make the next Finish look like a discard.
+      // The menu mounts afresh on every opening; a question left from the
+      // last one would make the next Stop ▾ look like a discard.
       card();
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-      fireEvent.click(screen.getByText('Discard this session'));
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      more();
+      fireEvent.click(screen.getByRole('menuitem', { name: /Discard/ }));
+      more();
+      more();
 
-      fireEvent.click(screen.getByText('Finish & Log Hours'));
-
-      expect(screen.getByText(/Remain 'In Progress'/)).toBeTruthy();
+      expect(screen.getByRole('menuitem', { name: /Discard/ })).toBeTruthy();
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
   });
@@ -291,7 +387,8 @@ describe('ActiveTaskHeroCard', () => {
 
     expect(screen.getByText(/during SPR-142, which waits paused/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Finish/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'More ways to stop' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Switch task…' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Back to SPR-142' }));
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     fireEvent.click(screen.getByRole('button', { name: 'Another' }));

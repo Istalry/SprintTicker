@@ -173,15 +173,21 @@ timer, Lunch and Away on your real mode -- and the page says so.
 
 ### ▶️ Today
 
-The main screen. Start a task, and the bar shows it. Pause, resume, and finish
-from here. With nothing running it offers just **Start a Task** and
-**Interrupt**; while a task runs, **Switch Task** moves to another one.
+The main screen. Start a task, and the bar shows it. With nothing running
+the session card offers just **Start a task** and **Interrupt**. While a task
+runs it says **Running** or **Paused**, when its time will be sent -- *sent
+to Jira when you stop, after 10 s to undo* -- and offers, in one row:
+**Pause** or **Resume**, **■ Stop ▾**, **⚡ Interrupt**, **Switch task**, and
+**Previous task: PF-31**, which goes back to the task before in one press.
 
 <p align="center">
   <img src="../docs/images/app-session-tracking.png" width="80%" alt="Today: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
 </p>
 
-Finishing asks for a comment and whether to mark the task done. Marking it done
+**Stop** is one click: the time is logged, and sent after ten seconds to
+undo; the task stays open. The **▾** beside it holds the two other ends:
+**✓ Done**, which also moves the task to its done state at your provider
+(shown only where the provider can), and **Discard…**. Marking it done
 celebrates on the bar -- a green badge drops in, ticks itself, and throws
 confetti beside **DONE!** -- then returns to the session. It also fires your
 configured completion transition — which in Jira usually means "To
@@ -223,7 +229,7 @@ all.
 
 ### 🔎 Finding a task: the picker
 
-**Start a Task**, **Switch Task**, **Assign to Task**, **Place…** and
+**Start a task**, **Switch task**, **Assign to a task…**, **Place…** and
 **Move** all open the same picker. Type, and it searches every task of every
 project at once -- key, title, description or project name -- grouped by
 project. Before you type, it offers:
@@ -304,10 +310,9 @@ While it runs, the session card says which task waits, and offers:
 - ⚡ **Another**: someone else arrives before you got back. The interruption
   ends and the next starts, waiting on the same task. Marc, then Ana, then
   Marc again is three interruptions in a row and one **Back**.
-- **Switch Task** ends the interruption and starts another task; the one
-  that waited stops, its time logged.
-- **Assign to Task** ends the interruption, puts its time on the task you
-  pick, and starts that task.
+- **Switch task…** ends the interruption and starts another task; the one
+  that waited stops, its time logged. Tick *Put "…" on it too* in the
+  picker, and the interruption's time goes on the task you pick as well.
 
 The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **Back to
 MG-12**, **Stop the Interruption** and **Another Interruption**.
@@ -348,10 +353,10 @@ you remember what they were. For each:
 Interruptions timed by an earlier version are listed the same way;
 placing one moves its entry to the task.
 
-🗑️ **Discard this session**, the third choice, is for a session started by
-mistake: nothing is kept in your history and nothing is sent to your
-provider. It asks you to confirm, naming the task and the time it would throw
-away, because that time does not come back.
+🗑️ **Discard…**, in Stop's **▾**, is for a session started by mistake:
+nothing is kept in your history and nothing is sent to your provider. It
+asks once more, naming the time and the task, and Undo on the toast takes
+it back for ten seconds.
 
 | | |
 | :---: | :---: |

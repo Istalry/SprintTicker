@@ -701,12 +701,18 @@
       <p>The developer tools act on the real app -- Pause and Resume on your real
       timer, Lunch and Away on your real mode -- and the page says so.</p>
       <h4>▶️ Today</h4>
-      <p>The main screen. Start a task, and the bar shows it. Pause, resume, and finish
-      from here. With nothing running it offers just <strong>Start a Task</strong> and
-      <strong>Interrupt</strong>; while a task runs, <strong>Switch Task</strong> moves to another one.</p>
+      <p>The main screen. Start a task, and the bar shows it. With nothing running
+      the session card offers just <strong>Start a task</strong> and <strong>Interrupt</strong>. While a task
+      runs it says <strong>Running</strong> or <strong>Paused</strong>, when its time will be sent -- <em>sent
+      to Jira when you stop, after 10 s to undo</em> -- and offers, in one row:
+      <strong>Pause</strong> or <strong>Resume</strong>, <strong>■ Stop ▾</strong>, <strong>⚡ Interrupt</strong>, <strong>Switch task</strong>, and
+      <strong>Previous task: PF-31</strong>, which goes back to the task before in one press.</p>
       <p align="center">
         <img src="images/app-session-tracking.png" width="80%" alt="Today: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
-      </p><p>Finishing asks for a comment and whether to mark the task done. Marking it done
+      </p><p><strong>Stop</strong> is one click: the time is logged, and sent after ten seconds to
+      undo; the task stays open. The <strong>▾</strong> beside it holds the two other ends:
+      <strong>✓ Done</strong>, which also moves the task to its done state at your provider
+      (shown only where the provider can), and <strong>Discard…</strong>. Marking it done
       celebrates on the bar -- a green badge drops in, ticks itself, and throws
       confetti beside <strong>DONE!</strong> -- then returns to the session. It also fires your
       configured completion transition — which in Jira usually means &quot;To
@@ -743,7 +749,7 @@
       a long call -- brings the question, and <strong>I was working all along</strong> keeps it
       all.</p>
       <h4>🔎 Finding a task: the picker</h4>
-      <p><strong>Start a Task</strong>, <strong>Switch Task</strong>, <strong>Assign to Task</strong>, <strong>Place…</strong> and
+      <p><strong>Start a task</strong>, <strong>Switch task</strong>, <strong>Assign to a task…</strong>, <strong>Place…</strong> and
       <strong>Move</strong> all open the same picker. Type, and it searches every task of every
       project at once -- key, title, description or project name -- grouped by
       project. Before you type, it offers:</p>
@@ -818,10 +824,9 @@
       <li>⚡ <strong>Another</strong>: someone else arrives before you got back. The interruption
       ends and the next starts, waiting on the same task. Marc, then Ana, then
       Marc again is three interruptions in a row and one <strong>Back</strong>.</li>
-      <li><strong>Switch Task</strong> ends the interruption and starts another task; the one
-      that waited stops, its time logged.</li>
-      <li><strong>Assign to Task</strong> ends the interruption, puts its time on the task you
-      pick, and starts that task.</li>
+      <li><strong>Switch task…</strong> ends the interruption and starts another task; the one
+      that waited stops, its time logged. Tick <em>Put &quot;…&quot; on it too</em> in the
+      picker, and the interruption&#39;s time goes on the task you pick as well.</li>
       </ul>
       <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>Back to
       MG-12</strong>, <strong>Stop the Interruption</strong> and <strong>Another Interruption</strong>.</p>
@@ -860,10 +865,10 @@
       </ul>
       <p>Interruptions timed by an earlier version are listed the same way;
       placing one moves its entry to the task.</p>
-      <p>🗑️ <strong>Discard this session</strong>, the third choice, is for a session started by
-      mistake: nothing is kept in your history and nothing is sent to your
-      provider. It asks you to confirm, naming the task and the time it would throw
-      away, because that time does not come back.</p>
+      <p>🗑️ <strong>Discard…</strong>, in Stop&#39;s <strong>▾</strong>, is for a session started by mistake:
+      nothing is kept in your history and nothing is sent to your provider. It
+      asks once more, naming the time and the task, and Undo on the toast takes
+      it back for ten seconds.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>

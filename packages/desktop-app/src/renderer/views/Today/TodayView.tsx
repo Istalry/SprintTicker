@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActiveSessionDTO, WorklogDTO } from '../../../shared/dtos';
+import { ActiveSessionDTO, TaskDTO, WorklogDTO } from '../../../shared/dtos';
 import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { formatClockTime, formatHoursAndMinutes as formatSeconds } from '../../utils/formatters';
 import { PickerMode } from '../../hooks/useModals';
@@ -15,6 +15,8 @@ interface TodayViewProps {
   onBack?: () => void;
   onStopInterruption?: () => void;
   onOpenPicker: (mode: PickerMode) => void;
+  /** Switches back to the task before, in one press. */
+  onPrevious?: (task: TaskDTO) => void;
 }
 
 /**
@@ -31,7 +33,8 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onInterrupt,
   onBack,
   onStopInterruption,
-  onOpenPicker
+  onOpenPicker,
+  onPrevious
 }) => (
   <div className="space-y-6">
     <ActiveTaskHeroCard
@@ -45,6 +48,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
       onInterrupt={onInterrupt}
       onBack={onBack}
       onStopInterruption={onStopInterruption}
+      onPrevious={onPrevious}
     />
 
     <section className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-4">

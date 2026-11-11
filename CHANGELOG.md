@@ -54,6 +54,10 @@
 - **Place all, one row at a time.** Each interruption gets its own task,
   starred and recent first with the ones you just chose on top; an unnamed
   one asks what it was. The rows you leave stay to place.
+- **Stop ▾ on Today.** The session card stops in one click, the task left
+  open; ✓ Done and Discard… are in the ▾ beside it, each a step away, in
+  place of "Finish & Log Hours" and its dialog. The card says when the time
+  is sent, and **Previous task** switches back in one press.
 - **Tasks: one way to start and stop.** A task's Start or Switch is a pick,
   so it switches from an interruption properly, and Stop is one click with
   Undo -- the second finish dialog is gone.

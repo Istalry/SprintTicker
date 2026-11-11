@@ -1116,6 +1116,37 @@ amber while nothing times.
 `ARCHITECTURE.md`, `CLAUDE.md` §5 (Lunch and Away pause; prompts never take
 focus).
 
+**Split (2026-11-11), each committed on its own:** P8a the session card
+(S5, S9's buttons, S11); P8b Lunch and Away pause (13.3's first half, with
+`CLAUDE.md` §5); P8c prompts without focus and the stand-up (13.2, the rest
+of 13.3); P8d the reminders (13.4); P8e Today's other cards (entries, the
+morning card, the reassigned card with its minute check, the interruptions
+card's ticked rows and ⋯).
+
+**As landed: P8a, the session card (2026-11-11).**
+
+- `ActiveTaskHeroCard` rebuilt: the state word (Running / Paused / Nothing
+  timing, `StateWord`), the key and the task page, "sent to Jira when you
+  stop, after 10 s to undo" (or "kept on this computer, never sent" for
+  ad-hoc and own-project work), the title, the time, and one row of verbs
+  from `words.ts`.
+- **`StopMenu`** (new, S11): ■ Stop in one click (`complete(undefined,
+  false)`); ▾ opens ✓ Done (two clicks; "no longer yours" asks first, with
+  Back, Stop instead, or Mark it done anyway) and Discard… (asks once,
+  naming the time). Done is hidden where the provider has no
+  `canTransition`, and kept for work kept here. The day-split note of the
+  old dialog moved into the menu. `FinishSessionModal` and its test are
+  deleted; the window has no other finish dialog.
+- **Previous task: PF-31** reads `getPreviousTask` when the running task
+  changes and starts it in one press. Hidden during an interruption.
+- During an interruption the row is S9's: Back to KEY, Switch task…, Stop,
+  Another. "Assign to Task" there is gone: Switch task… with the picker's
+  take-along does it. S9's name field, "started now ▾", the task chips and
+  the first-interruption line are not built yet (P8c).
+- Not as drawn: no project name beside the key (the session DTO has none),
+  and the picture `app-session-tracking.png` still shows the old card --
+  `pnpm docs:images` must run with SprintTicker closed, the user's call.
+
 ---
 
 ## 14. P9 -- History
@@ -1586,7 +1617,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P5 | done; the bar's own STOP and DROP not undoable yet (P14), no Undo on the OS toast, no S26 toast | `ff15f2c`, `433b0f3`, `4dd1cf5`, `3cc7caa` (2026-11-10) |
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
-| P8 | not started | |
+| P8 | in progress: P8a (the session card, Stop ▾) done; P8b-P8e next -- see §13 "Split" | P8a (2026-11-11) |
 | P9 | not started | |
 | P10 | not started | |
 | P11 | not started | |
