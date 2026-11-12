@@ -79,6 +79,15 @@ export function addLocalDays(dateKey: string, days: number): string {
   return localDateKey(new Date(year, month - 1, day + days));
 }
 
+/** Local midnight of a date key, built from local parts for the reason above. */
+export function localMidnight(dateKey: string): Date {
+  if (!dateKey || !DATE_KEY_PATTERN.test(dateKey)) {
+    throw new Error(`Expected a YYYY-MM-DD date key, received: ${String(dateKey)}`);
+  }
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 /** `HH:MM`, as the schedule stores its times. */
 const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 

@@ -71,6 +71,8 @@ function usePaletteKey(): [boolean, (open: boolean) => void] {
 export const App: React.FC = () => {
   const [place, setPlace] = useState<Place>('today');
   const [settingsGroup, setSettingsGroup] = useState<SettingsGroupId>('general');
+  // Check my week asked for by the week's notice: History remounts on each (`n`).
+  const [weekCheck, setWeekCheck] = useState<{ monday: string; n: number } | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const { session, pause, resume, complete, discard, startTask, interrupt, back, stopInterruption } = useSession();
@@ -152,7 +154,7 @@ export const App: React.FC = () => {
       case 'tasks':
         return <ProjectTaskManagerView />;
       case 'history':
-        return <WorklogHistoryView />;
+        return <WorklogHistoryView key={weekCheck?.n ?? 0} checkWeekOf={weekCheck?.monday} />;
       case 'settings':
         return (
           <SettingsPage
@@ -234,7 +236,12 @@ export const App: React.FC = () => {
         }}
       />
 
-      <WeekEndedNotice onOpenHistory={() => setPlace('history')} />
+      <WeekEndedNotice
+        onCheckWeek={monday => {
+          setWeekCheck(previous => ({ monday, n: (previous?.n ?? 0) + 1 }));
+          setPlace('history');
+        }}
+      />
       <ForgottenSessionModal />
 
       <OnboardingWizardModal isOpen={modals.onboarding.open} onClose={modals.onboarding.close} />

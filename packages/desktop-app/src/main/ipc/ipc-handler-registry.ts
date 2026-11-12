@@ -28,7 +28,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO } from '../../shared/dtos';
+import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
@@ -47,7 +47,8 @@ import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
 import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings, checkScheduleSettings } from '../../shared/schedule-defaults';
-import { localDateKey } from '../../shared/local-date';
+import { addLocalDays, localDateKey } from '../../shared/local-date';
+import { weekStartKey } from '../../shared/working-days';
 import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibility } from '../../shared/task-visibility';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
@@ -609,6 +610,15 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.GET_WORKLOGS_RANGE, async (_event, from: unknown, to: unknown) => {
       if (!isDateKey(from) || !isDateKey(to) || from > to) throw new ArgumentException('A range needs two days, YYYY-MM-DD, the first not after the second.');
       return this.worklogRepo.getWorklogsBetween(from, to);
+    });
+
+    // Check my week (P9d): what moved in a closed week after it closed; null while it is open.
+    ipcMain.handle(IPCChannel.GET_WEEK_CHANGES, async (_event, day: unknown): Promise<WeekChangeDTO[] | null> => {
+      if (!isDateKey(day)) throw new ArgumentException('A week is named by one of its days, YYYY-MM-DD.');
+      const monday = weekStartKey(day);
+      const closedAt = this.contextScheduleService.weekClosedAt(monday);
+      if (!closedAt) return null;
+      return this.worklogRepo.getQueuedChangesBetween(monday, addLocalDays(monday, 6), closedAt.toISOString());
     });
 
     // The window names the days; main writes the file, where the user says.

@@ -1441,37 +1441,27 @@ timesheet, Check my week, and the corrections that were missing.
   Friday 17:30" in the header; the To place row has no "Place all…" (the
   list above the sheet places); Check my week… comes with P9d.
 
-**Next: P9d, Check my week (handoff, end of 2026-11-11).** Nothing started;
-the tree is clean at `d2f4133`. What is already there to build on:
+**As landed: P9d, Check my week (2026-11-12).**
 
-- The figures: `shared/week-sheet.ts` (`buildWeekSheet`, `dayNotes`,
-  `describeWeekExceptions`) and `worklogs:get-range`, whose rows carry
-  `syncState` (`held-overlap`, `pending`, `failed`, `correction-pending`,
-  `correction-failed`) and `providerSeconds`. `shared/overlap.ts` has
-  `findOverlaps` and `heldByOverlap` for "OPS-4's 20m waits … with PF-31".
-  The fragments to place are what `WeekView` already reads for its To place
-  row. `shared/day-gaps.ts` gives a day's untracked gaps.
-- The close: main already closes the week once (`ContextScheduleService`,
-  `onWeekEnded` / `getWeekEnded` / `dismissWeekEnded`, `WeekEndedDTO`), and
-  the renderer shows it as `components/WeekEndedNotice.tsx`, whose button
-  opens History. P9d makes that open Check my week for that week (History's
-  Week, at `weekStart`) rather than adding a second notice.
-- The fixes (mockup S15b): Place… opens Place interruptions (S12b, P7c);
-  Open <day> and Fix… open that day in History (`setDate` + Day mode);
-  "Send now" for an unanswered correction is `retryFailedWorklogs` (check it
-  also requeues `correction-failed` rows before relying on it).
-- Not buildable as drawn: "days under target" has no target setting (same
-  as P9c) -- list days with untracked gaps in working hours instead, or drop
-  the item and say so in "As landed"; "no change to a closed week" needs to
-  know what moved after the close -- a correction or deletion queued for a
-  worklog begun before `last_week_closed`'s Monday + 7 is enough, no
-  migration.
-- To write: `shared/week-issues.ts` (pure: sheet + entries + overlaps +
-  fragments -> a list of `{ kind, title, detail, fix }`), its
-  `week-issues.test.ts`, a "Check my week…" button beside Export CSV opening
-  a dialog (S15b's header "37h 20m logged · N things to look at", the ✓ line
-  when a kind has nothing), renderer tests, then USER-GUIDE (History), API
-  if an IPC is added, CHANGELOG, this section's "As landed" and §24.
+- `shared/week-issues.ts` (`checkWeek`, `describeWeekCheck`): each fragment
+  of the week to place (Place… opens S12b's dialog on the week's), the
+  corrections not answered and the entries refused (Send now is
+  `retryFailedWorklogs`, which requeues every `FAILED` row, corrections
+  included), each working day with untracked time (Open <day>), each
+  overlapping pair (Fix… opens its day), and, in a closed week, the changes
+  queued since it closed.
+- `worklogs:get-week-changes` (`WorklogRepository.getQueuedChangesBetween`,
+  `ContextScheduleService.weekClosedAt`): the queue rows for the week's time
+  created after the wrap-up of its last working day; null while open. No
+  migration: the close moment is computed, not stored.
+- `CheckWeekDialog`, from "Check my week…" beside Export CSV in History's
+  week, and from the week's close: `WeekEndedNotice`'s button is now "Check
+  my week" and opens History on that week with the dialog (`checkWeekOf`,
+  a remount per request).
+- Not as drawn: no "under your day" -- there is no daily target, and the
+  user chose gaps only (2026-11-12): "Wednesday has 35m untracked · 1 gap ·
+  16:55–17:30", or "Nothing logged on Monday". The header says "37h 20m
+  logged", without "against 37h 30m".
 
 After P9d: P9e, Split in two (S16c), `worklog:split(id, at, taskId)` --
 shorten first, then create, both through the queue
@@ -1898,7 +1888,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
-| P9 | in progress: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV) done; P9d (Check my week) next -- handoff in §14 "Next: P9d" | P9a-P9c (2026-11-11) |
+| P9 | in progress: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week) done; P9e (Split in two) next -- see §14 "Split" | P9a-P9c (2026-11-11), P9d (2026-11-12) |
 | P10 | not started | |
 | P11 | not started | |
 | P12 | not started | |

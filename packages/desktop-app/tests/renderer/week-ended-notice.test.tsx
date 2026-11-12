@@ -13,7 +13,7 @@ const WEEK = { weekStart: '2026-10-12', weekEnd: '2026-10-16', loggedSeconds: 38
 describe('the week-over notice', () => {
   it('Render_NothingClosed_ShowsNothing', async () => {
     installElectronApi();
-    render(<WeekEndedNotice onOpenHistory={vi.fn()} />);
+    render(<WeekEndedNotice onCheckWeek={vi.fn()} />);
 
     await act(async () => undefined);
 
@@ -22,7 +22,7 @@ describe('the week-over notice', () => {
 
   it('Render_ClosedBeforeTheWindowOpened_ShowsTheWeekAndItsHours', async () => {
     installElectronApi({ getWeekEnded: async () => WEEK });
-    render(<WeekEndedNotice onOpenHistory={vi.fn()} />);
+    render(<WeekEndedNotice onCheckWeek={vi.fn()} />);
 
     const notice = await screen.findByRole('status');
 
@@ -33,7 +33,7 @@ describe('the week-over notice', () => {
 
   it('Render_ClosedWhileOpen_ShowsIt', async () => {
     const bridge = installElectronApi();
-    render(<WeekEndedNotice onOpenHistory={vi.fn()} />);
+    render(<WeekEndedNotice onCheckWeek={vi.fn()} />);
     await act(async () => undefined);
 
     act(() => bridge.emit('onWeekEnded', WEEK));
@@ -43,7 +43,7 @@ describe('the week-over notice', () => {
 
   it('Dismiss_Clicked_TellsMainAndGoes', async () => {
     const bridge = installElectronApi({ getWeekEnded: async () => WEEK });
-    render(<WeekEndedNotice onOpenHistory={vi.fn()} />);
+    render(<WeekEndedNotice onCheckWeek={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
 
@@ -51,20 +51,20 @@ describe('the week-over notice', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it('OpenHistory_Clicked_OpensItAndDismisses', async () => {
+  it('CheckMyWeek_Clicked_OpensItOnThatWeekAndDismisses', async () => {
     const bridge = installElectronApi({ getWeekEnded: async () => WEEK });
-    const onOpenHistory = vi.fn();
-    render(<WeekEndedNotice onOpenHistory={onOpenHistory} />);
+    const onCheckWeek = vi.fn();
+    render(<WeekEndedNotice onCheckWeek={onCheckWeek} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open History' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Check my week' }));
 
-    expect(onOpenHistory).toHaveBeenCalledTimes(1);
+    expect(onCheckWeek).toHaveBeenCalledWith('2026-10-12');
     expect(bridge.api.dismissWeekEnded).toHaveBeenCalledTimes(1);
   });
 
   it('DismissedInAnotherWindow_Goes', async () => {
     const bridge = installElectronApi({ getWeekEnded: async () => WEEK });
-    render(<WeekEndedNotice onOpenHistory={vi.fn()} />);
+    render(<WeekEndedNotice onCheckWeek={vi.fn()} />);
     await screen.findByRole('status');
 
     act(() => bridge.emit('onWeekEnded', null));

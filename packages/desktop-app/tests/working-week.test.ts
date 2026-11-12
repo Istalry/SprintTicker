@@ -162,6 +162,21 @@ describe('The working week', () => {
       expect(service.getWeekEnded()).toEqual(weeksSent()[0]);
     });
 
+    it('WeekClosedAt_OpenNull_ClosedAtItsLastWorkingDaysWrapUp', async () => {
+      expect(service.weekClosedAt('2026-10-12')).toBeNull();
+      holidays = ['2026-10-16'];
+      await check(15, 8);
+
+      await check(15, 17, 31);
+
+      // Closed at Thursday's wrap-up, Friday being off; the next week is open.
+      const eod = settings.getSetting<{ eodWrapUpTime?: string }>('schedule_settings', {}).eodWrapUpTime ?? '17:30';
+      const [h, m] = eod.split(':').map(Number);
+      expect(service.weekClosedAt('2026-10-12')).toEqual(new Date(2026, 9, 15, h, m));
+      expect(service.weekClosedAt('2026-10-05')).toEqual(new Date(2026, 9, 9, h, m));
+      expect(service.weekClosedAt('2026-10-19')).toBeNull();
+    });
+
     it('ThursdaysWrapUp_ClosesNothing', async () => {
       await check(15, 17, 31);
 

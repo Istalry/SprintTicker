@@ -8,7 +8,7 @@ import { ScheduleSettingsDTO, ArgumentException, ArgumentNullException, ActiveSe
 import type { PromptAnnouncement, PromptOutlet } from '../windows/prompt-outlet';
 import { FlowSettingKey, readStandupTask } from '../../shared/flow-settings';
 import { DAILY_STANDUP_TITLE, normalizeScheduleSettings } from '../../shared/schedule-defaults';
-import { addLocalDays, localDateKey } from '../../shared/local-date';
+import { addLocalDays, atLocalTime, localDateKey, localMidnight } from '../../shared/local-date';
 import { weekStartKey } from '../../shared/working-days';
 import { WorkingCalendar } from './working-calendar';
 import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
@@ -562,6 +562,23 @@ export class ContextScheduleService {
   /** The Monday of the last week closed, or null before the first close. */
   public getLastWeekClosed(): string | null {
     return this._settingsRepo.getSetting<string | null>(ContextScheduleService.LAST_WEEK_CLOSED_KEY, null);
+  }
+
+  /**
+   * When the week starting `monday` closed, or null while it is open (Check
+   * my week, P9d). The moment is the wrap-up of its last working day, when
+   * the close is due -- the close itself may run later, on a laptop left
+   * shut, but whatever changed after that wrap-up changed a week over. A
+   * week with no working day closes at its end. Only the Monday of the last
+   * close is stored, so the moment is computed, never remembered.
+   */
+  public weekClosedAt(monday: string): Date | null {
+    const closed = this.getLastWeekClosed();
+    if (closed === null || monday > closed) return null;
+    const end = this._calendar.lastWorkingDayOfWeek(monday);
+    if (end === null) return localMidnight(addLocalDays(monday, 7));
+    const settings = this.schedule();
+    return atLocalTime(localMidnight(end), settings.eodWrapUpTime || settings.eodTime || '18:00');
   }
 
   /// <summary>

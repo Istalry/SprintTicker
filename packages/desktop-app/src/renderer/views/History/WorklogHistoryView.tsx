@@ -11,6 +11,7 @@ import { useEntryActions } from '../../components/EntryActions';
 import { EntriesHead, EntryRow } from '../../components/EntryRow';
 import { AddTimeDialog, AddTimeStart, toLocalInput } from '../../components/AddTimeDialog';
 import { DayTimeline, RunningSpan } from '../../components/DayTimeline';
+import { CheckWeekDialog } from '../../components/CheckWeekDialog';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 
 interface DayRead {
@@ -60,8 +61,17 @@ function dayOf(dateKey: string): Date {
  * day as a timeline (S14b, P9b), whose untracked stretches open it. The
  * interruptions still to place, of any day, sit above it.
  */
-export const WorklogHistoryView: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<string>(localDateKey());
+export interface WorklogHistoryViewProps {
+  /**
+   * Opens on this week's Check my week (P9d): the notice of a week just
+   * closed passes its Monday. The view is remounted for each request, so
+   * the initial state is the request.
+   */
+  checkWeekOf?: string;
+}
+
+export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWeekOf }) => {
+  const [selectedDate, setSelectedDate] = useState<string>(checkWeekOf ?? localDateKey());
   // The last day read, which may trail the selected one while its read is in
   // flight. Loading is the gap between the two, derived rather than flagged:
   // a flag raised before the request is state set synchronously in an effect.
@@ -70,7 +80,9 @@ export const WorklogHistoryView: React.FC = () => {
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState<AddTimeStart | null>(null);
   // The day, or the week it falls in (S15): one date for both, so switching keeps the place.
-  const [mode, setMode] = useState<'day' | 'week'>('day');
+  const [mode, setMode] = useState<'day' | 'week'>(checkWeekOf ? 'week' : 'day');
+  // Check my week (S15b), over the week shown.
+  const [checking, setChecking] = useState(Boolean(checkWeekOf));
   const [exported, setExported] = useState<{ ok: boolean; text: string } | null>(null);
   const { providerName } = useProviderCapabilities();
   const worklogs = day?.worklogs ?? [];
@@ -161,6 +173,15 @@ export const WorklogHistoryView: React.FC = () => {
               className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border-dark text-text-secondary hover:text-white hover:border-focus"
             >
               Today
+            </button>
+          )}
+          {mode === 'week' && (
+            <button
+              type="button"
+              onClick={() => setChecking(true)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border-dark text-text-secondary hover:text-white hover:border-focus"
+            >
+              Check my week…
             </button>
           )}
           {mode === 'week' && (
@@ -264,6 +285,21 @@ export const WorklogHistoryView: React.FC = () => {
       </section>}
 
       {entries.dialogs}
+      {checking && (
+        <CheckWeekDialog
+          monday={monday}
+          onClose={() => {
+            setChecking(false);
+            // A fix made from the check shows in the sheet behind it.
+            setRevision(r => r + 1);
+          }}
+          onOpenDay={dateKey => {
+            setChecking(false);
+            openDay(dateKey);
+          }}
+          onExport={exportWeek}
+        />
+      )}
       <AddTimeDialog
         opening={adding}
         onClose={() => setAdding(null)}

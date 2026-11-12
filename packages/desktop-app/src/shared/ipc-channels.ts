@@ -85,6 +85,7 @@ export enum IPCChannel {
   GET_WORKLOGS_RANGE = 'worklogs:get-range',
   /** Saves those days' worklogs as CSV where the user chooses; answers the path, or null. */
   EXPORT_WORKLOGS_CSV = 'worklogs:export-csv',
+  GET_WEEK_CHANGES = 'worklogs:get-week-changes',
   GET_UNSORTED_WORKLOGS = 'worklogs:get-unsorted',
   RENAME_AD_HOC_TASK = 'tasks:rename-ad-hoc',
   /** Stars a task by its provider and key (migration 14); answers the starred list. */

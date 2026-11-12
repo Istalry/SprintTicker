@@ -4,6 +4,10 @@
 
 ### Added
 
+- **Check my week.** From History's week, or the notice when a week closes:
+  every problem of the week in one list -- time to place, corrections and
+  sends not answered, untracked time in your working hours, overlaps, and
+  changes to a closed week -- each with the button that fixes it.
 - **The week as a timesheet.** History's **Week** groups the week by
   project, with a Day row and a row of what Jira or OpenProject actually
   holds -- what your manager sees -- and says on each day why the two

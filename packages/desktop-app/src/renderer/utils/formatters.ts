@@ -96,6 +96,15 @@ export function formatDayAndMonth(dateKey: string): string {
   return new Date(year, month - 1, day).toLocaleDateString(regionalLocale, { day: 'numeric', month: 'long' });
 }
 
+/** `2 – 6 November`, in the regional format, from two local date keys: a week's title. */
+export function formatDayRange(fromKey: string, toKey: string): string {
+  const at = (key: string) => {
+    const [year, month, day] = key.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+  return new Intl.DateTimeFormat(regionalLocale, { day: 'numeric', month: 'long' }).formatRange(at(fromKey), at(toKey));
+}
+
 /** "1 task", "4 tasks": a count with its noun, never "task(s)". */
 export function countOf(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;

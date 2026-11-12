@@ -978,6 +978,20 @@ describe('IPC handlers', () => {
       await expect(invoke(IPCChannel.GET_WORKLOGS_RANGE, '2026-11-02', '2026-11-08')).resolves.toEqual([]);
     });
 
+    it('WeekChanges_AnOpenWeek_Null_AClosedOne_TheChangesSinceItClosed', async () => {
+      const weekClosedAt = vi.fn().mockReturnValueOnce(null).mockReturnValue(new Date(2026, 10, 6, 17, 30));
+      build({ contextScheduleService: { weekClosedAt } });
+      const between = vi.spyOn(WorklogRepository.prototype, 'getQueuedChangesBetween').mockReturnValue([]);
+
+      await expect(invoke(IPCChannel.GET_WEEK_CHANGES, '2026-11-12')).resolves.toBeNull();
+      // Any day names its week.
+      await expect(invoke(IPCChannel.GET_WEEK_CHANGES, '2026-11-04')).resolves.toEqual([]);
+
+      expect(weekClosedAt).toHaveBeenLastCalledWith('2026-11-02');
+      expect(between).toHaveBeenCalledWith('2026-11-02', '2026-11-08', new Date(2026, 10, 6, 17, 30).toISOString());
+      await expect(invoke(IPCChannel.GET_WEEK_CHANGES, 'Monday')).rejects.toThrow(/YYYY-MM-DD/);
+    });
+
     it('ExportDiagnostics_PathChosen_WritesTheBundleThere', async () => {
       const file = path.join(dir, 'bundle.json');
       electron.dialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: file });

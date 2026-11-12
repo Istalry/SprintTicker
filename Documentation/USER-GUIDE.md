@@ -529,6 +529,22 @@ have time.
 entry with its date, start and end in your local time, its length (also in
 decimal hours), project, task, note, and whether it was sent.
 
+✔️ **Check my week…** (beside Export CSV) lists everything in the week worth
+a look, each with its fix:
+
+- an interruption still to place -- **Place…** opens Place interruptions;
+- a correction your provider has not answered, or an entry it refused --
+  **Send now** sends again what was refused;
+- a working day with untracked time in its working hours, or nothing logged
+  at all -- **Open** that day, where a gap opens Add time;
+- two entries that overlap -- **Fix…** opens their day; the later one is
+  not sent until the overlap is fixed;
+- in a week already closed, any entry added, corrected or deleted since it
+  closed: what your manager saw has moved. With none, it says so.
+
+There is no daily target to be "under": untracked time is what it shows
+instead.
+
 ▨ **The day as a timeline.** Under the day's figures, a strip shows your
 working hours -- from the stand-up to the wrap-up, as set in **Settings, My
 workday** -- with each entry a block named by its task, ⚡ for time that began
@@ -814,8 +830,9 @@ alone, and a holiday already read stays one.
 🗓️ **The wrap-up of the week's last working day closes the week.** Usually
 that is Friday's; with Friday a holiday, or a four-day week, it is Thursday's.
 A notice in the corner of the window then shows the week and the time logged
-in it, a reminder to check it is all in before your timesheet is due. **Open
-History** takes you to it; either button dismisses the notice, which
+in it, a reminder to check it is all in before your timesheet is due. **Check
+my week** opens that week in History with its check (above); either button
+dismisses the notice, which
 otherwise stays -- across a restart too -- until you do. Missed the wrap-up
 (a day off you had not entered, the laptop shut)? The next working day closes
 the week at its first check instead, and a week closes once, whatever happens.

@@ -4,8 +4,8 @@ import { WeekEndedDTO } from '../../shared/dtos';
 import { formatDay, formatHoursAndMinutes } from '../utils/formatters';
 
 interface WeekEndedNoticeProps {
-  /** Opens History, where the week's worklogs are. */
-  onOpenHistory: () => void;
+  /** Opens Check my week (P9d) on the week, in History. */
+  onCheckWeek: (monday: string) => void;
 }
 
 const dayLabel = formatDay;
@@ -17,7 +17,7 @@ const dayLabel = formatDay;
  * missed -- and keeps the notice until it is dismissed, so a window opened
  * later, or after a restart, still shows it.
  */
-export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onOpenHistory }) => {
+export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onCheckWeek }) => {
   const [week, setWeek] = useState<WeekEndedDTO | null>(null);
 
   useEffect(() => {
@@ -55,12 +55,12 @@ export const WeekEndedNotice: React.FC<WeekEndedNoticeProps> = ({ onOpenHistory 
       </p>
       <button
         onClick={() => {
-          onOpenHistory();
+          onCheckWeek(week.weekStart);
           dismiss();
         }}
         className="text-xs font-semibold text-text-primary hover:underline"
       >
-        Open History
+        Check my week
       </button>
     </div>
   );

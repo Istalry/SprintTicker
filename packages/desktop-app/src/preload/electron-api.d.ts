@@ -39,6 +39,7 @@ import type {
   ForgottenSessionReviewDTO,
   ForgottenSessionResolutionDTO,
   WorklogDTO,
+  WeekChangeDTO,
   UndoStateDTO,
   WindowsNotificationSettingsDTO,
   WindowsNotificationEventDTO,
@@ -141,6 +142,8 @@ export interface IElectronAPI {
   getWorklogsRange: (from: string, to: string) => Promise<WorklogDTO[]>;
   /** Saves those days' worklogs as CSV where the user chooses; the path, or null when cancelled. */
   exportWorklogsCsv: (from: string, to: string) => Promise<string | null>;
+  /** Check my week: the sends queued for a closed week after it closed; null while the week is open. */
+  getWeekChanges: (day: string) => Promise<WeekChangeDTO[] | null>;
   /** Every worklog of an interruption still to sort, newest first. */
   getUnsortedWorklogs: () => Promise<WorklogDTO[]>;
   /** Stars a task; answers the starred tasks the lists hold. */

@@ -127,6 +127,32 @@ describe('Adding time by hand', () => {
     expect(worklogs.getWorklogById(added.id)).toBeNull();
   });
 
+  it('QueuedChanges_SinceAMoment_ForTheDays_EachWithItsState', async () => {
+    // Only the clock is faked: a row and the moment must not share a millisecond.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 16, 17) });
+    const before = service.add(entry());
+    await worker.processPendingQueue();
+    vi.setSystemTime(new Date(2026, 9, 16, 17, 30));
+    const since = new Date().toISOString();
+    vi.setSystemTime(new Date(2026, 9, 19, 9));
+    service.add(entry({ startedAtUtc: at(10), durationSeconds: 15 * MINUTE }));
+    service.correct(before.id, { durationSeconds: 45 * MINUTE, startedAtUtc: before.startedAtUtc, comment: 'Review' });
+    // Another week's change is not this one's.
+    service.add(entry({ startedAtUtc: new Date(2026, 9, 20, 10).toISOString() }));
+
+    const changes = worklogs.getQueuedChangesBetween('2026-10-12', '2026-10-18', since);
+
+    expect(changes.map(c => [c.operation, c.taskKey, c.durationSeconds / MINUTE, c.state])).toEqual([
+      ['CREATE', 'PF-31', 15, 'waiting'],
+      ['UPDATE', 'PF-31', 45, 'waiting']
+    ]);
+    await worker.processPendingQueue();
+    await worker.processPendingQueue();
+    expect(worklogs.getQueuedChangesBetween('2026-10-12', '2026-10-18', since).map(c => c.state)).toEqual(['sent', 'sent']);
+    expect(worklogs.getQueuedChangesBetween('2026-10-12', '2026-10-18', new Date(Date.now() + 60_000).toISOString())).toEqual([]);
+    vi.useRealTimers();
+  });
+
   it('Between_BothDaysIncluded_InTheOrderWorked', () => {
     service.add(entry({ startedAtUtc: new Date(2026, 9, 14, 10).toISOString() }));
     service.add(entry({ startedAtUtc: at(8, 30) }));

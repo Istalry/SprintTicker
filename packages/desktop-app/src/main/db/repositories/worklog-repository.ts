@@ -1,5 +1,5 @@
 import { DatabaseConnection } from '../database-connection';
-import { ArgumentNullException } from '../../../shared/dtos';
+import { ArgumentNullException, WeekChangeDTO } from '../../../shared/dtos';
 import { localDateKey, localDayBoundsUtc } from '../../../shared/local-date';
 import { WorklogCorrectionDTO, WorklogSyncState } from '../../../shared/worklog-correction';
 import { hasTaskPage } from '../../../shared/task-page';
@@ -821,6 +821,41 @@ export class WorklogRepository {
       )
       .all(startUtc, endUtc)
       .map(toRecord);
+  }
+
+  /**
+   * The sends queued since `sinceUtc` for time begun on the local days
+   * `fromKey` to `toKey` (Check my week, P9d): what moved in a week after it
+   * closed. Read from the queue rather than the worklogs, since a deletion
+   * leaves no worklog, and a correction rewrites its row in place.
+   */
+  public getQueuedChangesBetween(fromKey: string, toKey: string, sinceUtc: string): WeekChangeDTO[] {
+    if (!fromKey) throw new ArgumentNullException('fromKey');
+    if (!toKey) throw new ArgumentNullException('toKey');
+    if (!sinceUtc) throw new ArgumentNullException('sinceUtc');
+    const { startUtc } = localDayBoundsUtc(fromKey);
+    const { endUtc } = localDayBoundsUtc(toKey);
+    const rows = this.dbConn.getDb()
+      .prepare<[string, string, string], {
+        id: string; operation: WeekChangeDTO['operation']; task_key: string | null; started_at_utc: string;
+        duration_seconds: number; created_at_utc: string; status: SyncQueueStatus;
+      }>(
+        `SELECT q.id, q.operation, t.key AS task_key, q.started_at_utc, q.duration_seconds, q.created_at_utc, q.status
+           FROM worklog_sync_queue q
+           LEFT JOIN tasks t ON t.id = q.task_id
+          WHERE q.started_at_utc >= ? AND q.started_at_utc < ? AND q.created_at_utc >= ?
+          ORDER BY q.created_at_utc`
+      )
+      .all(startUtc, endUtc, sinceUtc);
+    return rows.map(row => ({
+      id: row.id,
+      operation: row.operation,
+      taskKey: row.task_key,
+      startedAtUtc: row.started_at_utc,
+      durationSeconds: row.duration_seconds,
+      queuedAtUtc: row.created_at_utc,
+      state: row.status === 'SYNCED' ? 'sent' : row.status === 'FAILED' ? 'failed' : 'waiting'
+    }));
   }
 
   public getWorklogsByDate(dateString: string): WorklogRecord[] {

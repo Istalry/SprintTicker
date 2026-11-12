@@ -417,7 +417,17 @@ each task's time per day grouped by project, the Day row, and the provider's
 row, which sums `providerSeconds` -- the duration of the last `SYNCED` queue
 row for the worklog on its current task, a `DELETE` counting as nothing. So
 the row is what the provider holds, not what it will hold: a correction not
-answered yet leaves the old value. Check my week (P9d) reads the same sheet.
+answered yet leaves the old value.
+
+Check my week (S15b) is `shared/week-issues.ts` (`checkWeek`), pure: the
+week's entries, the interruptions to place, the schedule and the session
+running in, a list of issues with their fixes out -- fragments to place,
+corrections and sends not answered (`syncState`), untracked time in each
+working day's hours (`day-gaps`), overlaps (`overlap.ts`), and, in a closed
+week, the queue rows created since it closed (`worklogs:get-week-changes`,
+read from the queue because a deletion leaves no worklog). There is no daily
+target. The window draws it (`CheckWeekDialog`); the week's close notice
+opens it on that week, by remounting History with `checkWeekOf`.
 
 History's timeline (S14b) is drawn from `shared/day-gaps.ts`: a day's working
 window -- the stand-up to the wrap-up on a working day, the hours the

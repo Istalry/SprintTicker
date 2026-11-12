@@ -256,6 +256,21 @@ export interface ScheduleSettingsDTO {
   splitPauseMinutes?: number;
 }
 
+/**
+ * A send queued for a closed week after it closed (Check my week, P9d): an
+ * entry added, corrected or deleted where the user's manager may already
+ * have looked. `state` is the queue row's: sent, refused, or on its way.
+ */
+export interface WeekChangeDTO {
+  id: string;
+  operation: 'CREATE' | 'UPDATE' | 'DELETE';
+  taskKey: string | null;
+  startedAtUtc: string;
+  durationSeconds: number;
+  queuedAtUtc: string;
+  state: 'waiting' | 'sent' | 'failed';
+}
+
 /** A week just over: Monday to its last working day, and the time logged in it. */
 export interface WeekEndedDTO {
   weekStart: string;
