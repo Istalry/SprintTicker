@@ -155,8 +155,8 @@ From `CLAUDE.md`, restated where they bite here:
 
 - **Documentation in the same commit** (§9). Each phase lists its documents.
   Wording changes update `USER-GUIDE.md` and remake the pictures
-  (`pnpm docs:images`, run only after asking: it needs SprintTicker and Unity
-  closed).
+  (`pnpm docs:images`, which needs SprintTicker closed; run without asking
+  since 2026-11-12, the user's choice).
 - **Never delete the working path in the commit that adds the new one**
   (§6). The new picker, prompts and interruption model land beside the old
   ones, behind the new screen. The old path is removed in a later commit,
@@ -1795,6 +1795,22 @@ hides; only Quit clears the bar).
 - Also fixed: Settings › Devices' Stream Deck card still called the plugin
   a separate download, which stopped being true in P11a.
 
+**As landed: P12b, the tray icon (2026-11-12).**
+
+- `shared/tray-state.ts`: `trayMarkOf` (interruption ⚡, timing ▶, paused or
+  Lunch/Away ❚❚, nothing timed in working hours !, outside them ○) and
+  `trayBadgeOf` (1-9, then 9+).
+- `tray/tray-icon.ts` draws it -- a disc in the window's token colour with
+  the mark in ink, a ring for ○ -- at 16 and 32 px, the number as paper
+  digits on an ink plate in the corner; `encodePng` hands it to
+  `nativeImage`. Redrawn only when the mark or the number changes; read on
+  every engine notification and every 5 s. The tooltip says the number.
+- The number is `countUnsent`: what the header counts as waiting or not
+  sent, so the two agree.
+- **Deviation:** drawn in code rather than "small images in `build/`": the
+  number sits over every mark, which files would have to multiply.
+  `build/tray-icon.png` stays as the fallback.
+
 ---
 
 ## 18. P13 -- Stream Deck plugin 0.6.0
@@ -1994,8 +2010,9 @@ setting; the Tasks view's filters, stars and delete-asks.
 Each phase updates its documents as it lands (§3). This phase does what is
 left once the screens are real:
 
-- **`pnpm docs:images`** for every changed screen, asked first (it needs
-  SprintTicker and Unity closed, and never captures the real profile).
+- **`pnpm docs:images`** for every changed screen (it needs SprintTicker
+  closed, and never captures the real profile). The user lets it run
+  without asking (2026-11-12).
 - **`USER-GUIDE.md`**, read end to end as the newcomer of the reviews,
   against the glossary: one word per action.
 - **`README.md`**: the feature list, the requirements, and any figures
@@ -2006,6 +2023,24 @@ left once the screens are real:
 - **`docs/index.html`**: `pnpm docs:build`, then `pnpm docs:check`.
 - **A release candidate on the real bar and Stream Deck Mobile**, as 1.3.0
   was: a day's use, a database copy, and the packaged build.
+- **A review with the design skills** (the user's request, 2026-11-12),
+  once P16 has landed: `design-skills:design-critique` and
+  `design-skills:ux-writing` against the mockups and the glossary,
+  `design-skills:accessibility-audit` on every screen. Findings are fixed
+  or listed, never silently left.
+- **A dry run at scale** (the user's request, 2026-11-12), after the
+  review and before the video: 20 projects of 50 tasks each, on a
+  throwaway profile under `--mock-hardware` (never the real database), and
+  simulated working days played through it -- the stand-up, starts,
+  switches, interruptions placed, Lunch and Away, corrections, End my day,
+  a week checked. The question is whether it stays smooth for the user: the
+  picker and its search, Today, History's day and week, Tasks, the first
+  sync of 1,000 tasks, the tray and the mini timer. Anything slow or
+  awkward is measured, fixed or listed, as the review's findings are.
+- **A short motion video presenting the app and its features** (the user's
+  request, 2026-11-12), the last item: made with the Remotion skills, from
+  the real screens and the bar's own animations, on the invented data of
+  `pnpm docs:images` -- never the real profile.
 
 ---
 
@@ -2079,7 +2114,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
-| P12 | in progress: P12a (close hides to the tray, the menu of S26) done; P12b (the tray icon) next -- see §17 "Split" | P12a (2026-11-12) |
+| P12 | in progress: P12a (close hides to the tray, the menu of S26), P12b (the tray icon) done; P12c (toasts that lead somewhere) next -- see §17 "Split" | P12a `a22383b`, P12b (2026-11-12) |
 | P13 | not started | |
 | P14 | not started | |
 | P15 | not started | |

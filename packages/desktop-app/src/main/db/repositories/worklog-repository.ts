@@ -405,6 +405,18 @@ export class WorklogRepository {
    * `last_error` and `retry_count`; nothing read them, so diagnosing a missing
    * worklog meant running the app from a terminal and reading the console.
    */
+  /**
+   * Rows not yet delivered: PENDING, SYNCING and FAILED, refused included --
+   * what the header counts as waiting or not sent, and the tray's number.
+   */
+  public countUnsent(): number {
+    const row = this.dbConn
+      .getDb()
+      .prepare<[], { n: number }>("SELECT COUNT(*) AS n FROM worklog_sync_queue WHERE status <> 'SYNCED'")
+      .get();
+    return row?.n ?? 0;
+  }
+
   public getSyncQueueSnapshot(limit: number = 50): {
     counts: { pending: number; syncing: number; synced: number; failed: number };
     items: SyncQueueRecord[];

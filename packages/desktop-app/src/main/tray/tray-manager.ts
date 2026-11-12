@@ -8,6 +8,8 @@ import type { PickerWindowController } from '../windows/picker-window-manager';
 import type { LaunchAtLoginService } from '../services/launch-at-login';
 import type { UserMode } from '../../shared/dtos';
 import { Verb } from '../../shared/words';
+import { trayBadgeOf, trayMarkOf } from '../../shared/tray-state';
+import { drawTrayIcon, encodePng, TRAY_ICON_REFRESH_MS, TRAY_ICON_SIZES } from './tray-icon';
 
 /**
  * What the tray's menu does that is not the engine's own (S26): each is the
@@ -21,6 +23,10 @@ export interface TrayCommands {
   getMode: () => UserMode;
   /** Opens the window on End my day. */
   endDay: () => void;
+  /** In working hours now: the icon's ! rather than ○ when nothing is timed (P12b). */
+  inWorkingHours?: () => boolean;
+  /** The entries not yet sent, for the icon's number (P12b). */
+  countWaiting?: () => number;
 }
 
 /**
@@ -37,6 +43,9 @@ export interface TrayCommands {
 export class TrayManager {
   private tray: Tray | null = null;
   private unsubscribeEngine?: () => void;
+  /** The mark and number the icon shows, so it is redrawn only when they change. */
+  private iconKey = '';
+  private iconTimer: ReturnType<typeof setInterval> | null = null;
   private mainWindow: BrowserWindow;
   private engine: TimeTrackingEngine;
 
@@ -56,25 +65,75 @@ export class TrayManager {
   }
 
   public initialize(): void {
-    const trayIconPath = path.join(__dirname, '../../build/tray-icon.png');
-    let image: Electron.NativeImage;
-    if (fs.existsSync(trayIconPath)) {
-      image = nativeImage.createFromPath(trayIconPath);
-    } else {
-      const iconData =
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAuSURBVHgB7cxBDQAACAIg2v6dZg0v0gAGZpJupv7uAQgICAgICAgICAgICAgIXLg3SAE7mEomwQAAAABJRU5ErkJggg==';
-      image = nativeImage.createFromDataURL(iconData);
-    }
-
-    this.tray = new Tray(image);
-    this.tray.setToolTip('SprintTicker (Idle)');
+    this.tray = new Tray(this.drawnIcon() ?? TrayManager.fileIcon());
+    this.updateStatusTooltip();
 
     // A single click opens the window (S26): the tray is where the closed
     // window went, and a double-click was a second guess nobody made.
     this.tray.on('click', () => this.restoreWindow());
     this.tray.on('right-click', () => this.tray?.popUpContextMenu(this.buildMenu()));
 
-    this.unsubscribeEngine = this.engine.subscribe(() => this.updateStatusTooltip());
+    // Every tick while a task is timed, and every few seconds besides: the
+    // mode, the hours and the queue change with no event of the engine's.
+    this.unsubscribeEngine = this.engine.subscribe(() => this.refresh());
+    this.iconTimer = setInterval(() => this.refresh(), TRAY_ICON_REFRESH_MS);
+    this.iconTimer.unref?.();
+  }
+
+  private refresh(): void {
+    this.updateStatusTooltip();
+    this.updateIcon();
+  }
+
+  /** The mark and the number as things stand. */
+  private iconState(): { mark: ReturnType<typeof trayMarkOf>; badge: string | null } {
+    const mark = trayMarkOf({
+      session: this.engine.getCurrentSession(),
+      mode: this.commands?.getMode() ?? 'WORK',
+      inWorkingHours: this.commands?.inWorkingHours?.() ?? false
+    });
+    return { mark, badge: trayBadgeOf(this.commands?.countWaiting?.() ?? 0) };
+  }
+
+  /** Redraws the icon when its mark or number changed; a failure keeps the one shown. */
+  private updateIcon(): void {
+    if (!this.tray) return;
+    try {
+      const { mark, badge } = this.iconState();
+      const key = `${mark}:${badge ?? ''}`;
+      if (key === this.iconKey) return;
+      const image = this.drawnIcon();
+      if (image) this.tray.setImage(image);
+    } catch (err) {
+      console.error('[TrayManager] Could not redraw the tray icon:', err);
+    }
+  }
+
+  /**
+   * The icon of S26 for the state now (P12b), at 16 and 32 px, or null when
+   * drawing failed -- the file icon then stands in, rather than no tray.
+   */
+  private drawnIcon(): Electron.NativeImage | null {
+    try {
+      const { mark, badge } = this.iconState();
+      const [small, large] = TRAY_ICON_SIZES;
+      const image = nativeImage.createFromBuffer(encodePng(small, small, drawTrayIcon(mark, badge, small)), { scaleFactor: 1 });
+      image.addRepresentation({ scaleFactor: large / small, buffer: encodePng(large, large, drawTrayIcon(mark, badge, large)) });
+      this.iconKey = `${mark}:${badge ?? ''}`;
+      return image;
+    } catch (err) {
+      console.error('[TrayManager] Could not draw the tray icon:', err);
+      return null;
+    }
+  }
+
+  /** The icon before P12b: the file the build ships, or an embedded square. */
+  private static fileIcon(): Electron.NativeImage {
+    const trayIconPath = path.join(__dirname, '../../build/tray-icon.png');
+    if (fs.existsSync(trayIconPath)) return nativeImage.createFromPath(trayIconPath);
+    return nativeImage.createFromDataURL(
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAuSURBVHgB7cxBDQAACAIg2v6dZg0v0gAGZpJupv7uAQgICAgICAgICAgICAgIXLg3SAE7mEomwQAAAABJRU5ErkJggg=='
+    );
   }
 
   public restoreWindow(): void {
@@ -85,13 +144,18 @@ export class TrayManager {
     if (!this.tray) return;
 
     const session = this.engine.getCurrentSession();
+    let tip: string;
     if (session && session.status === 'TRACKING') {
-      this.tray.setToolTip(`SprintTicker: TRACKING [${session.taskKey}] - ${session.taskTitle}`);
+      tip = `SprintTicker: TRACKING [${session.taskKey}] - ${session.taskTitle}`;
     } else if (session && session.status === 'PAUSED') {
-      this.tray.setToolTip(`SprintTicker: PAUSED [${session.taskKey}]`);
+      tip = `SprintTicker: PAUSED [${session.taskKey}]`;
     } else {
-      this.tray.setToolTip('SprintTicker (Idle)');
+      tip = 'SprintTicker (Idle)';
     }
+    // The icon's number, said: a figure in a corner explains nothing alone.
+    const waiting = this.commands?.countWaiting?.() ?? 0;
+    if (waiting > 0) tip += ` · ${waiting} waiting to send`;
+    this.tray.setToolTip(tip);
   }
 
   /** Runs a menu click; a throw from one would reach Electron's main process. */
@@ -214,6 +278,10 @@ export class TrayManager {
 
   public destroy(): void {
     this.unsubscribeEngine?.();
+    if (this.iconTimer) {
+      clearInterval(this.iconTimer);
+      this.iconTimer = null;
+    }
     if (this.tray) {
       this.tray.destroy();
       this.tray = null;

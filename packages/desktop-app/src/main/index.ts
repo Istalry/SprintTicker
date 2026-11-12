@@ -21,7 +21,7 @@ import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
 import { MainWindowCloseGuard } from './windows/main-window-close';
 import { WindowPromptOutlet } from './windows/prompt-outlet';
-import { ReminderService } from './services/reminder-service';
+import { inWorkingHours, ReminderService } from './services/reminder-service';
 import { MorningService } from './services/morning-service';
 import { WorkingCalendar } from './services/working-calendar';
 import { APP_USER_MODEL_ID } from './app-identity';
@@ -626,7 +626,12 @@ async function startApplication(): Promise<void> {
             stop: () => { sessionEnding.complete(undefined, false); },
             chooseMode: mode => schedule.chooseMode(mode),
             getMode: () => priorityEngine.getUserMode(),
-            endDay: () => { openWindowOn(window, 'end-day'); }
+            endDay: () => { openWindowOn(window, 'end-day'); },
+            // The reminders' hours: WORK, a working day, stand-up to wrap-up.
+            inWorkingHours: () =>
+              priorityEngine.getUserMode() === 'WORK' &&
+              inWorkingHours(new Date(), settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {}), dateKey => calendar.isWorkingDay(dateKey)),
+            countWaiting: () => worklogRepo.countUnsent()
           }
         : undefined
     );

@@ -1063,6 +1063,8 @@ Tailwind draws nothing for a class it does not know -- no error, no
 warning -- which is how `accent-emerald`, `bg-dark-600` and an `animate-in`
 with no plugin all shipped unnoticed. Use a defined token, and grep for the
 class before trusting it. `font-mono` is for task keys and times only.
+The tray icon is drawn in main from the same tokens (`TRAY_COLOURS` in
+`tray/tray-icon.ts`); `tray-icon.test.ts` holds that copy to the config.
 
 ### Naming
 

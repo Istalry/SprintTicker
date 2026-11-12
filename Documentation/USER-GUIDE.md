@@ -1024,6 +1024,12 @@ Windows notification says where it went. **Quit** is in the tray's menu.
 *Settings › General › When I close the window* can make the window's ✕
 quit instead.
 
+🧭 **The tray icon says where you stand**, by its mark as well as its
+colour: ▶ green, a task is timed; ⚡ amber, an interruption runs; ❚❚ amber,
+paused, at Lunch or Away; **!** amber, nothing is timed in your working
+hours; ○ grey, nothing is timed outside them. A number in its corner is the
+entries waiting to send (9+ past nine), and hovering it says so.
+
 🧭 **The tray**: a click opens the window. Its menu, on a right-click, holds
 what you reach for without the window: **Switch task…**, **Previous task:
 PF-31**, **Pause** or **Resume**, **Stop** (as Today's, with Undo),

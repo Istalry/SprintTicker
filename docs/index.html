@@ -1609,6 +1609,11 @@
       Windows notification says where it went. <strong>Quit</strong> is in the tray&#39;s menu.
       <em>Settings › General › When I close the window</em> can make the window&#39;s ✕
       quit instead.</p>
+      <p>🧭 <strong>The tray icon says where you stand</strong>, by its mark as well as its
+      colour: ▶ green, a task is timed; ⚡ amber, an interruption runs; ❚❚ amber,
+      paused, at Lunch or Away; <strong>!</strong> amber, nothing is timed in your working
+      hours; ○ grey, nothing is timed outside them. A number in its corner is the
+      entries waiting to send (9+ past nine), and hovering it says so.</p>
       <p>🧭 <strong>The tray</strong>: a click opens the window. Its menu, on a right-click, holds
       what you reach for without the window: <strong>Switch task…</strong>, <strong>Previous task:
       PF-31</strong>, <strong>Pause</strong> or <strong>Resume</strong>, <strong>Stop</strong> (as Today&#39;s, with Undo),
@@ -2260,6 +2265,17 @@
       with the mode chip) and Windows&#39; startup switch are read then; a single
       click opens the window. Its End my day… opens the window on a route
       (<code>openWindowOn</code>, <code>window:on-open-route</code>).</p>
+      <p><strong>The tray icon is drawn, not shipped</strong> (P12b). <code>trayMarkOf</code>
+      (<code>shared/tray-state.ts</code>) picks the mark -- interruption, then a task timed,
+      then paused or a break, then the working hours (the reminders&#39;
+      <code>inWorkingHours</code>) -- and <code>trayBadgeOf</code> the number, from
+      <code>WorklogRepository.countUnsent</code> (PENDING, SYNCING and FAILED, the header&#39;s
+      count). <code>tray/tray-icon.ts</code> rasterises it at 16 and 32 px (4 × 4
+      supersampled shapes, the number in Sprint Small on the pixel grid) and
+      encodes PNGs for <code>nativeImage.createFromBuffer</code>. The tray reads the state
+      at each engine notification and every <code>TRAY_ICON_REFRESH_MS</code> (5 s), and
+      draws only when the mark or the number changed. <code>build/tray-icon.png</code> is
+      the fallback if drawing fails.</p>
       <p><strong>Starting with Windows</strong> is <code>LaunchAtLoginService</code>
       (<code>src/main/services/launch-at-login.ts</code>), behind both the switch in Settings,
       General and the tray&#39;s checkbox; the tray reads it each time it builds its

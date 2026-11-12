@@ -4,6 +4,10 @@
 
 ### Added
 
+- **The tray icon shows where you stand**: ▶ timing, ⚡ an interruption,
+  ❚❚ paused or on a break, ! nothing timed in working hours, ○ outside
+  them -- a mark as well as a colour -- and the entries waiting to send as
+  a number.
 - **Closing the window keeps SprintTicker running, in the tray.** The timer,
   the bar and the Stream Deck go on; Quit is in the tray's menu, and a
   setting in General makes ✕ quit instead. The tray opens the window on a

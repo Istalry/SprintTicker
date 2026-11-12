@@ -17,6 +17,7 @@ let lastMockTray: {
   setToolTip: ReturnType<typeof vi.fn>;
   setContextMenu: ReturnType<typeof vi.fn>;
   popUpContextMenu: ReturnType<typeof vi.fn>;
+  setImage: ReturnType<typeof vi.fn>;
   on: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
 } | null = null;
@@ -40,6 +41,7 @@ vi.mock('electron', () => {
         setToolTip: vi.fn(),
         setContextMenu: vi.fn(),
         popUpContextMenu: vi.fn(),
+        setImage: vi.fn(),
         on: vi.fn(),
         destroy: vi.fn()
       };
@@ -47,7 +49,8 @@ vi.mock('electron', () => {
     }),
     nativeImage: {
       createFromDataURL: vi.fn().mockReturnValue({}),
-      createFromPath: vi.fn().mockReturnValue({})
+      createFromPath: vi.fn().mockReturnValue({}),
+      createFromBuffer: vi.fn(() => ({ addRepresentation: vi.fn() }))
     }
   };
 });
@@ -450,19 +453,82 @@ describe('TrayManager Unit Tests', () => {
     });
   });
 
-  it('TrayManager_Initialize_TrayIconOnDisk_LoadsItRatherThanTheEmbeddedFallback', () => {
-    // The packaged build ships build/tray-icon.png; only a source tree without
-    // it falls back to the inline data URL. Both branches are live, and the
-    // fallback one was the only one covered.
-    const exists = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+  /** The icon of S26 (P12b): a mark per state and the entries waiting. */
+  describe('the icon', () => {
+    function trayWith(state: { mode?: UserMode; inHours?: boolean; waiting?: number } = {}) {
+      const live = { mode: state.mode ?? 'WORK', inHours: state.inHours ?? true, waiting: state.waiting ?? 0 };
+      const manager = new TrayManager(mockWindow, engine, undefined, undefined, undefined, undefined, {
+        stop: vi.fn(),
+        chooseMode: vi.fn(),
+        getMode: () => live.mode as UserMode,
+        endDay: vi.fn(),
+        inWorkingHours: () => live.inHours,
+        countWaiting: () => live.waiting
+      });
+      manager.initialize();
+      return { manager, live };
+    }
 
-    const manager = new TrayManager(mockWindow, engine);
-    manager.initialize();
+    it('Icon_IsDrawnAt16And32', () => {
+      const { manager } = trayWith();
 
-    expect(vi.mocked(nativeImage).createFromPath).toHaveBeenCalledWith(
-      expect.stringContaining('tray-icon.png')
-    );
-    manager.destroy();
-    exists.mockRestore();
+      const drawn = vi.mocked(nativeImage.createFromBuffer).mock.results.at(-1)!.value as { addRepresentation: ReturnType<typeof vi.fn> };
+      expect(vi.mocked(nativeImage.createFromBuffer).mock.calls.at(-1)![1]).toEqual({ scaleFactor: 1 });
+      expect(drawn.addRepresentation).toHaveBeenCalledWith(expect.objectContaining({ scaleFactor: 2 }));
+      expect(vi.mocked(nativeImage).createFromPath).not.toHaveBeenCalled();
+      manager.destroy();
+    });
+
+    it('Icon_RedrawnWhenTheMarkChanges_NotOnEveryRead', () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+      try {
+        const { manager } = trayWith();
+        const tray = lastMockTray!;
+
+        engine.startTask('PROJ-1', false, 'One');
+        expect(tray.setImage).toHaveBeenCalledTimes(1);
+        engine.pauseSession();
+        engine.resumeSession();
+        expect(tray.setImage).toHaveBeenCalledTimes(3);
+
+        // Reads with nothing changed draw nothing.
+        vi.advanceTimersByTime(15_000);
+        expect(tray.setImage).toHaveBeenCalledTimes(3);
+        manager.destroy();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('Icon_TheNumberWaiting_IsReadEveryFewSeconds_AndSaidInTheTooltip', () => {
+      vi.useFakeTimers();
+      try {
+        const { manager, live } = trayWith();
+        const tray = lastMockTray!;
+
+        live.waiting = 2;
+        vi.advanceTimersByTime(5_000);
+
+        expect(tray.setImage).toHaveBeenCalledTimes(1);
+        expect(tray.setToolTip).toHaveBeenLastCalledWith('SprintTicker (Idle) · 2 waiting to send');
+        manager.destroy();
+        vi.advanceTimersByTime(5_000);
+        expect(tray.setImage).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('Icon_DrawingFails_TheFileIconStandsIn', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.mocked(nativeImage.createFromBuffer).mockImplementationOnce(() => { throw new Error('no image'); });
+      const exists = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      const { manager } = trayWith();
+
+      expect(vi.mocked(nativeImage).createFromPath).toHaveBeenCalledWith(expect.stringContaining('tray-icon.png'));
+      manager.destroy();
+      exists.mockRestore();
+    });
   });
 });

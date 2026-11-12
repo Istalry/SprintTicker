@@ -173,6 +173,18 @@ with the mode chip) and Windows' startup switch are read then; a single
 click opens the window. Its End my day… opens the window on a route
 (`openWindowOn`, `window:on-open-route`).
 
+**The tray icon is drawn, not shipped** (P12b). `trayMarkOf`
+(`shared/tray-state.ts`) picks the mark -- interruption, then a task timed,
+then paused or a break, then the working hours (the reminders'
+`inWorkingHours`) -- and `trayBadgeOf` the number, from
+`WorklogRepository.countUnsent` (PENDING, SYNCING and FAILED, the header's
+count). `tray/tray-icon.ts` rasterises it at 16 and 32 px (4 × 4
+supersampled shapes, the number in Sprint Small on the pixel grid) and
+encodes PNGs for `nativeImage.createFromBuffer`. The tray reads the state
+at each engine notification and every `TRAY_ICON_REFRESH_MS` (5 s), and
+draws only when the mark or the number changed. `build/tray-icon.png` is
+the fallback if drawing fails.
+
 **Starting with Windows** is `LaunchAtLoginService`
 (`src/main/services/launch-at-login.ts`), behind both the switch in Settings,
 General and the tray's checkbox; the tray reads it each time it builds its
