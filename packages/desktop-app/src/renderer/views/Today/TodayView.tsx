@@ -9,6 +9,9 @@ import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
 import { ForgottenSessionCard } from '../../components/ForgottenSessionModal';
+import { StatusCards } from '../../components/StatusCards';
+import { DeviceStatusDTO } from '../../../shared/dtos';
+import { SettingsGroupId } from '../Settings/settings-groups';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { TodayEntries } from '../../components/TodayEntries';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
@@ -27,6 +30,10 @@ interface TodayViewProps {
   onOpenPicker: (mode: PickerMode) => void;
   /** Switches back to the task before, in one press. */
   onPrevious?: (task: TaskDTO) => void;
+  /** The bar's status, for S31's "unplugged" card; absent, no card is drawn for it. */
+  device?: DeviceStatusDTO;
+  /** Where S31's cards send the user to fix things. */
+  onOpenSettings?: (group: SettingsGroupId) => void;
 }
 
 /**
@@ -46,7 +53,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onBack,
   onStopInterruption,
   onOpenPicker,
-  onPrevious
+  onPrevious,
+  device,
+  onOpenSettings
 }) => {
   const ceremony = useCeremonyPrompt();
   const [reminder, setReminder] = useReminder();
@@ -64,6 +73,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   return (
   <div className="space-y-6">
     <ForgottenSessionCard />
+    {device && onOpenSettings && <StatusCards device={device} onOpenSettings={onOpenSettings} />}
     {morning && !session && <MorningCard morning={morning} now={openedAt} onOpenPicker={() => onOpenPicker('start')} onPutAway={putMorningAway} />}
     {ceremony?.type === 'STANDUP' && <StandupCard prompt={ceremony} session={session} />}
     {ceremony?.type === 'LUNCH' && <LunchQuestionCard prompt={ceremony} />}

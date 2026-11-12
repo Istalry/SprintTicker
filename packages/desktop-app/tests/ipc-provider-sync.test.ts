@@ -109,6 +109,8 @@ describe('Saving provider settings triggers a sync', () => {
         syncedListeners.push(listener);
         return () => undefined;
       },
+      // Today's cards (P11b); this suite is about the sync's trigger, not its health.
+      onHealthChanged: () => () => undefined,
       // Saving credentials un-parks worklogs that failed against the old ones,
       // and drains the queue when it revived any. Counted so the test below can
       // assert it happens; nothing here has parked a row, so it returns zero.

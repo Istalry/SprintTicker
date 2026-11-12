@@ -180,6 +180,8 @@ export const App: React.FC = () => {
             onStopInterruption={() => { stopInterruption().catch(err => console.warn('[App] Stopping the interruption failed:', err)); }}
             onOpenPicker={modals.picker.show}
             onPrevious={task => { startTask(task.id, false, task.title).catch(err => console.warn('[App] Previous task failed:', err)); }}
+            device={device}
+            onOpenSettings={openSettings}
           />
         );
     }

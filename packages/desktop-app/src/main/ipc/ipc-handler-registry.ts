@@ -1,3 +1,6 @@
+import type { NoticeService } from '../services/notice-service';
+import type { NoticeKind, NoticesDTO, SyncHealthDTO } from '../../shared/sync-health';
+import { INITIAL_SYNC_HEALTH } from '../../shared/sync-health';
 import type { FirstRunService } from '../services/first-run-service';
 import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../../shared/first-run';
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
@@ -107,6 +110,8 @@ export interface IPCHandlerRegistryDeps {
   forgottenSessionService?: ForgottenSessionService;
   /** The first run (P11a); without it, it never opens on its own and nothing can be tested. */
   firstRun?: Pick<FirstRunService, 'shouldShow' | 'finish' | 'testConnection' | 'detectDesk' | 'installDeckPlugin' | 'openTokenPage'>;
+  /** Today's one-time notices (P11b); without it, none is shown. */
+  notices?: Pick<NoticeService, 'getNotices' | 'dismiss'>;
   /** The "still...?" reminders (P8d); without it, none is ever asked. */
   reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   /** The morning card (P8e2); without it, Today never shows one. */
@@ -174,6 +179,7 @@ export class IPCHandlerRegistry {
   private contextScheduleService: ContextScheduleService;
   private forgottenSessionService?: ForgottenSessionService;
   private firstRun?: IPCHandlerRegistryDeps['firstRun'];
+  private notices?: IPCHandlerRegistryDeps['notices'];
   private diagnosticExporter: DiagnosticExporter;
   private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
@@ -253,6 +259,7 @@ export class IPCHandlerRegistry {
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer, this.getWindow);
     this.forgottenSessionService = forgottenSessionService;
     this.firstRun = deps.firstRun;
+    this.notices = deps.notices;
     this.diagnosticExporter = new DiagnosticExporter(driver, settingsRepo.getConnection(), {
       webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
     });
@@ -472,6 +479,15 @@ export class IPCHandlerRegistry {
     // The renderer names the provider and the address typed; main builds the URL.
     ipcMain.handle(IPCChannel.OPEN_TOKEN_PAGE, async (_event, providerId: string, site: string): Promise<boolean> =>
       this.firstRun?.openTokenPage(providerId, site) ?? false
+    );
+
+    // S31's states (P11b): how the sync is going, and Today's one-time notices.
+    ipcMain.handle(IPCChannel.GET_SYNC_HEALTH, async (): Promise<SyncHealthDTO> => this.syncWorker?.getHealth() ?? INITIAL_SYNC_HEALTH);
+    ipcMain.handle(IPCChannel.GET_NOTICES, async (): Promise<NoticesDTO> =>
+      this.notices?.getNotices() ?? { updatedTo: null, noAccountDismissed: true }
+    );
+    ipcMain.handle(IPCChannel.DISMISS_NOTICE, async (_event, kind: NoticeKind): Promise<NoticesDTO> =>
+      this.notices?.dismiss(kind) ?? { updatedTo: null, noAccountDismissed: true }
     );
 
     ipcMain.handle(IPCChannel.GET_FORGOTTEN_REVIEW, async (): Promise<ForgottenSessionReviewDTO | null> =>
@@ -1490,6 +1506,7 @@ export class IPCHandlerRegistry {
     // heard of the ones it asked for, so a task added or renamed on the
     // provider appeared when the user changed views, not when it arrived.
     this.syncWorker?.onSynced(result => this.broadcastProjects(result));
+    this.syncWorker?.onHealthChanged(health => this.broadcast(IPCChannel.ON_SYNC_HEALTH, health));
 
     this.priorityEngine.onUserModeChanged((mode) => {
       this.broadcast(IPCChannel.ON_USER_MODE_UPDATED, mode);

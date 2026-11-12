@@ -169,6 +169,22 @@ Across the top, the header:
   wins. Click it for the details, **Try now** to send what waits, and **What
   you missed**: the last notifications the bar showed.
 
+🧭 **When something is not normal, Today says what still works**, in a card
+above the session -- so nobody stops timing because something else is down:
+
+| Card | What it means |
+| :--- | :--- |
+| **First sync** | Your tasks are arriving from Jira -- *6 of 15 projects*. Start a task of your own meanwhile. |
+| **Jira is not answering** · since 10:42 | Timing works; the entries waiting go out when it answers. **Try now** asks again. |
+| **Jira refused your token** | Timing works; the entries wait until you enter a new token -- **Enter a new one** opens Settings › Account. |
+| **No network** | Timing works, the task list is from your last sync, and nothing is lost. |
+| **BUSY Bar unplugged** | Shown after ten seconds without the bar. Your timer keeps running here; the bar shows the current screen when it is back. |
+| **Updated to 1.5.0** | **What's new** opens the release notes; **Not now** puts it away. |
+| **No account yet** | **Connect one** opens Settings › Account; **Not now** puts it away for good. Your own tasks and their time stay as they are. |
+
+On your first day the picker opens on your own open tasks -- in progress
+first, then to do by priority -- since you have no Recent or Starred yet.
+
 ### ⚙️ Settings
 
 Six groups, each one page, with a search box above them that finds a setting

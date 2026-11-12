@@ -678,6 +678,46 @@
       wins. Click it for the details, <strong>Try now</strong> to send what waits, and <strong>What
       you missed</strong>: the last notifications the bar showed.</li>
       </ul>
+      <p>🧭 <strong>When something is not normal, Today says what still works</strong>, in a card
+      above the session -- so nobody stops timing because something else is down:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Card</th>
+      <th align="left">What it means</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>First sync</strong></td>
+      <td align="left">Your tasks are arriving from Jira -- <em>6 of 15 projects</em>. Start a task of your own meanwhile.</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Jira is not answering</strong> · since 10:42</td>
+      <td align="left">Timing works; the entries waiting go out when it answers. <strong>Try now</strong> asks again.</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Jira refused your token</strong></td>
+      <td align="left">Timing works; the entries wait until you enter a new token -- <strong>Enter a new one</strong> opens Settings › Account.</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>No network</strong></td>
+      <td align="left">Timing works, the task list is from your last sync, and nothing is lost.</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>BUSY Bar unplugged</strong></td>
+      <td align="left">Shown after ten seconds without the bar. Your timer keeps running here; the bar shows the current screen when it is back.</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Updated to 1.5.0</strong></td>
+      <td align="left"><strong>What&#39;s new</strong> opens the release notes; <strong>Not now</strong> puts it away.</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>No account yet</strong></td>
+      <td align="left"><strong>Connect one</strong> opens Settings › Account; <strong>Not now</strong> puts it away for good. Your own tasks and their time stay as they are.</td>
+      </tr>
+      </tbody></table></div>
+      <p>On your first day the picker opens on your own open tasks -- in progress
+      first, then to do by priority -- since you have no Recent or Starred yet.</p>
       <h4>⚙️ Settings</h4>
       <p>Six groups, each one page, with a search box above them that finds a setting
       by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
@@ -2327,6 +2367,16 @@
       <p>One owner of the <code>worklog_sync_queue</code> table, and rows are claimed atomically
       (<code>UPDATE ... SET status=&#39;SYNCING&#39; WHERE id=? AND status=&#39;PENDING&#39;</code>). Two
       uncoordinated flushers used to race here and double-bill (F-02, F-03).</p>
+      <p>It also keeps how the sync is going (<code>getHealth</code>, <code>onHealthChanged</code>,
+      <code>shared/sync-health.ts</code>) for Today&#39;s S31 cards (P11b): <code>first-sync</code> with the
+      projects fetched so far, when the cache holds none of the provider&#39;s;
+      <code>unreachable</code> or <code>refused</code>, with when the failure began -- kept apart from
+      the first-sync state a retry passes through, so &quot;since 10:42&quot; holds; <code>ok</code>
+      with the last committed pass&#39;s time; <code>not-configured</code>. In memory only: after
+      a restart the time of the last sync is unknown until the next one.
+      <code>NoticeService</code> keeps Today&#39;s one-time notices: the version last seen
+      (<code>last_seen_version</code>, recorded silently by a fresh install) and &quot;No account
+      yet&quot; put away.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -3558,6 +3608,22 @@
       <tr>
       <td align="left">... and <code>taskOwnerName</code></td>
       <td align="left">Who the task is assigned to, when it is someone else&#39;s -- reassigned, started as a teammate&#39;s, or taken by someone between the pick and the start. The window says &quot;Assigned to&quot; that name</td>
+      </tr>
+      <tr>
+      <td align="left"><code>sync:get-health</code></td>
+      <td align="left">How the provider&#39;s sync is going: <code>{ state: &#39;ok&#39; | &#39;first-sync&#39; | &#39;unreachable&#39; | &#39;refused&#39; | &#39;not-configured&#39; | &#39;unknown&#39;, providerId, sinceUtc, lastSyncedAtUtc, progress: { done, total } | null }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>sync:on-health</code></td>
+      <td align="left">Pushes it on every change: each project of a first sync, a failure, a recovery</td>
+      </tr>
+      <tr>
+      <td align="left"><code>notices:get</code></td>
+      <td align="left">Today&#39;s one-time notices: <code>{ updatedTo: string | null, noAccountDismissed }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>notices:dismiss</code></td>
+      <td align="left"><code>&#39;updated&#39; | &#39;no-account&#39;</code>: put away for good; answers the notices</td>
       </tr>
       <tr>
       <td align="left"><code>first-run:should-show</code></td>

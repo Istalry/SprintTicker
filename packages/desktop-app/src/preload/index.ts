@@ -5,6 +5,7 @@ import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type { InterruptionToPlaceDTO } from '../shared/interruption';
 import type { ConnectionTestRequestDTO } from '../shared/first-run';
+import type { NoticeKind, SyncHealthDTO } from '../shared/sync-health';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -57,6 +58,14 @@ const electronAPI: IElectronAPI = {
   detectDesk: () => ipcRenderer.invoke(IPCChannel.DETECT_DESK),
   installDeckPlugin: () => ipcRenderer.invoke(IPCChannel.INSTALL_DECK_PLUGIN),
   openTokenPage: (providerId: 'jira' | 'openproject', site: string) => ipcRenderer.invoke(IPCChannel.OPEN_TOKEN_PAGE, providerId, site),
+  getSyncHealth: () => ipcRenderer.invoke(IPCChannel.GET_SYNC_HEALTH),
+  onSyncHealth: (callback: (health: SyncHealthDTO) => void) => {
+    const handler = (_event: IpcRendererEvent, health: SyncHealthDTO) => callback(health);
+    ipcRenderer.on(IPCChannel.ON_SYNC_HEALTH, handler);
+    return () => { ipcRenderer.removeListener(IPCChannel.ON_SYNC_HEALTH, handler); };
+  },
+  getNotices: () => ipcRenderer.invoke(IPCChannel.GET_NOTICES),
+  dismissNotice: (kind: NoticeKind) => ipcRenderer.invoke(IPCChannel.DISMISS_NOTICE, kind),
   resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) =>
     ipcRenderer.invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, resolution),
   onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => {

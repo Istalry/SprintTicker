@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Today says what still works.** A card when Jira is not answering (and
+  since when), refused your token, there is no network, the bar is
+  unplugged, the first sync is under way, you just updated, or you have no
+  account yet -- each saying that timing goes on and what waits. The picker
+  opens on your own tasks on your first day.
 - **A new first run.** Three steps instead of the setup wizard: where your
   tasks are, with **Test connection** saying who you are or exactly what
   went wrong; what is on your desk, ticking only what it finds, with the

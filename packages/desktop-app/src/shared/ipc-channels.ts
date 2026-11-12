@@ -47,6 +47,11 @@ export enum IPCChannel {
   DETECT_DESK = 'first-run:detect-desk',
   INSTALL_DECK_PLUGIN = 'first-run:install-deck-plugin',
   OPEN_TOKEN_PAGE = 'first-run:open-token-page',
+  // S31's states (P11b)
+  GET_SYNC_HEALTH = 'sync:get-health',
+  ON_SYNC_HEALTH = 'sync:on-health',
+  GET_NOTICES = 'notices:get',
+  DISMISS_NOTICE = 'notices:dismiss',
   RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
   ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
   ON_SESSION_UPDATED = 'session:on-updated',

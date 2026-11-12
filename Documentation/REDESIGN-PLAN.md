@@ -1667,6 +1667,24 @@ waits for the undo and the drain).
 - The pictures `app-setup-wizard*.png` keep their names; `capture-app.js`
   now shoots S1 and S2 (neither device), but they are not remade yet.
 
+**As landed: P11b, S31's cards (2026-11-12).**
+
+- `components/StatusCards.tsx`, on Today under the overnight card: No
+  network (`navigator.onLine`, which hides Not answering), Refused, Not
+  answering · since, First sync with its progress, BUSY Bar unplugged (after
+  `BAR_UNPLUGGED_GRACE_MS`, 10 s, so a start or a re-dial says nothing),
+  Updated to, No account yet. The waiting entries come from the queue.
+- Main: `OfflineSyncWorker` keeps the sync's health (`sync:get-health`,
+  `sync:on-health`); `NoticeService` the one-time notices (`notices:*`).
+- The first-day picker: with no Recent and no Starred, "Assigned to me"
+  says its order and where the other two will come.
+- **Deviations:** "Updated to 1.5.0 · 3 things changed" has no count --
+  the app does not carry its release notes, and What's new opens the
+  release page. The first update to this version announces nothing: the
+  version seen before it was never recorded. "No account yet" can be put
+  away for good, or it would stay on a deliberate no-account user's Today.
+  "Your team's server" is left out of it until PROVIDER-API §15 ships.
+
 ---
 
 ## 17. P12 -- Outside the window
@@ -2005,7 +2023,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
-| P11 | in progress: P11a (the first run) done; P11b (S31's cards) next -- see §16 "Split" | P11a (2026-11-12) |
+| P11 | in progress: P11a (the first run), P11b (S31's cards) done; P11c (a refused entry) next -- see §16 "Split" | P11a `ac2373c`, P11b (2026-11-12) |
 | P12 | not started | |
 | P13 | not started | |
 | P14 | not started | |

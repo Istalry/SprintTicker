@@ -14,6 +14,8 @@ import { ProviderManager } from '../providers/provider-manager';
 import { isAdHocTaskId } from '../db/id-generator';
 import { TaskStanding } from '../providers/task-provider-interface';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
+import { INITIAL_SYNC_HEALTH, SyncHealthDTO, SyncHealthState } from '../../shared/sync-health';
 import { ArgumentNullException } from '../../shared/dtos';
 
 /**
@@ -45,6 +47,11 @@ export class OfflineSyncWorker {
   /** Providers whose sends stopped on refused credentials, until they are fixed. */
   private sendingStopped: Set<string> = new Set();
   private sendingStoppedListeners: Set<(providerId: string) => void> = new Set();
+  /** How the sync is going, for Today's cards (S31, P11b). */
+  private health: SyncHealthDTO = INITIAL_SYNC_HEALTH;
+  private healthListeners: Set<(health: SyncHealthDTO) => void> = new Set();
+  /** The failure going on and when it began, kept apart from the state a retried first sync passes through. */
+  private failure: { state: SyncHealthState; sinceUtc: string } | null = null;
 
   constructor(
     providerManager: ProviderManager,
@@ -169,6 +176,50 @@ export class OfflineSyncWorker {
     return () => this.sendingStoppedListeners.delete(listener);
   }
 
+  /** How the provider's sync is going: Today's first-sync, not-answering and refused cards. */
+  public getHealth(): SyncHealthDTO {
+    return this.health;
+  }
+
+  /** Called when the health changes -- each project of a first sync, a failure, a recovery. */
+  public onHealthChanged(listener: (health: SyncHealthDTO) => void): () => void {
+    this.healthListeners.add(listener);
+    return () => this.healthListeners.delete(listener);
+  }
+
+  private setHealth(patch: Partial<SyncHealthDTO>): void {
+    const next = { ...this.health, ...patch };
+    if (JSON.stringify(next) === JSON.stringify(this.health)) return;
+    this.health = next;
+    for (const listener of this.healthListeners) {
+      try {
+        listener(next);
+      } catch (err) {
+        console.error('[OfflineSyncWorker] A health listener failed:', err);
+      }
+    }
+  }
+
+  /** A failure, keeping when it began while it goes on: "not answering since 10:42". */
+  private setFailing(state: SyncHealthState): void {
+    if (this.failure?.state !== state) this.failure = { state, sinceUtc: new Date().toISOString() };
+    this.setHealth({ state, progress: null, sinceUtc: this.failure.sinceUtc });
+  }
+
+  /**
+   * The cache holds no project of a provider's: the pass about to run is the
+   * first sync. The ad-hoc project and the app's own are not the provider's.
+   */
+  private holdsProviderProjects(): boolean {
+    return this.projectRepo.getAllProjects()
+      .some(p => p.id !== ADHOC_PROJECT_ID && p.providerId !== OWN_PROJECT_PROVIDER_ID);
+  }
+
+  private activeProviderId(): string {
+    const manager = this.providerManager as Partial<ProviderManager>;
+    return typeof manager.getActiveProvider === 'function' ? manager.getActiveProvider()?.providerId ?? '' : '';
+  }
+
   /** Called when the set of unlisted tasks changes, so the session can say so. */
   public onUnlistedChanged(listener: () => void): () => void {
     this.unlistedListeners.add(listener);
@@ -267,17 +318,28 @@ export class OfflineSyncWorker {
     const tasksByProject = new Map<string, TaskDTO[]>();
 
     // Phase 1: fetch everything. No writes.
+    // The first sync says how far it got: a new user waits on it (S31).
+    const first = this.health.lastSyncedAtUtc === null && !this.holdsProviderProjects();
     try {
       console.log(`[OfflineSyncWorker] Fetching latest projects and tasks...`);
+      // A retry after a failure stays the failure until the provider answers:
+      // the card would otherwise flip between the two at every pass.
+      if (first && !this.failure) this.setHealth({ state: 'first-sync', providerId: this.activeProviderId(), progress: null, sinceUtc: null });
       projects = await this.providerManager.getProjects();
-      for (const p of projects) {
+      if (first) this.setHealth({ state: 'first-sync', sinceUtc: null, progress: { done: 0, total: projects.length } });
+      for (const [index, p] of projects.entries()) {
         tasksByProject.set(p.id, await this.providerManager.getTasks(p.id));
+        if (first) this.setHealth({ progress: { done: index + 1, total: projects.length } });
       }
     } catch (e) {
+      this.setHealth({ providerId: this.activeProviderId() });
       if (isProviderRequestError(e) && e.kind === 'not_configured') {
         console.log(`[OfflineSyncWorker] Skipping sync: ${e.message}`);
+        this.failure = null;
+        this.setHealth({ state: 'not-configured', progress: null, sinceUtc: null });
         return { status: 'not_configured', reason: e.message, projects: 0, tasks: 0 };
       }
+      this.setFailing(isProviderRequestError(e) && e.kind === 'auth' ? 'refused' : 'unreachable');
       console.error(
         `[OfflineSyncWorker] Fetch failed; local cache left untouched:`,
         e
@@ -322,6 +384,14 @@ export class OfflineSyncWorker {
       const taskCount = [...tasksByProject.values()].reduce((n, t) => n + t.length, 0);
       console.log(`[OfflineSyncWorker] Synced ${projects.length} project(s) and ${taskCount} task(s).`);
       const result: ProviderSyncResult = { status: 'synced', projects: projects.length, tasks: taskCount };
+      this.failure = null;
+      this.setHealth({
+        state: 'ok',
+        providerId: this.activeProviderId(),
+        sinceUtc: null,
+        progress: null,
+        lastSyncedAtUtc: new Date().toISOString()
+      });
       this.notifySynced(result);
       return result;
     } catch (e) {

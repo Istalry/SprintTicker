@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { SyncHealthDTO } from '../../shared/sync-health';
 import { CeremonyPromptDTO, ForgottenSessionReviewDTO, MorningDTO, ReminderDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
 
 /**
@@ -59,6 +60,12 @@ export function useReminder(): [ReminderDTO | null, (value: ReminderDTO | null) 
 export function useForgottenReview(): [ForgottenSessionReviewDTO | null, (value: ForgottenSessionReviewDTO | null) => void] {
   const api = window.electronAPI;
   return useFollowed<ForgottenSessionReviewDTO>(api?.getForgottenReview, api?.onForgottenReview, 'the overnight question');
+}
+
+/** How the provider's sync is going (S31, P11b): Today's first-sync, not-answering and refused cards. */
+export function useSyncHealth(): SyncHealthDTO | null {
+  const api = window.electronAPI;
+  return useFollowed<SyncHealthDTO>(api?.getSyncHealth, api?.onSyncHealth, 'the sync health')[0];
 }
 
 /** Work, Lunch or Away, as main keeps it. */

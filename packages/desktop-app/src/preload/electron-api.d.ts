@@ -10,6 +10,7 @@
  * `undefined is not a function` in the renderer, so keep it.
  */
 
+import type { NoticeKind, NoticesDTO, SyncHealthDTO } from '../shared/sync-health';
 import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../shared/first-run';
 import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../shared/provider-events';
 import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
@@ -101,6 +102,14 @@ export interface IElectronAPI {
   installDeckPlugin: () => Promise<boolean>;
   /** "make one ↗": the page that makes a token, which main builds from the provider and the address typed. */
   openTokenPage: (providerId: 'jira' | 'openproject', site: string) => Promise<boolean>;
+
+  // S31's states (P11b)
+  /** How the provider's sync is going: first sync, not answering, refused. */
+  getSyncHealth: () => Promise<SyncHealthDTO>;
+  onSyncHealth: (callback: (health: SyncHealthDTO) => void) => () => void;
+  /** Today's one-time notices: an update just installed, no account yet. */
+  getNotices: () => Promise<NoticesDTO>;
+  dismissNotice: (kind: NoticeKind) => Promise<NoticesDTO>;
   onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => () => void;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 

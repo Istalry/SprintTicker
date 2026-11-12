@@ -43,6 +43,7 @@ import { ContextScheduleService } from './services/context-schedule-service';
 import { PresenceMonitor } from './services/presence-monitor';
 import { ForgottenSessionService } from './services/forgotten-session-service';
 import { FirstRunService } from './services/first-run-service';
+import { NoticeService } from './services/notice-service';
 import { DECK_PLUGIN_PACK, DECK_PLUGIN_RESOURCE } from '../shared/first-run';
 import { JiraProvider } from './providers/jira-provider';
 import { OpenProjectProvider } from './providers/openproject-provider';
@@ -522,6 +523,7 @@ async function startApplication(): Promise<void> {
     priorityEngine,
     contextScheduleService,
     forgottenSessionService,
+    notices: new NoticeService(settingsRepo, app.getVersion()),
     firstRun: new FirstRunService({
       settings: settingsRepo,
       isProviderConfigured: () => providerManager.isRemoteConfigured(),

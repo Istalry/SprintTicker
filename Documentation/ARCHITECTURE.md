@@ -299,6 +299,17 @@ One owner of the `worklog_sync_queue` table, and rows are claimed atomically
 (`UPDATE ... SET status='SYNCING' WHERE id=? AND status='PENDING'`). Two
 uncoordinated flushers used to race here and double-bill (F-02, F-03).
 
+It also keeps how the sync is going (`getHealth`, `onHealthChanged`,
+`shared/sync-health.ts`) for Today's S31 cards (P11b): `first-sync` with the
+projects fetched so far, when the cache holds none of the provider's;
+`unreachable` or `refused`, with when the failure began -- kept apart from
+the first-sync state a retry passes through, so "since 10:42" holds; `ok`
+with the last committed pass's time; `not-configured`. In memory only: after
+a restart the time of the last sync is unknown until the next one.
+`NoticeService` keeps Today's one-time notices: the version last seen
+(`last_seen_version`, recorded silently by a fresh install) and "No account
+yet" put away.
+
 | Constant | Value | Why |
 | :--- | ---: | :--- |
 | `SYNC_INTERVAL_MS` | 5 min | Background pass |

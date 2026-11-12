@@ -53,6 +53,10 @@ Everything else is a request/response `invoke`.
 | `session:get-current` / `session:on-updated` carry `taskUnlisted: true` | The tracked task is no longer the user's: the provider stopped listing it at the last sync (reassigned, closed, moved), or lists it as a teammate's. The sync keeps the task until the session ends; finishing it as done asks the user first |
 | ... and `taskLeftBecause` | Why, once the provider has said: `closed` (done there -- finishing it asks nothing and sends no transition), `reassigned` (still open, out of the user's scope) or `gone` (deleted, or no longer visible). Absent while unknown |
 | ... and `taskOwnerName` | Who the task is assigned to, when it is someone else's -- reassigned, started as a teammate's, or taken by someone between the pick and the start. The window says "Assigned to" that name |
+| `sync:get-health` | How the provider's sync is going: `{ state: 'ok' \| 'first-sync' \| 'unreachable' \| 'refused' \| 'not-configured' \| 'unknown', providerId, sinceUtc, lastSyncedAtUtc, progress: { done, total } \| null }` |
+| `sync:on-health` | Pushes it on every change: each project of a first sync, a failure, a recovery |
+| `notices:get` | Today's one-time notices: `{ updatedTo: string \| null, noAccountDismissed }` |
+| `notices:dismiss` | `'updated' \| 'no-account'`: put away for good; answers the notices |
 | `first-run:should-show` | True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead |
 | `first-run:finish` | Start my first task, or Set up later: it does not open on its own again |
 | `first-run:test-connection` | `{ providerId: 'jira' \| 'openproject', site, email?, token }`, saving nothing: `{ ok: true, userName, projectCount }` or `{ ok: false, reason: 'incomplete' \| 'not-found' \| 'refused' \| 'network' \| 'failed', host, detail }` -- never throws for the remote's failure |

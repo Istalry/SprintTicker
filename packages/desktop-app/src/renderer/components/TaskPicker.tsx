@@ -85,7 +85,7 @@ const EMPTY_DATA: PickerDataDTO = { previous: null, recent: [], starred: [], tas
 
 /** One line of the list: something to pick, or a heading between them. */
 type Row =
-  | { kind: 'heading'; label: string; count?: number; note?: string }
+  | { kind: 'heading'; label: string; count?: number; note?: string; hint?: string }
   | { kind: 'task'; task: TaskDTO; note?: string }
   | { kind: 'project'; project: ProjectDTO; note: string }
   | { kind: 'mine' ; count: number }
@@ -186,6 +186,9 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     const groups: Array<[string, TaskDTO[], string | undefined]> = mode === 'place'
       ? [['Starred', snapshot.starred, '★ your usual places for time'], ['Recent', recent, justChosen.length ? 'just chosen first' : undefined]]
       : [['Recent', recent, undefined], ['Starred', snapshot.starred, undefined]];
+    // The first day has no Recent and no Starred: the picker opens on the
+    // user's own open tasks, and says where the other two will come (S31).
+    const firstDay = groups.every(([, list]) => list.filter(usable).length === 0);
     for (const [label, list, note] of groups) {
       const shown = list.filter(usable);
       if (shown.length === 0) continue;
@@ -196,7 +199,14 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
       const mine = myOpenTasks(tasks);
       if (mine.length > 0) {
         const projectCount = new Set(mine.map(t => t.projectId)).size;
-        rows.push({ kind: 'heading', label: 'Assigned to me · open', note: `${mine.length} in ${projectCount} project${projectCount === 1 ? '' : 's'}` });
+        rows.push(firstDay
+          ? {
+              kind: 'heading',
+              label: 'Assigned to me · open',
+              note: 'in progress first, then to do by priority',
+              hint: 'Recent and Starred appear once you have used a task or starred one.'
+            }
+          : { kind: 'heading', label: 'Assigned to me · open', note: `${mine.length} in ${projectCount} project${projectCount === 1 ? '' : 's'}` });
         pushTasks(mine.slice(0, PICKER_MINE_PREVIEW), t => projectOf.get(t.projectId)?.name);
         if (mine.length > PICKER_MINE_PREVIEW) rows.push({ kind: 'mine', count: mine.length });
       }
@@ -422,10 +432,13 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
               rows.map((row, i) => {
                 if (row.kind === 'heading') {
                   return (
-                    <div key={`h-${i}`} className="flex items-baseline gap-2 px-2 pt-3 pb-1 text-[11px] font-bold text-text-secondary">
-                      <span>{row.label}</span>
-                      {row.count !== undefined && <span className="font-normal">{row.count}</span>}
-                      {row.note && <span className="font-normal">{row.note}</span>}
+                    <div key={`h-${i}`} className="px-2 pt-3 pb-1 text-[11px] text-text-secondary">
+                      <div className="flex items-baseline gap-2 font-bold">
+                        <span>{row.label}</span>
+                        {row.count !== undefined && <span className="font-normal">{row.count}</span>}
+                        {row.note && <span className="font-normal">{row.note}</span>}
+                      </div>
+                      {row.hint && <div className="mt-0.5">{row.hint}</div>}
                     </div>
                   );
                 }

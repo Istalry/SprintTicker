@@ -151,6 +151,23 @@ describe('TaskPicker', () => {
     expect(screen.getByText('To do, most urgent first')).toBeTruthy();
   });
 
+  it('FirstDay_NoRecentNoStarred_OpensOnMyTasks_AndSaysWhereTheOthersWillBe', async () => {
+    open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue({ ...DATA, previous: null, recent: [], starred: [] }) });
+
+    const heading = (await screen.findByText('Assigned to me · open')).parentElement!.parentElement!;
+
+    expect(heading.textContent).toMatch(/in progress first, then to do by priority/);
+    expect(heading.textContent).toMatch(/Recent and Starred appear once you have used a task or starred one\./);
+    expect(screen.queryByText('Recent')).toBeNull();
+  });
+
+  it('LaterDays_SayHowManyAreMine_WithoutTheHint', async () => {
+    open({ mode: 'start' });
+
+    expect(await screen.findByText('Assigned to me · open')).toBeTruthy();
+    expect(screen.queryByText(/Recent and Starred appear/)).toBeNull();
+  });
+
   describe('fetch by key', () => {
     const canFetch = (can: boolean) => ({
       getProviderCapabilities: vi.fn().mockResolvedValue({ providerId: 'jira', canAssign: true, canTransition: true, canFindWorklog: true, canFetchByKey: can, hasHolidays: false })

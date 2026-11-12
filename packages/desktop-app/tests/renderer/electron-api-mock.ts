@@ -121,6 +121,10 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     }),
     installDeckPlugin: vi.fn().mockResolvedValue(true),
     openTokenPage: vi.fn().mockResolvedValue(true),
+    getSyncHealth: vi.fn().mockResolvedValue({ state: 'ok', providerId: 'openproject', sinceUtc: null, lastSyncedAtUtc: null, progress: null }),
+    onSyncHealth: subscribe('onSyncHealth'),
+    getNotices: vi.fn().mockResolvedValue({ updatedTo: null, noAccountDismissed: true }),
+    dismissNotice: vi.fn().mockResolvedValue({ updatedTo: null, noAccountDismissed: true }),
     onForgottenReview: subscribe('onForgottenReview'),
     onSessionUpdated: subscribe('onSessionUpdated'),
 
