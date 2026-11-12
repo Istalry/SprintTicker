@@ -1,9 +1,12 @@
 import type { ToastPresenter } from '../services/toast-presenter';
+import type { WindowRoute } from '../../shared/window-route';
 
 /** A question to the user, as a toast says it. */
 export interface PromptAnnouncement {
   title: string;
   body: string;
+  /** Where the toast's click opens the window: Today, where the question waits as a card, unless said. */
+  route?: WindowRoute;
 }
 
 /**
@@ -34,8 +37,6 @@ export interface WindowPromptOutletDeps {
   getWindows: () => readonly OutletWindow[];
   getDashboard: () => OutletWindow | null;
   toasts: ToastPresenter;
-  /** The toast's click: the user asked for the window, so it may come forward. */
-  openDashboard: () => void;
 }
 
 export class WindowPromptOutlet implements PromptOutlet {
@@ -50,7 +51,7 @@ export class WindowPromptOutlet implements PromptOutlet {
 
   public announce(announcement: PromptAnnouncement): void {
     if (this.dashboardOnScreen()) return;
-    this.deps.toasts.show({ ...announcement, onClick: this.deps.openDashboard });
+    this.deps.toasts.show({ ...announcement, route: announcement.route ?? 'today' });
   }
 
   /** Visible and not minimised; hidden in the tray, or never shown at login, is not. */

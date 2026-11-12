@@ -241,8 +241,9 @@ export class ForgottenSessionService {
     this._settings.setSetting(FORGOTTEN_REVIEW_KEY, stored);
     this.send(this.getReview());
     // The question waits in the window, which no longer comes forward to ask
-    // it (P8c); a toast says so while it is hidden.
+    // it (P8c); a toast says so while it is hidden, and opens Today on it.
     this._outlet?.announce({
+      route: 'today',
       title: forgottenHeading(session.taskKey, cause),
       body: `Paused at your last activity, ${localClock(lastPresenceUtc)}. Click to say when you stopped; nothing is logged until you do.`
     });

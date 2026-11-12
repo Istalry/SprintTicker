@@ -22,6 +22,7 @@ class FakeNotification implements NotificationLike {
 describe('ElectronToastPresenter', () => {
   let created: FakeNotification[];
   let openExternal: ReturnType<typeof vi.fn>;
+  let openRoute: ReturnType<typeof vi.fn>;
   let supported: boolean;
   let presenter: ElectronToastPresenter;
 
@@ -29,6 +30,7 @@ describe('ElectronToastPresenter', () => {
     created = [];
     supported = true;
     openExternal = vi.fn().mockResolvedValue(undefined);
+    openRoute = vi.fn();
     presenter = new ElectronToastPresenter({
       isSupported: () => supported,
       create: options => {
@@ -36,7 +38,8 @@ describe('ElectronToastPresenter', () => {
         created.push(n);
         return n;
       },
-      openExternal
+      openExternal,
+      openRoute
     });
   });
 
@@ -74,6 +77,36 @@ describe('ElectronToastPresenter', () => {
     created[0].fire('click');
 
     expect(openExternal).not.toHaveBeenCalled();
+    expect(openRoute).not.toHaveBeenCalled();
+  });
+
+  it.each(['today', 'end-day', 'undo', 'account'] as const)('Click_Route_%s_OpensTheWindowThere', route => {
+    // P12c: a toast opens SprintTicker on its subject.
+    presenter.show({ title: 't', body: 'b', route });
+
+    created[0].fire('click');
+
+    expect(openRoute).toHaveBeenCalledWith(route);
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it('Click_LinkAndRoute_TheLinkWins', () => {
+    // A toast about Jira opens Jira.
+    presenter.show({ title: 't', body: 'b', url: 'https://op.test/wp/1', route: 'today' });
+
+    created[0].fire('click');
+
+    expect(openExternal).toHaveBeenCalledWith('https://op.test/wp/1');
+    expect(openRoute).not.toHaveBeenCalled();
+  });
+
+  it('Click_OpeningTheWindowThrows_IsLoggedNotThrown', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    openRoute.mockImplementation(() => { throw new Error('gone'); });
+    presenter.show({ title: 't', body: 'b', route: 'account' });
+
+    expect(() => created[0].fire('click')).not.toThrow();
+    expect(warn).toHaveBeenCalled();
   });
 
   it('Click_ShellRefuses_IsLoggedNotThrown', async () => {

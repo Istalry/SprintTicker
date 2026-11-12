@@ -14,7 +14,6 @@ describe('MainWindowCloseGuard', () => {
         setSetting: (key: string, value: unknown) => { stored.set(key, value); }
       },
       toasts: { show: vi.fn(() => true) },
-      reveal: vi.fn(),
       ...over
     };
     return { guard: new MainWindowCloseGuard(deps), deps, stored };
@@ -41,14 +40,12 @@ describe('MainWindowCloseGuard', () => {
     expect(deps.toasts!.show).toHaveBeenCalledWith(expect.objectContaining(STILL_RUNNING_TOAST));
   });
 
-  it('OnClose_ToastClicked_OpensTheWindow', () => {
+  it('OnClose_ToastClicked_OpensTheWindowOnToday', () => {
     const { guard: g, deps } = guard();
 
     g.onClose(closeEvent());
-    const shown = vi.mocked(deps.toasts!.show).mock.calls[0][0];
-    shown.onClick!();
 
-    expect(deps.reveal).toHaveBeenCalled();
+    expect(vi.mocked(deps.toasts!.show).mock.calls[0][0].route).toBe('today');
   });
 
   it('OnClose_ToastNotShown_TellsAtTheNextClose', () => {

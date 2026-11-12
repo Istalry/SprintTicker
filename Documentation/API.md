@@ -57,7 +57,7 @@ Everything else is a request/response `invoke`.
 | `sync:on-health` | Pushes it on every change: each project of a first sync, a failure, a recovery |
 | `notices:get` | Today's one-time notices: `{ updatedTo: string \| null, noAccountDismissed }` |
 | `notices:dismiss` | `'updated' \| 'no-account'`: put away for good; answers the notices |
-| `window:on-open-route` | Push, main to the window: open on a place -- `'today'`, `'end-day'` (the tray's End my day…, P12a). The window goes to Today; `end-day` opens End my day as the header's button does |
+| `window:on-open-route` | Push, main to the window: open on a place (`shared/window-route.ts`) -- `'today'`, `'end-day'` (the tray's End my day…, P12a), `'undo'` and `'account'` (a toast's click, P12c). The window goes to Today, or Settings › Account for `account`; `end-day` opens End my day as the header's button does, `undo` focuses the Undo bar's button |
 | `worklogs:get-refused` | The worklogs whose send the provider refused for good (`syncState: 'refused'`), oldest first: Today's refused card (P11c) |
 | `worklogs:keep-off` | `(worklogId)`. Keeps a refused entry off its provider: its send is dropped and the worklog stays here as local time, undoable. Rejects for an entry whose send was not refused -- keeping that off would be a deletion |
 | `first-run:should-show` | True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead |

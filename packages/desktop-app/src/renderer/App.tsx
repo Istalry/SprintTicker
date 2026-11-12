@@ -90,9 +90,17 @@ export const App: React.FC = () => {
 
   const warn = (what: string) => (err: unknown) => console.warn(`[App] ${what} failed:`, err);
 
-  // Main opening the window on a place (P12): each opens on Today; End my
-  // day's dialog is useModals'.
-  useEffect(() => window.electronAPI?.onOpenRoute?.(() => setPlace('today')), []);
+  // Main opening the window on a place (P12): Account is Settings', every
+  // other opens on Today -- End my day's dialog is useModals', the Undo
+  // button's focus the Undo bar's.
+  useEffect(() => window.electronAPI?.onOpenRoute?.(route => {
+    if (route === 'account') {
+      setSettingsGroup('account');
+      setPlace('settings');
+      return;
+    }
+    setPlace('today');
+  }), []);
 
   /** A palette action, run as the window's own control for it runs it. */
   const runAction = (id: PaletteAction['id']): void => {

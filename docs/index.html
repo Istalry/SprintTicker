@@ -1614,6 +1614,14 @@
       paused, at Lunch or Away; <strong>!</strong> amber, nothing is timed in your working
       hours; ○ grey, nothing is timed outside them. A number in its corner is the
       entries waiting to send (9+ past nine), and hovering it says so.</p>
+      <p>🔔 <strong>SprintTicker&#39;s notifications open where they are about.</strong> A question
+      -- the stand-up, Lunch&#39;s end, a session left running -- opens Today on its
+      card; &quot;Sending time to Jira stopped&quot; opens <em>Settings › Account</em>, where the
+      credentials go. Stop a task from the tray, the Stream Deck or the bar while
+      the window is hidden, and a notification says so, &quot;Stopped MG-12 · 1h 24m&quot;:
+      click it within ten seconds and the window opens with <strong>Undo</strong> ready
+      (Enter). A notification about a Jira or OpenProject task opens the task
+      there.</p>
       <p>🧭 <strong>The tray</strong>: a click opens the window. Its menu, on a right-click, holds
       what you reach for without the window: <strong>Switch task…</strong>, <strong>Previous task:
       PF-31</strong>, <strong>Pause</strong> or <strong>Resume</strong>, <strong>Stop</strong> (as Today&#39;s, with Undo),
@@ -2265,6 +2273,17 @@
       with the mode chip) and Windows&#39; startup switch are read then; a single
       click opens the window. Its End my day… opens the window on a route
       (<code>openWindowOn</code>, <code>window:on-open-route</code>).</p>
+      <p><strong>A toast leads to its subject</strong> (P12c). A <code>ToastRequest</code> carries a <code>url</code>
+      -- a provider&#39;s page, opened only if http(s) -- or a <code>route</code>, which
+      <code>ElectronToastPresenter</code> hands to <code>openWindowOn</code>: the click is the user&#39;s,
+      so the window may come forward. The questions of <code>WindowPromptOutlet</code> open
+      Today, where they wait as cards; &quot;Sending time stopped&quot; opens
+      <code>account</code>; a task taken or not assigned, the interrupt chord&#39;s toast and
+      &quot;still running&quot; open Today. <code>UndoToasts</code> (<code>windows/undo-toasts.ts</code>) listens
+      to <code>UndoService.onChanged</code> and, for each new offer made while the dashboard
+      is not on screen -- a Stop from the tray, the deck or the bar -- posts its
+      label and the seconds left, routed to <code>undo</code>, which focuses the Undo bar&#39;s
+      button. With the dashboard on screen the Undo bar says it, once.</p>
       <p><strong>The tray icon is drawn, not shipped</strong> (P12b). <code>trayMarkOf</code>
       (<code>shared/tray-state.ts</code>) picks the mark -- interruption, then a task timed,
       then paused or a break, then the working hours (the reminders&#39;
@@ -3683,7 +3702,7 @@
       </tr>
       <tr>
       <td align="left"><code>window:on-open-route</code></td>
-      <td align="left">Push, main to the window: open on a place -- <code>&#39;today&#39;</code>, <code>&#39;end-day&#39;</code> (the tray&#39;s End my day…, P12a). The window goes to Today; <code>end-day</code> opens End my day as the header&#39;s button does</td>
+      <td align="left">Push, main to the window: open on a place (<code>shared/window-route.ts</code>) -- <code>&#39;today&#39;</code>, <code>&#39;end-day&#39;</code> (the tray&#39;s End my day…, P12a), <code>&#39;undo&#39;</code> and <code>&#39;account&#39;</code> (a toast&#39;s click, P12c). The window goes to Today, or Settings › Account for <code>account</code>; <code>end-day</code> opens End my day as the header&#39;s button does, <code>undo</code> focuses the Undo bar&#39;s button</td>
       </tr>
       <tr>
       <td align="left"><code>worklogs:get-refused</code></td>

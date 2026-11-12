@@ -41,9 +41,8 @@ describe('Prompts without focus', () => {
   describe('WindowPromptOutlet', () => {
     const outletOver = (dashboard: OutletWindow | null, windows: OutletWindow[] = dashboard ? [dashboard] : []) => {
       const toasts: ToastPresenter = { show: vi.fn().mockReturnValue(true) };
-      const openDashboard = vi.fn();
-      const outlet = new WindowPromptOutlet({ getWindows: () => windows, getDashboard: () => dashboard, toasts, openDashboard });
-      return { outlet, toasts, openDashboard };
+      const outlet = new WindowPromptOutlet({ getWindows: () => windows, getDashboard: () => dashboard, toasts });
+      return { outlet, toasts };
     };
 
     it('Send_TwoWindowsAndADestroyedOne_ReachesTheLiveOnes', () => {
@@ -70,15 +69,21 @@ describe('Prompts without focus', () => {
     it.each([
       ['hidden in the tray', { isVisible: () => false }],
       ['minimised', { isMinimized: () => true }]
-    ])('Announce_Dashboard%s_ToastsAndItsClickOpensTheDashboard', (_what, over) => {
-      const { outlet, toasts, openDashboard } = outletOver(windowLike(over).win);
+    ])('Announce_Dashboard%s_ToastsAndItsClickOpensToday', (_what, over) => {
+      const { outlet, toasts } = outletOver(windowLike(over).win);
 
       outlet.announce({ title: 'Stand-up at 09:30', body: 'Click to join or skip.' });
 
-      expect(toasts.show).toHaveBeenCalledWith(expect.objectContaining({ title: 'Stand-up at 09:30' }));
-      const shown = vi.mocked(toasts.show).mock.calls[0][0];
-      shown.onClick?.();
-      expect(openDashboard).toHaveBeenCalledTimes(1);
+      // Today, where the question waits as a card (P12c).
+      expect(toasts.show).toHaveBeenCalledWith({ title: 'Stand-up at 09:30', body: 'Click to join or skip.', route: 'today' });
+    });
+
+    it('Announce_WithARoute_KeepsIt', () => {
+      const { outlet, toasts } = outletOver(null);
+
+      outlet.announce({ title: 'x', body: 'y', route: 'end-day' });
+
+      expect(vi.mocked(toasts.show).mock.calls[0][0].route).toBe('end-day');
     });
 
     it('Announce_NoDashboardYet_Toasts', () => {
@@ -90,16 +95,16 @@ describe('Prompts without focus', () => {
     });
   });
 
-  it('ElectronToastPresenter_Clicked_RunsTheToastsOnClick', () => {
+  it('ElectronToastPresenter_Clicked_OpensTheWindowOnItsRoute', () => {
     const listeners: Record<string, (...args: unknown[]) => void> = {};
     const notification: NotificationLike = { show: vi.fn(), on: (event, listener) => { listeners[event] = listener; return notification; } };
-    const presenter = new ElectronToastPresenter({ isSupported: () => true, create: () => notification, openExternal: vi.fn() });
-    const onClick = vi.fn();
+    const openRoute = vi.fn();
+    const presenter = new ElectronToastPresenter({ isSupported: () => true, create: () => notification, openExternal: vi.fn(), openRoute });
 
-    presenter.show({ title: 't', body: 'b', onClick });
+    presenter.show({ title: 't', body: 'b', route: 'today' });
     listeners.click();
 
-    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(openRoute).toHaveBeenCalledWith('today');
   });
 
   describe('the schedule and a forgotten session', () => {

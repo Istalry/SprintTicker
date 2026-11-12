@@ -173,7 +173,7 @@ export function describeSendingStopped(providerName: string): ProviderEventText 
   const name = providerName.trim();
   return {
     title: `Sending time to ${name || 'your provider'} stopped`,
-    body: `${name || 'Your provider'} refused the saved credentials. Your time is kept here: enter them again in Task Providers and it goes out.`
+    body: `${name || 'Your provider'} refused the saved credentials. Your time is kept here. Click to enter them again.`
   };
 }
 

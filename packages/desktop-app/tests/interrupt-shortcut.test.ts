@@ -239,7 +239,8 @@ describe('InterruptShortcutService', () => {
       expect(interrupt).toHaveBeenCalledTimes(1);
       expect(toasts.show).toHaveBeenCalledWith({
         title: 'Interruption started',
-        body: 'SCRUM-12 is paused until you are back. Place it on a task when it ends.'
+        body: 'SCRUM-12 is paused until you are back. Place it on a task when it ends.',
+        route: 'today'
       });
     });
 
@@ -257,7 +258,8 @@ describe('InterruptShortcutService', () => {
 
       expect(toasts.show).toHaveBeenCalledWith({
         title: 'Another interruption started',
-        body: 'SCRUM-12 still waits, paused. Place it on a task when it ends.'
+        body: 'SCRUM-12 still waits, paused. Place it on a task when it ends.',
+        route: 'today'
       });
     });
 
@@ -289,7 +291,7 @@ describe('InterruptShortcutService', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
       pressIt(make());
 
-      expect(toasts.show).toHaveBeenCalledWith({ title: 'No interruption started', body: 'The schedule service is not running.' });
+      expect(toasts.show).toHaveBeenCalledWith({ title: 'No interruption started', body: 'The schedule service is not running.', route: 'today' });
       warn.mockRestore();
     });
   });

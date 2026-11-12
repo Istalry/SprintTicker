@@ -1795,6 +1795,27 @@ hides; only Quit clears the bar).
 - Also fixed: Settings › Devices' Stream Deck card still called the plugin
   a separate download, which stopped being true in P11a.
 
+**As landed: P12c, toasts that lead somewhere (2026-11-12).**
+
+- `ToastRequest.route` (`WindowRoute`, now `today`, `end-day`, `undo`,
+  `account`): `ElectronToastPresenter` opens the window there on a click
+  (`openWindowOn`), unless the toast carries a provider's `url`, which
+  still wins. `onClick` is gone; every toast names a place instead.
+- The prompts (`WindowPromptOutlet.announce`) open Today, where they wait
+  as cards; a task taken or not assigned, the interrupt chord's toast and
+  "still running" open Today; "Sending time stopped" opens Settings ›
+  Account and says "Click to enter them again".
+- `UndoToasts`: an action Undo can take back, offered while the dashboard
+  is not on screen -- the tray's Stop, the deck, the bar -- says its label
+  and "Click within 10 s to undo" (a discard: "Nothing kept or sent"),
+  routed to `undo`, which focuses the Undo bar's button.
+- **Deviations:** no `history/<day>` route -- no toast of S26 is about a
+  day. Not added: "Started MG-15" (a toast at each start from the deck or
+  the bar would be noise; the device shows the start) and "MG-12 is now Rin
+  Okada's" while the window is hidden (the mini timer's states, P12d, show
+  it). P12d's Undo row on the mini timer should join
+  `isDashboardOnScreen`, so the two do not both say it.
+
 **As landed: P12b, the tray icon (2026-11-12).**
 
 - `shared/tray-state.ts`: `trayMarkOf` (interruption ⚡, timing ▶, paused or
@@ -2114,7 +2135,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
-| P12 | in progress: P12a (close hides to the tray, the menu of S26), P12b (the tray icon) done; P12c (toasts that lead somewhere) next -- see §17 "Split" | P12a `a22383b`, P12b (2026-11-12) |
+| P12 | in progress: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere) done; P12d (the mini timer's states) next -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c (2026-11-12) |
 | P13 | not started | |
 | P14 | not started | |
 | P15 | not started | |

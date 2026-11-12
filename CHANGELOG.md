@@ -4,6 +4,12 @@
 
 ### Added
 
+- **SprintTicker's notifications open where they are about.** A question
+  opens Today on its card, "Sending time stopped" opens Settings › Account,
+  and a Stop from the tray, the Stream Deck or the bar while the window is
+  hidden says "Stopped MG-12 · 1h 24m" with ten seconds to click and undo
+  it. A notification about a Jira or OpenProject task still opens the task
+  there.
 - **The tray icon shows where you stand**: ▶ timing, ⚡ an interruption,
   ❚❚ paused or on a break, ! nothing timed in working hours, ○ outside
   them -- a mark as well as a colour -- and the entries waiting to send as

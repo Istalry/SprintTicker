@@ -360,9 +360,11 @@ describe('ProviderEventService', () => {
 
     expect(service.reportSendingStopped('Jira')).toBe(true);
 
+    // Its click opens Settings › Account, where the credentials go (P12c).
     expect(toasts).toEqual([{
       title: 'Sending time to Jira stopped',
-      body: 'Jira refused the saved credentials. Your time is kept here: enter them again in Task Providers and it goes out.'
+      body: 'Jira refused the saved credentials. Your time is kept here. Click to enter them again.',
+      route: 'account'
     }]);
   });
 
@@ -386,7 +388,8 @@ describe('ProviderEventService', () => {
       expect(shown).toEqual({ toast: true, bar: true });
       expect(toasts).toEqual([{
         title: 'TEAM-2 is taken',
-        body: 'Bob Stone took it before you started. It is still theirs; your time is logged all the same.'
+        body: 'Bob Stone took it before you started. It is still theirs; your time is logged all the same.',
+        route: 'today'
       }]);
       expect(banners).toEqual([{ appName: 'Jira', title: 'TAKEN', body: 'Bob Stone' }]);
     });

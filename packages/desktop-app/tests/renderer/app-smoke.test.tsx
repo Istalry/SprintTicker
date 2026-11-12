@@ -100,4 +100,14 @@ describe('App', () => {
     expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('heading', { level: 2, name: /^History$/ })).toBeNull();
   });
+
+  it('OpenRoute_Account_OpensSettingsOnIt', async () => {
+    // P12c: "Sending time stopped" opens where the credentials go.
+    const bridge = installElectronApi();
+    render(<App />);
+
+    act(() => bridge.emit('onOpenRoute', 'account'));
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Account' })).toBeTruthy();
+  });
 });

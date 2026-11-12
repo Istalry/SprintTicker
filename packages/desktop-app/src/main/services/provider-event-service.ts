@@ -188,7 +188,7 @@ export class ProviderEventService {
    * a refusal they never hear of.
    */
   public reportSendingStopped(providerName: string): boolean {
-    return this.deps.toasts.show(describeSendingStopped(providerName));
+    return this.deps.toasts.show({ ...describeSendingStopped(providerName), route: 'account' });
   }
 
   /**
@@ -201,11 +201,11 @@ export class ProviderEventService {
    */
   public reportTaskClaim(report: TaskClaimReport, providerName: string): { toast: boolean; bar: boolean } {
     if (report.error !== undefined) {
-      return { toast: this.deps.toasts.show(describeClaimFailed(report.taskKey, providerName)), bar: false };
+      return { toast: this.deps.toasts.show({ ...describeClaimFailed(report.taskKey, providerName), route: 'today' }), bar: false };
     }
     if (report.claim?.outcome !== 'taken') return { toast: false, bar: false };
     const { assigneeName } = report.claim;
-    const toast = this.deps.toasts.show(describeTaskTaken(report.taskKey, assigneeName));
+    const toast = this.deps.toasts.show({ ...describeTaskTaken(report.taskKey, assigneeName), route: 'today' });
     const bar = this.barAvailable();
     if (bar) {
       this.deps.bar!.show({ appName: providerName, ...describeTaskTakenForBar(assigneeName) }, report.providerId ?? '');

@@ -36,6 +36,8 @@ import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
 import { UndoService } from './services/undo-service';
 import { undoableSessionEnding } from './services/undoable-commands';
 import { openTaskPickerInMainWindow, openWindowOn, revealMainWindow } from './windows/main-window-actions';
+import { UndoToasts } from './windows/undo-toasts';
+import { UNDO_WINDOW_MS } from './sync/sync-constants';
 import { ForegroundRaiser } from './windows/foreground-raiser';
 import { ProviderManager } from './providers/provider-manager';
 
@@ -69,6 +71,7 @@ let mainWindow: BrowserWindow | null = null;
 let dbConnection: DatabaseConnection | null = null;
 let engine: TimeTrackingEngine | null = null;
 let undoService: UndoService | null = null;
+let undoToasts: UndoToasts | null = null;
 let driver: BusyBarDriver | null = null;
 let inputDecoder: InputDecoder | null = null;
 let renderer: DisplayRenderer | null = null;
@@ -362,7 +365,9 @@ async function startApplication(): Promise<void> {
   const toasts = new ElectronToastPresenter({
     isSupported: () => Notification.isSupported(),
     create: options => new Notification(options),
-    openExternal: url => shell.openExternal(url)
+    openExternal: url => shell.openExternal(url),
+    // A toast leads to its subject (P12c): the window, open on that place.
+    openRoute: route => { openWindowOn(mainWindow, route); }
   });
   providerEventService = new ProviderEventService({
     getActiveProvider: () => providerManager.getActiveProvider(),
@@ -403,8 +408,7 @@ async function startApplication(): Promise<void> {
   const promptOutlet = new WindowPromptOutlet({
     getWindows: () => BrowserWindow.getAllWindows(),
     getDashboard: () => mainWindow,
-    toasts,
-    openDashboard: () => { revealMainWindow(mainWindow); }
+    toasts
   });
   contextScheduleService.setPromptOutlet(promptOutlet);
 
@@ -512,6 +516,16 @@ async function startApplication(): Promise<void> {
   // the same undoable commands.
   undoService = new UndoService();
   const undo = undoService;
+  // An action taken with the window hidden -- the tray's Stop, the deck, the
+  // bar -- says it can be undone, and the toast opens the Undo bar (P12c).
+  undoToasts = new UndoToasts({
+    onUndoChanged: listener => undo.onChanged(listener),
+    isDashboardOnScreen: () =>
+      mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized(),
+    toasts,
+    seconds: Math.round(UNDO_WINDOW_MS / 1000)
+  });
+  undoToasts.start();
   const sessionEnding = undoableSessionEnding({ db: dbConnection.getDb(), undo, engine }, renderer);
   // A session started makes a held stop final: undoing it would reopen a
   // second session beside the new one.
@@ -606,8 +620,7 @@ async function startApplication(): Promise<void> {
     isQuitting: () => quitting,
     hide: () => mainWindow?.hide(),
     settings: settingsRepo,
-    toasts,
-    reveal: () => { revealMainWindow(mainWindow); }
+    toasts
   });
   createWindow(launchedHidden(process.argv));
   if (mainWindow && engine) {
@@ -749,6 +762,7 @@ app.on('will-quit', event => {
   reminderService?.dispose();
   // Makes the held action final: its rows are queued already and go at the
   // next start; its Done transition is asked for now.
+  undoToasts?.stop();
   undoService?.dispose();
   // Synchronously too: Windows keeps a chord until the process lets go of it.
   interruptShortcut?.dispose();

@@ -1030,6 +1030,15 @@ paused, at Lunch or Away; **!** amber, nothing is timed in your working
 hours; ○ grey, nothing is timed outside them. A number in its corner is the
 entries waiting to send (9+ past nine), and hovering it says so.
 
+🔔 **SprintTicker's notifications open where they are about.** A question
+-- the stand-up, Lunch's end, a session left running -- opens Today on its
+card; "Sending time to Jira stopped" opens *Settings › Account*, where the
+credentials go. Stop a task from the tray, the Stream Deck or the bar while
+the window is hidden, and a notification says so, "Stopped MG-12 · 1h 24m":
+click it within ten seconds and the window opens with **Undo** ready
+(Enter). A notification about a Jira or OpenProject task opens the task
+there.
+
 🧭 **The tray**: a click opens the window. Its menu, on a right-click, holds
 what you reach for without the window: **Switch task…**, **Previous task:
 PF-31**, **Pause** or **Resume**, **Stop** (as Today's, with Undo),

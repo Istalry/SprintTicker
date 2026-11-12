@@ -173,6 +173,18 @@ with the mode chip) and Windows' startup switch are read then; a single
 click opens the window. Its End my day… opens the window on a route
 (`openWindowOn`, `window:on-open-route`).
 
+**A toast leads to its subject** (P12c). A `ToastRequest` carries a `url`
+-- a provider's page, opened only if http(s) -- or a `route`, which
+`ElectronToastPresenter` hands to `openWindowOn`: the click is the user's,
+so the window may come forward. The questions of `WindowPromptOutlet` open
+Today, where they wait as cards; "Sending time stopped" opens
+`account`; a task taken or not assigned, the interrupt chord's toast and
+"still running" open Today. `UndoToasts` (`windows/undo-toasts.ts`) listens
+to `UndoService.onChanged` and, for each new offer made while the dashboard
+is not on screen -- a Stop from the tray, the deck or the bar -- posts its
+label and the seconds left, routed to `undo`, which focuses the Undo bar's
+button. With the dashboard on screen the Undo bar says it, once.
+
 **The tray icon is drawn, not shipped** (P12b). `trayMarkOf`
 (`shared/tray-state.ts`) picks the mark -- interruption, then a task timed,
 then paused or a break, then the working hours (the reminders'

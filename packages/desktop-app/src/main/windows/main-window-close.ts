@@ -20,8 +20,6 @@ export interface MainWindowCloseDeps {
     setSetting(key: string, value: unknown): void;
   };
   toasts?: ToastPresenter;
-  /** The toast's click: the window again. */
-  reveal: () => void;
 }
 
 /**
@@ -48,7 +46,7 @@ export class MainWindowCloseGuard {
 
   private tellOnce(): void {
     if (this.deps.settings.getSetting<boolean>(CLOSE_TO_TRAY_TOLD_KEY, false)) return;
-    const shown = this.deps.toasts?.show({ ...STILL_RUNNING_TOAST, onClick: () => this.deps.reveal() }) ?? false;
+    const shown = this.deps.toasts?.show({ ...STILL_RUNNING_TOAST, route: 'today' }) ?? false;
     // Only once it reached Windows: a toast that could not be shown has told nobody.
     if (shown) this.deps.settings.setSetting(CLOSE_TO_TRAY_TOLD_KEY, true);
   }

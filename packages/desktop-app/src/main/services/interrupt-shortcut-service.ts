@@ -149,11 +149,13 @@ export class InterruptShortcutService {
       console.warn('[InterruptShortcut] The interruption did not start:', err);
     }
     if (this.deps.isSeen()) return;
+    // Either way the click opens Today: the interruption's card, or what holds the display.
     this.deps.toasts.show(failure
-      ? { title: 'No interruption started', body: failure }
+      ? { title: 'No interruption started', body: failure, route: 'today' }
       : {
           title: before?.interruption ? 'Another interruption started' : 'Interruption started',
-          body: InterruptShortcutService.describeHeld(before)
+          body: InterruptShortcutService.describeHeld(before),
+          route: 'today'
         });
   }
 

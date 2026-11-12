@@ -1,10 +1,17 @@
+import type { WindowRoute } from '../../shared/window-route';
+
+/**
+ * A toast, and where its click leads (P12c): a provider's page (`url`), or
+ * the window on the toast's subject (`route`). One or the other: a toast
+ * about Jira opens Jira, every other opens SprintTicker where it is about.
+ */
 export interface ToastRequest {
   title: string;
   body: string;
   /** Opened when the toast is clicked -- only if it is an http(s) link. */
   url?: string;
-  /** Run when the toast is clicked: a prompt's opens the dashboard on it. */
-  onClick?: () => void;
+  /** The window's place opened when the toast is clicked, when there is no `url`. */
+  route?: WindowRoute;
 }
 
 export interface ToastPresenter {
@@ -22,6 +29,8 @@ export interface ElectronToastDeps {
   isSupported: () => boolean;
   create: (options: { title: string; body: string }) => NotificationLike;
   openExternal: (url: string) => Promise<void>;
+  /** Brings the window forward on a place: the click is the user's, so it may. */
+  openRoute: (route: WindowRoute) => void;
 }
 
 /**
@@ -77,7 +86,7 @@ export class ElectronToastPresenter implements ToastPresenter {
     notification.on('click', () => {
       this.release(notification);
       if (toast.url) this.open(toast.url);
-      toast.onClick?.();
+      else if (toast.route) this.openRoute(toast.route);
     });
     notification.on('close', () => this.release(notification));
     notification.on('failed', (_event: unknown, error: unknown) => {
@@ -94,6 +103,15 @@ export class ElectronToastPresenter implements ToastPresenter {
       return;
     }
     this.deps.openExternal(url).catch(err => console.warn('[Toasts] Could not open the notification link:', err));
+  }
+
+  private openRoute(route: WindowRoute): void {
+    try {
+      this.deps.openRoute(route);
+    } catch (err) {
+      // A click that opens nothing is a toast that seems broken; say why in the log.
+      console.warn(`[Toasts] Could not open the window on ${route}:`, err);
+    }
   }
 
   private keep(notification: NotificationLike): void {

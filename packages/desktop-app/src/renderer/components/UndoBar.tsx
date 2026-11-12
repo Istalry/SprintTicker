@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { UndoStateDTO } from '../../shared/dtos';
 import { Verb } from '../../shared/words';
@@ -55,6 +55,11 @@ export function useUndo(): { state: UndoStateDTO | null; secondsLeft: number; ru
  */
 export const UndoBar: React.FC = () => {
   const { state, secondsLeft, run } = useUndo();
+  const button = useRef<HTMLButtonElement>(null);
+  // The Undo toast's click (P12c): the window opens with Undo under Enter.
+  useEffect(() => window.electronAPI?.onOpenRoute?.(route => {
+    if (route === 'undo') button.current?.focus();
+  }), []);
   if (!state) return null;
   return (
     <div
@@ -65,6 +70,7 @@ export const UndoBar: React.FC = () => {
       <span className="text-sm text-text-primary">{state.label}</span>
       <span className="text-xs text-text-muted">{`Sent in ${secondsLeft}s`}</span>
       <button
+        ref={button}
         type="button"
         onClick={run}
         className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-sm font-semibold text-dark-900 hover:bg-white"
