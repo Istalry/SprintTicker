@@ -2125,7 +2125,8 @@ display rules are `CLAUDE.md` §4–§5:
 **Docs:** `USER-GUIDE.md` (the bar), `API.md` (the device contract, if a
 draw changes), `CLAUDE.md` §4 (the new menus and their lock rules).
 
-**Decided (the user, 2026-11-12):**
+**Decided (the user, 2026-11-12) -- superseded the same day by "The bar,
+rethought" below:**
 
 - **During an interruption the wheel menu is BACK TO MG-12 / STOP /
   DISCARD / ANOTHER**, the deck's A, B, C order and then Another, as the
@@ -2138,7 +2139,7 @@ draw changes), `CLAUDE.md` §4 (the new menus and their lock rules).
   `.anim` formats, and judged by the user on the bar.
 
 **Split** (2026-11-12), each its own commit and each tried on the bar
-before the next:
+before the next -- P14b-P14e superseded by "The bar, rethought" below:
 
 - **P14a, the paused menu (items 4, 7).** DONE / STOP / DISCARD, then
   INTERRUPT, opening on STOP, in `BarWord`'s words; ❚❚ drawn before the
@@ -2173,6 +2174,84 @@ smooth to use, and how SprintTicker uses the bar should be rethought at
 some point -- the inputs, the menus and what is worth doing from the bar at
 all. P14b-P14e add menus (the timing menu, the end choices, the picker's
 levels), so this weighs on them.
+
+### 19.1 The bar, rethought (the user, 2026-11-12)
+
+Asked what felt awkward, the user named all of it: the wheel's click does
+not feel as good as a button (the Pause button does); turning to find a
+choice; not knowing what a button does; too many steps; picking a task on
+the bar. The bar is **mostly a display**: it shows what runs and what
+needs you, and does a few things in one press. The layout is the user's,
+with four refinements of ours they accepted. It supersedes items 1-6 above,
+the decisions before it, and P14b-P14e of the first split.
+
+**One meaning per button, in every state.** The Pause button (the decoder's
+`start`) is always **yes**; Back is always **no**, or stop; the wheel's
+click is Interrupt; turning the wheel opens a short menu.
+
+| State | Pause | Back | Wheel click | Turn |
+| :--- | :--- | :--- | :--- | :--- |
+| Timing | pause | stop: LOGGED, the time kept, the task left open, Undo in the app | interrupt | the menu |
+| Paused | resume | stop | interrupt | the menu |
+| An interruption | back to MG-12 | stop it; the Place window opens on the computer | another | the menu |
+| Nothing running | opens the picker on the computer, raised | -- | interrupt (holding nothing) | the menu |
+| A question (stand-up, back?, lunch, nothing timing) | yes / join | no | -- | -- |
+| A notification on screen | dismiss | dismiss | -- | -- |
+| The menu open | pick the entry | close | -- | next / previous entry |
+
+**The refinements:**
+
+1. **Back just after a change only cancels.** Back stops in one press, so
+   a press meant for a banner that left under the finger would stop the
+   task beneath it. A press within a settle time of a screen change closes
+   or does nothing -- as the deck's `ANSWER_SETTLE_MS`.
+2. **The menu shows one entry per screen**, full width, few entries, and
+   closes on its own after a few seconds untouched:
+   - timing or paused: DONE, DISCARD, PREV PF-31, up to 3 recent tasks,
+     OPEN APP;
+   - an interruption: DISCARD ⚡, OPEN APP -- no task can be chosen during
+     one (the deck trial's rule);
+   - nothing running: PREV PF-31, up to 3 recent tasks, OPEN APP.
+   The recent tasks are the deck's (`DECK_MAX_RECENT`, the same read), so
+   the bar and the deck offer the same three.
+3. **DONE and DISCARD ask a second Pause press** ("DONE? PAUSE=YES"), as on
+   the deck: one changes the ticket, the other loses the time.
+4. **The app comes forward on its own** wherever the bar needs a choice --
+   the picker when nothing runs, the Place window after an interruption,
+   OPEN APP -- raised past the foreground lock (`ForegroundRaiser`), never
+   the whole dashboard where the picker window serves.
+
+**What goes:** the paused menu shipped in P14a (the paused screen keeps ❚❚,
+the key and its time), the bar's own two-level picker, the hold-BACK done
+(`COMPLETE_AND_LOG_ACTIVE_TASK`) and the wheel's window-focus. The saved
+`hardware_bindings` are reset once to the new defaults, since a saved
+object replaces the defaults wholesale.
+
+**To measure on the bar first,** reading inputs only, nothing that could
+hang it: that each notch of the wheel arrives as one step, so the menu
+never skips an entry; and the settle time Back needs.
+
+**The row-1 words** name the Pause button where a question asks (OK=YES
+becomes the Pause button's word); which word reads best on the device is
+chosen there, with `pnpm probe:busybar --font-sheet`, in P14e.
+
+**Split** (2026-11-12, the second), each its own commit and each tried on
+the bar before the next:
+
+- **P14b, the buttons.** Pause, Back and the wheel's click as the table
+  says, in every state, with Back's settle; the paused menu and the bar's
+  picker removed; the bindings reset once; the picker and the Place window
+  raised from the bar. `Desk` drives the decoder, so the stress test gains
+  Interrupt, Another, Back and Stop from the bar.
+- **P14c, the menu.** Turning opens it; one entry per screen; DONE and
+  DISCARD on a second press; it closes on its own. A `BAR_MENU_EVENT`
+  background screen, never queued, as the picker was.
+- **P14d, the ⚡ icon.** Drawn in the studio, still and in motion, both
+  `.anim` formats, its first frame the static icon; judged by the user on
+  the bar.
+- **P14e, the words and nothing timing (items 8, 9).** The Pause button's
+  word in every hint, 3 TO PLACE, MG-12 > RIN, STAND-UP, and NOTHING TIMING
+  drawn once when the reminder fires.
 
 ---
 
@@ -2345,6 +2424,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | in progress: split P14a-P14e, see §19 "Split"; P14a (the paused menu) done | P14a (2026-11-12) |
+| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there | P14a `4de9fa0` |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |
