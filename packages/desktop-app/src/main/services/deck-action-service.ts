@@ -2,10 +2,13 @@ import type { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import type { DisplayRenderer } from '../hardware/display-renderer';
 import type { InputDecoder } from '../hardware/input-decoder';
 import type { PriorityPreemptionEngine } from './priority-preemption-engine';
+import type { ContextScheduleService } from './context-schedule-service';
 import { plainSessionEnding, SessionEnding } from './session-commands';
 import type { DeckIconMotions } from './deck-icon-motion';
-import { ArgumentNullException, ActiveSessionDTO, ScreenIconDTO } from '../../shared/dtos';
+import { ArgumentNullException, ActiveSessionDTO, ScreenIconDTO, TaskDTO } from '../../shared/dtos';
 import {
+  DECK_MAX_RECENT,
+  DECK_PROTOCOL_VERSION,
   DeckErrorCode,
   DeckIcon,
   DeckPrompt,
@@ -14,6 +17,7 @@ import {
   DeckSession,
   DeckState,
   DeckStateMessage,
+  DeckTask,
   deckElapsedSeconds
 } from '../../shared/deck-protocol';
 import { finishNeedsConfirmation } from '../../shared/task-left';
@@ -39,7 +43,8 @@ export const DECK_ELAPSED_DRIFT_SECONDS = 2;
 export interface DeckActionServiceDeps {
   engine: Pick<
     TimeTrackingEngine,
-    'getCurrentSession' | 'subscribe' | 'pauseSession' | 'resumeSession' | 'stopSession' | 'discardSession'
+    | 'getCurrentSession' | 'subscribe' | 'pauseSession' | 'resumeSession' | 'stopSession' | 'discardSession'
+    | 'backFromInterruption' | 'getPreviousTask' | 'startTask' | 'getToPlaceSummary'
   >;
   renderer: Pick<DisplayRenderer, 'getScreenIcon' | 'onScreenIconChanged' | 'renderTaskCompletionConfetti' | 'renderTaskLogged'>;
   priorityEngine: Pick<PriorityPreemptionEngine, 'getActiveLockEventName'>;
@@ -52,6 +57,15 @@ export interface DeckActionServiceDeps {
    * about. A key with its own copy of that rule would drift (CLAUDE.md §3).
    */
   interrupt: () => void;
+  /**
+   * The schedule's questions and the stand-up, as the window reads them.
+   * Without it the deck knows of no stand-up running and no lunch question.
+   */
+  schedule?: Pick<ContextScheduleService, 'standupRunning' | 'getResumePrompt' | 'getCeremonyPrompt' | 'answerLunchQuestion'>;
+  /** Whether now is in the user's working hours, as the tray reads it; never, without it. */
+  isWorkingNow?: () => boolean;
+  /** The picker's recent tasks, newest first: what Recent 1-3 start. None, without it. */
+  recentTasks?: (limit: number) => TaskDTO[];
   /**
    * The bar's icons in motion, so the Session key moves as the bar does.
    * Without it every icon is sent still.
@@ -106,10 +120,33 @@ export class DeckActionService {
   /** The state the keys show, read now. */
   public getState(): DeckState {
     const { engine, renderer } = this._deps;
+    const session = engine.getCurrentSession();
     return {
-      session: DeckActionService.toDeckSession(engine.getCurrentSession()),
+      session: DeckActionService.toDeckSession(session),
       icon: this.toDeckIcon(renderer.getScreenIcon()),
-      prompt: this.currentPrompt()
+      prompt: this.currentPrompt(),
+      ...this.readProtocol2(session)
+    };
+  }
+
+  /** What protocol 2 adds to the state: what the keys beyond the session's ends show. */
+  private readProtocol2(session: ActiveSessionDTO | null): Required<Pick<
+    DeckState, 'toPlace' | 'previousTask' | 'recent' | 'standupRunning' | 'nothingTimingInHours'
+  >> {
+    const { engine, schedule } = this._deps;
+    const open = session && session.status !== 'COMPLETED' ? session : null;
+    const previous = open?.interruption ? null : engine.getPreviousTask();
+    // One more than shown: the task open now is never offered to start again.
+    const recent = (this._deps.recentTasks?.(DECK_MAX_RECENT + 1) ?? [])
+      .filter(task => task.id !== open?.taskId)
+      .slice(0, DECK_MAX_RECENT)
+      .map(DeckActionService.toDeckTask);
+    return {
+      toPlace: engine.getToPlaceSummary().count,
+      previousTask: previous ? DeckActionService.toDeckTask(previous) : null,
+      recent,
+      standupRunning: schedule?.standupRunning() ?? null,
+      nothingTimingInHours: !open && (this._deps.isWorkingNow?.() ?? false)
     };
   }
 
@@ -137,10 +174,10 @@ export class DeckActionService {
    * Carries out one request. A refusal is an answer, never a throw: the
    * plugin shows it on the key that asked.
    */
-  public perform(request: DeckRequest): DeckResultMessage {
+  public perform(request: DeckRequest, protocol: number = DECK_PROTOCOL_VERSION): DeckResultMessage {
     if (!request) throw new ArgumentNullException('request');
     try {
-      this.act(request);
+      this.act(request, protocol);
       return { type: 'result', id: request.id, ok: true };
     } catch (err) {
       const code: DeckErrorCode = err instanceof DeckRefusal ? err.code : 'failed';
@@ -158,7 +195,7 @@ export class DeckActionService {
     this.stopListening();
   }
 
-  private act(request: DeckRequest): void {
+  private act(request: DeckRequest, protocol: number): void {
     const { engine } = this._deps;
     const session = engine.getCurrentSession();
     switch (request.action) {
@@ -176,10 +213,15 @@ export class DeckActionService {
         return;
       case 'finish':
         if (!session) throw new DeckRefusal('no-session', 'No session to finish.');
-        // Asked on the deck as in the window and on the bar: the completion
-        // transition would move a task that is no longer the user's.
-        if (finishNeedsConfirmation(session) && !request.confirmed) {
-          throw new DeckRefusal('needs-confirmation', 'The task is no longer yours: confirm to mark it done.');
+        // DONE changes the task at the provider, so protocol 2 asks it
+        // always (S29): a habit learned on BACK, the same key, must never
+        // mark a ticket done. Protocol 1 asks only when the task is no
+        // longer the user's, as plugin 0.5 expects -- it would read any
+        // other refusal as NOT YOURS.
+        if (!request.confirmed && (protocol >= DECK_PROTOCOL_VERSION || finishNeedsConfirmation(session))) {
+          throw new DeckRefusal('needs-confirmation', finishNeedsConfirmation(session)
+            ? 'The task is no longer yours: confirm to mark it done.'
+            : 'Confirm to mark the task done.');
         }
         this._ending.complete(undefined, true);
         return;
@@ -200,14 +242,54 @@ export class DeckActionService {
       case 'prompt-no':
         this.answerPrompt(request.action === 'prompt-yes');
         return;
+      case 'back': {
+        const held = session?.interruption;
+        if (!held) throw new DeckRefusal('no-session', 'No interruption to go back from.');
+        if (!held.interruptedSessionId) throw new DeckRefusal('no-task', 'The interruption holds no task to go back to.');
+        engine.backFromInterruption();
+        return;
+      }
+      case 'another':
+        if (!session?.interruption) throw new DeckRefusal('no-session', 'No interruption running to follow.');
+        // Interrupt during an interruption is Another, decided where it starts.
+        this._deps.interrupt();
+        return;
+      case 'previous': {
+        // Going back is A during an interruption, never Previous (S29).
+        if (session?.interruption) throw new DeckRefusal('no-task', 'During an interruption, Back goes to the task.');
+        const previous = engine.getPreviousTask();
+        if (!previous) throw new DeckRefusal('no-task', 'No task was timed before this one.');
+        engine.startTask(previous.id, false, previous.title);
+        return;
+      }
+      case 'start-recent': {
+        const task = this.readProtocol2(session).recent[(request.index ?? 0) - 1];
+        if (!task) throw new DeckRefusal('no-task', `No recent task ${String(request.index)}.`);
+        engine.startTask(task.taskId, false, task.taskTitle);
+        return;
+      }
+      case 'end-standup':
+        if (!this._deps.schedule?.standupRunning()) throw new DeckRefusal('no-session', 'No stand-up is running.');
+        // As the mini timer's End stand-up: its session's Stop, which brings
+        // back the task it set aside.
+        this._ending.complete(undefined, false);
+        return;
       default:
         throw new DeckRefusal('invalid-request', `Unknown deck action: ${String(request.action)}.`);
     }
   }
 
-  /** OK or BACK on the bar, while a prompt holds it: InputDecoder decides what that means. */
+  /**
+   * OK or BACK on the bar, while a prompt holds it: InputDecoder decides
+   * what that means. Lunch's question is the window's, answered as there.
+   */
   private answerPrompt(yes: boolean): void {
-    if (!this.currentPrompt()) throw new DeckRefusal('no-prompt', 'Nothing is waiting for an answer.');
+    const prompt = this.currentPrompt();
+    if (!prompt) throw new DeckRefusal('no-prompt', 'Nothing is waiting for an answer.');
+    if (prompt === 'lunch') {
+      if (!this._deps.schedule?.answerLunchQuestion(yes)) throw new DeckRefusal('no-prompt', 'Lunch was answered already.');
+      return;
+    }
     this._deps.inputDecoder.handleHardwareInput({
       key: yes ? 'ok' : 'back',
       type: 'press',
@@ -219,7 +301,9 @@ export class DeckActionService {
     const lock = this._deps.priorityEngine.getActiveLockEventName();
     if (lock === EOD_WRAP_UP_EVENT) return this._deps.inputDecoder.getEodConfirmStep() === 1 ? 'wrap-up-confirm' : 'wrap-up';
     if (lock === STANDUP_PROMPT_EVENT) return 'standup';
-    if (lock === RESUME_PROMPT_EVENT) return 'resume';
+    const schedule = this._deps.schedule;
+    if (lock === RESUME_PROMPT_EVENT) return schedule?.getResumePrompt()?.after === 'interruption' ? 'back' : 'resume';
+    if (schedule?.getCeremonyPrompt()?.type === 'LUNCH') return 'lunch';
     return null;
   }
 
@@ -290,8 +374,13 @@ export class DeckActionService {
     return JSON.stringify({ ...state, session, icon });
   }
 
+  private static toDeckTask(task: TaskDTO): DeckTask {
+    return { taskId: task.id, taskKey: task.key, taskTitle: task.title };
+  }
+
   private static toDeckSession(session: ActiveSessionDTO | null): DeckSession | null {
     if (!session || session.status === 'COMPLETED') return null;
+    const running = session.interruption;
     return {
       taskId: session.taskId,
       taskKey: session.taskKey,
@@ -299,7 +388,11 @@ export class DeckActionService {
       isAdHoc: session.isAdHoc,
       status: session.status === 'TRACKING' ? 'tracking' : 'paused',
       elapsedSeconds: session.elapsedSeconds,
-      finishNeedsConfirmation: finishNeedsConfirmation(session)
+      finishNeedsConfirmation: finishNeedsConfirmation(session),
+      ...(running
+        ? { interruption: { title: running.title, backToKey: running.interruptedSessionId ? running.interruptedTaskKey ?? '' : null } }
+        : {}),
+      ...(session.taskOwnerName ? { ownerName: session.taskOwnerName } : {})
     };
   }
 }

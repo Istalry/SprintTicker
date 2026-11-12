@@ -5,9 +5,16 @@ import {
   DECK_MAX_ICON_POSES,
   DECK_MAX_ICON_STEPS,
   DECK_MAX_ID_LENGTH,
+  DECK_MAX_RECENT,
+  DECK_PATH,
+  DECK_PROTOCOL_VERSION,
+  DeckState,
   DeckStateMessage,
   deckElapsedSeconds,
   deckIconPixels,
+  deckProtocolOfUrl,
+  deckStateForProtocol,
+  deckUrl,
   isPlayableMotion,
   parseDeckRequest
 } from '../src/shared/deck-protocol';
@@ -21,8 +28,25 @@ describe('Deck protocol', () => {
   describe('parseDeckRequest', () => {
     it('ParseDeckRequest_EveryKnownAction_IsAccepted', () => {
       for (const action of DECK_ACTIONS) {
-        expect(parseDeckRequest({ id: 'k1', action }).action).toBe(action);
+        expect(parseDeckRequest({ id: 'k1', action, index: 1 }).action).toBe(action);
       }
+    });
+
+    it('ParseDeckRequest_StartRecent_KeepsItsIndex', () => {
+      expect(parseDeckRequest({ id: 'k1', action: 'start-recent', index: DECK_MAX_RECENT }))
+        .toEqual({ id: 'k1', action: 'start-recent', index: DECK_MAX_RECENT });
+      // Any other action has no use for one, and it is dropped.
+      expect(parseDeckRequest({ id: 'k1', action: 'pause', index: 2 })).toEqual({ id: 'k1', action: 'pause' });
+    });
+
+    it.each([
+      ['no index', undefined],
+      ['zero', 0],
+      ['past the recent tasks', DECK_MAX_RECENT + 1],
+      ['a fraction', 1.5],
+      ['a string', '1']
+    ])('ParseDeckRequest_StartRecentWith%s_Throws', (_label, index) => {
+      expect(() => parseDeckRequest({ id: 'k1', action: 'start-recent', index })).toThrow(ArgumentException);
     });
 
     it('ParseDeckRequest_UnknownFields_AreDropped', () => {
@@ -51,6 +75,72 @@ describe('Deck protocol', () => {
       ['confirmed not a boolean', { id: 'k1', action: 'discard', confirmed: 'yes' }]
     ])('ParseDeckRequest_%s_Throws', (_label, raw) => {
       expect(() => parseDeckRequest(raw)).toThrow(ArgumentException);
+    });
+  });
+
+  describe('the protocol a plugin speaks', () => {
+    it.each([
+      ['no query: plugin 0.5', DECK_PATH, 1],
+      ['no URL at all', undefined, 1],
+      ['protocol 1 named', `${DECK_PATH}?protocol=1`, 1],
+      ['protocol 2 named', `${DECK_PATH}?protocol=2`, 2],
+      ['a newer one than the app has', `${DECK_PATH}?protocol=9`, DECK_PROTOCOL_VERSION],
+      ['zero', `${DECK_PATH}?protocol=0`, 1],
+      ['nonsense', `${DECK_PATH}?protocol=two`, 1],
+      ['a negative', `${DECK_PATH}?protocol=-2`, 1]
+    ])('DeckProtocolOfUrl_%s', (_label, url, expected) => {
+      expect(deckProtocolOfUrl(url)).toBe(expected);
+    });
+
+    it('DeckUrl_NamesThisProtocol_WhichTheAppReadsBack', () => {
+      const url = deckUrl();
+      expect(url).toBe(`ws://127.0.0.1:39123${DECK_PATH}?protocol=${DECK_PROTOCOL_VERSION}`);
+      expect(deckProtocolOfUrl(url.slice(url.indexOf(DECK_PATH)))).toBe(DECK_PROTOCOL_VERSION);
+    });
+  });
+
+  describe('deckStateForProtocol', () => {
+    const v2 = (over: Partial<DeckState> = {}): DeckState => ({
+      session: {
+        taskId: 'adhoc_1', taskKey: 'ADHOC-1', taskTitle: 'Interruption 09:30', isAdHoc: true, status: 'tracking',
+        elapsedSeconds: 60, finishNeedsConfirmation: false,
+        interruption: { title: 'Interruption 09:30', backToKey: 'MG-12' }, ownerName: 'Rin'
+      },
+      icon: null,
+      prompt: null,
+      toPlace: 3,
+      previousTask: null,
+      recent: [{ taskId: 'T2', taskKey: 'PF-31', taskTitle: 'Thing' }],
+      standupRunning: null,
+      nothingTimingInHours: false,
+      ...over
+    });
+
+    it('DeckStateForProtocol_2_AsItIs', () => {
+      const state = v2();
+      expect(deckStateForProtocol(state, 2)).toBe(state);
+    });
+
+    it('DeckStateForProtocol_1_OnlyWhatPlugin05Knows', () => {
+      const state = deckStateForProtocol(v2(), 1);
+
+      expect(Object.keys(state).sort()).toEqual(['icon', 'prompt', 'session']);
+      expect(Object.keys(state.session!).sort()).toEqual(
+        ['elapsedSeconds', 'finishNeedsConfirmation', 'isAdHoc', 'status', 'taskId', 'taskKey', 'taskTitle']);
+    });
+
+    it.each([
+      ['back', 'resume'],
+      ['lunch', null],
+      ['standup', 'standup'],
+      ['wrap-up-confirm', 'wrap-up-confirm']
+    ] as const)('DeckStateForProtocol_1_Prompt%sReads%s', (prompt, expected) => {
+      // Plugin 0.5 looks a prompt up in a table of four: an unknown one would break every key.
+      expect(deckStateForProtocol(v2({ prompt }), 1).prompt).toBe(expected);
+    });
+
+    it('DeckStateForProtocol_1_NoSession_StaysNone', () => {
+      expect(deckStateForProtocol(v2({ session: null }), 1).session).toBeNull();
     });
   });
 

@@ -644,6 +644,10 @@ async function startApplication(): Promise<void> {
       if (!interrupting) throw new Error('The schedule service is not running.');
       interrupting.interrupt('deck');
     },
+    // Protocol 2's keys read what the window and the tray read.
+    schedule: interrupting ?? undefined,
+    isWorkingNow: workingNow,
+    recentTasks: limit => taskRepo.getRecent(limit),
     // The Session key moves as the bar's icon does, from the same frames.
     iconMotions: new DeckIconMotions(name => loadAnimationSequence(defaultAnimationsDir(), name)),
     sessionEnding

@@ -230,6 +230,12 @@ things about it:
 - **The protocol is `shared/deck-protocol.ts`, and nothing else.** The plugin
   is built apart from the app and imports that file alone; a message shape
   kept in two places would drift with nothing failing.
+  **The plugin names its protocol in the URL** (`?protocol=2`, P13a), and
+  the app speaks that one to that socket: plugin 0.5 names none and refuses
+  any hello but 1, so a socket without it gets protocol 1's state
+  (`deckStateForProtocol`) and 1's rules. Raising `DECK_PROTOCOL_VERSION`
+  means a conversion there for the version before, or every deck of a user
+  who updates the app first goes grey.
 - **Close the decks before the HTTP server.** An upgraded socket still counts
   as one of the server's connections, so `stop()` would wait on a deck that
   never hangs up.

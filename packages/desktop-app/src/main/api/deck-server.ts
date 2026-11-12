@@ -4,11 +4,12 @@ import WebSocket, { RawData, WebSocketServer } from 'ws';
 import { ArgumentNullException } from '../../shared/dtos';
 import {
   DECK_MAX_MESSAGE_BYTES,
-  DECK_PROTOCOL_VERSION,
   DeckRequest,
   DeckResultMessage,
   DeckServerMessage,
   DeckStateMessage,
+  deckProtocolOfUrl,
+  deckStateForProtocol,
   parseDeckRequest
 } from '../../shared/deck-protocol';
 
@@ -23,7 +24,8 @@ export const DECK_MAX_CLIENTS = 4;
 export interface DeckBackend {
   getStateMessage(): DeckStateMessage;
   subscribe(listener: (message: DeckStateMessage) => void): () => void;
-  perform(request: DeckRequest): DeckResultMessage;
+  /** `protocol` is the plugin's: an older one keeps the rules it was built for. */
+  perform(request: DeckRequest, protocol: number): DeckResultMessage;
 }
 
 /**
@@ -38,6 +40,8 @@ export interface DeckBackend {
 export class DeckServer {
   private readonly _backend: DeckBackend;
   private readonly _wss: WebSocketServer;
+  /** The protocol each deck speaks, named in the URL it connected to. */
+  private readonly _protocols = new WeakMap<WebSocket, number>();
   private _unsubscribe: (() => void) | null = null;
 
   constructor(backend: DeckBackend) {
@@ -53,7 +57,8 @@ export class DeckServer {
       socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
       return;
     }
-    this._wss.handleUpgrade(req, socket, head, ws => this.accept(ws));
+    const protocol = deckProtocolOfUrl(req.url);
+    this._wss.handleUpgrade(req, socket, head, ws => this.accept(ws, protocol));
   }
 
   /** How many decks are connected, for the diagnostics bundle and the tests. */
@@ -72,8 +77,9 @@ export class DeckServer {
     return new Promise(resolve => this._wss.close(() => resolve()));
   }
 
-  private accept(ws: WebSocket): void {
-    this.send(ws, { type: 'hello', protocol: DECK_PROTOCOL_VERSION });
+  private accept(ws: WebSocket, protocol: number): void {
+    this._protocols.set(ws, protocol);
+    this.send(ws, { type: 'hello', protocol });
     if (this._unsubscribe) {
       this.send(ws, this._backend.getStateMessage());
     } else {
@@ -110,7 +116,7 @@ export class DeckServer {
       this.refuse(ws, id, err instanceof Error ? err.message : String(err));
       return;
     }
-    this.send(ws, this._backend.perform(request));
+    this.send(ws, this._backend.perform(request, this.protocolOf(ws)));
   }
 
   private refuse(ws: WebSocket, id: string, message: string): void {
@@ -123,7 +129,16 @@ export class DeckServer {
 
   private send(ws: WebSocket, message: DeckServerMessage): void {
     if (ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify(message));
+    // Each deck hears the state in its own protocol: plugin 0.5 next to 0.6
+    // is a user part-way through updating.
+    const out = message.type === 'state'
+      ? { ...message, state: deckStateForProtocol(message.state, this.protocolOf(ws)) }
+      : message;
+    ws.send(JSON.stringify(out));
+  }
+
+  private protocolOf(ws: WebSocket): number {
+    return this._protocols.get(ws) ?? deckProtocolOfUrl(undefined);
   }
 
   private stopHearing(): void {

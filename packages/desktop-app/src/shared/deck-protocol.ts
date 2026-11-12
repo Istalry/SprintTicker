@@ -17,8 +17,46 @@ export const LOCAL_API_PORT = 39123;
 /** Where the plugin opens its WebSocket, on {@link LOCAL_API_PORT}. */
 export const DECK_PATH = '/api/v1/deck';
 
-/** Raised on any change a plugin built for the previous one would misread. */
-export const DECK_PROTOCOL_VERSION = 1;
+/**
+ * Raised on any change a plugin built for the previous one would misread.
+ * 2 (plugin 0.6.0, redesign P13): the interruption, to place, previous and
+ * recent tasks, the stand-up running and nothing timing in the state; the
+ * prompts `back` and `lunch`; DONE asked always.
+ */
+export const DECK_PROTOCOL_VERSION = 2;
+
+/**
+ * The oldest protocol the app still speaks: plugin 0.5's, so a user who
+ * updates the app before the plugin keeps a working deck.
+ */
+export const DECK_OLDEST_PROTOCOL = 1;
+
+/**
+ * The query parameter a plugin names its protocol in, on {@link DECK_PATH}.
+ * Plugin 0.5 names none, which is how the app knows it speaks 1: it only
+ * reads the hello, and refuses any version but its own.
+ */
+export const DECK_PROTOCOL_PARAM = 'protocol';
+
+/**
+ * The protocol to speak with a plugin that connected at `url`: the one it
+ * names, or the newest this app has when it names a newer one -- its hello
+ * then tells that plugin to wait for an update. None, or nonsense, is 1.
+ */
+export function deckProtocolOfUrl(url: string | undefined): number {
+  const query = (url ?? '').split('?')[1] ?? '';
+  const named = new URLSearchParams(query).get(DECK_PROTOCOL_PARAM);
+  const version = named !== null && /^\d{1,4}$/.test(named) ? Number(named) : DECK_OLDEST_PROTOCOL;
+  return Math.min(Math.max(version, DECK_OLDEST_PROTOCOL), DECK_PROTOCOL_VERSION);
+}
+
+/** Where a plugin speaking `protocol` connects, on the app's port. */
+export function deckUrl(protocol: number = DECK_PROTOCOL_VERSION): string {
+  return `ws://127.0.0.1:${LOCAL_API_PORT}${DECK_PATH}?${DECK_PROTOCOL_PARAM}=${protocol}`;
+}
+
+/** How many recent tasks the state carries, for the Recent 1-3 keys. */
+export const DECK_MAX_RECENT = 3;
 
 /**
  * Largest message the app accepts. A request is an action and an id;
@@ -62,12 +100,32 @@ export const DECK_WORDS = {
  * - `standup`: the stand-up's prompt; yes joins it.
  * - `wrap-up`: the end-of-day wrap-up's prompt; yes arms it...
  * - `wrap-up-confirm`: ...and a second yes runs it, as two presses do on the bar.
- * - `resume`: after lunch, resume a task that is no longer the user's?
+ * - `resume`: after lunch, Away or the stand-up, resume the task it holds?
+ * - `back`: after an interruption, "Back to MG-12?" (protocol 2; `resume` in 1).
+ * - `lunch`: lunch's hour found an interruption running -- start lunch,
+ *   ending it? Asked in the window, never on the bar (protocol 2; none in 1).
  *
- * Only while that prompt holds the bar's display: covered by a banner, the
- * bar's own OK would answer the banner, and the deck answers what the bar would.
+ * The bar's prompts only while they hold its display: covered by a banner,
+ * the bar's own OK would answer the banner, and the deck answers what the
+ * bar would. `lunch` is the window's question, and is asked while no bar
+ * prompt is.
  */
-export type DeckPrompt = 'standup' | 'wrap-up' | 'wrap-up-confirm' | 'resume';
+export type DeckPrompt = 'standup' | 'wrap-up' | 'wrap-up-confirm' | 'resume' | 'back' | 'lunch';
+
+/** A task a key can start: Previous, Recent 1-3. */
+export interface DeckTask {
+  taskId: string;
+  taskKey: string;
+  taskTitle: string;
+}
+
+/** The interruption running, as the keys show it (protocol 2). */
+export interface DeckInterruption {
+  /** Its name, or the one the app made up: `Interruption 14:32`. */
+  title: string;
+  /** The task Back resumes, or null when it holds none -- then A has no Back. */
+  backToKey: string | null;
+}
 
 /** The session as the keys show it. */
 export interface DeckSession {
@@ -84,6 +142,10 @@ export interface DeckSession {
    * window and on the bar.
    */
   finishNeedsConfirmation: boolean;
+  /** An interruption runs, and this session is its timer (protocol 2). */
+  interruption?: DeckInterruption;
+  /** Who has the task now, when it is someone else's and their name is known (protocol 2). */
+  ownerName?: string;
 }
 
 /**
@@ -124,6 +186,20 @@ export interface DeckState {
   session: DeckSession | null;
   icon: DeckIcon | null;
   prompt: DeckPrompt | null;
+  /*
+   * Protocol 2. Optional so a state of protocol 1 is the same type with
+   * fewer fields: an app of protocol 2 always sends them.
+   */
+  /** Interruptions that ended and wait to be placed, in the app. */
+  toPlace?: number;
+  /** What Previous starts; null during an interruption, where going back is A. */
+  previousTask?: DeckTask | null;
+  /** Recent tasks but the one open, newest first, at most {@link DECK_MAX_RECENT}. */
+  recent?: DeckTask[];
+  /** The stand-up runs, and ending it brings back the task it set aside. */
+  standupRunning?: { returnsToKey: string | null } | null;
+  /** Nothing is timing in working hours: Session turns amber (D4). */
+  nothingTimingInHours?: boolean;
 }
 
 export const DECK_ACTIONS = [
@@ -144,7 +220,18 @@ export const DECK_ACTIONS = [
    */
   'interrupt',
   'prompt-yes',
-  'prompt-no'
+  'prompt-no',
+  /* Protocol 2. */
+  /** Ends the interruption and resumes the task it holds: A's BACK. */
+  'back',
+  /** Ends the interruption and starts the next: Interrupt's ANOTHER. */
+  'another',
+  /** Starts the task timed before this one; refused during an interruption. */
+  'previous',
+  /** Starts the `index`-th recent task, from 1. */
+  'start-recent',
+  /** Ends the stand-up; the task it set aside starts again. */
+  'end-standup'
 ] as const;
 
 export type DeckAction = (typeof DECK_ACTIONS)[number];
@@ -152,8 +239,10 @@ export type DeckAction = (typeof DECK_ACTIONS)[number];
 export interface DeckRequest {
   id: string;
   action: DeckAction;
-  /** The second press of a question the plugin asked: NOT YOURS?, DISCARD?. */
+  /** The second press of a question the plugin asked: DONE?, DISCARD?. */
   confirmed?: boolean;
+  /** For `start-recent`: which recent task, from 1 to {@link DECK_MAX_RECENT}. */
+  index?: number;
 }
 
 export type DeckErrorCode =
@@ -167,6 +256,8 @@ export type DeckErrorCode =
   | 'no-prompt'
   /** The window the picker lives in is not there. */
   | 'no-window'
+  /** No such task to start: no previous one, no n-th recent one (protocol 2). */
+  | 'no-task'
   /** The app tried and failed; `message` says why. */
   | 'failed';
 
@@ -216,7 +307,37 @@ export function parseDeckRequest(raw: unknown): DeckRequest {
   }
   const request: DeckRequest = { id: r.id, action };
   if (r.confirmed === true) request.confirmed = true;
+  if (action === 'start-recent') {
+    if (typeof r.index !== 'number' || !Number.isInteger(r.index) || r.index < 1 || r.index > DECK_MAX_RECENT) {
+      throw new ArgumentException(`\`start-recent\` needs an index from 1 to ${DECK_MAX_RECENT}.`, 'index');
+    }
+    request.index = r.index;
+  }
   return request;
+}
+
+/**
+ * The state as a plugin speaking `protocol` reads it. Protocol 1 knows none
+ * of the new fields -- it would ignore them, but sending them says nothing
+ * -- and none of the new prompts: its faces look a prompt up in a table of
+ * four, and an unknown one would break every key. `back` is the question
+ * 1 called `resume`; `lunch` it never had, and it stays in the window.
+ */
+export function deckStateForProtocol(state: DeckState, protocol: number): DeckState {
+  if (protocol >= DECK_PROTOCOL_VERSION) return state;
+  const prompt = state.prompt === 'back' ? 'resume' : state.prompt === 'lunch' ? null : state.prompt;
+  const session: DeckSession | null = state.session
+    ? {
+        taskId: state.session.taskId,
+        taskKey: state.session.taskKey,
+        taskTitle: state.session.taskTitle,
+        isAdHoc: state.session.isAdHoc,
+        status: state.session.status,
+        elapsedSeconds: state.session.elapsedSeconds,
+        finishNeedsConfirmation: state.session.finishNeedsConfirmation
+      }
+    : null;
+  return { session, icon: state.icon, prompt };
 }
 
 /**

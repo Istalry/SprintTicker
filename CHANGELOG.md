@@ -4,6 +4,10 @@
 
 ### Added
 
+- **The app speaks the Stream Deck's protocol 2** -- an interruption, what
+  waits to be placed, the previous and recent tasks, the stand-up running
+  -- for the plugin 0.6.0 to come. Plugin 0.5 keeps working as it does: the
+  app tells the two apart and answers each in its own protocol.
 - **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
   Switch task (S), Previous task (P) and Back (B), on by default and each
   changeable in *Settings › General › Shortcuts*. A chord another app holds

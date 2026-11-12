@@ -248,9 +248,20 @@ hardware. `pnpm verify:packed` asserts all of it against a real packaged build.
 **Source:** `src/main/api/deck-server.ts`, `src/main/services/deck-action-service.ts`;
 the protocol is `src/shared/deck-protocol.ts`, the one file the plugin imports.
 
-`ws://127.0.0.1:39123/api/v1/deck`. The app pushes the state when it
-changes; the plugin sends requests and gets one answer for each. A handshake
-is refused before the upgrade when:
+`ws://127.0.0.1:39123/api/v1/deck?protocol=2`. The app pushes the state
+when it changes; the plugin sends requests and gets one answer for each.
+
+**The protocol is the plugin's to name** (protocol 2, P13). Plugin 0.5
+names none and speaks 1: it reads only the hello, and goes grey with
+"update app" at any other version. So the app speaks 1 to a socket opened
+without `?protocol`, and the version named otherwise -- or its newest, 2,
+when a plugin names a newer one, which then waits for an app update. Each
+socket hears the state in its own protocol (`deckStateForProtocol`): in 1,
+without the fields below marked *2*, with `back` read as `resume` and no
+`lunch`; and its requests follow 1's rules (`finish` asked only for a task
+that left the list). A user who updates the app first keeps a working deck.
+
+A handshake is refused before the upgrade when:
 
 | Rule | Response | Why |
 | :--- | :--- | :--- |
@@ -264,13 +275,13 @@ A message over 4 KB closes the socket (1009). No token, as for `/api/input`.
 
 | Message | When |
 | :--- | :--- |
-| `{ type: 'hello', protocol: 1 }` | First, on every connection |
-| `{ type: 'state', state, at }` | On connection, then on each change: the session (`taskId`, `taskKey`, `taskTitle`, `isAdHoc`, `status: 'tracking' \| 'paused'`, `elapsedSeconds`, `finishNeedsConfirmation`) or null, the bar's screen `icon` (`pixels`, `label`, and `motion` while it moves: `{ fps, poses, sequence }`, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the `prompt` waiting for an answer. Never once a second: `at` is when `elapsedSeconds` was read, and the plugin counts on from it (`deckElapsedSeconds`). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity |
+| `{ type: 'hello', protocol }` | First, on every connection: the protocol this socket is spoken in |
+| `{ type: 'state', state, at }` | On connection, then on each change: the session (`taskId`, `taskKey`, `taskTitle`, `isAdHoc`, `status: 'tracking' \| 'paused'`, `elapsedSeconds`, `finishNeedsConfirmation`; *2*: `interruption: { title, backToKey }` while one runs, `backToKey` null when it holds no task, and `ownerName` for a task someone else has now) or null, the bar's screen `icon` (`pixels`, `label`, and `motion` while it moves: `{ fps, poses, sequence }`, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the `prompt` waiting for an answer. *2*: `toPlace`, the interruptions waiting to be placed; `previousTask` (`{ taskId, taskKey, taskTitle }`, null during an interruption); `recent`, up to 3 recent tasks newest first, never the one open; `standupRunning: { returnsToKey }` or null; `nothingTimingInHours`. Never once a second: `at` is when `elapsedSeconds` was read, and the plugin counts on from it (`deckElapsedSeconds`). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity |
 | `{ type: 'result', id, ok: true }` | A request done |
-| `{ type: 'result', id, ok: false, error, message }` | A request refused or failed; `error` is one of `invalid-request`, `no-session`, `needs-confirmation`, `no-prompt`, `no-window`, `failed` |
+| `{ type: 'result', id, ok: false, error, message }` | A request refused or failed; `error` is one of `invalid-request`, `no-session`, `needs-confirmation`, `no-prompt`, `no-window`, `no-task` (*2*), `failed` |
 
-**From the plugin**, `{ id, action, confirmed? }`, `id` 1 to 128
-characters. Unknown fields are dropped, and an unknown action is refused as
+**From the plugin**, `{ id, action, confirmed?, index? }`, `id` 1 to 128
+characters, `index` only for `start-recent`. Unknown fields are dropped, and an unknown action is refused as
 `invalid-request` -- `start`, `toggle-away` and `list-tasks` among them,
 removed with the keys that used them (2026-10-22).
 
@@ -278,15 +289,20 @@ removed with the keys that used them (2026-10-22).
 | :--- | :--- | :--- |
 | `pause`, `resume` | What the mini timer's buttons do | Nothing tracking, or nothing paused |
 | `stop` | Ends the session, task left open -- the window's Not done, with LOGGED on the bar | No session |
-| `finish` | Ends it and marks the task done, with DONE! | No session; or the task left the user's list and `confirmed` is not true (NOT YOURS?) |
+| `finish` | Ends it and marks the task done, with DONE! | No session; or `confirmed` is not true -- in 2 always, since DONE changes the task at the provider (S29); in 1 only when the task left the user's list (NOT YOURS?) |
 | `discard` | Keeps nothing | No session; or `confirmed` is not true -- always asked |
 | `open-picker` | Brings the window forward with its task picker -- to the front, past Windows' foreground lock (`ForegroundRaiser`), since the press reached Stream Deck and not the app | No window |
 | `interrupt` | Starts an interruption, as the window's Interrupt: `ContextScheduleService.interrupt('deck')`, a timer at once while the task running waits paused; during one, Another. Added without raising the protocol: an app older than it answers `invalid-request` | Never; `failed` if the app cannot |
-| `prompt-yes`, `prompt-no` | OK or BACK on the bar while a prompt holds it: the stand-up (`standup`), the wrap-up (`wrap-up`, then `wrap-up-confirm` after the first yes), the resume question (`resume`) | No prompt holds the bar |
+| `prompt-yes`, `prompt-no` | OK or BACK on the bar while a prompt holds it: the stand-up (`standup`), the wrap-up (`wrap-up`, then `wrap-up-confirm` after the first yes), the resume question (`resume`; *2*: `back` when it follows an interruption). *2*: `lunch`, lunch's hour asking to end an interruption, is the window's question and is answered as there (`answerLunchQuestion`) | No prompt is asked |
+| `back` (*2*) | Ends the interruption and resumes the task it holds (`backFromInterruption`) | No interruption (`no-session`), or one holding no task (`no-task`) |
+| `another` (*2*) | Ends the interruption and starts the next, as `interrupt` does during one | No interruption |
+| `previous` (*2*) | Starts the task timed before this one, as the tray's Previous task | None (`no-task`); during an interruption, where going back is `back` |
+| `start-recent` (*2*) | Starts the `index`-th of `recent`, 1 to 3 | No such task (`no-task`) |
+| `end-standup` (*2*) | Ends the stand-up as the mini timer's End stand-up: its Stop, which brings back the task it set aside | No stand-up running |
 
-A prompt is reported only while it holds the bar's display: covered by a
-banner, the bar's own OK would answer the banner, and the deck answers what
-the bar would.
+A bar prompt is reported only while it holds the bar's display: covered by
+a banner, the bar's own OK would answer the banner, and the deck answers
+what the bar would. `lunch` is reported while no bar prompt is.
 
 ---
 

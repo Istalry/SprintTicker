@@ -4229,9 +4229,18 @@
       <h4>The Stream Deck socket</h4>
       <p><strong>Source:</strong> <code>src/main/api/deck-server.ts</code>, <code>src/main/services/deck-action-service.ts</code>;
       the protocol is <code>src/shared/deck-protocol.ts</code>, the one file the plugin imports.</p>
-      <p><code>ws://127.0.0.1:39123/api/v1/deck</code>. The app pushes the state when it
-      changes; the plugin sends requests and gets one answer for each. A handshake
-      is refused before the upgrade when:</p>
+      <p><code>ws://127.0.0.1:39123/api/v1/deck?protocol=2</code>. The app pushes the state
+      when it changes; the plugin sends requests and gets one answer for each.</p>
+      <p><strong>The protocol is the plugin&#39;s to name</strong> (protocol 2, P13). Plugin 0.5
+      names none and speaks 1: it reads only the hello, and goes grey with
+      &quot;update app&quot; at any other version. So the app speaks 1 to a socket opened
+      without <code>?protocol</code>, and the version named otherwise -- or its newest, 2,
+      when a plugin names a newer one, which then waits for an app update. Each
+      socket hears the state in its own protocol (<code>deckStateForProtocol</code>): in 1,
+      without the fields below marked <em>2</em>, with <code>back</code> read as <code>resume</code> and no
+      <code>lunch</code>; and its requests follow 1&#39;s rules (<code>finish</code> asked only for a task
+      that left the list). A user who updates the app first keeps a working deck.</p>
+      <p>A handshake is refused before the upgrade when:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -4266,12 +4275,12 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left"><code>{ type: &#39;hello&#39;, protocol: 1 }</code></td>
-      <td align="left">First, on every connection</td>
+      <td align="left"><code>{ type: &#39;hello&#39;, protocol }</code></td>
+      <td align="left">First, on every connection: the protocol this socket is spoken in</td>
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;state&#39;, state, at }</code></td>
-      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>) or null, the bar&#39;s screen <code>icon</code> (<code>pixels</code>, <code>label</code>, and <code>motion</code> while it moves: <code>{ fps, poses, sequence }</code>, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the <code>prompt</code> waiting for an answer. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
+      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>; <em>2</em>: <code>interruption: { title, backToKey }</code> while one runs, <code>backToKey</code> null when it holds no task, and <code>ownerName</code> for a task someone else has now) or null, the bar&#39;s screen <code>icon</code> (<code>pixels</code>, <code>label</code>, and <code>motion</code> while it moves: <code>{ fps, poses, sequence }</code>, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the <code>prompt</code> waiting for an answer. <em>2</em>: <code>toPlace</code>, the interruptions waiting to be placed; <code>previousTask</code> (<code>{ taskId, taskKey, taskTitle }</code>, null during an interruption); <code>recent</code>, up to 3 recent tasks newest first, never the one open; <code>standupRunning: { returnsToKey }</code> or null; <code>nothingTimingInHours</code>. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;result&#39;, id, ok: true }</code></td>
@@ -4279,11 +4288,11 @@
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;result&#39;, id, ok: false, error, message }</code></td>
-      <td align="left">A request refused or failed; <code>error</code> is one of <code>invalid-request</code>, <code>no-session</code>, <code>needs-confirmation</code>, <code>no-prompt</code>, <code>no-window</code>, <code>failed</code></td>
+      <td align="left">A request refused or failed; <code>error</code> is one of <code>invalid-request</code>, <code>no-session</code>, <code>needs-confirmation</code>, <code>no-prompt</code>, <code>no-window</code>, <code>no-task</code> (<em>2</em>), <code>failed</code></td>
       </tr>
       </tbody></table></div>
-      <p><strong>From the plugin</strong>, <code>{ id, action, confirmed? }</code>, <code>id</code> 1 to 128
-      characters. Unknown fields are dropped, and an unknown action is refused as
+      <p><strong>From the plugin</strong>, <code>{ id, action, confirmed?, index? }</code>, <code>id</code> 1 to 128
+      characters, <code>index</code> only for <code>start-recent</code>. Unknown fields are dropped, and an unknown action is refused as
       <code>invalid-request</code> -- <code>start</code>, <code>toggle-away</code> and <code>list-tasks</code> among them,
       removed with the keys that used them (2026-10-22).</p>
       <div class="table-wrap"><table>
@@ -4307,7 +4316,7 @@
       <tr>
       <td align="left"><code>finish</code></td>
       <td align="left">Ends it and marks the task done, with DONE!</td>
-      <td align="left">No session; or the task left the user&#39;s list and <code>confirmed</code> is not true (NOT YOURS?)</td>
+      <td align="left">No session; or <code>confirmed</code> is not true -- in 2 always, since DONE changes the task at the provider (S29); in 1 only when the task left the user&#39;s list (NOT YOURS?)</td>
       </tr>
       <tr>
       <td align="left"><code>discard</code></td>
@@ -4326,13 +4335,38 @@
       </tr>
       <tr>
       <td align="left"><code>prompt-yes</code>, <code>prompt-no</code></td>
-      <td align="left">OK or BACK on the bar while a prompt holds it: the stand-up (<code>standup</code>), the wrap-up (<code>wrap-up</code>, then <code>wrap-up-confirm</code> after the first yes), the resume question (<code>resume</code>)</td>
-      <td align="left">No prompt holds the bar</td>
+      <td align="left">OK or BACK on the bar while a prompt holds it: the stand-up (<code>standup</code>), the wrap-up (<code>wrap-up</code>, then <code>wrap-up-confirm</code> after the first yes), the resume question (<code>resume</code>; <em>2</em>: <code>back</code> when it follows an interruption). <em>2</em>: <code>lunch</code>, lunch&#39;s hour asking to end an interruption, is the window&#39;s question and is answered as there (<code>answerLunchQuestion</code>)</td>
+      <td align="left">No prompt is asked</td>
+      </tr>
+      <tr>
+      <td align="left"><code>back</code> (<em>2</em>)</td>
+      <td align="left">Ends the interruption and resumes the task it holds (<code>backFromInterruption</code>)</td>
+      <td align="left">No interruption (<code>no-session</code>), or one holding no task (<code>no-task</code>)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>another</code> (<em>2</em>)</td>
+      <td align="left">Ends the interruption and starts the next, as <code>interrupt</code> does during one</td>
+      <td align="left">No interruption</td>
+      </tr>
+      <tr>
+      <td align="left"><code>previous</code> (<em>2</em>)</td>
+      <td align="left">Starts the task timed before this one, as the tray&#39;s Previous task</td>
+      <td align="left">None (<code>no-task</code>); during an interruption, where going back is <code>back</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>start-recent</code> (<em>2</em>)</td>
+      <td align="left">Starts the <code>index</code>-th of <code>recent</code>, 1 to 3</td>
+      <td align="left">No such task (<code>no-task</code>)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>end-standup</code> (<em>2</em>)</td>
+      <td align="left">Ends the stand-up as the mini timer&#39;s End stand-up: its Stop, which brings back the task it set aside</td>
+      <td align="left">No stand-up running</td>
       </tr>
       </tbody></table></div>
-      <p>A prompt is reported only while it holds the bar&#39;s display: covered by a
-      banner, the bar&#39;s own OK would answer the banner, and the deck answers what
-      the bar would.</p>
+      <p>A bar prompt is reported only while it holds the bar&#39;s display: covered by
+      a banner, the bar&#39;s own OK would answer the banner, and the deck answers
+      what the bar would. <code>lunch</code> is reported while no bar prompt is.</p>
       <hr>
       <h3 id="api-itaskprovider"><code>ITaskProvider</code></h3>
       <p><strong>Source:</strong> <code>src/main/providers/task-provider-interface.ts</code></p>

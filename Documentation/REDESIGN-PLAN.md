@@ -1933,6 +1933,39 @@ hides; only Quit clears the bar).
   `Profiles` so installing the plugin offers it. Exported from the Stream
   Deck app, not generated: the format is Stream Deck's own.
 
+**Split** (2026-11-12):
+
+- **P13a, protocol 2 and the app side.** The state, the new actions and
+  DONE asked always, with a plugin 0.5 still served protocol 1.
+- **P13b, the plugin's keys.** Faces and presses for every row of S29,
+  Previous and Recent 1-3, 0.6.0, `deck:validate`.
+- **P13c, on the deck.** Stream Deck Mobile through every state, and the
+  `.streamDeckProfile` layouts -- both need the user.
+
+**As landed: P13a, protocol 2 and the app side (2026-11-12).**
+
+- **The plugin names its protocol** in the socket's URL (`?protocol=2`,
+  `deckUrl`). Plugin 0.5 names none -- it reads only the hello and refuses
+  any version but 1 -- so a socket without it is spoken to in 1: its state
+  through `deckStateForProtocol` (no new field, `back` read as `resume`, no
+  `lunch`), its `finish` under 1's rule. Each socket keeps its own.
+- **The new fields sit on `DeckState`, not `DeckSession`**, except
+  `interruption` (`{ title, backToKey }`) and `ownerName`: to place,
+  previous, recent, the stand-up running and nothing timing in working
+  hours are true with no session too. `recent` (up to 3, never the task
+  open) was added for the Recent keys to show their task.
+- **Two prompts:** `back`, the resume question after an interruption, and
+  `lunch`, the window's "Start lunch?", answered through
+  `answerLunchQuestion`.
+- **New actions** `back`, `another`, `previous`, `start-recent` (with
+  `index`), `end-standup`; each calls what the tray, the mini timer or the
+  window calls. A new refusal, `no-task`.
+- **DONE is asked always in protocol 2.** Plugin 0.5 stays on protocol 1
+  (`PLUGIN_PROTOCOL`) until P13b.
+- **Colours for P13b:** S29's three, from the window's tokens -- A green,
+  B the blue-grey `#94A3B8` (slate, never the idle grey), C red; the
+  plugin's blue `#3B82F6` goes, as the window has no blue.
+
 **Tests:**
 
 - `faces.test.ts` (every kind × state, including DISCARD ⚡ and NOT
@@ -2193,7 +2226,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
-| P13 | not started | |
+| P13 | in progress: P13a (protocol 2 and the app side) done; P13b (the plugin's keys) next, P13c (on the deck, with the user) after -- see §18 "Split" | P13a (2026-11-12) |
 | P14 | not started | |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

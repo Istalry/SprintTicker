@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DECK_PROTOCOL_VERSION } from '../../desktop-app/src/shared/deck-protocol';
-import { AppLink, RECONNECT_DELAYS_MS, REQUEST_TIMEOUT_MS, SocketLike } from '../src/app-link';
+import { AppLink, PLUGIN_PROTOCOL, RECONNECT_DELAYS_MS, REQUEST_TIMEOUT_MS, SocketLike } from '../src/app-link';
 import { FakeClock } from './support/fake-clock';
 import { session, stateMessage } from './support/states';
 
@@ -23,7 +22,7 @@ class FakeSocket implements SocketLike {
   }
 
   /** The app answers the handshake and greets. */
-  public accept(protocol: number = DECK_PROTOCOL_VERSION): void {
+  public accept(protocol: number = PLUGIN_PROTOCOL): void {
     this.readyState = 1;
     this.onopen?.({});
     this.receive({ type: 'hello', protocol });
@@ -103,7 +102,7 @@ describe('AppLink', () => {
 
   it('Hello_OtherProtocol_IncompatibleAndTrustsNothing', () => {
     link.start();
-    latest().accept(DECK_PROTOCOL_VERSION + 1);
+    latest().accept(PLUGIN_PROTOCOL + 1);
     latest().receive(stateMessage());
     expect(link.status).toBe('incompatible');
     expect(link.message).toBeNull();

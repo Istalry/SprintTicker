@@ -115,7 +115,10 @@ const PROMPTS: Record<DeckPrompt, Record<'yes' | 'no', [title: string, hint: str
   standup: { yes: ['JOIN', 'stand-up'], no: ['SKIP', 'stand-up'] },
   'wrap-up': { yes: ['WRAP UP', 'end the day'], no: ['NOT NOW', 'keep going'] },
   'wrap-up-confirm': { yes: ['CONFIRM', 'wrap-up'], no: ['NOT NOW', 'keep going'] },
-  resume: { yes: ['RESUME', 'the task'], no: ['LEAVE IT', 'stopped'] }
+  resume: { yes: ['RESUME', 'the task'], no: ['LEAVE IT', 'stopped'] },
+  // Protocol 2's, never sent to this plugin until it speaks 2.
+  back: { yes: ['BACK', 'to the task'], no: ['NOT NOW', 'stay'] },
+  lunch: { yes: ['LUNCH', 'start it'], no: ['NOT NOW', 'work on'] }
 };
 
 /** The hint of a key waiting for its second press. */

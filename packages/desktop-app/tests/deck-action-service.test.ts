@@ -38,6 +38,7 @@ describe('DeckActionService', () => {
   let decoder: InputDecoder;
   let schedule: ContextScheduleService;
   let openPicker: ReturnType<typeof vi.fn>;
+  let workingNow: boolean;
   let decoded: string[];
   let service: DeckActionService;
 
@@ -52,8 +53,8 @@ describe('DeckActionService', () => {
   const interrupt = () => { schedule.interrupt(); };
 
   let nextId = 0;
-  const ask = (action: DeckRequest['action'], extra: Partial<DeckRequest> = {}) =>
-    service.perform({ id: `r${++nextId}`, action, ...extra }) as DeckResultMessage;
+  const ask = (action: DeckRequest['action'], extra: Partial<DeckRequest> = {}, protocol?: number) =>
+    service.perform({ id: `r${++nextId}`, action, ...extra }, protocol) as DeckResultMessage;
   const refused = (result: DeckResultMessage) => (result.ok ? null : result.error);
   /** Wednesday 21 October 2026, local time. */
   const at = (hours: number, minutes: number, seconds = 0) =>
@@ -108,7 +109,12 @@ describe('DeckActionService', () => {
     });
 
     openPicker = vi.fn(() => true);
-    service = new DeckActionService({ engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt });
+    workingNow = false;
+    // As main wires it: the schedule, the tray's working hours, the picker's recent tasks.
+    service = new DeckActionService({
+      engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt,
+      schedule, isWorkingNow: () => workingNow, recentTasks: limit => taskRepo.getRecent(limit)
+    });
   });
 
   afterEach(() => {
@@ -184,7 +190,55 @@ describe('DeckActionService', () => {
 
   describe('the state', () => {
     it('GetState_NothingRunning_NoSessionNoIconNoPrompt', () => {
-      expect(service.getState()).toEqual({ session: null, icon: null, prompt: null });
+      expect(service.getState()).toEqual({
+        session: null, icon: null, prompt: null,
+        toPlace: 0, previousTask: null, recent: [], standupRunning: null, nothingTimingInHours: false
+      });
+    });
+
+    it('GetState_NothingTimingInWorkingHours_SaysSo', () => {
+      workingNow = true;
+      expect(service.getState().nothingTimingInHours).toBe(true);
+
+      engine.startTask(MINE.id);
+      expect(service.getState().nothingTimingInHours).toBe(false);
+    });
+
+    it('GetState_Recent_NewestFirstWithoutTheOpenTask', () => {
+      engine.startTask(MINE.id);
+      at(9, 10);
+      engine.startTask(MINE_IN_PROGRESS.id);
+
+      const state = service.getState();
+      expect(state.recent).toEqual([{ taskId: MINE.id, taskKey: MINE.key, taskTitle: MINE.title }]);
+      expect(state.previousTask).toEqual({ taskId: MINE.id, taskKey: MINE.key, taskTitle: MINE.title });
+    });
+
+    it('GetState_DuringAnInterruption_ItsTitleAndBackToKeyNoPrevious', () => {
+      engine.startTask(MINE_IN_PROGRESS.id);
+      at(9, 10);
+      engine.startTask(MINE.id);
+      at(9, 30);
+      ask('interrupt');
+
+      const state = service.getState();
+      expect(state.session?.interruption).toEqual({ title: 'Interruption 09:30', backToKey: MINE.key });
+      // Going back is A during an interruption (S29).
+      expect(state.previousTask).toBeNull();
+    });
+
+    it('GetState_AnInterruptionEnded_CountedToPlace', () => {
+      ask('interrupt');
+      at(9, 20);
+      ask('stop');
+
+      expect(service.getState().toPlace).toBe(1);
+    });
+
+    it('GetState_ATeammatesTask_TheirName', () => {
+      engine.startTask(THEIRS.id);
+
+      expect(service.getState().session).toMatchObject({ finishNeedsConfirmation: true, ownerName: 'Sam' });
     });
 
     it('GetState_Tracking_TheSessionAndTheBarsIcon', () => {
@@ -243,11 +297,26 @@ describe('DeckActionService', () => {
       expect(renderer.getScreenIcon()?.label).toBe(SCENE_ICONS[FRONT_ANIMATIONS.TASK_LOGGED].label);
     });
 
+    it('Perform_FinishUnconfirmed_AskedAlwaysInProtocol2', () => {
+      engine.startTask(MINE.id);
+
+      // DONE changes the ticket: two presses, even for the user's own task (S29).
+      expect(refused(ask('finish'))).toBe('needs-confirmation');
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+
+    it('Perform_FinishUnconfirmedFromPlugin05_DoneAsProtocol1Did', () => {
+      engine.startTask(MINE.id);
+
+      expect(ask('finish', {}, 1).ok).toBe(true);
+      expect(taskRepo.getTaskById(MINE.id)?.status).toBe('done');
+    });
+
     it('Perform_Finish_MarksTheTaskDoneAndPlaysDone', () => {
       engine.startTask(MINE.id);
       at(9, 30);
 
-      expect(ask('finish').ok).toBe(true);
+      expect(ask('finish', { confirmed: true }).ok).toBe(true);
 
       expect(taskRepo.getTaskById(MINE.id)?.status).toBe('done');
       expect(renderer.getScreenIcon()?.label).toBe(SCENE_ICONS[FRONT_ANIMATIONS.TASK_DONE].label);
@@ -356,11 +425,142 @@ describe('DeckActionService', () => {
       expect(ask('stop').ok).toBe(true);
       // The question waits for the engine's listeners.
       await Promise.resolve();
-      expect(service.getState().prompt).toBe('resume');
+      expect(service.getState().prompt).toBe('back');
 
       // Yes on the deck is OK on the bar: the task comes back.
       expect(ask('prompt-yes').ok).toBe(true);
       expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+    });
+
+    it('Perform_Back_EndsTheInterruptionAndResumesTheTask', () => {
+      engine.startTask(MINE.id);
+      at(9, 30);
+      ask('interrupt');
+      at(9, 40);
+
+      expect(ask('back').ok).toBe(true);
+
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+      expect(service.getState().toPlace).toBe(1);
+    });
+
+    it('Perform_BackWithNoInterruption_RefusedNoSession', () => {
+      engine.startTask(MINE.id);
+
+      expect(refused(ask('back'))).toBe('no-session');
+    });
+
+    it('Perform_BackFromAnInterruptionHoldingNothing_RefusedNoTask', () => {
+      ask('interrupt');
+
+      expect(refused(ask('back'))).toBe('no-task');
+      expect(engine.getCurrentSession()?.interruption).toBeDefined();
+    });
+
+    it('Perform_Another_EndsTheInterruptionAndStartsTheNext', () => {
+      engine.startTask(MINE.id);
+      ask('interrupt');
+      at(9, 10);
+
+      expect(ask('another').ok).toBe(true);
+
+      expect(engine.getCurrentSession()?.interruption).toMatchObject({ index: 2, interruptedTaskKey: MINE.key });
+    });
+
+    it('Perform_AnotherWithNoInterruption_RefusedNoSession', () => {
+      engine.startTask(MINE.id);
+
+      expect(refused(ask('another'))).toBe('no-session');
+      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+    });
+
+    it('Perform_Previous_StartsTheTaskTimedBefore', () => {
+      engine.startTask(MINE.id);
+      at(9, 10);
+      engine.startTask(MINE_IN_PROGRESS.id);
+      at(9, 20);
+
+      expect(ask('previous').ok).toBe(true);
+
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+    });
+
+    it('Perform_PreviousWithNone_RefusedNoTask', () => {
+      expect(refused(ask('previous'))).toBe('no-task');
+    });
+
+    it('Perform_PreviousDuringAnInterruption_RefusedNoTask', () => {
+      engine.startTask(MINE.id);
+      at(9, 10);
+      engine.startTask(MINE_IN_PROGRESS.id);
+      ask('interrupt');
+
+      expect(refused(ask('previous'))).toBe('no-task');
+      expect(engine.getCurrentSession()?.interruption).toBeDefined();
+    });
+
+    it('Perform_StartRecent_StartsThatRecentTask', () => {
+      engine.startTask(MINE.id);
+      at(9, 10);
+      engine.startTask(MINE_IN_PROGRESS.id);
+      at(9, 20);
+      engine.stopSession();
+
+      expect(ask('start-recent', { index: 2 }).ok).toBe(true);
+
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+    });
+
+    it('Perform_StartRecentPastTheList_RefusedNoTask', () => {
+      engine.startTask(MINE.id);
+
+      // The open task is never offered: there is no first recent task yet.
+      expect(refused(ask('start-recent', { index: 1 }))).toBe('no-task');
+    });
+
+    it('Perform_EndStandup_EndsItAndBringsTheTaskBack', async () => {
+      engine.startTask(MINE.id);
+      schedule.triggerStandupPrompt();
+      ask('prompt-yes');
+      expect(service.getState().standupRunning).toEqual({ returnsToKey: MINE.key });
+      at(9, 15);
+
+      expect(ask('end-standup').ok).toBe(true);
+      // The restart waits for the engine's listeners (CLAUDE.md §5).
+      await Promise.resolve();
+
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+      expect(service.getState().standupRunning).toBeNull();
+    });
+
+    it('Perform_EndStandupWithNoneRunning_RefusedNoSession', () => {
+      engine.startTask(MINE.id);
+
+      expect(refused(ask('end-standup'))).toBe('no-session');
+      expect(engine.getCurrentSession()?.taskId).toBe(MINE.id);
+    });
+
+    it('Perform_YesToLunchsQuestion_AnsweredAsTheWindowDoes', () => {
+      const answerLunchQuestion = vi.fn(() => true);
+      const lunch = new DeckActionService({
+        engine, renderer, priorityEngine: priority, inputDecoder: decoder, openPicker, interrupt,
+        schedule: {
+          standupRunning: () => null,
+          getResumePrompt: () => null,
+          getCeremonyPrompt: () => ({ type: 'LUNCH', title: 'Lunch' }) as never,
+          answerLunchQuestion
+        }
+      });
+      expect(lunch.getState().prompt).toBe('lunch');
+
+      expect(lunch.perform({ id: 'l', action: 'prompt-yes' }).ok).toBe(true);
+      expect(lunch.perform({ id: 'm', action: 'prompt-no' }).ok).toBe(true);
+
+      expect(answerLunchQuestion.mock.calls).toEqual([[true], [false]]);
+      expect(decoded).toEqual([]);
+      answerLunchQuestion.mockReturnValue(false);
+      expect(lunch.perform({ id: 'n', action: 'prompt-yes' })).toMatchObject({ ok: false, error: 'no-prompt' });
+      lunch.dispose();
     });
 
     it('Perform_Interrupt_NothingRunning_StartsATimer', () => {

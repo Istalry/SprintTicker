@@ -19,7 +19,9 @@ describe('DeckServer', () => {
   let http: WebhookServer;
   let deck: DeckServer;
   let backend: DeckBackend & { listeners: Set<(m: DeckStateMessage) => void>; performed: DeckRequest[] };
+  /** The URL plugin 0.6 connects to; plugin 0.5 leaves the protocol out. */
   let url: string;
+  let protocols: number[];
   const sockets: WebSocket[] = [];
 
   const state = (taskKey: string | null): DeckStateMessage => ({
@@ -30,14 +32,16 @@ describe('DeckServer', () => {
         ? { taskId: 'T', taskKey, taskTitle: 'Title', isAdHoc: false, status: 'tracking', elapsedSeconds: 5, finishNeedsConfirmation: false }
         : null,
       icon: null,
-      prompt: null
+      // A protocol 2 state: plugin 0.5 hears it as 1's.
+      prompt: 'back',
+      toPlace: 2
     }
   });
 
   /** Opens a socket and collects every message it receives. */
-  const connect = (headers: Record<string, string> = {}) =>
+  const connect = (headers: Record<string, string> = {}, at: string = url) =>
     new Promise<{ ws: WebSocket; messages: DeckServerMessage[] }>((resolve, reject) => {
-      const ws = new WebSocket(url, { headers });
+      const ws = new WebSocket(at, { headers });
       sockets.push(ws);
       const messages: DeckServerMessage[] = [];
       ws.on('message', data => messages.push(JSON.parse(data.toString())));
@@ -56,6 +60,7 @@ describe('DeckServer', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const listeners = new Set<(m: DeckStateMessage) => void>();
     const performed: DeckRequest[] = [];
+    protocols = [];
     backend = {
       listeners,
       performed,
@@ -65,8 +70,9 @@ describe('DeckServer', () => {
         listener(state('SPR-1'));
         return () => listeners.delete(listener);
       },
-      perform: request => {
+      perform: (request, protocol) => {
         performed.push(request);
+        protocols.push(protocol);
         return { type: 'result', id: request.id, ok: true };
       }
     };
@@ -74,7 +80,7 @@ describe('DeckServer', () => {
     await http.start();
     deck = new DeckServer(backend);
     http.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));
-    url = `ws://127.0.0.1:${http.getStatus().port}${DECK_PATH}`;
+    url = `ws://127.0.0.1:${http.getStatus().port}${DECK_PATH}?protocol=${DECK_PROTOCOL_VERSION}`;
   });
 
   afterEach(async () => {
@@ -90,7 +96,34 @@ describe('DeckServer', () => {
       await until(() => messages.length >= 2);
 
       expect(messages[0]).toEqual({ type: 'hello', protocol: DECK_PROTOCOL_VERSION });
-      expect(messages[1]).toMatchObject({ type: 'state', state: { session: { taskKey: 'SPR-1' } } });
+      expect(messages[1]).toMatchObject({ type: 'state', state: { session: { taskKey: 'SPR-1' }, toPlace: 2 } });
+    });
+
+    it('Connect_Plugin05NamingNoProtocol_Protocol1AndItsState', async () => {
+      // Plugin 0.5 reads only the hello, and wants 1: a user who updated the app first.
+      const { ws, messages } = await connect({}, url.split('?')[0]);
+      await until(() => messages.length >= 2);
+
+      expect(messages[0]).toEqual({ type: 'hello', protocol: 1 });
+      const sent = messages[1] as DeckStateMessage;
+      expect(sent.state.prompt).toBe('resume');
+      expect(sent.state.toPlace).toBeUndefined();
+
+      ws.send(JSON.stringify({ id: 'k1', action: 'finish' }));
+      await until(() => protocols.length === 1);
+      expect(protocols).toEqual([1]);
+    });
+
+    it('Connect_Plugins05And06Together_EachHearsItsOwnState', async () => {
+      const old = await connect({}, url.split('?')[0]);
+      const current = await connect();
+      await until(() => old.messages.length >= 2 && current.messages.length >= 2);
+
+      for (const listener of backend.listeners) listener(state('SPR-2'));
+      await until(() => old.messages.length >= 3 && current.messages.length >= 3);
+
+      expect((old.messages[2] as DeckStateMessage).state.prompt).toBe('resume');
+      expect((current.messages[2] as DeckStateMessage).state.prompt).toBe('back');
     });
 
     it('Connect_WithAnOrigin_RefusedBeforeTheUpgrade', async () => {

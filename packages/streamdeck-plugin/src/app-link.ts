@@ -1,6 +1,5 @@
 import {
   DECK_PATH,
-  DECK_PROTOCOL_VERSION,
   DeckRequest,
   DeckResultMessage,
   DeckServerMessage,
@@ -16,6 +15,12 @@ export const RECONNECT_DELAYS_MS: readonly number[] = [1000, 2000, 5000, 10000];
 export const REQUEST_TIMEOUT_MS = 5000;
 
 export type DeckAnswer = DeckResultMessage;
+
+/**
+ * The protocol this plugin speaks. The app speaks 1 to a plugin that names
+ * none in its URL, as this one does until its keys learn protocol 2.
+ */
+export const PLUGIN_PROTOCOL = 1;
 
 /** The part of a WebSocket this uses: Node 24's own, or a test's. */
 export interface SocketLike {
@@ -159,7 +164,7 @@ export class AppLink {
         this._attempt = 0;
         // Another protocol: stay connected, so an upgraded app is found at
         // once, but trust nothing it sends.
-        this.setStatus(message.protocol === DECK_PROTOCOL_VERSION ? 'online' : 'incompatible');
+        this.setStatus(message.protocol === PLUGIN_PROTOCOL ? 'online' : 'incompatible');
         return;
       case 'state':
         this._message = message;
