@@ -115,6 +115,7 @@ shows them, and they stay as `pnpm probe:busybar`'s measured fixtures.
 | Stopwatch, tracking | Session running | steady | a seconds hand ticks round once a second, the elapsed wedge filling behind it; the crown clicks at each lap |
 | Stopwatch, paused | Paused session | steady | the pause bars dim for half a second in every one and a half |
 | Meeting | Stand-up running | steady | each of the three takes a turn to speak, sitting up a pixel three times, then a rest of a second before the next |
+| Bolt | Interruption running | steady | a light runs down the bolt two rows at a time, then a rest; once every 1.5 s |
 
 Idle, dim grey, stays still. Tracking used to as well, being on screen for
 hours, and read as nothing happening; a tick a second with a rest between is

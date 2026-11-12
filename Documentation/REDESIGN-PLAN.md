@@ -2340,6 +2340,24 @@ all. Their choices:
   their second Pause and Undo, the click and the 6 s close, OPEN APP, and
   the menu turned to under a notification.
 
+
+**As landed: P14d, the ⚡ icon (2026-11-12).**
+
+- `INTERRUPTION_16X16_BITMAP` (`shared/pixel-bitmaps.ts`, icon id
+  `interruption`): an amber bolt, the tray's interruption colour
+  (`#F59E0B`), lit from the upper left (`#FCD34D`, `#B45309`), drawn from
+  scratch.
+- `icon_bolt_16x16`: the studio scene (`scenes/icon_bolt_16x16.scene.json`),
+  exported with both compilers -- 90 frames, 6.7 KB as `bicycle0`, 1.3 KB
+  as `bicycle1`. Steady, as the stopwatch: a light runs down the bolt two
+  rows at a time and rests, once every 1.5 s, starting and ending on the
+  still icon (`animation-assets.test.ts`).
+- Drawn on the session screen during an interruption, where the stopwatch
+  was, and on the menu's DISCARD during one; the Stream Deck's Session key
+  follows, reading the same frames.
+- **To judge on the bar:** the shape and the colour at 16 px, and whether the
+  light reads as running or as flicker.
+
 ---
 
 ## 19b. P16 -- Tasks and Settings, rebuilt as their screens
@@ -2511,6 +2529,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done, revised after the bar trial (Pause twice stops, Back unused); P14c (the menu) done | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c (2026-11-12) |
+| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done, revised after the bar trial (Pause twice stops, Back unused); P14c (the menu) and P14d (the ⚡ icon) done | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d (2026-11-12) |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

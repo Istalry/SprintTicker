@@ -244,6 +244,10 @@
   ask for a second Pause and can be undone in the app; a click, or six
   seconds untouched, closes it. A stand-up prompt that arrived while
   Windows was locked no longer plays over lunch when the menu closes.
+- **An interruption has its own icon on the bar**: an amber bolt, a light
+  running down it, where the task's stopwatch was -- the ⚡ the window, the
+  tray and the Stream Deck already mark one with. The menu's DISCARD during
+  an interruption carries it too.
 - **Four places instead of eight tabs.** The window is **Today**, **Tasks**,
   **History** (formerly Work History) and **Settings**, the same with or
   without a bar. The header holds the bar's preview, a **Mode** chip for Work,

@@ -1,6 +1,7 @@
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DisplayRenderer, MENU_CONFIRM_TEXT, PAUSED_MARK_WIDTH } from '../src/main/hardware/display-renderer';
+import { INTERRUPTION_16X16_BITMAP } from '../src/shared/pixel-bitmaps';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
@@ -566,6 +567,17 @@ describe('DisplayRenderer Unit Tests', () => {
         vi.advanceTimersByTime(2000);
         expect(stop).toHaveBeenCalled();
       });
+    });
+
+    it('RenderActiveSession_AnInterruption_ShowsTheBolt_AnimatedByTheBar', () => {
+      // P14d: the bolt the window, the tray and the deck mark an interruption
+      // with, where the screen showed the task's stopwatch.
+      renderer.renderActiveSession({
+        sessionId: 'f1', taskId: 'adhoc_1', taskKey: 'MISC-1', taskTitle: 'Call with Marc', status: 'TRACKING',
+        elapsedSeconds: 60, isAdHoc: true, interruption: { id: 'f1', interruptedSessionId: 's1', interruptedTaskKey: 'MG-12' }
+      } as never);
+
+      expect(renderer.getScreenIcon()).toMatchObject({ pixels: INTERRUPTION_16X16_BITMAP, animation: 'icon_bolt_16x16' });
     });
 
     describe('task done scene', () => {

@@ -489,6 +489,8 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return STOPWATCH_IDLE_16X16_BITMAP;
     case 'meeting':
       return MEETING_16X16_BITMAP;
+    case 'interruption':
+      return INTERRUPTION_16X16_BITMAP;
     case 'coffee':
       return COFFEE_16X16_BITMAP;
     case 'moon':
@@ -574,6 +576,30 @@ export const MEETING_16X16_BITMAP: (string | null)[][] = [
   ['#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220', '#6B4220'],
   [null, '#6B4220', '#6B4220', null, null, null, null, null, null, null, null, null, null, '#6B4220', '#6B4220', null],
   [null, '#6B4220', '#6B4220', null, null, null, null, null, null, null, null, null, null, '#6B4220', '#6B4220', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+/**
+ * An interruption running (redesign P14d): the bolt the window, the tray and
+ * the deck already mark one with (⚡), in the tray's amber, lit from the upper
+ * left. Drawn from scratch; its animation, `icon_bolt_16x16`, starts on it.
+ */
+export const INTERRUPTION_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null],
+  [null, null, null, null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null],
+  [null, null, null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null, null],
+  [null, null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null, null, null],
+  [null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null, null, null, null],
+  [null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#B45309', null, null, null],
+  [null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null],
+  [null, null, null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null, null],
+  [null, null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null, null, null],
+  [null, null, null, null, null, '#FCD34D', '#F59E0B', '#F59E0B', '#B45309', null, null, null, null, null, null, null],
+  [null, null, null, null, null, '#FCD34D', '#F59E0B', '#B45309', null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#FCD34D', '#F59E0B', '#B45309', null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#FCD34D', '#B45309', null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#FCD34D', null, null, null, null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];
 

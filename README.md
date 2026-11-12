@@ -239,10 +239,10 @@ A **canvas emulator** in the dashboard mirrors the same render, and
 
 Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
 
-| | | | | | |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="docs/images/bar-icon-stopwatch.webp" width="72" alt="Stopwatch"> | <img src="docs/images/bar-icon-stopwatch-paused.webp" width="72" alt="Stopwatch, paused"> | <img src="docs/images/bar-icon-meeting.webp" width="72" alt="Three people at a table"> | <img src="docs/images/bar-icon-bell.webp" width="72" alt="Bell"> | <img src="docs/images/bar-icon-clock.webp" width="72" alt="Alarm clock"> | <img src="docs/images/bar-icon-burger.webp" width="72" alt="Burger"> |
-| tracking | paused | stand-up | notification | end of day | lunch |
+| | | | | | | |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/images/bar-icon-stopwatch.webp" width="72" alt="Stopwatch"> | <img src="docs/images/bar-icon-stopwatch-paused.webp" width="72" alt="Stopwatch, paused"> | <img src="docs/images/bar-icon-bolt.webp" width="72" alt="A lightning bolt"> | <img src="docs/images/bar-icon-meeting.webp" width="72" alt="Three people at a table"> | <img src="docs/images/bar-icon-bell.webp" width="72" alt="Bell"> | <img src="docs/images/bar-icon-clock.webp" width="72" alt="Alarm clock"> | <img src="docs/images/bar-icon-burger.webp" width="72" alt="Burger"> |
+| tracking | paused | interruption | stand-up | notification | end of day | lunch |
 
 <p align="center">
   <img src="docs/images/bar-scene-away.webp" width="49%" alt="The Away scene: a steaming coffee cup">

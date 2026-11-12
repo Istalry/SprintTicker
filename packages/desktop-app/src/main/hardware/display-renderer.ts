@@ -1184,8 +1184,11 @@ export class DisplayRenderer {
       // the same screen: it used to play the meeting scene, identical to the
       // prompt before it, so joining looked like nothing happening and the
       // user pressed START again -- pausing it (real bar, 2026-10-15).
-      const icon: BitmapIconId =
-        isStandup && isTracking ? 'meeting' : isPaused ? 'stopwatch_paused' : session ? 'stopwatch' : 'stopwatch_idle';
+      // An interruption has the bolt the window, the tray and the deck mark
+      // it with (P14d), where it showed the task's stopwatch.
+      const icon: BitmapIconId = session?.interruption
+        ? 'interruption'
+        : isStandup && isTracking ? 'meeting' : isPaused ? 'stopwatch_paused' : session ? 'stopwatch' : 'stopwatch_idle';
       this.canvas.drawBitmap(getBitmapById(icon), 0, 0, 16, 16);
       this.frameIcon = ANIMATED_ICONS[icon] ?? null;
       this.frameScreenIcon = { pixels: getBitmapById(icon), label: titleText, ...(this.frameIcon ? { animation: this.frameIcon } : {}) };

@@ -633,7 +633,7 @@ export type BitmapIconId =
   | 'bell' | 'openproject' | 'jira' | 'wave' | 'pause' | 'play' | 'resume' | 'stop'
   | 'stopwatch' | 'stopwatch_paused' | 'stopwatch_idle'
   | 'folder' | 'task' | 'task_in_progress' | 'task_done' | 'meeting'
-  | 'coffee' | 'moon';
+  | 'coffee' | 'moon' | 'interruption';
 export type ColorThemeId = 'emerald' | 'cyberpunk' | 'retro_arcade' | 'nordic_cyan';
 
 export interface DisplayElementDTO {

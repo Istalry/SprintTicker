@@ -1181,7 +1181,8 @@ the computer, in front of what you are doing.
 | 🔄 **Wheel** turn | **The menu**: one entry per screen, Pause picks it, a click closes it |
 | ↩️ **Back** | Nothing |
 
-- **During an interruption**, one Pause goes back to your task and two stop
+- **During an interruption** the bar shows a bolt (⚡) where the stopwatch
+  was, a light running down it. One Pause goes back to your task and two stop
   the interruption without going back -- the Place window then opens on the
   computer. The bar waits 2 s, showing **AGAIN=STOP**, to see whether a
   second press comes, so going back takes that long; the interruption ends

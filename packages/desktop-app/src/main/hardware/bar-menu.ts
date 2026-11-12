@@ -44,7 +44,7 @@ export function barMenuEntries({ session, previous, recent }: BarMenuState): Bar
   const open = session && session.status !== 'COMPLETED' ? session : null;
   const openApp: BarMenuEntry = { action: 'OPEN_APP', icon: 'windows', label: BarWord.OPEN_APP, detail: '' };
   if (open?.interruption) {
-    return [{ action: 'DISCARD', icon: 'stop', label: keyOf(open), detail: BarWord.DISCARD }, openApp];
+    return [{ action: 'DISCARD', icon: 'interruption', label: keyOf(open), detail: BarWord.DISCARD }, openApp];
   }
   const entries: BarMenuEntry[] = [];
   if (open) {

@@ -104,6 +104,9 @@ export const ANIMATED_ICONS: Partial<Record<BitmapIconId, string>> = {
   // The stand-up running, in the stopwatch's place: the three take turns to
   // speak, each sitting up a pixel as they talk, with a rest between turns.
   meeting: 'icon_meeting_16x16',
+  // An interruption running, in the stopwatch's place (P14d): a timer, so
+  // steady -- a light runs down the bolt and it rests, once every 1.5 s.
+  interruption: 'icon_bolt_16x16',
 };
 
 /**
