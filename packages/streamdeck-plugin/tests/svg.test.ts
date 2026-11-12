@@ -19,8 +19,8 @@ describe('fitLine', () => {
 
   it('FitLine_LongText_CutWithAnEllipsisToTheLimit', () => {
     const cut = fitLine('Fix the login page');
-    expect(cut).toBe('Fix the l…');
-    expect(cut.length).toBe(10);
+    expect(cut).toBe('Fix the log…');
+    expect(cut.length).toBe(12);
   });
 
   it('FitLine_WhitespaceRuns_Collapsed', () => {
@@ -71,7 +71,7 @@ describe('renderFace', () => {
   });
 
   it('RenderFace_LongTitle_FittedToOneLine', () => {
-    expect(texts(renderFace(face({ title: 'A VERY LONG TASK KEY' })))).toEqual(['A VERY LO…']);
+    expect(texts(renderFace(face({ title: 'A VERY LONG TASK KEY' })))).toEqual(['A VERY LONG…']);
   });
 
   it('RenderFace_WithATime_TheSessionLayoutWithTheTimeInTheAccent', () => {

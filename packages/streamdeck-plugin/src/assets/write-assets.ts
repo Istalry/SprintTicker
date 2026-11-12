@@ -21,9 +21,13 @@ export const PLUGIN_DIR_NAME = 'io.github.istalry.sprintticker.sdPlugin';
 const LIST_GLYPHS: Record<KeyKind, Glyph> = {
   session: 'timer',
   interrupt: 'zap',
+  previous: 'back',
   'answer-a': 'yes',
   'answer-b': 'no',
   'answer-c': 'trash',
+  'recent-1': 'play',
+  'recent-2': 'play',
+  'recent-3': 'play',
   'not-done': 'stop',
   done: 'check',
   discard: 'trash',

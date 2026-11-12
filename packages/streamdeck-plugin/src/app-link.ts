@@ -1,10 +1,10 @@
 import {
-  DECK_PATH,
+  DECK_PROTOCOL_VERSION,
   DeckRequest,
   DeckResultMessage,
   DeckServerMessage,
   DeckStateMessage,
-  LOCAL_API_PORT
+  deckUrl
 } from '../../desktop-app/src/shared/deck-protocol';
 import type { LinkStatus } from './faces';
 
@@ -17,10 +17,10 @@ export const REQUEST_TIMEOUT_MS = 5000;
 export type DeckAnswer = DeckResultMessage;
 
 /**
- * The protocol this plugin speaks. The app speaks 1 to a plugin that names
- * none in its URL, as this one does until its keys learn protocol 2.
+ * The protocol this plugin speaks, named in the URL it connects to: the app
+ * speaks 1 to a plugin that names none, which is plugin 0.5.
  */
-export const PLUGIN_PROTOCOL = 1;
+export const PLUGIN_PROTOCOL = DECK_PROTOCOL_VERSION;
 
 /** The part of a WebSocket this uses: Node 24's own, or a test's. */
 export interface SocketLike {
@@ -68,7 +68,7 @@ export class AppLink {
   private _nextId = 0;
 
   constructor(options: AppLinkOptions = {}) {
-    this._url = options.url ?? `ws://127.0.0.1:${LOCAL_API_PORT}${DECK_PATH}`;
+    this._url = options.url ?? deckUrl(PLUGIN_PROTOCOL);
     this._connect = options.connect ?? (url => new WebSocket(url) as unknown as SocketLike);
     this._setTimeout = options.setTimeout ?? ((fn, ms) => setTimeout(fn, ms));
     this._clearTimeout = options.clearTimeout ?? (handle => clearTimeout(handle as NodeJS.Timeout));

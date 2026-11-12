@@ -298,9 +298,9 @@ default. Launch with `--debug-notifications` to see it while troubleshooting.
 
 A plugin for Elgato's Stream Deck app puts the session on keys you place
 yourself: the running task and its time, pause and resume, the task picker,
-Interrupt, and three answer keys that end the session -- done, not done,
-discard -- or answer yes or no to the stand-up, the wrap-up and the resume
-question, whichever applies. Five keys, on a Stream Deck Mini's six. It talks to the app on
+Interrupt, and three answer keys with one meaning each -- A says yes (done,
+back, join, resume), B stops or waits, C throws away. Five keys, on a Stream
+Deck Mini's six; Previous task and three Recent keys are there to add. It talks to the app on
 this machine, and every key turns grey while SprintTicker is closed. See
 [the plugin](#-stream-deck-plugin) below. Not yet tried on a physical deck.
 

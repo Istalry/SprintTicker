@@ -222,7 +222,7 @@ describe('DeckActionService', () => {
       ask('interrupt');
 
       const state = service.getState();
-      expect(state.session?.interruption).toEqual({ title: 'Interruption 09:30', backToKey: MINE.key });
+      expect(state.session?.interruption).toEqual({ name: null, backToKey: MINE.key });
       // Going back is A during an interruption (S29).
       expect(state.previousTask).toBeNull();
     });

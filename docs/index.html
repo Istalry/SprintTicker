@@ -1864,9 +1864,10 @@
       source with <code>pnpm deck:pack</code> and double-click the <code>.streamDeckPlugin</code> file
       that lands in <code>packages/streamdeck-plugin/dist/</code>. It has been tried on Stream
       Deck Mobile, not yet on a physical deck.</p>
-      <p>Its five actions are listed under <strong>SprintTicker</strong> in the Stream Deck app --
-      one key to spare on a Stream Deck Mini. Drag each onto any key, as many times
-      as you like:</p>
+      <p>Its actions are listed under <strong>SprintTicker</strong> in the Stream Deck app.
+      Session, Interrupt and Answer A, B and C fill five of a Stream Deck Mini&#39;s
+      six keys; Previous task and Recent 1-3 are there if you want them. Drag each
+      onto any key, as many times as you like:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1877,52 +1878,68 @@
       </thead>
       <tbody><tr>
       <td align="left"><strong>Session</strong></td>
-      <td align="left">the task, its time and the bar&#39;s icon, moving as it does on the bar -- a notification&#39;s own icon while its banner holds the bar -- under a band: green while tracking, amber while paused</td>
-      <td align="left">pauses or resumes; with nothing running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker whatever runs</td>
+      <td align="left">the task, its time and the bar&#39;s icon, moving as it does on the bar -- a notification&#39;s own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (<strong>NOT YOURS</strong>). With nothing running, START -- amber <strong>NOT TIMING</strong> in your working hours</td>
+      <td align="left">pauses or resumes; with nothing running or an interruption running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker whatever runs</td>
       </tr>
       <tr>
       <td align="left"><strong>Interrupt</strong></td>
-      <td align="left">INTERRUPT</td>
+      <td align="left">INTERRUPT -- ANOTHER during an interruption -- and &quot;3 to place&quot; while interruptions wait for you in the app</td>
       <td align="left">starts a timer at once, whatever runs -- see <a href="#-interrupt-a-timer-at-once">Interrupt</a></td>
       </tr>
       <tr>
+      <td align="left"><strong>Previous task</strong></td>
+      <td align="left">PREV and the task&#39;s key</td>
+      <td align="left">goes back to the task you timed before this one. Blank during an interruption: A goes back</td>
+      </tr>
+      <tr>
       <td align="left"><strong>Answer A</strong></td>
-      <td align="left">DONE -- or the yes to a question waiting: JOIN, WRAP UP, RESUME</td>
-      <td align="left">ends the session and marks the task done; or says yes</td>
+      <td align="left">says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY</td>
+      <td align="left">does that. DONE takes two presses</td>
       </tr>
       <tr>
       <td align="left"><strong>Answer B</strong></td>
-      <td align="left">NOT DONE -- or the no: SKIP, NOT NOW, LEAVE IT</td>
-      <td align="left">ends the session and logs its time, the task left open; or says no</td>
+      <td align="left">stops or waits, keeping the time, in blue-grey: STOP, SKIP, NOT NOW</td>
+      <td align="left">does that; STOP logs the time and leaves the task open</td>
       </tr>
       <tr>
       <td align="left"><strong>Answer C</strong></td>
-      <td align="left">DISCARD, always</td>
-      <td align="left">throws the session away, nothing logged</td>
+      <td align="left">throws away, in red: DISCARD, or DISCARD ⚡ during an interruption -- the interruption, not your task</td>
+      <td align="left">two presses; nothing logged. Blank while a question waits or nothing runs</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Recent 1, 2, 3</strong></td>
+      <td align="left">one of your recent tasks and START -- never the one running</td>
+      <td align="left">starts it</td>
       </tr>
       </tbody></table></div>
       <ul>
-      <li><p><strong>A and B follow the question.</strong> When SprintTicker asks something -- the
-      stand-up, the wrap-up, back to your task? -- A and B turn into its yes and
-      no, filled green and red, and go back to DONE and NOT DONE once it is
-      answered. A press in the moment they change only flashes the key, so a
-      question arriving as you press DONE is not answered by mistake. C never
-      changes: the one key that throws work away stays where it is.</p>
+      <li><p><strong>Each position keeps one meaning.</strong> A always says yes, B always stops or
+      waits, C always throws away; a key with nothing of its kind to do is
+      blank. When a question comes -- the stand-up, the wrap-up, back to your
+      task? -- A and B turn into its answers. A press in the moment a key
+      changes only flashes it, so a question arriving as you press DONE is not
+      answered by mistake. After an interruption, A, B and C are DONE, STOP and
+      DISCARD again at once; what is left to place is counted on Interrupt and
+      placed in the app.</p>
+      </li>
+      <li><p><strong>DONE always takes two presses</strong>, because it moves the ticket in Jira or
+      OpenProject: a habit learned on BACK, the same key, never marks a ticket
+      done.</p>
       </li>
       <li><p><strong>Laid out your deck before 0.5.0?</strong> The keys you placed -- Not done,
-      Done, Discard, Yes, No -- keep working; they are only gone from the list.</p>
+      Done, Discard, Yes, No -- keep working; they are only gone from the list.
+      Not done now reads STOP, and Done takes two presses.</p>
       </li>
       <li><p><strong>A key&#39;s colour says what it does.</strong> A coloured glyph can be pressed; a
       grey key has nothing to do; a key filled with colour is waiting on you --
       a question, or a second press.</p>
       </li>
-      <li><p><strong>Discard asks first, on the same key.</strong> It fills red, <strong>DISCARD?</strong>; press
-      it again within four seconds to go ahead. Done does the same, filled amber,
-      <strong>NOT YOURS</strong>, when the task is no longer yours. Waiting, or another task
-      starting, takes the question back.</p>
+      <li><p><strong>Done and Discard ask on the same key.</strong> Done fills green, <strong>DONE?</strong>,
+      Discard red, <strong>DISCARD?</strong>; press it again within four seconds to go
+      ahead. Waiting, or another task starting, takes the question back.</p>
       </li>
       <li><p><strong>Keys move a little when something happens.</strong> Done&#39;s check draws itself,
-      Discard&#39;s bin lifts its lid, Not done&#39;s square presses in and Interrupt&#39;s
+      Discard&#39;s bin lifts its lid, Stop&#39;s square presses in and Interrupt&#39;s
       bolt strikes when you press them; the yes and the no draw their mark when
       a question arrives. Half a second, then they rest.</p>
       </li>
@@ -1935,7 +1952,8 @@
       <li><p><strong>offline under every key</strong> means the plugin cannot reach SprintTicker:
       start it, and the keys come back by themselves within ten seconds. <strong>update
       app</strong> means SprintTicker and the plugin are of different versions -- update
-      whichever is older.</p>
+      whichever is older. A newer SprintTicker keeps an older plugin working, so
+      updating the app first is safe.</p>
       </li>
       </ul>
       <hr>
@@ -3480,10 +3498,13 @@
       on its SDK (<code>@elgato/streamdeck</code> 3) and bundled by Vite into one ESM file that
       Stream Deck runs on its own Node 24. Elgato&#39;s app keeps the device; the plugin
       only declares actions, which the user places on any key: Session, Interrupt
-      and the answer keys A, B and C -- five of a Mini&#39;s six keys. The answer keys
-      stand in for whichever end applies (<code>resolveKind</code>): A is yes while a prompt
-      holds the bar and Done otherwise, B no or Not done, and C Discard either way,
-      so the end that keeps nothing never moves. The five fixed actions they replaced
+      and the answer keys A, B and C -- five of a Mini&#39;s six keys -- and, to add,
+      Previous task and Recent 1-3 (0.6.0). The answer keys have one meaning per
+      position (S29, <code>answerKind</code>): A says yes -- Done, Back during an
+      interruption, the prompt&#39;s yes, End stand-up -- B stops or waits -- Stop, the
+      prompt&#39;s no -- and C throws away -- Discard -- and a key with nothing of its
+      kind to do is blank. The face and press are then those of the key the answer
+      stands in for, so no rule is copied. The five fixed actions they replaced
       (Not done, Done, Discard, Yes, No) are still declared and still work, hidden
       from Stream Deck&#39;s list (<code>VisibleInActionsList: false</code>), so a deck laid out
       with them keeps its keys.</p>
@@ -3535,7 +3556,7 @@
       Mobile), so <code>DeckController.play</code> sends six static images 100 ms apart,
       each drawn at a <code>progress</code> the renderer turns into a part-drawn stroke or
       a moved part. The state&#39;s redraws of that key wait for the end, and a key
-      arming for a question stops it. A press on Done, Not done or Discard plays
+      arming for a question stops it. A press on Done, Stop or Discard plays
       (<code>playsOnPress</code>), and so do Yes and No when a question arrives.</li>
       <li><strong>The build writes the manifest&#39;s images</strong>: each key&#39;s default face is the
       plugin&#39;s own offline face, rendered at build time, so the two cannot
@@ -4280,7 +4301,7 @@
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;state&#39;, state, at }</code></td>
-      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>; <em>2</em>: <code>interruption: { title, backToKey }</code> while one runs, <code>backToKey</code> null when it holds no task, and <code>ownerName</code> for a task someone else has now) or null, the bar&#39;s screen <code>icon</code> (<code>pixels</code>, <code>label</code>, and <code>motion</code> while it moves: <code>{ fps, poses, sequence }</code>, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the <code>prompt</code> waiting for an answer. <em>2</em>: <code>toPlace</code>, the interruptions waiting to be placed; <code>previousTask</code> (<code>{ taskId, taskKey, taskTitle }</code>, null during an interruption); <code>recent</code>, up to 3 recent tasks newest first, never the one open; <code>standupRunning: { returnsToKey }</code> or null; <code>nothingTimingInHours</code>. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
+      <td align="left">On connection, then on each change: the session (<code>taskId</code>, <code>taskKey</code>, <code>taskTitle</code>, <code>isAdHoc</code>, <code>status: &#39;tracking&#39; | &#39;paused&#39;</code>, <code>elapsedSeconds</code>, <code>finishNeedsConfirmation</code>; <em>2</em>: <code>interruption: { name, backToKey }</code> while one runs, <code>name</code> null until the user names it, <code>backToKey</code> null when it holds no task, and <code>ownerName</code> for a task someone else has now) or null, the bar&#39;s screen <code>icon</code> (<code>pixels</code>, <code>label</code>, and <code>motion</code> while it moves: <code>{ fps, poses, sequence }</code>, its distinct 16x16 poses and the order they play in, at 10 fps at most -- absent until the app has read the frames, and from an app older than the field), and the <code>prompt</code> waiting for an answer. <em>2</em>: <code>toPlace</code>, the interruptions waiting to be placed; <code>previousTask</code> (<code>{ taskId, taskKey, taskTitle }</code>, null during an interruption); <code>recent</code>, up to 3 recent tasks newest first, never the one open; <code>standupRunning: { returnsToKey }</code> or null; <code>nothingTimingInHours</code>. Never once a second: <code>at</code> is when <code>elapsedSeconds</code> was read, and the plugin counts on from it (<code>deckElapsedSeconds</code>). The time is pushed again only when it drifts more than 2 s from that count -- the clock set back, a forgotten session paused at the last activity</td>
       </tr>
       <tr>
       <td align="left"><code>{ type: &#39;result&#39;, id, ok: true }</code></td>

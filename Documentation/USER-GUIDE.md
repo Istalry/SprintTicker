@@ -1222,36 +1222,44 @@ source with `pnpm deck:pack` and double-click the `.streamDeckPlugin` file
 that lands in `packages/streamdeck-plugin/dist/`. It has been tried on Stream
 Deck Mobile, not yet on a physical deck.
 
-Its five actions are listed under **SprintTicker** in the Stream Deck app --
-one key to spare on a Stream Deck Mini. Drag each onto any key, as many times
-as you like:
+Its actions are listed under **SprintTicker** in the Stream Deck app.
+Session, Interrupt and Answer A, B and C fill five of a Stream Deck Mini's
+six keys; Previous task and Recent 1-3 are there if you want them. Drag each
+onto any key, as many times as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
-| **Interrupt** | INTERRUPT | starts a timer at once, whatever runs -- see [Interrupt](#-interrupt-a-timer-at-once) |
-| **Answer A** | DONE -- or the yes to a question waiting: JOIN, WRAP UP, RESUME | ends the session and marks the task done; or says yes |
-| **Answer B** | NOT DONE -- or the no: SKIP, NOT NOW, LEAVE IT | ends the session and logs its time, the task left open; or says no |
-| **Answer C** | DISCARD, always | throws the session away, nothing logged |
+| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (**NOT YOURS**). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running or an interruption running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
+| **Interrupt** | INTERRUPT -- ANOTHER during an interruption -- and "3 to place" while interruptions wait for you in the app | starts a timer at once, whatever runs -- see [Interrupt](#-interrupt-a-timer-at-once) |
+| **Previous task** | PREV and the task's key | goes back to the task you timed before this one. Blank during an interruption: A goes back |
+| **Answer A** | says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY | does that. DONE takes two presses |
+| **Answer B** | stops or waits, keeping the time, in blue-grey: STOP, SKIP, NOT NOW | does that; STOP logs the time and leaves the task open |
+| **Answer C** | throws away, in red: DISCARD, or DISCARD ⚡ during an interruption -- the interruption, not your task | two presses; nothing logged. Blank while a question waits or nothing runs |
+| **Recent 1, 2, 3** | one of your recent tasks and START -- never the one running | starts it |
 
-- **A and B follow the question.** When SprintTicker asks something -- the
-  stand-up, the wrap-up, back to your task? -- A and B turn into its yes and
-  no, filled green and red, and go back to DONE and NOT DONE once it is
-  answered. A press in the moment they change only flashes the key, so a
-  question arriving as you press DONE is not answered by mistake. C never
-  changes: the one key that throws work away stays where it is.
+- **Each position keeps one meaning.** A always says yes, B always stops or
+  waits, C always throws away; a key with nothing of its kind to do is
+  blank. When a question comes -- the stand-up, the wrap-up, back to your
+  task? -- A and B turn into its answers. A press in the moment a key
+  changes only flashes it, so a question arriving as you press DONE is not
+  answered by mistake. After an interruption, A, B and C are DONE, STOP and
+  DISCARD again at once; what is left to place is counted on Interrupt and
+  placed in the app.
+- **DONE always takes two presses**, because it moves the ticket in Jira or
+  OpenProject: a habit learned on BACK, the same key, never marks a ticket
+  done.
 - **Laid out your deck before 0.5.0?** The keys you placed -- Not done,
   Done, Discard, Yes, No -- keep working; they are only gone from the list.
+  Not done now reads STOP, and Done takes two presses.
 
 - **A key's colour says what it does.** A coloured glyph can be pressed; a
   grey key has nothing to do; a key filled with colour is waiting on you --
   a question, or a second press.
-- **Discard asks first, on the same key.** It fills red, **DISCARD?**; press
-  it again within four seconds to go ahead. Done does the same, filled amber,
-  **NOT YOURS**, when the task is no longer yours. Waiting, or another task
-  starting, takes the question back.
+- **Done and Discard ask on the same key.** Done fills green, **DONE?**,
+  Discard red, **DISCARD?**; press it again within four seconds to go
+  ahead. Waiting, or another task starting, takes the question back.
 - **Keys move a little when something happens.** Done's check draws itself,
-  Discard's bin lifts its lid, Not done's square presses in and Interrupt's
+  Discard's bin lifts its lid, Stop's square presses in and Interrupt's
   bolt strikes when you press them; the yes and the no draw their mark when
   a question arrives. Half a second, then they rest.
 - **Yes and no are two keys**, and neither changes meaning with how long you
@@ -1262,7 +1270,8 @@ as you like:
 - **offline under every key** means the plugin cannot reach SprintTicker:
   start it, and the keys come back by themselves within ten seconds. **update
   app** means SprintTicker and the plugin are of different versions -- update
-  whichever is older.
+  whichever is older. A newer SprintTicker keeps an older plugin working, so
+  updating the app first is safe.
 
 ---
 

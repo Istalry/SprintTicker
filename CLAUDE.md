@@ -296,20 +296,24 @@ CI. Six things about it cost time to find:
   around the icon**, an unlit LED on the bar and a dark square on a key, so
   `framePixels` reads pure black as nothing.
 - **An answer never depends on how long a key is held** -- the user's
-  rule, 2026-10-22. A question (DISCARD?, NOT YOURS?) is asked on the same
+  rule, 2026-10-22. A question (DONE?, DISCARD?) is asked on the same
   key and answered by pressing it again within `CONFIRM_WINDOW_MS`; yes and
   no are separate keys. The one long press is Session's, which opens the
   picker (`hasLongPress`), also the user's choice; that key acts when it
-  comes up, every other as it goes down. And the app refuses Done and Discard without
-  `confirmed` when they must ask, so the plugin cannot skip the second press
-  -- when the app asks where the state had not said it would, the key arms
-  from that refusal (`needs-confirmation`).
+  comes up, every other as it goes down. **DONE always takes two presses**
+  (S29, P13): it changes the ticket, and A is also BACK, so a habit learned
+  on one must never do the other. The app refuses Done and Discard without
+  `confirmed`, so the plugin cannot skip the second press -- in protocol 1
+  only where the task left the list, as plugin 0.5 expects -- and a key the
+  app asks for anyway arms from that refusal (`needs-confirmation`).
 - **An answer key is the key it stands in for, and an action is hidden,
   never removed.** The layout is the user's (2026-11-09): Session,
-  Interrupt, and Answer A/B/C showing whichever answers apply.
-  `resolveKind` maps A to Yes or Done, B to No or Not done, C to Discard
-  always -- the end that keeps nothing never moves -- and the face and the
-  press are then that key's own, so no rule is copied. A press within
+  Interrupt, and Answer A/B/C showing whichever answers apply, with one
+  meaning per position since 0.6.0 (S29): A says yes (Done, Back, the
+  prompt's yes, End stand-up), B stops or waits (Stop, the prompt's no), C
+  throws away (Discard), and a key with nothing of its kind is blank --
+  never another meaning. `answerKind` is that table, and the face and the
+  press are then the stood-for key's own, so no rule is copied. A press within
   `ANSWER_SETTLE_MS` of a change only flashes the key, or the stand-up
   arriving under a finger on DONE joins it. The five fixed actions they replace stay in
   the manifest with `VisibleInActionsList: false`: deleting one turns

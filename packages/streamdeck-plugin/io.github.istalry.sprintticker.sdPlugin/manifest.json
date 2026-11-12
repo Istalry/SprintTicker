@@ -2,9 +2,9 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "io.github.istalry.sprintticker",
   "Name": "SprintTicker",
-  "Version": "0.5.0.0",
+  "Version": "0.6.0.0",
   "Author": "Istalry",
-  "Description": "Keys that drive SprintTicker's running session: pause, pick a task, start an interruption, end it, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
+  "Description": "Keys that drive SprintTicker's running session: pause, pick a task, go back to the previous one, start an interruption and go back from it, end the session, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
   "URL": "https://github.com/Istalry/SprintTicker",
   "Icon": "imgs/plugin",
   "Category": "SprintTicker",
@@ -27,7 +27,7 @@
     {
       "UUID": "io.github.istalry.sprintticker.session",
       "Name": "Session",
-      "Tooltip": "The running task and its time. A press pauses or resumes it, or opens the task picker when nothing runs; held, it opens the task picker.",
+      "Tooltip": "The running task and its time. A press pauses or resumes it, or opens the task picker when nothing runs or an interruption does; held, it opens the task picker. Amber when nothing is timing in your working hours.",
       "Icon": "imgs/actions/session",
       "Controllers": [
         "Keypad"
@@ -45,7 +45,7 @@
     {
       "UUID": "io.github.istalry.sprintticker.interrupt",
       "Name": "Interrupt",
-      "Tooltip": "Starts a timer at once, whatever runs: the task it stops is asked about when the interruption ends.",
+      "Tooltip": "Starts a timer at once, whatever runs: the task it stops waits, paused. During an interruption it is Another. Counts the interruptions waiting to be placed.",
       "Icon": "imgs/actions/interrupt",
       "Controllers": [
         "Keypad"
@@ -61,9 +61,27 @@
       ]
     },
     {
+      "UUID": "io.github.istalry.sprintticker.previous",
+      "Name": "Previous task",
+      "Tooltip": "Goes back to the task you timed before this one, in one press. Blank during an interruption, where Answer A goes back.",
+      "Icon": "imgs/actions/previous",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/previous",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
       "UUID": "io.github.istalry.sprintticker.answer-a",
       "Name": "Answer A",
-      "Tooltip": "Yes to what SprintTicker is asking -- join the stand-up, wrap up, resume a task. With nothing asked: Done, which ends the session and marks the task done.",
+      "Tooltip": "Says yes: Done (two presses), Back to the task during an interruption, Join the stand-up, Resume, End stand-up. Blank when there is nothing to say yes to.",
       "Icon": "imgs/actions/answer-a",
       "Controllers": [
         "Keypad"
@@ -81,7 +99,7 @@
     {
       "UUID": "io.github.istalry.sprintticker.answer-b",
       "Name": "Answer B",
-      "Tooltip": "No to what SprintTicker is asking. With nothing asked: Not done, which ends the session and logs its time, the task left open.",
+      "Tooltip": "Stops or waits, keeping the time: Stop, which logs the session and leaves the task open; Skip; Not now.",
       "Icon": "imgs/actions/answer-b",
       "Controllers": [
         "Keypad"
@@ -99,7 +117,7 @@
     {
       "UUID": "io.github.istalry.sprintticker.answer-c",
       "Name": "Answer C",
-      "Tooltip": "Discard: throws the session away, nothing logged. Always asks first, on the same key, and never changes meaning.",
+      "Tooltip": "Throws away: Discard, or Discard ⚡ during an interruption, always two presses. Blank when there is nothing to throw away.",
       "Icon": "imgs/actions/answer-c",
       "Controllers": [
         "Keypad"
@@ -115,9 +133,63 @@
       ]
     },
     {
+      "UUID": "io.github.istalry.sprintticker.recent-1",
+      "Name": "Recent 1",
+      "Tooltip": "Starts your most recent task, as the picker lists them; never the one running. Blank until you have one.",
+      "Icon": "imgs/actions/recent-1",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/recent-1",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.istalry.sprintticker.recent-2",
+      "Name": "Recent 2",
+      "Tooltip": "Starts your second most recent task, as the picker lists them; never the one running. Blank until you have one.",
+      "Icon": "imgs/actions/recent-2",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/recent-2",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.istalry.sprintticker.recent-3",
+      "Name": "Recent 3",
+      "Tooltip": "Starts your third most recent task, as the picker lists them; never the one running. Blank until you have one.",
+      "Icon": "imgs/actions/recent-3",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "SupportedInKeyLogicActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "imgs/keys/recent-3",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
       "UUID": "io.github.istalry.sprintticker.not-done",
       "Name": "Not done",
-      "Tooltip": "Ends the session and logs its time; the task stays open.",
+      "Tooltip": "Stop: ends the session and logs its time; the task stays open.",
       "Icon": "imgs/actions/not-done",
       "Controllers": [
         "Keypad"
@@ -136,7 +208,7 @@
     {
       "UUID": "io.github.istalry.sprintticker.done",
       "Name": "Done",
-      "Tooltip": "Ends the session and marks the task done. Asks first, on the same key, when the task is no longer yours.",
+      "Tooltip": "Ends the session and marks the task done. Always two presses, on the same key.",
       "Icon": "imgs/actions/done",
       "Controllers": [
         "Keypad"

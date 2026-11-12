@@ -390,7 +390,7 @@ export class DeckActionService {
       elapsedSeconds: session.elapsedSeconds,
       finishNeedsConfirmation: finishNeedsConfirmation(session),
       ...(running
-        ? { interruption: { title: running.title, backToKey: running.interruptedSessionId ? running.interruptedTaskKey ?? '' : null } }
+        ? { interruption: { name: running.name, backToKey: running.interruptedSessionId ? running.interruptedTaskKey ?? '' : null } }
         : {}),
       ...(session.taskOwnerName ? { ownerName: session.taskOwnerName } : {})
     };

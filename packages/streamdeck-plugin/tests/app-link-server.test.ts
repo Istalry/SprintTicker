@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeckBackend, DeckServer } from '../../desktop-app/src/main/api/deck-server';
 import { WebhookServer } from '../../desktop-app/src/main/api/webhook-server';
 import { DECK_PATH, DeckRequest, DeckStateMessage } from '../../desktop-app/src/shared/deck-protocol';
-import { AppLink } from '../src/app-link';
+import { AppLink, PLUGIN_PROTOCOL } from '../src/app-link';
 import { DeckController, KeyHandle } from '../src/controller';
 import { session, stateMessage } from './support/states';
 
@@ -53,7 +53,7 @@ describe('AppLink against the app', () => {
     await http.start();
     deck = new DeckServer(backend);
     http.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));
-    link = new AppLink({ url: `ws://127.0.0.1:${http.getStatus().port}${DECK_PATH}` });
+    link = new AppLink({ url: `ws://127.0.0.1:${http.getStatus().port}${DECK_PATH}?protocol=${PLUGIN_PROTOCOL}` });
   });
 
   afterEach(async () => {

@@ -4,6 +4,15 @@
 
 ### Added
 
+- **Stream Deck plugin 0.6.0: one meaning per key.** A says yes -- DONE,
+  BACK to your task during an interruption, JOIN, RESUME, END STAND-UP --
+  in green; B stops or waits -- STOP, SKIP, NOT NOW -- in blue-grey; C
+  throws away -- DISCARD, or DISCARD ⚡ for an interruption -- in red, and
+  is blank when there is nothing to throw. DONE always takes two presses.
+  Interrupt reads ANOTHER during an interruption and counts what waits to
+  be placed; Session turns amber for NOT TIMING in your working hours and
+  NOT YOURS for a task given to someone else. New keys to add: **Previous
+  task** and **Recent 1-3**. A deck laid out with 0.5 keeps its keys.
 - **The app speaks the Stream Deck's protocol 2** -- an interruption, what
   waits to be placed, the previous and recent tasks, the stand-up running
   -- for the plugin 0.6.0 to come. Plugin 0.5 keeps working as it does: the

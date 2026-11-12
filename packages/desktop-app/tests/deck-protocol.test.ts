@@ -104,7 +104,7 @@ describe('Deck protocol', () => {
       session: {
         taskId: 'adhoc_1', taskKey: 'ADHOC-1', taskTitle: 'Interruption 09:30', isAdHoc: true, status: 'tracking',
         elapsedSeconds: 60, finishNeedsConfirmation: false,
-        interruption: { title: 'Interruption 09:30', backToKey: 'MG-12' }, ownerName: 'Rin'
+        interruption: { name: 'Call with Marc', backToKey: 'MG-12' }, ownerName: 'Rin'
       },
       icon: null,
       prompt: null,

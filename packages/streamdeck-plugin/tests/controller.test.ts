@@ -212,7 +212,7 @@ describe('DeckController', () => {
     clock.advance(CONFIRM_WINDOW_MS - 1);
     await tap('a');
     expect(link.requests).toEqual([{ action: 'discard', confirmed: true }]);
-    expect(textsOf(key.last)).toEqual(['DISCARD']);
+    expect(textsOf(key.last)).toEqual(['DISCARD', 'press twice']);
   });
 
   it('Press_DiscardAfterTheWindow_AsksAgain', async () => {
@@ -221,7 +221,7 @@ describe('DeckController', () => {
     controller.appear('discard', key);
     await tap('a');
     clock.advance(CONFIRM_WINDOW_MS);
-    expect(textsOf(key.last)).toEqual(['DISCARD']);
+    expect(textsOf(key.last)).toEqual(['DISCARD', 'press twice']);
     await tap('a');
     expect(link.requests).toEqual([]);
     expect(textsOf(key.last)).toEqual(['DISCARD?', 'press again']);
@@ -233,7 +233,7 @@ describe('DeckController', () => {
     controller.appear('discard', key);
     await tap('a');
     link.push(tracking({ taskId: 'T-2', taskKey: 'SPR-2' }));
-    expect(textsOf(key.last)).toEqual(['DISCARD']);
+    expect(textsOf(key.last)).toEqual(['DISCARD', 'press twice']);
     // The next press asks about the new task rather than throwing it away.
     await tap('a');
     expect(link.requests).toEqual([]);
@@ -249,30 +249,51 @@ describe('DeckController', () => {
     expect(link.requests).toEqual([{ action: 'discard', confirmed: true }]);
   });
 
-  it('Press_AppAsksForConfirmation_TheKeyAsks', async () => {
-    // The state said the task was the user's; the app knew better.
+  it('Press_DoneOnce_AsksAndSendsNothing', async () => {
+    // Two presses always (S29), even for the user's own task.
     link.push(tracking());
-    link.answer = () => ({ type: 'result', id: 'k1', ok: false, error: 'needs-confirmation', message: 'Not yours.' });
     const key = new FakeKey('a');
     controller.appear('done', key);
     await tap('a');
-    expect(link.requests).toEqual([{ action: 'finish' }]);
-    expect(textsOf(key.last)).toEqual(['NOT YOURS', 'press again']);
-    expect(key.alerts).toBe(0);
+    expect(link.requests).toEqual([]);
+    expect(textsOf(key.last)).toEqual(['DONE?', 'press again']);
 
-    link.answer = () => ({ type: 'result', id: 'k2', ok: true });
     await tap('a');
-    expect(link.requests.at(-1)).toEqual({ action: 'finish', confirmed: true });
+    expect(link.requests).toEqual([{ action: 'finish', confirmed: true }]);
+  });
+
+  it('Press_AppAsksForConfirmation_TheKeyAsks', async () => {
+    // A press the plugin thought final, which the app answers with a question.
+    link.push(tracking());
+    link.answer = () => ({ type: 'result', id: 'k1', ok: false, error: 'needs-confirmation', message: 'Confirm.' });
+    const key = new FakeKey('a');
+    controller.appear('discard', key);
+    await tap('a');
+    await tap('a');
+    expect(link.requests).toEqual([{ action: 'discard', confirmed: true }]);
+    expect(textsOf(key.last)).toEqual(['DISCARD?', 'press again']);
+    expect(key.alerts).toBe(0);
   });
 
   describe('the answer keys', () => {
     const asked = () => stateMessage({ session: session(), prompt: 'standup' });
 
-    it('Press_AnswerAWithNothingAsked_FinishesTheTask', async () => {
+    it('Press_AnswerAWithNothingAsked_FinishesTheTaskOnTheSecondPress', async () => {
       link.push(tracking());
       controller.appear('answer-a', new FakeKey('a'));
       await tap('a');
-      expect(link.requests).toEqual([{ action: 'finish' }]);
+      expect(link.requests).toEqual([]);
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'finish', confirmed: true }]);
+    });
+
+    it('Press_AnswerADuringAnInterruption_GoesBackInOnePress', async () => {
+      link.push(stateMessage({ session: session({ interruption: { name: null, backToKey: 'MG-12' } }) }));
+      const key = new FakeKey('a');
+      controller.appear('answer-a', key);
+      expect(textsOf(key.last)).toEqual(['BACK', 'MG-12']);
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'back' }]);
     });
 
     it('Press_AnswerAJustAsAQuestionArrives_OnlyFlashes', async () => {
@@ -305,32 +326,65 @@ describe('DeckController', () => {
       expect(link.requests).toEqual([{ action: 'prompt-no' }]);
     });
 
-    it('Press_AnswerCJustAsAQuestionArrives_StillAsksToDiscard', async () => {
-      // C means DISCARD either way, so the question changes nothing on it.
+    it('Press_AnswerCWhileAQuestionIsAsked_BlankAndOnlyFlashes', async () => {
+      // A question has nothing to throw away: C goes blank (S29).
       link.push(tracking());
       const key = new FakeKey('c');
       controller.appear('answer-c', key);
       link.push(asked());
+      clock.advance(ANSWER_SETTLE_MS);
       await tap('c');
-      expect(key.alerts).toBe(0);
-      expect(textsOf(key.last)).toEqual(['DISCARD?', 'press again']);
+      expect(key.alerts).toBe(1);
+      expect(link.requests).toEqual([]);
+      expect(textsOf(key.last)).toEqual(['']);
     });
 
     it('Arm_TheKeyChangesMeaning_TheQuestionIsWithdrawn', async () => {
-      // NOT YOURS armed on A, then the stand-up asks and leaves: A is DONE
-      // again, and one press must not finish a task that is not the user's.
-      link.push(tracking({ finishNeedsConfirmation: true }));
+      // DONE? armed on A, then the stand-up asks and leaves: A is DONE
+      // again, and one press must not finish the task.
+      link.push(tracking());
       const key = new FakeKey('a');
       controller.appear('answer-a', key);
       await tap('a');
-      expect(textsOf(key.last)).toEqual(['NOT YOURS', 'press again']);
-      link.push(stateMessage({ session: session({ finishNeedsConfirmation: true }), prompt: 'standup' }));
-      link.push(tracking({ finishNeedsConfirmation: true }));
+      expect(textsOf(key.last)).toEqual(['DONE?', 'press again']);
+      link.push(asked());
+      link.push(tracking());
       clock.advance(ANSWER_SETTLE_MS);
       await tap('a');
       expect(link.requests).toEqual([]);
-      expect(textsOf(key.last)).toEqual(['NOT YOURS', 'press again']);
+      expect(textsOf(key.last)).toEqual(['DONE?', 'press again']);
     });
+  });
+
+  it('Press_InterruptDuringAnInterruption_SendsAnother', async () => {
+    link.push(stateMessage({ session: session({ interruption: { name: null, backToKey: null } }), toPlace: 3 }));
+    const key = new FakeKey('i');
+    controller.appear('interrupt', key);
+    expect(textsOf(key.last)).toEqual(['ANOTHER', '3 to place']);
+    await tap('i');
+    expect(link.requests).toEqual([{ action: 'another' }]);
+  });
+
+  it('Press_Recent2_StartsTheSecondRecentTask', async () => {
+    const recent = [
+      { taskId: 'T-5', taskKey: 'MG-15', taskTitle: 'One' },
+      { taskId: 'T-8', taskKey: 'SR-8', taskTitle: 'Two' }
+    ];
+    link.push(stateMessage({ recent }));
+    const key = new FakeKey('r');
+    controller.appear('recent-2', key);
+    expect(textsOf(key.last)).toEqual(['SR-8', 'START']);
+    await tap('r');
+    expect(link.requests).toEqual([{ action: 'start-recent', index: 2 }]);
+  });
+
+  it('Press_Previous_StartsIt', async () => {
+    link.push(stateMessage({ session: session(), previousTask: { taskId: 'T-3', taskKey: 'PF-31', taskTitle: 'Before' } }));
+    const key = new FakeKey('p');
+    controller.appear('previous', key);
+    expect(textsOf(key.last)).toEqual(['PREV', 'PF-31']);
+    await tap('p');
+    expect(link.requests).toEqual([{ action: 'previous' }]);
   });
 
   it('Press_Interrupt_SendsItAndPlays', async () => {
@@ -449,14 +503,15 @@ describe('DeckController', () => {
       const key = new FakeKey('a');
       controller.appear('done', key);
       await tap('a');
-      expect(link.requests).toEqual([{ action: 'finish' }]);
+      await tap('a');
+      expect(link.requests).toEqual([{ action: 'finish', confirmed: true }]);
       const first = key.images.length;
 
       // The session ends while the check draws: the frames are not cut.
       link.push(stateMessage());
       clock.advance(ONE_SHOT_FRAME_MS * ONE_SHOT_STEPS);
       expect(key.images.length - first).toBe(ONE_SHOT_STEPS);
-      expect(textsOf(key.last)).toEqual(['DONE']);
+      expect(textsOf(key.last)).toEqual(['DONE', 'press twice']);
       expect(key.last).toContain('stroke="#22C55E"');
 
       clock.advance(ONE_SHOT_FRAME_MS);

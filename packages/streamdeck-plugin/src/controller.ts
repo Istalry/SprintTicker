@@ -1,11 +1,11 @@
 import type { DeckRequest } from '../../desktop-app/src/shared/deck-protocol';
 import type { DeckAnswer } from './app-link';
 import { KeyContext, LinkStatus, faceFor, hasLongPress, planPress, playsOnPress, playsOnQuestion, resolveKind, tickPeriodMs, ticksWithTheClock } from './faces';
-import { FixedKind, KeyKind, isAnswerKind } from './key-kinds';
+import { KeyKind, Meaning, isAnswerKind } from './key-kinds';
 import { renderFace } from './svg';
 
 /**
- * How long a question stays asked -- NOT YOURS?, DISCARD? -- before the key
+ * How long a question stays asked -- DONE?, DISCARD? -- before the key
  * goes back to what it was. Long enough to read and press again, short
  * enough that a press much later is not taken as an answer.
  */
@@ -76,7 +76,7 @@ interface Key {
   /** Set while a one-shot plays: the state's redraws wait for its end. */
   playing: unknown;
   /** What the key stands for now -- itself, unless it is an answer key -- and since when. */
-  meaning: FixedKind;
+  meaning: Meaning;
   meaningSince: number;
 }
 
@@ -192,10 +192,14 @@ export class DeckController {
     this.clearArm(key);
     if (playsOnPress(plan.action)) this.play(key);
     else this.draw(id);
-    const answer = await this._link.request({ action: plan.action, ...(plan.confirmed ? { confirmed: true } : {}) });
+    const answer = await this._link.request({
+      action: plan.action,
+      ...(plan.confirmed ? { confirmed: true } : {}),
+      ...(plan.index !== undefined ? { index: plan.index } : {})
+    });
     if (answer?.type === 'result' && !answer.ok) {
-      // The app asks where the plugin did not know to: the task left the
-      // list since the last state. Asked here too, on the same key.
+      // The app asks where the plugin did not: an app answering a press
+      // this plugin thought final. Asked here too, on the same key.
       if (answer.error === 'needs-confirmation' && this._keys.has(id)) {
         this.arm(key);
         return;

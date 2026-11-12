@@ -92,7 +92,12 @@ export const DECK_WORDS = {
   SKIP: 'SKIP',
   END_STAND_UP: 'END STAND-UP',
   NOT_YOURS: 'NOT YOURS',
-  DONE_ANYWAY: 'DONE ANYWAY'
+  DONE_ANYWAY: 'DONE ANYWAY',
+  START: 'START',
+  PREVIOUS: 'PREV',
+  START_LUNCH: 'START LUNCH',
+  WRAP_UP: 'WRAP UP',
+  CONFIRM: 'CONFIRM'
 } as const;
 
 /**
@@ -121,8 +126,8 @@ export interface DeckTask {
 
 /** The interruption running, as the keys show it (protocol 2). */
 export interface DeckInterruption {
-  /** Its name, or the one the app made up: `Interruption 14:32`. */
-  title: string;
+  /** The name the user gave it, or null while it has the one the app made up. */
+  name: string | null;
   /** The task Back resumes, or null when it holds none -- then A has no Back. */
   backToKey: string | null;
 }

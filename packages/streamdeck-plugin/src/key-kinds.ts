@@ -2,7 +2,7 @@
  * The plugin's actions: what a user can drag onto a key. One list, read by
  * the actions, the faces and the asset generator; `manifest.json` repeats
  * the UUIDs because Stream Deck reads them from there, and a test holds the
- * two equal.
+ * two equal -- in this order, which is the action list's.
  */
 
 /** Reverse-DNS, as the manifest requires; the app's own id, too. */
@@ -11,29 +11,35 @@ export const PLUGIN_UUID = 'io.github.istalry.sprintticker';
 export const KEY_KINDS = [
   /**
    * The running session: a press pauses or resumes it, or opens the task
-   * picker when nothing runs; held, it opens the picker whatever runs.
+   * picker when nothing runs or an interruption does; held, it opens the
+   * picker whatever runs.
    */
   'session',
-  /** Starts an interruption, whatever runs: a timer at once. */
+  /** Starts an interruption, whatever runs; during one, ANOTHER. */
   'interrupt',
+  /** Starts the task timed before this one; blank during an interruption (P13). */
+  'previous',
   /**
-   * The answer keys, the layout the user chose (2026-11-09): three keys
-   * showing whichever answers apply, so Session, Interrupt and these fill a
-   * Mini's six keys with one to spare. A says yes or DONE, B no or NOT
-   * DONE; C is DISCARD whatever is asked, so the one key that throws work
-   * away never changes under a finger. See `answerKind`.
+   * The answer keys, the layout the user chose (2026-11-09), with one
+   * meaning per position since 0.6.0 (S29): A says yes -- DONE, BACK,
+   * JOIN, RESUME, END STAND-UP -- B stops or waits, C throws away, and a
+   * key with nothing to do is blank. See `answerKind`.
    */
   'answer-a',
   'answer-b',
   'answer-c',
+  /** Optional keys that start the first, second or third recent task (P13). */
+  'recent-1',
+  'recent-2',
+  'recent-3',
   /*
    * The five fixed ends the answer keys replace. Hidden from Stream Deck's list
    * (`VisibleInActionsList`) but still declared and still working, so a
    * deck laid out with them keeps its keys.
    */
-  /** Ends the session, task left open. */
+  /** Ends the session, task left open: STOP. */
   'not-done',
-  /** Ends it and marks the task done; asks first when it is no longer the user's. */
+  /** Ends it and marks the task done; always asks first. */
   'done',
   /** Keeps nothing; always asks first. */
   'discard',
@@ -49,14 +55,34 @@ export type KeyKind = (typeof KEY_KINDS)[number];
 export const ANSWER_KINDS = ['answer-a', 'answer-b', 'answer-c'] as const;
 export type AnswerKind = (typeof ANSWER_KINDS)[number];
 
-/** What an answer key can mean: one of the fixed keys it stands in for. */
+/** The Recent keys, by position: `recent-1` starts the newest. */
+export const RECENT_KINDS = ['recent-1', 'recent-2', 'recent-3'] as const;
+export type RecentKind = (typeof RECENT_KINDS)[number];
+
+/** A key that is itself whatever the state: every kind but the answer keys. */
 export type FixedKind = Exclude<KeyKind, AnswerKind>;
+
+/**
+ * What a key means now. An answer key stands in for one of the fixed ends
+ * or answers, or for one of two meanings no fixed key has -- BACK during an
+ * interruption, END STAND-UP while it runs -- or for nothing: `blank`.
+ */
+export type Meaning = FixedKind | 'back' | 'end-standup' | 'blank';
 
 /** The kinds the answer keys replace, kept working and hidden from the list. */
 export const HIDDEN_KINDS: readonly KeyKind[] = ['not-done', 'done', 'discard', 'yes', 'no'];
 
 export function isAnswerKind(kind: KeyKind): kind is AnswerKind {
   return (ANSWER_KINDS as readonly string[]).includes(kind);
+}
+
+export function isRecentKind(kind: Meaning): kind is RecentKind {
+  return (RECENT_KINDS as readonly string[]).includes(kind);
+}
+
+/** Which recent task a Recent key starts, from 1. */
+export function recentIndex(kind: RecentKind): number {
+  return RECENT_KINDS.indexOf(kind) + 1;
 }
 
 export function actionUuid(kind: KeyKind): string {

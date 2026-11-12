@@ -39,11 +39,15 @@ const ASK_FILLS: Record<string, string> = {
   '#22C55E': '#15803D',
   '#EF4444': '#B91C1C',
   '#F59E0B': '#B45309',
-  '#3B82F6': '#1D4ED8'
+  // B's blue-grey: a No, a Not now.
+  '#94A3B8': '#475569'
 };
 
-/** Each title holds about this many capitals at its smallest size. */
-const LINE_CHARS = 10;
+/**
+ * Each title holds about this many capitals at its smallest size: END
+ * STAND-UP and START LUNCH (S29) are twelve and eleven.
+ */
+const LINE_CHARS = 12;
 
 /** A glyph's stroke, in its 24-unit grid; heavier on a filled key. */
 const STROKE = 2.4;
@@ -67,7 +71,9 @@ export const GLYPH_PATHS: Record<Glyph, string> = {
   yes: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M7.5 12.5l3 3 6-6.5',
   no: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M8.5 8.5l7 7M15.5 8.5l-7 7',
   timer: 'M12 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15M12 9.5v4l2.5 1.5M9.5 2.5h5M18 6l1.5-1.5',
-  zap: 'M13.5 2.5L5.5 13.5h6l-1 8 8-11h-6z'
+  zap: 'M13.5 2.5L5.5 13.5h6l-1 8 8-11h-6z',
+  // A return arrow: Back to the task, Previous, the end of the stand-up.
+  back: 'M9 14.5L4 9.5l5-5M4 9.5h10a5.5 5.5 0 0 1 0 11h-3'
 };
 
 type Point = readonly [number, number];
@@ -192,7 +198,8 @@ function titleSize(title: string): number {
   if (title.length <= 4) return 26;
   if (title.length <= 6) return 24;
   if (title.length <= 8) return 22;
-  return 20;
+  if (title.length <= 10) return 20;
+  return 17;
 }
 
 function text(content: string, y: number, size: number, colour: string, weight = 700, family = SANS): string {

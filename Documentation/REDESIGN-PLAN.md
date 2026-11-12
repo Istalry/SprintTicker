@@ -1942,6 +1942,30 @@ hides; only Quit clears the bar).
 - **P13c, on the deck.** Stream Deck Mobile through every state, and the
   `.streamDeckProfile` layouts -- both need the user.
 
+**As landed: P13b, the plugin's keys (2026-11-12).**
+
+- **Plugin 0.6.0 speaks protocol 2** (`PLUGIN_PROTOCOL`, `deckUrl`).
+- **`answerKind` is S29's table**, per position: A yes / Done / Back /
+  End stand-up, B no / Stop, C Discard; `blank` where the table says "--"
+  -- under every question for C, in the stand-up for B and C, with nothing
+  running for all three, and for A in an interruption holding no task. A
+  blank key shows its glyph grey and no word; a press only flashes it.
+- **Keys:** Session (NOT TIMING amber, NOT YOURS amber, an interruption's
+  bolt and time; a press during one opens the picker, since pausing would
+  end it), Interrupt (ANOTHER, "N to place"), and the new **Previous task**
+  and **Recent 1-3** (`recent-1`..`recent-3`, `start-recent` with its
+  index), placed before the hidden five so the list reads in S29's order.
+- **The interruption carries `name`, not `title`** (the protocol is not
+  released yet): the user's name or null, so the Session key shows the
+  bolt alone until it is named, never "Interruption 09:30" cut short.
+- **Colours** as decided in P13a: green, slate `#94A3B8` (and its fill
+  `#475569`), red; `ACCENTS.blue` is gone. Titles hold 12 capitals (END
+  STAND-UP, START LUNCH, DONE ANYWAY); words from `DECK_WORDS`.
+- A new glyph, `back` (the return arrow), for Back, Previous and End
+  stand-up.
+- `pnpm deck:validate` passes. **Not tried on a deck yet**: P13c, with the
+  user -- including whether `⚡` renders in DISCARD ⚡ on Stream Deck Mobile.
+
 **As landed: P13a, protocol 2 and the app side (2026-11-12).**
 
 - **The plugin names its protocol** in the socket's URL (`?protocol=2`,
@@ -1950,7 +1974,7 @@ hides; only Quit clears the bar).
   through `deckStateForProtocol` (no new field, `back` read as `resume`, no
   `lunch`), its `finish` under 1's rule. Each socket keeps its own.
 - **The new fields sit on `DeckState`, not `DeckSession`**, except
-  `interruption` (`{ title, backToKey }`) and `ownerName`: to place,
+  `interruption` (`{ name, backToKey }`, P13b: the user's name, null while unnamed) and `ownerName`: to place,
   previous, recent, the stand-up running and nothing timing in working
   hours are true with no session too. `recent` (up to 3, never the task
   open) was added for the Recent keys to show their task.
@@ -2226,7 +2250,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
-| P13 | in progress: P13a (protocol 2 and the app side) done; P13b (the plugin's keys) next, P13c (on the deck, with the user) after -- see §18 "Split" | P13a (2026-11-12) |
+| P13 | in progress: P13a (protocol 2 and the app side), P13b (the plugin's keys, 0.6.0) done; P13c (on the deck, with the user) next -- see §18 "Split" | P13a `937cb8d`, P13b (2026-11-12) |
 | P14 | not started | |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

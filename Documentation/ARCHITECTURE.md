@@ -1276,10 +1276,13 @@ Start to finish, across every component:
 on its SDK (`@elgato/streamdeck` 3) and bundled by Vite into one ESM file that
 Stream Deck runs on its own Node 24. Elgato's app keeps the device; the plugin
 only declares actions, which the user places on any key: Session, Interrupt
-and the answer keys A, B and C -- five of a Mini's six keys. The answer keys
-stand in for whichever end applies (`resolveKind`): A is yes while a prompt
-holds the bar and Done otherwise, B no or Not done, and C Discard either way,
-so the end that keeps nothing never moves. The five fixed actions they replaced
+and the answer keys A, B and C -- five of a Mini's six keys -- and, to add,
+Previous task and Recent 1-3 (0.6.0). The answer keys have one meaning per
+position (S29, `answerKind`): A says yes -- Done, Back during an
+interruption, the prompt's yes, End stand-up -- B stops or waits -- Stop, the
+prompt's no -- and C throws away -- Discard -- and a key with nothing of its
+kind to do is blank. The face and press are then those of the key the answer
+stands in for, so no rule is copied. The five fixed actions they replaced
 (Not done, Done, Discard, Yes, No) are still declared and still work, hidden
 from Stream Deck's list (`VisibleInActionsList: false`), so a deck laid out
 with them keeps its keys.
@@ -1333,7 +1336,7 @@ Stream Deck app ◄──► actions.ts (SDK) ──► DeckController ──►
   Mobile), so `DeckController.play` sends six static images 100 ms apart,
   each drawn at a `progress` the renderer turns into a part-drawn stroke or
   a moved part. The state's redraws of that key wait for the end, and a key
-  arming for a question stops it. A press on Done, Not done or Discard plays
+  arming for a question stops it. A press on Done, Stop or Discard plays
   (`playsOnPress`), and so do Yes and No when a question arrives.
 - **The build writes the manifest's images**: each key's default face is the
   plugin's own offline face, rendered at build time, so the two cannot

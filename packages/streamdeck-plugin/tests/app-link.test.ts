@@ -74,7 +74,7 @@ describe('AppLink', () => {
 
   it('Start_Default_DialsTheAppsDeckSocket', () => {
     link.start();
-    expect(urls).toEqual(['ws://127.0.0.1:39123/api/v1/deck']);
+    expect(urls).toEqual(['ws://127.0.0.1:39123/api/v1/deck?protocol=2']);
     expect(link.status).toBe('offline');
   });
 

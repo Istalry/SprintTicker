@@ -11,24 +11,32 @@ on its own Node 24.
 
 ## Actions
 
-Five actions, on a Stream Deck Mini's six keys, under **SprintTicker** in
-Stream Deck's list: drag each onto any key, as many times as you like. The
-layout is the user's (2026-11-09): Session, Interrupt, and three answer keys
-that show whichever answers apply.
+Nine actions under **SprintTicker** in Stream Deck's list: drag each onto
+any key, as many times as you like. The layout is the user's (2026-11-09):
+Session, Interrupt and three answer keys fill five of a Mini's six keys;
+Previous task and Recent 1-3 are there to add (0.6.0, S29).
 
 | Action | Shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task's key and its time, the bar's icon moving as on the bar, under a band: green while tracking, amber while paused | pauses or resumes; with nothing running, opens the task picker. Held half a second, opens the task picker whatever runs |
-| **Interrupt** | INTERRUPT | starts an interruption, whatever runs: a timer at once, the task it stops asked about when it ends |
-| **Answer A** | DONE; the yes while SprintTicker asks something | ends the session and marks the task done; or says yes |
-| **Answer B** | NOT DONE; the no while it asks | ends the session, logs its time, the task left open; or says no |
-| **Answer C** | DISCARD, whatever is asked | throws the session away -- asks first |
+| **Session** | the task's key and its time, the bar's icon moving as on the bar, under a band: green while tracking, amber while paused, during an interruption (the bolt and its time) and for a task no longer yours (NOT YOURS). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running or an interruption running, opens the task picker. Held half a second, opens the task picker whatever runs |
+| **Interrupt** | INTERRUPT, or ANOTHER during an interruption, with "3 to place" while interruptions wait | starts an interruption, whatever runs; during one, ends it and starts the next |
+| **Previous task** | PREV and the task's key; blank during an interruption | goes back to the task timed before this one |
+| **Answer A** | says yes: DONE (two presses), BACK during an interruption, JOIN, WRAP UP, RESUME, START LUNCH, END STAND-UP, DONE ANYWAY | that |
+| **Answer B** | stops or waits, keeping the time: STOP, SKIP, NOT NOW | that |
+| **Answer C** | throws away: DISCARD, or DISCARD ⚡ during an interruption (two presses); blank while a question waits or nothing runs | that |
+| **Recent 1-3** | a recent task's key and START; never the one running | starts it |
 
-- **An answer key is the key it stands in for** (`resolveKind` in
-  `faces.ts`): its face and its press are exactly Done's, Yes's and so on,
-  so it follows no rule of its own. Positive answers are always A, negative
-  always B; C never changes, so the one end that keeps nothing cannot move
-  under a finger.
+- **One meaning per position, one colour** (S29). A is green and says yes,
+  B blue-grey and stops or waits, C red and throws away; a key with nothing
+  of its kind to do is blank. `answerKind` in `faces.ts` is the table, and
+  the face and press are then those of the key the answer stands in for
+  (Done's, Yes's...), so no rule is copied. After an interruption A, B and C
+  are DONE, STOP and DISCARD again at once: what is left to place is
+  counted on Interrupt, and placed in the app.
+- **DONE always takes two presses** -- it changes the task at Jira or
+  OpenProject, and a habit learned on BACK, the same key, must never mark a
+  ticket done. The app refuses an unconfirmed finish from this plugin, so
+  the second press cannot be skipped.
 - **A press just after an answer key changed meaning only flashes it**
   (`ANSWER_SETTLE_MS`, 700 ms), and a question armed on it is withdrawn: a
   press that soon was aimed at what the key showed before.
@@ -40,9 +48,9 @@ that show whichever answers apply.
 - **The colour is the state.** A coloured glyph can be pressed, a grey key
   has nothing to do, a filled key waits on you. The look was chosen on Stream
   Deck Mobile over two others (2026-10-22).
-- **A key that asks first asks on itself.** Discard always, and Done when the
-  task is no longer yours, fill red or amber -- DISCARD? or NOT YOURS -- and
-  the same key pressed again within four seconds goes ahead. Waiting, or another task
+- **A key that asks first asks on itself.** Done and Discard fill green or
+  red -- DONE? or DISCARD? -- and the same key pressed again within four
+  seconds goes ahead. Waiting, or another task
   starting, takes the question back.
 - **Session is the one key with a long press.** Held, it opens the picker
   as soon as the half second is up, so the window appearing is the sign;
@@ -51,11 +59,13 @@ that show whichever answers apply.
   BACK.
 - **Yes and No are grey** while nothing is asked. The wrap-up asks twice, as
   on the bar: Yes, then CONFIRM.
-- **One-shots.** Done, Not done, Discard and Interrupt play a half-second
+- **One-shots.** Done, Stop, Discard and Interrupt play a half-second
   movement of their glyph when pressed, the yes and the no -- A and B too --
   when a question arrives, then rest.
 - **update app** under every key means SprintTicker speaks another version of
-  the protocol than this plugin: update whichever is older.
+  the protocol than this plugin: update whichever is older. The plugin names
+  its protocol (2) in the socket's URL; an app from before 0.6.0 does not
+  know it, while a newer app still serves plugin 0.5 in protocol 1.
 
 ## Build and install
 
