@@ -514,6 +514,22 @@ const M013_TASK_UNSORTED = `
  * before it was recorded, so NULL is the truth for them, and the reader
  * falls back to the sessions themselves.
  */
+/**
+ * Migration 16: an entry the provider refused (redesign P11c).
+ *
+ * A 4xx on a worklog's own send -- time tracking off on the issue, the issue
+ * deleted -- answers the same way however often it is asked. It used to park
+ * as FAILED, and new credentials or "retry failed" sent it again, to the
+ * same refusal. A refused row stays FAILED, so every path that treats an
+ * unsent row as unsent still does, and `refused_at_utc` keeps it out of
+ * the requeue: only moving it to another task, correcting it or keeping it
+ * off the provider ends it. Every existing row was parked for a reason this
+ * did not record, so NULL is the truth for them.
+ */
+const M016_REFUSED_ENTRIES = `
+  ALTER TABLE worklog_sync_queue ADD COLUMN refused_at_utc TEXT;
+`;
+
 const M014_STARS_AND_PREVIOUS_TASK = `
   CREATE TABLE task_stars (
       provider_id TEXT NOT NULL,
@@ -598,7 +614,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 12, name: 'task-ownership', up: db => db.exec(M012_TASK_OWNERSHIP) },
   { version: 13, name: 'task-unsorted', up: db => db.exec(M013_TASK_UNSORTED) },
   { version: 14, name: 'stars-and-previous-task', up: db => db.exec(M014_STARS_AND_PREVIOUS_TASK) },
-  { version: 15, name: 'interruptions', up: m015Interruptions }
+  { version: 15, name: 'interruptions', up: m015Interruptions },
+  { version: 16, name: 'refused-entries', up: db => db.exec(M016_REFUSED_ENTRIES) }
 ];
 
 /** Schema version a fully migrated database reports. */

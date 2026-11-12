@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StatusCards, BAR_UNPLUGGED_GRACE_MS } from '../../src/renderer/components/StatusCards';
-import { DeviceStatusDTO, SyncQueueItemDTO } from '../../src/shared/dtos';
+import { DeviceStatusDTO, SyncQueueItemDTO, WorklogDTO } from '../../src/shared/dtos';
 import { SyncHealthDTO } from '../../src/shared/sync-health';
 import { installElectronApi } from './electron-api-mock';
 
@@ -102,6 +102,51 @@ describe('Status cards', () => {
     await act(async () => { vi.advanceTimersByTime(BAR_UNPLUGGED_GRACE_MS * 2); });
 
     expect(screen.queryByRole('region', { name: 'BUSY Bar unplugged' })).toBeNull();
+  });
+
+  const refusedLog = (id: string, key: string, minutes: number): WorklogDTO => ({
+    id, sessionId: 's', taskId: `t-${key}`, taskKey: key, taskTitle: key, durationSeconds: minutes * 60,
+    startedAtUtc: '2026-11-12T09:00:00Z', comment: '', createdAtUtc: '2026-11-12T09:30:00Z',
+    syncState: 'refused', refusal: 'Logging time failed: HTTP 400 - Time tracking is off on this issue.'
+  });
+
+  it('EntryRefused_SaysWhy_AndThatItStaysHere', async () => {
+    show({ getSyncHealth: vi.fn().mockResolvedValue(health({})), getRefusedWorklogs: vi.fn().mockResolvedValue([refusedLog('w1', 'PF-44', 30)]) });
+
+    const refused = await card('Jira refused 1 entry');
+
+    expect(refused.textContent).toMatch(/PF-44, 30m: Time tracking is off on this issue\./);
+    expect(refused.textContent).toMatch(/It stays here, unsent, and the week lists it\./);
+  });
+
+  it('EntryRefused_KeepOff_KeepsItHere_AndReadsAgain', async () => {
+    const getRefusedWorklogs = vi.fn().mockResolvedValueOnce([refusedLog('w1', 'PF-44', 30)]).mockResolvedValue([]);
+    const { bridge } = show({ getSyncHealth: vi.fn().mockResolvedValue(health({})), getRefusedWorklogs });
+
+    fireEvent.click(within(await card('Jira refused 1 entry')).getByRole('button', { name: 'Keep off Jira: PF-44' }));
+
+    await vi.waitFor(() => expect(screen.queryByRole('region', { name: /refused 1 entry/ })).toBeNull());
+    expect(bridge.api.keepWorklogOff).toHaveBeenCalledWith('w1');
+  });
+
+  it('EntryRefused_Move_OpensThePicker_AndMovesIt', async () => {
+    const { bridge } = show({ getSyncHealth: vi.fn().mockResolvedValue(health({})), getRefusedWorklogs: vi.fn().mockResolvedValue([refusedLog('w1', 'PF-44', 30)]) });
+
+    fireEvent.click(within(await card('Jira refused 1 entry')).getByRole('button', { name: 'Move PF-44' }));
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    expect(bridge.api.moveWorklog).not.toHaveBeenCalled();
+  });
+
+  it('EntryRefused_IsNotCountedAsWaiting', async () => {
+    const refusedRow = { ...row(30, 'FAILED'), refused: true as const };
+    show({
+      getSyncHealth: vi.fn().mockResolvedValue(health({ state: 'unreachable' })),
+      getSyncQueue: vi.fn().mockResolvedValue(queue([row(45), refusedRow]))
+    });
+
+    const notAnswering = await card(/^Jira is not answering/);
+    await vi.waitFor(() => expect(notAnswering.textContent).toMatch(/Timing works; 1 entry wait/));
   });
 
   it('Updated_WhatsNew_OpensTheRelease_AndIsSeen', async () => {

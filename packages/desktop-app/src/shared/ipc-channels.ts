@@ -52,6 +52,9 @@ export enum IPCChannel {
   ON_SYNC_HEALTH = 'sync:on-health',
   GET_NOTICES = 'notices:get',
   DISMISS_NOTICE = 'notices:dismiss',
+  // One entry refused (P11c)
+  GET_REFUSED_WORKLOGS = 'worklogs:get-refused',
+  KEEP_WORKLOG_OFF = 'worklogs:keep-off',
   RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
   ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
   ON_SESSION_UPDATED = 'session:on-updated',

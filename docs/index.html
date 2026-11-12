@@ -715,6 +715,10 @@
       <td align="left"><strong>No account yet</strong></td>
       <td align="left"><strong>Connect one</strong> opens Settings › Account; <strong>Not now</strong> puts it away for good. Your own tasks and their time stay as they are.</td>
       </tr>
+      <tr>
+      <td align="left"><strong>Jira refused 1 entry</strong></td>
+      <td align="left"><em>PF-44, 30m: time tracking is off on this issue.</em> Jira turned that entry down, and asking again would not change its answer, so it is not sent again -- not even after a new token. It stays here, unsent, and Check my week lists it. <strong>↳ Move…</strong> puts it on another task, which sends it there; <strong>Keep off Jira</strong> keeps the time in your history only (Undo takes that back). The entry&#39;s ⋯ offers both too.</td>
+      </tr>
       </tbody></table></div>
       <p>On your first day the picker opens on your own open tasks -- in progress
       first, then to do by priority -- since you have no Recent or Starred yet.</p>
@@ -2377,6 +2381,18 @@
       <code>NoticeService</code> keeps Today&#39;s one-time notices: the version last seen
       (<code>last_seen_version</code>, recorded silently by a fresh install) and &quot;No account
       yet&quot; put away.</p>
+      <p><strong>A refusal is not a failure</strong> (P11c, migration 16). A permanent 4xx on a
+      worklog&#39;s own POST -- not 401/403, not 408/429, not the marker search
+      before a resend -- is the provider turning that entry down: time tracking
+      off on the issue, the issue deleted. The worker refuses the row
+      (<code>refuseSyncItem</code>): FAILED with <code>refused_at_utc</code> set, which
+      <code>requeueFailedItems</code> skips, so new credentials and &quot;retry failed&quot; never send
+      it again. The worklog reads <code>refused</code>, with the provider&#39;s answer in
+      <code>refusal</code>; <code>onEntryRefused</code> has the windows read their entries again. A
+      refused send made no entry -- the search before it found nothing -- so
+      <code>reassign</code> retargets the row rather than queueing a DELETE, <code>remove</code> queues
+      none, a correction gives it another go, and <code>keepOff</code> drops it and leaves
+      the worklog local.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -3215,7 +3231,7 @@
       </tr>
       <tr>
       <td align="left"><code>worklog_sync_queue</code></td>
-      <td align="left">Outbound worklogs: <code>PENDING</code> / <code>SYNCING</code> / <code>SYNCED</code> / <code>FAILED</code>, with backoff and <code>last_error</code>. Each row names the <code>worklog_id</code> it sends, its <code>operation</code> (<code>CREATE</code> today), and once sent the provider&#39;s <code>remote_worklog_id</code></td>
+      <td align="left">Outbound worklogs: <code>PENDING</code> / <code>SYNCING</code> / <code>SYNCED</code> / <code>FAILED</code>, with backoff and <code>last_error</code>. Each row names the <code>worklog_id</code> it sends, its <code>operation</code> (<code>CREATE</code> today), and once sent the provider&#39;s <code>remote_worklog_id</code>. <code>refused_at_utc</code> (migration 16) marks a FAILED send the provider refused for good, never requeued</td>
       </tr>
       <tr>
       <td align="left"><code>settings</code></td>
@@ -3626,6 +3642,14 @@
       <td align="left"><code>&#39;updated&#39; | &#39;no-account&#39;</code>: put away for good; answers the notices</td>
       </tr>
       <tr>
+      <td align="left"><code>worklogs:get-refused</code></td>
+      <td align="left">The worklogs whose send the provider refused for good (<code>syncState: &#39;refused&#39;</code>), oldest first: Today&#39;s refused card (P11c)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklogs:keep-off</code></td>
+      <td align="left"><code>(worklogId)</code>. Keeps a refused entry off its provider: its send is dropped and the worklog stays here as local time, undoable. Rejects for an entry whose send was not refused -- keeping that off would be a deletion</td>
+      </tr>
+      <tr>
       <td align="left"><code>first-run:should-show</code></td>
       <td align="left">True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead</td>
       </tr>
@@ -3829,7 +3853,9 @@
       knows where to offer it.
       Worklogs come back with <code>taskKey</code> and <code>taskTitle</code> beside <code>taskId</code>, read from
       the task row, archived or not, and with <code>syncState</code>: <code>local</code> (never queued),
-      <code>pending</code>, <code>failed</code>, <code>sent</code>, <code>correction-pending</code> or <code>correction-failed</code>.
+      <code>pending</code>, <code>failed</code>, <code>refused</code> (P11c: the provider turned the send down for
+      good, with its answer verbatim in <code>refusal</code>), <code>sent</code>, <code>correction-pending</code> or
+      <code>correction-failed</code>.
       <code>fromInterruption: true</code> marks the worklog of an interruption placed on its
       task (or kept off the provider), which Today marks ⚡.</p>
       <div class="table-wrap"><table>
@@ -3869,7 +3895,7 @@
       </tr>
       <tr>
       <td align="left"><code>worklogs:move</code></td>
-      <td align="left"><code>(worklogId, taskId)</code>. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted. An ad-hoc worklog takes its task&#39;s name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
+      <td align="left"><code>(worklogId, taskId)</code>. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted or was refused. An ad-hoc worklog takes its task&#39;s name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
       </tr>
       </tbody></table></div>
       <p>The rules are <code>checkWorklogCorrection</code> in <code>src/shared/worklog-correction.ts</code>,

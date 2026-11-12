@@ -61,7 +61,8 @@ import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { selectableProviders } from '../../shared/provider-names';
 import { plainSessionEnding, SessionEnding } from '../services/session-commands';
 import { UndoService } from '../services/undo-service';
-import { addUndoably, correctUndoably, deleteUndoably, endDayUndoably, moveUndoably, splitUndoably, WorklogEditDeps } from '../services/undoable-commands';
+import { addUndoably, correctUndoably, deleteUndoably, endDayUndoably, moveUndoably,
+  keepOffUndoably, splitUndoably, WorklogEditDeps } from '../services/undoable-commands';
 import { EndDayShutdown } from '../services/end-day-shutdown';
 import { UNDO_WINDOW_MS } from '../sync/sync-constants';
 
@@ -536,7 +537,8 @@ export class IPCHandlerRegistry {
           operation: item.operation,
           retryCount: item.retryCount,
           nextAttemptAtUtc: item.nextAttemptAtUtc,
-          lastError: item.lastError
+          lastError: item.lastError,
+          ...(item.refusedAtUtc ? { refused: true as const } : {})
         }))
       };
     });
@@ -1203,6 +1205,17 @@ export class IPCHandlerRegistry {
       return moved;
     });
 
+    // One entry refused (P11c): Today's card lists them; Keep off ends one here.
+    ipcMain.handle(IPCChannel.GET_REFUSED_WORKLOGS, async () => this.worklogRepo.getRefusedWorklogs());
+    ipcMain.handle(IPCChannel.KEEP_WORKLOG_OFF, async (_event, worklogId: unknown) => {
+      if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
+      if (typeof worklogId !== 'string' || !worklogId) throw new ArgumentException('Keeping an entry off needs its worklog id.');
+      const edits = this.worklogEdits();
+      const kept = edits ? keepOffUndoably(edits, worklogId) : this.worklogCorrections.keepOff(worklogId);
+      this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return kept;
+    });
+
     ipcMain.handle(IPCChannel.CREATE_MANUAL_WORKLOG, async (_event, entry: unknown) => {
       if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
       if (!isManualWorklog(entry)) throw new ArgumentException('Added time needs a task, a duration, a start and a note.');
@@ -1507,6 +1520,7 @@ export class IPCHandlerRegistry {
     // provider appeared when the user changed views, not when it arrived.
     this.syncWorker?.onSynced(result => this.broadcastProjects(result));
     this.syncWorker?.onHealthChanged(health => this.broadcast(IPCChannel.ON_SYNC_HEALTH, health));
+    this.syncWorker?.onEntryRefused(() => this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs()));
 
     this.priorityEngine.onUserModeChanged((mode) => {
       this.broadcast(IPCChannel.ON_USER_MODE_UPDATED, mode);

@@ -735,6 +735,21 @@ describe('Schema Migrations', () => {
       expect(db.prepare('SELECT reason FROM paused_intervals').all()).toEqual([{ reason: 'user' }]);
     });
 
+    it('Migration016_AParkedRow_IsNotReadAsRefused', () => {
+      // Parked for a reason no row recorded: NULL, so new credentials still
+      // requeue it as they always did.
+      for (const migration of MIGRATIONS.filter(m => m.version <= 15)) migration.up(db);
+      db.pragma('user_version = 15');
+      db.prepare(
+        `INSERT INTO worklog_sync_queue (id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status)
+         VALUES ('q1', 'jira', 'T', 600, '2026-11-12T09:00:00.000Z', 'c', '2026-11-12T09:10:00.000Z', 'FAILED')`
+      ).run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT status, refused_at_utc FROM worklog_sync_queue').all()).toEqual([{ status: 'FAILED', refused_at_utc: null }]);
+    });
+
     it('Migration015_OneInterruptionRunsAtMost', () => {
       runMigrations(db);
       const open = (id: string) =>

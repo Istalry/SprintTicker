@@ -142,6 +142,24 @@ describe('Today entries', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/Not moved: .*at least 1 minute/);
   });
 
+  it('Menu_KeepOff_OnlyOnAnEntryTheProviderRefused', async () => {
+    // P11c: Keep off ends a refusal; on any other entry it would be a deletion.
+    const refused = entry('w3', 'PF-44', 11, 30, { syncState: 'refused', refusal: 'Logging time failed: HTTP 400 - Time tracking is off.' });
+    const bridge = installElectronApi();
+    render(<TodayEntries session={null} worklogs={[PF, refused]} />);
+    await screen.findByRole('columnheader', { name: 'OpenProject' });
+
+    const badge = screen.getByText('Refused');
+    expect(badge.getAttribute('title')).toMatch(/^Refused: Time tracking is off\./);
+    fireEvent.click(screen.getByRole('button', { name: /^More for PF-31 at / }));
+    expect(screen.queryByRole('menuitem', { name: /^Keep off/ })).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /^More for PF-44 at / }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Keep off OpenProject' }));
+
+    await waitFor(() => expect(bridge.api.keepWorklogOff).toHaveBeenCalledWith('w3'));
+  });
+
   it('Empty_SaysSo', () => {
     installElectronApi();
     render(<TodayEntries session={null} worklogs={[]} />);

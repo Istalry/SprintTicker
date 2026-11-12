@@ -70,6 +70,16 @@ export class ProviderRequestError extends Error {
     return this.status >= 400 && this.status < 500;
   }
 
+  /**
+   * True when the provider turned the request itself down for good -- a
+   * permanent 4xx that is not about the credentials: an issue with time
+   * tracking off, one deleted since. On a worklog's send, that entry is
+   * refused (P11c), never retried.
+   */
+  public get isRefusal(): boolean {
+    return this.kind === 'protocol' && this.isPermanent;
+  }
+
   /** Convenience for the common "credentials are missing" case. */
   public static notConfigured(providerId: string): ProviderRequestError {
     return new ProviderRequestError(

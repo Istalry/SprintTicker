@@ -1685,6 +1685,28 @@ waits for the undo and the drain).
   away for good, or it would stay on a deliberate no-account user's Today.
   "Your team's server" is left out of it until PROVIDER-API §15 ships.
 
+**As landed: P11c, one entry refused (2026-11-12).**
+
+- **Migration 16**: `worklog_sync_queue.refused_at_utc`. A refused row
+  stays FAILED, so every path that reads an unsent row as unsent still
+  does; the column keeps it out of `requeueFailedItems`. Not checked on the
+  real database yet: `pnpm db:check-migration`, by the user.
+- The worker refuses a send on a permanent 4xx from the POST itself
+  (`isRefusal`: not 401/403, 408, 429), never from the marker search before
+  a resend. The worklog reads `refused` with the provider's answer
+  (`refusal`, `shared/refused-entry.ts` words it).
+- Today's card "Jira refused 1 entry" lists each with ↳ Move… and Keep off
+  Jira; the entry's ⋯ offers Keep off too, on a refused entry only. Move
+  retargets the refused row (it made no entry); Keep off drops it, undoable
+  (`keepOffUndoably`). Check my week lists them, opening their day.
+- `readErrorDetail` reads Jira's `errors` object too: a field's refusal
+  leaves `errorMessages` empty, and it is the reason the card shows.
+- Tests: `refused-entry.test.ts` (refused, not requeued; a refused search
+  or token is parked; Move, Keep off, Correct, Delete), the card in
+  `status-cards.test.tsx`, ⋯ in `today-entries.test.tsx`, migration 16.
+- **Not changed:** a 403 on one issue still reads as the token refused --
+  the status alone cannot tell them apart.
+
 ---
 
 ## 17. P12 -- Outside the window
@@ -2023,7 +2045,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
-| P11 | in progress: P11a (the first run), P11b (S31's cards) done; P11c (a refused entry) next -- see §16 "Split" | P11a `ac2373c`, P11b (2026-11-12) |
+| P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry, migration 16 -- `pnpm db:check-migration` still to run by the user) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c (2026-11-12) |
 | P12 | not started | |
 | P13 | not started | |
 | P14 | not started | |

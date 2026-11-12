@@ -272,6 +272,7 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
                     log={log}
                     onAction={action => entries.run(log, action)}
                     onRename={name => renameTask(log.taskId, name)}
+                    providerName={providerName}
                   />
                 ))}
               </tbody>

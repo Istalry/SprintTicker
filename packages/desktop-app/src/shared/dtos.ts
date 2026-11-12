@@ -543,6 +543,8 @@ export interface WorklogDTO {
    * A correction not answered yet leaves the old value here.
    */
   providerSeconds?: number;
+  /** What the provider said when it refused the entry (`refused`, P11c), verbatim. */
+  refusal?: string;
 }
 
 export type NotificationPriorityMode = 'DONT_SHOW' | 'DEFAULT' | 'HIGH_PRIORITY';
@@ -953,6 +955,8 @@ export interface SyncQueueItemDTO {
   nextAttemptAtUtc: string | null;
   /** What the provider or the network actually said, verbatim. */
   lastError: string | null;
+  /** Refused by the provider for good (P11c): never retried, ended by Move or Keep off. */
+  refused?: true;
 }
 
 /**
@@ -970,7 +974,7 @@ export interface SyncQueueSnapshotDTO {
 }
 
 /** What an undo puts back (P5). */
-export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day' | 'add' | 'split';
+export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day' | 'add' | 'split' | 'keep-off';
 
 /**
  * The one action that can still be undone, for the window's bar and the

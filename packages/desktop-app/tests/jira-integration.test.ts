@@ -376,11 +376,12 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       db.close();
     });
 
-    it('QueueSend_IssueDeletedInJira_ParksTheRowAndKeepsTheTimeHere', async () => {
+    it('QueueSend_IssueDeletedInJira_IsRefusedAndKeepsTheTimeHere', async () => {
       // The issue went between the session and the send. Jira's 404 answers
-      // the same at every retry, so the row parks at once with Jira's words,
-      // and the worklog stays in the local history. It is not a credentials
-      // problem, so nobody is told sending stopped.
+      // the same at every retry, so the row is refused at once with Jira's
+      // words (P11c) -- never requeued, not even by new credentials -- and
+      // the worklog stays in the local history, to move or keep off. It is
+      // not a credentials problem, so nobody is told sending stopped.
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       vi.spyOn(console, 'log').mockImplementation(() => undefined);
       const provider = await configured();
@@ -408,7 +409,8 @@ describe('JiraProvider against a live Jira-shaped server', () => {
       expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1 });
       expect(repo.getSyncItem('sync_deleted01')).toMatchObject({ status: 'FAILED', retryCount: 0 });
       expect(repo.getSyncItem('sync_deleted01')?.lastError).toContain('Issue does not exist');
-      expect(repo.getWorklogById('wl_deleted')).toMatchObject({ durationSeconds: 1800, syncState: 'failed' });
+      expect(repo.getWorklogById('wl_deleted')).toMatchObject({ durationSeconds: 1800, syncState: 'refused' });
+      expect(worker.requeueFailedWorklogs()).toBe(0);
       expect(stopped).not.toHaveBeenCalled();
       expect([...worklogs.values()].some(w => w.issueId === 'FAKE9-999')).toBe(false);
       db.close();

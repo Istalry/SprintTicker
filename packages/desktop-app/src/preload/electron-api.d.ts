@@ -110,6 +110,12 @@ export interface IElectronAPI {
   /** Today's one-time notices: an update just installed, no account yet. */
   getNotices: () => Promise<NoticesDTO>;
   dismissNotice: (kind: NoticeKind) => Promise<NoticesDTO>;
+
+  // One entry refused (P11c)
+  /** The entries their provider refused for good, oldest first. */
+  getRefusedWorklogs: () => Promise<WorklogDTO[]>;
+  /** Keeps a refused entry off its provider: local time on its task, undoable. */
+  keepWorklogOff: (worklogId: string) => Promise<WorklogDTO>;
   onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => () => void;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 

@@ -88,7 +88,7 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
                 <td className={cell} />
               </tr>
             )}
-            {shown.map(log => <EntryRow key={log.id} log={log} onAction={action => entries.run(log, action)} />)}
+            {shown.map(log => <EntryRow key={log.id} log={log} onAction={action => entries.run(log, action)} providerName={providerName} />)}
             {!session && worklogs.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-xs text-text-secondary">

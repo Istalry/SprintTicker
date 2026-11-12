@@ -310,6 +310,19 @@ a restart the time of the last sync is unknown until the next one.
 (`last_seen_version`, recorded silently by a fresh install) and "No account
 yet" put away.
 
+**A refusal is not a failure** (P11c, migration 16). A permanent 4xx on a
+worklog's own POST -- not 401/403, not 408/429, not the marker search
+before a resend -- is the provider turning that entry down: time tracking
+off on the issue, the issue deleted. The worker refuses the row
+(`refuseSyncItem`): FAILED with `refused_at_utc` set, which
+`requeueFailedItems` skips, so new credentials and "retry failed" never send
+it again. The worklog reads `refused`, with the provider's answer in
+`refusal`; `onEntryRefused` has the windows read their entries again. A
+refused send made no entry -- the search before it found nothing -- so
+`reassign` retargets the row rather than queueing a DELETE, `remove` queues
+none, a correction gives it another go, and `keepOff` drops it and leaves
+the worklog local.
+
 | Constant | Value | Why |
 | :--- | ---: | :--- |
 | `SYNC_INTERVAL_MS` | 5 min | Background pass |
@@ -1077,7 +1090,7 @@ testing runs against your actual worklogs.
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE`; `reason` is `user`, `interruption`, `lunch` or `away` (migration 15) |
 | `interruptions` | The interruption fragments (migration 15): span, `name`, `source`, the session it held (`interrupted_session_id`, `interrupted_was_paused`), the fragment before it in its run (`after_id`), and its fate -- `placed_task_id` and `placed_worklog_id`, `kept_off`, or `discarded_at_utc`. `legacy_worklog_id` names the worklog of an interruption of the model before. At most one has no end |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
-| `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id` |
+| `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id`. `refused_at_utc` (migration 16) marks a FAILED send the provider refused for good, never requeued |
 | `settings` | Key/value, JSON: provider configuration, and the redesigned flows' settings -- the start's side effects, Done per project, the prompts' delays, the shortcuts, close to tray, the stand-up's task -- each read through a reader in `shared/flow-settings.ts` that answers a whole, valid value whatever is stored |
 
 Migrations are versioned and forward-only (`src/main/db/migrations.ts`):

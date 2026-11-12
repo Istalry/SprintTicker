@@ -35,6 +35,8 @@ export interface WorklogRecord {
   projectName?: string;
   /** What its provider holds, by the last send it answered; absent when it holds nothing. Read-only. */
   providerSeconds?: number;
+  /** What the provider said when it refused the entry (`refused`), verbatim. Read-only. */
+  refusal?: string;
 }
 
 /**
@@ -73,6 +75,8 @@ interface WorklogRow {
   project_name: string | null;
   provider_seconds: number | null;
   create_status: SyncQueueStatus | null;
+  create_refused: number | null;
+  create_error: string | null;
   correction_status: SyncQueueStatus | null;
   overlaps_task_key: string | null;
   from_interruption: number | null;
@@ -95,6 +99,12 @@ const SELECT_WORKLOGS = `
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation = 'CREATE' AND q.task_id = w.task_id
            ORDER BY q.rowid DESC LIMIT 1) AS create_status,
+         (SELECT q.refused_at_utc IS NOT NULL FROM worklog_sync_queue q
+           WHERE q.worklog_id = w.id AND q.operation = 'CREATE' AND q.task_id = w.task_id
+           ORDER BY q.rowid DESC LIMIT 1) AS create_refused,
+         (SELECT q.last_error FROM worklog_sync_queue q
+           WHERE q.worklog_id = w.id AND q.operation = 'CREATE' AND q.task_id = w.task_id
+           ORDER BY q.rowid DESC LIMIT 1) AS create_error,
          (SELECT q.status FROM worklog_sync_queue q
            WHERE q.worklog_id = w.id AND q.operation <> 'CREATE' AND q.status <> 'SYNCED'
            ORDER BY q.rowid DESC LIMIT 1) AS correction_status,
@@ -110,9 +120,12 @@ const SELECT_WORKLOGS = `
 function syncStateOf(
   createStatus: SyncQueueStatus | null,
   correctionStatus: SyncQueueStatus | null,
-  overlapped: boolean
+  overlapped: boolean,
+  refused: boolean
 ): WorklogSyncState {
   if (correctionStatus) return correctionStatus === 'FAILED' ? 'correction-failed' : 'correction-pending';
+  // Refused is not held: an overlap corrected would not get it sent.
+  if (refused && createStatus === 'FAILED') return 'refused';
   // Held only while it waits: one claimed or sent already is past holding.
   if (overlapped && (createStatus === 'PENDING' || createStatus === 'FAILED')) return 'held-overlap';
   switch (createStatus) {
@@ -139,7 +152,8 @@ function toRecord(r: WorklogRow): WorklogRecord {
   };
   if (r.task_key !== null) record.taskKey = r.task_key;
   if (r.task_title !== null) record.taskTitle = r.task_title;
-  record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null, r.overlaps_task_key != null);
+  record.syncState = syncStateOf(r.create_status ?? null, r.correction_status ?? null, r.overlaps_task_key != null, r.create_refused === 1);
+  if (record.syncState === 'refused' && r.create_error) record.refusal = r.create_error;
   if (record.syncState === 'held-overlap' && r.overlaps_task_key) record.overlapsTaskKey = r.overlaps_task_key;
   record.hasTaskPage = hasTaskPage(r.task_project_id, r.project_provider_id);
   if (isAdHocTaskId(r.task_id)) record.adHoc = true;
@@ -185,6 +199,11 @@ export interface SyncQueueRecord {
    * the provider.
    */
   sendAttempts: number;
+  /**
+   * When the provider refused this send for good (migration 16): a 4xx on the
+   * entry itself. Such a row is FAILED, made no entry, and is never requeued.
+   */
+  refusedAtUtc: string | null;
 }
 
 /** Raw column shape of a worklog_sync_queue row. */
@@ -206,6 +225,7 @@ interface SyncQueueRow {
   remote_worklog_id: string | null;
   origin_sync_id: string | null;
   send_attempts: number;
+  refused_at_utc: string | null;
 }
 
 function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
@@ -226,7 +246,8 @@ function mapSyncQueueRow(r: SyncQueueRow): SyncQueueRecord {
     operation: r.operation,
     remoteWorklogId: r.remote_worklog_id,
     originSyncId: r.origin_sync_id,
-    sendAttempts: r.send_attempts
+    sendAttempts: r.send_attempts,
+    refusedAtUtc: r.refused_at_utc ?? null
   };
 }
 
@@ -536,8 +557,9 @@ export class WorklogRepository {
    * start: the provider it named never hears of it.
    *
    * Only while unclaimed *and* never attempted (`send_attempts`, never the
-   * retry budget) -- checked in the statement itself. False otherwise: an
-   * attempt may have made the entry, and the caller deletes it instead.
+   * retry budget) or refused, whose attempts made nothing -- checked in the
+   * statement itself. False otherwise: an attempt may have made the entry,
+   * and the caller deletes it instead.
    */
   public retargetUnsentSyncItem(id: string, providerId: string, taskId: string, comment: string): boolean {
     return (
@@ -546,8 +568,8 @@ export class WorklogRepository {
         .prepare(
           `UPDATE worklog_sync_queue
               SET provider_id = ?, task_id = ?, comment = ?,
-                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = ?, last_error = NULL
-            WHERE id = ? AND status IN ('PENDING', 'FAILED') AND send_attempts = 0`
+                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = ?, last_error = NULL, refused_at_utc = NULL
+            WHERE id = ? AND status IN ('PENDING', 'FAILED') AND (send_attempts = 0 OR refused_at_utc IS NOT NULL)`
         )
         .run(providerId, taskId, comment, this.heldUntilUtc(), id).changes === 1
     );
@@ -568,7 +590,7 @@ export class WorklogRepository {
         .prepare(
           `UPDATE worklog_sync_queue
               SET duration_seconds = ?, started_at_utc = ?, comment = ?,
-                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = ?, last_error = NULL
+                  status = 'PENDING', retry_count = 0, next_attempt_at_utc = ?, last_error = NULL, refused_at_utc = NULL
             WHERE id = ? AND status IN ('PENDING', 'FAILED')`
         )
         .run(correction.durationSeconds, correction.startedAtUtc, correction.comment, this.heldUntilUtc(), id).changes === 1
@@ -682,6 +704,43 @@ export class WorklogRepository {
   }
 
   /**
+   * Parks a claimed send the provider refused for good (migration 16): a 4xx
+   * on the entry itself, which asking again would only repeat. FAILED, so it
+   * reads as unsent everywhere, but never requeued -- not by new
+   * credentials, not by "retry failed". Moving, correcting or keeping it off
+   * the provider is what ends it.
+   */
+  public refuseSyncItem(id: string, errorMessage: string, nowMs: number = Date.now()): void {
+    this.dbConn
+      .getDb()
+      .prepare(
+        `UPDATE worklog_sync_queue
+            SET status = 'FAILED', claimed_at_utc = NULL, last_error = ?, refused_at_utc = ?
+          WHERE id = ?`
+      )
+      .run(errorMessage.slice(0, 500), new Date(nowMs).toISOString(), id);
+  }
+
+  /**
+   * The worklogs whose send the provider refused (`refused`), oldest first:
+   * Today's card lists them until each is moved, corrected or kept off.
+   */
+  public getRefusedWorklogs(): WorklogRecord[] {
+    return this.dbConn
+      .getDb()
+      .prepare<[], WorklogRow>(
+        `${SELECT_WORKLOGS}
+          WHERE EXISTS (SELECT 1 FROM worklog_sync_queue q
+                         WHERE q.worklog_id = w.id AND q.operation = 'CREATE' AND q.task_id = w.task_id
+                           AND q.status = 'FAILED' AND q.refused_at_utc IS NOT NULL)
+          ORDER BY w.started_at_utc`
+      )
+      .all()
+      .map(toRecord)
+      .filter(record => record.syncState === 'refused');
+  }
+
+  /**
    * Releases a claimed row after a failed attempt.
    *
    * Returns it to PENDING behind a backoff deadline until the attempt ceiling
@@ -735,14 +794,17 @@ export class WorklogRepository {
       .run(cutoff).changes;
   }
 
-  /** Returns parked FAILED rows to PENDING with their retry budget restored. */
+  /**
+   * Returns parked FAILED rows to PENDING with their retry budget restored --
+   * all but the refused, which would only be refused again (migration 16).
+   */
   public requeueFailedItems(): number {
     return this.dbConn
       .getDb()
       .prepare(
         `UPDATE worklog_sync_queue
             SET status = 'PENDING', retry_count = 0, next_attempt_at_utc = NULL
-          WHERE status = 'FAILED'`
+          WHERE status = 'FAILED' AND refused_at_utc IS NULL`
       )
       .run().changes;
   }

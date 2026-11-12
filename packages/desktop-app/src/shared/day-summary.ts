@@ -62,10 +62,12 @@ export function describeSends(entries: readonly CountedEntry[]): string {
   const waiting = count(['pending']);
   const corrections = count(['correction-pending', 'correction-failed']);
   const failed = count(['failed']);
+  const refused = count(['refused']);
   const held = count(['held-overlap']);
   if (waiting) unsent.push(`${waiting} waiting`);
   if (corrections) unsent.push(`${corrections} ${corrections === 1 ? 'correction' : 'corrections'}`);
   if (failed) unsent.push(`${failed} failed`);
+  if (refused) unsent.push(`${refused} refused`);
   if (held) unsent.push(`${held} held for an overlap`);
 
   if (unsent.length === 0) return sent > 0 ? 'all sent' : entries.length > 0 ? 'kept in SprintTicker' : '';

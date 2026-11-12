@@ -57,6 +57,8 @@ Everything else is a request/response `invoke`.
 | `sync:on-health` | Pushes it on every change: each project of a first sync, a failure, a recovery |
 | `notices:get` | Today's one-time notices: `{ updatedTo: string \| null, noAccountDismissed }` |
 | `notices:dismiss` | `'updated' \| 'no-account'`: put away for good; answers the notices |
+| `worklogs:get-refused` | The worklogs whose send the provider refused for good (`syncState: 'refused'`), oldest first: Today's refused card (P11c) |
+| `worklogs:keep-off` | `(worklogId)`. Keeps a refused entry off its provider: its send is dropped and the worklog stays here as local time, undoable. Rejects for an entry whose send was not refused -- keeping that off would be a deletion |
 | `first-run:should-show` | True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead |
 | `first-run:finish` | Start my first task, or Set up later: it does not open on its own again |
 | `first-run:test-connection` | `{ providerId: 'jira' \| 'openproject', site, email?, token }`, saving nothing: `{ ok: true, userName, projectCount }` or `{ ok: false, reason: 'incomplete' \| 'not-found' \| 'refused' \| 'network' \| 'failed', host, detail }` -- never throws for the remote's failure |
@@ -135,7 +137,9 @@ never hands main a URL. Each worklog carries `hasTaskPage`, so History
 knows where to offer it.
 Worklogs come back with `taskKey` and `taskTitle` beside `taskId`, read from
 the task row, archived or not, and with `syncState`: `local` (never queued),
-`pending`, `failed`, `sent`, `correction-pending` or `correction-failed`.
+`pending`, `failed`, `refused` (P11c: the provider turned the send down for
+good, with its answer verbatim in `refusal`), `sent`, `correction-pending` or
+`correction-failed`.
 `fromInterruption: true` marks the worklog of an interruption placed on its
 task (or kept off the provider), which Today marks ⚡.
 
@@ -148,7 +152,7 @@ task (or kept off the provider), which Today marks ⚡.
 | `worklogs:export-csv` | `(from, to)`, as `worklogs:get-range`. Asks where to save (`sprintticker-<from>-to-<to>.csv`) and writes those worklogs as CSV (`shared/worklog-csv.ts`: Date, Start, End, Duration, Hours, Project, Task, Title, Note, Sent; local times; RFC 4180 quoting; a cell starting `=`, `+`, `-` or `@` gets a leading `'`). Answers the path, or null when cancelled |
 | `worklog:split` | `(worklogId, atUtc, taskId)`. Split in two (S16c, `WorklogCorrectionService.split`): the worklog shortened to end at `atUtc` -- a correction, through the queue -- and the rest a new worklog on `taskId`, from the same session and with the same note, whose first send waits for the shortening (`origin_sync_id` on its `CREATE`). Undo for ten seconds (`Split MG-12 · 2h 00m`) puts the entry back whole. Answers `{ first, second }` and resends `worklog:on-updated`. Rejects with the reason: a moment not inside the entry (`splitPieces`), ad-hoc work or an unknown task, or a piece under its provider's floor |
 | `worklog:create-manual` | `(ManualWorklogDTO: { taskId, durationSeconds, startedAtUtc, comment })`. Adds time nobody timed (S16b, `WorklogCorrectionService.add`): a worklog here, under a session id of its own (`manual_…`), and a first send to the task's provider through the queue, held for the undo window with Undo (`Added to PF-31 · 30m`). A project made in SprintTicker keeps it here; an empty note is sent as `Added in SprintTicker`. Answers the worklog and resends `worklog:on-updated`. Rejects with the reason (`checkManualWorklog`): no task, ad-hoc work or an unknown task, under the provider's floor, ending in the future, or across local midnight. An overlap or a closed week is never refused -- the window warns, and the queue holds the later entry |
-| `worklogs:move` | `(worklogId, taskId)`. Moves the worklog to another task (`WorklogCorrectionService.reassign`): here at once, and through the queue as a `DELETE` where it is then a `CREATE` on the new task's provider -- or the unsent send pointed there, when it was never attempted. An ad-hoc worklog takes its task's name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here |
+| `worklogs:move` | `(worklogId, taskId)`. Moves the worklog to another task (`WorklogCorrectionService.reassign`): here at once, and through the queue as a `DELETE` where it is then a `CREATE` on the new task's provider -- or the unsent send pointed there, when it was never attempted or was refused. An ad-hoc worklog takes its task's name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here |
 
 The rules are `checkWorklogCorrection` in `src/shared/worklog-correction.ts`,
 which the window applies too, so it refuses exactly what main refuses.

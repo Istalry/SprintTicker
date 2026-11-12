@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CircleAlert, Download, Plug, RefreshCw, UserRound, WifiOff } from 'lucide-react';
-import { DeviceStatusDTO, SyncQueueSnapshotDTO } from '../../shared/dtos';
+import { DeviceStatusDTO, SyncQueueSnapshotDTO, WorklogDTO } from '../../shared/dtos';
+import { refusalReason } from '../../shared/refused-entry';
+import { keepOffLabel, Verb } from '../../shared/words';
+import { useEntryActions } from './EntryActions';
 import { NoticeKind, NoticesDTO, releasePageOf } from '../../shared/sync-health';
 import { ProviderId, providerDisplayName } from '../../shared/provider-names';
 import { formatHoursAndMinutes, formatHoursMinutes, countOf } from '../utils/formatters';
@@ -61,10 +64,25 @@ function useQueue(): SyncQueueSnapshotDTO | null {
   return queue;
 }
 
+/** The entries their provider refused for good (P11c), read again when time is logged or changed. */
+function useRefused(): { refused: WorklogDTO[]; read: () => void } {
+  const [refused, setRefused] = useState<WorklogDTO[]>([]);
+  const read = useCallback(() => {
+    window.electronAPI?.getRefusedWorklogs?.().then(setRefused, warn('Reading the refused entries'));
+  }, []);
+  useEffect(() => {
+    read();
+    const off = window.electronAPI?.onWorklogsUpdated?.(() => read());
+    return () => { off?.(); };
+  }, [read]);
+  return { refused, read };
+}
+
 /** "2 entries" or "3 entries (2h 05m)": what waits to be sent, new entries counted by their time. */
 function waitingText(queue: SyncQueueSnapshotDTO | null, withTime: boolean): string | null {
   if (!queue) return null;
-  const waiting = queue.items.filter(item => item.status !== 'SYNCED');
+  // A refused entry does not wait: no retry sends it (P11c).
+  const waiting = queue.items.filter(item => item.status !== 'SYNCED' && !item.refused);
   if (waiting.length === 0) return null;
   const seconds = waiting.filter(item => item.operation === 'CREATE').reduce((sum, item) => sum + item.durationSeconds, 0);
   const count = countOf(waiting.length, 'entry', 'entries');
@@ -75,7 +93,8 @@ function waitingText(queue: SyncQueueSnapshotDTO | null, withTime: boolean): str
  * S31's states on Today (redesign P11b), each a card saying what still works,
  * so nobody stops timing because something else is down: the first sync,
  * the provider not answering or refusing the token, no network, the bar
- * unplugged, an update just installed, no account yet. The header's status
+ * unplugged, an update just installed, no account yet -- and one entry the
+ * provider refused (P11c), with Move and Keep off. The header's status
  * entry (S27) keeps the details; these say it where the user looks.
  */
 export const StatusCards: React.FC<{
@@ -87,6 +106,8 @@ export const StatusCards: React.FC<{
   const queue = useQueue();
   const { capabilities } = useProviderCapabilities();
   const [notices, setNotices] = useState<NoticesDTO | null>(null);
+  const { refused, read: readRefused } = useRefused();
+  const entries = useEntryActions([], readRefused);
 
   useEffect(() => {
     let live = true;
@@ -157,6 +178,40 @@ export const StatusCards: React.FC<{
     );
   }
 
+  if (refused.length > 0) {
+    const one = refused.length === 1;
+    cards.push(
+      <StatusCard key="refused-entries" tone="danger" icon={CircleAlert}
+        title={`${provider} refused ${countOf(refused.length, 'entry', 'entries')}`}>
+        <ul className="space-y-1.5">
+          {refused.map(log => {
+            const key = log.taskKey ?? log.taskId;
+            return (
+              <li key={log.id} className="flex items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="font-mono text-text-primary">{key}</span>
+                  {`, ${formatHoursAndMinutes(log.durationSeconds)}: ${refusalReason(log.refusal)}.`}
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  <button type="button" className={quiet} aria-label={`${Verb.MOVE} ${key}`} onClick={() => entries.run(log, 'move')}>
+                    {`↳ ${Verb.MOVE}…`}
+                  </button>
+                  <button type="button" className={quiet} aria-label={`${keepOffLabel(provider)}: ${key}`} onClick={() => entries.run(log, 'keep-off')}>
+                    {keepOffLabel(provider)}
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <span className="block mt-1">
+          {one ? 'It stays here, unsent, and the week lists it.' : 'They stay here, unsent, and the week lists them.'}
+        </span>
+        {entries.moveError && <span role="alert" className="block mt-1 text-accent-red">{entries.moveError}</span>}
+      </StatusCard>
+    );
+  }
+
   if (device.enabled && !device.connected) cards.push(<BarUnplugged key="bar" />);
 
   if (notices?.updatedTo) {
@@ -195,7 +250,12 @@ export const StatusCards: React.FC<{
     );
   }
 
-  return cards.length > 0 ? <div className="space-y-3">{cards}</div> : null;
+  return (
+    <>
+      {cards.length > 0 && <div className="space-y-3">{cards}</div>}
+      {entries.dialogs}
+    </>
+  );
 };
 
 /**

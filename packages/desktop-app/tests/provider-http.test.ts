@@ -296,6 +296,20 @@ describe('providerFetch', () => {
       expect(err.message).toContain('Field is required');
     });
 
+    it('ProviderFetch_JiraFieldErrors_AreReadWhenErrorMessagesIsEmpty', async () => {
+      // A worklog on an issue with time tracking off: Jira names the field
+      // under `errors`, and that is the reason Today's refused card shows.
+      const fetchFn = vi.fn().mockResolvedValue(response(400, { errorMessages: [], errors: { timeLogging: 'Time tracking is off on this issue.' } }));
+
+      const err = (await providerFetch(PROVIDER, URL_UNDER_TEST, {}, 'Logging time', {
+        fetchFn,
+        sleepFn: noSleep
+      }).catch(e => e as unknown)) as ProviderRequestError;
+
+      expect(err.message).toBe('Logging time failed: HTTP 400 - Time tracking is off on this issue.');
+      expect(err.isRefusal).toBe(true);
+    });
+
     it('ProviderFetch_NonJsonErrorBody_StillThrowsWithTheStatus', async () => {
       const fetchFn = vi.fn().mockResolvedValue(response(500));
 

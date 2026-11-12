@@ -105,7 +105,7 @@ export function keepOffLabel(providerName: string): string {
  * the task done. Main writes it, so the window and the mini timer agree.
  */
 export function undoLabel(
-  kind: 'stop' | 'done' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day' | 'add' | 'split',
+  kind: 'stop' | 'done' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day' | 'add' | 'split' | 'keep-off',
   taskKey: string,
   duration?: string
 ): string {
@@ -129,6 +129,8 @@ export function undoLabel(
       return withTime(`Added to ${taskKey}`);
     case 'split':
       return withTime(`Split ${taskKey}`);
+    case 'keep-off':
+      return withTime(`Kept ${taskKey} here`);
     case 'end-day':
       return 'Day ended';
   }

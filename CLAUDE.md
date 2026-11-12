@@ -1303,6 +1303,17 @@ task at the provider goes there too, or a start to look at a task moves it
 again. The scheduler runs on the engine's tick and checks the session id, so
 a stop or switch in between cancels it.
 
+**A refused entry is never requeued** (P11c, migration 16). A permanent 4xx
+on a worklog's own POST -- `ProviderRequestError.isRefusal`, so not the
+credentials -- sets `refused_at_utc` on the FAILED row, and
+`requeueFailedItems` skips it: new credentials used to send it again, to the
+same refusal. Only the POST's answer counts: a refused *search* before a
+resend says nothing of what an earlier attempt made, and is parked as
+before. Because the search found nothing first, a refused send made no
+entry, and `madeNoEntry` lets Move retarget it and Delete queue no DELETE.
+Anything that resets a row to PENDING must clear `refused_at_utc` too, as
+`rewriteUnsentSyncItem` and `retargetUnsentSyncItem` do.
+
 **A row sent before is looked for before it is sent again.** Neither Jira nor
 OpenProject takes an idempotency key, so a POST whose answer was lost -- a
 timeout, a dropped connection, the app closing mid-request -- may already be

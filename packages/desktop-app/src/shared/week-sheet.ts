@@ -77,7 +77,7 @@ export function buildWeekSheet(dayKeys: readonly string[], entries: readonly Wor
     day.providerSeconds += entry.providerSeconds ?? 0;
     if (entry.syncState === 'held-overlap') day.heldSeconds += seconds;
     if (entry.syncState === 'pending') day.waitingSeconds += seconds;
-    if (entry.syncState === 'failed') day.failedSeconds += seconds;
+    if (entry.syncState === 'failed' || entry.syncState === 'refused') day.failedSeconds += seconds;
     if (entry.syncState === 'correction-pending' || entry.syncState === 'correction-failed') day.corrections++;
 
     const projectId = entry.projectName ? entry.projectId ?? entry.projectName : WEEK_NO_PROJECT;
@@ -153,6 +153,9 @@ export function describeWeekExceptions(
           break;
         case 'failed':
           parts.push(`${whose} ${time} on ${on}, which ${providerName} did not take`);
+          break;
+        case 'refused':
+          parts.push(`${whose} ${time} on ${on}, which ${providerName} refused`);
           break;
         case 'correction-pending':
           parts.push(`${whose} correction on ${on}, on its way`);

@@ -3,6 +3,7 @@ import { localDateKey, localMidnight } from './local-date';
 import { formatHoursAndMinutes } from './time-format';
 import { dayGaps, gapSeconds, Span, spanOf, workingWindow } from './day-gaps';
 import { findOverlaps } from './overlap';
+import { refusalReason } from './refused-entry';
 
 /**
  * Check my week (S15b, P9d): every problem of a week in one list, each with
@@ -13,6 +14,9 @@ import { findOverlaps } from './overlap';
  * - each interruption of the week still to place (Place…);
  * - the corrections not answered yet, and the entries not sent (Send now,
  *   when one was refused -- a row on its way needs nothing);
+ * - the entries the provider refused for good (P11c), with its reason:
+ *   sending again would not help, so the fix opens the day, whose ⋯ moves
+ *   one or keeps it off the provider;
  * - each day worked with untracked time in its working hours (Open <day>).
  *   There is no daily target to be "under" (the user's choice, 2026-11-12):
  *   a gap is time nobody accounted for, which is what a target would show;
@@ -21,7 +25,7 @@ import { findOverlaps } from './overlap';
  *   user's manager saw has moved.
  */
 
-export type WeekIssueKind = 'to-place' | 'correction' | 'not-sent' | 'gaps' | 'overlap' | 'closed-change';
+export type WeekIssueKind = 'to-place' | 'correction' | 'not-sent' | 'refused' | 'gaps' | 'overlap' | 'closed-change';
 
 export type WeekIssueFix =
   | { kind: 'place' }
@@ -128,6 +132,19 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
       title: `${plural(refused.length, 'entry', 'entries')} not sent`,
       details: refused.map(e => `${keyOf(e)} · ${dayName(dayOf(e.startedAtUtc))} · ${formatHoursAndMinutes(e.durationSeconds)} · ${providerName} did not take it`),
       fix: { kind: 'send-now' }
+    });
+  }
+
+  const turnedDown = week.filter(e => e.syncState === 'refused');
+  if (turnedDown.length) {
+    const first = dayOf(turnedDown[0].startedAtUtc);
+    issues.push({
+      kind: 'refused',
+      title: `${providerName} refused ${plural(turnedDown.length, 'entry', 'entries')}`,
+      details: turnedDown.map(e =>
+        `${keyOf(e)} · ${dayName(dayOf(e.startedAtUtc))} · ${formatHoursAndMinutes(e.durationSeconds)} · ${refusalReason(e.refusal)}`
+      ),
+      fix: { kind: 'open-day', dateKey: first, label: `Open ${dayName(first)}` }
     });
   }
 

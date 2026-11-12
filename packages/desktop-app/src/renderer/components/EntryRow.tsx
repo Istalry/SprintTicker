@@ -37,7 +37,9 @@ export const EntryRow: React.FC<{
   log: WorklogDTO;
   onAction: (action: EntryAction) => void;
   onRename?: (name: string) => Promise<void>;
-}> = ({ log, onAction, onRename }) => (
+  /** The provider's name, for "Keep off Jira" on a refused entry. */
+  providerName?: string;
+}> = ({ log, onAction, onRename, providerName }) => (
   <tr className={`transition-colors ${log.fromInterruption ? 'bg-accent-amber/5 hover:bg-accent-amber/10' : 'hover:bg-dark-700/50'}`}>
     <td className={`${ENTRY_CELL} font-mono font-bold text-text-primary whitespace-nowrap`}>
       <span className="inline-flex items-center gap-1.5">
@@ -65,6 +67,6 @@ export const EntryRow: React.FC<{
     <td className={`${ENTRY_CELL} font-mono text-text-primary font-bold whitespace-nowrap`}>{formatHoursAndMinutes(log.durationSeconds)}</td>
     <td className={`${ENTRY_CELL} text-xs text-text-secondary font-mono`}>{formatHoursMinutes(new Date(log.startedAtUtc))}</td>
     <td className={ENTRY_CELL}><SyncBadge log={log} /></td>
-    <td className={`${ENTRY_CELL} text-right`}><EntryMenu log={log} onAction={onAction} /></td>
+    <td className={`${ENTRY_CELL} text-right`}><EntryMenu log={log} onAction={onAction} providerName={providerName} /></td>
   </tr>
 );

@@ -73,6 +73,20 @@ describe('checkWeek', () => {
     }]);
   });
 
+  it('Check_AnEntryTheProviderRefusedForGood_SaysWhy_AndOpensItsDay', () => {
+    // Sending again would not help (P11c): the day's ⋯ moves it or keeps it off.
+    const entries = FULL_WEEK.map(e => e.id === '3a'
+      ? { ...e, syncState: 'refused' as const, providerSeconds: undefined, refusal: 'Logging time failed: HTTP 400 - Time tracking is off on this issue.' }
+      : e);
+
+    expect(checkWeek(input({ entries })).issues).toEqual([{
+      kind: 'refused',
+      title: 'Jira refused 1 entry',
+      details: ['PF-31 · Tuesday · 3h 00m · Time tracking is off on this issue'],
+      fix: { kind: 'open-day', dateKey: '2026-11-03', label: 'Open Tuesday' }
+    }]);
+  });
+
   it('Check_UntrackedTimeInWorkingHours_EachDay_OpensIt', () => {
     const entries = FULL_WEEK.filter(e => e.id !== '4b').concat(entry('4c', 'PF-31', 4, 13, 0, 180), entry('4d', 'PF-31', 4, 16, 20, 40));
 

@@ -120,7 +120,7 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
 /** What the worklog edits reach, besides the undo. */
 export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
   worklogs: Pick<WorklogRepository, 'getWorklogById'>;
-  corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove' | 'add' | 'split'>;
+  corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove' | 'add' | 'split' | 'keepOff'>;
   /** Called after an undo put rows back, so the window reads them again. */
   onRestored: () => void;
 }
@@ -128,7 +128,7 @@ export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
 function offerWorklogUndo(
   deps: WorklogEditDeps,
   point: RestorePoint,
-  kind: 'correct' | 'move' | 'delete' | 'add' | 'split',
+  kind: 'correct' | 'move' | 'delete' | 'add' | 'split' | 'keep-off',
   label: string
 ): void {
   point.seal();
@@ -165,6 +165,15 @@ export function moveUndoably(deps: WorklogEditDeps, worklogId: string, taskId: s
   const moved = deps.corrections.reassign(worklogId, taskId);
   offerWorklogUndo(deps, point, 'move', undoLabel('move', moved.taskKey ?? moved.taskId, formatHoursAndMinutes(moved.durationSeconds)));
   return moved;
+}
+
+/** A refused entry kept off its provider (P11c): Undo puts its refused send back. */
+export function keepOffUndoably(deps: WorklogEditDeps, worklogId: string): WorklogRecord {
+  const before = worklogOrThrow(deps, worklogId);
+  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [before.taskId]));
+  const kept = deps.corrections.keepOff(worklogId);
+  offerWorklogUndo(deps, point, 'keep-off', undoLabel('keep-off', kept.taskKey ?? kept.taskId, formatHoursAndMinutes(kept.durationSeconds)));
+  return kept;
 }
 
 /** Time added by hand, held: Undo takes the entry and its send away again. */

@@ -134,15 +134,20 @@ function retryDelayFor(res: Response, attempt: number): number {
  *
  * Both APIs put the actionable half of a 4xx in the body: without it a rejected
  * key reads only as "HTTP 401". OpenProject uses `message`; Jira Cloud returns
- * an `errorMessages` array.
+ * an `errorMessages` array, or an `errors` object by field.
  */
 async function readErrorDetail(res: Response): Promise<string | undefined> {
   try {
-    const body = (await res.json()) as { message?: string; errorMessages?: string[] };
+    const body = (await res.json()) as { message?: string; errorMessages?: string[]; errors?: Record<string, unknown> };
     if (typeof body?.message === 'string' && body.message.length > 0) return body.message;
     if (Array.isArray(body?.errorMessages) && body.errorMessages.length > 0) {
       return body.errorMessages.join('; ');
     }
+    // Jira files a refusal of one field -- a worklog on an issue with time
+    // tracking off -- under `errors`, and leaves `errorMessages` empty. It
+    // is the reason Today's refused card shows (P11c).
+    const fields = body?.errors && typeof body.errors === 'object' ? Object.values(body.errors).filter(v => typeof v === 'string' && v) : [];
+    if (fields.length > 0) return fields.join('; ');
   } catch {
     // Not a JSON body. The status alone is still a usable error.
   }

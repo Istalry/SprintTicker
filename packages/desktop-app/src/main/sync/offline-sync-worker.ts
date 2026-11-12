@@ -19,6 +19,18 @@ import { INITIAL_SYNC_HEALTH, SyncHealthDTO, SyncHealthState } from '../../share
 import { ArgumentNullException } from '../../shared/dtos';
 
 /**
+ * A worklog's send the provider refused for good (P11c), carrying its
+ * answer. Raised from the POST alone, so the queue pass can tell it from a
+ * refused search or credentials.
+ */
+class EntryRefused extends Error {
+  constructor(public readonly refusal: ProviderRequestError) {
+    super(refusal.message, { cause: refusal });
+    this.name = 'EntryRefused';
+  }
+}
+
+/**
  * Background worker service managing offline worklog retry queueing, periodic network sync,
  * and external provider reconciliation.
  */
@@ -47,6 +59,7 @@ export class OfflineSyncWorker {
   /** Providers whose sends stopped on refused credentials, until they are fixed. */
   private sendingStopped: Set<string> = new Set();
   private sendingStoppedListeners: Set<(providerId: string) => void> = new Set();
+  private entryRefusedListeners: Set<(worklogId: string | null) => void> = new Set();
   /** How the sync is going, for Today's cards (S31, P11b). */
   private health: SyncHealthDTO = INITIAL_SYNC_HEALTH;
   private healthListeners: Set<(health: SyncHealthDTO) => void> = new Set();
@@ -176,6 +189,16 @@ export class OfflineSyncWorker {
     return () => this.sendingStoppedListeners.delete(listener);
   }
 
+  /**
+   * Called when the provider refuses an entry for good (P11c), so the
+   * windows read their entries again: nothing else marks the moment, and
+   * Today's refused card would wait for the next unrelated change.
+   */
+  public onEntryRefused(listener: (worklogId: string | null) => void): () => void {
+    this.entryRefusedListeners.add(listener);
+    return () => this.entryRefusedListeners.delete(listener);
+  }
+
   /** How the provider's sync is going: Today's first-sync, not-answering and refused cards. */
   public getHealth(): SyncHealthDTO {
     return this.health;
@@ -244,6 +267,17 @@ export class OfflineSyncWorker {
         // A listener is a reader of what was just saved; its failure must
         // not fail the sync that saved it.
         console.error('[OfflineSyncWorker] Synced listener failed:', err);
+      }
+    }
+  }
+
+  private tellEntryRefused(worklogId: string | null): void {
+    for (const listener of this.entryRefusedListeners) {
+      try {
+        listener(worklogId);
+      } catch (err) {
+        // One window failing to refresh must not stop the queue pass.
+        console.error('[OfflineSyncWorker] An entry-refused listener failed:', err);
       }
     }
   }
@@ -578,7 +612,14 @@ export class OfflineSyncWorker {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[OfflineSyncWorker] Failed to sync worklog ${item.id}:`, err);
 
-        if (isProviderRequestError(err) && err.isPermanent) {
+        if (err instanceof EntryRefused) {
+          // The provider turned this entry down -- time tracking off on the
+          // issue, the issue gone -- and will again however often it is
+          // asked. Refused, not parked: new credentials do not requeue it,
+          // and the entry offers Move or Keep off instead (P11c).
+          this.worklogRepo.refuseSyncItem(item.id, message);
+          this.tellEntryRefused(item.worklogId);
+        } else if (isProviderRequestError(err) && err.isPermanent) {
           // A revoked key or an unconfigured provider will answer the same
           // way in forty seconds and in forty minutes. Spending the retry
           // budget on it means the row parks with 'attempt 5 of 5' against
@@ -607,15 +648,23 @@ export class OfflineSyncWorker {
     if (item.operation === 'CREATE') {
       const earlier = await this.findEarlierSend(item);
       if (earlier) return { success: true, remoteWorklogId: earlier };
-      return this.providerManager.logTimeForProvider(item.providerId, {
-        taskId: item.taskId,
-        durationSeconds: item.durationSeconds,
-        startedAtUtc: item.startedAtUtc,
-        // Tagged so a re-POST after a crashed claim is identifiable, and so
-        // a correction can find the entry when its id is not known.
-        comment: withSyncMarker(item.comment, item.id),
-        isAdHoc: item.providerId === 'adhoc'
-      });
+      try {
+        return await this.providerManager.logTimeForProvider(item.providerId, {
+          taskId: item.taskId,
+          durationSeconds: item.durationSeconds,
+          startedAtUtc: item.startedAtUtc,
+          // Tagged so a re-POST after a crashed claim is identifiable, and so
+          // a correction can find the entry when its id is not known.
+          comment: withSyncMarker(item.comment, item.id),
+          isAdHoc: item.providerId === 'adhoc'
+        });
+      } catch (err) {
+        // Only the send's own refusal: the search before it found nothing,
+        // so a refused send made no entry, and moving it may retarget the
+        // row. A search refused says nothing of an earlier attempt.
+        if (isProviderRequestError(err) && err.isRefusal) throw new EntryRefused(err);
+        throw err;
+      }
     }
 
     const provider = this.providerManager.getProvider(item.providerId);

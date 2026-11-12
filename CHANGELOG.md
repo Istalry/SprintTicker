@@ -4,6 +4,11 @@
 
 ### Added
 
+- **An entry Jira refuses says why, and stops being retried.** Time tracking
+  off on an issue, or the issue deleted: Today shows "Jira refused 1 entry"
+  with Jira's reason, and the entry offers ↳ Move… or Keep off Jira. It used
+  to be sent again with every new token, to the same answer. Schema
+  migration 16.
 - **Today says what still works.** A card when Jira is not answering (and
   since when), refused your token, there is no network, the bar is
   unplugged, the first sync is under way, you just updated, or you have no

@@ -31,6 +31,9 @@ export interface WorklogCorrectionDTO {
  *   queue knew its worklogs and not tied to it since (migration 8). Corrected
  *   here only.
  * - `pending` / `failed`: the send has not arrived yet, or is parked.
+ * - `refused`: the provider turned the send down for good (P11c) -- time
+ *   tracking off on the issue, the issue gone. Never retried; moved or kept
+ *   off the provider.
  * - `sent`: at the provider.
  * - `correction-pending` / `correction-failed`: a correction or deletion is
  *   on its way, or parked.
@@ -40,6 +43,7 @@ export type WorklogSyncState =
   | 'pending'
   | 'sent'
   | 'failed'
+  | 'refused'
   | 'correction-pending'
   | 'correction-failed'
   /** Not sent, and waiting: it overlaps an earlier entry (`shared/overlap.ts`). */

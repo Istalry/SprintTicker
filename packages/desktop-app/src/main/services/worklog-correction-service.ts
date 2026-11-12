@@ -124,8 +124,8 @@ export class WorklogCorrectionService {
       // `send_attempts`, never `retry_count`: the budget is reset on purpose
       // by a correction of this very row and by "retry failed", and parking
       // leaves it alone, so a row with an attempt behind it can read 0 there.
-      const neverAttempted = send.sendAttempts === 0;
-      if (this._worklogs.dropUnsentSyncItem(send.id) && neverAttempted) return false;
+      const madeNoEntry = WorklogCorrectionService.madeNoEntry(send);
+      if (this._worklogs.dropUnsentSyncItem(send.id) && madeNoEntry) return false;
       // Dropped after an attempt, or claimed or delivered: the entry may
       // exist. An attempt whose answer was lost can have made it, so the
       // deletion goes out all the same and finds it by its marker -- or
@@ -188,7 +188,7 @@ export class WorklogCorrectionService {
       );
     }
     const send = this._worklogs.getSendOf(worklogId);
-    const mayExist = send !== null && !WorklogCorrectionService.neverAttempted(send);
+    const mayExist = send !== null && !WorklogCorrectionService.madeNoEntry(send);
     if (send && mayExist && !this.canCorrect(this.providerOf(send))) {
       throw new ArgumentException(
         `It is at ${send.providerId}, which cannot be corrected from here: moving it would leave the time there too.`,
@@ -237,6 +237,30 @@ export class WorklogCorrectionService {
 
     if (worklog.adHoc) this._targets.retireAdHocIfUnused(worklog.taskId);
     if (queued) this._requestDispatch();
+    return this._worklogs.getWorklogById(worklogId)!;
+  }
+
+  /**
+   * Keeps an entry its provider refused off it (P11c): the send is dropped,
+   * and the worklog stays here on its task, as local time -- the week stops
+   * listing it. Only a refused send: any other may have made the entry, or
+   * still will, and keeping that off would be a deletion (Delete is).
+   *
+   * @throws ArgumentException when the worklog is unknown or its send was
+   *   not refused.
+   */
+  public keepOff(worklogId: string): WorklogRecord {
+    if (!worklogId) throw new ArgumentNullException('worklogId');
+    const worklog = this._worklogs.getWorklogById(worklogId);
+    if (!worklog) throw new ArgumentException(`No worklog ${worklogId}.`, 'worklogId');
+    const send = this._worklogs.getSendOf(worklogId);
+    if (!send || send.refusedAtUtc === null || send.status !== 'FAILED') {
+      throw new ArgumentException('Only an entry its provider refused can be kept off it.', 'worklogId');
+    }
+    this.transaction(() => {
+      for (const stale of this._worklogs.getUnsentCorrectionsOf(worklogId, send.id)) this._worklogs.dropUnsentSyncItem(stale.id);
+      this._worklogs.dropUnsentSyncItem(send.id);
+    });
     return this._worklogs.getWorklogById(worklogId)!;
   }
 
@@ -356,8 +380,13 @@ export class WorklogCorrectionService {
   }
 
   /** Unclaimed and never claimed: the entry cannot exist. `send_attempts`, never the retry budget. */
-  private static neverAttempted(send: SyncQueueRecord): boolean {
-    return send.sendAttempts === 0 && (send.status === 'PENDING' || send.status === 'FAILED');
+  /**
+   * True when the send cannot have made an entry: never attempted, or
+   * refused (P11c), whose refusal was the answer to the POST itself after a
+   * search had found nothing.
+   */
+  private static madeNoEntry(send: SyncQueueRecord): boolean {
+    return (send.sendAttempts === 0 || send.refusedAtUtc !== null) && (send.status === 'PENDING' || send.status === 'FAILED');
   }
 
   private providerOf(send: SyncQueueRecord): ITaskProvider | null {

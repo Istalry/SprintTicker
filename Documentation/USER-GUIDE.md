@@ -181,6 +181,7 @@ above the session -- so nobody stops timing because something else is down:
 | **BUSY Bar unplugged** | Shown after ten seconds without the bar. Your timer keeps running here; the bar shows the current screen when it is back. |
 | **Updated to 1.5.0** | **What's new** opens the release notes; **Not now** puts it away. |
 | **No account yet** | **Connect one** opens Settings › Account; **Not now** puts it away for good. Your own tasks and their time stay as they are. |
+| **Jira refused 1 entry** | *PF-44, 30m: time tracking is off on this issue.* Jira turned that entry down, and asking again would not change its answer, so it is not sent again -- not even after a new token. It stays here, unsent, and Check my week lists it. **↳ Move…** puts it on another task, which sends it there; **Keep off Jira** keeps the time in your history only (Undo takes that back). The entry's ⋯ offers both too. |
 
 On your first day the picker opens on your own open tasks -- in progress
 first, then to do by priority -- since you have no Recent or Starred yet.

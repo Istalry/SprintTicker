@@ -8,9 +8,9 @@ import { SplitWorklogDialog } from './SplitWorklogDialog';
 import { TaskPicker } from './TaskPicker';
 import { ConfirmPanel } from './ConfirmPanel';
 import { RowMenu } from './RowMenu';
-import { Verb } from '../../shared/words';
+import { keepOffLabel, Verb } from '../../shared/words';
 
-export type EntryAction = 'edit' | 'move' | 'delete';
+export type EntryAction = 'edit' | 'move' | 'delete' | 'keep-off';
 
 interface Moving {
   worklogIds: string[];
@@ -77,8 +77,18 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
     }
   };
 
+  /** Keeps a refused entry off its provider (P11c): local time on its task, undoable. */
+  const keepOff = (log: WorklogDTO) => {
+    setMoveError(null);
+    window.electronAPI.keepWorklogOff(log.id).then(
+      () => changed(),
+      err => setMoveError(ipcErrorMessage(err))
+    );
+  };
+
   const run = (log: WorklogDTO, action: EntryAction) => {
     if (action === 'move') startMove([log], log.taskTitle ?? log.taskKey ?? log.taskId);
+    else if (action === 'keep-off') keepOff(log);
     else setEditing({ worklog: log, mode: action });
   };
 
@@ -141,11 +151,15 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
     </>
   );
 
-  return { run, startMove, dialogs, moveError };
+  return { run, startMove, dialogs, moveError, providerName };
 }
 
-/** ⋯ on an entry (S5): Correct, ↳ Move, Delete. */
-export const EntryMenu: React.FC<{ log: WorklogDTO; onAction: (action: EntryAction) => void }> = ({ log, onAction }) => {
+/** ⋯ on an entry (S5): Correct, ↳ Move, Delete -- and Keep off, on one its provider refused (P11c). */
+export const EntryMenu: React.FC<{ log: WorklogDTO; onAction: (action: EntryAction) => void; providerName?: string }> = ({
+  log,
+  onAction,
+  providerName = ''
+}) => {
   const name = `${log.taskKey ?? log.taskId} at ${formatClockTime(new Date(log.startedAtUtc))}`;
   return (
     <RowMenu
@@ -154,6 +168,7 @@ export const EntryMenu: React.FC<{ log: WorklogDTO; onAction: (action: EntryActi
       items={[
         { label: 'Correct…', run: () => onAction('edit') },
         { label: `↳ ${Verb.MOVE}…`, run: () => onAction('move') },
+        ...(log.syncState === 'refused' ? [{ label: keepOffLabel(providerName), run: () => onAction('keep-off') }] : []),
         { label: 'Delete…', run: () => onAction('delete'), danger: true }
       ]}
     />

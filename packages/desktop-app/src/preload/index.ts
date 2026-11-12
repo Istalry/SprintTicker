@@ -66,6 +66,8 @@ const electronAPI: IElectronAPI = {
   },
   getNotices: () => ipcRenderer.invoke(IPCChannel.GET_NOTICES),
   dismissNotice: (kind: NoticeKind) => ipcRenderer.invoke(IPCChannel.DISMISS_NOTICE, kind),
+  getRefusedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_REFUSED_WORKLOGS),
+  keepWorklogOff: (worklogId: string) => ipcRenderer.invoke(IPCChannel.KEEP_WORKLOG_OFF, worklogId),
   resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) =>
     ipcRenderer.invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, resolution),
   onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => {

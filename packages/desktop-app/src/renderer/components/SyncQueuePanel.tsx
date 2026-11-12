@@ -201,7 +201,8 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className={`text-xs px-2 py-0.5 rounded border ${STATUS_TONE[item.status]}`}>
-            {item.status}
+            {/* Refused is FAILED that no retry sends (P11c): Today offers Move or Keep off. */}
+            {item.refused ? 'REFUSED' : item.status}
           </span>
           {item.operation !== 'CREATE' && (
             // A correction or deletion of a worklog already sent, so the
