@@ -1665,7 +1665,7 @@ waits for the undo and the drain).
   `Profiles`; its format is Stream Deck's own, so it is exported from the
   app rather than generated.
 - The pictures `app-setup-wizard*.png` keep their names; `capture-app.js`
-  now shoots S1 and S2 (neither device), but they are not remade yet.
+  now shoots S1 and S2 (neither device); remade on 2026-11-12, after P12b.
 
 **As landed: P11b, S31's cards (2026-11-12).**
 

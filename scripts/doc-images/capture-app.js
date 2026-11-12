@@ -352,6 +352,10 @@ async function reload(page) {
 const listener = (page, on) => page.api(`saveNotificationSettings({ enableListener: ${on} })`);
 
 async function seed(page, profile) {
+  // The invented profile sends to OpenProject without credentials, which
+  // Today answers with "No account yet" (P11b): put away, as a user would,
+  // or every picture of Today shows it over the session.
+  await page.api("dismissNotice('no-account')");
   for (const project of PROJECTS) {
     await page.api(`createProject(${JSON.stringify({ id: project.id, key: project.key, name: project.name })})`);
     await page.api(`importTasks(${JSON.stringify(project.id)}, ${JSON.stringify(project.tasks)})`);
