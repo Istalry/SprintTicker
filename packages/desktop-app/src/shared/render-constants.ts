@@ -154,9 +154,27 @@ export const DISPLAY_CONSTANTS = {
 } as const;
 
 /**
- * How long after the bar's screen changes a press of Back only cancels
- * (redesign P14b). Back stops the session in one press, so a press meant for
- * a banner that left under the finger would otherwise stop the task beneath
- * it. The same settle as the Stream Deck's answer keys (`ANSWER_SETTLE_MS`).
+ * How long after the bar's screen changes a press on a question or a
+ * notification only settles (P14b, 2026-11-12). Pause says yes and the wheel's
+ * click no there, so a press meant for what was on the panel a moment before
+ * -- a pause, an interruption -- would otherwise answer a stand-up that came
+ * up under the finger. The same settle as the Stream Deck's answer keys
+ * (`ANSWER_SETTLE_MS`).
  */
-export const BAR_BACK_SETTLE_MS = 700;
+export const BAR_ANSWER_SETTLE_MS = 700;
+
+/**
+ * How long after the bar's Pause has paused a session a second Pause stops it
+ * (the user's choice, 2026-11-12: Back stops nothing). The bar shows AGAIN=STOP
+ * meanwhile; after it, Pause resumes. The deck's confirm window
+ * (`CONFIRM_WINDOW_MS`) is the same four seconds.
+ */
+export const BAR_STOP_AGAIN_MS = 4000;
+
+/**
+ * During an interruption, how long the bar waits after Pause for a second one
+ * before going back to the task. One press goes back, two stop the
+ * interruption where the first was pressed; the wait is what tells them apart,
+ * so it is shorter than `BAR_STOP_AGAIN_MS`, whose first press acts at once.
+ */
+export const BAR_INTERRUPTION_AGAIN_MS = 2000;

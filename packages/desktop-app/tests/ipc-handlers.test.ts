@@ -150,8 +150,8 @@ describe('IPC handlers', () => {
     });
 
     it.each([
-      ['ok', true],
-      ['back', false]
+      ['start', true],
+      ['ok', false]
     ])('HardwareAction_%sOnTheResumeQuestion_AnswersIt', (key, resume) => {
       // The decoder only says which answer; the schedule service owns the question.
       const answerResumePrompt = vi.fn().mockReturnValue(true);
@@ -164,13 +164,13 @@ describe('IPC handlers', () => {
       expect(answerResumePrompt).toHaveBeenCalledWith(resume);
     });
 
-    it('HardwareAction_OkOnTheStandupPrompt_JoinsIt', () => {
+    it('HardwareAction_PauseOnTheStandupPrompt_JoinsIt', () => {
       const joinStandup = vi.fn();
       build({ contextScheduleService: barAnswering({ joinStandup }) });
       vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue('standupPromptPriority');
       decoder.setPriorityEngine(priorityEngine);
 
-      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+      decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
 
       expect(joinStandup).toHaveBeenCalledTimes(1);
     });

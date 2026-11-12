@@ -846,6 +846,7 @@ app.on('will-quit', event => {
         // keep the process alive, but stopping them here means the display is
         // handed back below rather than being redrawn on the way out.
         renderer.dispose();
+        inputDecoder?.dispose();
       }
       if (engine) {
         engine.dispose();

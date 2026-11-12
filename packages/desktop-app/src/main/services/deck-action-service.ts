@@ -49,7 +49,7 @@ export interface DeckActionServiceDeps {
   >;
   renderer: Pick<DisplayRenderer, 'getScreenIcon' | 'onScreenIconChanged' | 'renderTaskCompletionConfetti' | 'renderTaskLogged'>;
   priorityEngine: Pick<PriorityPreemptionEngine, 'getActiveLockEventName'>;
-  inputDecoder: Pick<InputDecoder, 'handleHardwareInput' | 'getEodConfirmStep'>;
+  inputDecoder: Pick<InputDecoder, 'answerQuestion' | 'getEodConfirmStep'>;
   /** Brings the window forward with its task picker open; false when there is no window. */
   openPicker: () => boolean;
   /**
@@ -284,8 +284,8 @@ export class DeckActionService {
   }
 
   /**
-   * OK or BACK on the bar, while a prompt holds it: InputDecoder decides
-   * what that means. Lunch's question is the window's, answered as there.
+   * Yes or no, as the bar's own answer, while a prompt holds it:
+   * InputDecoder decides what that means. Lunch's question is the window's, answered as there.
    */
   private answerPrompt(yes: boolean): void {
     const prompt = this.currentPrompt();
@@ -294,11 +294,9 @@ export class DeckActionService {
       if (!this._deps.schedule?.answerLunchQuestion(yes)) throw new DeckRefusal('no-prompt', 'Lunch was answered already.');
       return;
     }
-    this._deps.inputDecoder.handleHardwareInput({
-      key: yes ? 'ok' : 'back',
-      type: 'press',
-      timestamp: this._now().toISOString()
-    });
+    // By meaning, never by key: the bar's keys changed meaning (P14b), and
+    // a deck that pressed `ok` for yes would now say no.
+    this._deps.inputDecoder.answerQuestion(yes);
   }
 
   private currentPrompt(): DeckPrompt | null {

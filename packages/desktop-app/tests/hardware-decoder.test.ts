@@ -9,7 +9,8 @@ import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
-import { BAR_BACK_SETTLE_MS } from '../src/shared/render-constants';
+import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_STOP_AGAIN_MS } from '../src/shared/render-constants';
+import { BarWord } from '../src/shared/words';
 
 /** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
 const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
@@ -48,9 +49,13 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     renderer = new DisplayRenderer(driver);
     decoder = new InputDecoder(driver, engine);
     decoder.setRenderer(renderer);
+    // The panel has shown what it shows for a while: no answer is settling.
+    vi.spyOn(renderer, 'msSinceScreenChange').mockReturnValue(60_000);
   });
 
   afterEach(() => {
+    decoder.dispose();
+    renderer.dispose();
     engine.dispose();
     driver.disconnect();
     dbConn.close();
@@ -271,7 +276,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(decoder.getEodConfirmStep()).toBe(0);
   });
 
-  it('HandleHardwareInput_EodPromptActive_BackPress_DismissesEodPrompt', () => {
+  it('HandleHardwareInput_EodPromptActive_WheelClick_DismissesEodPrompt', () => {
     // Arrange
     let lockReleased = false;
     const priorityEngine = {
@@ -282,8 +287,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     decoder.setPriorityEngine(priorityEngine as never);
     decoder.setRenderer(renderer);
 
-    // Act: back press
-    const action = decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
+    // Act: the wheel's click says no
+    const action = decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
 
     // Assert
     expect(action).toBe('DISMISS_EOD_WRAP_UP');
@@ -305,15 +310,15 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     decoder.setPriorityEngine(priorityEngine as never);
     decoder.setRenderer(renderer);
 
-    // Act: click / start press
-    const action = decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+    // Act: Pause says yes
+    const action = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
 
     // Assert
     expect(action).toBe('CONFIRM_STANDUP_PROMPT');
     expect(lockReleased).toBe(false);
   });
 
-  it('HandleHardwareInput_StandupPromptActive_BackPress_DismissesWithoutAnswering', () => {
+  it('HandleHardwareInput_StandupPromptActive_WheelClick_DismissesWithoutAnswering', () => {
     // The confirm half is covered above; this is the half where the user
     // declines, which must still release the lock or the prompt holds the
     // display until something higher-priority overwrites it.
@@ -325,7 +330,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     } as never);
 
     const action = decoder.handleHardwareInput({
-      key: 'back',
+      key: 'ok',
       type: 'press',
       timestamp: new Date().toISOString()
     });
@@ -374,15 +379,38 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       } as never);
     });
 
-    it.each(['ok', 'start'])('HandleHardwareInput_%sOnTheQuestion_AnswersYes', key => {
-      expect(press(key)).toBe('CONFIRM_RESUME_PROMPT');
+    it('HandleHardwareInput_PauseOnTheQuestion_AnswersYes', () => {
+      expect(press('start')).toBe('CONFIRM_RESUME_PROMPT');
 
       expect(heard).toEqual(['CONFIRM_RESUME_PROMPT']);
     });
 
-    it('HandleHardwareInput_BackOnTheQuestion_AnswersNo', () => {
-      expect(press('back')).toBe('DISMISS_RESUME_PROMPT');
+    it('HandleHardwareInput_WheelClickOnTheQuestion_AnswersNo', () => {
+      expect(press('ok')).toBe('DISMISS_RESUME_PROMPT');
       expect(heard).toEqual(['DISMISS_RESUME_PROMPT']);
+    });
+
+    it('HandleHardwareInput_BackOnTheQuestion_AnswersNothing', () => {
+      // Back is no answer any more (P14b): it does nothing anywhere.
+      expect(press('back')).toBe('AWAIT_RESUME_PROMPT');
+      expect(heard).toEqual([]);
+    });
+
+    it('HandleHardwareInput_AnswerJustAfterTheScreenChanged_Settles', () => {
+      // A press meant for what was on the panel a moment before -- a pause, an
+      // interruption -- must not answer the question that came up under it.
+      vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_ANSWER_SETTLE_MS - 1);
+
+      expect(press('start')).toBe('ANSWER_SETTLING');
+      expect(press('ok')).toBe('ANSWER_SETTLING');
+      expect(heard).toEqual([]);
+    });
+
+    it.each([true, false])('AnswerQuestion_FromTheDeck_%s_IsTheBarsAnswer_WithoutTheSettle', yes => {
+      // The deck answers by meaning, never by key, and keeps its own settle.
+      vi.mocked(renderer.msSinceScreenChange).mockReturnValue(0);
+
+      expect(decoder.answerQuestion(yes)).toBe(yes ? 'CONFIRM_RESUME_PROMPT' : 'DISMISS_RESUME_PROMPT');
     });
 
     it('HandleHardwareInput_WheelTurnedOnTheQuestion_AnswersNothing', () => {
@@ -396,9 +424,10 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
   });
 
   /**
-   * The bar's buttons (redesign P14b, the user's layout of 2026-11-12): Pause
-   * is yes, Back is no or stop, the wheel's click interrupts, and turning
-   * does nothing until the menu (P14c).
+   * The bar's buttons (redesign P14b, the user's layout of 2026-11-12, revised
+   * the same day): Pause is yes and Pause again stops, the wheel's click
+   * interrupts or says no, Back does nothing, and turning does nothing until
+   * the menu (P14c).
    */
   describe('the buttons', () => {
     const at = () => new Date().toISOString();
@@ -408,6 +437,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     let dismissed: boolean[];
 
     beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
       heard = [];
       notificationUp = false;
       dismissed = [];
@@ -423,25 +453,74 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
           return was;
         }
       } as never);
-      // The panel has shown what it shows for a while: Back is not settling.
-      vi.spyOn(renderer, 'msSinceScreenChange').mockReturnValue(60_000);
       taskRepo.saveTask({ id: 'T-1', projectId: 'P-1', key: 'SCRUM-1', title: 'Tache 1', status: 'todo' });
     });
 
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** What row 1 of the bar shows, read from the frame the renderer drew. */
+    const row1Says = (text: string): boolean => {
+      const drawn = vi.mocked(renderer['canvas'].drawSmallText);
+      return drawn.mock.calls.some(([t]) => t === text);
+    };
+
     describe('Pause', () => {
-      it('Pause_Timing_Pauses', () => {
+      it('Pause_Timing_Pauses_AndSaysAgainStop', () => {
         engine.startTask('T-1');
+        vi.spyOn(renderer['canvas'], 'drawSmallText');
 
         expect(press('start')).toBe('PAUSE_SESSION');
+
         expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+        renderer.renderActiveSession(engine.getCurrentSession());
+        expect(row1Says(BarWord.AGAIN_STOP)).toBe(true);
       });
 
-      it('Pause_Paused_Resumes', () => {
+      it('Pause_Twice_StopsWithLogged_TheTaskStaysOpen', () => {
+        engine.startTask('T-1');
+        const logged = vi.spyOn(renderer, 'renderTaskLogged');
+        press('start');
+        vi.advanceTimersByTime(BAR_STOP_AGAIN_MS - 1);
+
+        expect(press('start')).toBe('STOP_SESSION');
+
+        expect(engine.getCurrentSession()).toBeNull();
+        expect(logged).toHaveBeenCalledTimes(1);
+        expect(taskRepo.getTaskById('T-1')?.status).not.toBe('done');
+      });
+
+      it('Pause_AgainAfterTheWindow_Resumes_AndTheTimeComesBack', () => {
+        engine.startTask('T-1');
+        press('start');
+        vi.advanceTimersByTime(BAR_STOP_AGAIN_MS);
+        const small = vi.spyOn(renderer['canvas'], 'drawSmallText');
+        renderer.renderActiveSession(engine.getCurrentSession());
+        expect(small.mock.calls.some(([t]) => t === BarWord.AGAIN_STOP)).toBe(false);
+
+        expect(press('start')).toBe('RESUME_SESSION');
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Pause_OnASessionPausedElsewhere_Resumes_NeverStops', () => {
+        // Only the bar's own pause arms the stop: one paused in the app, or by
+        // lunch, resumes on the first press.
         engine.startTask('T-1');
         engine.pauseSession();
 
         expect(press('start')).toBe('RESUME_SESSION');
         expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Pause_ResumedThenPausedAgain_ArmsAfresh', () => {
+        engine.startTask('T-1');
+        press('start');
+        vi.advanceTimersByTime(BAR_STOP_AGAIN_MS);
+        press('start');
+
+        expect(press('start')).toBe('PAUSE_SESSION');
+        expect(press('start')).toBe('STOP_SESSION');
       });
 
       it('Pause_NothingRunning_OpensThePickerOnTheComputer', () => {
@@ -453,22 +532,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(engine.getCurrentSession()).toBeNull();
       });
 
-      it('Pause_DuringAnInterruption_GoesBackToTheTask', () => {
-        engine.startTask('T-1');
-        engine.startInterruption(new Date(), 'bar');
-
-        expect(press('start')).toBe('BACK_FROM_INTERRUPTION');
-        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'TRACKING' });
-        expect(engine.getCurrentSession()?.interruption).toBeUndefined();
-      });
-
-      it('Pause_InterruptionHoldingNothing_DoesNothing', () => {
-        engine.startInterruption(new Date(), 'bar');
-
-        expect(press('start')).toBe('NONE');
-        expect(engine.getCurrentSession()?.interruption).toBeDefined();
-      });
-
       it('Pause_ANotificationShown_DismissesItAndLeavesTheSessionRunning', () => {
         // Pause on a notification means "seen", not "pause my work".
         engine.startTask('T-1');
@@ -476,6 +539,16 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
         expect(press('start')).toBe('DISMISS_NOTIFICATION_ALERT');
         expect(dismissed).toEqual([false]);
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Pause_ANotificationJustArrived_Settles', () => {
+        engine.startTask('T-1');
+        notificationUp = true;
+        vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_ANSWER_SETTLE_MS - 1);
+
+        expect(press('start')).toBe('ANSWER_SETTLING');
+        expect(dismissed).toEqual([]);
         expect(engine.getCurrentSession()?.status).toBe('TRACKING');
       });
 
@@ -492,79 +565,130 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       });
     });
 
-    describe('Back', () => {
-      it('Back_Timing_StopsWithLogged_TheTaskStaysOpen', () => {
-        engine.startTask('T-1');
-        const logged = vi.spyOn(renderer, 'renderTaskLogged');
-
-        expect(press('back')).toBe('STOP_SESSION');
-
-        expect(engine.getCurrentSession()).toBeNull();
-        expect(logged).toHaveBeenCalledTimes(1);
-        expect(taskRepo.getTaskById('T-1')?.status).not.toBe('done');
-      });
-
-      it('Back_Paused_Stops', () => {
-        engine.startTask('T-1');
-        engine.pauseSession();
-
-        expect(press('back')).toBe('STOP_SESSION');
-        expect(engine.getCurrentSession()).toBeNull();
-      });
-
-      it('Back_DuringAnInterruption_StopsItAlone_NoLogged', () => {
-        // Nothing is logged for an interruption: it waits to be placed, and
-        // the task it held stays paused.
+    describe('Pause during an interruption', () => {
+      it('Pause_Once_GoesBackToTheTask_WhenTheWaitIsOver', () => {
         engine.startTask('T-1');
         engine.startInterruption(new Date(), 'bar');
-        const logged = vi.spyOn(renderer, 'renderTaskLogged');
 
-        expect(press('back')).toBe('STOP_INTERRUPTION');
+        expect(press('start')).toBe('AWAIT_SECOND_PRESS');
+        expect(engine.isInterrupted()).toBe(true);
 
-        expect(logged).not.toHaveBeenCalled();
-        expect(engine.isInterrupted()).toBe(false);
-        expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
+
+        expect(heard).toEqual(['BACK_FROM_INTERRUPTION']);
+        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'TRACKING' });
+        expect(engine.getCurrentSession()?.interruption).toBeUndefined();
       });
 
-      it('Back_NothingRunning_DoesNothing', () => {
-        expect(press('back')).toBe('NONE');
-        expect(heard).toEqual([]);
-      });
-
-      it('Back_ANotificationShown_DismissesIt_TheSessionRunsOn', () => {
+      it('Pause_Once_SaysAgainStopWhileItWaits', () => {
         engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        vi.spyOn(renderer['canvas'], 'drawSmallText');
+
+        press('start');
+
+        expect(row1Says(BarWord.AGAIN_STOP)).toBe(true);
+      });
+
+      it('Pause_Twice_StopsTheInterruptionWhereTheFirstWasPressed', () => {
+        // Nothing is logged for an interruption: it waits to be placed, and
+        // the task it held stays paused. Its end is the first press, not the
+        // second, so the wait is no one's time.
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        vi.advanceTimersByTime(60_000);
+        const firstPress = Date.now();
+        press('start');
+        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS - 1);
+
+        expect(press('start')).toBe('STOP_INTERRUPTION');
+
+        expect(engine.isInterrupted()).toBe(false);
+        const placed = engine.getInterruptionsToPlace();
+        expect(placed).toHaveLength(1);
+        expect(Date.parse(placed[0].endedAtUtc)).toBe(firstPress);
+        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'PAUSED' });
+        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
+        expect(heard).toEqual(['STOP_INTERRUPTION']);
+      });
+
+      it('Pause_InterruptionHoldingNothing_StopsIt', () => {
+        engine.startInterruption(new Date(), 'bar');
+
+        expect(press('start')).toBe('STOP_INTERRUPTION');
+        expect(engine.isInterrupted()).toBe(false);
+      });
+
+      it('Click_WhileTheReturnWaits_GoesBackFirst_ThenInterrupts', () => {
+        // The first press is honoured: back to the task, then the click is
+        // Interrupt as anywhere.
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        press('start');
+
+        expect(press('ok')).toBe('START_INTERRUPTION');
+        expect(heard).toEqual(['BACK_FROM_INTERRUPTION', 'START_INTERRUPTION']);
+      });
+
+      it('Pause_TheInterruptionEndedElsewhereMeanwhile_NothingHappens', () => {
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        press('start');
+        engine.stopInterruption();
+
+        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
+
+        expect(heard).toEqual([]);
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      });
+
+      it('Dispose_DropsTheWaitingReturn', () => {
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        press('start');
+
+        decoder.dispose();
+        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
+
+        expect(heard).toEqual([]);
+        expect(engine.isInterrupted()).toBe(true);
+      });
+
+      it('Pause_TheReturnThrows_IsLoggedNotThrown', () => {
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        press('start');
+        vi.spyOn(engine, 'backFromInterruption').mockImplementation(() => { throw new Error('boom'); });
+
+        expect(() => vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS)).not.toThrow();
+        expect(vi.mocked(console.error)).toHaveBeenCalled();
+      });
+    });
+
+    describe('Back', () => {
+      it.each(['back', 'back_hold', 'cancel'])('Back_%s_DoesNothing_EvenTiming', key => {
+        // The user does not want Back (2026-11-12); on the bar's own screen
+        // the firmware takes it anyway.
+        engine.startTask('T-1');
+
+        expect(press(key)).toBe('NONE');
+        expect(heard).toEqual([]);
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Back_DuringAnInterruption_DoesNothing', () => {
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+
+        expect(press('back')).toBe('NONE');
+        expect(engine.isInterrupted()).toBe(true);
+      });
+
+      it('Back_ANotificationShown_LeavesIt', () => {
         notificationUp = true;
 
-        expect(press('back')).toBe('DISMISS_NOTIFICATION_ALERT');
-        expect(dismissed).toEqual([true]);
-        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-      });
-
-      it('Back_JustAfterTheScreenChanged_OnlyCancels', () => {
-        // A press meant for a banner that left under the finger must not
-        // stop the task beneath it.
-        engine.startTask('T-1');
-        vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_BACK_SETTLE_MS - 1);
-
-        expect(press('back')).toBe('BACK_SETTLING');
-        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-      });
-
-      it('Back_OnceTheScreenHasSettled_Stops', () => {
-        engine.startTask('T-1');
-        vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_BACK_SETTLE_MS);
-
-        expect(press('back')).toBe('STOP_SESSION');
-      });
-
-      it('Back_Held_IsBackAsWell', () => {
-        // The bar sends no long press: a hold is a press released late
-        // (measured 2026-11-12). A `back_hold` from elsewhere is Back too,
-        // never a Done.
-        engine.startTask('T-1');
-
-        expect(press('back_hold')).toBe('STOP_SESSION');
-        expect(taskRepo.getTaskById('T-1')?.status).not.toBe('done');
+        expect(press('back')).toBe('NONE');
+        expect(dismissed).toEqual([]);
       });
     });
 
@@ -588,12 +712,13 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(press('ok')).toBe('START_INTERRUPTION');
       });
 
-      it('Click_ANotificationShown_DoesNothing', () => {
+      it('Click_ANotificationShown_SaysNo_AndDismissesIt', () => {
         engine.startTask('T-1');
         notificationUp = true;
 
-        expect(press('ok')).toBe('NONE');
-        expect(heard).toEqual([]);
+        expect(press('ok')).toBe('DISMISS_NOTIFICATION_ALERT');
+        expect(dismissed).toEqual([false]);
+        expect(engine.isInterrupted()).toBe(false);
       });
 
       it.each(['rotate_left', 'rotate_right', 'up', 'down'])('Turn_%s_DoesNothingYet', key => {
@@ -621,6 +746,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       decoder.setPriorityEngine({
         getActiveLockEventName: () => showing,
         releaseActiveLock: () => undefined,
+        hasActiveNotification: () => notificationUp,
         dismissNotification: (explicit: boolean) => {
           dismissed.push(explicit);
           return notificationUp;

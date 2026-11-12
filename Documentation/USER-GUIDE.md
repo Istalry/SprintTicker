@@ -381,8 +381,8 @@ and then, with nothing to fill in. The task you were on **waits, paused**:
 nothing is logged or sent for it, and its timer goes on from where it was
 when you come back. Interrupt is on Today's session card, in the mini timer,
 first in the tray menu, on the Stream Deck's Interrupt key, and on the bar:
-click the wheel. On the bar, Pause then goes back to your task, Back stops
-the interruption, and another click is **Another**.
+click the wheel. On the bar, Pause then goes back to your task, Pause twice
+stops the interruption, and another click is **Another**.
 And, if you turn it on, on a keyboard shortcut that works from any app --
 see below.
 
@@ -396,7 +396,7 @@ While it runs, the session card says which task waits, and offers:
   own **Choose a task ▾**. Place the ones you chose; **Later** or Escape
   leaves them to place on Today, with the names you typed. The task still
   waits, paused, and SprintTicker asks **Back to your task?**, naming it:
-  in the window, and on the bar as the task's key over **BACK? OK=YES**.
+  in the window, and on the bar as the task's key over **BACK TO IT?**.
   **Resume it** goes back; **Resume, and count the time since as work**
   also puts the minutes between the Stop and now on the task; **Leave it**
   leaves it paused.
@@ -879,7 +879,7 @@ time goes in as two worklogs either side of a break of 15 minutes or more
 (*A pause of … minutes or more starts a new worklog*, in **My workday**), to the second. When
 the break ends -- lunch's hour is over, or you unlock Windows -- Today and
 the mini timer ask **Back at your desk?**, naming the task, and the bar shows
-its key with **BACK? OK=YES**:
+its key with **RESUME IT?**:
 
 - **Resume KEY** starts timing again.
 - **I worked through it** takes the break back as though you had never
@@ -1124,7 +1124,7 @@ Every screen, as the bar shows it:
 | Screen | What it means |
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
-| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused.** ❚❚ and the key, the time below. Pause resumes, Back stops, a wheel click interrupts. |
+| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused.** ❚❚ and the key, the time below -- **AGAIN=STOP** for 4 s after the bar's Pause, when a second press stops. Then Pause resumes; a wheel click interrupts. |
 | <img src="../docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
@@ -1136,9 +1136,10 @@ while a task runs, its hand ticking round once a second; amber with blinking
 pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
 row 1 its time, in large digits. While paused, row 0 shows **❚❚** and the
-task key, and row 1 the time, in amber. Back stops the task: the time is
-logged, the task stays open, and the bar shows **LOGGED** for three
-seconds, the stopwatch's hand sweeping back to twelve. Marking a task done
+task key, and row 1 the time, in amber. Paused from the bar, row 1
+says **AGAIN=STOP** for four seconds: Pause again then stops the task --
+the time is logged, the task stays open, and the bar shows **LOGGED** for
+three seconds, the stopwatch's hand sweeping back to twelve. Marking a task done
 or discarding a session is done in the app or on the Stream Deck; DONE from
 anywhere shows **DONE!**.
 
@@ -1175,25 +1176,30 @@ the computer, in front of what you are doing.
 | Control | Does |
 | :--- | :--- |
 | ⏯️ **Pause** | **Yes.** Pauses, resumes, goes back to your task from an interruption, joins the stand-up, answers yes, dismisses a notification. With nothing running, opens the task picker on the computer |
-| ↩️ **Back** | **No, or stop.** Refuses a question, dismisses a notification, stops the task -- its time logged, the task left open, **LOGGED** on the bar and Undo in the app -- or stops an interruption, which then opens the Place window on the computer |
-| 🖱️ **Wheel** click | **Interrupt**; during an interruption, **Another** |
+| ⏯️⏯️ **Pause again** | **Stop.** Within 4 s of pausing -- the bar says **AGAIN=STOP** meanwhile -- stops the task: its time logged, the task left open, **LOGGED** on the bar and Undo in the app. After the 4 s, Pause resumes |
+| 🖱️ **Wheel** click | **Interrupt**; during an interruption, **Another**. On a question or a notification, **no** |
 | 🔄 **Wheel** turn | Nothing yet: a short menu is coming |
+| ↩️ **Back** | Nothing |
 
-- **Back right after the screen changes only cancels.** A press within
-  0.7 s of a new screen -- a notification leaving, a scene ending -- was
-  meant for what was there before, so it never stops the task beneath.
+- **During an interruption**, one Pause goes back to your task and two stop
+  the interruption without going back -- the Place window then opens on the
+  computer. The bar waits 2 s, showing **AGAIN=STOP**, to see whether a
+  second press comes, so going back takes that long; the interruption ends
+  at your first press either way.
+- **A press right as a question or a notification appears only settles.**
+  Within 0.7 s of it coming up, the press was meant for what was there
+  before, so it neither answers nor dismisses.
 - **Nothing is held.** The bar sends no long press, so no control depends on
   one.
-- **On the bar's own screen**, with nothing of SprintTicker's drawn -- its
-  clock when nothing runs -- the bar uses Back itself and leaves its own
-  clock app. Nothing in SprintTicker needs Back there.
+- **Back is left alone.** On the bar's own screen -- its clock when nothing
+  runs -- the bar uses Back itself and leaves its own clock app.
 
 🗣️ **During a question** -- the stand-up, back to your task?, the
-end-of-day wrap-up -- Pause (or a wheel click) says yes and Back no. The
-end-of-day wrap-up asks twice — the first press is "yes", the second
-confirms — because it can shut your machine down. Once it is done, the bar
-says **SEE YOU!** for five seconds, a moon rising and the stars coming out,
-and then goes idle.
+end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
+wrap-up asks twice — the first press is "yes", the second confirms
+(**AGAIN=YES**) — because it can shut your machine down. Once it is done,
+the bar says **SEE YOU!** for five seconds, a moon rising and the stars
+coming out, and then goes idle.
 
 The bar's buttons answer the wrap-up only while the bar shows its prompt. The
 **End my day** button in the header puts the prompt on the bar too. If

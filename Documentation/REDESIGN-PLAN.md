@@ -2285,6 +2285,28 @@ up Back reaches the app alone.
 - **To try on the bar:** each button in each state of the table, and a
   Back pressed just as a notification leaves.
 
+**Revised the same day, after the user tried it (2026-11-12).** Stopping
+with Back did not feel right, and the user does not want to use Back at
+all. Their choices:
+
+- **Pause twice stops.** A second Pause within `BAR_STOP_AGAIN_MS` (4 s, the
+  deck's confirm window) of the bar's own pause stops, with AGAIN=STOP on
+  row 1 meanwhile; after it, Pause resumes. A pause made elsewhere never
+  arms it.
+- **During an interruption, once goes back, twice stops.** The first press
+  waits `BAR_INTERRUPTION_AGAIN_MS` (2 s) with AGAIN=STOP; a second stops
+  the interruption where the first was pressed (`stopInterruption(atUtc)`),
+  so the wait is no one's time. Any other input lets the return happen
+  first.
+- **The wheel's click says no** on a question or a notification -- where it
+  was yes until now -- and Interrupt elsewhere. **Back does nothing.**
+- The settle moved from Back to the answers (`BAR_ANSWER_SETTLE_MS`). The
+  deck used to answer by pressing `ok` and `back` through the decoder; it
+  now calls `answerQuestion(yes)`, or its yes would have become no.
+- Row-1 hints lost their `OK=`: BACK TO IT?, the wrap-up's AGAIN=YES. The
+  rest of the words stay P14e's, and §19.1's table is read with these
+  changes.
+
 ---
 
 ## 19b. P16 -- Tasks and Settings, rebuilt as their screens
@@ -2456,6 +2478,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done | P14a `4de9fa0`, P14b (2026-11-12) |
+| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done, revised after the bar trial (Pause twice stops, Back unused) | P14a `4de9fa0`, P14b `8b32784` + revision (2026-11-12) |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

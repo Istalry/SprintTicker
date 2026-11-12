@@ -218,9 +218,10 @@ above. Two more things about it that cost time to find:
 **The Stream Deck plugin reaches the app over a WebSocket, and a key does
 what a click or a press already does.** `DeckActionService` holds no rule of
 its own, and must not grow one: ending a session is `completeSession`, shared
-with the window's IPC; a prompt is answered by OK or BACK through
-`InputDecoder`, so the wrap-up's two presses and the stand-up's switch stay
-in one place; the picker is the tray's (the picker window, P7b). A key with its own copy of a rule
+with the window's IPC; a prompt is answered through
+`InputDecoder.answerQuestion` -- by meaning, never by naming a bar key,
+whose meaning moved once (P14b) -- so the wrap-up's two presses and the
+stand-up's switch stay in one place; the picker is the tray's (the picker window, P7b). A key with its own copy of a rule
 is the duplicated-constant hazard below, with a session at stake. Four more
 things about it:
 - **`Origin` is the whole defence of the socket.** A browser opens a
@@ -688,10 +689,14 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     panel, and closes once at the end, animations first. It used to clear
     between cases -- a dozen image-plus-animation closes in a row.
 
-**The bar's inputs have one meaning each** (P14b, the user's layout):
-Pause is yes (pause, resume, back from an interruption, a question's yes,
-dismiss), Back is no or stop, the wheel's click is Interrupt, and turning
-is the menu's (P14c). Three things measured on the bar (2026-11-12) shape
+**The bar's inputs have one meaning each** (P14b, the user's layout,
+revised after trying it): Pause is yes (pause, resume, back from an
+interruption, a question's yes, dismiss) and **Pause again stops** -- within
+`BAR_STOP_AGAIN_MS` of the bar's own pause, or, during an interruption, of
+the first press, which waits `BAR_INTERRUPTION_AGAIN_MS` to tell one press
+from two. The wheel's click is Interrupt, and no on a question or a
+notification; turning is the menu's (P14c). **Back does nothing**: the
+user does not want it. Three things measured on the bar (2026-11-12) shape
 it:
 - **The bar sends no long press.** A two-second hold arrives as a press
   released late (action 2 never came), so the old "hold BACK = done" never
@@ -702,9 +707,9 @@ it:
   drawn (its clock, nothing running) Back leaves the user's clock app.
   With our screen up, Back reaches us alone. Nothing may need Back when
   SprintTicker is not on the panel.
-Back stops in one press, so it is ignored for `BAR_BACK_SETTLE_MS` after
-the panel changes (`msSinceScreenChange`): a press meant for a banner that
-left must not stop the task beneath.
+An answer -- Pause or the click on a question or a notification -- settles
+for `BAR_ANSWER_SETTLE_MS` after the panel changes (`msSinceScreenChange`):
+a Pause meant to pause must not join a stand-up that came up under it.
 
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,

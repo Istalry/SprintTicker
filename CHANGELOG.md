@@ -229,12 +229,13 @@
 
 - **The bar's buttons each do one thing.** **Pause** says yes -- pause,
   resume, back to your task from an interruption, join, dismiss -- and with
-  nothing running opens the task picker on the computer. **Back** says no,
-  or stops: the task (its time logged, LOGGED on the bar) or an
-  interruption (the Place window then opens on the computer). A **wheel
-  click** starts an interruption, or the next one. A Back pressed just as
-  the screen changes only cancels. The paused screen shows ❚❚ and the key,
-  the time below. The bar's own task picker, its paused menu and
+  nothing running opens the task picker on the computer. **Pause again**
+  within 4 s stops the task (its time logged, LOGGED on the bar; the bar
+  says AGAIN=STOP meanwhile); during an interruption, two presses stop it
+  and the Place window opens on the computer. A **wheel click** starts an
+  interruption, or the next one, and says no to a question. **Back** is no
+  longer used. A press just as a question or a notification appears only
+  settles. The paused screen shows ❚❚ and the key, the time below. The bar's own task picker, its paused menu and
   "hold BACK = done" are gone: the bar sends no long press, and choosing is
   the app's.
 - **Four places instead of eight tabs.** The window is **Today**, **Tasks**,

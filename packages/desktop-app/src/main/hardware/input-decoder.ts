@@ -4,35 +4,44 @@ import { IPriorityPreemptionEngine } from '../services/priority-preemption-engin
 import { DisplayRenderer } from './display-renderer';
 import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
-import { BAR_BACK_SETTLE_MS } from '../../shared/render-constants';
+import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_STOP_AGAIN_MS } from '../../shared/render-constants';
+import { BarWord } from '../../shared/words';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
 /** What a press of the bar's inputs is, whatever the firmware calls it. */
 type BarInput = 'pause' | 'back' | 'click' | 'turn' | 'other';
 
+/** The questions the bar answers, by the lock that holds the display for each. */
+type BarQuestion = 'eod' | 'standup' | 'resume';
+
+/** An interruption's return, held to see whether a second Pause comes. */
+interface PendingBack {
+  sessionId: string;
+  pressedAt: number;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 /**
- * Decodes the bar's inputs (redesign P14b, the user's layout of 2026-11-12).
- * One meaning per input, in every state, and no menu but the one the wheel
- * will open (P14c):
+ * Decodes the bar's inputs (redesign P14b, the user's layout of 2026-11-12,
+ * revised the same day after trying it). One meaning per input, in every
+ * state, and no menu but the one the wheel will open (P14c):
  *
  * - **Pause** is yes: pause, resume, back to the task an interruption holds,
  *   join, accept, dismiss a notification; with nothing running it opens the
- *   task picker on the computer.
- * - **Back** is no, or stop: refuses a question, dismisses a notification,
- *   stops the session (its time logged, the task left open) or the
- *   interruption -- but never within `BAR_BACK_SETTLE_MS` of the screen
- *   changing, so a press meant for a banner that left under the finger does
- *   not stop the task beneath it.
- * - **The wheel's click** interrupts; during an interruption, Another.
+ *   task picker on the computer. **Pause again** within `BAR_STOP_AGAIN_MS`
+ *   of pausing stops the session, its time logged; during an interruption,
+ *   one Pause goes back to the task and two stop the interruption.
+ * - **The wheel's click** is no on a question or a notification, and
+ *   Interrupt everywhere else -- Another during one.
+ * - **Back** does nothing: the user did not want to use it.
  * - **Turning** does nothing yet.
  *
  * No input is held: the bar never sends a long press. A two-second hold
- * arrives as a press released late (measured on the bar, 2026-11-12), so the
- * old "hold BACK = done" never fired from the device. And while the bar
- * shows its own screen -- the firmware's clock, nothing of ours drawn -- the
- * firmware takes Back for itself and leaves its clock app, so nothing here
- * may need Back when SprintTicker is not on the panel.
+ * arrives as a press released late (measured on the bar, 2026-11-12). And
+ * while the bar shows its own screen -- the firmware's clock, nothing of ours
+ * drawn -- the firmware takes Back for itself and leaves its clock app, so
+ * nothing here may need Back.
  */
 export class InputDecoder {
   private _driver: BusyBarDriver;
@@ -43,6 +52,9 @@ export class InputDecoder {
   private _openPickerCallback?: () => void;
   private _actionHandlers: Set<ActionHandler> = new Set();
   private _eodConfirmStep: number = 0;
+  /** The session the bar's Pause just paused, which a second Pause stops until `until`. */
+  private _stopArmed: { sessionId: string; until: number } | null = null;
+  private _pendingBack: PendingBack | null = null;
 
   /// <summary>
   /// Instantiates InputDecoder, binding hardware driver event listeners.
@@ -116,6 +128,24 @@ export class InputDecoder {
     return () => this._actionHandlers.delete(handler);
   }
 
+  /** Drops a return still waiting on a second Pause, for shutdown. */
+  public dispose(): void {
+    if (this._pendingBack) clearTimeout(this._pendingBack.timer);
+    this._pendingBack = null;
+  }
+
+  /**
+   * Answers the question on the bar, yes or no, as the bar's own presses
+   * would: the Stream Deck's answer keys come here, so the wrap-up's two
+   * presses and the stand-up's switch stay in one place. No settle: the deck
+   * keeps its own (`ANSWER_SETTLE_MS`).
+   */
+  public answerQuestion(yes: boolean): string {
+    const question = this.questionShown();
+    if (!question) return 'NONE';
+    return this.answer(question, yes, yes ? 'deck-yes' : 'deck-no');
+  }
+
   /** Names the input, from the key and the event's type. */
   private static inputOf(event: HardwareEvent): BarInput {
     const key = (event.key || '').toLowerCase();
@@ -134,63 +164,40 @@ export class InputDecoder {
   public handleHardwareInput(event: HardwareEvent): string {
     const key = (event.key || '').toLowerCase();
     const input = InputDecoder.inputOf(event);
-    const activeLock = this._priorityEngine?.getActiveLockEventName();
 
-    // 1. The end-of-day wrap-up: two presses to confirm, Back to dismiss.
-    if (activeLock === 'eodWrapUpPriority') {
-      // The wheel's click still says yes on a question until the bar's
-      // hints name the Pause button (P14e): they say OK=YES today.
-      if (input === 'pause' || input === 'click') {
-        this._windowFocusCallback?.();
-        if (this._eodConfirmStep === 0) {
-          this._eodConfirmStep = 1;
-          this._renderer?.renderCeremonyPrompt('EOD', 'Press START to Confirm');
-          return this.report('CONFIRM_EOD_WRAP_UP_STEP_1', key);
-        }
-        this._eodConfirmStep = 0;
-        this._renderer?.renderCeremonyPrompt('EOD', 'Wrapping Up...');
-        return this.report('EXECUTE_EOD_WRAP_UP', key);
-      }
-      if (input === 'back') {
-        this._eodConfirmStep = 0;
-        this._priorityEngine?.releaseActiveLock('eodWrapUpPriority');
-        this._renderer?.renderActiveSession(this._engine.getCurrentSession());
-        return this.report('DISMISS_EOD_WRAP_UP', key);
-      }
-      return 'AWAIT_EOD_WRAP_UP';
-    }
-    this._eodConfirmStep = 0;
-
-    // 2. The stand-up's prompt: yes joins, Back refuses.
-    if (activeLock === 'standupPromptPriority') {
-      if (input === 'pause' || input === 'click') {
-        // Joining is ContextScheduleService's, through the action handlers:
-        // it switches the timer to the stand-up under the prompt's lock and
-        // releases it, which draws once. The window is not brought forward:
-        // the user is on their way to the meeting (P8c).
-        return this.report('CONFIRM_STANDUP_PROMPT', key);
-      }
-      if (input === 'back') {
-        this._priorityEngine?.releaseActiveLock('standupPromptPriority');
-        this._renderer?.renderActiveSession(this._engine.getCurrentSession());
-        return this.report('DISMISS_STANDUP_PROMPT', key);
-      }
-      return 'AWAIT_STANDUP_PROMPT';
+    // A return from an interruption waiting on a second Pause: Pause stops
+    // the interruption instead, and anything else lets the return happen
+    // before it is handled.
+    if (this._pendingBack) {
+      if (input === 'pause' && this.stillShowing(this._pendingBack.sessionId)) return this.stopPendingInterruption(key);
+      this.flushPendingBack();
     }
 
-    // 3. Back to your task? -- after lunch, or after an interruption. The
-    // answer goes to ContextScheduleService, which owns the question and its
-    // lock.
-    if (activeLock === RESUME_PROMPT_EVENT) {
-      if (input === 'pause' || input === 'click') return this.report('CONFIRM_RESUME_PROMPT', key);
-      if (input === 'back') return this.report('DISMISS_RESUME_PROMPT', key);
-      return 'AWAIT_RESUME_PROMPT';
+    const question = this.questionShown();
+    if (question !== 'eod') this._eodConfirmStep = 0;
+    if (question) {
+      if (input !== 'pause' && input !== 'click') return `AWAIT_${question.toUpperCase()}_PROMPT`;
+      if (this.settling()) return 'ANSWER_SETTLING';
+      return this.answer(question, input === 'pause', key);
+    }
+
+    // A notification: Pause accepts it and the click says no, and both put it
+    // away; neither reaches the session beneath.
+    if ((input === 'pause' || input === 'click') && this._priorityEngine?.hasActiveNotification()) {
+      if (this.settling()) return 'ANSWER_SETTLING';
+      this._priorityEngine.dismissNotification(false);
+      return this.report('DISMISS_NOTIFICATION_ALERT', key);
     }
 
     switch (input) {
       case 'pause': return this.pause(key);
-      case 'back': return this.back(key);
-      case 'click': return this.click(key);
+      // Interrupt is ContextScheduleService's, through the action handlers: it
+      // holds the task to ask about when the interruption ends, and during one
+      // it is Another. Its start draws the screen.
+      case 'click': return this.report('START_INTERRUPTION', key);
+      // Back stops nothing and answers nothing: the user does not want to use
+      // it, and on the bar's own screen the firmware takes it anyway.
+      case 'back': return 'NONE';
       // The wheel's menu is P14c.
       case 'turn': return 'NONE';
       default:
@@ -201,11 +208,61 @@ export class InputDecoder {
     }
   }
 
-  /** Pause: yes, in whatever the bar shows. */
-  private pause(key: string): string {
-    // A notification first: Pause dismisses it, and does nothing else.
-    if (this._priorityEngine?.dismissNotification(false)) return this.report('DISMISS_NOTIFICATION_ALERT', key);
+  private questionShown(): BarQuestion | null {
+    const lock = this._priorityEngine?.getActiveLockEventName();
+    if (lock === 'eodWrapUpPriority') return 'eod';
+    if (lock === 'standupPromptPriority') return 'standup';
+    if (lock === RESUME_PROMPT_EVENT) return 'resume';
+    return null;
+  }
 
+  /**
+   * A press too soon after the screen changed was meant for what was there
+   * before: a Pause meant to pause must not join a stand-up that came up
+   * under the finger, nor a click meant to interrupt refuse it.
+   */
+  private settling(): boolean {
+    return !!this._renderer && this._renderer.msSinceScreenChange() < BAR_ANSWER_SETTLE_MS;
+  }
+
+  private answer(question: BarQuestion, yes: boolean, key: string): string {
+    switch (question) {
+      case 'eod':
+        if (yes) {
+          // Two presses: the wrap-up can shut the machine down.
+          this._windowFocusCallback?.();
+          if (this._eodConfirmStep === 0) {
+            this._eodConfirmStep = 1;
+            this._renderer?.renderCeremonyPrompt('EOD', BarWord.AGAIN_YES);
+            return this.report('CONFIRM_EOD_WRAP_UP_STEP_1', key);
+          }
+          this._eodConfirmStep = 0;
+          this._renderer?.renderCeremonyPrompt('EOD', 'Wrapping Up...');
+          return this.report('EXECUTE_EOD_WRAP_UP', key);
+        }
+        this._eodConfirmStep = 0;
+        this._priorityEngine?.releaseActiveLock('eodWrapUpPriority');
+        this._renderer?.renderActiveSession(this._engine.getCurrentSession());
+        return this.report('DISMISS_EOD_WRAP_UP', key);
+      case 'standup':
+        // Joining is ContextScheduleService's, through the action handlers:
+        // it switches the timer to the stand-up under the prompt's lock and
+        // releases it, which draws once. The window is not brought forward:
+        // the user is on their way to the meeting (P8c).
+        if (yes) return this.report('CONFIRM_STANDUP_PROMPT', key);
+        this._priorityEngine?.releaseActiveLock('standupPromptPriority');
+        this._renderer?.renderActiveSession(this._engine.getCurrentSession());
+        return this.report('DISMISS_STANDUP_PROMPT', key);
+      case 'resume':
+        // Back to your task? -- after lunch, or after an interruption. The
+        // answer goes to ContextScheduleService, which owns the question and
+        // its lock.
+        return this.report(yes ? 'CONFIRM_RESUME_PROMPT' : 'DISMISS_RESUME_PROMPT', key);
+    }
+  }
+
+  /** Pause: yes, in whatever the bar shows; again, stop. */
+  private pause(key: string): string {
     const session = this._engine.getCurrentSession();
     if (!session) {
       // Choosing a task is the app's; the picker comes up over what the user
@@ -214,53 +271,78 @@ export class InputDecoder {
       return this.report('OPEN_TASK_PICKER', key);
     }
     if (session.interruption) {
-      // Back to the task it holds. One holding nothing has nothing to go back
-      // to: Back ends it.
-      if (!session.interruption.interruptedSessionId) return 'NONE';
-      this._engine.backFromInterruption();
-      return this.report('BACK_FROM_INTERRUPTION', key);
+      // One holding no task has nothing to go back to: Pause ends it.
+      if (!session.interruption.interruptedSessionId) {
+        this._engine.stopInterruption();
+        return this.report('STOP_INTERRUPTION', key);
+      }
+      // One Pause goes back to the task, two stop the interruption: the wait
+      // tells them apart, with AGAIN=STOP on the bar meanwhile.
+      this._renderer?.showAgainHint(session.sessionId, BAR_INTERRUPTION_AGAIN_MS);
+      this._renderer?.renderActiveSession(session);
+      this._pendingBack = {
+        sessionId: session.sessionId,
+        pressedAt: Date.now(),
+        timer: setTimeout(() => {
+          try {
+            this.flushPendingBack();
+          } catch (err) {
+            // A timer's throw would end the process; the press is lost, the
+            // interruption runs on, and the next press acts afresh.
+            console.error('[InputDecoder] Going back from the interruption failed:', err);
+          }
+        }, BAR_INTERRUPTION_AGAIN_MS)
+      };
+      return 'AWAIT_SECOND_PRESS';
     }
     if (session.status === 'TRACKING') {
+      // Shown before the pause, so the paused frame already carries it.
+      this._renderer?.showAgainHint(session.sessionId, BAR_STOP_AGAIN_MS);
+      this._stopArmed = { sessionId: session.sessionId, until: Date.now() + BAR_STOP_AGAIN_MS };
       this._engine.pauseSession();
       return this.report('PAUSE_SESSION', key);
+    }
+    const armed = this._stopArmed;
+    this._stopArmed = null;
+    this._renderer?.clearAgainHint();
+    if (armed && armed.sessionId === session.sessionId && Date.now() < armed.until) {
+      // Stop means stop: the time is logged and the task stays open. LOGGED
+      // says so, before the stop, so the session's end is held behind the
+      // scene rather than drawn first. Undo is the app's toast.
+      this._renderer?.renderTaskLogged();
+      this._engine.stopSession(WORKLOG_COMMENTS.BAR_STOP);
+      return this.report('STOP_SESSION', key);
     }
     this._engine.resumeSession();
     return this.report('RESUME_SESSION', key);
   }
 
-  /** Back: no, or stop. */
-  private back(key: string): string {
-    if (this._priorityEngine?.dismissNotification(true)) return this.report('DISMISS_NOTIFICATION_ALERT', key);
-
-    // A press meant for what was there a moment ago: a banner that left, a
-    // scene that ended. It must not stop what is there now.
-    if (this._renderer && this._renderer.msSinceScreenChange() < BAR_BACK_SETTLE_MS) return 'BACK_SETTLING';
-
-    const session = this._engine.getCurrentSession();
-    if (!session) return 'NONE';
-    if (session.interruption) {
-      // Nothing is logged for an interruption, so no LOGGED: it waits to be
-      // placed, and main opens the Place window on the computer at its stop.
-      this._engine.stopInterruption();
-      return this.report('STOP_INTERRUPTION', key);
-    }
-    // Stop means stop: the time is logged and the task stays open. LOGGED
-    // says so, before the stop, so the session's end is held behind the scene
-    // rather than drawn first. Undo is the app's toast.
-    this._renderer?.renderTaskLogged();
-    this._engine.stopSession(WORKLOG_COMMENTS.BAR_STOP);
-    return this.report('STOP_SESSION', key);
+  private stillShowing(sessionId: string): boolean {
+    return this._engine.getCurrentSession()?.sessionId === sessionId;
   }
 
-  /** The wheel's click: Interrupt, or Another during one. */
-  private click(key: string): string {
-    // A notification on the panel is answered by Pause or Back; a click
-    // there does nothing rather than start a timer under it.
-    if (this._priorityEngine?.hasActiveNotification()) return 'NONE';
-    // Interrupt is ContextScheduleService's, through the action handlers: it
-    // holds the task to ask about when the interruption ends, and during one
-    // it is Another. Its start draws the screen.
-    return this.report('START_INTERRUPTION', key);
+  /** The second Pause: the interruption ends where the first was pressed. */
+  private stopPendingInterruption(key: string): string {
+    const pending = this._pendingBack!;
+    clearTimeout(pending.timer);
+    this._pendingBack = null;
+    this._renderer?.clearAgainHint();
+    this._engine.stopInterruption(new Date(pending.pressedAt).toISOString());
+    return this.report('STOP_INTERRUPTION', key);
+  }
+
+  /** The wait is over, or another input came: back to the task. */
+  private flushPendingBack(): void {
+    const pending = this._pendingBack;
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    this._pendingBack = null;
+    this._renderer?.clearAgainHint();
+    // Ended or replaced meanwhile, from the app or the deck: nothing to go
+    // back from.
+    if (!this._engine.getCurrentSession()?.interruption || !this.stillShowing(pending.sessionId)) return;
+    this._engine.backFromInterruption();
+    this.report('BACK_FROM_INTERRUPTION', 'start');
   }
 
   private report(action: string, inputKey: string): string {

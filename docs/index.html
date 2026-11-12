@@ -919,8 +919,8 @@
       nothing is logged or sent for it, and its timer goes on from where it was
       when you come back. Interrupt is on Today&#39;s session card, in the mini timer,
       first in the tray menu, on the Stream Deck&#39;s Interrupt key, and on the bar:
-      click the wheel. On the bar, Pause then goes back to your task, Back stops
-      the interruption, and another click is <strong>Another</strong>.
+      click the wheel. On the bar, Pause then goes back to your task, Pause twice
+      stops the interruption, and another click is <strong>Another</strong>.
       And, if you turn it on, on a keyboard shortcut that works from any app --
       see below.</p>
       <p>While it runs, the session card says which task waits, and offers:</p>
@@ -933,7 +933,7 @@
       own <strong>Choose a task ▾</strong>. Place the ones you chose; <strong>Later</strong> or Escape
       leaves them to place on Today, with the names you typed. The task still
       waits, paused, and SprintTicker asks <strong>Back to your task?</strong>, naming it:
-      in the window, and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>.
+      in the window, and on the bar as the task&#39;s key over <strong>BACK TO IT?</strong>.
       <strong>Resume it</strong> goes back; <strong>Resume, and count the time since as work</strong>
       also puts the minutes between the Stop and now on the task; <strong>Leave it</strong>
       leaves it paused.</li>
@@ -1445,7 +1445,7 @@
       (<em>A pause of … minutes or more starts a new worklog</em>, in <strong>My workday</strong>), to the second. When
       the break ends -- lunch&#39;s hour is over, or you unlock Windows -- Today and
       the mini timer ask <strong>Back at your desk?</strong>, naming the task, and the bar shows
-      its key with <strong>BACK? OK=YES</strong>:</p>
+      its key with <strong>RESUME IT?</strong>:</p>
       <ul>
       <li><strong>Resume KEY</strong> starts timing again.</li>
       <li><strong>I worked through it</strong> takes the break back as though you had never
@@ -1731,7 +1731,7 @@
       </tr>
       <tr>
       <td align="center"><img src="images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"></td>
-      <td align="left">⏸️ <strong>Paused.</strong> ❚❚ and the key, the time below. Pause resumes, Back stops, a wheel click interrupts.</td>
+      <td align="left">⏸️ <strong>Paused.</strong> ❚❚ and the key, the time below -- <strong>AGAIN=STOP</strong> for 4 s after the bar&#39;s Pause, when a second press stops. Then Pause resumes; a wheel click interrupts.</td>
       </tr>
       <tr>
       <td align="center"><img src="images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"></td>
@@ -1759,9 +1759,10 @@
       pause bars while it is paused; dim grey when nothing runs (the screen then
       reads <strong>Ready / No task running</strong>). While a task runs, row 0 shows the task and
       row 1 its time, in large digits. While paused, row 0 shows <strong>❚❚</strong> and the
-      task key, and row 1 the time, in amber. Back stops the task: the time is
-      logged, the task stays open, and the bar shows <strong>LOGGED</strong> for three
-      seconds, the stopwatch&#39;s hand sweeping back to twelve. Marking a task done
+      task key, and row 1 the time, in amber. Paused from the bar, row 1
+      says <strong>AGAIN=STOP</strong> for four seconds: Pause again then stops the task --
+      the time is logged, the task stays open, and the bar shows <strong>LOGGED</strong> for
+      three seconds, the stopwatch&#39;s hand sweeping back to twelve. Marking a task done
       or discarding a session is done in the app or on the Stream Deck; DONE from
       anywhere shows <strong>DONE!</strong>.</p>
       <div class="note"><span class="label">Why the timer shows HH:MM</span>
@@ -1812,34 +1813,42 @@
       <td align="left"><strong>Yes.</strong> Pauses, resumes, goes back to your task from an interruption, joins the stand-up, answers yes, dismisses a notification. With nothing running, opens the task picker on the computer</td>
       </tr>
       <tr>
-      <td align="left">↩️ <strong>Back</strong></td>
-      <td align="left"><strong>No, or stop.</strong> Refuses a question, dismisses a notification, stops the task -- its time logged, the task left open, <strong>LOGGED</strong> on the bar and Undo in the app -- or stops an interruption, which then opens the Place window on the computer</td>
+      <td align="left">⏯️⏯️ <strong>Pause again</strong></td>
+      <td align="left"><strong>Stop.</strong> Within 4 s of pausing -- the bar says <strong>AGAIN=STOP</strong> meanwhile -- stops the task: its time logged, the task left open, <strong>LOGGED</strong> on the bar and Undo in the app. After the 4 s, Pause resumes</td>
       </tr>
       <tr>
       <td align="left">🖱️ <strong>Wheel</strong> click</td>
-      <td align="left"><strong>Interrupt</strong>; during an interruption, <strong>Another</strong></td>
+      <td align="left"><strong>Interrupt</strong>; during an interruption, <strong>Another</strong>. On a question or a notification, <strong>no</strong></td>
       </tr>
       <tr>
       <td align="left">🔄 <strong>Wheel</strong> turn</td>
       <td align="left">Nothing yet: a short menu is coming</td>
       </tr>
+      <tr>
+      <td align="left">↩️ <strong>Back</strong></td>
+      <td align="left">Nothing</td>
+      </tr>
       </tbody></table></div>
       <ul>
-      <li><strong>Back right after the screen changes only cancels.</strong> A press within
-      0.7 s of a new screen -- a notification leaving, a scene ending -- was
-      meant for what was there before, so it never stops the task beneath.</li>
+      <li><strong>During an interruption</strong>, one Pause goes back to your task and two stop
+      the interruption without going back -- the Place window then opens on the
+      computer. The bar waits 2 s, showing <strong>AGAIN=STOP</strong>, to see whether a
+      second press comes, so going back takes that long; the interruption ends
+      at your first press either way.</li>
+      <li><strong>A press right as a question or a notification appears only settles.</strong>
+      Within 0.7 s of it coming up, the press was meant for what was there
+      before, so it neither answers nor dismisses.</li>
       <li><strong>Nothing is held.</strong> The bar sends no long press, so no control depends on
       one.</li>
-      <li><strong>On the bar&#39;s own screen</strong>, with nothing of SprintTicker&#39;s drawn -- its
-      clock when nothing runs -- the bar uses Back itself and leaves its own
-      clock app. Nothing in SprintTicker needs Back there.</li>
+      <li><strong>Back is left alone.</strong> On the bar&#39;s own screen -- its clock when nothing
+      runs -- the bar uses Back itself and leaves its own clock app.</li>
       </ul>
       <p>🗣️ <strong>During a question</strong> -- the stand-up, back to your task?, the
-      end-of-day wrap-up -- Pause (or a wheel click) says yes and Back no. The
-      end-of-day wrap-up asks twice — the first press is &quot;yes&quot;, the second
-      confirms — because it can shut your machine down. Once it is done, the bar
-      says <strong>SEE YOU!</strong> for five seconds, a moon rising and the stars coming out,
-      and then goes idle.</p>
+      end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
+      wrap-up asks twice — the first press is &quot;yes&quot;, the second confirms
+      (<strong>AGAIN=YES</strong>) — because it can shut your machine down. Once it is done,
+      the bar says <strong>SEE YOU!</strong> for five seconds, a moon rising and the stars
+      coming out, and then goes idle.</p>
       <p>The bar&#39;s buttons answer the wrap-up only while the bar shows its prompt. The
       <strong>End my day</strong> button in the header puts the prompt on the bar too. If
       something ranked above the wrap-up holds the bar -- Lunch, in the shipped
@@ -2977,7 +2986,8 @@
       after an update rather than drawn from the old ones still stored.</p>
       <h4><code>InputDecoder</code> — <code>src/main/hardware/</code></h4>
       <p>Turns the bar&#39;s inputs into what they mean in the state shown (redesign
-      P14b, the user&#39;s layout). One meaning per input, nothing rebindable:</p>
+      P14b, the user&#39;s layout, revised the same day). One meaning per input,
+      nothing rebindable:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -2987,28 +2997,32 @@
       </thead>
       <tbody><tr>
       <td align="left">Pause (<code>start</code>)</td>
-      <td align="left">yes: pause, resume, back from an interruption (<code>backFromInterruption</code>), the question&#39;s yes; a notification is dismissed instead; with nothing running, <code>setOpenPickerCallback</code> -- main opens the picker window, raised</td>
+      <td align="left">yes: pause, resume, a question&#39;s yes; a notification dismissed; with nothing running, <code>setOpenPickerCallback</code> -- main opens the picker window, raised. <strong>Again</strong> within <code>BAR_STOP_AGAIN_MS</code> (4 s) of the bar&#39;s own pause, the session stops with <strong>LOGGED</strong> (<code>stopSession</code>); <code>DisplayRenderer.showAgainHint</code> draws AGAIN=STOP on row 1 meanwhile</td>
       </tr>
       <tr>
-      <td align="left">Back</td>
-      <td align="left">no or stop: a question&#39;s no; a notification dismissed (<code>dismissNotification(true)</code>); else the session stopped with <strong>LOGGED</strong> (<code>stopSession</code>), or the interruption stopped (<code>stopInterruption</code>, no scene) -- never within <code>BAR_BACK_SETTLE_MS</code> of the panel changing (<code>DisplayRenderer.msSinceScreenChange</code>)</td>
+      <td align="left">Pause during an interruption</td>
+      <td align="left">held <code>BAR_INTERRUPTION_AGAIN_MS</code> (2 s): none more and it goes back (<code>backFromInterruption</code>); a second and the interruption stops where the first was pressed (<code>stopInterruption(atUtc)</code>), which opens the Place window. One holding no task stops at once</td>
       </tr>
       <tr>
       <td align="left">Wheel click</td>
-      <td align="left"><code>START_INTERRUPTION</code>, handed to <code>ContextScheduleService.answerFromBar</code>, which interrupts -- Another during one; nothing while a notification shows</td>
+      <td align="left">no on a question or a notification; elsewhere <code>START_INTERRUPTION</code>, handed to <code>ContextScheduleService.answerFromBar</code>, which interrupts -- Another during one</td>
+      </tr>
+      <tr>
+      <td align="left">Back</td>
+      <td align="left">nothing</td>
       </tr>
       <tr>
       <td align="left">Wheel turn</td>
       <td align="left">nothing yet (the menu, P14c)</td>
       </tr>
       </tbody></table></div>
-      <p>Questions -- the wrap-up&#39;s two presses, the stand-up, back to your task? --
-      take Pause or a wheel click as yes, until the bar&#39;s hints name the Pause
-      button (P14e), and Back as no; the answers go to <code>ContextScheduleService</code>
-      through the action handlers. The bar sends no long press: a hold arrives as
-      a press released late, so nothing depends on one. The bar&#39;s own task
-      picker and the paused menu went with this layout; the old
-      <code>hardware_bindings</code> setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
+      <p>An answer pressed within <code>BAR_ANSWER_SETTLE_MS</code> of the panel changing
+      (<code>DisplayRenderer.msSinceScreenChange</code>) settles instead, as the deck&#39;s do.
+      The Stream Deck answers through <code>answerQuestion(yes)</code> -- by meaning, never
+      by the bar&#39;s keys, whose meaning changed under it once. The bar sends no
+      long press: a hold arrives as a press released late, so nothing depends on
+      one. The bar&#39;s own task picker and the paused menu went with this layout;
+      the old <code>hardware_bindings</code> setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
       inside an EventEmitter listener with no error handler terminates the main
       process, so without it a button press could take the whole app down.</p>
       <h4><code>ContextScheduleService</code> — <code>src/main/services/</code></h4>
@@ -3312,9 +3326,9 @@
       taking the display has no event of its own.</p>
       <p>Every action is something the app already does, called the same way: ending
       a session is <code>completeSession</code> (<code>session-commands.ts</code>), shared with the
-      window&#39;s <code>COMPLETE_SESSION</code>; a prompt is answered by OK or BACK through
-      <code>InputDecoder.handleHardwareInput</code>, so the wrap-up&#39;s two presses and the
-      stand-up&#39;s switch stay where the bar&#39;s keys reach them; the picker is the
+      window&#39;s <code>COMPLETE_SESSION</code>; a prompt is answered through
+      <code>InputDecoder.answerQuestion</code>, so the wrap-up&#39;s two presses and the
+      stand-up&#39;s switch stay where the bar&#39;s presses reach them; the picker is the
       tray&#39;s <code>openTaskPickerInMainWindow</code>, with a <code>ForegroundRaiser</code> that gets the
       window past Windows&#39; foreground lock -- a key press reaches Stream Deck, not
       the app, and <code>focus()</code> alone only flashes the taskbar. It never draws on the
@@ -4353,7 +4367,7 @@
       </tr>
       <tr>
       <td align="left"><code>prompt-yes</code>, <code>prompt-no</code></td>
-      <td align="left">OK or BACK on the bar while a prompt holds it: the stand-up (<code>standup</code>), the wrap-up (<code>wrap-up</code>, then <code>wrap-up-confirm</code> after the first yes), the resume question (<code>resume</code>; <em>2</em>: <code>back</code> when it follows an interruption). <em>2</em>: <code>lunch</code>, lunch&#39;s hour asking to end an interruption, is the window&#39;s question and is answered as there (<code>answerLunchQuestion</code>)</td>
+      <td align="left">The bar&#39;s yes or no while a prompt holds it (<code>InputDecoder.answerQuestion</code>): the stand-up (<code>standup</code>), the wrap-up (<code>wrap-up</code>, then <code>wrap-up-confirm</code> after the first yes), the resume question (<code>resume</code>; <em>2</em>: <code>back</code> when it follows an interruption). <em>2</em>: <code>lunch</code>, lunch&#39;s hour asking to end an interruption, is the window&#39;s question and is answered as there (<code>answerLunchQuestion</code>)</td>
       <td align="left">No prompt is asked</td>
       </tr>
       <tr>

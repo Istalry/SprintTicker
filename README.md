@@ -63,7 +63,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 | | |
 | :---: | :--- |
 | <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
-| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused** — Pause resumes, Back stops, a wheel click interrupts. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused** — Pause again within 4 s stops, later it resumes; a wheel click interrupts. |
 | <img src="docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up** — its own timer, three people at a table taking turns to speak. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
 | <img src="docs/images/bar-scene-lunch.webp" width="304" alt="The Lunch scene"> | 🥪 **Lunch, Away, meetings** — full-screen scenes while you are not at your desk. |
@@ -252,8 +252,9 @@ Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
 ### 🎛️ Physical input
 
 Each control has one meaning: **Pause** says yes (pause, resume, back from an
-interruption, dismiss), **Back** says no or stops, and a **wheel click** starts
-an interruption. Choosing a task opens the picker on the computer.
+interruption, dismiss) and **Pause again** stops; a **wheel click** starts an
+interruption, or says no to a question. Back is not used. Choosing a task
+opens the picker on the computer.
 
 ### 🔔 Windows notifications with priority preemption
 
@@ -309,7 +310,7 @@ this machine, and every key turns grey while SprintTicker is closed. See
 Configurable working hours, lunch and away detection, a standup prompt whose
 Join switches the timer to a Daily Standup task and back to your task after it,
 and an end-of-day wrap-up that can be confirmed from
-the bar's **Pause** button or dismissed with **Back**. Lunch stops the
+the bar's **Pause** button or dismissed with a **wheel click**. Lunch stops the
 running task and starts it again afterwards, across a restart of the app too;
 start or resume a task during lunch and Lunch ends for the day instead.
 Ceremonies happen on the working days you pick, less the holidays your

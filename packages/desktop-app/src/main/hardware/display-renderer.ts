@@ -26,28 +26,27 @@ import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROM
 const PAUSED_CONFIRM_COLOR = '#EF4444';
 const PAUSED_CONFIRM_HINT_COLOR = '#E5E7EB';
 /**
- * After lunch, about a task no longer the user's. "RESUME? OK=YES" is 56px of
- * a 55px row; OK answers yes and BACK no, as on every question on the bar.
+ * After lunch, about a task no longer the user's. Pause answers yes and the
+ * wheel's click no, as on every question on the bar (P14b).
  */
 export const RESUME_PROMPT_TEXT = { question: 'NOT YOURS', hint: 'RESUME IT?' } as const;
 /**
  * After an interruption: row 0 is the task it would bring back, row 1 the
- * answer. `RESUME? OK=YES` is 56px of the 55px row in Sprint Small.
+ * question. No button is named: Pause is yes on every question (P14b).
  */
-export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BACK? OK=YES' } as const;
+export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BACK TO IT?' } as const;
 const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
- * A question the paused screen asks in place of its rows. The
- * wheel's click answers yes and BACK no; see InputDecoder.
+ * A question the paused screen asks in place of its rows, for the wheel's
+ * menu (P14c): a second Pause answers yes, as every question on the bar.
  */
 export type PausedConfirm = 'DISCARD' | 'DONE_UNLISTED';
 export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint: string }> = {
-  DISCARD: { question: `${BarWord.DISCARD}?`, hint: 'OK=YES BACK=NO' },
+  DISCARD: { question: `${BarWord.DISCARD}?`, hint: BarWord.AGAIN_YES },
   // Marking done a task the provider no longer lists as the user's:
-  // reassigned, closed or moved. "OK=YES BACK=NO" beside "DONE?" is 60px of a
-  // 55px row, and BACK refuses every question on the bar.
-  DONE_UNLISTED: { question: BarWord.NOT_YOURS, hint: `${BarWord.DONE}? ${BarWord.OK_YES}` }
+  // reassigned, closed or moved.
+  DONE_UNLISTED: { question: BarWord.NOT_YOURS, hint: `${BarWord.DONE} ANYWAY?` }
 };
 
 /**
@@ -506,16 +505,45 @@ export class DisplayRenderer {
   }
 
   private pausedConfirm: PausedConfirm | null = null;
-  /** When the panel last took a frame that differs from the one before: Back's settle (P14b). */
+  /** When the panel last took a frame that differs from the one before: the answers' settle (P14b). */
   private screenChangedAt = 0;
+  /** AGAIN=STOP in place of the time, for the session it was shown for, until it lapses. */
+  private againHint: { sessionId: string; timer: ReturnType<typeof setTimeout> } | null = null;
 
   /**
-   * How long the panel has shown what it shows now. A press of Back sooner
-   * than `BAR_BACK_SETTLE_MS` after a change was meant for what was there
-   * before -- a banner that left, a scene that ended -- and only cancels.
+   * How long the panel has shown what it shows now. A press on a question or
+   * a notification sooner than `BAR_ANSWER_SETTLE_MS` after a change was meant
+   * for what was there before, and only settles.
    */
   public msSinceScreenChange(): number {
     return Date.now() - this.screenChangedAt;
+  }
+
+  /**
+   * Row 1 says AGAIN=STOP instead of the time for `durationMs`: the bar's
+   * second Pause stops (P14b). Shown before the press acts, so the frame the
+   * pause or the interruption draws already carries it; the time comes back
+   * by itself when it lapses.
+   */
+  public showAgainHint(sessionId: string, durationMs: number): void {
+    this.clearAgainHint();
+    const timer = setTimeout(() => {
+      if (this.againHint?.timer !== timer) return;
+      this.againHint = null;
+      if (this.lastSessionCache?.sessionId === sessionId) this.renderActiveSession(this.lastSessionCache);
+    }, durationMs);
+    this.againHint = { sessionId, timer };
+  }
+
+  /** Drops the hint without a redraw: the press that answered it draws next. */
+  public clearAgainHint(): void {
+    if (!this.againHint) return;
+    clearTimeout(this.againHint.timer);
+    this.againHint = null;
+  }
+
+  private showsAgainHint(session: ActiveSessionDTO | null): boolean {
+    return !!session && !!this.againHint && this.againHint.sessionId === session.sessionId;
   }
 
   /** Replaces the paused screen's rows with a yes-or-no question until it is answered. */
@@ -733,6 +761,10 @@ export class DisplayRenderer {
     this.canvas.drawTextClipped(
       taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH
     );
+    if (this.showsAgainHint(this.lastSessionCache)) {
+      this.canvas.drawSmallText(BarWord.AGAIN_STOP, layout.TEXT_X, layout.ROW1_Y, color, layout.TEXT_FIELD_WIDTH);
+      return;
+    }
     this.canvas.drawTextClipped(timerText, layout.TEXT_X, layout.ROW1_Y, color, layout.TEXT_FIELD_WIDTH, TIMER_FONT);
   }
 
@@ -1034,13 +1066,14 @@ export class DisplayRenderer {
    *  - Left (x=0..15): the stopwatch, ticking while tracking
    *  - Row 0 (y=0): Task title (TASK-KEY: Title)
    *  - Row 1 (y=8): Task timer (HH:MM, in TIMER_FONT)
-   *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), the time moves to row 0
-   *    and row 1 offers DONE, STOP, DISCARD and INTERRUPT, chosen with the wheel.
+   *  - When PAUSED: text and LED turn amber (#F59E0B) and ❚❚ stands before
+   *    the key; for a few seconds after the bar's Pause, row 1 says
+   *    AGAIN=STOP instead of the time.
    */
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
     // A question belongs to the pause it was asked in. Resumed, stopped or
-    // replaced, the session takes it with it; the next pause offers the menu.
+    // replaced, the session takes it with it.
     if (!session || session.status !== 'PAUSED') {
       this.pausedConfirm = null;
     }
@@ -1192,7 +1225,10 @@ export class DisplayRenderer {
       } else {
         const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
         this.canvas.drawTextClipped(titleText, layout.TEXT_X, layout.ROW0_Y, row0Color, layout.TEXT_FIELD_WIDTH);
-        if (session) {
+        if (session && this.showsAgainHint(session)) {
+          // An interruption waiting to see whether a second Pause comes.
+          this.canvas.drawSmallText(BarWord.AGAIN_STOP, layout.TEXT_X, layout.ROW1_Y, row1Color, layout.TEXT_FIELD_WIDTH);
+        } else if (session) {
           // Large, because it is the one thing read from across the room.
           // Still HH:MM: the seconds are the stopwatch's hand, animated by the
           // device, so the frame changes once a minute rather than every
@@ -1432,6 +1468,7 @@ export class DisplayRenderer {
     this.clearBannerTimers();
     this.iconAnimator.dispose();
     this.clearCelebrationTimer();
+    this.clearAgainHint();
     this.animationPlayer.stop();
   }
 

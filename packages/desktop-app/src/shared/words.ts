@@ -199,11 +199,11 @@ export const BarWord = {
   STAND_UP: 'STAND-UP',
   NOT_YOURS: 'NOT YOURS',
   DONE_ANYWAY: 'DONE ANYWAY',
-  OK_YES: 'OK=YES',
-  OK_JOIN: 'OK=JOIN',
-  OK_END: 'OK=END',
-  OK_PICK: 'OK=PICK',
-  OK_APP: 'OK=APP'
+  // Pause says yes everywhere and the wheel's click no on a question (P14b),
+  // so the hints name only what a second Pause does; the OK= words went with
+  // the click's old meaning.
+  AGAIN_STOP: 'AGAIN=STOP',
+  AGAIN_YES: 'AGAIN=YES'
 } as const;
 
 /** Union of the bar's word strings. */

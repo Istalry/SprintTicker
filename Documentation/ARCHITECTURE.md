@@ -759,22 +759,24 @@ after an update rather than drawn from the old ones still stored.
 ### `InputDecoder` — `src/main/hardware/`
 
 Turns the bar's inputs into what they mean in the state shown (redesign
-P14b, the user's layout). One meaning per input, nothing rebindable:
+P14b, the user's layout, revised the same day). One meaning per input,
+nothing rebindable:
 
 | Input | Means |
 | :--- | :--- |
-| Pause (`start`) | yes: pause, resume, back from an interruption (`backFromInterruption`), the question's yes; a notification is dismissed instead; with nothing running, `setOpenPickerCallback` -- main opens the picker window, raised |
-| Back | no or stop: a question's no; a notification dismissed (`dismissNotification(true)`); else the session stopped with **LOGGED** (`stopSession`), or the interruption stopped (`stopInterruption`, no scene) -- never within `BAR_BACK_SETTLE_MS` of the panel changing (`DisplayRenderer.msSinceScreenChange`) |
-| Wheel click | `START_INTERRUPTION`, handed to `ContextScheduleService.answerFromBar`, which interrupts -- Another during one; nothing while a notification shows |
+| Pause (`start`) | yes: pause, resume, a question's yes; a notification dismissed; with nothing running, `setOpenPickerCallback` -- main opens the picker window, raised. **Again** within `BAR_STOP_AGAIN_MS` (4 s) of the bar's own pause, the session stops with **LOGGED** (`stopSession`); `DisplayRenderer.showAgainHint` draws AGAIN=STOP on row 1 meanwhile |
+| Pause during an interruption | held `BAR_INTERRUPTION_AGAIN_MS` (2 s): none more and it goes back (`backFromInterruption`); a second and the interruption stops where the first was pressed (`stopInterruption(atUtc)`), which opens the Place window. One holding no task stops at once |
+| Wheel click | no on a question or a notification; elsewhere `START_INTERRUPTION`, handed to `ContextScheduleService.answerFromBar`, which interrupts -- Another during one |
+| Back | nothing |
 | Wheel turn | nothing yet (the menu, P14c) |
 
-Questions -- the wrap-up's two presses, the stand-up, back to your task? --
-take Pause or a wheel click as yes, until the bar's hints name the Pause
-button (P14e), and Back as no; the answers go to `ContextScheduleService`
-through the action handlers. The bar sends no long press: a hold arrives as
-a press released late, so nothing depends on one. The bar's own task
-picker and the paused menu went with this layout; the old
-`hardware_bindings` setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
+An answer pressed within `BAR_ANSWER_SETTLE_MS` of the panel changing
+(`DisplayRenderer.msSinceScreenChange`) settles instead, as the deck's do.
+The Stream Deck answers through `answerQuestion(yes)` -- by meaning, never
+by the bar's keys, whose meaning changed under it once. The bar sends no
+long press: a hold arrives as a press released late, so nothing depends on
+one. The bar's own task picker and the paused menu went with this layout;
+the old `hardware_bindings` setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
 inside an EventEmitter listener with no error handler terminates the main
 process, so without it a button press could take the whole app down.
 
@@ -1114,9 +1116,9 @@ taking the display has no event of its own.
 
 Every action is something the app already does, called the same way: ending
 a session is `completeSession` (`session-commands.ts`), shared with the
-window's `COMPLETE_SESSION`; a prompt is answered by OK or BACK through
-`InputDecoder.handleHardwareInput`, so the wrap-up's two presses and the
-stand-up's switch stay where the bar's keys reach them; the picker is the
+window's `COMPLETE_SESSION`; a prompt is answered through
+`InputDecoder.answerQuestion`, so the wrap-up's two presses and the
+stand-up's switch stay where the bar's presses reach them; the picker is the
 tray's `openTaskPickerInMainWindow`, with a `ForegroundRaiser` that gets the
 window past Windows' foreground lock -- a key press reaches Stream Deck, not
 the app, and `focus()` alone only flashes the taskbar. It never draws on the
