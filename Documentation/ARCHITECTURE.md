@@ -576,8 +576,9 @@ Two rules, both scars:
   displays it: the stand-up prompt, covered by Away, waits through a Lunch
   begun meanwhile and returns after it. The tracker and the mode locks are
   never set aside: `setContextMode` draws them as they are now.
-- **The bar's picker is the background state.** Registered by
-  `InputDecoder`, it comes back while it is open: refused under Away and
+- **The bar's picker was the background state** (removed in P14b; the
+  wheel's menu, P14c, takes its place). Registered by
+  `InputDecoder`, it came back while it was open: refused under Away and
   never queued, it would otherwise be open and unseen once Away ended. A
   state is reclaimed rather than resumed -- it redraws what it is by then,
   not what it was when covered. The Unity Editor's compile and Play Mode
@@ -757,33 +758,23 @@ after an update rather than drawn from the old ones still stored.
 
 ### `InputDecoder` — `src/main/hardware/`
 
-Turns physical events into application actions, through a rebindable map.
+Turns the bar's inputs into what they mean in the state shown (redesign
+P14b, the user's layout). One meaning per input, nothing rebindable:
 
-| Control | Default action |
+| Input | Means |
 | :--- | :--- |
-| START press | `TOGGLE_TRACK_PAUSE` |
-| Wheel left / right | `NAVIGATE_QUEUE_PREV` / `NAVIGATE_QUEUE_NEXT` |
-| Wheel click | `TRIGGER_TASK_SELECTOR_MODAL` |
-| BACK short press | `DISMISS_NOTIFICATION_ALERT` |
-| BACK long press | `COMPLETE_AND_LOG_ACTIVE_TASK` |
+| Pause (`start`) | yes: pause, resume, back from an interruption (`backFromInterruption`), the question's yes; a notification is dismissed instead; with nothing running, `setOpenPickerCallback` -- main opens the picker window, raised |
+| Back | no or stop: a question's no; a notification dismissed (`dismissNotification(true)`); else the session stopped with **LOGGED** (`stopSession`), or the interruption stopped (`stopInterruption`, no scene) -- never within `BAR_BACK_SETTLE_MS` of the panel changing (`DisplayRenderer.msSinceScreenChange`) |
+| Wheel click | `START_INTERRUPTION`, handed to `ContextScheduleService.answerFromBar`, which interrupts -- Another during one; nothing while a notification shows |
+| Wheel turn | nothing yet (the menu, P14c) |
 
-It also runs the two-stage task picker (project, then task) driven entirely from
-the bar, and the paused menu (P14a): DONE, STOP, DISCARD -- the deck's A,
-B and C -- then INTERRUPT, in `BarWord`'s words. Row 1 shows the group
-holding the choice: DONE and STOP together, DISCARD or INTERRUPT alone
-(`pausedChoicesShown`), and row 0 draws ❚❚ as two 1x5 bars before the key
-(`PAUSED_MARK`). It opens on STOP, and every pause opens there again,
-whatever the last was left on. A
-click on INTERRUPT is decoded as `START_INTERRUPTION` and handed to
-`ContextScheduleService.answerFromBar`, which interrupts as the window's
-button does; the decoder ends nothing itself. DISCARD asks **DISCARD?** first;
-while the question is up the click confirms, BACK refuses, and every other
-key waits. A session started anywhere else while the picker is open closes
-it: it used to hold the display over the new session until BACK. After lunch,
-under `resumePromptPriority`, OK and START answer yes and BACK no; the answer
-goes to `ContextScheduleService` through the action handlers. Its project list goes through `filterProjectsWithTasks`
-(`src/shared/project-filter.ts`), the rule the window's two lists use, and
-reads the stored switch each time the picker opens. The driver listener is wrapped in a try/catch on purpose: a throw
+Questions -- the wrap-up's two presses, the stand-up, back to your task? --
+take Pause or a wheel click as yes, until the bar's hints name the Pause
+button (P14e), and Back as no; the answers go to `ContextScheduleService`
+through the action handlers. The bar sends no long press: a hold arrives as
+a press released late, so nothing depends on one. The bar's own task
+picker and the paused menu went with this layout; the old
+`hardware_bindings` setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
 inside an EventEmitter listener with no error handler terminates the main
 process, so without it a button press could take the whole app down.
 
@@ -1256,7 +1247,7 @@ suite once wrote a real database to disk. Tests use
 
 Start to finish, across every component:
 
-1. **You pick a task** — from the UI, or with the wheel on the bar.
+1. **You pick a task** — in the app's picker, which the bar's Pause opens when nothing runs.
 2. `TimeTrackingEngine.startTask()` writes `active_sessions`, with the
    provider the task's project came from, and asks that provider to move the
    issue to its configured in-progress status. A project made in the app has

@@ -6,10 +6,9 @@ export const WORKLOG_COMMENTS = {
   DEFAULT: 'Completed session via SprintTicker',
   SWITCHED_TASK: 'Auto-completed due to new task start',
   INTERRUPTED: 'Stopped for an interruption',
-  BAR_STOP: 'Stopped via BUSY Bar Paused Menu',
+  BAR_STOP: 'Stopped via BUSY Bar',
   BAR_FINISH: 'Completed via BUSY Bar Paused Menu',
   BAR_FINISH_CONFIRMED: 'Completed via BUSY Bar after confirming',
-  BAR_LONG_PRESS: 'Completed via BUSY Bar Long Press',
   WRAP_UP: 'Finalized during End-of-Day Wrap-Up',
   LUNCH: 'Auto-completed for Lunch Break split',
   /** Time added by hand with no note (S16b). */

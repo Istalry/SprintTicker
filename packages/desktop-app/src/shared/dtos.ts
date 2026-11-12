@@ -134,15 +134,6 @@ export interface ProjectDTO {
   openOthersCount?: number;
 }
 
-export interface HardwareBindingConfig {
-  startButtonPress: string;
-  wheelRotateLeft: string;
-  wheelRotateRight: string;
-  wheelClick: string;
-  backButtonShortPress: string;
-  backButtonLongPress: string;
-}
-
 export interface DeviceConfigDTO {
   /**
    * Whether this machine has a BUSY Bar at all.

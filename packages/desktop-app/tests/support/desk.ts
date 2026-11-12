@@ -185,7 +185,6 @@ export class Desk {
         return;
       case 'askDiscard':
         if (this.session?.status !== 'PAUSED') return;
-        this.renderer.selectPausedChoice('DISCARD');
         this.renderer.askPausedConfirm('DISCARD');
         return;
       case 'cancelDiscard':

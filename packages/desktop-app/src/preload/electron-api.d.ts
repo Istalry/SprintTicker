@@ -26,7 +26,6 @@ import type {
   ProjectDTO,
   ProviderSettingsDTO,
   ProviderSettingsUpdateDTO,
-  HardwareBindingConfig,
   DeviceStatusDTO,
   PriorityMatrixConfig,
   PriorityRule,
@@ -212,9 +211,7 @@ export interface IElectronAPI {
     items: Array<{ taskId: string; key: string; title: string; durationSeconds: number; comment: string; unsorted?: true }>;
   }>;
 
-  // Hardware Rebindings
-  getInputBindings: () => Promise<HardwareBindingConfig>;
-  saveInputBindings: (config: HardwareBindingConfig) => Promise<boolean>;
+  // Hardware input
   injectRemoteKey: (key: string) => Promise<boolean>;
   onHardwareInputEvent: (callback: (event: { inputKey: string; actionAssigned: string }) => void) => () => void;
 

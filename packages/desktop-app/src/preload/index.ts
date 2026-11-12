@@ -14,7 +14,6 @@ import type {
   BitmapIconId,
   TaskDTO,
   DeviceStatusDTO,
-  HardwareBindingConfig,
   PriorityMatrixConfig,
   PriorityRule,
   ProviderSettingsUpdateDTO,
@@ -169,10 +168,7 @@ const electronAPI: IElectronAPI = {
   // Database Management
   wipeAllData: () => ipcRenderer.invoke(IPCChannel.WIPE_ALL_DATA),
 
-  // Hardware Rebindings
-  getInputBindings: () => ipcRenderer.invoke(IPCChannel.GET_INPUT_BINDINGS),
-  saveInputBindings: (config: HardwareBindingConfig) =>
-    ipcRenderer.invoke(IPCChannel.SAVE_INPUT_BINDINGS, config),
+  // Hardware input
   injectRemoteKey: (key: string) => ipcRenderer.invoke(IPCChannel.INJECT_REMOTE_KEY, key),
   onHardwareInputEvent: (callback: (event: { inputKey: string; actionAssigned: string }) => void) => {
     const handler = (_event: IpcRendererEvent, data: { inputKey: string; actionAssigned: string }) => callback(data);

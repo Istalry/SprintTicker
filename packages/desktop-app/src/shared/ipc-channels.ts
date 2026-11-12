@@ -118,9 +118,7 @@ export enum IPCChannel {
   GET_DAILY_WORKLOG_SUMMARY = 'worklogs:get-daily-summary',
   WIPE_ALL_DATA = 'db:wipe-all-data',
 
-  // Hardware Input Rebindings
-  GET_INPUT_BINDINGS = 'input:get-bindings',
-  SAVE_INPUT_BINDINGS = 'input:save-bindings',
+  // Hardware input
   INJECT_REMOTE_KEY = 'input:inject-remote-key',
   ON_HARDWARE_INPUT_EVENT = 'input:on-hardware-event',
 

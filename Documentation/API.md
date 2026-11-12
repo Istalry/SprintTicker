@@ -166,7 +166,6 @@ which the window applies too, so it refuses exactly what main refuses.
 
 | Channel | Purpose |
 | :--- | :--- |
-| `input:get-bindings` / `input:save-bindings` | The rebindable control map |
 | `input:inject-remote-key` | Simulate a physical key |
 | `input:on-hardware-event` | **Event** — a physical control was used |
 

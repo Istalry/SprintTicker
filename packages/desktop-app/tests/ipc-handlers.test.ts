@@ -113,7 +113,7 @@ describe('IPC handlers', () => {
     engine = new TimeTrackingEngine(new SessionRepository(db), new WorklogRepository(db), taskRepo, undefined, new ProjectRepository(db));
     driver = new BusyBarDriver('10.0.4.20', true);
     await driver.connect();
-    decoder = new InputDecoder(driver, engine, settingsRepo);
+    decoder = new InputDecoder(driver, engine);
     priorityEngine = new PriorityPreemptionEngine(settingsRepo);
     sent = [];
     window = {
@@ -142,10 +142,10 @@ describe('IPC handlers', () => {
     it('HardwareAction_OnePress_ReachesTheRendererOnce', () => {
       // The wrap-up modal counts presses to step through its confirmation.
       // Delivered twice, one START both armed and ran the wrap-up.
-      decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: new Date().toISOString() });
+      decoder.handleHardwareInput({ key: 'apps', type: 'press', timestamp: new Date().toISOString() });
 
       expect(sentOn(IPCChannel.ON_HARDWARE_INPUT_EVENT)).toEqual([
-        { inputKey: 'up', actionAssigned: 'NAVIGATE_QUEUE_PREV' }
+        { inputKey: 'apps', actionAssigned: 'SYSTEM_MODE_APPS' }
       ]);
     });
 

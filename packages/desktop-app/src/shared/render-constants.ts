@@ -153,3 +153,10 @@ export const DISPLAY_CONSTANTS = {
   // arithmetic is in `proportional-text.ts`.
 } as const;
 
+/**
+ * How long after the bar's screen changes a press of Back only cancels
+ * (redesign P14b). Back stops the session in one press, so a press meant for
+ * a banner that left under the finger would otherwise stop the task beneath
+ * it. The same settle as the Stream Deck's answer keys (`ANSWER_SETTLE_MS`).
+ */
+export const BAR_BACK_SETTLE_MS = 700;

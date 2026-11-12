@@ -688,6 +688,24 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     panel, and closes once at the end, animations first. It used to clear
     between cases -- a dozen image-plus-animation closes in a row.
 
+**The bar's inputs have one meaning each** (P14b, the user's layout):
+Pause is yes (pause, resume, back from an interruption, a question's yes,
+dismiss), Back is no or stop, the wheel's click is Interrupt, and turning
+is the menu's (P14c). Three things measured on the bar (2026-11-12) shape
+it:
+- **The bar sends no long press.** A two-second hold arrives as a press
+  released late (action 2 never came), so the old "hold BACK = done" never
+  fired from the device. Design nothing that needs a hold.
+- **Each notch of the wheel is one event, delta ±1**, even turned fast
+  (about 80-130 ms apart), never merged.
+- **On the bar's own screen the firmware takes Back**: with nothing of ours
+  drawn (its clock, nothing running) Back leaves the user's clock app.
+  With our screen up, Back reaches us alone. Nothing may need Back when
+  SprintTicker is not on the panel.
+Back stops in one press, so it is ignored for `BAR_BACK_SETTLE_MS` after
+the panel changes (`msSinceScreenChange`): a press meant for a banner that
+left must not stop the task beneath.
+
 **The front display is a rasterised 72×16 PNG.** Every frame is an asset upload
 plus a draw — two HTTP requests. Before adding anything that redraws on a timer,
 check what actually changes: `transmitFrame` deduplicates by hashing the frame,
@@ -789,8 +807,10 @@ changing it:
 - **The bar's open picker is a state, not an alert.** It is never queued (each press
   redraws it), so under Away it was refused and then forgotten: open,
   invisible, still taking presses, while Away's end handed the display to
-  the clock or Lunch. `InputDecoder` registers it as a background
-  screen that redraws itself while open; Desk registers the same.
+  the clock or Lunch. `InputDecoder` registered it as a background
+  screen that redrew itself while open; Desk registers the same. The
+  picker went in P14b; the wheel's menu (P14c) is the same kind of state
+  and must follow this rule.
 - **Modes and the tracker are not claims to restore.** The idle clock is the
   user's mode: the idle branch of `renderActiveSession` leaves alone any
   holder but the tracker, and drops the tracker's lock with the session

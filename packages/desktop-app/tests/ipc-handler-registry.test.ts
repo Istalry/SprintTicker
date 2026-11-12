@@ -43,7 +43,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     await driver.connect();
 
     renderer = new DisplayRenderer(driver);
-    const decoder = new InputDecoder(driver, engine, settingsRepo);
+    const decoder = new InputDecoder(driver, engine);
 
     registry = new IPCHandlerRegistry({
       engine,
@@ -104,7 +104,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const driver2 = new BusyBarDriver('10.0.4.20', true);
     await driver2.connect();
     const renderer2 = new DisplayRenderer(driver2);
-    const decoder2 = new InputDecoder(driver2, engine2, settingsRepo2);
+    const decoder2 = new InputDecoder(driver2, engine2);
 
     const reg2 = new IPCHandlerRegistry({
       engine: engine2,
@@ -150,7 +150,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
     const driver3 = new BusyBarDriver('10.0.4.20', true);
     await driver3.connect();
     const renderer3 = new DisplayRenderer(driver3);
-    const decoder3 = new InputDecoder(driver3, engine3, settingsRepo3);
+    const decoder3 = new InputDecoder(driver3, engine3);
 
     const reg3 = new IPCHandlerRegistry({
       engine: engine3,
@@ -328,7 +328,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
       const driver = new BusyBarDriver('10.0.4.20', true);
       const reg = new IPCHandlerRegistry({
         engine, taskRepo: new TaskRepository(dbConn), settingsRepo, driver,
-        inputDecoder: new InputDecoder(driver, engine, settingsRepo), renderer,
+        inputDecoder: new InputDecoder(driver, engine), renderer,
         getWindow: () => window as never
       });
       reg.registerAllHandlers();
@@ -416,7 +416,7 @@ describe('IPCHandlerRegistry Unit Tests', () => {
         taskRepo: new TaskRepository(dbConn),
         settingsRepo,
         driver,
-        inputDecoder: new InputDecoder(driver, engine, settingsRepo),
+        inputDecoder: new InputDecoder(driver, engine),
         renderer,
         getWindow: () => mockWindow
       }).registerAllHandlers();

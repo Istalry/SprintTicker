@@ -72,7 +72,7 @@ describe('device config IPC', () => {
       taskRepo,
       settingsRepo,
       driver,
-      inputDecoder: new InputDecoder(driver, engine, settingsRepo),
+      inputDecoder: new InputDecoder(driver, engine),
       renderer,
       getWindow: () => null
     }).registerAllHandlers();

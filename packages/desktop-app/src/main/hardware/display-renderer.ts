@@ -18,24 +18,11 @@ import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequenc
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { isAdHocTaskId } from '../db/id-generator';
 import { measureText } from '../../shared/proportional-text';
-import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
+import { ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
 import { BarWord } from '../../shared/words';
 import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 
-/** The paused menu's highlight bars: row 1's capitals fit inside 7px. */
-const PAUSED_BAR_Y = 9;
-const PAUSED_BAR_HEIGHT = 7;
-/**
- * Space between the task and its time -- 2px, so an eight-character key such
- * as SPR-1428 fits beside HH:MM -- and between the two choices.
- */
-const PAUSED_TIMER_GAP_PX = 2;
-const PAUSED_CHOICE_GAP_PX = 3;
-/** The arrow saying a choice lies beyond the two shown: 2px wide, and 2px from them. */
-const PAUSED_MORE_MARKER_PX = 2;
-const PAUSED_MORE_GAP_PX = 2;
-const PAUSED_MORE_COLOR = '#6B7280';
 const PAUSED_CONFIRM_COLOR = '#EF4444';
 const PAUSED_CONFIRM_HINT_COLOR = '#E5E7EB';
 /**
@@ -51,34 +38,7 @@ export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BA
 const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
- * The paused menu, left to right (redesign P14a): DONE, STOP, DISCARD -- the
- * deck's A, B and C, in their order -- then INTERRUPT. The words are
- * `BarWord`'s, the same as the window's and the deck's; FINISH and DROP are
- * gone.
- *
- * It opens on STOP, which keeps the time and the task: DONE changes the
- * ticket and DISCARD throws the time away, so neither is where a pause lands.
- *
- * Row 1 is 55px and the four do not fit in it, so the row shows the group
- * that holds the choice, with an arrow towards each side that has more:
- * DONE beside STOP (42 with its arrow), DISCARD alone -- STOP beside it is 57
- * with both arrows -- and INTERRUPT alone (38 with its bar).
- */
-export const PAUSED_CHOICES = ['DONE', 'STOP', 'DISCARD', 'INTERRUPT'] as const;
-export type PausedChoice = (typeof PAUSED_CHOICES)[number];
-export const PAUSED_CHOICE_LABELS: Record<PausedChoice, string> = {
-  DONE: BarWord.DONE,
-  STOP: BarWord.STOP,
-  DISCARD: BarWord.DISCARD,
-  INTERRUPT: BarWord.INTERRUPT
-};
-/** The groups row 1 shows, left to right; see {@link PAUSED_CHOICES}. */
-const PAUSED_GROUPS: readonly (readonly PausedChoice[])[] = [['DONE', 'STOP'], ['DISCARD'], ['INTERRUPT']];
-/** Where a pause opens: STOP, the choice that changes nothing at the provider and keeps the time. */
-export const PAUSED_MENU_OPENS_ON: PausedChoice = 'STOP';
-
-/**
- * A question the paused screen asks instead of offering the menu. The
+ * A question the paused screen asks in place of its rows. The
  * wheel's click answers yes and BACK no; see InputDecoder.
  */
 export type PausedConfirm = 'DISCARD' | 'DONE_UNLISTED';
@@ -89,23 +49,6 @@ export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint
   // 55px row, and BACK refuses every question on the bar.
   DONE_UNLISTED: { question: BarWord.NOT_YOURS, hint: `${BarWord.DONE}? ${BarWord.OK_YES}` }
 };
-
-/**
- * The choices row 1 shows for a selection -- the group holding it -- and
- * whether more lie off screen on either side.
- */
-export function pausedChoicesShown(selection: PausedChoice): {
-  choices: PausedChoice[];
-  moreLeft: boolean;
-  moreRight: boolean;
-} {
-  const group = PAUSED_GROUPS.findIndex(g => g.includes(selection));
-  return {
-    choices: [...PAUSED_GROUPS[group]],
-    moreLeft: group > 0,
-    moreRight: group < PAUSED_GROUPS.length - 1
-  };
-}
 
 /**
  * ❚❚ before the paused key (P14a): two bars of the row-0 capitals' height,
@@ -562,50 +505,20 @@ export class DisplayRenderer {
     this.showIdleClockFallback = enabled;
   }
 
-  private pausedSelection: PausedChoice = PAUSED_MENU_OPENS_ON;
   private pausedConfirm: PausedConfirm | null = null;
+  /** When the panel last took a frame that differs from the one before: Back's settle (P14b). */
+  private screenChangedAt = 0;
 
   /**
-   * Moves the paused screen's selection to a choice.
-   *
-   * Sets rather than toggles, and the wheel moves one notch at a time along
-   * the row (`movePausedChoice`), stopping at either end. A toggle flipped on
-   * every notch, which let one notch too many land on the other choice just
-   * before the click.
-   *
-   * Redraws only on a change, so turning against an end costs nothing.
+   * How long the panel has shown what it shows now. A press of Back sooner
+   * than `BAR_BACK_SETTLE_MS` after a change was meant for what was there
+   * before -- a banner that left, a scene that ended -- and only cancels.
    */
-  public selectPausedChoice(choice: PausedChoice): PausedChoice {
-    if (choice === this.pausedSelection) return choice;
-    this.pausedSelection = choice;
-    this.redrawPausedScreen();
-    return this.pausedSelection;
+  public msSinceScreenChange(): number {
+    return Date.now() - this.screenChangedAt;
   }
 
-  /** One notch of the wheel on the paused menu: -1 to the left, 1 to the right. */
-  public movePausedChoice(step: -1 | 1): PausedChoice {
-    const index = PAUSED_CHOICES.indexOf(this.pausedSelection);
-    const next = Math.min(PAUSED_CHOICES.length - 1, Math.max(0, index + step));
-    return this.selectPausedChoice(PAUSED_CHOICES[next]);
-  }
-
-  /**
-   * Puts the menu back where a pause opens, without drawing: after Interrupt
-   * the session is no longer paused, and the next pause must not open on
-   * INTERRUPT, where a click starts another one.
-   */
-  public resetPausedChoice(): void {
-    this.pausedSelection = PAUSED_MENU_OPENS_ON;
-  }
-
-  /// <summary>
-  /// Retrieves the paused menu's current choice.
-  /// </summary>
-  public getPausedSelection(): PausedChoice {
-    return this.pausedSelection;
-  }
-
-  /** Replaces the paused menu with a yes-or-no question until it is answered. */
+  /** Replaces the paused screen's rows with a yes-or-no question until it is answered. */
   public askPausedConfirm(kind: PausedConfirm): void {
     if (this.pausedConfirm === kind) return;
     this.pausedConfirm = kind;
@@ -613,7 +526,7 @@ export class DisplayRenderer {
   }
 
   /**
-   * Drops the question. Answered no, the menu is redrawn as it was; answered
+   * Drops the question. Answered no, the paused screen is redrawn as it was; answered
    * yes, the session is about to end and redraw the screen itself, so
    * `redraw: false` spares an upload of a paused screen nobody will see.
    */
@@ -623,7 +536,7 @@ export class DisplayRenderer {
     if (options.redraw !== false) this.redrawPausedScreen();
   }
 
-  /** The question the paused screen is asking, or null while it offers the menu. */
+  /** The question the paused screen is asking, or null. */
   public getPausedConfirm(): PausedConfirm | null {
     return this.pausedConfirm;
   }
@@ -803,7 +716,6 @@ export class DisplayRenderer {
    */
   private paintPausedRows(taskText: string, timerText: string, color: string): void {
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
-    const right = layout.TEXT_X + layout.TEXT_FIELD_WIDTH;
 
     if (this.pausedConfirm) {
       const text = PAUSED_CONFIRM_TEXT[this.pausedConfirm];
@@ -811,44 +723,17 @@ export class DisplayRenderer {
       this.canvas.drawSmallText(text.hint, layout.TEXT_X, layout.ROW1_Y, PAUSED_CONFIRM_HINT_COLOR, layout.TEXT_FIELD_WIDTH);
       return;
     }
-    const timerWidth = measureText(timerText, ROW0_FONT);
-    this.canvas.drawTextClipped(timerText, right - timerWidth, layout.ROW0_Y, color, timerWidth);
-    // ❚❚, then the key, cut by fitToWidth in its own font to what is left.
+    // ❚❚ and the key on row 0, cut by fitToWidth to what the mark leaves; the
+    // time on row 1 in the timer's font, as while timing (P14b: the menu that
+    // shared row 1 went with the bar's rethink).
     this.canvas.drawRect(layout.TEXT_X, layout.ROW0_Y, PAUSED_MARK.barWidth, PAUSED_MARK.height, color);
     this.canvas.drawRect(
       layout.TEXT_X + PAUSED_MARK.barWidth + PAUSED_MARK.gap, layout.ROW0_Y, PAUSED_MARK.barWidth, PAUSED_MARK.height, color
     );
     this.canvas.drawTextClipped(
-      taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color,
-      layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH - timerWidth - PAUSED_TIMER_GAP_PX
+      taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH
     );
-
-    const shown = pausedChoicesShown(this.pausedSelection);
-    let x = layout.TEXT_X;
-    if (shown.moreLeft) {
-      this.paintMoreMarker(x, 'left');
-      x += PAUSED_MORE_MARKER_PX + PAUSED_MORE_GAP_PX;
-    }
-    for (const choice of shown.choices) {
-      const label = PAUSED_CHOICE_LABELS[choice];
-      const width = measureText(label, ROW1_FONT) + 1;       // a pixel of bar each side
-      const chosen = this.pausedSelection === choice;
-      if (chosen) this.canvas.drawRect(x, PAUSED_BAR_Y, width, PAUSED_BAR_HEIGHT, '#F59E0B');
-      this.canvas.drawSmallText(label, x + 1, PAUSED_BAR_Y + 1, chosen ? '#000000' : '#888888', width);
-      x += width + PAUSED_CHOICE_GAP_PX;
-    }
-    if (shown.moreRight) {
-      this.paintMoreMarker(x - PAUSED_CHOICE_GAP_PX + PAUSED_MORE_GAP_PX, 'right');
-    }
-  }
-
-  /** A 2px arrow, centred on the choice bars, pointing at the choice off screen. */
-  private paintMoreMarker(x: number, pointing: 'left' | 'right'): void {
-    const middle = PAUSED_BAR_Y + Math.floor(PAUSED_BAR_HEIGHT / 2);
-    const tip = pointing === 'right' ? x + 1 : x;
-    const base = pointing === 'right' ? x : x + 1;
-    this.canvas.drawRect(base, middle - 1, 1, 3, PAUSED_MORE_COLOR);
-    this.canvas.drawRect(tip, middle, 1, 1, PAUSED_MORE_COLOR);
+    this.canvas.drawTextClipped(timerText, layout.TEXT_X, layout.ROW1_Y, color, layout.TEXT_FIELD_WIDTH, TIMER_FONT);
   }
 
   /**
@@ -896,8 +781,10 @@ export class DisplayRenderer {
     if (frontOwnedByAnimation) {
       // Forget the signature rather than record one that was never sent, so the
       // first frame after the animation stops always transmits.
+      if (this.lastTransmittedSignature !== null) this.screenChangedAt = Date.now();
       this.lastTransmittedSignature = null;
     } else if (frameSignature !== this.lastTransmittedSignature) {
+      this.screenChangedAt = Date.now();
       this.lastTransmittedSignature = frameSignature;
       this.frameBufferToggle = !this.frameBufferToggle;
       const dynamicFilename = `frame_${this.frameBufferToggle ? '0' : '1'}.png`;
@@ -1154,11 +1041,8 @@ export class DisplayRenderer {
     this.lastSessionCache = session;
     // A question belongs to the pause it was asked in. Resumed, stopped or
     // replaced, the session takes it with it; the next pause offers the menu.
-    // So does the choice: a pause left with START on DONE, DISCARD or
-    // INTERRUPT must not open the next one there, where a click acts.
     if (!session || session.status !== 'PAUSED') {
       this.pausedConfirm = null;
-      this.pausedSelection = PAUSED_MENU_OPENS_ON;
     }
 
     if (session && session.status === 'TRACKING' && this.isCelebrating && session.sessionId !== this.sceneSessionId) {

@@ -335,7 +335,7 @@ async function startApplication(): Promise<void> {
   // The key colour the user chose, which a restart used to forget.
   const storedTheme = settingsRepo.getSetting<unknown>(COLOR_THEME_KEY, DEFAULT_COLOR_THEME);
   renderer.setColorTheme(isColorThemeId(storedTheme) ? storedTheme : DEFAULT_COLOR_THEME);
-  inputDecoder = new InputDecoder(driver, engine, settingsRepo);
+  inputDecoder = new InputDecoder(driver, engine);
 
   // 4. Initialize the local webhook server
   webhookServer = new WebhookServer(LOCAL_API_PORT);
@@ -504,6 +504,9 @@ async function startApplication(): Promise<void> {
     refuses: mode => mode === 'start' && Boolean(engine?.isInterrupted())
   });
   const pickers = pickerWindowManager;
+  // Pause on the bar with nothing running (P14b): the picker over the app in
+  // use, raised past the foreground lock, since the press reached the bar.
+  inputDecoder?.setOpenPickerCallback(() => { pickers.open('start', { raise: true }); });
 
   // A Stop ends a run of interruptions: its parts still to place come up at
   // once, each to name and place on its own, in front of the app in use --

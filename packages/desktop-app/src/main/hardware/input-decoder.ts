@@ -1,73 +1,48 @@
 import { BusyBarDriver, HardwareEvent } from './busybar-driver';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
-import { SettingsRepository } from '../db/repositories/settings-repository';
-import { ActiveSessionDTO, HardwareBindingConfig, TaskDTO } from '../../shared/dtos';
-import { orderTasksForSelection } from '../../shared/task-order';
-import { finishNeedsConfirmation } from '../../shared/task-left';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer } from './display-renderer';
-import { filterProjectsWithTasks, ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
-import { DEFAULT_TASK_VISIBILITY, TaskVisibility, ownerTag, readTaskVisibility, visibleTasks } from '../../shared/task-visibility';
-import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
+import { BAR_BACK_SETTLE_MS } from '../../shared/render-constants';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
-/** The selector's placeholder row for a project with no tasks; not a task id. */
-const NO_TASKS_ID = 'none';
+/** What a press of the bar's inputs is, whatever the firmware calls it. */
+type BarInput = 'pause' | 'back' | 'click' | 'turn' | 'other';
 
 /**
- * Event decoder mapping physical BUSY Bar inputs (wheel scroll, wheel click, short/long press)
- * to user-configured rebindable application actions, managing active notification dismissal,
- * task pause/resume window focusing, and interactive paused state controls (DONE / STOP / DISCARD / INTERRUPT).
+ * Decodes the bar's inputs (redesign P14b, the user's layout of 2026-11-12).
+ * One meaning per input, in every state, and no menu but the one the wheel
+ * will open (P14c):
+ *
+ * - **Pause** is yes: pause, resume, back to the task an interruption holds,
+ *   join, accept, dismiss a notification; with nothing running it opens the
+ *   task picker on the computer.
+ * - **Back** is no, or stop: refuses a question, dismisses a notification,
+ *   stops the session (its time logged, the task left open) or the
+ *   interruption -- but never within `BAR_BACK_SETTLE_MS` of the screen
+ *   changing, so a press meant for a banner that left under the finger does
+ *   not stop the task beneath it.
+ * - **The wheel's click** interrupts; during an interruption, Another.
+ * - **Turning** does nothing yet.
+ *
+ * No input is held: the bar never sends a long press. A two-second hold
+ * arrives as a press released late (measured on the bar, 2026-11-12), so the
+ * old "hold BACK = done" never fired from the device. And while the bar
+ * shows its own screen -- the firmware's clock, nothing of ours drawn -- the
+ * firmware takes Back for itself and leaves its clock app, so nothing here
+ * may need Back when SprintTicker is not on the panel.
  */
 export class InputDecoder {
   private _driver: BusyBarDriver;
   private _engine: TimeTrackingEngine;
-  private _settingsRepo: SettingsRepository;
   private _priorityEngine?: IPriorityPreemptionEngine;
   private _renderer?: DisplayRenderer;
   private _windowFocusCallback?: () => void;
+  private _openPickerCallback?: () => void;
   private _actionHandlers: Set<ActionHandler> = new Set();
-  
-  private _isSelectingTask: boolean = false;
-  private _unregisterPicker: (() => void) | null = null;
-
-  /**
-   * Releases the display lock the hardware task menu holds.
-   *
-   * `renderTaskSelection` acquires `menuPriority` on every redraw but nothing
-   * released it, so the lock outlived the menu. Nothing in the dismissal path
-   * covers it either -- `dismissActiveNotification` only recognises notification
-   * and ceremony events -- so it stayed until some higher-priority event
-   * happened to overwrite it.
-   */
-  private releaseSelectionLock(): void {
-    this._priorityEngine?.releaseActiveLock(BAR_MENU_EVENT);
-  }
-  private _selectionStage: 'PROJECT' | 'TASK' = 'PROJECT';
-  private _projectsList: { id: string, name: string }[] = [];
-  private _tasksList: { id: string, title: string, description: string, status?: TaskDTO['status'] }[] = [];
-  /** The task visibility the open picker was opened with. */
-  private _taskVisibility: TaskVisibility = { ...DEFAULT_TASK_VISIBILITY };
-  private _selectedProjectIndex: number = 0;
-  private _selectedTaskIndex: number = 0;
   private _eodConfirmStep: number = 0;
-  /**
-   * Set when a long BACK paused a running session to ask whether to finish a
-   * task that is no longer the user's: refusing resumes it, as if the press
-   * had not happened.
-   */
-  private _resumeOnConfirmRefused: boolean = false;
-
-  private _defaultBindings: HardwareBindingConfig = {
-    startButtonPress: 'TOGGLE_TRACK_PAUSE',
-    wheelRotateLeft: 'NAVIGATE_QUEUE_PREV',
-    wheelRotateRight: 'NAVIGATE_QUEUE_NEXT',
-    wheelClick: 'TRIGGER_TASK_SELECTOR_MODAL',
-    backButtonShortPress: 'DISMISS_NOTIFICATION_ALERT',
-    backButtonLongPress: 'COMPLETE_AND_LOG_ACTIVE_TASK'
-  };
 
   /// <summary>
   /// Instantiates InputDecoder, binding hardware driver event listeners.
@@ -75,36 +50,23 @@ export class InputDecoder {
   constructor(
     driver: BusyBarDriver,
     engine: TimeTrackingEngine,
-    settingsRepo?: SettingsRepository,
     priorityEngine?: IPriorityPreemptionEngine,
     renderer?: DisplayRenderer
   ) {
     this._driver = driver;
     this._engine = engine;
-    this._settingsRepo = settingsRepo || new SettingsRepository();
     this._renderer = renderer;
     if (priorityEngine) this.setPriorityEngine(priorityEngine);
 
     // Guard the listener itself, not just the action handlers. handleHardwareInput
-    // calls engine.startTask() and stopSession(), both of which throw on invalid
-    // state -- and a throw inside an EventEmitter listener with no error handler
-    // terminates the main process, taking the whole app down on a button press.
+    // calls engine methods that throw on invalid state -- and a throw inside an
+    // EventEmitter listener with no error handler terminates the main process,
+    // taking the whole app down on a button press.
     this._driver.on('input', (event: HardwareEvent) => {
       try {
         this.handleHardwareInput(event);
       } catch (err) {
         console.error('[InputDecoder] Unhandled error while processing hardware input:', err);
-      }
-    });
-
-    // A task started elsewhere -- the window, the mini timer -- while the
-    // picker is open on the bar: the picker is moot. Left open, it held the
-    // display over the new session until someone pressed BACK, and a click on
-    // the bar then switched tasks from a list nobody meant to use.
-    this._engine.subscribe(session => {
-      if (session && this._isSelectingTask) {
-        this._isSelectingTask = false;
-        this.releaseSelectionLock();
       }
     });
   }
@@ -113,29 +75,11 @@ export class InputDecoder {
   /// Injects PriorityPreemptionEngine reference for notification dismissal checks.
   /// </summary>
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
-    this._unregisterPicker?.();
     this._priorityEngine = engine;
-    // The open picker is the user's hand on the bar, a state rather than an
-    // alert: whenever the display frees, it is drawn again if it is still
-    // open. Never queued (each press redraws it), it used to be refused under
-    // Away and then forgotten -- open, invisible, still taking presses -- once
-    // Away ended and the display went to Lunch or the clock.
-    // A test double without background screens has nothing to register with.
-    this._unregisterPicker = typeof engine.addBackgroundScreen === 'function'
-      ? engine.addBackgroundScreen([BAR_MENU_EVENT], () => {
-        if (this._isSelectingTask) this.renderSelection();
-      })
-      : null;
-  }
-
-  /** Takes the picker off the background screens, when it was registered. */
-  public dispose(): void {
-    this._unregisterPicker?.();
-    this._unregisterPicker = null;
   }
 
   /// <summary>
-  /// Injects DisplayRenderer reference for matrix input feedback and selection screens.
+  /// Injects DisplayRenderer reference for matrix input feedback.
   /// </summary>
   public setRenderer(renderer: DisplayRenderer): void {
     this._renderer = renderer;
@@ -148,25 +92,20 @@ export class InputDecoder {
     this._windowFocusCallback = cb;
   }
 
+  /**
+   * What Pause does with nothing running: the task picker on the computer,
+   * raised past the foreground lock (the picker window), since choosing a
+   * task is the app's -- the bar has no picker of its own any more.
+   */
+  public setOpenPickerCallback(cb: () => void): void {
+    this._openPickerCallback = cb;
+  }
+
   /// <summary>
   /// Gets current EOD confirmation step.
   /// </summary>
   public getEodConfirmStep(): number {
     return this._eodConfirmStep;
-  }
-
-  /// <summary>
-  /// Retrieves current rebindable hardware key bindings from settings.
-  /// </summary>
-  public getBindings(): HardwareBindingConfig {
-    return this._settingsRepo.getSetting<HardwareBindingConfig>('hardware_bindings', this._defaultBindings);
-  }
-
-  /// <summary>
-  /// Saves custom hardware key bindings to settings.
-  /// </summary>
-  public saveBindings(config: HardwareBindingConfig): void {
-    this._settingsRepo.setSetting('hardware_bindings', config);
   }
 
   /// <summary>
@@ -177,360 +116,155 @@ export class InputDecoder {
     return () => this._actionHandlers.delete(handler);
   }
 
+  /** Names the input, from the key and the event's type. */
+  private static inputOf(event: HardwareEvent): BarInput {
+    const key = (event.key || '').toLowerCase();
+    if (event.type === 'rotate_left' || event.type === 'rotate_right') return 'turn';
+    if (key === 'rotate_left' || key === 'rotate_right' || key === 'up' || key === 'down') return 'turn';
+    if (key === 'start' || key === 'busy' || key === 'custom') return 'pause';
+    if (key === 'back' || key === 'back_hold' || key === 'cancel') return 'back';
+    if (key === 'ok' || key === 'click') return 'click';
+    return 'other';
+  }
+
   /// <summary>
-  /// Decodes incoming hardware input events and handles active notifications,
-  /// interactive paused task options (DONE / STOP / DISCARD / INTERRUPT), and mapped actions.
+  /// Decodes an input and does what it means in the state the bar shows.
+  /// Answers the action taken, for the log and the tests.
   /// </summary>
   public handleHardwareInput(event: HardwareEvent): string {
-    const bindings = this.getBindings();
-    const normalizedKey = (event.key || '').toLowerCase();
-
+    const key = (event.key || '').toLowerCase();
+    const input = InputDecoder.inputOf(event);
     const activeLock = this._priorityEngine?.getActiveLockEventName();
 
-    // 1. Handle Active End-of-Day (EOD) Wrap-Up Ceremony Inputs
+    // 1. The end-of-day wrap-up: two presses to confirm, Back to dismiss.
     if (activeLock === 'eodWrapUpPriority') {
-      const isConfirmPress =
-        normalizedKey === 'start' ||
-        normalizedKey === 'ok' ||
-        normalizedKey === 'click' ||
-        normalizedKey === 'busy' ||
-        normalizedKey === 'custom';
-
-      if (isConfirmPress && (event.type === 'press' || !event.type)) {
-        if (this._windowFocusCallback) {
-          this._windowFocusCallback();
-        }
-
+      // The wheel's click still says yes on a question until the bar's
+      // hints name the Pause button (P14e): they say OK=YES today.
+      if (input === 'pause' || input === 'click') {
+        this._windowFocusCallback?.();
         if (this._eodConfirmStep === 0) {
           this._eodConfirmStep = 1;
-          if (this._renderer) {
-            this._renderer.renderCeremonyPrompt('EOD', 'Press START to Confirm');
-          }
-          this.notifyActionHandlers('CONFIRM_EOD_WRAP_UP_STEP_1', normalizedKey);
-          return 'CONFIRM_EOD_WRAP_UP_STEP_1';
-        } else {
-          this._eodConfirmStep = 0;
-          if (this._renderer) {
-            this._renderer.renderCeremonyPrompt('EOD', 'Wrapping Up...');
-          }
-          this.notifyActionHandlers('EXECUTE_EOD_WRAP_UP', normalizedKey);
-          return 'EXECUTE_EOD_WRAP_UP';
+          this._renderer?.renderCeremonyPrompt('EOD', 'Press START to Confirm');
+          return this.report('CONFIRM_EOD_WRAP_UP_STEP_1', key);
         }
-      }
-
-      if (normalizedKey === 'back' || normalizedKey === 'cancel' || normalizedKey === 'back_hold') {
         this._eodConfirmStep = 0;
-        if (this._priorityEngine) {
-          this._priorityEngine.releaseActiveLock('eodWrapUpPriority');
-        }
-        if (this._renderer) {
-          this._renderer.renderActiveSession(this._engine.getCurrentSession());
-        }
-        this.notifyActionHandlers('DISMISS_EOD_WRAP_UP', normalizedKey);
-        return 'DISMISS_EOD_WRAP_UP';
+        this._renderer?.renderCeremonyPrompt('EOD', 'Wrapping Up...');
+        return this.report('EXECUTE_EOD_WRAP_UP', key);
       }
-    } else {
-      this._eodConfirmStep = 0;
+      if (input === 'back') {
+        this._eodConfirmStep = 0;
+        this._priorityEngine?.releaseActiveLock('eodWrapUpPriority');
+        this._renderer?.renderActiveSession(this._engine.getCurrentSession());
+        return this.report('DISMISS_EOD_WRAP_UP', key);
+      }
+      return 'AWAIT_EOD_WRAP_UP';
     }
+    this._eodConfirmStep = 0;
 
-    // 2. Handle Active Stand-Up Ceremony Inputs
+    // 2. The stand-up's prompt: yes joins, Back refuses.
     if (activeLock === 'standupPromptPriority') {
-      const isConfirmPress =
-        normalizedKey === 'start' ||
-        normalizedKey === 'ok' ||
-        normalizedKey === 'click' ||
-        normalizedKey === 'busy' ||
-        normalizedKey === 'custom';
-
-      if (isConfirmPress && (event.type === 'press' || !event.type)) {
-        // The window is not brought forward: joining needs nothing from it,
-        // and the user is on their way to the meeting (P8c).
+      if (input === 'pause' || input === 'click') {
         // Joining is ContextScheduleService's, through the action handlers:
         // it switches the timer to the stand-up under the prompt's lock and
-        // releases it, which draws once. Releasing here first drew the old
-        // session, then the stand-up over it.
-        this.notifyActionHandlers('CONFIRM_STANDUP_PROMPT', normalizedKey);
-        return 'CONFIRM_STANDUP_PROMPT';
+        // releases it, which draws once. The window is not brought forward:
+        // the user is on their way to the meeting (P8c).
+        return this.report('CONFIRM_STANDUP_PROMPT', key);
       }
-
-      if (normalizedKey === 'back' || normalizedKey === 'cancel' || normalizedKey === 'back_hold') {
-        if (this._priorityEngine) {
-          this._priorityEngine.releaseActiveLock('standupPromptPriority');
-        }
-        if (this._renderer) {
-          this._renderer.renderActiveSession(this._engine.getCurrentSession());
-        }
-        this.notifyActionHandlers('DISMISS_STANDUP_PROMPT', normalizedKey);
-        return 'DISMISS_STANDUP_PROMPT';
+      if (input === 'back') {
+        this._priorityEngine?.releaseActiveLock('standupPromptPriority');
+        this._renderer?.renderActiveSession(this._engine.getCurrentSession());
+        return this.report('DISMISS_STANDUP_PROMPT', key);
       }
+      return 'AWAIT_STANDUP_PROMPT';
     }
 
-    // 3. After lunch: resume a task that is no longer the user's? The answer
-    // goes to ContextScheduleService through the action handlers, which owns
-    // the question and its lock.
+    // 3. Back to your task? -- after lunch, or after an interruption. The
+    // answer goes to ContextScheduleService, which owns the question and its
+    // lock.
     if (activeLock === RESUME_PROMPT_EVENT) {
-      const isYes =
-        normalizedKey === 'start' || normalizedKey === 'ok' || normalizedKey === 'click' || normalizedKey === 'busy';
-      if (isYes && (event.type === 'press' || !event.type)) {
-        this.notifyActionHandlers('CONFIRM_RESUME_PROMPT', normalizedKey);
-        return 'CONFIRM_RESUME_PROMPT';
-      }
-      if (normalizedKey === 'back' || normalizedKey === 'cancel' || normalizedKey === 'back_hold') {
-        this.notifyActionHandlers('DISMISS_RESUME_PROMPT', normalizedKey);
-        return 'DISMISS_RESUME_PROMPT';
-      }
+      if (input === 'pause' || input === 'click') return this.report('CONFIRM_RESUME_PROMPT', key);
+      if (input === 'back') return this.report('DISMISS_RESUME_PROMPT', key);
       return 'AWAIT_RESUME_PROMPT';
     }
 
-    if (this._isSelectingTask && this._renderer) {
-      if (normalizedKey === 'back') {
-        this._isSelectingTask = false;
-        this.releaseSelectionLock();
-        this._renderer.renderIdle();
-        return 'CANCEL_SELECTION';
-      }
-      
-      const isUp = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
-      const isDown = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
-      
-      if (this._selectionStage === 'PROJECT') {
-        if (isUp) this._selectedProjectIndex = Math.max(0, this._selectedProjectIndex - 1);
-        if (isDown) this._selectedProjectIndex = Math.min(this._projectsList.length - 1, this._selectedProjectIndex + 1);
-        
-        if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
-          this._selectionStage = 'TASK';
-          const proj = this._projectsList[this._selectedProjectIndex];
-          if (proj) {
-            // Row 1 is the key, then whose the task is when it is not the
-            // user's, then as much of the description as fits: the key is
-            // what identifies the task in the provider, so it comes first and
-            // is never the part cut off, and the owner is the next thing worth
-            // keeping. Ordered by owner and status -- see
-            // `orderTasksForSelection` -- and filtered like the window's lists.
-            const shown = visibleTasks(this._engine.getTasksForProject(proj.id), this._taskVisibility).visible;
-            this._tasksList = orderTasksForSelection(shown).map(t => ({
-               id: t.id,
-               title: t.title,
-               description: [t.key, ownerTag(t), t.description ?? ''].filter(Boolean).join(' '),
-               status: t.status
-            }));
-          }
-          if (this._tasksList.length === 0) {
-            this._tasksList = [{ id: NO_TASKS_ID, title: 'No Tasks', description: '' }];
-          }
-          this._selectedTaskIndex = 0;
-        }
-      } else if (this._selectionStage === 'TASK') {
-        if (isUp) this._selectedTaskIndex = Math.max(0, this._selectedTaskIndex - 1);
-        if (isDown) this._selectedTaskIndex = Math.min(this._tasksList.length - 1, this._selectedTaskIndex + 1);
-        
-        if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
-          const task = this._tasksList[this._selectedTaskIndex];
-          let started: ActiveSessionDTO | null = null;
-          // Before the start, so the session listener above does not let go
-          // of the display ahead of GO!.
-          this._isSelectingTask = false;
-          if (task && task.id !== NO_TASKS_ID) {
-             started = this._engine.startTask(task.id, false, task.title, this._projectsList[this._selectedProjectIndex].id);
-          }
-          // GO! before the menu lets go of the display: releasing it redraws
-          // the session, and the scene is what should be drawn. Only for a
-          // real start -- "No Tasks" starts nothing, and saying GO! would lie.
-          if (started && this._renderer) {
-            this._renderer.renderTaskStarted(started);
-          }
-          this.releaseSelectionLock();
-          return 'START_TASK_FROM_SELECTION';
-        }
-      }
-      
-      if (this._isSelectingTask) {
-        this.renderSelection();
-        return 'UPDATE_SELECTION';
-      }
+    switch (input) {
+      case 'pause': return this.pause(key);
+      case 'back': return this.back(key);
+      case 'click': return this.click(key);
+      // The wheel's menu is P14c.
+      case 'turn': return 'NONE';
+      default:
+        // The firmware's own keys: reported so the app can follow the bar,
+        // never an action of ours.
+        if (key === 'apps' || key === 'settings' || key === 'off') return this.report(`SYSTEM_MODE_${key.toUpperCase()}`, key);
+        return 'NONE';
     }
-    
-    const activeSession = this._engine.getCurrentSession();
-    const isPaused = activeSession?.status === 'PAUSED';
-
-    // Interactive Paused State Controls: the wheel moves along DONE, STOP,
-    // DISCARD and INTERRUPT and stops at either end; a click validates the
-    // choice.
-    if (isPaused && this._renderer) {
-      const isLeft = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
-      const isRight = normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right';
-      const isWheelClick = (normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type);
-      const isBack = normalizedKey === 'back' || normalizedKey === 'back_hold' || normalizedKey === 'cancel';
-
-      // A question on screen takes every key until it is answered: the click
-      // says yes, BACK says no. Anything else waits -- a START here would
-      // resume a session the user is deciding whether to throw away.
-      const confirm = this._renderer.getPausedConfirm();
-      if (confirm) {
-        if (isWheelClick) {
-          this._resumeOnConfirmRefused = false;
-          this._renderer.clearPausedConfirm({ redraw: false });
-          if (confirm === 'DONE_UNLISTED') {
-            this.finishFromTheBar(WORKLOG_COMMENTS.BAR_FINISH_CONFIRMED);
-            this.notifyActionHandlers('CONFIRM_PAUSED_FINISH', normalizedKey);
-            return 'CONFIRM_PAUSED_FINISH';
-          }
-          // No LOGGED, no DONE!: nothing was kept. Ending the session redraws
-          // the screen.
-          this._engine.discardSession();
-          this.notifyActionHandlers('CONFIRM_PAUSED_DISCARD', normalizedKey);
-          return 'CONFIRM_PAUSED_DISCARD';
-        }
-        if (isBack) {
-          this._renderer.clearPausedConfirm();
-          if (this._resumeOnConfirmRefused) {
-            this._resumeOnConfirmRefused = false;
-            this._engine.resumeSession();
-          }
-          this.notifyActionHandlers('CANCEL_PAUSED_CONFIRM', normalizedKey);
-          return 'CANCEL_PAUSED_CONFIRM';
-        }
-        return 'AWAIT_PAUSED_CONFIRM';
-      }
-
-      if (isLeft || isRight) {
-        this._renderer.movePausedChoice(isLeft ? -1 : 1);
-        this.notifyActionHandlers('MOVE_PAUSED_SELECTION', normalizedKey);
-        return 'MOVE_PAUSED_SELECTION';
-      }
-
-      if (isWheelClick) {
-        const choice = this._renderer.getPausedSelection();
-        if (choice === 'INTERRUPT') {
-          // Interrupt is ContextScheduleService's, through the action
-          // handlers, as joining the stand-up is: it sets this task aside to
-          // ask about when the interruption ends. Its start draws the screen.
-          this._renderer.resetPausedChoice();
-          this.notifyActionHandlers('START_INTERRUPTION', normalizedKey);
-          return 'START_INTERRUPTION';
-        }
-        if (choice === 'DISCARD') {
-          // Hours thrown away by one click too many do not come back, so the
-          // bar asks first, as the window does.
-          this._renderer.askPausedConfirm('DISCARD');
-          this.notifyActionHandlers('ASK_PAUSED_DISCARD', normalizedKey);
-          return 'ASK_PAUSED_DISCARD';
-        }
-        if (choice === 'STOP') {
-          // Stop means stop: the time is logged and the task stays open.
-          // LOGGED says so; the idle screen alone looked like nothing had
-          // happened. Before the stop, so the session's end is held behind
-          // the scene rather than drawn first.
-          this._renderer.renderTaskLogged();
-          this._engine.stopSession(WORKLOG_COMMENTS.BAR_STOP);
-        } else if (finishNeedsConfirmation(activeSession)) {
-          // Reassigned or moved since it started: finishing it would fire
-          // the user's completion transition on a task that is no longer
-          // theirs. Ask, as the window does. Closed there: nothing to ask.
-          this._renderer.askPausedConfirm('DONE_UNLISTED');
-          this.notifyActionHandlers('ASK_PAUSED_FINISH', normalizedKey);
-          return 'ASK_PAUSED_FINISH';
-        } else {
-          this.finishFromTheBar(WORKLOG_COMMENTS.BAR_FINISH);
-        }
-        this.notifyActionHandlers('VALIDATE_PAUSED_SELECTION', normalizedKey);
-        return 'VALIDATE_PAUSED_SELECTION';
-      }
-    }
-
-    let action = 'NONE';
-    if (normalizedKey === 'start' || normalizedKey === 'busy' || normalizedKey === 'custom') {
-      action = bindings.startButtonPress;
-    } else if ((normalizedKey === 'ok' || normalizedKey === 'click') && (event.type === 'press' || !event.type)) {
-      action = bindings.wheelClick;
-    } else if (normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left') {
-      action = bindings.wheelRotateLeft;
-    } else if (normalizedKey === 'down' || normalizedKey === 'rotate_right' || event.type === 'rotate_right') {
-      action = bindings.wheelRotateRight;
-    } else if (normalizedKey === 'back' && (event.type === 'press' || !event.type)) {
-      action = bindings.backButtonShortPress;
-    } else if (normalizedKey === 'back_hold' || (normalizedKey === 'back' && event.type === 'long_press')) {
-      action = bindings.backButtonLongPress;
-    } else if (normalizedKey === 'apps' || normalizedKey === 'settings' || normalizedKey === 'off') {
-      action = `SYSTEM_MODE_${normalizedKey.toUpperCase()}`;
-    }
-
-    this.executeAction(action, normalizedKey);
-    return action;
   }
 
-  private executeAction(action: string, inputKey: string): void {
-    console.log(`[InputDecoder] Executing Action: ${action} (Key: ${inputKey})`);
+  /** Pause: yes, in whatever the bar shows. */
+  private pause(key: string): string {
+    // A notification first: Pause dismisses it, and does nothing else.
+    if (this._priorityEngine?.dismissNotification(false)) return this.report('DISMISS_NOTIFICATION_ALERT', key);
 
-    switch (action) {
-      case 'TOGGLE_TRACK_PAUSE': {
-        // If an active notification is currently displayed, dismiss it first
-        if (this._priorityEngine && this._priorityEngine.dismissNotification(false)) {
-          console.log('[InputDecoder] Dismissed notification alert on start/pause press.');
-          break;
-        }
-
-        const active = this._engine.getCurrentSession();
-        if (!active) {
-          this.startTaskSelection();
-        } else if (active.status === 'TRACKING') {
-          // Paused from the bar, with the bar's paused menu to answer: the
-          // window stays where it is (P8c).
-          this._engine.pauseSession();
-        } else if (active.status === 'PAUSED') {
-          this._engine.resumeSession();
-        }
-        break;
-      }
-      case 'DISMISS_NOTIFICATION_ALERT': {
-        if (this._priorityEngine) {
-          this._priorityEngine.dismissNotification(true);
-        }
-        break;
-      }
-      case 'COMPLETE_AND_LOG_ACTIVE_TASK': {
-        const toFinish = this._engine.getCurrentSession();
-        if (finishNeedsConfirmation(toFinish) && this._renderer) {
-          // The question lives on the paused screen, so a running session is
-          // paused to ask it -- the question first, so the pause draws it at
-          // once -- and refusing resumes it.
-          this._renderer.askPausedConfirm('DONE_UNLISTED');
-          if (toFinish?.status === 'TRACKING') {
-            this._resumeOnConfirmRefused = true;
-            this._engine.pauseSession();
-          }
-          this.notifyActionHandlers('ASK_PAUSED_FINISH', inputKey);
-          break;
-        }
-        // Named for what it does, which is why the missing `markDone` was easy
-        // to miss: it logged and did not complete. See the paused menu above.
-        this._engine.stopSession(WORKLOG_COMMENTS.BAR_LONG_PRESS, true);
-        break;
-      }
-      case 'TRIGGER_TASK_SELECTOR_MODAL': {
-        const active2 = this._engine.getCurrentSession();
-        if (!active2) {
-          this.startTaskSelection();
-        } else {
-          if (this._windowFocusCallback) {
-            this._windowFocusCallback();
-          }
-        }
-        break;
-      }
-      case 'NAVIGATE_QUEUE_PREV':
-      case 'NAVIGATE_QUEUE_NEXT': {
-        if (this._windowFocusCallback) {
-          this._windowFocusCallback();
-        }
-        break;
-      }
+    const session = this._engine.getCurrentSession();
+    if (!session) {
+      // Choosing a task is the app's; the picker comes up over what the user
+      // is doing, as from the deck.
+      this._openPickerCallback?.();
+      return this.report('OPEN_TASK_PICKER', key);
     }
-
-    this.notifyActionHandlers(action, inputKey);
+    if (session.interruption) {
+      // Back to the task it holds. One holding nothing has nothing to go back
+      // to: Back ends it.
+      if (!session.interruption.interruptedSessionId) return 'NONE';
+      this._engine.backFromInterruption();
+      return this.report('BACK_FROM_INTERRUPTION', key);
+    }
+    if (session.status === 'TRACKING') {
+      this._engine.pauseSession();
+      return this.report('PAUSE_SESSION', key);
+    }
+    this._engine.resumeSession();
+    return this.report('RESUME_SESSION', key);
   }
 
-  private notifyActionHandlers(action: string, inputKey: string): void {
+  /** Back: no, or stop. */
+  private back(key: string): string {
+    if (this._priorityEngine?.dismissNotification(true)) return this.report('DISMISS_NOTIFICATION_ALERT', key);
+
+    // A press meant for what was there a moment ago: a banner that left, a
+    // scene that ended. It must not stop what is there now.
+    if (this._renderer && this._renderer.msSinceScreenChange() < BAR_BACK_SETTLE_MS) return 'BACK_SETTLING';
+
+    const session = this._engine.getCurrentSession();
+    if (!session) return 'NONE';
+    if (session.interruption) {
+      // Nothing is logged for an interruption, so no LOGGED: it waits to be
+      // placed, and main opens the Place window on the computer at its stop.
+      this._engine.stopInterruption();
+      return this.report('STOP_INTERRUPTION', key);
+    }
+    // Stop means stop: the time is logged and the task stays open. LOGGED
+    // says so, before the stop, so the session's end is held behind the scene
+    // rather than drawn first. Undo is the app's toast.
+    this._renderer?.renderTaskLogged();
+    this._engine.stopSession(WORKLOG_COMMENTS.BAR_STOP);
+    return this.report('STOP_SESSION', key);
+  }
+
+  /** The wheel's click: Interrupt, or Another during one. */
+  private click(key: string): string {
+    // A notification on the panel is answered by Pause or Back; a click
+    // there does nothing rather than start a timer under it.
+    if (this._priorityEngine?.hasActiveNotification()) return 'NONE';
+    // Interrupt is ContextScheduleService's, through the action handlers: it
+    // holds the task to ask about when the interruption ends, and during one
+    // it is Another. Its start draws the screen.
+    return this.report('START_INTERRUPTION', key);
+  }
+
+  private report(action: string, inputKey: string): string {
+    console.log(`[InputDecoder] ${action} (Key: ${inputKey})`);
     for (const handler of this._actionHandlers) {
       try {
         handler(action, inputKey);
@@ -538,64 +272,6 @@ export class InputDecoder {
         console.error('[InputDecoder] Error in action handler:', err);
       }
     }
-  }
-
-  /** DONE: DONE! on the bar, then the session stopped and its task marked done. */
-  private finishFromTheBar(comment: string): void {
-    if (this._renderer?.renderTaskCompletionConfetti) {
-      this._renderer.renderTaskCompletionConfetti();
-    }
-    // `markDone` is the whole difference from STOP, and omitting it made
-    // FINISH identical to STOP -- it logged the time, played the confetti and
-    // left the task in progress. Reported from daily use: finishing from the
-    // bar left the board untouched, so the same work had to be closed again
-    // from the app.
-    this._engine.stopSession(comment, true);
-  }
-
-  private startTaskSelection() {
-    this._isSelectingTask = true;
-    this._selectionStage = 'PROJECT';
-    // The same "only my projects" switch as the window's lists, read here
-    // rather than pushed: it can only change between two pickers. No project
-    // needs keeping in view -- the picker opens only with no session running.
-    const onlyWithTasks = this._settingsRepo.getSetting<boolean>(
-      ONLY_PROJECTS_WITH_TASKS_KEY,
-      ONLY_PROJECTS_WITH_TASKS_DEFAULT
-    );
-    // Read once per picker, like the switch: the tasks step uses the same
-    // answer as the projects step, so a project is never offered for tasks
-    // its list would then hide.
-    this._taskVisibility = readTaskVisibility(this._settingsRepo);
-    this._projectsList = filterProjectsWithTasks(this._engine.getProjects(), onlyWithTasks, [], this._taskVisibility)
-      .visible.map(p => ({ id: p.id, name: p.name }));
-    if (this._projectsList.length === 0) {
-      this._projectsList = [{ id: 'PROJ-101', name: 'Default Project' }];
-    }
-    this._selectedProjectIndex = 0;
-    this.renderSelection();
-  }
-
-  /**
-   * Draws the selector at its current step and item, with the item's place in
-   * its list. The "No Tasks" placeholder is not an item, so it gets no
-   * position: "1/1" beside it would say there is a task to pick.
-   */
-  private renderSelection(): void {
-    if (!this._renderer) return;
-    if (this._selectionStage === 'PROJECT') {
-      const proj = this._projectsList[this._selectedProjectIndex];
-      this._renderer.renderTaskSelection('PROJECT', proj?.name || 'No Projects', {
-        position: proj ? { index: this._selectedProjectIndex, count: this._projectsList.length } : undefined
-      });
-      return;
-    }
-    const task = this._tasksList[this._selectedTaskIndex];
-    const isReal = task !== undefined && task.id !== NO_TASKS_ID;
-    this._renderer.renderTaskSelection('TASK', task?.title || 'No Tasks', {
-      description: task?.description,
-      position: isReal ? { index: this._selectedTaskIndex, count: this._tasksList.length } : undefined,
-      status: isReal ? task.status : undefined
-    });
+    return action;
   }
 }

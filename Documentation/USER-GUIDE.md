@@ -6,7 +6,7 @@ Installation is in the [README](../README.md#-installation). This picks up from
 first launch.
 
 <p align="center">
-  <img src="../docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, the paused menu, the Lunch scene and a Slack banner">
+  <img src="../docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task, the paused screen, the Lunch scene and a Slack banner">
 </p>
 
 | | |
@@ -277,8 +277,7 @@ the time so far on the task you pick and goes on timing there, and
 mini timer say so: **No longer assigned to you**, **Closed on the provider**,
 or **No longer on the provider** when it was deleted or you can no longer see
 it. Marking it done asks first, since your completion transition would move a
-task that is no longer yours; on the bar, DONE (or a long BACK) shows
-**NOT YOURS / DONE? OK=YES**, and BACK refuses. A task already **closed**
+task that is no longer yours. A task already **closed**
 there is the exception: marking it done asks nothing and moves nothing on the
 provider. The task stays listed until the session ends, and leaves at the
 next sync after that.
@@ -382,7 +381,8 @@ and then, with nothing to fill in. The task you were on **waits, paused**:
 nothing is logged or sent for it, and its timer goes on from where it was
 when you come back. Interrupt is on Today's session card, in the mini timer,
 first in the tray menu, on the Stream Deck's Interrupt key, and on the bar:
-pause the task, turn the wheel two notches right to **INTERRUPT**, and click.
+click the wheel. On the bar, Pause then goes back to your task, Back stops
+the interruption, and another click is **Another**.
 And, if you turn it on, on a keyboard shortcut that works from any app --
 see below.
 
@@ -514,8 +514,8 @@ default -- hides every project with no open task. A provider lists every
 project you can see, while the tasks it fetches are yours and the team's free
 or ongoing work, so most projects held nothing to pick. A project is listed again as soon as it
 has a task to do or in progress. The switch says how many projects it hides,
-and turning it off lists them all. The bar's own picker follows it; the
-window's task picker always lists only the projects with a task. The project you have
+and turning it off lists them all. The task picker always lists only the
+projects with a task. The project you have
 selected stays listed even when it is empty, so one you have just created does
 not vanish before its first task. If no project has a task for you -- before
 the first sync, or on a day nothing is assigned to you -- every project is
@@ -529,8 +529,8 @@ decide whose tasks it shows besides yours, which are always there.
 free to take. **Teammates'**, off by default, lists a teammate's task while it
 is in progress. A task that is not yours carries *Unassigned* or the
 assignee's name beside its key, and the switches say how many tasks they hide.
-They are one setting: the task picker, Tasks and the
-bar's picker all follow it, and **Only projects with tasks** counts what they
+They are one setting: the task picker and Tasks
+both follow it, and **Only projects with tasks** counts what they
 show -- a project holding only unassigned work is listed while unassigned work
 is. The task you are tracking stays listed whoever's it is. Every list keeps
 one order: yours in progress, yours to do, unassigned to do, unassigned in
@@ -899,10 +899,6 @@ comes when you are back, that day. Lunch never undoes what you do:
   during lunch -- in the window, the mini timer or on the bar -- and Lunch ends
   there and then. Nothing restarts when it would have ended, even if you stop
   your task before that, and Lunch does not start again that day.
-- **The bar's picker works during lunch.** START or a click with nothing
-  running opens it over the sandwich; BACK brings the sandwich back. Opened
-  while Windows is locked, it waits under Away and shows as soon as you
-  unlock, ahead of any notification that came in meanwhile.
 - **A task that left your list over the break** -- reassigned, closed or
   moved -- is not restarted without asking. The window asks **Resume after
   lunch?**, and the bar shows **NOT YOURS / RESUME IT?**: OK resumes it, BACK
@@ -1128,7 +1124,7 @@ Every screen, as the bar shows it:
 | Screen | What it means |
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
-| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars, MG-12 01:24, DONE and STOP"> | ⏸️ **Paused.** ❚❚, the key and its time; turn the wheel to **DONE**, **STOP**, **DISCARD** or **INTERRUPT**, click to confirm. DISCARD asks first. |
+| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused.** ❚❚ and the key, the time below. Pause resumes, Back stops, a wheel click interrupts. |
 | <img src="../docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
@@ -1139,23 +1135,12 @@ The session screen's icon is a stopwatch whose colour says where you are: green
 while a task runs, its hand ticking round once a second; amber with blinking
 pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
-row 1 its time, in large digits. While paused, row 0 shows **❚❚**, the task key
-and its time -- a long key is cut, never the time -- and row 1 offers
-**DONE**, **STOP**, **DISCARD** and **INTERRUPT**, the Stream Deck's A, B
-and C in their order, then Interrupt. The wheel moves one choice per notch
-and stops at either end, and a click confirms. The menu opens on STOP, which
-keeps the time and leaves the task open; every pause opens there, wherever
-the last one was left. Row 1 has room for DONE and STOP together, with a
-small arrow towards the rest; DISCARD and INTERRUPT each show alone as you
-turn right. INTERRUPT starts an
-[interruption](#-interrupt-a-timer-at-once). DISCARD throws the session away, so it asks first:
-**DISCARD?** in red, **OK=YES BACK=NO**. A click throws the session away --
-no worklog, nothing sent, no scene -- and BACK, short or long, brings the menu
-back; the other buttons wait for the answer. Picking
-a task from the bar's own picker shows **GO!** for two seconds, the stopwatch
-setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
-**LOGGED** for three seconds, the stopwatch's hand sweeping back to twelve;
-DONE also marks it done, and shows **DONE!**.
+row 1 its time, in large digits. While paused, row 0 shows **❚❚** and the
+task key, and row 1 the time, in amber. Back stops the task: the time is
+logged, the task stays open, and the bar shows **LOGGED** for three
+seconds, the stopwatch's hand sweeping back to twelve. Marking a task done
+or discarding a session is done in the app or on the Stream Deck; DONE from
+anywhere shows **DONE!**.
 
 > [!NOTE]
 > **Why the timer shows HH:MM**
@@ -1182,37 +1167,33 @@ unaffected.
 
 ### 🎛️ Controls
 
+The bar is mostly a display: it shows what runs and what needs you, and
+each control does one thing you can predict. Anything that needs a choice
+-- which task, where an interruption's time goes -- opens SprintTicker on
+the computer, in front of what you are doing.
+
 | Control | Does |
 | :--- | :--- |
-| ▶️ **START** press | Start or pause. With nothing running, opens the task picker |
-| 🔄 **Wheel** turn | Scroll |
-| 🖱️ **Wheel** click | Open the task picker |
-| ↩️ **BACK** short press | Dismiss the current notification |
-| ⏹️ **BACK** long press | Complete the active task and log the time |
+| ⏯️ **Pause** | **Yes.** Pauses, resumes, goes back to your task from an interruption, joins the stand-up, answers yes, dismisses a notification. With nothing running, opens the task picker on the computer |
+| ↩️ **Back** | **No, or stop.** Refuses a question, dismisses a notification, stops the task -- its time logged, the task left open, **LOGGED** on the bar and Undo in the app -- or stops an interruption, which then opens the Place window on the computer |
+| 🖱️ **Wheel** click | **Interrupt**; during an interruption, **Another** |
+| 🔄 **Wheel** turn | Nothing yet: a short menu is coming |
 
-All of these are rebindable.
+- **Back right after the screen changes only cancels.** A press within
+  0.7 s of a new screen -- a notification leaving, a scene ending -- was
+  meant for what was there before, so it never stops the task beneath.
+- **Nothing is held.** The bar sends no long press, so no control depends on
+  one.
+- **On the bar's own screen**, with nothing of SprintTicker's drawn -- its
+  clock when nothing runs -- the bar uses Back itself and leaves its own
+  clock app. Nothing in SprintTicker needs Back there.
 
-🗂️ **The task picker** is two stages: turn to choose a project, click to descend
-into it, turn to choose a task, click to start. **BACK** leaves at any point.
-A blue folder means you are choosing a project, a checklist a task. The
-checklist also gives the task's status: grey for to do, amber for in progress,
-green for done, and a done task's name is dimmed. Tasks come in the window's
-order -- yours in progress, yours to do, unassigned work, teammates' work in
-progress, finished work last -- and within each the most urgent first, by the
-priority set in Jira or OpenProject. Projects and tasks follow the **Only
-projects with tasks**, **Unassigned** and **Teammates'** switches of
-Tasks. The second row shows the task key, then whose the task
-is when it is not yours -- `free` for nobody's, `@Alice` for a teammate's --
-followed by as much of its description as fits, and on
-its right where you are in the list -- `3/12` --
-with a thin line along the bottom whose bright segment slides from left to
-right as you scroll: at the far left there is nothing before, at the far right
-nothing after.
-
-🗣️ **During a ceremony prompt**, START confirms and BACK dismisses. The end-of-day
-wrap-up asks twice — the first START is "yes", the second confirms — because it
-can shut your machine down. Once it is done, the bar says **SEE YOU!** for five
-seconds, a moon rising and the stars coming out, and then goes idle.
+🗣️ **During a question** -- the stand-up, back to your task?, the
+end-of-day wrap-up -- Pause (or a wheel click) says yes and Back no. The
+end-of-day wrap-up asks twice — the first press is "yes", the second
+confirms — because it can shut your machine down. Once it is done, the bar
+says **SEE YOU!** for five seconds, a moon rising and the stars coming out,
+and then goes idle.
 
 The bar's buttons answer the wrap-up only while the bar shows its prompt. The
 **End my day** button in the header puts the prompt on the bar too. If

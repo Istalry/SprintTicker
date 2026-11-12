@@ -130,7 +130,7 @@ describe('Saving provider settings triggers a sync', () => {
       taskRepo,
       settingsRepo,
       driver,
-      inputDecoder: new InputDecoder(driver, engine, settingsRepo),
+      inputDecoder: new InputDecoder(driver, engine),
       renderer: new DisplayRenderer(driver),
       getWindow: () => windowStub() as never,
       providerManager: { reinitializeProviders: () => {}, setActiveProviderId: () => {} } as unknown as ProviderManager,

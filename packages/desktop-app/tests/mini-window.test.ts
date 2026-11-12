@@ -334,7 +334,7 @@ describe('IPCHandlerRegistry with the mini timer', () => {
       taskRepo: new TaskRepository(dbConn),
       settingsRepo,
       driver,
-      inputDecoder: new InputDecoder(driver, engine, settingsRepo),
+      inputDecoder: new InputDecoder(driver, engine),
       renderer: new DisplayRenderer(driver),
       getWindow: () => null,
       ...options

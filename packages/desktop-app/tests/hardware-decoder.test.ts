@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseConnection } from '../src/main/db/database-connection';
-import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
@@ -9,11 +8,8 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
-import { ONLY_PROJECTS_WITH_TASKS_KEY } from '../src/shared/project-filter';
-import { TASK_VISIBILITY_KEY } from '../src/shared/task-visibility';
-import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
-import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
-import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { BAR_BACK_SETTLE_MS } from '../src/shared/render-constants';
 
 /** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
 const TAKE_UP_AT_ONCE = () => ({ enabled: true, afterSeconds: 0 });
@@ -44,14 +40,13 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     const sessionRepo = new SessionRepository(dbConn);
     const worklogRepo = new WorklogRepository(dbConn);
     taskRepo = new TaskRepository(dbConn);
-    const settingsRepo = new SettingsRepository(dbConn);
 
     engine = new TimeTrackingEngine(sessionRepo, worklogRepo, taskRepo, undefined, new ProjectRepository(dbConn), undefined, TAKE_UP_AT_ONCE);
     driver = new BusyBarDriver('10.0.4.20', true); // Mock Mode
     await driver.connect();
 
     renderer = new DisplayRenderer(driver);
-    decoder = new InputDecoder(driver, engine, settingsRepo);
+    decoder = new InputDecoder(driver, engine);
     decoder.setRenderer(renderer);
   });
 
@@ -60,89 +55,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     driver.disconnect();
     dbConn.close();
     vi.restoreAllMocks();
-  });
-
-  describe('finishing a task from the bar', () => {
-    /**
-     * Reported from daily use: completing a task with the BUSY Bar's own
-     * buttons logged the time and left the task in progress, so the same work
-     * had to be closed a second time from the app.
-     *
-     * `stopSession(comment, markDone)` takes the flag as its second argument,
-     * and the hardware paths passed only the comment -- one of which was a
-     * string reading 'Completed via BUSY Bar Paused Menu' and another an action
-     * named COMPLETE_AND_LOG_ACTIVE_TASK. Both said completed and neither
-     * completed anything, while the FINISH branch played the completion
-     * confetti on its way past.
-     *
-     * These go through the decoder rather than calling the engine directly:
-     * the engine's flag always worked, and the defect was entirely in what the
-     * button asked for.
-     */
-    beforeEach(() => {
-      taskRepo.saveTask({
-        id: 'T-1',
-        projectId: 'P-1',
-        key: 'SCRUM-1',
-        title: 'Tache 1',
-        status: 'todo'
-      });
-      engine.startTask('T-1');
-      engine.pauseSession();
-    });
-
-    it('HandleHardwareInput_DoneFromThePausedMenu_MarksTheTaskDone', () => {
-      // DONE is one notch left of STOP, where a pause opens (P14a).
-      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
-      expect(renderer.getPausedSelection()).toBe('DONE');
-
-      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
-
-      expect(taskRepo.getTaskById('T-1')?.status).toBe('done');
-    });
-
-    it('HandleHardwareInput_StopFromThePausedMenu_LeavesTheTaskOpen', () => {
-      // STOP is where the wheel already sits, so this is the press a user
-      // makes without scrolling: the time is logged and the task stays open.
-      expect(renderer.getPausedSelection()).toBe('STOP');
-
-      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
-
-      expect(taskRepo.getTaskById('T-1')?.status).toBe('in_progress');
-    });
-
-    it('HandleHardwareInput_StopFromThePausedMenu_ShowsLogged', () => {
-      // The screen used to go straight to idle, which looked like nothing had
-      // happened.
-      const logged = vi.spyOn(renderer, 'renderTaskLogged');
-      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
-
-      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
-
-      expect(logged).toHaveBeenCalledTimes(1);
-      expect(done).not.toHaveBeenCalled();
-    });
-
-    it('HandleHardwareInput_DoneFromThePausedMenu_ShowsDoneNotLogged', () => {
-      const logged = vi.spyOn(renderer, 'renderTaskLogged');
-      const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
-      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
-
-      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
-
-      expect(done).toHaveBeenCalledTimes(1);
-      expect(logged).not.toHaveBeenCalled();
-    });
-
-    it('HandleHardwareInput_EitherChoice_StillLogsTheTime', () => {
-      // Whatever else changed, the time must survive: that half was never
-      // broken and is the one that cannot be recovered by hand.
-      expect(engine.getCurrentSession()).not.toBeNull();
-
-      decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
-
-      expect(engine.getCurrentSession()).toBeNull();
-    });
   });
 
   it('Connect_MockMode_ReturnsConnectedDeviceStatus', () => {
@@ -168,63 +80,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     // All front elements should be rectangles (pixel strips)
     expect(frontEls.every(e => e.type === 'rectangle')).toBe(true);
     expect(payload.ledColorHex).toBe('#10B981FF'); // Green LED for TRACKING
-  });
-
-  it('HandleHardwareInput_StartButtonPress_TogglesTrackingToPaused', () => {
-    // Arrange
-    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-    expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-
-    // Act: Simulate physical "start" button press
-    const action = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
-
-    // Assert
-    expect(action).toBe('TOGGLE_TRACK_PAUSE');
-    expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-  });
-
-  it('HandleHardwareInput_BackButtonLongPress_CompletesAndLogsActiveTask', () => {
-    // Arrange
-    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-    expect(engine.getCurrentSession()).not.toBeNull();
-
-    // Act: Simulate physical long press on Back button
-    const action = decoder.handleHardwareInput({ key: 'back_hold', type: 'long_press', timestamp: new Date().toISOString() });
-
-    // Assert
-    expect(action).toBe('COMPLETE_AND_LOG_ACTIVE_TASK');
-    expect(engine.getCurrentSession()).toBeNull();
-  });
-
-  it('HandleHardwareInput_WheelRotationsAndClick_ExecutesMappedActions', () => {
-    // Act
-    const upAction = decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: new Date().toISOString() });
-    const downAction = decoder.handleHardwareInput({ key: 'down', type: 'press', timestamp: new Date().toISOString() });
-    const backShort = decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
-
-    // Assert
-    expect(upAction).toBe('NAVIGATE_QUEUE_PREV');
-    expect(downAction).toBe('NAVIGATE_QUEUE_NEXT');
-    expect(backShort).toBe('DISMISS_NOTIFICATION_ALERT');
-  });
-
-  it('InputDecoder_CustomBindings_SavesAndRetrievesBindings', () => {
-    // Arrange
-    const customConfig = {
-      startButtonPress: 'CUSTOM_START',
-      wheelRotateLeft: 'CUSTOM_LEFT',
-      wheelRotateRight: 'CUSTOM_RIGHT',
-      wheelClick: 'CUSTOM_CLICK',
-      backButtonShortPress: 'CUSTOM_BACK',
-      backButtonLongPress: 'CUSTOM_LONG_BACK'
-    };
-
-    // Act
-    decoder.saveBindings(customConfig);
-    const bindings = decoder.getBindings();
-
-    // Assert
-    expect(bindings.startButtonPress).toBe('CUSTOM_START');
   });
 
   it('BusyBarDriver_WifiOptionsAndApiToken_ConfiguresHeadersAndWifiConnectionType', () => {
@@ -362,378 +217,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     }
   });
 
-  describe('long BACK on a task that is no longer the user\'s', () => {
-    const longBack = (): string =>
-      decoder.handleHardwareInput({ key: 'back_hold', type: 'press', timestamp: new Date().toISOString() });
-
-    beforeEach(() => {
-      engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-      decoder.setRenderer(renderer);
-      renderer.renderActiveSession(engine.getCurrentSession());
-      vi.spyOn(engine.getSyncWorker(), 'isUnlisted').mockReturnValue(true);
-    });
-
-    it('HandleHardwareInput_LongBackWhileTracking_PausesToAsk', () => {
-      // The question lives on the paused screen.
-      longBack();
-
-      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      expect(renderer.getPausedConfirm()).toBe('DONE_UNLISTED');
-    });
-
-    it('HandleHardwareInput_LongBackRefused_ResumesAsIfNothingHappened', () => {
-      longBack();
-      renderer.renderActiveSession(engine.getCurrentSession());
-
-      decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
-
-      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-      expect(renderer.getPausedConfirm()).toBeNull();
-    });
-
-    it('HandleHardwareInput_LongBackConfirmed_FinishesIt', () => {
-      longBack();
-      renderer.renderActiveSession(engine.getCurrentSession());
-
-      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
-
-      expect(engine.getCurrentSession()).toBeNull();
-    });
-
-    it('HandleHardwareInput_LongBackOnAListedTask_FinishesWithoutAsking', () => {
-      vi.mocked(engine.getSyncWorker().isUnlisted).mockReturnValue(false);
-
-      longBack();
-
-      expect(engine.getCurrentSession()).toBeNull();
-    });
-  });
-
-  describe('the paused menu: DONE / STOP / DISCARD / INTERRUPT', () => {
-    const turn = (key: string): string =>
-      decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
-
-    beforeEach(() => {
-      engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-      decoder.setRenderer(renderer);
-      engine.pauseSession();
-      // What the IPC layer's subscription does in the app: the renderer knows
-      // the session is paused, so a move redraws the paused screen.
-      renderer.renderActiveSession(engine.getCurrentSession());
-    });
-
-    it('HandleHardwareInput_TaskPaused_OpensOnStop', () => {
-      // STOP changes nothing at the provider and keeps the time (P14a).
-      expect(renderer.getPausedSelection()).toBe('STOP');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningLeftPicksDone', () => {
-      const action = turn('rotate_left');
-
-      expect(action).toBe('MOVE_PAUSED_SELECTION');
-      expect(renderer.getPausedSelection()).toBe('DONE');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningLeftPastDoneStaysOnDone', () => {
-      // DONE is the left-hand end. A toggle used to flip back.
-      turn('rotate_left');
-      turn('up');
-      turn('rotate_left');
-
-      expect(renderer.getPausedSelection()).toBe('DONE');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningRightPicksDiscard', () => {
-      turn('rotate_right');
-
-      expect(renderer.getPausedSelection()).toBe('DISCARD');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningRightTwicePicksInterrupt', () => {
-      turn('rotate_right');
-      turn('rotate_right');
-
-      expect(renderer.getPausedSelection()).toBe('INTERRUPT');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningRightPastInterruptStaysOnInterrupt', () => {
-      // INTERRUPT is the right-hand end, so the wheel finds it blind.
-      turn('rotate_right');
-      turn('down');
-      turn('rotate_right');
-      turn('rotate_right');
-
-      expect(renderer.getPausedSelection()).toBe('INTERRUPT');
-    });
-
-    it('HandleHardwareInput_ClickOnInterrupt_HandsItOnAndEndsNothingItself', () => {
-      // Interrupt is the schedule service's, which sets the task aside to ask
-      // about; the decoder stopping it here would lose that.
-      const actions: string[] = [];
-      decoder.registerActionHandler(action => actions.push(action));
-      const stop = vi.spyOn(engine, 'stopSession');
-      turn('rotate_right');
-      turn('rotate_right');
-
-      const action = turn('ok');
-
-      expect(action).toBe('START_INTERRUPTION');
-      expect(actions).toContain('START_INTERRUPTION');
-      expect(stop).not.toHaveBeenCalled();
-      expect(renderer.getPausedSelection()).toBe('STOP');
-    });
-
-    it.each([
-      ['DONE', ['rotate_left']],
-      ['DISCARD', ['rotate_right']],
-      ['INTERRUPT', ['rotate_right', 'rotate_right']]
-    ])('HandleHardwareInput_PauseLeftOn%s_TheNextOpensOnStop', (_choice, keys) => {
-      // Resumed with START on a choice that acts: a click on the next pause
-      // must stop, never mark done, discard or interrupt.
-      for (const key of keys) turn(key);
-      engine.resumeSession();
-      renderer.renderActiveSession(engine.getCurrentSession());
-      engine.pauseSession();
-      renderer.renderActiveSession(engine.getCurrentSession());
-
-      expect(renderer.getPausedSelection()).toBe('STOP');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TheWheelMovesOneNotchAtATime', () => {
-      // From INTERRUPT, one notch left is DISCARD, not STOP.
-      turn('rotate_right');
-      turn('rotate_right');
-      turn('rotate_left');
-
-      expect(renderer.getPausedSelection()).toBe('DISCARD');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningBackAndForthFollowsTheWheel', () => {
-      turn('rotate_left');
-      turn('rotate_right');
-
-      expect(renderer.getPausedSelection()).toBe('STOP');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningAgainstAnEnd_DoesNotRedraw', () => {
-      // Each redraw is an upload and a draw; turning against the end is free.
-      turn('rotate_left');
-      const redraws = vi.spyOn(renderer, 'renderActiveSession');
-      turn('rotate_left');
-      turn('rotate_left');
-
-      expect(redraws).not.toHaveBeenCalled();
-    });
-
-    it('HandleHardwareInput_TaskPaused_MovingRedrawsThePausedScreen', () => {
-      const redraws = vi.spyOn(renderer, 'renderActiveSession');
-      turn('rotate_right');
-
-      expect(redraws).toHaveBeenCalledTimes(1);
-    });
-
-    describe('finishing a task that is no longer the user\'s', () => {
-      // Reassigned, closed or moved since it started: finishing it fires the
-      // user's completion transition on a task that is no longer theirs, so
-      // the bar asks, as the window does.
-      let done: ReturnType<typeof vi.spyOn>;
-
-      beforeEach(() => {
-        vi.spyOn(engine.getSyncWorker(), 'isUnlisted').mockReturnValue(true);
-        done = vi.spyOn(engine, 'stopSession');
-      });
-
-      it('HandleHardwareInput_DoneOnAnUnlistedTask_AsksFirst', () => {
-        turn('rotate_left'); // DONE
-        const action = turn('ok');
-
-        expect(action).toBe('ASK_PAUSED_FINISH');
-        expect(renderer.getPausedConfirm()).toBe('DONE_UNLISTED');
-        expect(done).not.toHaveBeenCalled();
-      });
-
-      it('HandleHardwareInput_DoneConfirmed_MarksItDone', () => {
-        turn('rotate_left');
-        turn('ok');
-        const action = turn('ok');
-
-        expect(action).toBe('CONFIRM_PAUSED_FINISH');
-        expect(done).toHaveBeenCalledWith(expect.any(String), true);
-        expect(engine.getCurrentSession()).toBeNull();
-      });
-
-      it('HandleHardwareInput_DoneRefused_StaysPausedOnTheMenu', () => {
-        turn('rotate_left');
-        turn('ok');
-        turn('back');
-
-        expect(done).not.toHaveBeenCalled();
-        expect(renderer.getPausedConfirm()).toBeNull();
-        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      });
-
-      it('HandleHardwareInput_DoneOnATaskClosedThere_FinishesWithoutAsking', () => {
-        // Nothing to move on a task already closed, so nothing to ask.
-        vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('closed');
-        turn('rotate_left');
-
-        const action = turn('ok');
-
-        expect(action).toBe('VALIDATE_PAUSED_SELECTION');
-        expect(renderer.getPausedConfirm()).toBeNull();
-        expect(done).toHaveBeenCalledWith(expect.any(String), true);
-      });
-
-      it('HandleHardwareInput_LongBackOnATaskClosedThere_FinishesWithoutAsking', () => {
-        vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('closed');
-
-        const action = decoder.handleHardwareInput({ key: 'back_hold', type: 'long_press', timestamp: new Date().toISOString() });
-
-        expect(action).toBe('COMPLETE_AND_LOG_ACTIVE_TASK');
-        expect(renderer.getPausedConfirm()).toBeNull();
-        expect(engine.getCurrentSession()).toBeNull();
-      });
-
-      it('HandleHardwareInput_LongBackOnATaskReassigned_StillAsks', () => {
-        vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('reassigned');
-
-        decoder.handleHardwareInput({ key: 'back_hold', type: 'long_press', timestamp: new Date().toISOString() });
-
-        expect(renderer.getPausedConfirm()).toBe('DONE_UNLISTED');
-        expect(done).not.toHaveBeenCalled();
-      });
-
-      it('HandleHardwareInput_StopOnAnUnlistedTask_DoesNotAsk', () => {
-        // Logging the time and leaving the task open moves nothing remote.
-        turn('ok');
-
-        expect(done).toHaveBeenCalledWith(expect.any(String));
-        expect(renderer.getPausedConfirm()).toBeNull();
-      });
-    });
-
-    describe('discarding from the bar', () => {
-      const click = (): string => turn('ok');
-
-      beforeEach(() => {
-        turn('rotate_right'); // DISCARD
-      });
-
-      it('HandleHardwareInput_ClickOnDiscard_AsksBeforeDiscardingAnything', () => {
-        const action = click();
-
-        expect(action).toBe('ASK_PAUSED_DISCARD');
-        expect(renderer.getPausedConfirm()).toBe('DISCARD');
-        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      });
-
-      it('HandleHardwareInput_DiscardConfirmed_KeepsNothing', () => {
-        click();
-        const action = click();
-
-        expect(action).toBe('CONFIRM_PAUSED_DISCARD');
-        expect(engine.getCurrentSession()).toBeNull();
-        const worklogs = dbConn.getDb().prepare<[], { n: number }>('SELECT COUNT(*) AS n FROM worklogs').get()!.n;
-        expect(worklogs).toBe(0);
-        // The session took the question with it.
-        expect(renderer.getPausedConfirm()).toBeNull();
-      });
-
-      it('HandleHardwareInput_DiscardRefusedWithBack_GivesTheMenuBack', () => {
-        click();
-        const action = turn('back');
-
-        expect(action).toBe('CANCEL_PAUSED_CONFIRM');
-        expect(renderer.getPausedConfirm()).toBeNull();
-        expect(renderer.getPausedSelection()).toBe('DISCARD');
-        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      });
-
-      it('HandleHardwareInput_LongBackOnTheQuestion_RefusesRatherThanCompleting', () => {
-        // A long BACK completes the task anywhere else on the bar.
-        click();
-        const action = turn('back_hold');
-
-        expect(action).toBe('CANCEL_PAUSED_CONFIRM');
-        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      });
-
-      it('HandleHardwareInput_OtherKeysOnTheQuestion_WaitForTheAnswer', () => {
-        // START resumes a paused session anywhere else; here the user is
-        // deciding whether to throw it away.
-        click();
-
-        expect(turn('start')).toBe('AWAIT_PAUSED_CONFIRM');
-        expect(turn('rotate_left')).toBe('AWAIT_PAUSED_CONFIRM');
-        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-        expect(renderer.getPausedConfirm()).toBe('DISCARD');
-      });
-
-      it('HandleHardwareInput_SessionResumedElsewhere_DropsTheQuestion', () => {
-        // Resumed from the window while the bar asked: the next pause offers
-        // the menu, not a question about throwing this session away.
-        click();
-        engine.resumeSession();
-        renderer.renderActiveSession(engine.getCurrentSession());
-        engine.pauseSession();
-        renderer.renderActiveSession(engine.getCurrentSession());
-
-        expect(renderer.getPausedConfirm()).toBeNull();
-      });
-    });
-  });
-
-  it('HandleHardwareInput_TaskPaused_WheelClickValidatesSelectionAndStopsTask', () => {
-    // Arrange: Start task and pause it
-    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-    decoder.setRenderer(renderer);
-    engine.pauseSession();
-
-    // Act: Press wheel (selection default 'STOP')
-    const action = decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
-
-    // Assert
-    expect(action).toBe('VALIDATE_PAUSED_SELECTION');
-    expect(engine.getCurrentSession()).toBeNull();
-  });
-
-  it('HandleHardwareInput_StartButtonPress_PausesWithoutBringingTheWindowForward', () => {
-    // P8c: pausing from the bar leaves the window where it is; the bar's
-    // paused menu is what answers next.
-    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-    let focusCalled = false;
-    decoder.setWindowFocusCallback(() => { focusCalled = true; });
-
-    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
-
-    expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-    expect(focusCalled).toBe(false);
-  });
-  it('HandleHardwareInput_StartButtonPress_ResumesPausedSession', () => {
-    // Arrange: Start and pause
-    engine.startTask('PROJ-200', false, 'Resume Test');
-    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
-    expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-
-    // Act: Press start again to resume
-    decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
-
-    // Assert
-    expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-  });
-
-  it('HandleHardwareInput_NavigateQueueAction_CallsWindowFocusCallback', () => {
-    // Arrange: bind navigate_queue to up key via custom bindings (up → NAVIGATE_QUEUE_PREV by default)
-    let focusCalled = false;
-    decoder.setWindowFocusCallback(() => { focusCalled = true; });
-
-    // Act: 'up' maps to wheelRotateLeft which is NAVIGATE_QUEUE_PREV by default
-    decoder.handleHardwareInput({ key: 'up', type: 'press', timestamp: new Date().toISOString() });
-
-    // Assert
-    expect(focusCalled).toBe(true);
-  });
-
   it('HandleHardwareInput_ActionHandlerThrows_DoesNotPropagateError', () => {
     // Arrange: register a failing action handler
     decoder.registerActionHandler(() => { throw new Error('handler boom'); });
@@ -742,19 +225,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(() =>
       decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() })
     ).not.toThrow();
-  });
-
-  it('HandleHardwareInput_NoEventType_RoutesOkKeyToWheelClickAction', () => {
-    // Arrange: REST-injected key has no event type
-    engine.startTask('PROJ-300', false, 'No-Type Key Test');
-    decoder.setRenderer(renderer);
-    engine.pauseSession();
-
-    // Act: ok key without event type (simulates REST /api/input?key=ok)
-    const action = decoder.handleHardwareInput({ key: 'ok', timestamp: new Date().toISOString() } as never);
-
-    // Assert: paused selection validated → session stopped
-    expect(action).toBe('VALIDATE_PAUSED_SELECTION');
   });
 
   it('HandleHardwareInput_EodPromptActive_FirstStartPress_AdvancesToStep1Confirmation', () => {
@@ -864,418 +334,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(released).toContain('standupPromptPriority');
   });
 
-  /**
-   * The hardware task picker.
-   *
-   * None of this was covered, and it is the one screen a user drives entirely
-   * from the bar -- wheel to scroll, click to descend, back to leave. The lock
-   * assertions are the point: `renderTaskSelection` acquires `menuPriority` on
-   * every redraw, and every exit from the menu has to release it. When nothing
-   * did, the lock outlived the menu and the bar stayed on the picker until some
-   * unrelated higher-priority event happened to overwrite it (F-15).
-   */
-  describe('task selection from the bar', () => {
-    let released: string[];
-    let projectRepo: ProjectRepository;
-
-    /** A picker whose lock releases are observable. */
-    function withPriorityEngine(): void {
-      released = [];
-      decoder.setPriorityEngine({
-        // No ceremony holds the display, so input reaches the selection branch.
-        getActiveLockEventName: () => undefined,
-        releaseActiveLock: (lock: string) => released.push(lock),
-        dismissNotification: () => false
-      } as never);
-    }
-
-    /** Opens the picker the way the wheel click does, with no active session. */
-    function openPicker(): void {
-      decoder.handleHardwareInput({
-        key: 'ok',
-        type: 'press',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    function press(key: string): string {
-      return decoder.handleHardwareInput({
-        key,
-        type: 'press',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    beforeEach(() => {
-      projectRepo = new ProjectRepository(dbConn);
-      withPriorityEngine();
-    });
-
-    it('HandleHardwareInput_BackWhileSelecting_CancelsAndReleasesTheMenuLock', () => {
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      openPicker();
-
-      const action = press('back');
-
-      expect(action).toBe('CANCEL_SELECTION');
-      // The lock this test exists for.
-      expect(released).toContain('menuPriority');
-    });
-
-    it('HandleHardwareInput_ConfirmingATask_StartsItAndReleasesTheMenuLock', () => {
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
-      openPicker();
-
-      press('ok'); // PROJECT stage -> TASK stage
-      const action = press('ok'); // confirm the task
-
-      expect(action).toBe('START_TASK_FROM_SELECTION');
-      expect(released).toContain('menuPriority');
-      const session = engine.getCurrentSession();
-      expect(session?.taskId).toBe('T1');
-    });
-
-    it('HandleHardwareInput_ConfirmingATask_ShowsGoBeforeTheMenuLetsGo', () => {
-      // The menu used to vanish into the tracking screen with nothing to say
-      // the click had landed. GO! goes first: releasing the lock redraws the
-      // session, and the scene is what should be on the panel then.
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
-      let lockHeldAtGo: boolean | null = null;
-      const started = vi.spyOn(renderer, 'renderTaskStarted').mockImplementation(() => {
-        lockHeldAtGo = !released.includes('menuPriority');
-        return undefined as never;
-      });
-      openPicker();
-
-      press('ok');
-      press('ok');
-
-      expect(started).toHaveBeenCalledTimes(1);
-      expect(started.mock.calls[0][0].taskId).toBe('T1');
-      expect(lockHeldAtGo).toBe(true);
-    });
-
-    it('HandleHardwareInput_DescendingIntoAProject_ShowsTheTaskKeyOnTheSecondRow', () => {
-      // TaskDTO carries no description. The second row used to read
-      // `t.description`, which was always undefined, so every row said
-      // "No description"; it shows the key, which is real data.
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo' });
-      const rendered: Array<[string, string, string | undefined]> = [];
-      renderer.renderTaskSelection = ((stage: string, label: string, options?: { description?: string }) => {
-        rendered.push([stage, label, options?.description]);
-      }) as never;
-      openPicker();
-
-      press('ok');
-
-      const taskRow = rendered.find(([stage]) => stage === 'TASK');
-      expect(taskRow?.[1]).toBe('Write the thing');
-      expect(taskRow?.[2]).toBe('ALPHA-1');
-    });
-
-    it('HandleHardwareInput_TaskWithADescription_ShowsTheKeyThenTheDescription', () => {
-      // The key first: it is what identifies the task in the provider, so it
-      // is never the part the width cuts off.
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'Write the thing', status: 'todo', description: 'All of it' });
-      const rendered: Array<[string, string, string | undefined]> = [];
-      renderer.renderTaskSelection = ((stage: string, label: string, options?: { description?: string }) => {
-        rendered.push([stage, label, options?.description]);
-      }) as never;
-      openPicker();
-
-      press('ok');
-
-      expect(rendered.find(([stage]) => stage === 'TASK')?.[2]).toBe('ALPHA-1 All of it');
-    });
-
-    it('HandleHardwareInput_RotatingPastEitherEnd_ClampsInsteadOfLeavingTheList', () => {
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
-      const rendered: string[] = [];
-      renderer.renderTaskSelection = ((_stage: string, label: string) => {
-        rendered.push(label);
-      }) as never;
-      openPicker();
-
-      // Up from the first entry, then down past the last.
-      press('rotate_left');
-      const atTop = rendered[rendered.length - 1];
-      press('rotate_right');
-      press('rotate_right');
-      press('rotate_right');
-      const atBottom = rendered[rendered.length - 1];
-
-      expect(atTop).toBe('Alpha');
-      expect(atBottom).toBe('Beta');
-    });
-
-    it('HandleHardwareInput_NoProjectsCached_OffersTheDefaultProjectRow', () => {
-      // An empty picker is a dead end on hardware: there is no keyboard to add
-      // a project with, so the fallback row is what keeps the menu usable.
-      const rendered: string[] = [];
-      renderer.renderTaskSelection = ((_stage: string, label: string) => {
-        rendered.push(label);
-      }) as never;
-
-      openPicker();
-
-      expect(rendered[0]).toBe('Default Project');
-    });
-
-    describe('position in the list', () => {
-      type Position = { index: number; count: number } | undefined;
-      let positions: Array<[string, string, Position]>;
-
-      beforeEach(() => {
-        positions = [];
-        renderer.renderTaskSelection = ((stage: string, label: string, options?: { position?: Position }) => {
-          positions.push([stage, label, options?.position]);
-        }) as never;
-      });
-
-      it('HandleHardwareInput_ScrollingProjects_ReportsWhereEachOneSits', () => {
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-        projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
-        projectRepo.saveProject({ id: 'P3', key: 'P3', name: 'Gamma' });
-        openPicker();
-
-        press('rotate_right');
-        press('rotate_right');
-        press('rotate_right'); // clamped at the end
-
-        expect(positions.map(([, , position]) => position)).toEqual([
-          { index: 0, count: 3 },
-          { index: 1, count: 3 },
-          { index: 2, count: 3 },
-          { index: 2, count: 3 }
-        ]);
-      });
-
-      it('HandleHardwareInput_DescendingIntoAProject_CountsItsTasks', () => {
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'ALPHA-1', title: 'One', status: 'todo' });
-        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'ALPHA-2', title: 'Two', status: 'todo' });
-        openPicker();
-
-        press('ok');
-        press('rotate_right');
-
-        const taskPositions = positions.filter(([stage]) => stage === 'TASK').map(([, , position]) => position);
-        expect(taskPositions).toEqual([{ index: 0, count: 2 }, { index: 1, count: 2 }]);
-      });
-
-      it('HandleHardwareInput_DescendingIntoAProject_ListsInProgressThenTodoThenDone', () => {
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Finished', status: 'done' });
-        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Waiting', status: 'todo' });
-        taskRepo.saveTask({ id: 'T3', projectId: 'P1', key: 'A-3', title: 'Under way', status: 'in_progress' });
-        const shown: Array<[string, string | undefined]> = [];
-        renderer.renderTaskSelection = ((stage: string, label: string, options?: { status?: string }) => {
-          if (stage === 'TASK') shown.push([label, options?.status]);
-        }) as never;
-        openPicker();
-
-        press('ok');
-        press('rotate_right');
-        press('rotate_right');
-
-        expect(shown).toEqual([['Under way', 'in_progress'], ['Waiting', 'todo'], ['Finished', 'done']]);
-      });
-
-      it('HandleHardwareInput_ConfirmingAfterSorting_StartsTheTaskShown', () => {
-        // The index must refer to the sorted list, or the click starts the
-        // task that used to be in that place.
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Finished', status: 'done' });
-        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Under way', status: 'in_progress' });
-        openPicker();
-
-        press('ok');
-        press('ok');
-
-        expect(engine.getCurrentSession()?.taskId).toBe('T2');
-      });
-
-      it('HandleHardwareInput_ProjectWithNoTasks_ShowsNoPosition', () => {
-        // "1/1" beside "No Tasks" would say there is a task to pick.
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Empty' });
-        openPicker();
-
-        press('ok');
-
-        const noTasks = positions.find(([stage, label]) => stage === 'TASK' && label === 'No Tasks');
-        expect(noTasks).toBeDefined();
-        expect(noTasks?.[2]).toBeUndefined();
-      });
-    });
-
-    describe('whose tasks the picker shows', () => {
-      let rows: Array<[string, string, string | undefined]>;
-
-      /** Every task row the picker offers, top to bottom, as [title, row 1]. */
-      function taskRows(count: number): Array<[string, string | undefined]> {
-        openPicker();
-        press('ok');
-        for (let i = 1; i < count; i++) press('rotate_right');
-        return rows.filter(([stage]) => stage === 'TASK').map(([, label, description]) => [label, description]);
-      }
-
-      beforeEach(() => {
-        rows = [];
-        renderer.renderTaskSelection = ((stage: string, label: string, options?: { description?: string }) => {
-          rows.push([stage, label, options?.description]);
-        }) as never;
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Team' });
-        // Saved in the reverse of the order the user chose, so the order
-        // below is the picker's and not the store's.
-        taskRepo.saveTask({ id: 'T7', projectId: 'P1', key: 'T-7', title: 'Free done', status: 'done', ownership: 'unassigned' });
-        taskRepo.saveTask({ id: 'T6', projectId: 'P1', key: 'T-6', title: 'Mine done', status: 'done' });
-        taskRepo.saveTask({
-          id: 'T5', projectId: 'P1', key: 'T-5', title: 'Alice busy', status: 'in_progress',
-          ownership: 'other', assigneeName: 'Alice Martin'
-        });
-        taskRepo.saveTask({ id: 'T4', projectId: 'P1', key: 'T-4', title: 'Free started', status: 'in_progress', ownership: 'unassigned' });
-        taskRepo.saveTask({ id: 'T3', projectId: 'P1', key: 'T-3', title: 'Free todo', status: 'todo', ownership: 'unassigned' });
-        taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'T-2', title: 'Mine todo', status: 'todo' });
-        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'T-1', title: 'Mine busy', status: 'in_progress' });
-      });
-
-      it('HandleHardwareInput_DefaultVisibility_ListsMineThenFreeWorkAndNoTeammatesTasks', () => {
-        expect(taskRows(6).map(([title]) => title)).toEqual([
-          'Mine busy', 'Mine todo', 'Free todo', 'Free started', 'Mine done', 'Free done'
-        ]);
-      });
-
-      it('HandleHardwareInput_TeammatesShown_PutsTheirWorkInProgressAfterTheFreeWork', () => {
-        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: true, others: true });
-
-        expect(taskRows(7).map(([title]) => title)).toEqual([
-          'Mine busy', 'Mine todo', 'Free todo', 'Free started', 'Alice busy', 'Mine done', 'Free done'
-        ]);
-      });
-
-      it('HandleHardwareInput_TaskNotTheUsers_SaysWhoseAfterTheKey', () => {
-        // Row 1 holds the key and about a word: the owner comes next, so it
-        // is not the part the width cuts off.
-        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: true, others: true });
-
-        const byTitle = new Map(taskRows(7));
-
-        expect(byTitle.get('Mine busy')).toBe('T-1');
-        expect(byTitle.get('Free todo')).toBe('T-3 free');
-        expect(byTitle.get('Alice busy')).toBe('T-5 @Alice');
-      });
-
-      it('HandleHardwareInput_UnassignedHidden_ListsTheUsersOwnWorkOnly', () => {
-        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: false, others: false });
-
-        expect(taskRows(3).map(([title]) => title)).toEqual(['Mine busy', 'Mine todo', 'Mine done']);
-      });
-
-      it('HandleHardwareInput_ProjectWithOnlyFreeWork_IsListedWhileFreeWorkIsShown', () => {
-        // "Only projects with tasks" counts what the lists would show.
-        const shown: string[] = [];
-        renderer.renderTaskSelection = ((stage: string, label: string) => {
-          if (stage === 'PROJECT') shown.push(label);
-        }) as never;
-        projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Bugs' });
-        projectRepo.saveProject({ id: 'P3', key: 'P3', name: 'Theirs' });
-        taskRepo.saveTask({ id: 'B1', projectId: 'P2', key: 'B-1', title: 'Crash', status: 'todo', ownership: 'unassigned' });
-        taskRepo.saveTask({
-          id: 'C1', projectId: 'P3', key: 'C-1', title: 'Bob busy', status: 'in_progress', ownership: 'other', assigneeName: 'Bob'
-        });
-
-        openPicker();
-        press('rotate_right');
-        press('rotate_right');
-        // By key: Team (P1), then Bugs (P2); Theirs holds only a teammate's work.
-        expect(shown).toEqual(['Team', 'Bugs', 'Bugs']);
-
-        new SettingsRepository(dbConn).setSetting(TASK_VISIBILITY_KEY, { unassigned: false, others: true });
-        press('back');
-        shown.length = 0;
-        openPicker();
-        press('rotate_right');
-        press('rotate_right');
-        // Bugs gone with the free work; Theirs back with the teammates'.
-        expect(shown).toEqual(['Team', 'Theirs', 'Theirs']);
-      });
-    });
-
-    describe('only projects with tasks', () => {
-      let shownProjects: string[];
-
-      beforeEach(() => {
-        shownProjects = [];
-        renderer.renderTaskSelection = ((stage: string, label: string) => {
-          if (stage === 'PROJECT') shownProjects.push(label);
-        }) as never;
-        projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-        projectRepo.saveProject({ id: 'P2', key: 'P2', name: 'Beta' });
-        projectRepo.saveProject({ id: 'P3', key: 'P3', name: 'Gamma' });
-        taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'Finished', status: 'done' });
-        taskRepo.saveTask({ id: 'T2', projectId: 'P2', key: 'B-1', title: 'Waiting', status: 'todo' });
-      });
-
-      it('HandleHardwareInput_SwitchOnByDefault_ListsOnlyProjectsWithAnOpenTask', () => {
-        // Alpha holds only a done task, Gamma none: neither is anything to pick.
-        openPicker();
-        press('rotate_right');
-
-        expect(shownProjects).toEqual(['Beta', 'Beta']);
-      });
-
-      it('HandleHardwareInput_OnlyAdHocWorkOpen_ListsEveryProject', () => {
-        // An ad-hoc task stays in progress until finished as done. With nothing assigned,
-        // the ad-hoc project used to be the only project the bar offered.
-        taskRepo.saveTask({ id: 'T2', projectId: 'P2', key: 'B-1', title: 'Waiting', status: 'done' });
-        projectRepo.saveProject({ id: ADHOC_PROJECT_ID, key: ADHOC_PROJECT_ID, name: 'Ad-hoc' });
-        taskRepo.createAdHocTask('Code review');
-        openPicker();
-        press('rotate_right');
-        press('rotate_right');
-        press('rotate_right');
-
-        expect(shownProjects).toEqual(['Ad-hoc', 'Alpha', 'Beta', 'Gamma']);
-      });
-
-      it('HandleHardwareInput_SwitchOff_ListsEveryProject', () => {
-        new SettingsRepository(dbConn).setSetting(ONLY_PROJECTS_WITH_TASKS_KEY, false);
-        openPicker();
-        press('rotate_right');
-        press('rotate_right');
-
-        expect(shownProjects).toEqual(['Alpha', 'Beta', 'Gamma']);
-      });
-    });
-
-    it('HandleHardwareInput_ProjectWithNoTasks_ShowsNoTasksAndStartsNothing', () => {
-      projectRepo.saveProject({ id: 'P1', key: 'P1', name: 'Empty' });
-      const rendered: Array<[string, string]> = [];
-      renderer.renderTaskSelection = ((stage: string, label: string) => {
-        rendered.push([stage, label]);
-      }) as never;
-      const started = vi.spyOn(renderer, 'renderTaskStarted');
-      openPicker();
-
-      press('ok'); // descend into the empty project
-      const action = press('ok'); // confirm the placeholder row
-
-      expect(rendered.some(([stage, label]) => stage === 'TASK' && label === 'No Tasks')).toBe(true);
-      // The menu closes, but the placeholder is not a task and must not start
-      // a session.
-      expect(action).toBe('START_TASK_FROM_SELECTION');
-      expect(engine.getCurrentSession()).toBeNull();
-      expect(released).toContain('menuPriority');
-      // Nor may it say GO!: nothing is running.
-      expect(started).not.toHaveBeenCalled();
-    });
-  });
-
   it('InputDecoder_ListenerThrows_LogsWithoutTerminatingTheProcess', async () => {
     // Driven through the driver's own event, not by calling handleHardwareInput
     // directly, because the guard under test lives in the listener the
@@ -1300,122 +358,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     expect(errors).toHaveBeenCalled();
   });
 
-  /**
-   * The paths a button takes when something other than the session is on the
-   * screen, or when the press means "take me to the app" rather than an
-   * action on the bar.
-   */
-  describe('the picker under Away', () => {
-    // Away outranks the picker, and the picker is never queued: START under
-    // Away left it open and unseen, and when Away ended the display went to
-    // the clock (or Lunch) while the wheel moved through it blind.
-    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
-    let priority: PriorityPreemptionEngine;
-
-    beforeEach(() => {
-      priority = new PriorityPreemptionEngine(new SettingsRepository(dbConn));
-      renderer = new DisplayRenderer(driver, priority);
-      priority.setRenderer(renderer);
-      decoder.setRenderer(renderer);
-      decoder.setPriorityEngine(priority);
-      priority.setUserMode('AWAY');
-      renderer.setContextMode('AWAY');
-    });
-
-    afterEach(() => {
-      decoder.dispose();
-      renderer.dispose();
-    });
-
-    it('AwayEnds_PickerStillOpen_ItComesBack', () => {
-      press('start');
-      expect(priority.getActiveLockEventName()).toBe('awayModePriority');
-
-      priority.setUserMode('WORK');
-
-      expect(priority.getActiveLockEventName()).toBe(BAR_MENU_EVENT);
-    });
-
-    it('AwayEnds_PickerClosedMeanwhile_TheModeHasTheDisplay', () => {
-      press('start');
-      press('back');
-
-      priority.setUserMode('WORK');
-
-      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
-    });
-
-    it('Dispose_ThePickerNoLongerReclaims', () => {
-      press('start');
-      decoder.dispose();
-
-      priority.setUserMode('WORK');
-
-      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
-    });
-
-    it('SetPriorityEngine_Again_TheOldEngineForgetsThePicker', () => {
-      decoder.setPriorityEngine(new PriorityPreemptionEngine(new SettingsRepository(dbConn)));
-      press('start');
-
-      priority.setUserMode('WORK');
-
-      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
-    });
-  });
-
-  describe('the bar during lunch', () => {
-    // START with nothing running opens the picker. Its lock had no rule, so it
-    // took the default 50 and was queued under Lunch's 95: a picker nobody
-    // could see, which the wheel then moved through blind.
-    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
-    let priority: PriorityPreemptionEngine;
-
-    beforeEach(() => {
-      priority = new PriorityPreemptionEngine(new SettingsRepository(dbConn));
-      renderer = new DisplayRenderer(driver, priority);
-      priority.setRenderer(renderer);
-      decoder.setRenderer(renderer);
-      decoder.setPriorityEngine(priority);
-      priority.setUserMode('LUNCH');
-      renderer.setContextMode('LUNCH');
-    });
-
-    afterEach(() => {
-      renderer.dispose();
-    });
-
-    it('HandleHardwareInput_StartDuringLunch_ThePickerTakesTheDisplay', () => {
-      expect(priority.getActiveLockEventName()).toBe('lunchModePriority');
-      const picker = vi.spyOn(renderer, 'renderTaskSelection');
-
-      press('start');
-
-      expect(priority.getActiveLockEventName()).toBe(BAR_MENU_EVENT);
-      expect(picker).toHaveReturnedWith(expect.objectContaining({ ledColorHex: '#3B82F6FF' }));
-    });
-
-    it('StartTask_ElsewhereWhileThePickerIsOpen_ThePickerLetsGo', () => {
-      // Started from the window: the picker held the display over the new
-      // session until BACK, and a click then switched tasks from it.
-      press('start');
-
-      engine.startTask('T-9', false, 'From the window');
-
-      expect(priority.getActiveLockEventName()).not.toBe(BAR_MENU_EVENT);
-      expect(press('ok')).toBe('TRIGGER_TASK_SELECTOR_MODAL');
-      expect(engine.getCurrentSession()?.taskId).toBe('T-9');
-    });
-
-    it('HandleHardwareInput_PickerClosedDuringLunch_LunchComesBack', () => {
-      press('start');
-
-      press('back');
-
-      expect(priority.getActiveLockEventName()).toBe('lunchModePriority');
-    });
-  });
-
   describe('resuming after lunch a task that is no longer the user\'s', () => {
     // ContextScheduleService owns the question; the decoder only hands it the
     // answer, through the action handlers the IPC registry routes.
@@ -1433,12 +375,9 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     });
 
     it.each(['ok', 'start'])('HandleHardwareInput_%sOnTheQuestion_AnswersYes', key => {
-      const picker = vi.spyOn(renderer, 'renderTaskSelection');
-
       expect(press(key)).toBe('CONFIRM_RESUME_PROMPT');
 
       expect(heard).toEqual(['CONFIRM_RESUME_PROMPT']);
-      expect(picker).not.toHaveBeenCalled();
     });
 
     it('HandleHardwareInput_BackOnTheQuestion_AnswersNo', () => {
@@ -1453,6 +392,219 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(press('rotate_left')).toBe('AWAIT_RESUME_PROMPT');
       expect(heard).toEqual([]);
       expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+  });
+
+  /**
+   * The bar's buttons (redesign P14b, the user's layout of 2026-11-12): Pause
+   * is yes, Back is no or stop, the wheel's click interrupts, and turning
+   * does nothing until the menu (P14c).
+   */
+  describe('the buttons', () => {
+    const at = () => new Date().toISOString();
+    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: at() });
+    let heard: string[];
+    let notificationUp: boolean;
+    let dismissed: boolean[];
+
+    beforeEach(() => {
+      heard = [];
+      notificationUp = false;
+      dismissed = [];
+      decoder.registerActionHandler(action => heard.push(action));
+      decoder.setPriorityEngine({
+        getActiveLockEventName: () => null,
+        releaseActiveLock: () => undefined,
+        hasActiveNotification: () => notificationUp,
+        dismissNotification: (explicit: boolean) => {
+          dismissed.push(explicit);
+          const was = notificationUp;
+          notificationUp = false;
+          return was;
+        }
+      } as never);
+      // The panel has shown what it shows for a while: Back is not settling.
+      vi.spyOn(renderer, 'msSinceScreenChange').mockReturnValue(60_000);
+      taskRepo.saveTask({ id: 'T-1', projectId: 'P-1', key: 'SCRUM-1', title: 'Tache 1', status: 'todo' });
+    });
+
+    describe('Pause', () => {
+      it('Pause_Timing_Pauses', () => {
+        engine.startTask('T-1');
+
+        expect(press('start')).toBe('PAUSE_SESSION');
+        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      });
+
+      it('Pause_Paused_Resumes', () => {
+        engine.startTask('T-1');
+        engine.pauseSession();
+
+        expect(press('start')).toBe('RESUME_SESSION');
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Pause_NothingRunning_OpensThePickerOnTheComputer', () => {
+        const open = vi.fn();
+        decoder.setOpenPickerCallback(open);
+
+        expect(press('start')).toBe('OPEN_TASK_PICKER');
+        expect(open).toHaveBeenCalledTimes(1);
+        expect(engine.getCurrentSession()).toBeNull();
+      });
+
+      it('Pause_DuringAnInterruption_GoesBackToTheTask', () => {
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+
+        expect(press('start')).toBe('BACK_FROM_INTERRUPTION');
+        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'TRACKING' });
+        expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+      });
+
+      it('Pause_InterruptionHoldingNothing_DoesNothing', () => {
+        engine.startInterruption(new Date(), 'bar');
+
+        expect(press('start')).toBe('NONE');
+        expect(engine.getCurrentSession()?.interruption).toBeDefined();
+      });
+
+      it('Pause_ANotificationShown_DismissesItAndLeavesTheSessionRunning', () => {
+        // Pause on a notification means "seen", not "pause my work".
+        engine.startTask('T-1');
+        notificationUp = true;
+
+        expect(press('start')).toBe('DISMISS_NOTIFICATION_ALERT');
+        expect(dismissed).toEqual([false]);
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Pause_LeavesTheWindowWhereItIs', () => {
+        // P8c: the bar answers by itself; the window is not brought forward.
+        const focus = vi.fn();
+        decoder.setWindowFocusCallback(focus);
+        engine.startTask('T-1');
+
+        press('start');
+        press('start');
+
+        expect(focus).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Back', () => {
+      it('Back_Timing_StopsWithLogged_TheTaskStaysOpen', () => {
+        engine.startTask('T-1');
+        const logged = vi.spyOn(renderer, 'renderTaskLogged');
+
+        expect(press('back')).toBe('STOP_SESSION');
+
+        expect(engine.getCurrentSession()).toBeNull();
+        expect(logged).toHaveBeenCalledTimes(1);
+        expect(taskRepo.getTaskById('T-1')?.status).not.toBe('done');
+      });
+
+      it('Back_Paused_Stops', () => {
+        engine.startTask('T-1');
+        engine.pauseSession();
+
+        expect(press('back')).toBe('STOP_SESSION');
+        expect(engine.getCurrentSession()).toBeNull();
+      });
+
+      it('Back_DuringAnInterruption_StopsItAlone_NoLogged', () => {
+        // Nothing is logged for an interruption: it waits to be placed, and
+        // the task it held stays paused.
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        const logged = vi.spyOn(renderer, 'renderTaskLogged');
+
+        expect(press('back')).toBe('STOP_INTERRUPTION');
+
+        expect(logged).not.toHaveBeenCalled();
+        expect(engine.isInterrupted()).toBe(false);
+        expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+      });
+
+      it('Back_NothingRunning_DoesNothing', () => {
+        expect(press('back')).toBe('NONE');
+        expect(heard).toEqual([]);
+      });
+
+      it('Back_ANotificationShown_DismissesIt_TheSessionRunsOn', () => {
+        engine.startTask('T-1');
+        notificationUp = true;
+
+        expect(press('back')).toBe('DISMISS_NOTIFICATION_ALERT');
+        expect(dismissed).toEqual([true]);
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Back_JustAfterTheScreenChanged_OnlyCancels', () => {
+        // A press meant for a banner that left under the finger must not
+        // stop the task beneath it.
+        engine.startTask('T-1');
+        vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_BACK_SETTLE_MS - 1);
+
+        expect(press('back')).toBe('BACK_SETTLING');
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Back_OnceTheScreenHasSettled_Stops', () => {
+        engine.startTask('T-1');
+        vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_BACK_SETTLE_MS);
+
+        expect(press('back')).toBe('STOP_SESSION');
+      });
+
+      it('Back_Held_IsBackAsWell', () => {
+        // The bar sends no long press: a hold is a press released late
+        // (measured 2026-11-12). A `back_hold` from elsewhere is Back too,
+        // never a Done.
+        engine.startTask('T-1');
+
+        expect(press('back_hold')).toBe('STOP_SESSION');
+        expect(taskRepo.getTaskById('T-1')?.status).not.toBe('done');
+      });
+    });
+
+    describe('the wheel', () => {
+      it.each(['ok', 'click'])('Click_%s_Interrupts_ThroughTheSchedule', key => {
+        // Interrupt is ContextScheduleService's, through the action handlers;
+        // the decoder starts nothing itself.
+        engine.startTask('T-1');
+
+        expect(press(key)).toBe('START_INTERRUPTION');
+        expect(heard).toEqual(['START_INTERRUPTION']);
+        expect(engine.isInterrupted()).toBe(false);
+      });
+
+      it('Click_NoEventType_StillInterrupts', () => {
+        // A key injected over REST (/api/input?key=ok) carries no type.
+        expect(decoder.handleHardwareInput({ key: 'ok', timestamp: at() } as never)).toBe('START_INTERRUPTION');
+      });
+
+      it('Click_NothingRunning_Interrupts', () => {
+        expect(press('ok')).toBe('START_INTERRUPTION');
+      });
+
+      it('Click_ANotificationShown_DoesNothing', () => {
+        engine.startTask('T-1');
+        notificationUp = true;
+
+        expect(press('ok')).toBe('NONE');
+        expect(heard).toEqual([]);
+      });
+
+      it.each(['rotate_left', 'rotate_right', 'up', 'down'])('Turn_%s_DoesNothingYet', key => {
+        engine.startTask('T-1');
+        const focus = vi.fn();
+        decoder.setWindowFocusCallback(focus);
+
+        expect(press(key)).toBe('NONE');
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+        expect(focus).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -1486,27 +638,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
       expect(dismissed).toEqual([false]);
       expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-    });
-
-    it('HandleHardwareInput_BackShortPress_DismissesTheNotificationExplicitly', () => {
-      const action = decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: at() });
-
-      expect(action).toBe('DISMISS_NOTIFICATION_ALERT');
-      expect(dismissed).toEqual([true]);
-    });
-
-    it('HandleHardwareInput_WheelClickWhileTracking_FocusesTheAppInsteadOfOpeningThePicker', () => {
-      // The picker starts a task; with one already running it would have to
-      // stop it first, which is not something a stray click should do.
-      engine.startTask('T-9', false, 'Running');
-      const focus = vi.fn();
-      decoder.setWindowFocusCallback(focus);
-      const picker = vi.spyOn(renderer, 'renderTaskSelection');
-
-      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: at() });
-
-      expect(focus).toHaveBeenCalledTimes(1);
-      expect(picker).not.toHaveBeenCalled();
     });
 
     it('HandleHardwareInput_StandupConfirmed_LeavesTheWindowWhereItIs', () => {
@@ -1557,21 +688,5 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(seen).toEqual([]);
     });
 
-    it('HandleHardwareInput_RotatingBackUpTheTaskList_ShowsThePreviousTask', () => {
-      new ProjectRepository(dbConn).saveProject({ id: 'P1', key: 'P1', name: 'Alpha' });
-      taskRepo.saveTask({ id: 'T1', projectId: 'P1', key: 'A-1', title: 'First', status: 'todo' });
-      taskRepo.saveTask({ id: 'T2', projectId: 'P1', key: 'A-2', title: 'Second', status: 'todo' });
-      const shown: string[] = [];
-      renderer.renderTaskSelection = ((_stage: string, label: string) => {
-        shown.push(label);
-      }) as never;
-      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: at() }); // open
-      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: at() }); // into Alpha
-      decoder.handleHardwareInput({ key: 'rotate_right', type: 'press', timestamp: at() });
-
-      decoder.handleHardwareInput({ key: 'rotate_left', type: 'press', timestamp: at() });
-
-      expect(shown.slice(-2)).toEqual(['Second', 'First']);
-    });
   });
 });

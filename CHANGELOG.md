@@ -227,10 +227,16 @@
 
 ### Changed
 
-- **The bar's paused menu speaks as the app and the deck do:** DONE, STOP,
-  DISCARD, then INTERRUPT -- the deck's A, B and C in their order -- opening
-  on STOP, which keeps the time and the task. FINISH is DONE and DROP is
-  DISCARD, and ❚❚ stands before the paused task's key.
+- **The bar's buttons each do one thing.** **Pause** says yes -- pause,
+  resume, back to your task from an interruption, join, dismiss -- and with
+  nothing running opens the task picker on the computer. **Back** says no,
+  or stops: the task (its time logged, LOGGED on the bar) or an
+  interruption (the Place window then opens on the computer). A **wheel
+  click** starts an interruption, or the next one. A Back pressed just as
+  the screen changes only cancels. The paused screen shows ❚❚ and the key,
+  the time below. The bar's own task picker, its paused menu and
+  "hold BACK = done" are gone: the bar sends no long press, and choosing is
+  the app's.
 - **Four places instead of eight tabs.** The window is **Today**, **Tasks**,
   **History** (formerly Work History) and **Settings**, the same with or
   without a bar. The header holds the bar's preview, a **Mode** chip for Work,

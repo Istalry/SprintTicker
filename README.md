@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task at 01:24, the paused menu, the Lunch scene and a Slack banner">
+  <img src="docs/images/bar-hero.webp" width="608" alt="The bar cycling through a tracked task at 01:24, the paused screen, the Lunch scene and a Slack banner">
 </p>
 
 <p align="center">
@@ -63,7 +63,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 | | |
 | :---: | :--- |
 | <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
-| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, DONE and STOP"> | ⏸️ **Paused** — turn the wheel to DONE, STOP, DISCARD or INTERRUPT, click to confirm. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused** — Pause resumes, Back stops, a wheel click interrupts. |
 | <img src="docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up** — its own timer, three people at a table taking turns to speak. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
 | <img src="docs/images/bar-scene-lunch.webp" width="304" alt="The Lunch scene"> | 🥪 **Lunch, Away, meetings** — full-screen scenes while you are not at your desk. |
@@ -157,7 +157,7 @@ bar -- the session, a notification, a prompt, lunch:
 </table>
 
 🔎 **Only projects with tasks**, on by default, keeps every project list short:
-Tasks, the task picker and the bar's own picker hide the
+Tasks and the task picker hide the
 projects with nothing to do that the lists would show.
 
 👥 **Unassigned and teammates' tasks**: every task list also shows the open
@@ -251,9 +251,9 @@ Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
 
 ### 🎛️ Physical input
 
-The rotary encoder and buttons decode into application actions — turn to scroll,
-click to open the task selector, double-click to toggle play/pause, long press
-for the daily ceremonies menu.
+Each control has one meaning: **Pause** says yes (pause, resume, back from an
+interruption, dismiss), **Back** says no or stops, and a **wheel click** starts
+an interruption. Choosing a task opens the picker on the computer.
 
 ### 🔔 Windows notifications with priority preemption
 
@@ -309,7 +309,7 @@ this machine, and every key turns grey while SprintTicker is closed. See
 Configurable working hours, lunch and away detection, a standup prompt whose
 Join switches the timer to a Daily Standup task and back to your task after it,
 and an end-of-day wrap-up that can be confirmed from
-the hardware **START** button or dismissed with **BACK**. Lunch stops the
+the bar's **Pause** button or dismissed with **Back**. Lunch stops the
 running task and starts it again afterwards, across a restart of the app too;
 start or resume a task during lunch and Lunch ends for the day instead.
 Ceremonies happen on the working days you pick, less the holidays your

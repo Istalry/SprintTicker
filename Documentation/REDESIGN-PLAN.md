@@ -2253,6 +2253,38 @@ the bar before the next:
   word in every hint, 3 TO PLACE, MG-12 > RIN, STAND-UP, and NOTHING TIMING
   drawn once when the reminder fires.
 
+**Measured on the bar first (2026-11-12),** with a read-only logger on the
+StateStream (it needs the `{ enable: true }` handshake, as the driver
+sends): each notch is one event, delta ±1, even turned fast (80-130 ms
+apart), never merged; **no button sends a long press** -- a two-second hold
+arrives as a press released late, so "hold BACK = done" never fired from
+the device; and the user found that **on the bar's own screen the firmware
+takes Back** and leaves their clock app, while with SprintTicker's screen
+up Back reaches the app alone.
+
+**As landed: P14b, the buttons (2026-11-12).**
+
+- `InputDecoder` rewritten around the table: Pause, Back, the wheel's click,
+  turning reserved for P14c. Its rebindable map, its picker and the paused
+  menu are gone, with `input:get-bindings` / `input:save-bindings` and
+  `HardwareBindingConfig`; the old setting is simply not read, so there is
+  nothing to reset.
+- Back's settle is `BAR_BACK_SETTLE_MS` (700 ms, the deck's) against
+  `DisplayRenderer.msSinceScreenChange()`, which a frame the panel has not
+  shown resets.
+- Pause with nothing running opens the picker window raised
+  (`setOpenPickerCallback`); Back on an interruption stops it, and main's
+  Stop listener opens the Place window raised.
+- The paused screen: ❚❚ and the key on row 0, the time on row 1 in the
+  timer's font. The paused question screen (`askPausedConfirm`) stays for
+  P14c's DONE and DISCARD; nothing asks it today.
+- Questions still take a wheel click as yes beside Pause, until P14e's
+  hints name the Pause button.
+- **Moved to P14c:** `Desk` driving the decoder, so the stress test gains the
+  bar's inputs -- the menu adds the rest of them.
+- **To try on the bar:** each button in each state of the table, and a
+  Back pressed just as a notification leaves.
+
 ---
 
 ## 19b. P16 -- Tasks and Settings, rebuilt as their screens
@@ -2424,6 +2456,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there | P14a `4de9fa0` |
+| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done | P14a `4de9fa0`, P14b (2026-11-12) |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

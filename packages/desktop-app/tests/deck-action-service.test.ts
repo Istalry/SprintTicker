@@ -99,7 +99,7 @@ describe('DeckActionService', () => {
     renderer = new DisplayRenderer(driver);
     renderer.setPriorityEngine(priority);
     priority.setRenderer(renderer);
-    decoder = new InputDecoder(driver, engine, settings, priority, renderer);
+    decoder = new InputDecoder(driver, engine, priority, renderer);
     schedule = new ContextScheduleService(priority, settings, engine, renderer);
     // What IPCHandlerRegistry wires in the app: the decoder's answers reach the ceremonies.
     decoded = [];
@@ -120,7 +120,6 @@ describe('DeckActionService', () => {
   afterEach(() => {
     service.dispose();
     schedule.dispose();
-    decoder.dispose();
     renderer.dispose();
     engine.dispose();
     db.close();

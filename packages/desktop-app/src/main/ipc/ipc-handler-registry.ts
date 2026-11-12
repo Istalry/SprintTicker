@@ -33,7 +33,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, ShortcutsStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO, StandupRunningDTO } from '../../shared/dtos';
+import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, ShortcutsStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO, StandupRunningDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
@@ -730,15 +730,8 @@ export class IPCHandlerRegistry {
       return true;
     });
 
-    // 3. Hardware Rebinding IPC Handlers
-    ipcMain.handle(IPCChannel.GET_INPUT_BINDINGS, async () => {
-      return this.inputDecoder.getBindings();
-    });
-
-    ipcMain.handle(IPCChannel.SAVE_INPUT_BINDINGS, async (_event, config: HardwareBindingConfig) => {
-      this.inputDecoder.saveBindings(config);
-      return true;
-    });
+    // 3. The bar's inputs have one meaning each since P14b, so there is no
+    // binding to read or save (the old `hardware_bindings` setting is unread).
 
     ipcMain.handle(IPCChannel.INJECT_REMOTE_KEY, async (_event, payload: string | { key: string }) => {
       const key = typeof payload === 'string' ? payload : payload?.key;

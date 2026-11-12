@@ -51,7 +51,7 @@ describe('Full End-to-End System Simulation Test', () => {
     await driver.connect();
 
     renderer = new DisplayRenderer(driver);
-    decoder = new InputDecoder(driver, engine, settingsRepo);
+    decoder = new InputDecoder(driver, engine);
 
     syncWorker = new OfflineSyncWorker(providerManager, worklogRepo, undefined, undefined, 60000);
   });
@@ -75,9 +75,9 @@ describe('Full End-to-End System Simulation Test', () => {
     expect(displayPayload.frontElements.length).toBeGreaterThan(0);
     expect(displayPayload.ledColorHex).toBe('#10B981FF'); // Tracking = green
 
-    // Step 3: Physical Wheel Click pauses session
+    // Step 3: The bar's Pause button pauses the session
     const pauseAction = decoder.handleHardwareInput({ key: 'start', type: 'press', timestamp: new Date().toISOString() });
-    expect(pauseAction).toBe('TOGGLE_TRACK_PAUSE');
+    expect(pauseAction).toBe('PAUSE_SESSION');
     expect(engine.getCurrentSession()?.status).toBe('PAUSED');
 
     // Step 4: Resume session & Simulate Offline Disconnect & Stop Session (Worklog queued in SQLite)

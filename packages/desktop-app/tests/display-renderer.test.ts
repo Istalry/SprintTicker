@@ -794,9 +794,27 @@ describe('DisplayRenderer Unit Tests', () => {
       });
     });
 
-    it('RenderActiveSession_Paused_DrawsThePauseMark_ThenTheKeyInWhatIsLeft', () => {
+    it('MsSinceScreenChange_ANewFrameResetsIt_TheSameFrameDoesNot', () => {
+      // Back's settle (P14b): only a frame the panel has not shown counts as
+      // a change; the tracker's redraw of the same frame does not.
+      const session = {
+        taskId: 'T-1', taskKey: 'SPR-1', taskTitle: 'Task', status: 'TRACKING' as const,
+        elapsedSeconds: 60, startedAtUtc: new Date().toISOString()
+      };
+      const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+      renderer.renderActiveSession(session);
+      now.mockReturnValue(1_005_000);
+
+      renderer.renderActiveSession(session);
+      expect(renderer.msSinceScreenChange()).toBe(5_000);
+
+      renderer.renderActiveSession({ ...session, status: 'PAUSED' });
+      expect(renderer.msSinceScreenChange()).toBe(0);
+    });
+
+    it('RenderActiveSession_Paused_DrawsThePauseMark_TheKey_AndTheTimeOnRowOne', () => {
       // ❚❚ before the key (P14a): two drawn bars, since the fonts are ASCII
-      // only. The time is never cut; an eight-character key is, by fitToWidth.
+      // only. Row 1 is the time in the timer's font, as while timing (P14b).
       const canvas = (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void; drawRect: (...args: unknown[]) => void } }).canvas;
       const drawn = vi.spyOn(canvas, 'drawTextClipped');
       const rects = vi.spyOn(canvas, 'drawRect');
@@ -809,10 +827,12 @@ describe('DisplayRenderer Unit Tests', () => {
       expect(rects).toHaveBeenCalledWith(x, 0, 1, 5, '#F59E0B');
       expect(rects).toHaveBeenCalledWith(x + 2, 0, 1, 5, '#F59E0B');
       const keyCall = drawn.mock.calls.find(([text]) => text === 'SPR-1428');
-      const timeWidth = measureText('01:23', ROW0_FONT);
       expect(keyCall?.[1]).toBe(x + PAUSED_MARK_WIDTH);
-      expect(keyCall?.[4]).toBe(DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH - timeWidth - 2);
-      expect(drawn.mock.calls.find(([text]) => text === '01:23')?.[4]).toBe(timeWidth);
+      expect(keyCall?.[4]).toBe(DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH);
+      expect(keyCall?.[4] as number).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW0_FONT));
+      const timeCall = drawn.mock.calls.find(([text]) => text === '01:23');
+      expect(timeCall?.[2]).toBe(DISPLAY_CONSTANTS.LAYOUT_OFFSETS.ROW1_Y);
+      expect(timeCall?.[5]).toBe(TIMER_FONT);
     });
 
     /**

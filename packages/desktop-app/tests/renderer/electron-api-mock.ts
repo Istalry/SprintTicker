@@ -235,15 +235,6 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
       date, totalSeconds: 0, tasksCount: 0, items: []
     })),
 
-    getInputBindings: vi.fn().mockResolvedValue({
-      startButtonPress: 'TOGGLE_TRACK_PAUSE',
-      wheelRotateLeft: 'NAVIGATE_QUEUE_PREV',
-      wheelRotateRight: 'NAVIGATE_QUEUE_NEXT',
-      wheelClick: 'TRIGGER_TASK_SELECTOR_MODAL',
-      backButtonShortPress: 'DISMISS_NOTIFICATION_ALERT',
-      backButtonLongPress: 'CANCEL_ACTIVE_SESSION'
-    }),
-    saveInputBindings: vi.fn().mockResolvedValue(true),
     injectRemoteKey: vi.fn().mockResolvedValue(true),
     onHardwareInputEvent: subscribe('onHardwareInputEvent'),
 
