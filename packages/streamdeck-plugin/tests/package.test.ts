@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PLUGIN_DIR_NAME, pluginAssets } from '../src/assets/write-assets';
 import { HIDDEN_KINDS, KEY_KINDS, PLUGIN_UUID, actionUuid, kindOfUuid } from '../src/key-kinds';
+import { readZip } from './support/zip';
 
 /**
  * The plugin's folder against the code: Stream Deck reads the manifest, the
@@ -31,6 +32,7 @@ const manifest = JSON.parse(readFileSync(path.join(PLUGIN_DIR, 'manifest.json'),
   CategoryIcon: string;
   CodePath: string;
   Actions: ManifestAction[];
+  Profiles?: { Name: string; DeviceType: number; DontAutoSwitchWhenInstalled?: boolean }[];
 };
 const assets = pluginAssets();
 
@@ -101,6 +103,46 @@ describe('manifest', () => {
     // No key has settings: nothing to set up beyond placing it.
     expect(manifest.Actions.filter(a => a.PropertyInspectorPath)).toEqual([]);
     expect(existsSync(path.join(PLUGIN_DIR, 'ui'))).toBe(false);
+  });
+});
+
+/**
+ * The layouts installed with the plugin (P13c): exported from the Stream
+ * Deck app, never generated -- the format is Stream Deck's own. A key in one
+ * naming an action this plugin no longer declares would install as a dead
+ * tile, which is what this holds off.
+ */
+describe('profiles', () => {
+  const profiles = manifest.Profiles ?? [];
+
+  it('Profiles_TheMini_IsShipped', () => {
+    // Stream Deck Mini is device type 1.
+    expect(profiles.map(p => p.DeviceType)).toContain(1);
+  });
+
+  it.each(profiles.map(p => [p.Name, p] as const))('Profile_%s_NeverTakesOverTheDeck', (_name, profile) => {
+    // Installed beside the user's own profiles; they switch to it.
+    expect(profile.DontAutoSwitchWhenInstalled).toBe(true);
+  });
+
+  it.each(profiles.map(p => p.Name))('Profile_%s_EveryKeyIsAnActionOfThisPlugin', name => {
+    const file = path.join(PLUGIN_DIR, `${name}.streamDeckProfile`);
+    expect(existsSync(file), file).toBe(true);
+    const zip = readZip(readFileSync(file));
+
+    const pkg = JSON.parse(zip.get('package.json')!.toString('utf8')) as { RequiredPlugins: string[] };
+    expect(pkg.RequiredPlugins).toEqual([PLUGIN_UUID]);
+
+    const uuids = [...zip.entries()]
+      .filter(([entry]) => /\/Profiles\/[^/]+\/manifest\.json$/.test(entry))
+      .flatMap(([, content]) => {
+        const page = JSON.parse(content.toString('utf8')) as { Controllers: { Actions: Record<string, { UUID: string }> | null }[] };
+        return page.Controllers.flatMap(c => Object.values(c.Actions ?? {}).map(a => a.UUID));
+      });
+    expect(uuids.length).toBeGreaterThan(0);
+    for (const uuid of uuids) expect(kindOfUuid(uuid), uuid).not.toBeNull();
+    // A shipped layout never uses a hidden action: those are for decks laid out before them.
+    expect(uuids.map(kindOfUuid).filter(kind => HIDDEN_KINDS.includes(kind!))).toEqual([]);
   });
 });
 

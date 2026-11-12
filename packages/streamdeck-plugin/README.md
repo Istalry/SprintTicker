@@ -26,6 +26,12 @@ Previous task and Recent 1-3 are there to add (0.6.0, S29).
 | **Answer C** | throws away: DISCARD, or DISCARD ⚡ during an interruption (two presses); blank while a question waits or nothing runs | that |
 | **Recent 1-3** | a recent task's key and START; never the one running | starts it |
 
+- **A Mini layout comes with it** (`profiles/SprintTicker-Mini`, in the
+  manifest's `Profiles`): Session, Interrupt and Previous task above, A, B
+  and C below. Installed with the plugin and never switched to on its own --
+  pick **SprintTicker** in the Mini's profiles. It is exported from the
+  Stream Deck app, never generated; `package.test.ts` opens it and checks
+  every key in it is an action this plugin declares, and none a hidden one.
 - **One meaning per position, one colour** (S29). A is green and says yes,
   B blue-grey and stops or waits, C red and throws away; a key with nothing
   of its kind to do is blank. `answerKind` in `faces.ts` is the table, and

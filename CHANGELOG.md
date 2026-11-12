@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Stream Deck plugin 0.6.0: one meaning per key.** A says yes -- DONE,
+- **Stream Deck plugin 0.6.1: one meaning per key.** A says yes -- DONE,
   BACK to your task during an interruption, JOIN, RESUME, END STAND-UP --
   in green; B stops or waits -- STOP, SKIP, NOT NOW -- in blue-grey; C
   throws away -- DISCARD, or DISCARD ⚡ for an interruption -- in red, and
@@ -12,10 +12,12 @@
   Interrupt reads ANOTHER during an interruption and counts what waits to
   be placed; Session turns amber for NOT TIMING in your working hours and
   NOT YOURS for a task given to someone else. New keys to add: **Previous
-  task** and **Recent 1-3**. A deck laid out with 0.5 keeps its keys.
+  task** and **Recent 1-3**. A deck laid out with 0.5 keeps its keys. A
+  ready-made **SprintTicker** profile for the Stream Deck Mini comes with
+  it, beside your own profiles.
 - **The app speaks the Stream Deck's protocol 2** -- an interruption, what
   waits to be placed, the previous and recent tasks, the stand-up running
-  -- for the plugin 0.6.0 to come. Plugin 0.5 keeps working as it does: the
+  -- for the plugin 0.6.1 to come. Plugin 0.5 keeps working as it does: the
   app tells the two apart and answers each in its own protocol.
 - **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
   Switch task (S), Previous task (P) and Back (B), on by default and each

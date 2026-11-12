@@ -306,6 +306,12 @@ CI. Six things about it cost time to find:
   `confirmed`, so the plugin cannot skip the second press -- in protocol 1
   only where the task left the list, as plugin 0.5 expects -- and a key the
   app asks for anyway arms from that refusal (`needs-confirmation`).
+- **A shipped profile is exported, never generated** (P13c): the
+  `.streamDeckProfile` format is Stream Deck's own. It lives in the plugin
+  folder's `profiles/`, is listed in the manifest's `Profiles` with
+  `DontAutoSwitchWhenInstalled`, and `package.test.ts` unzips it to check
+  every key is an action the plugin declares and none a hidden one -- an
+  action removed would otherwise install as a dead tile.
 - **An answer key is the key it stands in for, and an action is hidden,
   never removed.** The layout is the user's (2026-11-09): Session,
   Interrupt, and Answer A/B/C showing whichever answers apply, with one
