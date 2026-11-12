@@ -19,10 +19,11 @@ import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { isAdHocTaskId } from '../db/id-generator';
 import { measureText } from '../../shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
+import { BarWord } from '../../shared/words';
 import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 
-/** The paused screen's STOP/FINISH bars: row 1's capitals fit inside 7px. */
+/** The paused menu's highlight bars: row 1's capitals fit inside 7px. */
 const PAUSED_BAR_Y = 9;
 const PAUSED_BAR_HEIGHT = 7;
 /**
@@ -50,63 +51,69 @@ export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BA
 const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
- * The paused menu, left to right: interrupt it, stop and keep the task open,
- * finish it, or throw the session away.
+ * The paused menu, left to right (redesign P14a): DONE, STOP, DISCARD -- the
+ * deck's A, B and C, in their order -- then INTERRUPT. The words are
+ * `BarWord`'s, the same as the window's and the deck's; FINISH and DROP are
+ * gone.
  *
- * Interrupt is at the left end so the wheel reaches it blind -- it stops at
- * either end -- and DISCARD keeps the right end. The menu still opens on
- * FINISH: two notches left and a click interrupt.
+ * It opens on STOP, which keeps the time and the task: DONE changes the
+ * ticket and DISCARD throws the time away, so neither is where a pause lands.
  *
- * Row 1 is 55px and the four do not fit in it, so the row shows the pair
- * that holds the choice, with an arrow towards each side that has more.
- * Even a pair is tight: FINISH beside DISCARD is 58, so DISCARD reads DROP on
- * the bar, and INTERRUPT (38 with its bar) fits beside nothing, so it is
- * shown alone.
+ * Row 1 is 55px and the four do not fit in it, so the row shows the group
+ * that holds the choice, with an arrow towards each side that has more:
+ * DONE beside STOP (42 with its arrow), DISCARD alone -- STOP beside it is 57
+ * with both arrows -- and INTERRUPT alone (38 with its bar).
  */
-export const PAUSED_CHOICES = ['INTERRUPT', 'STOP', 'FINISH', 'DISCARD'] as const;
+export const PAUSED_CHOICES = ['DONE', 'STOP', 'DISCARD', 'INTERRUPT'] as const;
 export type PausedChoice = (typeof PAUSED_CHOICES)[number];
 export const PAUSED_CHOICE_LABELS: Record<PausedChoice, string> = {
-  INTERRUPT: 'INTERRUPT',
-  STOP: 'STOP',
-  FINISH: 'FINISH',
-  DISCARD: 'DROP'
+  DONE: BarWord.DONE,
+  STOP: BarWord.STOP,
+  DISCARD: BarWord.DISCARD,
+  INTERRUPT: BarWord.INTERRUPT
 };
-/** Where a pause opens: the row it always had, so a press there does what it always did. */
-export const PAUSED_MENU_OPENS_ON: PausedChoice = 'FINISH';
+/** The groups row 1 shows, left to right; see {@link PAUSED_CHOICES}. */
+const PAUSED_GROUPS: readonly (readonly PausedChoice[])[] = [['DONE', 'STOP'], ['DISCARD'], ['INTERRUPT']];
+/** Where a pause opens: STOP, the choice that changes nothing at the provider and keeps the time. */
+export const PAUSED_MENU_OPENS_ON: PausedChoice = 'STOP';
 
 /**
  * A question the paused screen asks instead of offering the menu. The
  * wheel's click answers yes and BACK no; see InputDecoder.
  */
-export type PausedConfirm = 'DISCARD' | 'FINISH_UNLISTED';
+export type PausedConfirm = 'DISCARD' | 'DONE_UNLISTED';
 export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint: string }> = {
-  DISCARD: { question: 'DISCARD?', hint: 'OK=YES BACK=NO' },
-  // Finishing a task the provider no longer lists as the user's: reassigned,
-  // closed or moved. "OK=YES BACK=NO" beside "DONE?" is 60px of a 55px row,
-  // and BACK refuses every question on the bar.
-  FINISH_UNLISTED: { question: 'NOT YOURS', hint: 'DONE? OK=YES' }
+  DISCARD: { question: `${BarWord.DISCARD}?`, hint: 'OK=YES BACK=NO' },
+  // Marking done a task the provider no longer lists as the user's:
+  // reassigned, closed or moved. "OK=YES BACK=NO" beside "DONE?" is 60px of a
+  // 55px row, and BACK refuses every question on the bar.
+  DONE_UNLISTED: { question: BarWord.NOT_YOURS, hint: `${BarWord.DONE}? ${BarWord.OK_YES}` }
 };
 
 /**
- * The choices row 1 shows for a selection, and whether more lie off screen
- * on either side. STOP and FINISH unless DISCARD or INTERRUPT is chosen, so a
- * pause opens on the row it always had; INTERRUPT alone, since it fits
- * beside nothing.
+ * The choices row 1 shows for a selection -- the group holding it -- and
+ * whether more lie off screen on either side.
  */
 export function pausedChoicesShown(selection: PausedChoice): {
   choices: PausedChoice[];
   moreLeft: boolean;
   moreRight: boolean;
 } {
-  if (selection === 'INTERRUPT') return { choices: ['INTERRUPT'], moreLeft: false, moreRight: true };
-  const index = PAUSED_CHOICES.indexOf(selection);
-  const start = index === PAUSED_CHOICES.length - 1 ? index - 1 : PAUSED_CHOICES.indexOf('STOP');
+  const group = PAUSED_GROUPS.findIndex(g => g.includes(selection));
   return {
-    choices: PAUSED_CHOICES.slice(start, start + 2),
-    moreLeft: start > 0,
-    moreRight: start + 2 < PAUSED_CHOICES.length
+    choices: [...PAUSED_GROUPS[group]],
+    moreLeft: group > 0,
+    moreRight: group < PAUSED_GROUPS.length - 1
   };
 }
+
+/**
+ * ❚❚ before the paused key (P14a): two bars of the row-0 capitals' height,
+ * drawn rather than typed, since the fonts are ASCII only.
+ */
+export const PAUSED_MARK = { barWidth: 1, gap: 1, height: 5, after: 2 } as const;
+/** The width ❚❚ and its gap take from row 0. */
+export const PAUSED_MARK_WIDTH = PAUSED_MARK.barWidth * 2 + PAUSED_MARK.gap + PAUSED_MARK.after;
 
 /** Between the task selector's row-1 label and its `3/12`. */
 const SELECTION_LABEL_GAP_PX = 2;
@@ -743,7 +750,7 @@ export class DisplayRenderer {
    * `transmitFrame` drops them.
    *
    * The paused screen does not keep seconds either, though for a different
-   * reason: it shares the row with the STOP/FINISH controls, leaving 26 pixels
+   * reason: it shares the row with the paused controls, leaving 26 pixels
    * for the timer, and the 3x5 font fits six characters in that. `01:02:05`
    * rendered as `01:02:` -- a trailing colon and nothing after it. Rather than
    * drop the hours or shrink the controls, both screens read HH:MM.
@@ -787,8 +794,8 @@ export class DisplayRenderer {
   }
 
   /**
-   * The paused screen's text: the task and its time on row 0, STOP and FINISH
-   * side by side on row 1, the chosen one inside a 7px highlight bar.
+   * The paused screen's text: ❚❚, the task and its time on row 0, the menu's
+   * group on row 1, the chosen one inside a 7px highlight bar.
    *
    * The two used to be stacked in a column on the right, which left the task
    * 26px: "KEY: title" came out as "SPR-..." and even the key alone did not
@@ -806,8 +813,14 @@ export class DisplayRenderer {
     }
     const timerWidth = measureText(timerText, ROW0_FONT);
     this.canvas.drawTextClipped(timerText, right - timerWidth, layout.ROW0_Y, color, timerWidth);
+    // ❚❚, then the key, cut by fitToWidth in its own font to what is left.
+    this.canvas.drawRect(layout.TEXT_X, layout.ROW0_Y, PAUSED_MARK.barWidth, PAUSED_MARK.height, color);
+    this.canvas.drawRect(
+      layout.TEXT_X + PAUSED_MARK.barWidth + PAUSED_MARK.gap, layout.ROW0_Y, PAUSED_MARK.barWidth, PAUSED_MARK.height, color
+    );
     this.canvas.drawTextClipped(
-      taskText, layout.TEXT_X, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - timerWidth - PAUSED_TIMER_GAP_PX
+      taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color,
+      layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH - timerWidth - PAUSED_TIMER_GAP_PX
     );
 
     const shown = pausedChoicesShown(this.pausedSelection);
@@ -1135,17 +1148,17 @@ export class DisplayRenderer {
    *  - Row 0 (y=0): Task title (TASK-KEY: Title)
    *  - Row 1 (y=8): Task timer (HH:MM, in TIMER_FONT)
    *  - When PAUSED: Text & LED turn ORANGE (#F59E0B), the time moves to row 0
-   *    and row 1 offers INTERRUPT, STOP, FINISH and DROP, chosen with the wheel.
+   *    and row 1 offers DONE, STOP, DISCARD and INTERRUPT, chosen with the wheel.
    */
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
     // A question belongs to the pause it was asked in. Resumed, stopped or
     // replaced, the session takes it with it; the next pause offers the menu.
-    // So does INTERRUPT: a pause left with START while it was chosen must not
-    // open the next one there, where a click starts an interruption.
+    // So does the choice: a pause left with START on DONE, DISCARD or
+    // INTERRUPT must not open the next one there, where a click acts.
     if (!session || session.status !== 'PAUSED') {
       this.pausedConfirm = null;
-      if (this.pausedSelection === 'INTERRUPT') this.pausedSelection = PAUSED_MENU_OPENS_ON;
+      this.pausedSelection = PAUSED_MENU_OPENS_ON;
     }
 
     if (session && session.status === 'TRACKING' && this.isCelebrating && session.sessionId !== this.sceneSessionId) {

@@ -91,10 +91,10 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       engine.pauseSession();
     });
 
-    it('HandleHardwareInput_FinishFromThePausedMenu_MarksTheTaskDone', () => {
-      // FINISH is where the wheel already sits, so this is the press a user
-      // makes without scrolling at all -- the common path, not a corner.
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+    it('HandleHardwareInput_DoneFromThePausedMenu_MarksTheTaskDone', () => {
+      // DONE is one notch left of STOP, where a pause opens (P14a).
+      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
+      expect(renderer.getPausedSelection()).toBe('DONE');
 
       decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
 
@@ -102,9 +102,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     });
 
     it('HandleHardwareInput_StopFromThePausedMenu_LeavesTheTaskOpen', () => {
-      // The other half of the contract, and the reason the flag exists: STOP
-      // logs the time and the task stays on the board.
-      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
+      // STOP is where the wheel already sits, so this is the press a user
+      // makes without scrolling: the time is logged and the task stays open.
       expect(renderer.getPausedSelection()).toBe('STOP');
 
       decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
@@ -117,7 +116,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       // happened.
       const logged = vi.spyOn(renderer, 'renderTaskLogged');
       const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
-      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
 
       decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
 
@@ -125,9 +123,10 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(done).not.toHaveBeenCalled();
     });
 
-    it('HandleHardwareInput_FinishFromThePausedMenu_ShowsDoneNotLogged', () => {
+    it('HandleHardwareInput_DoneFromThePausedMenu_ShowsDoneNotLogged', () => {
       const logged = vi.spyOn(renderer, 'renderTaskLogged');
       const done = vi.spyOn(renderer, 'renderTaskCompletionConfetti');
+      decoder.handleHardwareInput({ type: 'press', key: 'rotate_left' } as never);
 
       decoder.handleHardwareInput({ type: 'press', key: 'ok' } as never);
 
@@ -379,7 +378,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       longBack();
 
       expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      expect(renderer.getPausedConfirm()).toBe('FINISH_UNLISTED');
+      expect(renderer.getPausedConfirm()).toBe('DONE_UNLISTED');
     });
 
     it('HandleHardwareInput_LongBackRefused_ResumesAsIfNothingHappened', () => {
@@ -410,7 +409,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     });
   });
 
-  describe('paused STOP/FINISH/DROP choice', () => {
+  describe('the paused menu: DONE / STOP / DISCARD / INTERRUPT', () => {
     const turn = (key: string): string =>
       decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
 
@@ -423,15 +422,25 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       renderer.renderActiveSession(engine.getCurrentSession());
     });
 
-    it('HandleHardwareInput_TaskPaused_StartsOnFinish', () => {
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+    it('HandleHardwareInput_TaskPaused_OpensOnStop', () => {
+      // STOP changes nothing at the provider and keeps the time (P14a).
+      expect(renderer.getPausedSelection()).toBe('STOP');
     });
 
-    it('HandleHardwareInput_TaskPaused_TurningLeftPicksStop', () => {
+    it('HandleHardwareInput_TaskPaused_TurningLeftPicksDone', () => {
       const action = turn('rotate_left');
 
       expect(action).toBe('MOVE_PAUSED_SELECTION');
-      expect(renderer.getPausedSelection()).toBe('STOP');
+      expect(renderer.getPausedSelection()).toBe('DONE');
+    });
+
+    it('HandleHardwareInput_TaskPaused_TurningLeftPastDoneStaysOnDone', () => {
+      // DONE is the left-hand end. A toggle used to flip back.
+      turn('rotate_left');
+      turn('up');
+      turn('rotate_left');
+
+      expect(renderer.getPausedSelection()).toBe('DONE');
     });
 
     it('HandleHardwareInput_TaskPaused_TurningRightPicksDiscard', () => {
@@ -440,28 +449,19 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(renderer.getPausedSelection()).toBe('DISCARD');
     });
 
-    it('HandleHardwareInput_TaskPaused_TurningRightPastDiscardStaysOnDiscard', () => {
-      // DISCARD is the right-hand end. A toggle used to flip back.
+    it('HandleHardwareInput_TaskPaused_TurningRightTwicePicksInterrupt', () => {
       turn('rotate_right');
       turn('rotate_right');
-      turn('down');
-
-      expect(renderer.getPausedSelection()).toBe('DISCARD');
-    });
-
-    it('HandleHardwareInput_TaskPaused_TurningLeftTwicePicksInterrupt', () => {
-      turn('rotate_left');
-      turn('rotate_left');
 
       expect(renderer.getPausedSelection()).toBe('INTERRUPT');
     });
 
-    it('HandleHardwareInput_TaskPaused_TurningLeftPastInterruptStaysOnInterrupt', () => {
-      // INTERRUPT is the left-hand end, so the wheel finds it blind.
-      turn('rotate_left');
-      turn('up');
-      turn('rotate_left');
-      turn('rotate_left');
+    it('HandleHardwareInput_TaskPaused_TurningRightPastInterruptStaysOnInterrupt', () => {
+      // INTERRUPT is the right-hand end, so the wheel finds it blind.
+      turn('rotate_right');
+      turn('down');
+      turn('rotate_right');
+      turn('rotate_right');
 
       expect(renderer.getPausedSelection()).toBe('INTERRUPT');
     });
@@ -472,48 +472,51 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       const actions: string[] = [];
       decoder.registerActionHandler(action => actions.push(action));
       const stop = vi.spyOn(engine, 'stopSession');
-      turn('rotate_left');
-      turn('rotate_left');
+      turn('rotate_right');
+      turn('rotate_right');
 
       const action = turn('ok');
 
       expect(action).toBe('START_INTERRUPTION');
       expect(actions).toContain('START_INTERRUPTION');
       expect(stop).not.toHaveBeenCalled();
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+      expect(renderer.getPausedSelection()).toBe('STOP');
     });
 
-    it('HandleHardwareInput_PauseLeftOnInterrupt_TheNextOpensOnFinish', () => {
-      // Resumed with START while INTERRUPT was chosen: a click on the next
-      // pause must finish, as it always did, not start an interruption.
-      turn('rotate_left');
-      turn('rotate_left');
+    it.each([
+      ['DONE', ['rotate_left']],
+      ['DISCARD', ['rotate_right']],
+      ['INTERRUPT', ['rotate_right', 'rotate_right']]
+    ])('HandleHardwareInput_PauseLeftOn%s_TheNextOpensOnStop', (_choice, keys) => {
+      // Resumed with START on a choice that acts: a click on the next pause
+      // must stop, never mark done, discard or interrupt.
+      for (const key of keys) turn(key);
       engine.resumeSession();
       renderer.renderActiveSession(engine.getCurrentSession());
       engine.pauseSession();
       renderer.renderActiveSession(engine.getCurrentSession());
 
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+      expect(renderer.getPausedSelection()).toBe('STOP');
     });
 
     it('HandleHardwareInput_TaskPaused_TheWheelMovesOneNotchAtATime', () => {
-      // From DISCARD, one notch left is FINISH, not STOP.
+      // From INTERRUPT, one notch left is DISCARD, not STOP.
+      turn('rotate_right');
       turn('rotate_right');
       turn('rotate_left');
 
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+      expect(renderer.getPausedSelection()).toBe('DISCARD');
     });
 
     it('HandleHardwareInput_TaskPaused_TurningBackAndForthFollowsTheWheel', () => {
       turn('rotate_left');
       turn('rotate_right');
 
-      expect(renderer.getPausedSelection()).toBe('FINISH');
+      expect(renderer.getPausedSelection()).toBe('STOP');
     });
 
     it('HandleHardwareInput_TaskPaused_TurningAgainstAnEnd_DoesNotRedraw', () => {
       // Each redraw is an upload and a draw; turning against the end is free.
-      turn('rotate_left');
       turn('rotate_left');
       const redraws = vi.spyOn(renderer, 'renderActiveSession');
       turn('rotate_left');
@@ -540,15 +543,17 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         done = vi.spyOn(engine, 'stopSession');
       });
 
-      it('HandleHardwareInput_FinishOnAnUnlistedTask_AsksFirst', () => {
-        const action = turn('ok'); // FINISH is where a pause opens
+      it('HandleHardwareInput_DoneOnAnUnlistedTask_AsksFirst', () => {
+        turn('rotate_left'); // DONE
+        const action = turn('ok');
 
         expect(action).toBe('ASK_PAUSED_FINISH');
-        expect(renderer.getPausedConfirm()).toBe('FINISH_UNLISTED');
+        expect(renderer.getPausedConfirm()).toBe('DONE_UNLISTED');
         expect(done).not.toHaveBeenCalled();
       });
 
-      it('HandleHardwareInput_FinishConfirmed_MarksItDone', () => {
+      it('HandleHardwareInput_DoneConfirmed_MarksItDone', () => {
+        turn('rotate_left');
         turn('ok');
         const action = turn('ok');
 
@@ -557,7 +562,8 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(engine.getCurrentSession()).toBeNull();
       });
 
-      it('HandleHardwareInput_FinishRefused_StaysPausedOnTheMenu', () => {
+      it('HandleHardwareInput_DoneRefused_StaysPausedOnTheMenu', () => {
+        turn('rotate_left');
         turn('ok');
         turn('back');
 
@@ -566,9 +572,10 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(engine.getCurrentSession()?.status).toBe('PAUSED');
       });
 
-      it('HandleHardwareInput_FinishOnATaskClosedThere_FinishesWithoutAsking', () => {
+      it('HandleHardwareInput_DoneOnATaskClosedThere_FinishesWithoutAsking', () => {
         // Nothing to move on a task already closed, so nothing to ask.
         vi.spyOn(engine.getSyncWorker(), 'unlistedReason').mockReturnValue('closed');
+        turn('rotate_left');
 
         const action = turn('ok');
 
@@ -592,13 +599,12 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
         decoder.handleHardwareInput({ key: 'back_hold', type: 'long_press', timestamp: new Date().toISOString() });
 
-        expect(renderer.getPausedConfirm()).toBe('FINISH_UNLISTED');
+        expect(renderer.getPausedConfirm()).toBe('DONE_UNLISTED');
         expect(done).not.toHaveBeenCalled();
       });
 
       it('HandleHardwareInput_StopOnAnUnlistedTask_DoesNotAsk', () => {
         // Logging the time and leaving the task open moves nothing remote.
-        turn('rotate_left');
         turn('ok');
 
         expect(done).toHaveBeenCalledWith(expect.any(String));
@@ -683,7 +689,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     decoder.setRenderer(renderer);
     engine.pauseSession();
 
-    // Act: Press wheel (selection default 'FINISH')
+    // Act: Press wheel (selection default 'STOP')
     const action = decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
 
     // Assert

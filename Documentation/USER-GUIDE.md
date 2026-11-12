@@ -277,7 +277,7 @@ the time so far on the task you pick and goes on timing there, and
 mini timer say so: **No longer assigned to you**, **Closed on the provider**,
 or **No longer on the provider** when it was deleted or you can no longer see
 it. Marking it done asks first, since your completion transition would move a
-task that is no longer yours; on the bar, FINISH (or a long BACK) shows
+task that is no longer yours; on the bar, DONE (or a long BACK) shows
 **NOT YOURS / DONE? OK=YES**, and BACK refuses. A task already **closed**
 there is the exception: marking it done asks nothing and moves nothing on the
 provider. The task stays listed until the session ends, and leaves at the
@@ -382,7 +382,7 @@ and then, with nothing to fill in. The task you were on **waits, paused**:
 nothing is logged or sent for it, and its timer goes on from where it was
 when you come back. Interrupt is on Today's session card, in the mini timer,
 first in the tray menu, on the Stream Deck's Interrupt key, and on the bar:
-pause the task, turn the wheel two notches left to **INTERRUPT**, and click.
+pause the task, turn the wheel two notches right to **INTERRUPT**, and click.
 And, if you turn it on, on a keyboard shortcut that works from any app --
 see below.
 
@@ -865,7 +865,7 @@ choose its task in **Settings, My workday** -- *Timed on* › **Choose a
 task…**; **Keep it here** goes back to Daily Standup. A chosen task that is
 no longer in your lists falls back to Daily Standup. The bar then shows its timer, with three people at a table in place of
 the stopwatch, taking turns to speak, so you can see the prompt has gone and
-the meeting is being timed. Stop the stand-up (STOP, FINISH or DROP) and the task you were on starts
+the meeting is being timed. Stop the stand-up (DONE, STOP or DISCARD) and the task you were on starts
 again, by the same rules as after lunch: once, that day, and only if you have
 not started something else meanwhile, and never when the end-of-day wrap-up
 is what stopped it. A task that left your list during the
@@ -1128,7 +1128,7 @@ Every screen, as the bar shows it:
 | Screen | What it means |
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
-| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, MG-12 01:24, STOP and FINISH"> | ⏸️ **Paused.** The key and its time; turn the wheel to **INTERRUPT**, **STOP**, **FINISH** or **DROP**, click to confirm. DROP asks first. |
+| <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars, MG-12 01:24, DONE and STOP"> | ⏸️ **Paused.** ❚❚, the key and its time; turn the wheel to **DONE**, **STOP**, **DISCARD** or **INTERRUPT**, click to confirm. DISCARD asks first. |
 | <img src="../docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
@@ -1139,20 +1139,23 @@ The session screen's icon is a stopwatch whose colour says where you are: green
 while a task runs, its hand ticking round once a second; amber with blinking
 pause bars while it is paused; dim grey when nothing runs (the screen then
 reads **Ready / No task running**). While a task runs, row 0 shows the task and
-row 1 its time, in large digits. While paused, row 0 shows the task key and its time, and row
-1 offers **INTERRUPT**, **STOP**, **FINISH** and **DROP**; the wheel moves
-one choice per notch and stops at either end, and a click confirms. The menu
-opens on FINISH. Row 1 has room for two of them, so it shows STOP and FINISH
-with a small arrow each side, FINISH and DROP once you turn right, and
-INTERRUPT alone once you turn left past STOP. INTERRUPT starts an
-[interruption](#-interrupt-a-timer-at-once). DROP discards the session, so it asks first:
+row 1 its time, in large digits. While paused, row 0 shows **❚❚**, the task key
+and its time -- a long key is cut, never the time -- and row 1 offers
+**DONE**, **STOP**, **DISCARD** and **INTERRUPT**, the Stream Deck's A, B
+and C in their order, then Interrupt. The wheel moves one choice per notch
+and stops at either end, and a click confirms. The menu opens on STOP, which
+keeps the time and leaves the task open; every pause opens there, wherever
+the last one was left. Row 1 has room for DONE and STOP together, with a
+small arrow towards the rest; DISCARD and INTERRUPT each show alone as you
+turn right. INTERRUPT starts an
+[interruption](#-interrupt-a-timer-at-once). DISCARD throws the session away, so it asks first:
 **DISCARD?** in red, **OK=YES BACK=NO**. A click throws the session away --
 no worklog, nothing sent, no scene -- and BACK, short or long, brings the menu
 back; the other buttons wait for the answer. Picking
 a task from the bar's own picker shows **GO!** for two seconds, the stopwatch
 setting off, before the tracking screen. STOP logs the time and leaves the task open, and the bar shows
 **LOGGED** for three seconds, the stopwatch's hand sweeping back to twelve;
-FINISH also marks it done, and shows **DONE!**.
+DONE also marks it done, and shows **DONE!**.
 
 > [!NOTE]
 > **Why the timer shows HH:MM**

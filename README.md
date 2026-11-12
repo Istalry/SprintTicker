@@ -63,7 +63,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 | | |
 | :---: | :--- |
 | <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
-| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, STOP and FINISH"> | ⏸️ **Paused** — turn the wheel to INTERRUPT, STOP, FINISH or DROP, click to confirm. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, DONE and STOP"> | ⏸️ **Paused** — turn the wheel to DONE, STOP, DISCARD or INTERRUPT, click to confirm. |
 | <img src="docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up** — its own timer, three people at a table taking turns to speak. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
 | <img src="docs/images/bar-scene-lunch.webp" width="304" alt="The Lunch scene"> | 🥪 **Lunch, Away, meetings** — full-screen scenes while you are not at your desk. |

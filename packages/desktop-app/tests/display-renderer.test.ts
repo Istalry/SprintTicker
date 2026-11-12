@@ -1,6 +1,7 @@
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DisplayRenderer } from '../src/main/hardware/display-renderer';
+import { DisplayRenderer, PAUSED_MARK_WIDTH } from '../src/main/hardware/display-renderer';
+import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
@@ -793,21 +794,25 @@ describe('DisplayRenderer Unit Tests', () => {
       });
     });
 
-    it('RenderActiveSession_Paused_ShowsTheWholeTaskKey', () => {
-      // STOP and FINISH used to sit in a column beside a 26px title, which cut
-      // "KEY: title" to "SPR-..." and could not fit even the key.
-      const drawn = vi.spyOn(
-        (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void } }).canvas,
-        'drawTextClipped'
-      );
+    it('RenderActiveSession_Paused_DrawsThePauseMark_ThenTheKeyInWhatIsLeft', () => {
+      // ❚❚ before the key (P14a): two drawn bars, since the fonts are ASCII
+      // only. The time is never cut; an eight-character key is, by fitToWidth.
+      const canvas = (renderer as unknown as { canvas: { drawTextClipped: (...args: unknown[]) => void; drawRect: (...args: unknown[]) => void } }).canvas;
+      const drawn = vi.spyOn(canvas, 'drawTextClipped');
+      const rects = vi.spyOn(canvas, 'drawRect');
       renderer.renderActiveSession({
         taskId: 'T-1', taskKey: 'SPR-1428', taskTitle: 'A long task title', status: 'PAUSED',
         elapsedSeconds: 5025, startedAtUtc: new Date().toISOString()
       });
 
+      const x = DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_X;
+      expect(rects).toHaveBeenCalledWith(x, 0, 1, 5, '#F59E0B');
+      expect(rects).toHaveBeenCalledWith(x + 2, 0, 1, 5, '#F59E0B');
       const keyCall = drawn.mock.calls.find(([text]) => text === 'SPR-1428');
-      expect(keyCall).toBeDefined();
-      expect(keyCall?.[4] as number).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW0_FONT));
+      const timeWidth = measureText('01:23', ROW0_FONT);
+      expect(keyCall?.[1]).toBe(x + PAUSED_MARK_WIDTH);
+      expect(keyCall?.[4]).toBe(DISPLAY_CONSTANTS.LAYOUT_OFFSETS.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH - timeWidth - 2);
+      expect(drawn.mock.calls.find(([text]) => text === '01:23')?.[4]).toBe(timeWidth);
     });
 
     /**

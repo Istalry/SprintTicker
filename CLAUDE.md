@@ -740,8 +740,8 @@ truncates every row twice, and the second cut lands mid-word with no marker.
 Constraints a new glyph must keep:
 - Digits share one width, in all three fonts, so a running timer does not
   shift.
-- Row 1's capitals stay within the ascent: the paused screen draws STOP and
-  FINISH inside 7px highlight bars.
+- Row 1's capitals stay within the ascent: the paused screen draws DONE,
+  STOP, DISCARD and INTERRUPT inside 7px highlight bars.
 - Row 0's descenders end above y=8, where row 1 starts.
 
 The tests pin all three. `pnpm probe:busybar --font-sheet` shows every glyph on

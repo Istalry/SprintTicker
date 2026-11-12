@@ -227,6 +227,10 @@
 
 ### Changed
 
+- **The bar's paused menu speaks as the app and the deck do:** DONE, STOP,
+  DISCARD, then INTERRUPT -- the deck's A, B and C in their order -- opening
+  on STOP, which keeps the time and the task. FINISH is DONE and DROP is
+  DISCARD, and ❚❚ stands before the paused task's key.
 - **Four places instead of eight tabs.** The window is **Today**, **Tasks**,
   **History** (formerly Work History) and **Settings**, the same with or
   without a bar. The header holds the bar's preview, a **Mode** chip for Work,

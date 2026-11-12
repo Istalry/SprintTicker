@@ -984,7 +984,7 @@ export class ContextScheduleService {
 
   /**
    * The session a task was set aside for ended, or the user moved on. Ended
-   * -- STOP, FINISH, DROP -- brings the task back, after the listeners have
+   * -- DONE, STOP, DISCARD -- brings the task back, after the listeners have
    * all heard of the end: started from inside this one, every listener after
    * it would still be handed the ended session, and the renderer would draw
    * the idle clock over the restarted task. Any other session is the user's

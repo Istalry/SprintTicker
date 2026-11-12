@@ -768,12 +768,15 @@ Turns physical events into application actions, through a rebindable map.
 | BACK long press | `COMPLETE_AND_LOG_ACTIVE_TASK` |
 
 It also runs the two-stage task picker (project, then task) driven entirely from
-the bar, and the paused menu: INTERRUPT, STOP, FINISH and DROP, of which row
-1 shows the pair holding the choice, or INTERRUPT alone (`pausedChoicesShown`).
-It opens on FINISH, and goes back there when a pause ends on INTERRUPT. A
+the bar, and the paused menu (P14a): DONE, STOP, DISCARD -- the deck's A,
+B and C -- then INTERRUPT, in `BarWord`'s words. Row 1 shows the group
+holding the choice: DONE and STOP together, DISCARD or INTERRUPT alone
+(`pausedChoicesShown`), and row 0 draws ❚❚ as two 1x5 bars before the key
+(`PAUSED_MARK`). It opens on STOP, and every pause opens there again,
+whatever the last was left on. A
 click on INTERRUPT is decoded as `START_INTERRUPTION` and handed to
 `ContextScheduleService.answerFromBar`, which interrupts as the window's
-button does; the decoder ends nothing itself. DROP asks **DISCARD?** first;
+button does; the decoder ends nothing itself. DISCARD asks **DISCARD?** first;
 while the question is up the click confirms, BACK refuses, and every other
 key waits. A session started anywhere else while the picker is open closes
 it: it used to hold the display over the new session until BACK. After lunch,

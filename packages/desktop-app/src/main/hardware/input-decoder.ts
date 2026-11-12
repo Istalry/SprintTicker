@@ -19,7 +19,7 @@ const NO_TASKS_ID = 'none';
 /**
  * Event decoder mapping physical BUSY Bar inputs (wheel scroll, wheel click, short/long press)
  * to user-configured rebindable application actions, managing active notification dismissal,
- * task pause/resume window focusing, and interactive paused state controls (STOP / FINISH).
+ * task pause/resume window focusing, and interactive paused state controls (DONE / STOP / DISCARD / INTERRUPT).
  */
 export class InputDecoder {
   private _driver: BusyBarDriver;
@@ -179,7 +179,7 @@ export class InputDecoder {
 
   /// <summary>
   /// Decodes incoming hardware input events and handles active notifications,
-  /// interactive paused task options (STOP vs FINISH), and mapped actions.
+  /// interactive paused task options (DONE / STOP / DISCARD / INTERRUPT), and mapped actions.
   /// </summary>
   public handleHardwareInput(event: HardwareEvent): string {
     const bindings = this.getBindings();
@@ -353,8 +353,8 @@ export class InputDecoder {
     const activeSession = this._engine.getCurrentSession();
     const isPaused = activeSession?.status === 'PAUSED';
 
-    // Interactive Paused State Controls: the wheel moves along INTERRUPT,
-    // STOP, FINISH and DROP and stops at either end; a click validates the
+    // Interactive Paused State Controls: the wheel moves along DONE, STOP,
+    // DISCARD and INTERRUPT and stops at either end; a click validates the
     // choice.
     if (isPaused && this._renderer) {
       const isLeft = normalizedKey === 'up' || normalizedKey === 'rotate_left' || event.type === 'rotate_left';
@@ -370,7 +370,7 @@ export class InputDecoder {
         if (isWheelClick) {
           this._resumeOnConfirmRefused = false;
           this._renderer.clearPausedConfirm({ redraw: false });
-          if (confirm === 'FINISH_UNLISTED') {
+          if (confirm === 'DONE_UNLISTED') {
             this.finishFromTheBar(WORKLOG_COMMENTS.BAR_FINISH_CONFIRMED);
             this.notifyActionHandlers('CONFIRM_PAUSED_FINISH', normalizedKey);
             return 'CONFIRM_PAUSED_FINISH';
@@ -427,7 +427,7 @@ export class InputDecoder {
           // Reassigned or moved since it started: finishing it would fire
           // the user's completion transition on a task that is no longer
           // theirs. Ask, as the window does. Closed there: nothing to ask.
-          this._renderer.askPausedConfirm('FINISH_UNLISTED');
+          this._renderer.askPausedConfirm('DONE_UNLISTED');
           this.notifyActionHandlers('ASK_PAUSED_FINISH', normalizedKey);
           return 'ASK_PAUSED_FINISH';
         } else {
@@ -494,7 +494,7 @@ export class InputDecoder {
           // The question lives on the paused screen, so a running session is
           // paused to ask it -- the question first, so the pause draws it at
           // once -- and refusing resumes it.
-          this._renderer.askPausedConfirm('FINISH_UNLISTED');
+          this._renderer.askPausedConfirm('DONE_UNLISTED');
           if (toFinish?.status === 'TRACKING') {
             this._resumeOnConfirmRefused = true;
             this._engine.pauseSession();
@@ -540,7 +540,7 @@ export class InputDecoder {
     }
   }
 
-  /** FINISH: DONE! on the bar, then the session stopped and its task marked done. */
+  /** DONE: DONE! on the bar, then the session stopped and its task marked done. */
   private finishFromTheBar(comment: string): void {
     if (this._renderer?.renderTaskCompletionConfetti) {
       this._renderer.renderTaskCompletionConfetti();

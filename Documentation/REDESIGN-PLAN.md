@@ -2125,6 +2125,50 @@ display rules are `CLAUDE.md` §4–§5:
 **Docs:** `USER-GUIDE.md` (the bar), `API.md` (the device contract, if a
 draw changes), `CLAUDE.md` §4 (the new menus and their lock rules).
 
+**Decided (the user, 2026-11-12):**
+
+- **During an interruption the wheel menu is BACK TO MG-12 / STOP /
+  DISCARD / ANOTHER**, the deck's A, B, C order and then Another, as the
+  paused menu does, opening on BACK. SWITCH is gone: no task can be chosen
+  during an interruption (the deck trial's rule). DISCARD asks first.
+- **Hold BACK keeps timing**: the end choices DONE / STOP / DISCARD appear
+  over the running task, opening on STOP, and BACK closes them with
+  nothing changed.
+- **The ⚡ icon is drawn here** in the studio, still and in motion, both
+  `.anim` formats, and judged by the user on the bar.
+
+**Split** (2026-11-12), each its own commit and each tried on the bar
+before the next:
+
+- **P14a, the paused menu (items 4, 7).** DONE / STOP / DISCARD, then
+  INTERRUPT, opening on STOP, in `BarWord`'s words; ❚❚ drawn before the
+  key.
+- **P14b, the timing menu and hold BACK (items 3, 6).** The wheel click
+  while timing; the end choices over a running task; the bindings reset
+  once.
+- **P14c, the picker (items 1, 2).** RECENT, STARRED, MINE, then the
+  projects and MORE: IN WINDOW; BACK up one level; one picker at a time,
+  the window raised from the bar.
+- **P14d, during an interruption (item 5).** Its menu, the ⚡ icon, and
+  `Desk` driving the decoder so the stress test gains Interrupt, Another
+  and Back.
+- **P14e, the words and nothing timing (items 8, 9).** 3 TO PLACE, MG-12 >
+  RIN, STAND-UP, and NOTHING TIMING drawn once when the reminder fires.
+
+**As landed: P14a, the paused menu (2026-11-12).**
+
+- `PAUSED_CHOICES` is DONE, STOP, DISCARD, INTERRUPT, labelled from
+  `BarWord`; `PAUSED_MENU_OPENS_ON` is STOP. Measured in Sprint Small: DONE
+  beside STOP is 42 px with its arrow; STOP beside DISCARD would be 57 with
+  both arrows, so DISCARD shows alone, as INTERRUPT does (`PAUSED_GROUPS`).
+- Every pause opens on STOP: leaving a pause on DONE, DISCARD or INTERRUPT
+  no longer carries over to the next, where a click would act.
+- ❚❚ is two 1x5 bars before the key (`PAUSED_MARK`, 5 px with its gap); the
+  key gets what the time leaves, cut by `fitToWidth`. `FINISH_UNLISTED` is
+  `DONE_UNLISTED`, its words from `BarWord`.
+- **To try on the bar:** the new row 1 and ❚❚ legible, and a pause opening
+  on STOP.
+
 ---
 
 ## 19b. P16 -- Tasks and Settings, rebuilt as their screens
@@ -2296,6 +2340,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | not started | |
+| P14 | in progress: split P14a-P14e, see §19 "Split"; P14a (the paused menu) done | P14a (2026-11-12) |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

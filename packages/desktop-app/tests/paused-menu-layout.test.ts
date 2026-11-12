@@ -6,16 +6,18 @@ import {
   PAUSED_MENU_OPENS_ON,
   PausedConfirm,
   RESUME_AFTER_INTERRUPTION_TEXT,
+  PAUSED_MARK_WIDTH,
   pausedChoicesShown
 } from '../src/main/hardware/display-renderer';
+import { BarWord } from '../src/shared/words';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 import { measureText } from '../src/shared/proportional-text';
 import { ROW0_FONT, ROW1_FONT } from '../src/shared/fonts/pixel-font';
 
 /**
  * The paused menu's row 1 is 55px, and four choices do not fit in it. These
- * pin what the renderer draws instead -- the pair holding the choice, or
- * INTERRUPT alone, with an arrow towards each side that has more -- and that
+ * pin what the renderer draws instead -- the group holding the choice --
+ * DONE and STOP, or DISCARD or INTERRUPT alone -- with an arrow towards each side that has more -- and that
  * every one fits. A label that
  * grows by a pixel would otherwise run off the panel with no error anywhere.
  */
@@ -33,35 +35,49 @@ describe('paused menu layout', () => {
     expect(rowWidth(selection)).toBeLessThanOrEqual(field);
   });
 
-  it('PausedChoicesShown_StopOrFinish_ShowTheRowAPauseAlwaysHad', () => {
-    expect(pausedChoicesShown('STOP')).toEqual({ choices: ['STOP', 'FINISH'], moreLeft: true, moreRight: true });
-    expect(pausedChoicesShown('FINISH')).toEqual({ choices: ['STOP', 'FINISH'], moreLeft: true, moreRight: true });
+  it('PausedChoicesShown_DoneOrStop_ShowThePairWithTheRestToTheRight', () => {
+    // What a pause opens on: DONE ▸STOP, with DISCARD and INTERRUPT off screen.
+    expect(pausedChoicesShown('STOP')).toEqual({ choices: ['DONE', 'STOP'], moreLeft: false, moreRight: true });
+    expect(pausedChoicesShown('DONE')).toEqual({ choices: ['DONE', 'STOP'], moreLeft: false, moreRight: true });
   });
 
-  it('PausedChoicesShown_Interrupt_ShowsItAloneWithTheRestOffScreen', () => {
-    expect(pausedChoicesShown('INTERRUPT')).toEqual({ choices: ['INTERRUPT'], moreLeft: false, moreRight: true });
+  it('PausedChoicesShown_Discard_ShowsItAloneBetweenTheOthers', () => {
+    expect(pausedChoicesShown('DISCARD')).toEqual({ choices: ['DISCARD'], moreLeft: true, moreRight: true });
   });
 
-  it('PausedChoiceLabels_InterruptBesideStop_WouldNotFit', () => {
-    // Why INTERRUPT is shown alone: beside STOP, with both arrows, it overflows.
-    const pair = measureText('INTERRUPT', ROW1_FONT) + 1 + 3 + measureText('STOP', ROW1_FONT) + 1 + 4 + 4;
+  it('PausedChoicesShown_Interrupt_ShowsItAloneAtTheRightEnd', () => {
+    expect(pausedChoicesShown('INTERRUPT')).toEqual({ choices: ['INTERRUPT'], moreLeft: true, moreRight: false });
+  });
+
+  it('PausedChoices_AreTheDecksOrder_ThenInterrupt', () => {
+    // A, B and C on the deck: yes, stop or wait, throw away (S29).
+    expect([...PAUSED_CHOICES]).toEqual(['DONE', 'STOP', 'DISCARD', 'INTERRUPT']);
+  });
+
+  it('PausedChoiceLabels_AreTheBarsWords_NeverFinishOrDrop', () => {
+    expect(Object.values(PAUSED_CHOICE_LABELS)).toEqual([BarWord.DONE, BarWord.STOP, BarWord.DISCARD, BarWord.INTERRUPT]);
+  });
+
+  it('PausedChoiceLabels_DiscardBesideStop_WouldNotFit', () => {
+    // Why DISCARD is shown alone: beside STOP, with both arrows, it overflows.
+    const pair = measureText('STOP', ROW1_FONT) + 1 + 3 + measureText('DISCARD', ROW1_FONT) + 1 + 4 + 4;
     expect(pair).toBeGreaterThan(field);
   });
 
-  it('PausedMenu_OpensOnFinish_TwoNotchesFromInterrupt', () => {
-    // The row a pause always opened on, so a click there does what it did.
-    expect(PAUSED_MENU_OPENS_ON).toBe('FINISH');
-    expect(PAUSED_CHOICES.indexOf(PAUSED_MENU_OPENS_ON) - PAUSED_CHOICES.indexOf('INTERRUPT')).toBe(2);
+  it('PausedChoiceLabels_InterruptBesideDiscard_WouldNotFit', () => {
+    const pair = measureText('DISCARD', ROW1_FONT) + 1 + 3 + measureText('INTERRUPT', ROW1_FONT) + 1 + 4;
+    expect(pair).toBeGreaterThan(field);
   });
 
-  it('PausedChoicesShown_Discard_ShowsItBesideFinishWithStopOffScreen', () => {
-    expect(pausedChoicesShown('DISCARD')).toEqual({ choices: ['FINISH', 'DISCARD'], moreLeft: true, moreRight: false });
+  it('PausedMenu_OpensOnStop', () => {
+    // STOP changes nothing at the provider and keeps the time.
+    expect(PAUSED_MENU_OPENS_ON).toBe('STOP');
   });
 
-  it('PausedChoiceLabels_DiscardBesideFinish_WouldNotFitUnderItsFullName', () => {
-    // Why the bar says DROP: the day the font narrows, DISCARD can come back.
-    const full = measureText('FINISH', ROW1_FONT) + 1 + 3 + measureText('DISCARD', ROW1_FONT) + 1 + 4;
-    expect(full).toBeGreaterThan(field);
+  it('PausedMark_LeavesAnEightCharacterKeyAndItsTimeSomething', () => {
+    // ❚❚ takes its width from the key, which fitToWidth cuts; the time is never cut.
+    const left = field - PAUSED_MARK_WIDTH - measureText('00:42', ROW0_FONT) - 2;
+    expect(left).toBeGreaterThan(measureText('SPR-', ROW0_FONT));
   });
 
   it.each(Object.keys(PAUSED_CONFIRM_TEXT) as PausedConfirm[])('PausedConfirmText_%s_FitsBothRows', kind => {
