@@ -943,9 +943,14 @@ earlier local day than today, that was at least `FORGOTTEN_MIN_GAP_MS` (two
 hours) ago, the user is present now, and the Ceremonies setting is on.
 Overtime never qualifies: input moves the presence on every minute. The
 session is then paused at that instant (`pauseSessionAt`), the question is
-stored as `forgotten_session_review` -- it survives a restart -- and the
-window is brought forward. The service listens to the engine: anything else
-done to the session answers the question. Its bar listener is prepended to
+stored as `forgotten_session_review` -- it survives a restart -- and sent
+through the `PromptOutlet` (a toast while the window is hidden). Decide later
+(S18, P10b) is the `later` action: it marks the stored question `deferred`,
+so the window shows a card on Today instead of the dialog, and `ask` takes
+the mark off and brings the dashboard forward -- the user's click. Neither
+answers: the session stays paused and nothing is logged. The mini timer shows
+the question in both states, with Answer. The service listens to the engine:
+anything else done to the session answers the question. Its bar listener is prepended to
 the driver's `input` event, ahead of `InputDecoder`'s, so a first press that
 resumes the session does not hide that it was left running.
 

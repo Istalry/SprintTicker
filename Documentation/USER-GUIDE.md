@@ -243,13 +243,19 @@ next sync after that.
 ⏰ **A session left running** -- not stopped before the weekend, or overnight
 -- is caught when you come back. If your last activity on the computer (or a
 press on the bar) was on an earlier day, at least two hours ago, the session
-is paused at that moment and nothing is logged. The window asks when you
-stopped working on it -- without coming forward; a notification says so
-while the window is hidden: at your last activity, at your end-of-day hour that
-day, or at a time you pick, each with the time it would log. Then **Log and
-stop**, **Log and restart it now** (asking first if the task is no longer
-assigned to you), **Discard**, or **I was working all along**, which counts
-the whole absence. Stopping it from the bar or the mini timer logs up to your
+is paused at that moment and nothing is logged. The window asks -- *MG-12
+ran all night* -- without coming forward; a notification says so while the
+window is hidden. Choose when you stopped: at your last activity, at your
+end-of-day hour that day, at a time you pick, **I was working all along**
+(the whole absence, to now) or **Discard it**, each with what it would log.
+Then **Log and stop** or **Log and restart MG-12** (asking first if the task
+is no longer assigned to you); with *all along* it is **Keep MG-12 running**
+instead. A discard asks first and cannot be undone.
+
+**Decide later** puts the question away: the timer stays paused at your last
+activity, nothing is logged, and a card on Today and a row on the mini timer
+keep it -- **Answer** brings the question back. It is not asked again every
+minute. Stopping the session from the bar or the mini timer logs up to your
 last activity; resuming it does not count the gap. Turn the question off in
 **Settings, My workday**.
 

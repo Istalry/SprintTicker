@@ -72,6 +72,19 @@ export function formatDayAndTime(date: Date): string {
   });
 }
 
+/**
+ * `today`, `yesterday`, `on Friday` within the week, `on Fri 16 Oct` before:
+ * the day of an instant, as a sentence says it -- "last active yesterday".
+ */
+export function formatRelativeDay(date: Date, now: Date): string {
+  const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((midnight(now) - midnight(date)) / 86_400_000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days > 1 && days < 7) return `on ${date.toLocaleDateString(regionalLocale, { weekday: 'long' })}`;
+  return `on ${date.toLocaleDateString(regionalLocale, { weekday: 'short', day: 'numeric', month: 'short' })}`;
+}
+
 /** `Mon 9 Nov`, in the regional format, from a local date key: the user's day, not UTC's. */
 export function formatDay(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);

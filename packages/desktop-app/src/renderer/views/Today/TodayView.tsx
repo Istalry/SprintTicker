@@ -8,6 +8,7 @@ import { TaskLeftCard } from '../../components/TaskLeftCard';
 import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
+import { ForgottenSessionCard } from '../../components/ForgottenSessionModal';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { TodayEntries } from '../../components/TodayEntries';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
@@ -62,6 +63,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   };
   return (
   <div className="space-y-6">
+    <ForgottenSessionCard />
     {morning && !session && <MorningCard morning={morning} now={openedAt} onOpenPicker={() => onOpenPicker('start')} onPutAway={putMorningAway} />}
     {ceremony?.type === 'STANDUP' && <StandupCard prompt={ceremony} session={session} />}
     {ceremony?.type === 'LUNCH' && <LunchQuestionCard prompt={ceremony} />}

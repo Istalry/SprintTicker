@@ -19,9 +19,11 @@ import { FORGOTTEN_MIN_GAP_MS, FORGOTTEN_REVIEW_KEY, PRESENCE_SAMPLE_MS } from '
 interface StoredReview {
   sessionId: string;
   lastPresenceUtc: string;
+  /** Decide later: asked as a card, not a dialog (S18, P10b). */
+  deferred?: boolean;
 }
 
-const ACTIONS = new Set(['stop', 'restart', 'discard', 'keep']);
+const ACTIONS = new Set(['stop', 'restart', 'discard', 'keep', 'later', 'ask']);
 
 /**
  * Finds a session left running across a change of day, and asks about it.
@@ -44,6 +46,7 @@ export class ForgottenSessionService {
   private readonly _presence: PresenceMonitor;
   private readonly _getWindow?: () => BrowserWindow | null;
   private _outlet: PromptOutlet | null = null;
+  private _openDashboard: (() => void) | null = null;
   private readonly _unsubscribe: () => void;
   private _timer?: NodeJS.Timeout;
 
@@ -127,7 +130,8 @@ export class ForgottenSessionService {
       lastPresenceUtc: stored.lastPresenceUtc,
       endOfDayUtc,
       pauses: this._engine.getClosedPauses(),
-      taskUnlisted: session.taskUnlisted === true
+      taskUnlisted: session.taskUnlisted === true,
+      deferred: stored.deferred === true
     };
   }
 
@@ -144,6 +148,17 @@ export class ForgottenSessionService {
     const review = this.getReview();
     if (!review) return false;
     const session = this._engine.getCurrentSession()!;
+
+    // Neither answers: the session stays paused at the last activity, and
+    // nothing is logged, until one of the answers below.
+    if (resolution.action === 'later' || resolution.action === 'ask') {
+      const stored = this.readStored()!;
+      this._settings.setSetting(FORGOTTEN_REVIEW_KEY, { ...stored, deferred: resolution.action === 'later' });
+      this.send(this.getReview());
+      // Answer, from the mini timer or Today: the user asked for the window.
+      if (resolution.action === 'ask') this._openDashboard?.();
+      return true;
+    }
 
     switch (resolution.action) {
       case 'stop':
@@ -212,16 +227,21 @@ export class ForgottenSessionService {
   private readStored(): StoredReview | null {
     const value = this._settings.getSetting<Partial<StoredReview> | null>(FORGOTTEN_REVIEW_KEY, null);
     if (!value || typeof value.sessionId !== 'string' || typeof value.lastPresenceUtc !== 'string') return null;
-    return { sessionId: value.sessionId, lastPresenceUtc: value.lastPresenceUtc };
+    return { sessionId: value.sessionId, lastPresenceUtc: value.lastPresenceUtc, deferred: value.deferred === true };
   }
 
   private schedule(): ScheduleSettingsDTO {
     return normalizeScheduleSettings(this._settings.getSetting<ScheduleSettingsDTO>('schedule_settings', {}));
   }
 
-  /** Where the question goes, and its toast while the window is hidden (P8c). */
-  public setPromptOutlet(outlet: PromptOutlet): void {
+  /**
+   * Where the question goes, and its toast while the window is hidden (P8c).
+   * `openDashboard` is for Answer on a deferred question's card: a click of
+   * the user's, so the window may come forward.
+   */
+  public setPromptOutlet(outlet: PromptOutlet, openDashboard?: () => void): void {
     this._outlet = outlet;
+    this._openDashboard = openDashboard ?? null;
   }
 
   /** Never brings the window forward: it used to show() and focus() it (P8c). */

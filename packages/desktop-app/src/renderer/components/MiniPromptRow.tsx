@@ -1,6 +1,7 @@
 import React from 'react';
-import { CeremonyPromptDTO, ReminderDTO, ResumePromptDTO } from '../../shared/dtos';
+import { CeremonyPromptDTO, ForgottenSessionReviewDTO, ReminderDTO, ResumePromptDTO } from '../../shared/dtos';
 import { reminderView } from './ReminderPrompt';
+import { askAgain, forgottenHeading, forgottenStanding } from './ForgottenSessionModal';
 
 const MS_PER_MINUTE = 60_000;
 
@@ -16,6 +17,8 @@ interface MiniPromptRowProps {
   ceremony: CeremonyPromptDTO | null;
   /** An interruption is running: joining the stand-up ends it (S25). */
   inInterruption?: boolean;
+  /** A session left running overnight (S18): Answer opens the dashboard's dialog. */
+  forgotten?: ForgottenSessionReviewDTO | null;
   /** A "still...?" reminder (P8d), shown when nothing else is asked. */
   reminder?: ReminderDTO | null;
   /** Hides the question at once on an answer, before main confirms. */
@@ -28,7 +31,9 @@ interface MiniPromptRowProps {
  * questions no longer bring the dashboard forward (P8c), so the always-on-top
  * row is where they are seen while the user works. The answers are Today's.
  */
-export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({ resume, ceremony, inInterruption = false, reminder = null, onAnswered }) => {
+export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
+  resume, ceremony, inInterruption = false, forgotten = null, reminder = null, onAnswered
+}) => {
   const api = window.electronAPI;
   const answer = (yes: boolean, gap?: number, workedThrough?: boolean) => () => {
     onAnswered();
@@ -98,6 +103,12 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({ resume, ceremony, 
         <button type="button" className={main} onClick={() => { onAnswered(); api.joinStandup().catch(warn('Join')); }}>Join</button>
       </>
     );
+  } else if (forgotten) {
+    // The dialog has no room here: Answer brings the dashboard forward with
+    // it, and the row stays until main says the question is answered.
+    heading = forgottenHeading(forgotten);
+    question = forgottenStanding(forgotten);
+    buttons = <button type="button" className={main} onClick={askAgain}>Answer</button>;
   } else if (reminder) {
     const view = reminderView(reminder, () => { api.openTaskPicker().catch(warn('Opening the picker')); }, onAnswered);
     heading = view.heading;

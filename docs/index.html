@@ -764,13 +764,18 @@
       <p>⏰ <strong>A session left running</strong> -- not stopped before the weekend, or overnight
       -- is caught when you come back. If your last activity on the computer (or a
       press on the bar) was on an earlier day, at least two hours ago, the session
-      is paused at that moment and nothing is logged. The window asks when you
-      stopped working on it -- without coming forward; a notification says so
-      while the window is hidden: at your last activity, at your end-of-day hour that
-      day, or at a time you pick, each with the time it would log. Then <strong>Log and
-      stop</strong>, <strong>Log and restart it now</strong> (asking first if the task is no longer
-      assigned to you), <strong>Discard</strong>, or <strong>I was working all along</strong>, which counts
-      the whole absence. Stopping it from the bar or the mini timer logs up to your
+      is paused at that moment and nothing is logged. The window asks -- <em>MG-12
+      ran all night</em> -- without coming forward; a notification says so while the
+      window is hidden. Choose when you stopped: at your last activity, at your
+      end-of-day hour that day, at a time you pick, <strong>I was working all along</strong>
+      (the whole absence, to now) or <strong>Discard it</strong>, each with what it would log.
+      Then <strong>Log and stop</strong> or <strong>Log and restart MG-12</strong> (asking first if the task
+      is no longer assigned to you); with <em>all along</em> it is <strong>Keep MG-12 running</strong>
+      instead. A discard asks first and cannot be undone.</p>
+      <p><strong>Decide later</strong> puts the question away: the timer stays paused at your last
+      activity, nothing is logged, and a card on Today and a row on the mini timer
+      keep it -- <strong>Answer</strong> brings the question back. It is not asked again every
+      minute. Stopping the session from the bar or the mini timer logs up to your
       last activity; resuming it does not count the gap. Turn the question off in
       <strong>Settings, My workday</strong>.</p>
       <p>🌙 <strong>Overtime is never interrupted.</strong> As long as you are at the keyboard or
@@ -3014,9 +3019,14 @@
       hours) ago, the user is present now, and the Ceremonies setting is on.
       Overtime never qualifies: input moves the presence on every minute. The
       session is then paused at that instant (<code>pauseSessionAt</code>), the question is
-      stored as <code>forgotten_session_review</code> -- it survives a restart -- and the
-      window is brought forward. The service listens to the engine: anything else
-      done to the session answers the question. Its bar listener is prepended to
+      stored as <code>forgotten_session_review</code> -- it survives a restart -- and sent
+      through the <code>PromptOutlet</code> (a toast while the window is hidden). Decide later
+      (S18, P10b) is the <code>later</code> action: it marks the stored question <code>deferred</code>,
+      so the window shows a card on Today instead of the dialog, and <code>ask</code> takes
+      the mark off and brings the dashboard forward -- the user&#39;s click. Neither
+      answers: the session stays paused and nothing is logged. The mini timer shows
+      the question in both states, with Answer. The service listens to the engine:
+      anything else done to the session answers the question. Its bar listener is prepended to
       the driver&#39;s <code>input</code> event, ahead of <code>InputDecoder</code>&#39;s, so a first press that
       resumes the session does not hide that it was left running.</p>
       <h4><code>WindowsNotificationListenerService</code> — <code>src/main/services/</code></h4>
@@ -3517,11 +3527,11 @@
       </tr>
       <tr>
       <td align="left"><code>session:get-forgotten-review</code></td>
-      <td align="left">The session left running across a change of day, paused at the last activity and awaiting an answer: <code>{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted }</code>, or null</td>
+      <td align="left">The session left running across a change of day, paused at the last activity and awaiting an answer: <code>{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted, deferred }</code>, or null; <code>deferred</code> after Decide later</td>
       </tr>
       <tr>
       <td align="left"><code>session:resolve-forgotten</code></td>
-      <td align="left">Answers it with <code>{ action, endUtc? }</code>: <code>stop</code> or <code>restart</code> log up to <code>endUtc</code> (between the start and now, required), <code>discard</code> keeps nothing, <code>keep</code> counts the whole absence and runs on. An unknown action or an end outside the session throws; answers <code>false</code> when nothing is asked any more</td>
+      <td align="left">Answers it with <code>{ action, endUtc? }</code>: <code>stop</code> or <code>restart</code> log up to <code>endUtc</code> (between the start and now, required), <code>discard</code> keeps nothing, <code>keep</code> counts the whole absence and runs on. <code>later</code> and <code>ask</code> answer nothing: they defer the question to Today&#39;s card and the mini timer and bring it back, <code>ask</code> also bringing the dashboard forward. An unknown action or an end outside the session throws; answers <code>false</code> when nothing is asked any more</td>
       </tr>
       <tr>
       <td align="left"><code>session:on-forgotten-review</code></td>

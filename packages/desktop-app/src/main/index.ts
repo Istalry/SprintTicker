@@ -389,7 +389,7 @@ async function startApplication(): Promise<void> {
 
   presenceMonitor = new PresenceMonitor(settingsRepo, () => powerMonitor.getSystemIdleTime());
   forgottenSessionService = new ForgottenSessionService(engine, settingsRepo, presenceMonitor, () => mainWindow);
-  forgottenSessionService.setPromptOutlet(promptOutlet);
+  forgottenSessionService.setPromptOutlet(promptOutlet, () => { revealMainWindow(mainWindow); });
 
   // The "still...?" questions, asked once each on the schedule's tick (P8d).
   const daySchedule = contextScheduleService;

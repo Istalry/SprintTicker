@@ -282,6 +282,59 @@ describe('A session left running', () => {
     });
   });
 
+  /** Decide later (S18, P10b): the dialog goes, the card stays, nothing moves. */
+  describe('decide later', () => {
+    beforeEach(() => {
+      leftRunningOnFriday();
+      back(at(19, 9));
+      service.check();
+    });
+
+    it('Later_StaysPausedLogsNothing_AndTheCardKeepsIt', () => {
+      send.mockClear();
+
+      expect(service.resolve({ action: 'later' })).toBe(true);
+
+      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      expect(loggedOn(16)).toBe(0);
+      expect(service.getReview()?.deferred).toBe(true);
+      expect(send).toHaveBeenLastCalledWith(IPCChannel.ON_FORGOTTEN_SESSION_REVIEW, expect.objectContaining({ deferred: true }));
+    });
+
+    it('Later_SurvivesARestart_AndIsNotAskedAgainEveryMinute', () => {
+      service.resolve({ action: 'later' });
+      service.dispose();
+      service = createService();
+      send.mockClear();
+
+      back(at(19, 9, 5));
+      service.check();
+
+      expect(service.getReview()?.deferred).toBe(true);
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('Ask_BringsTheDialogBack_AndTheWindowForward', () => {
+      const openDashboard = vi.fn();
+      service.setPromptOutlet({ send: vi.fn(), announce: vi.fn() }, openDashboard);
+      service.resolve({ action: 'later' });
+
+      service.resolve({ action: 'ask' });
+
+      expect(service.getReview()?.deferred).toBe(false);
+      expect(openDashboard).toHaveBeenCalledTimes(1);
+    });
+
+    it('Later_TheAnswersAreUnchanged', () => {
+      service.resolve({ action: 'later' });
+
+      service.resolve({ action: 'stop', endUtc: iso(at(16, 18, 4)) });
+
+      expect(loggedOn(16)).toBe(8 * 3600 + 4 * 60);
+      expect(service.getReview()).toBeNull();
+    });
+  });
+
   describe('the answer', () => {
     beforeEach(() => {
       leftRunningOnFriday();

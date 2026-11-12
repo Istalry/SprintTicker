@@ -199,7 +199,7 @@ From `CLAUDE.md`, restated where they bite here:
 | P7 | One picker, its own window, and the command palette | P4 | L | 1.6 |
 | P8 | Today and the prompts: cards, no focus stealing, Lunch / Away / stand-up, reminders | P6, P7, D1, D3 | L | 1.6 |
 | P9 | History: day, timeline, week, Check my week, add time, split | P5 | L | 1.7 |
-| P10 | in progress: P10a (End my day, the shutdown after Undo) done; P10b (Decide later) next -- see §15 "Split" | P10a (2026-11-12) |
+| P10 | in progress: P10a (End my day) and P10b (Decide later) done; P10c (a crash during the day) next -- see §15 "Split" | P10a, P10b (2026-11-12) |
 | P11 | First run, and the states that are not normal (S31) | P3, P7 | M | 1.7 |
 | P12 | Outside the window: close to tray, tray, toasts, mini timer | P6, P8 | M | 1.6 |
 | P13 | Stream Deck plugin 0.6.0 | P6, P8 | M | 1.7 |
@@ -1552,6 +1552,25 @@ waits for the undo and the drain).
   2026-11-12): the checkbox is never ticked for you; a stored value is
   ignored. The checklist (`saveAll CLI`, "logged to Jira") went with the
   wizard.
+
+**As landed: P10b, Decide later (2026-11-12).**
+
+- `ForgottenSessionService` takes two more actions, `later` and `ask`, which
+  answer nothing: `later` stores the question `deferred`, `ask` clears it and
+  brings the dashboard forward (`setPromptOutlet(outlet, openDashboard)`).
+  The question survives a restart deferred, and is not asked again.
+- `ForgottenSessionModal` is S18: *MG-12 ran all night*, five choices --
+  the last activity, the end of the day, another time, all along, Discard
+  it -- and Decide later, Log and restart MG-12, Log and stop. With *all
+  along* the second is **Keep MG-12 running** (`keep`, unchanged) and Log
+  and stop ends now; with *Discard it* one red Discard, which still asks.
+- Deferred, Today has `ForgottenSessionCard` and the mini timer a row
+  (`MiniPromptRow`'s `forgotten`), both with Answer; the mini row shows the
+  question asked or deferred, since the dialog is the dashboard's. The
+  card says the day and time paused, not "yesterday", which goes stale.
+- **Deviation:** the mockup's "Discard it · 10 s to undo" is not built. A
+  discard is undone by restoring the session's rows, and the stored question
+  would need restoring with it; the discard asks first instead, as before.
 
 ---
 

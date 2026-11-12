@@ -402,13 +402,19 @@ export interface ForgottenSessionReviewDTO {
   pauses: PauseIntervalDTO[];
   /** The task has left the user's list: restarting it asks first. */
   taskUnlisted: boolean;
+  /**
+   * Decide later (S18, P10b): the dialog is put away, and Today and the mini
+   * timer keep a card that opens it again. The timer stays paused.
+   */
+  deferred?: boolean;
 }
 
 /**
  * The answer: log up to `endUtc` and stop; the same, then start the task again
- * now; throw the session away; or count the whole absence as work.
+ * now; throw the session away; or count the whole absence as work. `later`
+ * and `ask` answer nothing: they put the dialog away and bring it back.
  */
-export type ForgottenSessionAction = 'stop' | 'restart' | 'discard' | 'keep';
+export type ForgottenSessionAction = 'stop' | 'restart' | 'discard' | 'keep' | 'later' | 'ask';
 
 export interface ForgottenSessionResolutionDTO {
   action: ForgottenSessionAction;

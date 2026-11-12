@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CeremonyPromptDTO, MorningDTO, ReminderDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
+import { CeremonyPromptDTO, ForgottenSessionReviewDTO, MorningDTO, ReminderDTO, ResumePromptDTO, UserMode } from '../../shared/dtos';
 
 /**
  * The questions main is asking (redesign P8c), for Today's cards and the mini
@@ -49,6 +49,16 @@ export function useResumePrompt(): [ResumePromptDTO | null, (value: ResumePrompt
 export function useReminder(): [ReminderDTO | null, (value: ReminderDTO | null) => void] {
   const api = window.electronAPI;
   return useFollowed<ReminderDTO>(api?.getReminder, api?.onReminder, 'the reminder');
+}
+
+/**
+ * A session left running overnight (S18): the dialog while it is asked, the
+ * card on Today and the mini timer once deferred. The setter hides it at
+ * once on an answer.
+ */
+export function useForgottenReview(): [ForgottenSessionReviewDTO | null, (value: ForgottenSessionReviewDTO | null) => void] {
+  const api = window.electronAPI;
+  return useFollowed<ForgottenSessionReviewDTO>(api?.getForgottenReview, api?.onForgottenReview, 'the overnight question');
 }
 
 /** Work, Lunch or Away, as main keeps it. */

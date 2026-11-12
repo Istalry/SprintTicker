@@ -1,13 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Moon } from 'lucide-react';
 import { ForgottenSessionAction, ForgottenSessionReviewDTO } from '../../shared/dtos';
 import { workedSecondsUntil } from '../../shared/session-review';
-import { formatDayAndTime, formatDaySplit, formatHoursAndMinutes, formatHoursMinutes } from '../utils/formatters';
+import {
+  formatDayAndTime,
+  formatDaySplit,
+  formatHoursAndMinutes,
+  formatHoursMinutes,
+  formatRelativeDay
+} from '../utils/formatters';
 import { workedSecondsByLocalDay } from '../../shared/work-split';
+import { useForgottenReview } from '../hooks/usePrompts';
 import { ConfirmPanel } from './ConfirmPanel';
 
-type EndChoice = 'presence' | 'eod' | 'custom';
-type Confirming = 'discard' | 'keep' | 'restart' | null;
+type EndChoice = 'presence' | 'eod' | 'custom' | 'all-along' | 'discard';
+
+const warn = (what: string) => (err: unknown) => console.warn(`[ForgottenSession] ${what} failed:`, err);
 
 /** `YYYY-MM-DDTHH:MM` in local time, as a datetime-local input holds it. */
 function toLocalInput(date: Date): string {
@@ -15,28 +23,66 @@ function toLocalInput(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** "MG-12 ran all night": the dialog's title, the card's and the mini timer's. */
+export const forgottenHeading = (review: ForgottenSessionReviewDTO) => `${review.taskKey} ran all night`;
+
 /**
- * A session left running overnight: when did the work on it stop?
+ * "Paused at Thu 12 Nov, 18:04, nothing logged": where it stands while it
+ * waits. The day is written out: a card can stay up for days, and "yesterday"
+ * would go stale on it.
+ */
+export function forgottenStanding(review: ForgottenSessionReviewDTO): string {
+  return `Paused at ${formatDayAndTime(new Date(review.lastPresenceUtc))}, nothing logged`;
+}
+
+/** Answer, on a deferred question's card: brings the dialog back, and the window forward. */
+export const askAgain = () => {
+  window.electronAPI.resolveForgottenSession({ action: 'ask' }).catch(warn('Answer'));
+};
+
+/**
+ * A session left running overnight (S18): when did the work on it stop?
  *
  * Main found it, paused it at the last activity and logged nothing; this asks
  * for the end. Follows main rather than owning the question -- the bar's STOP,
  * a resume, anything done to the session answers it -- and reads it on mount
- * for a window opened after it was asked.
+ * for a window opened after it was asked. Decide later puts the dialog away
+ * and leaves a card on Today and the mini timer (P10b).
  */
 export const ForgottenSessionModal: React.FC = () => {
-  const [review, setReview] = useState<ForgottenSessionReviewDTO | null>(null);
-
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.onForgottenReview) return undefined;
-    api.getForgottenReview()
-      .then(setReview)
-      .catch(err => console.warn('[ForgottenSessionModal] Could not read the question:', err));
-    return api.onForgottenReview(setReview);
-  }, []);
-
+  const [review, setReview] = useForgottenReview();
+  if (!review || review.deferred) return null;
   // Keyed by session, so each question starts on its own defaults.
-  return review ? <ForgottenSessionDialog key={review.sessionId} review={review} onAnswered={() => setReview(null)} /> : null;
+  return <ForgottenSessionDialog key={review.sessionId} review={review} onAnswered={() => setReview(null)} />;
+};
+
+/** The question, deferred: a card on Today until it is answered (S18). */
+export const ForgottenSessionCard: React.FC = () => {
+  const [review] = useForgottenReview();
+  if (!review?.deferred) return null;
+  const heading = forgottenHeading(review);
+  return (
+    <section aria-label={heading} className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 select-none">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Moon className="w-4 h-4 text-accent-amber" aria-hidden="true" />
+            <h3 className="text-sm font-bold text-white">{heading}</h3>
+          </div>
+          <p className="mt-1 text-xs text-text-secondary">
+            {forgottenStanding(review)}. It waits for you to say when you stopped.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={askAgain}
+          className="px-4 py-2 bg-primary hover:bg-primary/90 text-dark-900 text-xs font-semibold rounded-lg transition-all"
+        >
+          Answer
+        </button>
+      </div>
+    </section>
+  );
 };
 
 const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAnswered: () => void }> = ({
@@ -45,15 +91,16 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
 }) => {
   const [choice, setChoice] = useState<EndChoice>('presence');
   const [custom, setCustom] = useState<string>(() => toLocalInput(new Date(review.lastPresenceUtc)));
-  const [confirming, setConfirming] = useState<Confirming>(null);
+  const [confirming, setConfirming] = useState<'discard' | 'restart' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Read once, and again as the custom time changes: the clock is not read
-  // during render.
+  // Read once, and again as the choice moves: the clock is not read during
+  // render, and "all along" counts up to it.
   const [now, setNow] = useState<number>(() => Date.now());
 
   const start = Date.parse(review.startTimeUtc);
   const lastPresence = new Date(review.lastPresenceUtc);
   const worked = (endUtc: string) => workedSecondsUntil(review.startTimeUtc, endUtc, review.pauses);
+  const nowUtc = new Date(now).toISOString();
 
   const customDate = new Date(custom);
   const customValid =
@@ -61,35 +108,51 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
   const endUtc =
     choice === 'presence' ? review.lastPresenceUtc
       : choice === 'eod' ? review.endOfDayUtc
-        : customValid ? customDate.toISOString() : null;
+        : choice === 'custom' ? (customValid ? customDate.toISOString() : null)
+          : choice === 'all-along' ? nowUtc
+            : null;
 
   // The days the chosen end files the time under, when there are two.
   const daySplit = endUtc
     ? formatDaySplit(workedSecondsByLocalDay(review.startTimeUtc, endUtc, review.pauses, worked(endUtc)))
     : null;
 
-  const answer = (action: ForgottenSessionAction) => {
+  const select = (next: EndChoice) => {
+    setChoice(next);
+    setNow(Date.now());
+  };
+
+  const answer = (action: ForgottenSessionAction, end?: string | null) => {
     setError(null);
-    window.electronAPI.resolveForgottenSession({ action, endUtc: endUtc ?? undefined })
-      .then(onAnswered)
+    window.electronAPI.resolveForgottenSession({ action, endUtc: end ?? undefined })
+      .then(() => {
+        if (action !== 'later') onAnswered();
+      })
       .catch(err => {
-        console.warn('[ForgottenSessionModal] Could not answer:', err);
+        warn('Answering')(err);
         setError('That did not work. Check the end time and try again.');
       });
   };
+  // "All along" ends now: read at the click, not when the choice was made.
+  const logAndStop = () => answer('stop', choice === 'all-along' ? new Date().toISOString() : endUtc);
 
-  const sinceStart = worked(new Date(now).toISOString());
+  const heading = forgottenHeading(review);
+  const primary = 'px-3 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-dark-900 disabled:opacity-40 transition-all';
+  const secondary = 'px-3 py-2 rounded-lg text-xs font-semibold bg-dark-700 hover:bg-dark-600 text-white border border-border-dark disabled:opacity-40 transition-all';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div
         role="dialog"
-        aria-label="A session was left running"
+        aria-label={heading}
         className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-5"
       >
-        <div className="flex items-center space-x-2 border-b border-border-dark pb-3">
-          <Moon className="w-4 h-4 text-accent-amber" />
-          <h3 className="text-sm font-bold text-white">A session was left running</h3>
+        <div className="border-b border-border-dark pb-3">
+          <div className="flex items-center space-x-2">
+            <Moon className="w-4 h-4 text-accent-amber" aria-hidden="true" />
+            <h3 className="text-sm font-bold text-white">{heading}</h3>
+          </div>
+          <p className="mt-1 text-[11px] text-text-secondary truncate">{review.taskTitle}</p>
         </div>
 
         {confirming === 'discard' ? (
@@ -107,21 +170,6 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
             onConfirm={() => answer('discard')}
             onCancel={() => setConfirming(null)}
           />
-        ) : confirming === 'keep' ? (
-          <ConfirmPanel
-            title="Count it all as work?"
-            message={
-              <>
-                <strong className="font-mono text-white">{formatHoursAndMinutes(sinceStart)}</strong> on{' '}
-                <span className="font-mono text-text-primary font-bold">{review.taskKey}</span>, up to now, and the session keeps
-                running.
-              </>
-            }
-            confirmLabel="I was working"
-            cancelLabel="Back"
-            onConfirm={() => answer('keep')}
-            onCancel={() => setConfirming(null)}
-          />
         ) : confirming === 'restart' ? (
           <ConfirmPanel
             title="No longer assigned to you"
@@ -133,38 +181,38 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
             }
             confirmLabel="Restart it"
             cancelLabel="Just stop"
-            onConfirm={() => answer('restart')}
-            onCancel={() => answer('stop')}
+            onConfirm={() => answer('restart', endUtc)}
+            onCancel={() => answer('stop', endUtc)}
           />
         ) : (
           <>
             <p className="text-xs text-text-secondary leading-relaxed">
-              <span className="font-mono text-text-primary font-bold">{review.taskKey}</span> {review.taskTitle} was still running.
-              Last activity: <strong className="text-white">{formatDayAndTime(lastPresence)}</strong>. It is paused
-              there and nothing is logged yet. When did you stop working on it?
+              You were last active {formatRelativeDay(lastPresence, new Date(now))} at{' '}
+              <strong className="text-white">{formatHoursMinutes(lastPresence)}</strong>. The timer is paused there
+              until you say.
             </p>
 
             <fieldset className="space-y-2">
-              <legend className="sr-only">End of the work</legend>
+              <legend className="sr-only">When did you stop?</legend>
               <EndOption
                 checked={choice === 'presence'}
-                onSelect={() => setChoice('presence')}
-                label={`At my last activity, ${formatHoursMinutes(lastPresence)}`}
-                seconds={worked(review.lastPresenceUtc)}
+                onSelect={() => select('presence')}
+                label={`I stopped at ${formatHoursMinutes(lastPresence)}, my last activity`}
+                note={`Logs ${formatHoursAndMinutes(worked(review.lastPresenceUtc))}, ${formatRelativeDay(lastPresence, new Date(now))}.`}
               />
               {review.endOfDayUtc && (
                 <EndOption
                   checked={choice === 'eod'}
-                  onSelect={() => setChoice('eod')}
-                  label={`At the end of that day, ${formatHoursMinutes(new Date(review.endOfDayUtc))}`}
-                  seconds={worked(review.endOfDayUtc)}
+                  onSelect={() => select('eod')}
+                  label={`I stopped at the end of my day, ${formatHoursMinutes(new Date(review.endOfDayUtc))}`}
+                  note={`Logs ${formatHoursAndMinutes(worked(review.endOfDayUtc))}.`}
                 />
               )}
               <EndOption
                 checked={choice === 'custom'}
-                onSelect={() => setChoice('custom')}
-                label="At another time"
-                seconds={customValid ? worked(customDate.toISOString()) : null}
+                onSelect={() => select('custom')}
+                label="At another time…"
+                note={choice === 'custom' && customValid ? `Logs ${formatHoursAndMinutes(worked(customDate.toISOString()))}.` : null}
               >
                 {choice === 'custom' && (
                   <input
@@ -184,6 +232,19 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                   </span>
                 )}
               </EndOption>
+              <EndOption
+                checked={choice === 'all-along'}
+                onSelect={() => select('all-along')}
+                label="I was working all along"
+                note={`Logs ${formatHoursAndMinutes(worked(nowUtc))}, to now -- the whole night.`}
+              />
+              <EndOption
+                checked={choice === 'discard'}
+                onSelect={() => select('discard')}
+                label="Discard it"
+                note="Nothing kept or sent."
+                danger
+              />
             </fieldset>
 
             {daySplit && (
@@ -192,36 +253,45 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
 
             {error && <p role="alert" className="text-xs text-accent-red">{error}</p>}
 
-            <div className="flex flex-wrap gap-2 justify-end pt-1">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
-                onClick={() => setConfirming('discard')}
-                className="px-3 py-2 rounded-lg text-xs font-semibold text-accent-red hover:bg-accent-red/10 transition-all"
-              >
-                Discard
-              </button>
-              <button
-                onClick={() => {
-                  setNow(Date.now());
-                  setConfirming('keep');
-                }}
+                type="button"
+                onClick={() => answer('later')}
+                title="The timer stays paused and nothing is logged; Today and the mini timer keep the question"
                 className="px-3 py-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-white hover:bg-dark-700 transition-all"
               >
-                I was working all along
+                Decide later
               </button>
-              <button
-                disabled={!endUtc}
-                onClick={() => (review.taskUnlisted ? setConfirming('restart') : answer('restart'))}
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-dark-700 hover:bg-dark-600 text-white border border-border-dark disabled:opacity-40 transition-all"
-              >
-                Log and restart it now
-              </button>
-              <button
-                disabled={!endUtc}
-                onClick={() => answer('stop')}
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-dark-900 disabled:opacity-40 transition-all"
-              >
-                Log and stop
-              </button>
+              <span className="flex-1" />
+              {choice === 'discard' ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirming('discard')}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent-red hover:bg-accent-red/90 text-white transition-all"
+                >
+                  Discard
+                </button>
+              ) : (
+                <>
+                  {choice === 'all-along' ? (
+                    <button type="button" onClick={() => answer('keep')} className={secondary}>
+                      Keep {review.taskKey} running
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!endUtc}
+                      onClick={() => (review.taskUnlisted ? setConfirming('restart') : answer('restart', endUtc))}
+                      className={secondary}
+                    >
+                      Log and restart {review.taskKey}
+                    </button>
+                  )}
+                  <button type="button" disabled={!endUtc} onClick={logAndStop} className={primary}>
+                    Log and stop
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}
@@ -234,19 +304,18 @@ const EndOption: React.FC<{
   checked: boolean;
   onSelect: () => void;
   label: string;
-  /** What this end would log; null while it is not a valid end. */
-  seconds: number | null;
+  /** What this end would do; null while it is not a valid end. */
+  note: string | null;
+  danger?: boolean;
   children?: React.ReactNode;
-}> = ({ checked, onSelect, label, seconds, children }) => (
-  <div
-    className={`rounded-lg border px-3 py-2 ${checked ? 'border-focus bg-select' : 'border-border-dark'}`}
-  >
-    <label className="flex items-center justify-between cursor-pointer text-xs text-text-primary">
+}> = ({ checked, onSelect, label, note, danger = false, children }) => (
+  <div className={`rounded-lg border px-3 py-2 ${checked ? 'border-focus bg-select' : 'border-border-dark'}`}>
+    <label className="flex items-center justify-between gap-3 cursor-pointer text-xs">
       <span className="flex items-center space-x-2">
         <input type="radio" name="forgotten-end" checked={checked} onChange={onSelect} />
-        <span>{label}</span>
+        <span className={danger ? 'text-accent-red' : 'text-text-primary'}>{label}</span>
       </span>
-      {seconds !== null && <span className="text-text-secondary">logs {formatHoursAndMinutes(seconds)}</span>}
+      {note !== null && <span className="text-text-secondary text-right">{note}</span>}
     </label>
     {children}
   </div>

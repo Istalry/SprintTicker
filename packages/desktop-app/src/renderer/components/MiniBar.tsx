@@ -9,7 +9,7 @@ import { isAdHocSession } from '../../shared/interruption';
 import { SessionTitle } from './SessionTitle';
 import { useUndo } from './UndoBar';
 import { Verb } from '../../shared/words';
-import { useCeremonyPrompt, useReminder, useResumePrompt } from '../hooks/usePrompts';
+import { useCeremonyPrompt, useForgottenReview, useReminder, useResumePrompt } from '../hooks/usePrompts';
 import { MiniPromptRow } from './MiniPromptRow';
 
 /**
@@ -41,8 +41,10 @@ export const MiniBar: React.FC = () => {
   const [resumePrompt, setResumePrompt] = useResumePrompt();
   const [answeredCeremony, setAnsweredCeremony] = useState<typeof ceremony>(null);
   const [reminder, setReminder] = useReminder();
+  // Asked or deferred alike: the dialog is the dashboard's, and Answer brings it.
+  const [forgotten] = useForgottenReview();
   const ceremonyAsked = (ceremony?.type === 'STANDUP' || ceremony?.type === 'LUNCH') && ceremony !== answeredCeremony;
-  const asking = resumePrompt !== null || ceremonyAsked || reminder !== null;
+  const asking = resumePrompt !== null || ceremonyAsked || forgotten !== null || reminder !== null;
   /**
    * Stop opens the three ways to end a session, in place of the buttons:
    * the window is one row, with no room for a dialog. It used to log the time
@@ -91,11 +93,12 @@ export const MiniBar: React.FC = () => {
           resume={resumePrompt}
           ceremony={ceremonyAsked ? ceremony : null}
           inInterruption={Boolean(session?.interruption)}
+          forgotten={forgotten}
           reminder={reminder}
           onAnswered={() => {
             if (resumePrompt) setResumePrompt(null);
             else if (ceremonyAsked) setAnsweredCeremony(ceremony);
-            else setReminder(null);
+            else if (!forgotten) setReminder(null);
           }}
         />
       ) : (

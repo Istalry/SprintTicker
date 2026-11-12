@@ -4,6 +4,10 @@
 
 ### Added
 
+- **Decide later, for a session left running overnight.** The question,
+  now *MG-12 ran all night*, can wait: the timer stays paused at your last
+  activity, nothing is logged, and a card on Today and the mini timer keep
+  it until you answer.
 - **End my day.** Replaces the wrap-up wizard: every entry of the day,
   the interruptions to place, the day's gaps as a hint, and a button that
   says what it sends. Undo for ten seconds. The PC shutdown is never ticked
