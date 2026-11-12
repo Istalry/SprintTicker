@@ -1955,6 +1955,26 @@ hides; only Quit clears the bar).
 - **Still to do:** the Mobile layout (device type 3), and the trial on
   Stream Deck Mobile through every state of S29.
 
+**From the first trial: interruptions (2026-11-12).** The user's four
+findings, and their answers:
+
+- **Stop asked nothing.** Stop now opens the Place window in front
+  (`place-ended`): the run's fragments still waiting, each on its own row --
+  two in a row are placed independently. Later or Escape leaves them on
+  Today. The one exception to "a prompt never takes the focus", the user's.
+- **A task could be chosen during an interruption.** Now it does nothing:
+  main refuses the start and the switch, the picker window refuses `start`,
+  Switch is gone from the hero card, the mini timer, the tray and Ctrl+K,
+  Tasks' Start is greyed, and on the deck Session does nothing during one
+  and Recent 1-3 are blank. P6's take-along (`switchFromInterruption`) is
+  no longer reached; removing it is a change of its own.
+- **Placing could not name.** Every row of the Place list has its name
+  field; a name typed is kept on Close or Later.
+- **"Keep off This computer" read as nothing, "Keep off Jira" as a
+  deletion.** It is **Keep as its own entry**, with what it does beside it.
+  Keep off Jira stays for an entry the provider refused (P11c).
+- Plugin 0.6.2, for the Session and Recent keys.
+
 **As landed: P13b, the plugin's keys (2026-11-12).**
 
 - **Plugin 0.6.0 speaks protocol 2** (`PLUGIN_PROTOCOL`, `deckUrl`).
@@ -2263,7 +2283,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
-| P13 | in progress: P13a (protocol 2 and the app side), P13b (the plugin's keys, 0.6.0) done; P13c (on the deck, with the user): the Mini layout shipped, the Mobile layout and the trial to come -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini (2026-11-12) |
+| P13 | in progress: P13a (protocol 2 and the app side), P13b (the plugin's keys, 0.6.0) done; P13c (on the deck, with the user): the Mini layout shipped, the first trial's interruption findings fixed (plugin 0.6.2), the Mobile layout and the rest of the trial to come -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions (2026-11-12) |
 | P14 | not started | |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

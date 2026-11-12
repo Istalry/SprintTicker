@@ -92,7 +92,8 @@ reads as `true`.
 the **picker window** load the same `index.html`; the mini timer loads it at
 `#mini`, and `main.tsx` mounts `MiniBar` instead of `App` for that hash. The
 picker window (redesign P7b) loads it at `#picker` -- `#picker?mode=assign`
-to assign the ad-hoc session (`shared/picker-window.ts`) -- and mounts
+to assign the ad-hoc session, `place-ended&ids=…` for the Place window a
+Stop opens (`shared/picker-window.ts`) -- and mounts
 `PickerWindow`: the window's `TaskPicker`, its pick done by the same
 `utils/pick-task.ts` as the dashboard's. `PickerWindowManager` owns it: one at
 a time, centred on the display under the pointer, frameless and on top,
@@ -165,8 +166,12 @@ order, search across projects, a project key and a space, what looks like a
 key -- within the lists' order (`task-order.ts`) and visibility
 (`task-visibility.ts`). Fetch by key (`tasks:fetch-by-key`) asks the active
 provider's `getTaskByKey`, keeps the task as the sync would, and is shown
-only with `canFetchByKey`. Picking during an interruption is
-`interruption:switch`, with `takeAlong` when its time goes too.
+only with `canFetchByKey`. **Picking during an interruption starts
+nothing** (the user's choice, 2026-11-12): `pickTask` refuses it, main's
+`session:start-task` and `interruption:switch` refuse it, the picker window
+will not open in `start` mode (`PickerWindowManager`'s `refuses`), and the
+deck's `open-picker` and `start-recent` answer `no-task`. The interruption
+ends first, by Back, Stop or Discard.
 
 **The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
 (`windows/main-window-close.ts`) takes the dashboard's `close`: unless a
@@ -873,10 +878,13 @@ closes it and opens the next with `after_id`, holding the same session, so
 a run reads back as Marc, Ana, Marc and one Back. **Back**
 (`backFromInterruption(addGapMinutes)`) closes it and ends the held pause --
 earlier by the gap, after a Stop -- unless the session was paused before.
-**Stop** closes it alone; **Switch** (`switchFromInterruption(taskId,
-takeAlong)`) closes it, stops the held session as any start does, and
-starts the task, placing the fragment on it with `takeAlong`; **Discard**
-marks it discarded.
+**Stop** closes it alone, and main opens the **Place window** in front
+(`onInterruptionEnded` with `how: 'stop'`, then `getRunToPlace`): the
+run's fragments still waiting, each named and placed on its own row, the
+one exception to "a prompt never takes the focus" -- the user's, on
+2026-11-12. **Discard** marks it discarded. `switchFromInterruption` is
+still in the engine, but nothing reaches it: a task cannot be chosen while
+a fragment runs.
 
 While a fragment runs, `getCurrentSession()` answers a **fragment view**:
 the fragment's id as session and task id, ad-hoc, tracking, titled

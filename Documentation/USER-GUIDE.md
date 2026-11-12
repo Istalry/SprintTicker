@@ -341,12 +341,13 @@ Arrow keys and Enter pick from the keyboard; Escape closes.
   everything again.
 - **A task of my own…** starts work that stays in SprintTicker and is never
   sent; with something typed, it is named after it.
-- **Switching away from an interruption**, the picker offers to put the
-  interruption's time on the task you pick too. Unticked, the interruption
-  waits to be placed.
+- **During an interruption, no task can be chosen**: the tray, the mini
+  timer, Ctrl+K, the shortcut and the Stream Deck offer no Switch, and Tasks'
+  Start is greyed. End it first -- Back, Stop or Discard.
 - Placing and moving offer only real tasks: time goes to a task on your
   provider. Placing opens on **Starred**, since an interruption is most often
-  about one of your usual places, and **Keep off Jira** is there too.
+  about one of your usual places, and **Keep as its own entry** is there
+  too.
 
 The picker shows the same tasks in the same order as Tasks and the bar's
 picker, and follows the same **Unassigned** and **Teammates'** switches.
@@ -389,17 +390,22 @@ While it runs, the session card says which task waits, and offers:
 
 - ↩ **Back to MG-12** ends the interruption and resumes the task. A task
   that was already paused when you pressed Interrupt stays paused.
-- ⏹️ **Stop** ends the interruption alone. The task still waits, paused,
-  and SprintTicker asks **Back to your task?**, naming it: in the window,
-  and on the bar as the task's key over **BACK? OK=YES**. **Resume it** goes
-  back; **Resume, and count the time since as work** also puts the minutes
-  between the Stop and now on the task; **Leave it** leaves it paused.
+- ⏹️ **Stop** ends the interruption alone, and a small **Place** window
+  opens in front at once, wherever you are: the interruptions of that run
+  -- Marc, then Ana -- each on its own row, with its name to type and its
+  own **Choose a task ▾**. Place the ones you chose; **Later** or Escape
+  leaves them to place on Today, with the names you typed. The task still
+  waits, paused, and SprintTicker asks **Back to your task?**, naming it:
+  in the window, and on the bar as the task's key over **BACK? OK=YES**.
+  **Resume it** goes back; **Resume, and count the time since as work**
+  also puts the minutes between the Stop and now on the task; **Leave it**
+  leaves it paused.
 - ⚡ **Another**: someone else arrives before you got back. The interruption
   ends and the next starts, waiting on the same task. Marc, then Ana, then
   Marc again is three interruptions in a row and one **Back**.
-- **Switch task…** ends the interruption and starts another task; the one
-  that waited stops, its time logged. Tick *Put "…" on it too* in the
-  picker, and the interruption's time goes on the task you pick as well.
+- **No task can be chosen while it runs**: an interruption is already being
+  timed. To move on to another task, end it first -- Back, Stop or Discard
+  -- then start the task.
 
 The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **↩ Back to
 MG-12** and **Stop**, which ends the interruption.
@@ -445,18 +451,20 @@ History, click that to go to the day. The end-of-day wrap-up lists them too,
 so you can place them while you remember what they were. For each:
 
 - Click its name to give it one, or **⋯** › **Rename…**.
-- **↳ Place…** puts its time on the task you pick: an entry, sent like any
-  other, with ten seconds to undo.
+- **↳ Place…** opens it in the Place list on its own: name it, choose its
+  task, and **Place the 1 chosen** makes it an entry, sent like any other,
+  with ten seconds to undo.
 - Tick some, and **↳ Place 2…** puts them all on one task.
 - **Place all 3…** opens them all in one list, each with its own **Choose a
   task ▾**: your starred tasks first, then the recent ones, with the tasks
   you just chose above -- so a talk that came back is one click from its
-  first part. Nothing is chosen until you click; **Keep off Jira** is in each
-  menu too. An unnamed one asks what it was once you choose its task, since
-  its name is the note the provider shows. **Place the N chosen** places
-  those; the others stay to place.
-- **⋯** › **Keep off Jira** -- your provider's name -- keeps its time in
-  SprintTicker only, as ad-hoc work, never sent.
+  first part. Nothing is chosen until you click; **Keep as its own entry**
+  is in each menu too. Each row has its name to type, since the name is the
+  note the provider shows; a name you type is kept even if you close the
+  list. **Place the N chosen** places those; the others stay to place.
+- **⋯** › **Keep as its own entry** keeps its time in your history as an
+  entry of its own, ad-hoc work, never sent to Jira -- nothing is deleted.
+  With no provider, it is simply an entry in your history.
 - **⋯** › **Discard** throws it away: its time is kept nowhere. Ten seconds
   to undo.
 - Leave it there, and it waits for later.
@@ -492,8 +500,8 @@ ad-hoc time.
 </p>
 
 Each task has **Start**, or **Switch** while something runs -- the same as
-picking it in the picker, so during an interruption it switches from the
-interruption. The task being timed has **Stop**, one click as on Today:
+picking it in the picker. During an interruption it is greyed: end the
+interruption first. The task being timed has **Stop**, one click as on Today:
 the time is logged, the task stays open, and Undo takes it back for ten
 seconds. Done and Discard are on Today's session card.
 
@@ -1078,7 +1086,7 @@ until you untick it:
 | Shortcut | Chord | Does |
 | :--- | :--- | :--- |
 | **Interrupt** | Ctrl+Alt+Shift+I | starts an [interruption](#-interrupt-a-timer-at-once); during one, **Another** |
-| **Switch task** | Ctrl+Alt+Shift+S | opens the task picker over the app you are in |
+| **Switch task** | Ctrl+Alt+Shift+S | opens the task picker over the app you are in (not during an interruption) |
 | **Previous task** | Ctrl+Alt+Shift+P | goes back to the task you timed before this one (not during an interruption) |
 | **Back** | Ctrl+Alt+Shift+B | ends the interruption and resumes the task it holds; nothing otherwise |
 
@@ -1229,13 +1237,13 @@ onto any key, as many times as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (**NOT YOURS**). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running or an interruption running, opens the task picker. **Held** half a second, it opens the task picker whatever runs |
+| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (**NOT YOURS**). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker. During an interruption it does neither: end it first |
 | **Interrupt** | INTERRUPT -- ANOTHER during an interruption -- and "3 to place" while interruptions wait for you in the app | starts a timer at once, whatever runs -- see [Interrupt](#-interrupt-a-timer-at-once) |
 | **Previous task** | PREV and the task's key | goes back to the task you timed before this one. Blank during an interruption: A goes back |
 | **Answer A** | says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY | does that. DONE takes two presses |
 | **Answer B** | stops or waits, keeping the time, in blue-grey: STOP, SKIP, NOT NOW | does that; STOP logs the time and leaves the task open |
 | **Answer C** | throws away, in red: DISCARD, or DISCARD ⚡ during an interruption -- the interruption, not your task | two presses; nothing logged. Blank while a question waits or nothing runs |
-| **Recent 1, 2, 3** | one of your recent tasks and START -- never the one running | starts it |
+| **Recent 1, 2, 3** | one of your recent tasks and START -- never the one running; blank during an interruption | starts it |
 
 - **On a Stream Deck Mini, the layout is ready-made.** Installing the plugin
   adds a **SprintTicker** profile for the Mini -- Session, Interrupt and

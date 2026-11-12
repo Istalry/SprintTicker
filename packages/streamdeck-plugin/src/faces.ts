@@ -214,7 +214,8 @@ export function faceFor(key: KeyKind, ctx: KeyContext): Face {
   const interruption = session?.interruption ?? null;
   if (meaning === 'blank') return blank(key);
   if (isRecentKind(meaning)) {
-    const task = recentOf(meaning, state);
+    // Choosing a task does nothing during an interruption (2026-11-12).
+    const task = interruption ? null : recentOf(meaning, state);
     if (!task) return blank(key);
     return { title: task.taskKey, hint: DECK_WORDS.START, accent: ACCENTS.slate, glyph: 'play', tone: 'ready' };
   }
@@ -310,7 +311,9 @@ export function planPress(key: KeyKind, ctx: KeyContext, held: boolean = false):
   const nothing: PressPlan = { type: 'none', reason: 'nothing' };
   if (meaning === 'blank') return nothing;
   if (isRecentKind(meaning)) {
-    return recentOf(meaning, state) ? { type: 'request', action: 'start-recent', index: recentIndex(meaning) } : nothing;
+    return !session?.interruption && recentOf(meaning, state)
+      ? { type: 'request', action: 'start-recent', index: recentIndex(meaning) }
+      : nothing;
   }
   switch (meaning) {
     case 'interrupt':
@@ -318,9 +321,11 @@ export function planPress(key: KeyKind, ctx: KeyContext, held: boolean = false):
     case 'previous':
       return !session?.interruption && state.previousTask ? { type: 'request', action: 'previous' } : nothing;
     case 'session':
-      // Pausing an interruption would end it: its key opens the picker, as
-      // nothing running does.
-      if (held || !session || session.interruption) return { type: 'request', action: 'open-picker' };
+      // During an interruption it does nothing, held or not: pausing would
+      // end it, and choosing a task waits for its end (the user's choice,
+      // 2026-11-12). A, B and C end it.
+      if (session?.interruption) return nothing;
+      if (held || !session) return { type: 'request', action: 'open-picker' };
       return { type: 'request', action: session.status === 'tracking' ? 'pause' : 'resume' };
     case 'not-done':
       return session ? { type: 'request', action: 'stop' } : nothing;

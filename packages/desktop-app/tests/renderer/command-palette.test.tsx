@@ -50,10 +50,12 @@ describe('paletteActions', () => {
     expect(offered).not.toContain('pause');
   });
 
-  it('Interruption_BackStopAnother_NeverPauseOrPrevious', () => {
+  it('Interruption_BackStopAnother_NeverPausePreviousOrSwitch', () => {
+    // Choosing a task does nothing during an interruption (2026-11-12).
     const actions = paletteActions({ session: DURING_INTERRUPTION, toPlace: 0, previousKey: 'PF-31' });
 
-    expect(actions.map(a => a.id).slice(0, 4)).toEqual(['switch', 'back', 'stop', 'another']);
+    expect(actions.map(a => a.id).slice(0, 3)).toEqual(['back', 'stop', 'another']);
+    expect(actions.map(a => a.id)).not.toContain('switch');
     expect(actions.find(a => a.id === 'back')?.label).toBe('Back to SPR-142');
     expect(actions.map(a => a.id)).not.toContain('pause');
     expect(actions.map(a => a.id)).not.toContain('previous');

@@ -51,7 +51,8 @@ export function paletteActions(state: PaletteState): PaletteAction[] {
 
   if (!session) {
     add({ id: 'start', label: `${Verb.START} a task…`, glyph: '▶', words: ['begin', 'pick', 'choose', 'select', 'selector', 'new task', 'timer'] });
-  } else {
+  } else if (!interruption) {
+    // During an interruption choosing a task does nothing: it ends first (2026-11-12).
     add({ id: 'switch', label: `${Verb.SWITCH} task…`, glyph: '⇄', words: ['change task', 'pick', 'choose', 'select', 'selector', 'other task', 'start'] });
   }
   if (session && !interruption && previousKey) {

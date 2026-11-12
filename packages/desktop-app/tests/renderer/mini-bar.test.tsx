@@ -455,7 +455,7 @@ describe('mini timer: the states of S25', () => {
     render(<MiniBar />);
 
     expect(await screen.findByText(/from the deck/)).toBeTruthy();
-    expect(labels()).toEqual(['Back to SPR-142', 'Place it on a task', 'Switch task', 'Another', 'Stop', 'Close the mini timer']);
+    expect(labels()).toEqual(['Back to SPR-142', 'Place it on a task', 'Another', 'Stop', 'Close the mini timer']);
 
     fireEvent.change(screen.getByLabelText('When it started'), { target: { value: '5' } });
     expect(bridge.api.moveInterruptionStart).toHaveBeenCalledTimes(1);

@@ -737,6 +737,17 @@ export class TimeTrackingEngine extends EventEmitter {
     });
   }
 
+  /**
+   * The interruptions of `id`'s run that still wait to be placed, in order:
+   * what the Place window lists after a Stop. One placed on the task chosen
+   * for it while it ran is not among them.
+   */
+  public getRunToPlace(id: string): string[] {
+    if (!id) throw new ArgumentNullException('id');
+    const waiting = new Set(this._interruptions.getToPlace().map(fragment => fragment.id));
+    return this._interruptions.getRun(id).map(fragment => fragment.id).filter(fragmentId => waiting.has(fragmentId));
+  }
+
   public getToPlaceSummary(): ToPlaceSummaryDTO {
     const waiting = this._interruptions.getToPlace();
     return { count: waiting.length, seconds: waiting.reduce((sum, f) => sum + interruptionSeconds(f), 0) };

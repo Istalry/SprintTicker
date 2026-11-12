@@ -410,7 +410,7 @@ export const MiniBar: React.FC = () => {
           >
             <CornerDownRight className="w-4 h-4" />
           </button>
-          {switchButton}
+          {/* No ⇄: choosing a task does nothing during an interruption (2026-11-12). */}
           {interruptButton}
           <button
             type="button"

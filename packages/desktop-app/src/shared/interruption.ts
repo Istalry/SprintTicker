@@ -7,6 +7,13 @@
  */
 import { ArgumentException } from './dtos';
 
+/**
+ * Why a task cannot be chosen now: during an interruption, choosing a task
+ * does nothing -- it ends first (the user's choice, 2026-11-12). One text,
+ * for the window's refusal and the deck's.
+ */
+export const END_THE_INTERRUPTION_FIRST = 'End the interruption first: Back, Stop or Discard.';
+
 /** What an interruption's task is called until the user names it. */
 export const INTERRUPTION_TITLE_PREFIX = 'Interruption';
 

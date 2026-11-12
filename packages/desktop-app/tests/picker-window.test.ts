@@ -6,7 +6,7 @@ import {
 } from '../src/main/windows/picker-window-manager';
 import type { Rectangle } from '../src/main/windows/mini-window-manager';
 import { PICKER_WINDOW_SIZE } from '../src/main/windows/window-constants';
-import { PICKER_WINDOW_HASH, PickerWindowMode, pickerWindowHash, readPickerWindowHash } from '../src/shared/picker-window';
+import { PICKER_WINDOW_HASH, PickerWindowMode, pickerWindowHash, readPickerWindowHash, readPickerWindowIds } from '../src/shared/picker-window';
 import { ArgumentNullException } from '../src/shared/dtos';
 
 const PRIMARY: Rectangle = { x: 0, y: 0, width: 1920, height: 1040 };
@@ -21,7 +21,7 @@ class FakePickerWindow implements PickerWindowLike {
   public readonly handle = Buffer.alloc(8);
   private readonly handlers = new Map<string, Array<() => void>>();
 
-  constructor(public readonly bounds: Rectangle, public readonly mode: PickerWindowMode) {}
+  constructor(public readonly bounds: Rectangle, public readonly mode: PickerWindowMode, public readonly ids: readonly string[] = []) {}
 
   isDestroyed(): boolean { return this.destroyed; }
   isVisible(): boolean { return this.visible; }
@@ -46,7 +46,7 @@ class FakePickerWindow implements PickerWindowLike {
 
 describe('PickerWindowManager', () => {
   let made: FakePickerWindow[];
-  let createWindow: ReturnType<typeof vi.fn<(bounds: Rectangle, mode: PickerWindowMode) => PickerWindowLike>>;
+  let createWindow: ReturnType<typeof vi.fn<(bounds: Rectangle, mode: PickerWindowMode, ids: readonly string[]) => PickerWindowLike>>;
   let raise: ReturnType<typeof vi.fn<(handle: Buffer) => Promise<boolean>>>;
   let fallback: ReturnType<typeof vi.fn<(mode: PickerWindowMode, raise: boolean) => boolean>>;
   let cursorOn: Rectangle;
@@ -60,8 +60,8 @@ describe('PickerWindowManager', () => {
   beforeEach(() => {
     made = [];
     cursorOn = PRIMARY;
-    createWindow = vi.fn((bounds: Rectangle, mode: PickerWindowMode) => {
-      const win = new FakePickerWindow(bounds, mode);
+    createWindow = vi.fn((bounds: Rectangle, mode: PickerWindowMode, ids: readonly string[]) => {
+      const win = new FakePickerWindow(bounds, mode, ids);
       made.push(win);
       return win;
     });
@@ -151,6 +151,36 @@ describe('PickerWindowManager', () => {
     expect(manager.isOpen()).toBe(true);
   });
 
+  it('Open_Refused_MakesNothing_AnswersFalse', () => {
+    // Start during an interruption: choosing a task does nothing (2026-11-12).
+    manager = new PickerWindowManager({ createWindow, screen, raiser: { raise }, fallback, refuses: mode => mode === 'start' });
+
+    expect(manager.open('start', { raise: true })).toBe(false);
+
+    expect(createWindow).not.toHaveBeenCalled();
+    expect(fallback).not.toHaveBeenCalled();
+    expect(manager.open('place')).toBe(true);
+  });
+
+  it('Open_PlaceEnded_ListsTheInterruptionsItWasGiven', () => {
+    manager.open('place-ended', { raise: true, ids: ['int_1', 'int_2'] });
+
+    expect(made[0].mode).toBe('place-ended');
+    expect(made[0].ids).toEqual(['int_1', 'int_2']);
+  });
+
+  it('Open_PlaceEndedTwice_TheSecondRunReplacesTheFirst', () => {
+    // Same mode, other interruptions: raising the first would list the wrong ones.
+    manager.open('place-ended', { ids: ['int_1'] });
+    made[0].fire('ready-to-show');
+
+    manager.open('place-ended', { ids: ['int_3'] });
+
+    expect(made).toHaveLength(2);
+    expect(made[0].destroyed).toBe(true);
+    expect(made[1].ids).toEqual(['int_3']);
+  });
+
   it('Blur_ClosesIt', () => {
     manager.open('start');
     made[0].fire('ready-to-show');
@@ -233,6 +263,19 @@ describe('the picker window hash', () => {
   it('ReadPickerWindowHash_Place_IsPlace', () => {
     // The mini timer's ↳ (P12d).
     expect(readPickerWindowHash(`#${pickerWindowHash('place')}`)).toBe('place');
+  });
+
+  it('PlaceEnded_CarriesItsInterruptions', () => {
+    const hash = `#${pickerWindowHash('place-ended', ['int_1', 'int_2'])}`;
+
+    expect(readPickerWindowHash(hash)).toBe('place-ended');
+    expect(readPickerWindowIds(hash)).toEqual(['int_1', 'int_2']);
+  });
+
+  it('ReadPickerWindowIds_AnyOtherHash_NamesNone', () => {
+    expect(readPickerWindowIds(`#${pickerWindowHash('assign')}`)).toEqual([]);
+    expect(readPickerWindowIds('#mini?ids=a')).toEqual([]);
+    expect(readPickerWindowIds(`#${pickerWindowHash('place-ended')}`)).toEqual([]);
   });
 
   it('ReadPickerWindowHash_UnknownMode_OpensStart', () => {

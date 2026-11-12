@@ -122,7 +122,7 @@ describe('Check my week', () => {
     expect(within(dialog).getByText('18m to place')).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Place…' }));
 
-    expect(await screen.findByRole('dialog', { name: /interruptions$/ })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Place Interruption at 16:20' })).toBeTruthy();
   });
 
   it('Done_Closes', async () => {

@@ -42,6 +42,7 @@ import { ProviderSettingKey } from '../src/shared/provider-settings';
 import type { PriorityRule, UpdateStatusDTO } from '../src/shared/dtos';
 import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
+import { END_THE_INTERRUPTION_FIRST } from '../src/shared/interruption';
 import { localDateKey } from '../src/shared/local-date';
 
 /**
@@ -575,6 +576,16 @@ describe('IPC handlers', () => {
     ])('%s_BadArguments_AreRefused_%#', async (channel, args) => {
       const call = handler(channel) as (event: unknown, ...rest: unknown[]) => Promise<unknown>;
       await expect(call({}, ...(args as unknown[]))).rejects.toThrow();
+    });
+
+    it('StartOrSwitch_DuringAnInterruption_Refused_ItRunsOn', async () => {
+      // Choosing a task does nothing during one (2026-11-12): Back, Stop or Discard first.
+      await invoke(IPCChannel.START_INTERRUPTION);
+
+      await expect(invoke(IPCChannel.START_TASK, { taskId: 'T-1' })).rejects.toThrow(END_THE_INTERRUPTION_FIRST);
+      await expect(invoke(IPCChannel.INTERRUPTION_SWITCH, 'T-1')).rejects.toThrow(END_THE_INTERRUPTION_FIRST);
+
+      expect((await invoke(IPCChannel.GET_CURRENT_SESSION)) as { interruption?: unknown }).toHaveProperty('interruption');
     });
 
     it('RenameSession_Interruption_TakesTheTrimmedName', async () => {

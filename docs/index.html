@@ -884,12 +884,13 @@
       everything again.</li>
       <li><strong>A task of my own…</strong> starts work that stays in SprintTicker and is never
       sent; with something typed, it is named after it.</li>
-      <li><strong>Switching away from an interruption</strong>, the picker offers to put the
-      interruption&#39;s time on the task you pick too. Unticked, the interruption
-      waits to be placed.</li>
+      <li><strong>During an interruption, no task can be chosen</strong>: the tray, the mini
+      timer, Ctrl+K, the shortcut and the Stream Deck offer no Switch, and Tasks&#39;
+      Start is greyed. End it first -- Back, Stop or Discard.</li>
       <li>Placing and moving offer only real tasks: time goes to a task on your
       provider. Placing opens on <strong>Starred</strong>, since an interruption is most often
-      about one of your usual places, and <strong>Keep off Jira</strong> is there too.</li>
+      about one of your usual places, and <strong>Keep as its own entry</strong> is there
+      too.</li>
       </ul>
       <p>The picker shows the same tasks in the same order as Tasks and the bar&#39;s
       picker, and follows the same <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches.</p>
@@ -926,17 +927,22 @@
       <ul>
       <li>↩ <strong>Back to MG-12</strong> ends the interruption and resumes the task. A task
       that was already paused when you pressed Interrupt stays paused.</li>
-      <li>⏹️ <strong>Stop</strong> ends the interruption alone. The task still waits, paused,
-      and SprintTicker asks <strong>Back to your task?</strong>, naming it: in the window,
-      and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>. <strong>Resume it</strong> goes
-      back; <strong>Resume, and count the time since as work</strong> also puts the minutes
-      between the Stop and now on the task; <strong>Leave it</strong> leaves it paused.</li>
+      <li>⏹️ <strong>Stop</strong> ends the interruption alone, and a small <strong>Place</strong> window
+      opens in front at once, wherever you are: the interruptions of that run
+      -- Marc, then Ana -- each on its own row, with its name to type and its
+      own <strong>Choose a task ▾</strong>. Place the ones you chose; <strong>Later</strong> or Escape
+      leaves them to place on Today, with the names you typed. The task still
+      waits, paused, and SprintTicker asks <strong>Back to your task?</strong>, naming it:
+      in the window, and on the bar as the task&#39;s key over <strong>BACK? OK=YES</strong>.
+      <strong>Resume it</strong> goes back; <strong>Resume, and count the time since as work</strong>
+      also puts the minutes between the Stop and now on the task; <strong>Leave it</strong>
+      leaves it paused.</li>
       <li>⚡ <strong>Another</strong>: someone else arrives before you got back. The interruption
       ends and the next starts, waiting on the same task. Marc, then Ana, then
       Marc again is three interruptions in a row and one <strong>Back</strong>.</li>
-      <li><strong>Switch task…</strong> ends the interruption and starts another task; the one
-      that waited stops, its time logged. Tick <em>Put &quot;…&quot; on it too</em> in the
-      picker, and the interruption&#39;s time goes on the task you pick as well.</li>
+      <li><strong>No task can be chosen while it runs</strong>: an interruption is already being
+      timed. To move on to another task, end it first -- Back, Stop or Discard
+      -- then start the task.</li>
       </ul>
       <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>↩ Back to
       MG-12</strong> and <strong>Stop</strong>, which ends the interruption.</p>
@@ -987,18 +993,20 @@
       so you can place them while you remember what they were. For each:</p>
       <ul>
       <li>Click its name to give it one, or <strong>⋯</strong> › <strong>Rename…</strong>.</li>
-      <li><strong>↳ Place…</strong> puts its time on the task you pick: an entry, sent like any
-      other, with ten seconds to undo.</li>
+      <li><strong>↳ Place…</strong> opens it in the Place list on its own: name it, choose its
+      task, and <strong>Place the 1 chosen</strong> makes it an entry, sent like any other,
+      with ten seconds to undo.</li>
       <li>Tick some, and <strong>↳ Place 2…</strong> puts them all on one task.</li>
       <li><strong>Place all 3…</strong> opens them all in one list, each with its own <strong>Choose a
       task ▾</strong>: your starred tasks first, then the recent ones, with the tasks
       you just chose above -- so a talk that came back is one click from its
-      first part. Nothing is chosen until you click; <strong>Keep off Jira</strong> is in each
-      menu too. An unnamed one asks what it was once you choose its task, since
-      its name is the note the provider shows. <strong>Place the N chosen</strong> places
-      those; the others stay to place.</li>
-      <li><strong>⋯</strong> › <strong>Keep off Jira</strong> -- your provider&#39;s name -- keeps its time in
-      SprintTicker only, as ad-hoc work, never sent.</li>
+      first part. Nothing is chosen until you click; <strong>Keep as its own entry</strong>
+      is in each menu too. Each row has its name to type, since the name is the
+      note the provider shows; a name you type is kept even if you close the
+      list. <strong>Place the N chosen</strong> places those; the others stay to place.</li>
+      <li><strong>⋯</strong> › <strong>Keep as its own entry</strong> keeps its time in your history as an
+      entry of its own, ad-hoc work, never sent to Jira -- nothing is deleted.
+      With no provider, it is simply an entry in your history.</li>
       <li><strong>⋯</strong> › <strong>Discard</strong> throws it away: its time is kept nowhere. Ten seconds
       to undo.</li>
       <li>Leave it there, and it waits for later.</li>
@@ -1039,8 +1047,8 @@
       <p align="center">
         <img src="images/app-projects.png" width="80%" alt="Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
       </p><p>Each task has <strong>Start</strong>, or <strong>Switch</strong> while something runs -- the same as
-      picking it in the picker, so during an interruption it switches from the
-      interruption. The task being timed has <strong>Stop</strong>, one click as on Today:
+      picking it in the picker. During an interruption it is greyed: end the
+      interruption first. The task being timed has <strong>Stop</strong>, one click as on Today:
       the time is logged, the task stays open, and Undo takes it back for ten
       seconds. Done and Discard are on Today&#39;s session card.</p>
       <p>A task from Jira or OpenProject shows the start of its description under its
@@ -1671,7 +1679,7 @@
       <tr>
       <td align="left"><strong>Switch task</strong></td>
       <td align="left">Ctrl+Alt+Shift+S</td>
-      <td align="left">opens the task picker over the app you are in</td>
+      <td align="left">opens the task picker over the app you are in (not during an interruption)</td>
       </tr>
       <tr>
       <td align="left"><strong>Previous task</strong></td>
@@ -1879,7 +1887,7 @@
       <tbody><tr>
       <td align="left"><strong>Session</strong></td>
       <td align="left">the task, its time and the bar&#39;s icon, moving as it does on the bar -- a notification&#39;s own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (<strong>NOT YOURS</strong>). With nothing running, START -- amber <strong>NOT TIMING</strong> in your working hours</td>
-      <td align="left">pauses or resumes; with nothing running or an interruption running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker whatever runs</td>
+      <td align="left">pauses or resumes; with nothing running, opens the task picker. <strong>Held</strong> half a second, it opens the task picker. During an interruption it does neither: end it first</td>
       </tr>
       <tr>
       <td align="left"><strong>Interrupt</strong></td>
@@ -1908,7 +1916,7 @@
       </tr>
       <tr>
       <td align="left"><strong>Recent 1, 2, 3</strong></td>
-      <td align="left">one of your recent tasks and START -- never the one running</td>
+      <td align="left">one of your recent tasks and START -- never the one running; blank during an interruption</td>
       <td align="left">starts it</td>
       </tr>
       </tbody></table></div>
@@ -2265,7 +2273,8 @@
       the <strong>picker window</strong> load the same <code>index.html</code>; the mini timer loads it at
       <code>#mini</code>, and <code>main.tsx</code> mounts <code>MiniBar</code> instead of <code>App</code> for that hash. The
       picker window (redesign P7b) loads it at <code>#picker</code> -- <code>#picker?mode=assign</code>
-      to assign the ad-hoc session (<code>shared/picker-window.ts</code>) -- and mounts
+      to assign the ad-hoc session, <code>place-ended&amp;ids=…</code> for the Place window a
+      Stop opens (<code>shared/picker-window.ts</code>) -- and mounts
       <code>PickerWindow</code>: the window&#39;s <code>TaskPicker</code>, its pick done by the same
       <code>utils/pick-task.ts</code> as the dashboard&#39;s. <code>PickerWindowManager</code> owns it: one at
       a time, centred on the display under the pointer, frameless and on top,
@@ -2335,8 +2344,12 @@
       key -- within the lists&#39; order (<code>task-order.ts</code>) and visibility
       (<code>task-visibility.ts</code>). Fetch by key (<code>tasks:fetch-by-key</code>) asks the active
       provider&#39;s <code>getTaskByKey</code>, keeps the task as the sync would, and is shown
-      only with <code>canFetchByKey</code>. Picking during an interruption is
-      <code>interruption:switch</code>, with <code>takeAlong</code> when its time goes too.</p>
+      only with <code>canFetchByKey</code>. <strong>Picking during an interruption starts
+      nothing</strong> (the user&#39;s choice, 2026-11-12): <code>pickTask</code> refuses it, main&#39;s
+      <code>session:start-task</code> and <code>interruption:switch</code> refuse it, the picker window
+      will not open in <code>start</code> mode (<code>PickerWindowManager</code>&#39;s <code>refuses</code>), and the
+      deck&#39;s <code>open-picker</code> and <code>start-recent</code> answer <code>no-task</code>. The interruption
+      ends first, by Back, Stop or Discard.</p>
       <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
       (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
       quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
@@ -3109,9 +3122,13 @@
       a run reads back as Marc, Ana, Marc and one Back. <strong>Back</strong>
       (<code>backFromInterruption(addGapMinutes)</code>) closes it and ends the held pause --
       earlier by the gap, after a Stop -- unless the session was paused before.
-      <strong>Stop</strong> closes it alone; <strong>Switch</strong> (<code>switchFromInterruption(taskId, takeAlong)</code>) closes it, stops the held session as any start does, and
-      starts the task, placing the fragment on it with <code>takeAlong</code>; <strong>Discard</strong>
-      marks it discarded.</p>
+      <strong>Stop</strong> closes it alone, and main opens the <strong>Place window</strong> in front
+      (<code>onInterruptionEnded</code> with <code>how: &#39;stop&#39;</code>, then <code>getRunToPlace</code>): the
+      run&#39;s fragments still waiting, each named and placed on its own row, the
+      one exception to &quot;a prompt never takes the focus&quot; -- the user&#39;s, on
+      2026-11-12. <strong>Discard</strong> marks it discarded. <code>switchFromInterruption</code> is
+      still in the engine, but nothing reaches it: a task cannot be chosen while
+      a fragment runs.</p>
       <p>While a fragment runs, <code>getCurrentSession()</code> answers a <strong>fragment view</strong>:
       the fragment&#39;s id as session and task id, ad-hoc, tracking, titled
       <code>Interruption HH:MM</code> until named, with <code>interruption: RunningInterruptionDTO</code>
@@ -3675,7 +3692,7 @@
       </tr>
       <tr>
       <td align="left"><code>session:start-task</code></td>
-      <td align="left">Start tracking a task</td>
+      <td align="left">Start tracking a task. Refused during an interruption (<code>END_THE_INTERRUPTION_FIRST</code>): choosing a task does nothing then</td>
       </tr>
       <tr>
       <td align="left"><code>session:move-to</code></td>
@@ -3692,6 +3709,10 @@
       <tr>
       <td align="left"><code>mini:open-assign-picker</code></td>
       <td align="left">Open the picker window (<code>#picker?mode=assign</code>) to choose the task the open ad-hoc session goes to. Answers whether a picker opened: when the window cannot be made, the dashboard&#39;s picker opens instead, and <code>false</code> means there was no dashboard either</td>
+      </tr>
+      <tr>
+      <td align="left"><em>(no channel)</em></td>
+      <td align="left"><strong>The Place window after a Stop</strong> (2026-11-12): main opens the picker window at <code>#picker?mode=place-ended&amp;ids=…</code>, raised, listing the interruptions of the run just stopped that still wait (<code>getRunToPlace</code>), each named and placed on its own row through the <code>interruption:*</code> channels. It closes itself once none of them waits</td>
       </tr>
       <tr>
       <td align="left"><code>mini:open-place-picker</code></td>
@@ -3727,7 +3748,7 @@
       </tr>
       <tr>
       <td align="left"><code>interruption:switch</code></td>
-      <td align="left"><code>(taskId, takeAlong)</code>: ends the fragment, stops the held session, starts <code>taskId</code>; with <code>takeAlong</code> the fragment is placed on it</td>
+      <td align="left"><code>(taskId)</code>: always refused (<code>END_THE_INTERRUPTION_FIRST</code>), since choosing a task does nothing during an interruption (2026-11-12). Kept on the bridge for a release; the engine&#39;s <code>switchFromInterruption</code> is no longer reached from a surface</td>
       </tr>
       <tr>
       <td align="left"><code>interruption:discard</code></td>
@@ -4352,7 +4373,7 @@
       <tr>
       <td align="left"><code>open-picker</code></td>
       <td align="left">Brings the window forward with its task picker -- to the front, past Windows&#39; foreground lock (<code>ForegroundRaiser</code>), since the press reached Stream Deck and not the app</td>
-      <td align="left">No window</td>
+      <td align="left">No window; during an interruption (<code>no-task</code>, <code>END_THE_INTERRUPTION_FIRST</code>)</td>
       </tr>
       <tr>
       <td align="left"><code>interrupt</code></td>
@@ -4382,7 +4403,7 @@
       <tr>
       <td align="left"><code>start-recent</code> (<em>2</em>)</td>
       <td align="left">Starts the <code>index</code>-th of <code>recent</code>, 1 to 3</td>
-      <td align="left">No such task (<code>no-task</code>)</td>
+      <td align="left">No such task (<code>no-task</code>); during an interruption (<code>no-task</code>)</td>
       </tr>
       <tr>
       <td align="left"><code>end-standup</code> (<em>2</em>)</td>

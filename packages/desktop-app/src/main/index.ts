@@ -192,7 +192,7 @@ function createMiniWindow(bounds: Rectangle, options: { inactive?: boolean } = {
  * while open so Alt+Tab reaches it. Hidden until `ready-to-show`; the
  * manager shows and raises it.
  */
-function createPickerWindow(bounds: Rectangle, mode: PickerWindowMode): BrowserWindow {
+function createPickerWindow(bounds: Rectangle, mode: PickerWindowMode, ids: readonly string[]): BrowserWindow {
   const win = new BrowserWindow({
     ...bounds,
     frame: false,
@@ -208,7 +208,7 @@ function createPickerWindow(bounds: Rectangle, mode: PickerWindowMode): BrowserW
   });
   win.setAlwaysOnTop(true, 'floating');
   win.setMenu(null);
-  secureAndLoad(win, pickerWindowHash(mode));
+  secureAndLoad(win, pickerWindowHash(mode, ids));
   return win;
 }
 
@@ -497,11 +497,29 @@ async function startApplication(): Promise<void> {
     screen,
     raiser: foregroundRaiser,
     // Place has no picker of the window's own: Today's interruption card asks it.
-    fallback: (mode, raise) => mode === 'place'
+    fallback: (mode, raise) => mode === 'place' || mode === 'place-ended'
       ? openWindowOn(mainWindow, 'today')
-      : openTaskPickerInMainWindow(mainWindow, raise ? foregroundRaiser : undefined, mode)
+      : openTaskPickerInMainWindow(mainWindow, raise ? foregroundRaiser : undefined, mode),
+    // Choosing a task does nothing during an interruption (2026-11-12).
+    refuses: mode => mode === 'start' && Boolean(engine?.isInterrupted())
   });
   const pickers = pickerWindowManager;
+
+  // A Stop ends a run of interruptions: its parts still to place come up at
+  // once, each to name and place on its own, in front of the app in use --
+  // the user's choice (2026-11-12), and the one prompt that takes the focus.
+  // After the engine's listeners: a window opened from inside one is a second
+  // notification's work (CLAUDE.md §5).
+  if (engine) {
+    const ending = engine;
+    ending.onInterruptionEnded(({ fragment, how }) => {
+      if (how !== 'stop') return;
+      setImmediate(() => {
+        const ids = ending.getRunToPlace(fragment.id);
+        if (ids.length > 0) pickers.open('place-ended', { raise: true, ids });
+      });
+    });
+  }
 
   // The global shortcuts (P12e): Interrupt, Switch, Previous and Back from
   // any app, on by default; a chord another app holds reads "taken".

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PickerWindow } from '../../src/renderer/components/PickerWindow';
 import type { ActiveSessionDTO, ProjectDTO, TaskDTO } from '../../src/shared/dtos';
 import type { PickerDataDTO } from '../../src/shared/task-picker';
+import type { InterruptionToPlaceDTO } from '../../src/shared/interruption';
 import type { IElectronAPI } from '../../src/preload/electron-api';
 import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
 
@@ -90,15 +91,17 @@ describe('PickerWindow', () => {
     expect(bridge.startTask).not.toHaveBeenCalled();
   });
 
-  it('DuringAnInterruption_APickSwitches_WithItsTimeWhenTicked', async () => {
+  it('DuringAnInterruption_APickStartsNothing', async () => {
+    // Main refuses to open it then (2026-11-12); this is a picker opened before.
     const bridge = openWith(DURING_INTERRUPTION);
     await screen.findByRole('dialog', { name: 'Switch task' });
+    expect(screen.queryByRole('checkbox', { name: /on it too/ })).toBeNull();
 
-    fireEvent.click(await screen.findByRole('checkbox', { name: /Put "Call with Marc" \(12m\) on it too/ }));
     await pickMG22();
 
     await waitFor(() => expect(close).toHaveBeenCalled());
-    expect(bridge.switchFromInterruption).toHaveBeenCalledWith(MG22.id, true);
+    expect(bridge.switchFromInterruption).not.toHaveBeenCalled();
+    expect(bridge.startTask).not.toHaveBeenCalled();
   });
 
   it('PlaceMode_ChoosesTheInterruptionsTask_AndTheTimerRunsOn', async () => {
@@ -146,5 +149,99 @@ describe('PickerWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close the picker' }));
 
     expect(close).toHaveBeenCalled();
+  });
+});
+
+describe('the Place window after a Stop (2026-11-12)', () => {
+  let close: ReturnType<typeof vi.spyOn>;
+  const MG23: TaskDTO = { id: 'id-MG-23', projectId: MG.id, key: 'MG-23', title: 'Wind audio', status: 'todo' };
+  const fragment = (id: string, name: string | null, title: string, minutes: number, index: number, ofRun: number): InterruptionToPlaceDTO => ({
+    id, name, title, startedAtUtc: '2026-11-10T09:00:00.000Z', endedAtUtc: '2026-11-10T09:20:00.000Z',
+    durationSeconds: minutes * 60, source: 'deck', interruptedTaskKey: 'SPR-142', index, ofRun
+  });
+  const EARLIER = fragment('int_0', 'Printer jam', 'Printer jam', 3, 1, 1);
+  const MARC = fragment('int_1', 'Call with Marc', 'Call with Marc', 12, 1, 2);
+  const ANA = fragment('int_2', null, 'Interruption 10:12', 5, 2, 2);
+
+  const openPlace = (overrides: Partial<IElectronAPI> = {}) => {
+    const mock = installElectronApi({
+      getInterruptionsToPlace: vi.fn().mockResolvedValue([EARLIER, MARC, ANA]),
+      getPickerData: vi.fn().mockResolvedValue({ ...DATA, recent: [MG22, MG23], tasks: [MG22, MG23] }),
+      ...overrides
+    });
+    render(<PickerWindow mode="place-ended" ids={['int_1', 'int_2']} />);
+    return mock;
+  };
+  const chooseFor = async (row: string, title: string) => {
+    fireEvent.click(screen.getByRole('button', { name: `Choose a task for ${row}` }));
+    await screen.findByRole('dialog', { name: `Place "${row}" on a task` });
+    fireEvent.click((await screen.findAllByText(title))[0]);
+  };
+
+  beforeEach(() => {
+    close = vi.spyOn(window, 'close').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    close.mockRestore();
+  });
+
+  it('ListsThatRunOnly_EachWithItsName', async () => {
+    openPlace();
+
+    await screen.findByRole('dialog', { name: 'Place 2 interruptions' });
+    expect((screen.getByRole('textbox', { name: 'Name Call with Marc' }) as HTMLInputElement).value).toBe('Call with Marc');
+    expect((screen.getByRole('textbox', { name: 'Name Interruption 10:12' }) as HTMLInputElement).value).toBe('');
+    expect(screen.queryByRole('textbox', { name: 'Name Printer jam' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Later' })).toBeTruthy();
+  });
+
+  it('TwoInterruptions_EachNamedAndPlacedOnItsOwnTask', async () => {
+    const { api } = openPlace();
+    await screen.findByRole('dialog', { name: 'Place 2 interruptions' });
+
+    await chooseFor('Call with Marc', 'Grass shader wind');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name Interruption 10:12' }), { target: { value: 'Ana question' } });
+    await chooseFor('Ana question', 'Wind audio');
+    fireEvent.click(screen.getByRole('button', { name: /^Place the 2 chosen/ }));
+
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(api.placeInterruption).toHaveBeenCalledWith('int_1', MG22.id);
+    expect(api.placeInterruption).toHaveBeenCalledWith('int_2', MG23.id);
+    expect(api.placeInterruptions).not.toHaveBeenCalled();
+    expect(api.renameInterruption).toHaveBeenCalledWith('int_2', 'Ana question');
+  });
+
+  it('OnePlaced_TheOtherWaitsOnToday', async () => {
+    const { api } = openPlace();
+    await screen.findByRole('dialog', { name: 'Place 2 interruptions' });
+
+    await chooseFor('Call with Marc', 'Grass shader wind');
+    fireEvent.click(screen.getByRole('button', { name: /^Place the 1 chosen/ }));
+
+    await waitFor(() => expect(api.placeInterruption).toHaveBeenCalledWith('int_1', MG22.id));
+    expect(api.placeInterruption).toHaveBeenCalledTimes(1);
+    expect(api.keepInterruptionOff).not.toHaveBeenCalled();
+  });
+
+  it('Later_KeepsTheNameTyped_PlacesNothing', async () => {
+    const { api } = openPlace();
+    await screen.findByRole('dialog', { name: 'Place 2 interruptions' });
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name Interruption 10:12' }), { target: { value: 'Ana question' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(api.renameInterruption).toHaveBeenCalledWith('int_2', 'Ana question');
+    expect(api.placeInterruption).not.toHaveBeenCalled();
+  });
+
+  it('PlacedElsewhereMeanwhile_TheWindowCloses', async () => {
+    const { emit } = openPlace();
+    await screen.findByRole('dialog', { name: 'Place 2 interruptions' });
+
+    act(() => emit('onInterruptionsUpdated', [EARLIER]));
+
+    await waitFor(() => expect(close).toHaveBeenCalled());
   });
 });

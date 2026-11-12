@@ -24,7 +24,7 @@ import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { useTaskVisibility } from '../hooks/useTaskVisibility';
 import { TaskOwnerBadge, TaskVisibilityToggle } from './TaskVisibilityToggle';
 import { formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
-import { keepOffLabel } from '../../shared/words';
+import { KEEP_AS_OWN_ENTRY } from '../../shared/words';
 
 /** What the user picked: a task, or work of their own named `ownTitle`. */
 export interface PickedTask {
@@ -49,6 +49,8 @@ export interface TaskPickerProps {
   justChosen?: TaskDTO[];
   /** Placing: keeps the time off the provider instead. */
   onKeepOff?: () => void;
+  /** What keeping it does, as the button's tooltip: `keepAsOwnEntryMeaning`. */
+  keepOffMeaning?: string;
   /** Its own window (`#picker`): fills it, with no overlay behind. */
   asWindow?: boolean;
 }
@@ -109,6 +111,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   takeAlongOf,
   justChosen = [],
   onKeepOff,
+  keepOffMeaning,
   asWindow = false
 }) => {
   const { capabilities, providerName } = useProviderCapabilities();
@@ -523,8 +526,13 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             </button>
             <div className="flex items-center gap-2">
               {onKeepOff && (
-                <button type="button" onClick={() => { onKeepOff(); onClose(); }} className="px-3 py-1.5 text-xs rounded-lg border border-border-dark text-text-secondary hover:text-white">
-                  {keepOffLabel(providerName)}
+                <button
+                  type="button"
+                  title={keepOffMeaning}
+                  onClick={() => { onKeepOff(); onClose(); }}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-border-dark text-text-secondary hover:text-white"
+                >
+                  {KEEP_AS_OWN_ENTRY}
                 </button>
               )}
               <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs rounded-lg text-text-secondary hover:text-white">Cancel</button>

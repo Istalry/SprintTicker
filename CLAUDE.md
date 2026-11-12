@@ -823,6 +823,18 @@ changing it:
   does not raise the window either; the ones that still do are the wrap-up's
   confirm and a wheel click while timing, which ask for the app. Anything
   new that asks goes through the outlet -- never `show()` or `focus()`.
+  **One exception, the user's (2026-11-12): the Place window at a Stop.**
+  Stopping an interruption opens the picker window in `place-ended` mode,
+  raised, with the run's fragments still waiting (`getRunToPlace`), each
+  named and placed on its own row; Later or Escape leaves them on Today.
+  It answers a press the user just made, which a stand-up does not.
+- **During an interruption, choosing a task does nothing** (the user's
+  choice, 2026-11-12). Main refuses `session:start-task` and
+  `interruption:switch` with `END_THE_INTERRUPTION_FIRST`, the picker
+  window refuses `start` (`refuses`), the deck answers `no-task` to
+  `open-picker` and `start-recent`, and the surfaces hide Switch. Every
+  path checks, not only the button: the window's picker, Ctrl+K and a
+  picker left open from before all reach `pickTask`.
 - **A reminder asks once per occurrence** (P8d). `ReminderService` rides
   the schedule's 30 s check (`onChecked`): nothing timing, still paused?,
   still on it?, still in the stand-up?, each after its `prompt_delays`

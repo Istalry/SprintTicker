@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import { isFlowSettingKey, readFlowSetting } from '../../shared/flow-settings';
 import type { ReminderService } from '../services/reminder-service';
 import type { MorningService } from '../services/morning-service';
-import { isInterruptionSource } from '../../shared/interruption';
+import { END_THE_INTERRUPTION_FIRST, isInterruptionSource } from '../../shared/interruption';
 import { InterruptionService } from '../services/interruption-service';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { MAX_SYNC_ATTEMPTS } from '../sync/sync-constants';
@@ -343,6 +343,9 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.START_TASK, async (_event, payload: { taskId: string; isAdHoc?: boolean; customTitle?: string }) => {
+      // During an interruption, choosing a task does nothing (the user's
+      // choice, 2026-11-12): it ends first, by Back, Stop or Discard.
+      if (this.engine.isInterrupted()) throw new Error(END_THE_INTERRUPTION_FIRST);
       return this.engine.startTask(payload.taskId, payload.isAdHoc, payload.customTitle);
     });
 
@@ -380,9 +383,11 @@ export class IPCHandlerRegistry {
       if (this.engine.isInterrupted()) this.sessionEnding.complete();
       return this.engine.getCurrentSession();
     });
-    ipcMain.handle(IPCChannel.INTERRUPTION_SWITCH, async (_event, taskId: unknown, takeAlong: unknown) => {
+    ipcMain.handle(IPCChannel.INTERRUPTION_SWITCH, async (_event, taskId: unknown) => {
       if (typeof taskId !== 'string' || !taskId) throw new ArgumentException('Switching needs a task id.', 'taskId');
-      return this.engine.switchFromInterruption(taskId, takeAlong === true);
+      // No surface offers it since 2026-11-12 (choosing a task during an
+      // interruption does nothing); an older window's request is refused too.
+      throw new Error(END_THE_INTERRUPTION_FIRST);
     });
     ipcMain.handle(IPCChannel.INTERRUPTION_DISCARD, async (_event, id: unknown) => {
       if (id === undefined || id === null) {

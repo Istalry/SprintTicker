@@ -193,7 +193,7 @@ describe('First run', () => {
         lunchStartTime: '12:00', workingDays: [1, 2, 3, 4]
       }));
       expect(bridge.api.finishFirstRun).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('region', { name: 'How it works' }).textContent).toMatch(/keep off/);
+      expect(screen.getByRole('region', { name: 'How it works' }).textContent).toMatch(/keep as its own entry/);
     });
   });
 

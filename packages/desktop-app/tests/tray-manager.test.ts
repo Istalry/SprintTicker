@@ -268,6 +268,8 @@ describe('TrayManager Unit Tests', () => {
       expect(labels()).not.toContain('Pause');
       expect(labels().some(l => l?.startsWith('Previous'))).toBe(false);
       expect(labels()).not.toContain('Interrupt');
+      // Choosing a task does nothing during one (2026-11-12).
+      expect(labels()).not.toContain('Switch task…');
       click('↩ Back to PROJ-2');
       expect(engine.getCurrentSession()).toMatchObject({ taskId: 'PROJ-2', status: 'TRACKING' });
       expect(engine.getCurrentSession()?.interruption).toBeUndefined();

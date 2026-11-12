@@ -518,6 +518,18 @@ describe('DeckActionService', () => {
       expect(refused(ask('start-recent', { index: 1 }))).toBe('no-task');
     });
 
+    it.each([['open-picker', {}], ['start-recent', { index: 1 }]] as const)('Perform_%sDuringAnInterruption_RefusedNoTask', (action, extra) => {
+      // Choosing a task does nothing during an interruption (2026-11-12).
+      engine.startTask(MINE.id);
+      at(9, 10);
+      engine.startTask(MINE_IN_PROGRESS.id);
+      ask('interrupt');
+
+      expect(refused(ask(action, extra))).toBe('no-task');
+      expect(openPicker).not.toHaveBeenCalled();
+      expect(engine.getCurrentSession()?.interruption).toBeDefined();
+    });
+
     it('Perform_EndStandup_EndsItAndBringsTheTaskBack', async () => {
       engine.startTask(MINE.id);
       schedule.triggerStandupPrompt();

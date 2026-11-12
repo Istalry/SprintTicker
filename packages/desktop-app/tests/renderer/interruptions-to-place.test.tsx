@@ -200,14 +200,50 @@ describe('Work History, interruptions to place', () => {
     expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Printer jam');
   });
 
+  /** A row's ↳ Place… opens the Place dialog on that row alone (2026-11-12), where it is named and placed. */
+  const placeOne = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+    await screen.findByRole('dialog', { name: 'Place Interruption 10:30' });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Interruption 10:30' }));
+    await pick();
+    fireEvent.click(screen.getByRole('button', { name: /^Place the 1 chosen/ }));
+  };
+
   it('Place_OnTheTaskPicked', async () => {
     const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]) }));
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
-    await pick();
+    await placeOne();
 
     await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_1', 'T-9'));
+  });
+
+  it('Place_NamedInTheDialog_NamedBeforePlaced', async () => {
+    // Naming was the dashboard's alone, and placing read as the only way.
+    const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Name Interruption 10:30' }), { target: { value: 'Printer jam' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Printer jam' }));
+    await pick();
+    fireEvent.click(screen.getByRole('button', { name: /^Place the 1 chosen/ }));
+
+    await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_1', 'T-9'));
+    expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Printer jam');
+  });
+
+  it('Close_KeepsTheNameTyped_PlacesNothing', async () => {
+    const bridge = installElectronApi(withProjects({ getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]) }));
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Name Interruption 10:30' }), { target: { value: 'Printer jam' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Place / })).toBeNull());
+    expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Printer jam');
+    expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
   });
 
   describe('Place all (S12b)', () => {
@@ -276,7 +312,7 @@ describe('Work History, interruptions to place', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Call with Marc' }));
       const picker = await screen.findByRole('dialog', { name: /on a task/ });
-      fireEvent.click(await within(picker).findByRole('button', { name: /^Keep off/ }));
+      fireEvent.click(await within(picker).findByRole('button', { name: 'Keep as its own entry' }));
       expect(screen.getByText('1 chosen · 1 left')).toBeTruthy();
       fireEvent.click(placeButton());
 
@@ -290,7 +326,7 @@ describe('Work History, interruptions to place', () => {
       await chooseFor('Call with Marc');
       fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
-      expect(screen.queryByRole('dialog', { name: 'Place 2 interruptions' })).toBeNull();
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Place 2 interruptions' })).toBeNull());
       expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
     });
 
@@ -309,7 +345,7 @@ describe('Work History, interruptions to place', () => {
       await chooseFor('Call with Marc');
       fireEvent.click(placeButton());
 
-      expect(screen.getByRole('alertdialog', { name: 'Place 1 interruptions?' }).textContent).toMatch(/timesheet/);
+      expect(screen.getByRole('alertdialog', { name: 'Place "Call with Marc"?' }).textContent).toMatch(/timesheet/);
       expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
     });
   });
@@ -321,31 +357,33 @@ describe('Work History, interruptions to place', () => {
     }));
     render(<WorklogHistoryView />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
-    await pick();
+    await placeOne();
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/Not done: .*at least 1 minute/);
   });
 
   it('Place_ClosedWeekTime_AsksFirst', async () => {
-    const bridge = installElectronApi({
+    const bridge = installElectronApi(withProjects({
       getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING]),
       getLastWeekClosed: vi.fn().mockResolvedValue('2026-11-09')
-    });
+    }));
     render(<WorklogHistoryView />);
     await waitFor(() => expect(bridge.api.getLastWeekClosed).toHaveBeenCalled());
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Place Interruption 10:30 on a task' }));
+    await placeOne();
 
     expect(screen.getByRole('alertdialog', { name: 'Place "Interruption 10:30"?' }).textContent).toMatch(/timesheet/);
-    expect(screen.queryByRole('dialog', { name: /to a task|on a task/ })).toBeNull();
+    expect(bridge.api.placeInterruption).not.toHaveBeenCalled();
   });
 
-  it('KeepOff_NamesTheProvider', async () => {
+  it('KeepAsOwnEntry_SaysItIsNeverSent_NamingTheProvider', async () => {
+    // "Keep off Jira" read as a deletion (2026-11-12).
     const bridge = await history([], [WAITING]);
 
     fireEvent.click(await screen.findByRole('button', { name: 'More for Interruption 10:30' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /^Keep off / }));
+    const keep = screen.getByRole('menuitem', { name: 'Keep as its own entry' });
+    expect(keep.getAttribute('title')).toMatch(/stays in your history as its own entry, never sent to \w+/);
+    fireEvent.click(keep);
 
     expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_1');
   });
@@ -504,7 +542,7 @@ describe('the wrap-up, interruptions to place', () => {
     const list = await screen.findByRole('region', { name: 'Interruptions to place' });
     expect(within(list).getByRole('heading').textContent).toBe('Interruptions to place · 1 · 15m');
     fireEvent.click(within(list).getByRole('button', { name: 'More for Interruption 10:30' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /^Keep off / }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Keep as its own entry' }));
     expect(bridge.api.keepInterruptionOff).toHaveBeenCalledWith('int_1');
   });
 

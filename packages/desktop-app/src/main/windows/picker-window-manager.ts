@@ -27,8 +27,8 @@ export interface RaiserLike {
 }
 
 export interface PickerWindowDeps {
-  /** Builds the window at these bounds, hidden, and loads the picker in `mode`. */
-  createWindow: (bounds: Rectangle, mode: PickerWindowMode) => PickerWindowLike;
+  /** Builds the window at these bounds, hidden, and loads the picker in `mode`, listing `ids` for `place-ended`. */
+  createWindow: (bounds: Rectangle, mode: PickerWindowMode, ids: readonly string[]) => PickerWindowLike;
   screen: PickerScreenLike;
   raiser: RaiserLike;
   /**
@@ -36,6 +36,12 @@ export interface PickerWindowDeps {
    * `openTaskPickerInMainWindow`. Answers whether it opened.
    */
   fallback: (mode: PickerWindowMode, raise: boolean) => boolean;
+  /**
+   * A mode that must not open now: `start` during an interruption, where
+   * choosing a task does nothing (the user's choice, 2026-11-12). Every
+   * caller -- tray, mini timer, deck, shortcut -- goes through here.
+   */
+  refuses?: (mode: PickerWindowMode) => boolean;
 }
 
 export interface PickerOpenOptions {
@@ -45,6 +51,8 @@ export interface PickerOpenOptions {
    * timer is the user's, and gives the app the foreground already.
    */
   raise?: boolean;
+  /** For `place-ended`: the interruptions to list. */
+  ids?: readonly string[];
 }
 
 /** What the tray, the deck and the IPC layer need of the picker window. */
@@ -87,8 +95,11 @@ export class PickerWindowManager implements PickerWindowController {
 
   public open(mode: PickerWindowMode, options: PickerOpenOptions = {}): boolean {
     const raise = options.raise === true;
+    if (this.deps.refuses?.(mode)) return false;
     if (this.isOpen()) {
-      if (this.mode === mode) {
+      // A list of interruptions is the one it was opened with: a second Stop
+      // lists its own run, so it replaces the window rather than raising it.
+      if (this.mode === mode && mode !== 'place-ended') {
         // Still loading, it shows itself when ready.
         if (this.window!.isVisible()) this.bringForward(this.window!, raise);
         return true;
@@ -98,7 +109,7 @@ export class PickerWindowManager implements PickerWindowController {
 
     let win: PickerWindowLike;
     try {
-      win = this.deps.createWindow(this.centredBounds(), mode);
+      win = this.deps.createWindow(this.centredBounds(), mode, options.ids ?? []);
     } catch (err) {
       console.warn('[PickerWindow] Could not open the picker window; opening the main window\'s picker:', err);
       return this.deps.fallback(mode, raise);

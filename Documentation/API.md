@@ -29,11 +29,12 @@ Everything else is a request/response `invoke`.
 | Channel | Purpose |
 | :--- | :--- |
 | `session:get-current` | The live session, or `null` |
-| `session:start-task` | Start tracking a task |
+| `session:start-task` | Start tracking a task. Refused during an interruption (`END_THE_INTERRUPTION_FIRST`): choosing a task does nothing then |
 | `session:move-to` | `(taskId)`. "↳ Move my 1h 24m…" (S5b): stops the open session as a switch does, moves each of its entries to the task as `worklogs:move` does, and starts that task; answers the new session. Refused before anything stops for an interruption, ad-hoc work, the same task, or less time than the new provider records; a move refused after the stop still starts the task and rejects with the reason |
 | `session:rename` | Name the open ad-hoc session, and its task (so History follows): a string, trimmed, at most 120 characters (`checkAdHocTitle`). Clears the task's unsorted mark. Refused for a provider's task, which keeps the provider's name. Answers the session |
 | `session:assign` | Assign the open ad-hoc session to a task, by id, in place: the session keeps its start and pauses, takes the task's project, key and title, and gets the task's provider -- ad-hoc work had none. The task is taken up as a start takes it up (In Progress, or claimed when nobody has it); the ad-hoc row is retired. Refused for a provider task's session, an ad-hoc target, or an unknown task. Answers the session |
 | `mini:open-assign-picker` | Open the picker window (`#picker?mode=assign`) to choose the task the open ad-hoc session goes to. Answers whether a picker opened: when the window cannot be made, the dashboard's picker opens instead, and `false` means there was no dashboard either |
+| *(no channel)* | **The Place window after a Stop** (2026-11-12): main opens the picker window at `#picker?mode=place-ended&ids=…`, raised, listing the interruptions of the run just stopped that still wait (`getRunToPlace`), each named and placed on its own row through the `interruption:*` channels. It closes itself once none of them waits |
 | `mini:open-place-picker` | The mini timer's ↳ (P12d): open the picker window (`#picker?mode=place`) to choose the task the running interruption's time goes to (`interruption:choose-task`); the timer runs on. Without the picker window, the dashboard opens on Today, whose interruption card asks the same |
 | `schedule:get-standup-running` | The stand-up, when it is the session open, and the key of the task set aside for it (`{ returnsToKey }`, null when nothing was timing), or `null` (P12d) |
 | `schedule:get-working-now` | Whether it is working hours now -- WORK, a working day, from the stand-up to the wrap-up, the reminders' rule -- for the mini timer's loud "Nothing timing" (P12d) |
@@ -42,7 +43,7 @@ Everything else is a request/response `invoke`.
 | `interruption:another` | Ends the fragment running and starts the next, holding the same session |
 | `interruption:back` | `(addGapMinutes?)`: ends the fragment and resumes the held session, its pause ended that many minutes earlier; one paused before stays paused |
 | `interruption:stop` | Ends the fragment alone, with ten seconds to undo; the held session stays paused and "Back to MG-12?" is asked |
-| `interruption:switch` | `(taskId, takeAlong)`: ends the fragment, stops the held session, starts `taskId`; with `takeAlong` the fragment is placed on it |
+| `interruption:switch` | `(taskId)`: always refused (`END_THE_INTERRUPTION_FIRST`), since choosing a task does nothing during an interruption (2026-11-12). Kept on the bridge for a release; the engine's `switchFromInterruption` is no longer reached from a surface |
 | `interruption:discard` | `(id?)`: the running fragment, or one waiting; ten seconds to undo |
 | `interruption:rename` | `(id, name)`: names a fragment, running or waiting; `checkAdHocTitle` rules |
 | `interruption:move-start` | `(atUtc)`: the running fragment began then (S9's "started 5 min ago"), held between what it takes its minutes from -- the held session's start and last pause, the fragment before it in the run -- and now; over a running task the task's pause moves with it. Answers the session |
@@ -291,13 +292,13 @@ removed with the keys that used them (2026-10-22).
 | `stop` | Ends the session, task left open -- the window's Not done, with LOGGED on the bar | No session |
 | `finish` | Ends it and marks the task done, with DONE! | No session; or `confirmed` is not true -- in 2 always, since DONE changes the task at the provider (S29); in 1 only when the task left the user's list (NOT YOURS?) |
 | `discard` | Keeps nothing | No session; or `confirmed` is not true -- always asked |
-| `open-picker` | Brings the window forward with its task picker -- to the front, past Windows' foreground lock (`ForegroundRaiser`), since the press reached Stream Deck and not the app | No window |
+| `open-picker` | Brings the window forward with its task picker -- to the front, past Windows' foreground lock (`ForegroundRaiser`), since the press reached Stream Deck and not the app | No window; during an interruption (`no-task`, `END_THE_INTERRUPTION_FIRST`) |
 | `interrupt` | Starts an interruption, as the window's Interrupt: `ContextScheduleService.interrupt('deck')`, a timer at once while the task running waits paused; during one, Another. Added without raising the protocol: an app older than it answers `invalid-request` | Never; `failed` if the app cannot |
 | `prompt-yes`, `prompt-no` | OK or BACK on the bar while a prompt holds it: the stand-up (`standup`), the wrap-up (`wrap-up`, then `wrap-up-confirm` after the first yes), the resume question (`resume`; *2*: `back` when it follows an interruption). *2*: `lunch`, lunch's hour asking to end an interruption, is the window's question and is answered as there (`answerLunchQuestion`) | No prompt is asked |
 | `back` (*2*) | Ends the interruption and resumes the task it holds (`backFromInterruption`) | No interruption (`no-session`), or one holding no task (`no-task`) |
 | `another` (*2*) | Ends the interruption and starts the next, as `interrupt` does during one | No interruption |
 | `previous` (*2*) | Starts the task timed before this one, as the tray's Previous task | None (`no-task`); during an interruption, where going back is `back` |
-| `start-recent` (*2*) | Starts the `index`-th of `recent`, 1 to 3 | No such task (`no-task`) |
+| `start-recent` (*2*) | Starts the `index`-th of `recent`, 1 to 3 | No such task (`no-task`); during an interruption (`no-task`) |
 | `end-standup` (*2*) | Ends the stand-up as the mini timer's End stand-up: its Stop, which brings back the task it set aside | No stand-up running |
 
 A bar prompt is reported only while it holds the bar's display: covered by

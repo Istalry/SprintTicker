@@ -21,6 +21,7 @@ import {
   deckElapsedSeconds
 } from '../../shared/deck-protocol';
 import { finishNeedsConfirmation } from '../../shared/task-left';
+import { END_THE_INTERRUPTION_FIRST } from '../../shared/interruption';
 import { EOD_WRAP_UP_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 /**
@@ -232,6 +233,8 @@ export class DeckActionService {
         this._ending.discard();
         return;
       case 'open-picker':
+        // Choosing a task does nothing during an interruption (2026-11-12).
+        if (session?.interruption) throw new DeckRefusal('no-task', END_THE_INTERRUPTION_FIRST);
         if (!this._deps.openPicker()) throw new DeckRefusal('no-window', 'The SprintTicker window is not open.');
         return;
       case 'interrupt':
@@ -263,6 +266,7 @@ export class DeckActionService {
         return;
       }
       case 'start-recent': {
+        if (session?.interruption) throw new DeckRefusal('no-task', END_THE_INTERRUPTION_FIRST);
         const task = this.readProtocol2(session).recent[(request.index ?? 0) - 1];
         if (!task) throw new DeckRefusal('no-task', `No recent task ${String(request.index)}.`);
         engine.startTask(task.taskId, false, task.taskTitle);

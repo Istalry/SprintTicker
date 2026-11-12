@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FolderPlus, Plus, Trash2, Edit3, Upload, FileText, CheckCircle, AlertCircle, X, CheckCircle2, Clock } from 'lucide-react';
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
+import { END_THE_INTERRUPTION_FIRST } from '../../../shared/interruption';
 import { pickTask } from '../../utils/pick-task';
 import { Verb } from '../../../shared/words';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
@@ -451,7 +452,11 @@ export const ProjectTaskManagerView: React.FC = () => {
                         </button>
                       ) : (
                         <button
-                          title={activeSession ? 'Switch to this task' : 'Start this task'}
+                          // Choosing a task does nothing during an interruption (2026-11-12).
+                          disabled={Boolean(activeSession?.interruption)}
+                          title={activeSession?.interruption
+                            ? END_THE_INTERRUPTION_FIRST
+                            : activeSession ? 'Switch to this task' : 'Start this task'}
                           onClick={() => {
                             if (!window.electronAPI) return;
                             // The picker's own pick (P7c): during an
@@ -463,7 +468,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                               window.electronAPI.startTask(id, adHoc, title)
                             ).then(() => fetchTasks(selectedProjectId));
                           }}
-                          className="px-3 py-1 bg-select text-text-primary border border-focus/40 hover:bg-dark-600 font-bold text-xs rounded transition-colors"
+                          className="px-3 py-1 bg-select text-text-primary border border-focus/40 hover:bg-dark-600 font-bold text-xs rounded transition-colors disabled:opacity-40"
                         >
                           {activeSession ? Verb.SWITCH : Verb.START}
                         </button>

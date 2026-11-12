@@ -4,6 +4,7 @@ import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDia
 import { ProjectTaskManagerView } from '../../src/renderer/views/Tasks/ProjectTaskManagerView';
 import { CeremoniesView } from '../../src/renderer/views/Ceremonies/CeremoniesView';
 import { ProjectDTO, TaskDTO } from '../../src/shared/dtos';
+import { END_THE_INTERRUPTION_FIRST } from '../../src/shared/interruption';
 import { CONNECTED_DEVICE, TRACKING_SESSION, installElectronApi } from './electron-api-mock';
 
 describe('the task key colour', () => {
@@ -96,8 +97,8 @@ describe('the task list rows', () => {
     await waitFor(() => expect(bridge.api.startTask).toHaveBeenCalledWith('T-2', false, 'Pause menu sounds'));
   });
 
-  it('Switch_DuringAnInterruption_SwitchesFromIt_AsThePickerDoes', async () => {
-    // A start beside the interruption would leave it running under the task.
+  it('Switch_DuringAnInterruption_Disabled_SaysEndItFirst', async () => {
+    // Choosing a task does nothing during an interruption (2026-11-12).
     const during = {
       ...TRACKING_SESSION,
       sessionId: 'int_1', taskId: 'int_1', taskKey: 'ADHOC', taskTitle: 'Call with Marc', isAdHoc: true,
@@ -115,9 +116,12 @@ describe('the task list rows', () => {
     render(<ProjectTaskManagerView />);
     await screen.findAllByRole('button', { name: 'Switch' });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Switch' })[1]);
+    const button = screen.getAllByRole('button', { name: 'Switch' })[1] as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toBe(END_THE_INTERRUPTION_FIRST);
+    fireEvent.click(button);
 
-    await waitFor(() => expect(bridge.api.switchFromInterruption).toHaveBeenCalledWith('T-2', false));
+    expect(bridge.api.switchFromInterruption).not.toHaveBeenCalled();
     expect(bridge.api.startTask).not.toHaveBeenCalled();
   });
 });

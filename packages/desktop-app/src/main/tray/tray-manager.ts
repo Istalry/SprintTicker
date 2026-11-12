@@ -226,13 +226,17 @@ export class TrayManager {
     const template: Electron.MenuItemConstructorOptions[] = [
       { label: 'Open SprintTicker', click: () => this.restoreWindow() },
       { type: 'separator' },
-      {
-        label: `${Verb.SWITCH} task…`,
-        click: this.guarded('open the picker', () => {
-          if (this.pickerWindow) this.pickerWindow.open('start');
-          else openTaskPickerInMainWindow(this.mainWindow);
-        })
-      },
+      // During an interruption choosing a task does nothing: it ends first
+      // (the user's choice, 2026-11-12), so neither Switch nor Previous is offered.
+      ...(interrupting
+        ? []
+        : [{
+            label: `${Verb.SWITCH} task…`,
+            click: this.guarded('open the picker', () => {
+              if (this.pickerWindow) this.pickerWindow.open('start');
+              else openTaskPickerInMainWindow(this.mainWindow);
+            })
+          }]),
       ...this.previousItem(interrupting),
       // Pausing an interruption is ending it: Stop says so.
       ...(session && !interrupting

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
 import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings, normalizeScheduleSettings } from '../../../shared/schedule-defaults';
 import { DEFAULT_WORKING_DAYS, WEEKDAYS_MONDAY_FIRST, checkWorkingDays } from '../../../shared/working-days';
-import { keepOffLabel } from '../../../shared/words';
+import { KEEP_AS_OWN_ENTRY } from '../../../shared/words';
 import { StandupTaskSetting } from '../StandupTaskSetting';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 import { StepFrame, fieldClass, primaryButton, secondaryButton } from './StepFrame';
@@ -121,7 +121,7 @@ export const YourDayStep: React.FC<{ onBack: () => void; onFinish: () => void }>
 
       <section aria-label="How it works" className="rounded-lg border border-border-dark bg-dark-900/60 p-4 text-xs text-text-secondary leading-relaxed">
         <strong className="text-text-primary">How it works.</strong> One timer runs your task. When something interrupts you,
-        ⚡ times it apart, one interruption after another. Afterwards you place each one on a task, or {keepOffLabel(providerName).replace(/^K/, 'k')}.
+        ⚡ times it apart, one interruption after another. When it stops you name it and place it on a task, or {KEEP_AS_OWN_ENTRY.toLowerCase()}.
         Time reaches {provider} when you stop, after 10 s to undo.
       </section>
     </StepFrame>

@@ -277,7 +277,7 @@ describe('TaskPicker', () => {
     const { onClose } = open({ mode: 'place', onKeepOff });
     await screen.findByText('Starred');
 
-    fireEvent.click(screen.getByRole('button', { name: /^Keep off/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep as its own entry' }));
 
     expect(onKeepOff).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();

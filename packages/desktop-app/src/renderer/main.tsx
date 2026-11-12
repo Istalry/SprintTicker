@@ -4,7 +4,7 @@ import App from './App';
 import { MiniBar } from './components/MiniBar';
 import { setRegionalLocale } from './utils/formatters';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
-import { readPickerWindowHash } from '../shared/picker-window';
+import { readPickerWindowHash, readPickerWindowIds } from '../shared/picker-window';
 import { PickerWindow } from './components/PickerWindow';
 import './index.css';
 
@@ -15,7 +15,7 @@ const pickerMode = readPickerWindowHash(window.location.hash);
 
 const root = (): React.ReactElement => {
   if (isMiniWindow) return <MiniBar />;
-  if (pickerMode) return <PickerWindow mode={pickerMode} />;
+  if (pickerMode) return <PickerWindow mode={pickerMode} ids={readPickerWindowIds(window.location.hash)} />;
   return <App />;
 };
 

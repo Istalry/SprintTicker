@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Stream Deck plugin 0.6.1: one meaning per key.** A says yes -- DONE,
+- **Stream Deck plugin 0.6.2: one meaning per key.** A says yes -- DONE,
   BACK to your task during an interruption, JOIN, RESUME, END STAND-UP --
   in green; B stops or waits -- STOP, SKIP, NOT NOW -- in blue-grey; C
   throws away -- DISCARD, or DISCARD ⚡ for an interruption -- in red, and
@@ -17,7 +17,7 @@
   it, beside your own profiles.
 - **The app speaks the Stream Deck's protocol 2** -- an interruption, what
   waits to be placed, the previous and recent tasks, the stand-up running
-  -- for the plugin 0.6.1 to come. Plugin 0.5 keeps working as it does: the
+  -- for the plugin 0.6.2 to come. Plugin 0.5 keeps working as it does: the
   app tells the two apart and answers each in its own protocol.
 - **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
   Switch task (S), Previous task (P) and Back (B), on by default and each
@@ -121,8 +121,12 @@
   **Back** resumes it where it was. **Another** starts the next
   interruption when someone else arrives first, so Marc, Ana and Marc again
   are three interruptions and one Back. **Stop** ends the interruption
-  alone and asks whether to go back, in the window and on the bar, with the
-  choice to count the time since as work. On the bar, Interrupt is the
+  alone, opens a small **Place** window in front -- that run's
+  interruptions, each named and placed on its own -- and asks whether to go
+  back, in the window and on the bar, with the choice to count the time
+  since as work. While one runs, no task can be chosen: end it first.
+  **Keep as its own entry** keeps one in your history without a task,
+  never sent. On the bar, Interrupt is the
   paused menu's first choice: pause, turn the wheel two notches left, click.
 - **A keyboard shortcut for Interrupt**, from any app, off until you turn it
   on in Settings, General, where you record
@@ -133,8 +137,7 @@
   from the previous task, Recent, Starred (☆ on any task), your open tasks
   across projects, or a project -- starred first, then most used. A
   project's key and a space narrows to it. A ticket made since the last sync
-  is one **Fetch MG-77** away, from Jira or OpenProject, and switching away
-  from an interruption can take its time along.
+  is one **Fetch MG-77** away, from Jira or OpenProject.
 - **The picker in its own window.** From the tray, the mini timer and the
   Stream Deck, the task picker opens as a small window over what you are
   doing, on the screen your pointer is on, instead of bringing the whole
@@ -144,8 +147,8 @@
   allows, every setting and any task, by name. The old words still lead
   somewhere -- *sort* finds Place.
 - **Place all, one row at a time.** Each interruption gets its own task,
-  starred and recent first with the ones you just chose on top; an unnamed
-  one asks what it was. The rows you leave stay to place.
+  starred and recent first with the ones you just chose on top, and each
+  row its name to type. The rows you leave stay to place.
 - **An interruption, told as it runs.** Today's session card asks what it
   is about (the note your provider shows), when it started -- 2, 5 or 10
   minutes ago, those minutes coming off the task that waits -- and which
@@ -201,7 +204,7 @@
   say where: History lists every one waiting, whatever its day, with what it
   interrupted, and the wrap-up lists them too. **Place…** puts its time on a
   task and sends it, with ten seconds to undo; **Place all** puts several
-  on one task; **Keep off** keeps it local; the bin discards it. A ⚡ beside
+  on one task; **Keep as its own entry** keeps it local; the bin discards it. A ⚡ beside
   Today counts them. Interruptions from earlier builds are listed the same
   way.
 - **Move a worklog to another task.** The arrows on a History row move

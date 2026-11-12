@@ -91,8 +91,27 @@ export const INTERRUPTION_SOURCE_WORDS: Record<InterruptionSource, string | null
 };
 
 /**
- * "Keep off Jira": keep an interruption on this computer only, never sent.
- * The provider's own name, from `providerDisplayName`, never a generic one.
+ * What keeping an interruption without placing it is called (2026-11-12):
+ * it stays in History as its own entry and is never sent. "Keep off Jira"
+ * read as a deletion, and with no provider -- "Keep off This computer" --
+ * as nothing at all.
+ */
+export const KEEP_AS_OWN_ENTRY = 'Keep as its own entry';
+
+/**
+ * What {@link KEEP_AS_OWN_ENTRY} does, said under or beside it. `local` when
+ * no provider receives time, where there is nothing to not send.
+ */
+export function keepAsOwnEntryMeaning(providerName: string, local: boolean): string {
+  const name = providerName.trim();
+  if (local || !name) return 'Its time stays in your history as its own entry.';
+  return `Its time stays in your history as its own entry, never sent to ${name}.`;
+}
+
+/**
+ * "Keep off Jira": keep an entry the provider refused on this computer only
+ * (P11c). The provider's own name, from `providerDisplayName`, never a
+ * generic one. Interruptions say {@link KEEP_AS_OWN_ENTRY} instead.
  */
 export function keepOffLabel(providerName: string): string {
   const name = providerName.trim();

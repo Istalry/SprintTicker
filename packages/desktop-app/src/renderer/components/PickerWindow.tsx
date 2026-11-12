@@ -1,13 +1,63 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSession } from '../hooks/useSession';
+import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { TaskPicker } from './TaskPicker';
+import { PlaceInterruptionsDialog } from './PlaceInterruptionsDialog';
+import { useInterruptionsToPlace } from './InterruptionsToPlace';
 import { pickTask } from '../utils/pick-task';
 import type { PickerWindowMode } from '../../shared/picker-window';
 
 interface PickerWindowProps {
   /** From the window's hash (`readPickerWindowHash`). */
   mode: PickerWindowMode;
+  /** For `place-ended`: the interruptions to list (`readPickerWindowIds`). */
+  ids?: readonly string[];
 }
+
+/**
+ * After a Stop (2026-11-12): the run's interruptions still to place, each
+ * named and placed on its own row. Closes once none of them waits -- placed
+ * here, or in the dashboard meanwhile.
+ */
+const PlaceEndedWindow: React.FC<{ ids: readonly string[] }> = ({ ids }) => {
+  const all = useInterruptionsToPlace();
+  const { providerName, capabilities } = useProviderCapabilities();
+  const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // The list arrives after the first render: only an emptied list closes.
+  const seen = useRef(false);
+  const waiting = all.filter(item => ids.includes(item.id));
+
+  useEffect(() => {
+    let current = true;
+    window.electronAPI?.getLastWeekClosed?.().then(
+      monday => { if (current) setLastWeekClosed(monday); },
+      err => console.warn('[PlaceWindow] Could not read the last week closed:', err)
+    );
+    return () => { current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (waiting.length > 0) seen.current = true;
+    else if (seen.current) window.close();
+  }, [waiting.length]);
+
+  if (waiting.length === 0) return null;
+  return (
+    <>
+      <PlaceInterruptionsDialog
+        asWindow
+        waiting={waiting}
+        providerName={providerName}
+        localOnly={capabilities?.providerId === 'adhoc'}
+        lastWeekClosed={lastWeekClosed}
+        onClose={() => window.close()}
+        onError={setError}
+      />
+      {error && <p role="alert" className="fixed bottom-2 left-4 text-xs text-accent-red">Not done: {error}</p>}
+    </>
+  );
+};
 
 /**
  * The task picker as its own small window (redesign P7b), opened from the
@@ -16,7 +66,12 @@ interface PickerWindowProps {
  * session. It closes its window after a pick, on Escape or ✕, and main
  * closes it when it loses the focus.
  */
-export const PickerWindow: React.FC<PickerWindowProps> = ({ mode }) => {
+export const PickerWindow: React.FC<PickerWindowProps> = ({ mode, ids = [] }) => {
+  if (mode === 'place-ended') return <PlaceEndedWindow ids={ids} />;
+  return <TaskPickerWindow mode={mode} />;
+};
+
+const TaskPickerWindow: React.FC<{ mode: Exclude<PickerWindowMode, 'place-ended'> }> = ({ mode }) => {
   const { session, loading, startTask } = useSession();
   // The picker closes itself right after a pick; the window waits for main
   // to have answered the pick instead.
@@ -35,9 +90,6 @@ export const PickerWindow: React.FC<PickerWindowProps> = ({ mode }) => {
       mode={placing ? 'place' : mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
       title={placing ? `Which task is "${placing.title}" for?` : undefined}
       subtitle={placing ? 'The timer keeps running; its time goes there when it ends.' : undefined}
-      takeAlongOf={mode === 'start' && session?.interruption
-        ? { title: session.interruption.title, seconds: session.elapsedSeconds }
-        : null}
       onPick={picked => {
         picking.current = true;
         void pickTask(placing ? 'place' : mode === 'place' ? 'start' : mode, session, picked, startTask).finally(close);

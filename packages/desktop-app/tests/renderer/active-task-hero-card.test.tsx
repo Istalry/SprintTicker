@@ -388,7 +388,8 @@ describe('ActiveTaskHeroCard', () => {
     expect(screen.getByText(/SPR-142 waits, as it was: nothing is sent/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'More ways to stop' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Switch task…' })).toBeTruthy();
+    // Choosing a task does nothing during an interruption (2026-11-12).
+    expect(screen.queryByRole('button', { name: 'Switch task…' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Back to SPR-142' }));
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     fireEvent.click(screen.getByRole('button', { name: 'Another' }));

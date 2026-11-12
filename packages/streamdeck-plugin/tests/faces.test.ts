@@ -246,6 +246,12 @@ describe('Previous and Recent', () => {
     expect(planPress(kind, ctx)).toEqual({ type: 'request', action: 'start-recent', index: n });
   });
 
+  it('Recent_DuringAnInterruption_Blank', () => {
+    const ctx = online(stateMessage({ session: INTERRUPTION, recent: RECENT }));
+    expect(faceFor('recent-1', ctx)).toMatchObject({ title: '', tone: 'idle' });
+    expect(planPress('recent-1', ctx)).toEqual({ type: 'none', reason: 'nothing' });
+  });
+
   it('Recent_NoSuchTask_Blank', () => {
     const ctx = online(stateMessage({ recent: RECENT.slice(0, 1) }));
     expect(faceFor('recent-2', ctx)).toMatchObject({ title: '', tone: 'idle' });
@@ -333,7 +339,7 @@ describe('planPress', () => {
     expect(planPress(kind, { link: 'incompatible', message: stateMessage(), now: NOW, armed: false })).toEqual({ type: 'none', reason: 'offline' });
   });
 
-  it('PlanPress_SessionHeld_OpensThePickerWhateverRuns', () => {
+  it('PlanPress_SessionHeld_OpensThePickerWhateverTaskRuns', () => {
     for (const message of [stateMessage(), stateMessage({ session: session() }), stateMessage({ session: session({ status: 'paused' }) })]) {
       expect(planPress('session', online(message), true)).toEqual({ type: 'request', action: 'open-picker' });
     }
@@ -352,9 +358,11 @@ describe('planPress', () => {
     expect(planPress('session', online(stateMessage({ session: session({ status: 'paused' }) })))).toEqual({ type: 'request', action: 'resume' });
   });
 
-  it('PlanPress_SessionDuringAnInterruption_OpensThePicker', () => {
-    // Pausing an interruption would end it.
-    expect(planPress('session', online(stateMessage(STATES.interruption)))).toEqual({ type: 'request', action: 'open-picker' });
+  it('PlanPress_SessionDuringAnInterruption_DoesNothingHeldOrNot', () => {
+    // Pausing would end it, and choosing a task waits for its end (2026-11-12).
+    const ctx = online(stateMessage(STATES.interruption));
+    expect(planPress('session', ctx)).toEqual({ type: 'none', reason: 'nothing' });
+    expect(planPress('session', ctx, true)).toEqual({ type: 'none', reason: 'nothing' });
   });
 
   it('PlanPress_NotDone_StopsTheSession', () => {

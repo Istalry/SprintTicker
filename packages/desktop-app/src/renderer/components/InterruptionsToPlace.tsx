@@ -3,7 +3,7 @@ import { Link2, Zap } from 'lucide-react';
 import { InterruptionToPlaceDTO } from '../../shared/interruption';
 import { localDateKey } from '../../shared/local-date';
 import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
-import { INTERRUPTION_SOURCE_WORDS, Verb, keepOffLabel } from '../../shared/words';
+import { INTERRUPTION_SOURCE_WORDS, KEEP_AS_OWN_ENTRY, Verb, keepAsOwnEntryMeaning } from '../../shared/words';
 import { formatClockTime, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { InlineRename } from './InlineRename';
@@ -67,14 +67,16 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
   // A place of closed-week time, waiting for the user to say go on.
   const [asking, setAsking] = useState<Placing | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Place all (S12b): each row its own task, in one dialog.
-  const [placingAll, setPlacingAll] = useState(false);
+  // Each row its own task and name, in one dialog: Place all (S12b), or
+  // one row's ↳ Place… -- which names it too (2026-11-12). Null when closed.
+  const [placingRows, setPlacingRows] = useState<InterruptionToPlaceDTO[] | null>(null);
   // The rows ticked, to place together on one task (S5).
   const [ticks, setTicks] = useState<ReadonlySet<string>>(() => new Set());
   // Rename from ⋯: the row, and a count that remounts its field each time.
   const [renaming, setRenaming] = useState<{ id: string; n: number } | null>(null);
   const [lastWeekClosed, setLastWeekClosed] = useState<string | null>(null);
-  const { providerName } = useProviderCapabilities();
+  const { providerName, capabilities } = useProviderCapabilities();
+  const localOnly = capabilities?.providerId === 'adhoc';
 
   useEffect(() => {
     const read = window.electronAPI?.getLastWeekClosed;
@@ -126,7 +128,7 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
   const small = 'flex items-center gap-1 px-2 py-0.5 border border-border-dark rounded text-text-secondary hover:text-white hover:border-focus';
   const primary = 'flex items-center gap-1 px-2 py-0.5 rounded bg-primary text-dark-900 font-semibold hover:bg-primary/90';
   const today = localDateKey();
-  const keepOff = keepOffLabel(providerName);
+  const keepMeaning = keepAsOwnEntryMeaning(providerName, localOnly);
 
   return (
     <section aria-label="Interruptions to place" className={`bg-accent-amber/5 border border-accent-amber/30 rounded-xl ${compact ? 'p-4 space-y-2' : 'p-5 space-y-3'}`}>
@@ -144,7 +146,7 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
               type="button"
               className={small}
               title="Choose a task for each, in one place"
-              onClick={() => { setError(null); setPlacingAll(true); }}
+              onClick={() => { setError(null); setPlacingRows(waiting); }}
             >
               {Verb.PLACE} all {waiting.length}…
             </button>
@@ -212,8 +214,9 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
                 <button
                   type="button"
                   aria-label={`${Verb.PLACE} ${item.title} on a task`}
-                  title="Put its time on a task: sent like any entry, ten seconds to undo"
-                  onClick={() => startPlacing([item], `"${item.title}"`)}
+                  title="Name it and put its time on a task: sent like any entry, ten seconds to undo"
+                  // The dialog asks about a closed week itself.
+                  onClick={() => { setError(null); setPlacingRows([item]); }}
                   className={small}
                 >
                   ↳ {Verb.PLACE}…
@@ -224,8 +227,8 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
                   items={[
                     { label: 'Rename…', run: () => setRenaming(previous => ({ id: item.id, n: (previous?.n ?? 0) + 1 })) },
                     {
-                      label: keepOff,
-                      title: 'Keep its time in SprintTicker only, never sent',
+                      label: KEEP_AS_OWN_ENTRY,
+                      title: keepMeaning,
                       run: () => act(() => window.electronAPI.keepInterruptionOff(item.id))
                     },
                     {
@@ -258,12 +261,14 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
         </div>
       )}
 
-      {placingAll && (
+      {placingRows && (
         <PlaceInterruptionsDialog
-          waiting={waiting}
+          // Rows placed elsewhere meanwhile leave it, as they leave the list.
+          waiting={placingRows.filter(row => waiting.some(item => item.id === row.id))}
           providerName={providerName}
+          localOnly={localOnly}
           lastWeekClosed={lastWeekClosed}
-          onClose={() => setPlacingAll(false)}
+          onClose={() => setPlacingRows(null)}
           onError={setError}
         />
       )}
@@ -276,6 +281,7 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
         onClose={() => setPlacing(null)}
         onPick={picked => { if (placing && picked.task) placeOn(placing.ids, picked.task.id); }}
         onKeepOff={placing ? () => act(() => Promise.all(placing.ids.map(id => window.electronAPI.keepInterruptionOff(id)))) : undefined}
+        keepOffMeaning={keepMeaning}
       />
     </section>
   );

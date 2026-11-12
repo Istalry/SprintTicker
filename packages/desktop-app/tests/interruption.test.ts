@@ -15,6 +15,7 @@ import { ContextScheduleService } from '../src/main/services/context-schedule-se
 import type { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { IPCChannel } from '../src/shared/ipc-channels';
+import { ArgumentNullException } from '../src/shared/dtos';
 import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
 
 /**
@@ -294,6 +295,40 @@ describe('Interruptions in a row', () => {
       engine.startTask(B.id);
 
       expect(prompts().at(-1)).toBeNull();
+    });
+  });
+
+  describe('the Place window after a Stop (2026-11-12)', () => {
+    it('RunToPlace_TwoInARow_BothInOrder', () => {
+      interruptA();
+      engine.anotherInterruption();
+      at(10, 50);
+      engine.stopInterruption();
+
+      const waiting = engine.getInterruptionsToPlace();
+      expect(waiting).toHaveLength(2);
+      expect(engine.getRunToPlace(waiting[1].id)).toEqual(waiting.map(f => f.id));
+    });
+
+    it('RunToPlace_NotAnEarlierRun_NorOnePlacedOnItsTask', () => {
+      interruptA();
+      engine.backFromInterruption();
+      const earlier = engine.getInterruptionsToPlace()[0].id;
+      at(11, 0);
+      service.interrupt();
+      engine.chooseTaskForInterruption(B.id);
+      at(11, 10);
+      engine.anotherInterruption();
+      at(11, 15);
+      engine.stopInterruption();
+
+      const last = engine.getInterruptionsToPlace().filter(f => f.id !== earlier);
+      expect(last).toHaveLength(1);
+      expect(engine.getRunToPlace(last[0].id)).toEqual([last[0].id]);
+    });
+
+    it('RunToPlace_NoId_Throws', () => {
+      expect(() => engine.getRunToPlace('')).toThrow(ArgumentNullException);
     });
   });
 

@@ -193,10 +193,8 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
                 <span>{Verb.BACK} to {interruption.interruptedTaskKey}</span>
               </button>
             )}
-            <button type="button" onClick={onOpenTaskModal} title="End it and start a task from the picker" className={PLAIN}>
-              <Repeat className="w-4 h-4" />
-              <span>{Verb.SWITCH} task…</span>
-            </button>
+            {/* No Switch here: choosing a task does nothing during an
+                interruption -- it ends first (the user's choice, 2026-11-12). */}
             {onStopInterruption && (
               <button
                 type="button"

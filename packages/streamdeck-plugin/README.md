@@ -18,13 +18,13 @@ Previous task and Recent 1-3 are there to add (0.6.0, S29).
 
 | Action | Shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task's key and its time, the bar's icon moving as on the bar, under a band: green while tracking, amber while paused, during an interruption (the bolt and its time) and for a task no longer yours (NOT YOURS). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running or an interruption running, opens the task picker. Held half a second, opens the task picker whatever runs |
+| **Session** | the task's key and its time, the bar's icon moving as on the bar, under a band: green while tracking, amber while paused, during an interruption (the bolt and its time) and for a task no longer yours (NOT YOURS). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running, opens the task picker. Held half a second, opens the task picker. During an interruption neither: end it first |
 | **Interrupt** | INTERRUPT, or ANOTHER during an interruption, with "3 to place" while interruptions wait | starts an interruption, whatever runs; during one, ends it and starts the next |
 | **Previous task** | PREV and the task's key; blank during an interruption | goes back to the task timed before this one |
 | **Answer A** | says yes: DONE (two presses), BACK during an interruption, JOIN, WRAP UP, RESUME, START LUNCH, END STAND-UP, DONE ANYWAY | that |
 | **Answer B** | stops or waits, keeping the time: STOP, SKIP, NOT NOW | that |
 | **Answer C** | throws away: DISCARD, or DISCARD ⚡ during an interruption (two presses); blank while a question waits or nothing runs | that |
-| **Recent 1-3** | a recent task's key and START; never the one running | starts it |
+| **Recent 1-3** | a recent task's key and START; never the one running; blank during an interruption | starts it |
 
 - **A Mini layout comes with it** (`profiles/SprintTicker-Mini`, in the
   manifest's `Profiles`): Session, Interrupt and Previous task above, A, B
