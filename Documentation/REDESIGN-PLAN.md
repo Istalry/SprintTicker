@@ -1689,8 +1689,9 @@ waits for the undo and the drain).
 
 - **Migration 16**: `worklog_sync_queue.refused_at_utc`. A refused row
   stays FAILED, so every path that reads an unsent row as unsent still
-  does; the column keeps it out of `requeueFailedItems`. Not checked on the
-  real database yet: `pnpm db:check-migration`, by the user.
+  does; the column keeps it out of `requeueFailedItems`. `pnpm
+  db:check-migration` passed on the real database (13 to 16: 21 worklogs,
+  7 queue rows, nothing lost), 2026-11-12.
 - The worker refuses a send on a permanent 4xx from the POST itself
   (`isRefusal`: not 401/403, 408, 429), never from the marker search before
   a resend. The worklog reads `refused` with the provider's answer
@@ -2045,7 +2046,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
-| P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry, migration 16 -- `pnpm db:check-migration` still to run by the user) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c (2026-11-12) |
+| P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | not started | |
 | P13 | not started | |
 | P14 | not started | |
