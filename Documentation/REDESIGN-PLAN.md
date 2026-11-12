@@ -2166,8 +2166,13 @@ before the next:
 - ❚❚ is two 1x5 bars before the key (`PAUSED_MARK`, 5 px with its gap); the
   key gets what the time leaves, cut by `fitToWidth`. `FINISH_UNLISTED` is
   `DONE_UNLISTED`, its words from `BarWord`.
-- **To try on the bar:** the new row 1 and ❚❚ legible, and a pause opening
-  on STOP.
+- **Tried on the bar (the user, 2026-11-12): it works.**
+
+**Raised by the user after P14a (2026-11-12):** the bar's controls are not
+smooth to use, and how SprintTicker uses the bar should be rethought at
+some point -- the inputs, the menus and what is worth doing from the bar at
+all. P14b-P14e add menus (the timing menu, the end choices, the picker's
+levels), so this weighs on them.
 
 ---
 
