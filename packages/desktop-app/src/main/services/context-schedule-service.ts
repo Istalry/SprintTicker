@@ -1,3 +1,4 @@
+import type { UserMode } from '../../shared/dtos';
 import { powerMonitor, BrowserWindow } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { PriorityPreemptionEngine } from './priority-preemption-engine';
@@ -780,6 +781,16 @@ export class ContextScheduleService {
       }
     });
     return true;
+  }
+
+  /// <summary>
+  /// The user's own choice of mode -- the mode chip, the tray (P12a): Lunch,
+  /// Away, or back to work from either. One place, so the two cannot differ.
+  /// </summary>
+  public chooseMode(mode: UserMode): void {
+    if (mode === 'LUNCH') this.enterLunchMode();
+    else if (mode === 'AWAY') this.enterAwayMode();
+    else this.exitLunchMode();
   }
 
   /// <summary>

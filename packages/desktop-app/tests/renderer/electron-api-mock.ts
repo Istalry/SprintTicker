@@ -126,6 +126,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getNotices: vi.fn().mockResolvedValue({ updatedTo: null, noAccountDismissed: true }),
     dismissNotice: vi.fn().mockResolvedValue({ updatedTo: null, noAccountDismissed: true }),
     getRefusedWorklogs: vi.fn().mockResolvedValue([]),
+    onOpenRoute: subscribe('onOpenRoute'),
     keepWorklogOff: vi.fn().mockImplementation(async (id: string) => ({ id })),
     onForgottenReview: subscribe('onForgottenReview'),
     onSessionUpdated: subscribe('onSessionUpdated'),

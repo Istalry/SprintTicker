@@ -90,6 +90,10 @@ export const App: React.FC = () => {
 
   const warn = (what: string) => (err: unknown) => console.warn(`[App] ${what} failed:`, err);
 
+  // Main opening the window on a place (P12): each opens on Today; End my
+  // day's dialog is useModals'.
+  useEffect(() => window.electronAPI?.onOpenRoute?.(() => setPlace('today')), []);
+
   /** A palette action, run as the window's own control for it runs it. */
   const runAction = (id: PaletteAction['id']): void => {
     if (id.startsWith('settings:')) {

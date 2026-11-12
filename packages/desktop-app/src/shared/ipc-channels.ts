@@ -52,6 +52,8 @@ export enum IPCChannel {
   ON_SYNC_HEALTH = 'sync:on-health',
   GET_NOTICES = 'notices:get',
   DISMISS_NOTICE = 'notices:dismiss',
+  // The window opened on something from outside it (P12)
+  ON_OPEN_ROUTE = 'window:on-open-route',
   // One entry refused (P11c)
   GET_REFUSED_WORKLOGS = 'worklogs:get-refused',
   KEEP_WORKLOG_OFF = 'worklogs:keep-off',

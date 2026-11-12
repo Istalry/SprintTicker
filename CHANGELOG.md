@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Closing the window keeps SprintTicker running, in the tray.** The timer,
+  the bar and the Stream Deck go on; Quit is in the tray's menu, and a
+  setting in General makes ✕ quit instead. The tray opens the window on a
+  single click, and its menu has Switch task, Previous task, Pause or
+  Resume, Stop, Interrupt or Back, Lunch, Away and End my day.
 - **An entry Jira refuses says why, and stops being retried.** Time tracking
   off on an issue, or the issue deleted: Today shows "Jira refused 1 entry"
   with Jira's reason, and the entry offers ↳ Move… or Keep off Jira. It used

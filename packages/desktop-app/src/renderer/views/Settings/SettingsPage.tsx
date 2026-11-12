@@ -5,6 +5,7 @@ import { CeremoniesView } from '../Ceremonies/CeremoniesView';
 import { DeviceDiagnosticsView } from '../Device/DeviceDiagnosticsView';
 import { NotificationSettingsView } from '../Notifications/NotificationSettingsView';
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
+import { CloseToTrayCard } from '../../components/CloseToTrayCard';
 import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
 import { InterruptShortcutCard } from '../../components/InterruptShortcutCard';
 import { StartSideEffectsCard } from '../../components/StartSideEffectsCard';
@@ -147,6 +148,7 @@ const GeneralGroup: React.FC<{ showDeveloper: boolean; onShowDeveloper: (value: 
 }) => (
   <>
     <LaunchAtLoginCard />
+    <CloseToTrayCard />
     <InterruptShortcutCard />
     <UpdateSettingsCard />
     <Card title="Set up again" description="The first-run questions: account, bar, your day.">
@@ -193,7 +195,7 @@ const DevicesGroup: React.FC<{ hasBar: boolean }> = ({ hasBar }) => (
     )}
     <Card
       title="Stream Deck"
-      description="The SprintTicker plugin for Elgato's Stream Deck talks to this app on its own once installed: Session, Interrupt and the answer keys. It is a separate download, on the release page."
+      description="The SprintTicker plugin for Elgato's Stream Deck talks to this app on its own once installed: Session, Interrupt and the answer keys. It comes with SprintTicker; Run setup, in General, installs it."
     >
       <span className="text-xs text-text-muted">Nothing to set here.</span>
     </Card>

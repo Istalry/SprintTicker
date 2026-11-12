@@ -1010,13 +1010,7 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.SET_USER_MODE, async (_event, mode) => {
-      if (mode === 'LUNCH') {
-        this.contextScheduleService.enterLunchMode();
-      } else if (mode === 'AWAY') {
-        this.contextScheduleService.enterAwayMode();
-      } else {
-        this.contextScheduleService.exitLunchMode();
-      }
+      this.contextScheduleService.chooseMode(mode === 'LUNCH' || mode === 'AWAY' ? mode : 'WORK');
       return true;
     });
 

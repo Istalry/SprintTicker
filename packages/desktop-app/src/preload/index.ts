@@ -6,6 +6,7 @@ import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type { InterruptionToPlaceDTO } from '../shared/interruption';
 import type { ConnectionTestRequestDTO } from '../shared/first-run';
 import type { NoticeKind, SyncHealthDTO } from '../shared/sync-health';
+import type { WindowRoute } from '../shared/window-route';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -67,6 +68,11 @@ const electronAPI: IElectronAPI = {
   getNotices: () => ipcRenderer.invoke(IPCChannel.GET_NOTICES),
   dismissNotice: (kind: NoticeKind) => ipcRenderer.invoke(IPCChannel.DISMISS_NOTICE, kind),
   getRefusedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_REFUSED_WORKLOGS),
+  onOpenRoute: (callback: (route: WindowRoute) => void) => {
+    const handler = (_event: IpcRendererEvent, route: WindowRoute) => callback(route);
+    ipcRenderer.on(IPCChannel.ON_OPEN_ROUTE, handler);
+    return () => { ipcRenderer.removeListener(IPCChannel.ON_OPEN_ROUTE, handler); };
+  },
   keepWorklogOff: (worklogId: string) => ipcRenderer.invoke(IPCChannel.KEEP_WORKLOG_OFF, worklogId),
   resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) =>
     ipcRenderer.invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, resolution),

@@ -85,4 +85,19 @@ describe('App', () => {
     expect(await screen.findByRole('dialog', { name: 'End my day' })).toBeTruthy();
     expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);
   });
+
+  it('OpenRoute_EndDayFromTheTray_OpensItOnToday', async () => {
+    // P12a: the tray's End my day… opens the window on it, as the header's
+    // button does, with the prompt on the bar too.
+    const bridge = installElectronApi();
+    render(<App />);
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Places' })).getByRole('button', { name: 'History' }));
+    await screen.findByRole('heading', { level: 2, name: /^History$/ });
+
+    act(() => bridge.emit('onOpenRoute', 'end-day'));
+
+    expect(await screen.findByRole('dialog', { name: 'End my day' })).toBeTruthy();
+    expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('heading', { level: 2, name: /^History$/ })).toBeNull();
+  });
 });

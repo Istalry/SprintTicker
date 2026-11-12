@@ -160,10 +160,23 @@ provider's `getTaskByKey`, keeps the task as the sync would, and is shown
 only with `canFetchByKey`. Picking during an interruption is
 `interruption:switch`, with `takeAlong` when its time goes too.
 
+**The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
+(`windows/main-window-close.ts`) takes the dashboard's `close`: unless a
+quit is under way or `close_to_tray` is off, it prevents it, hides the
+window and, the first time, shows "SprintTicker is still running"
+(`close_to_tray_told`). A quit is the tray's Quit (`before-quit`) or Windows
+ending the session (`query-session-end`, `session-end`): a close that only
+hid would hold Windows' shutdown, End my day's included. `TrayManager`
+builds its menu at each right-click (`buildMenu`), so Pause or Resume, the
+previous task, Lunch and Away (`ContextScheduleService.chooseMode`, shared
+with the mode chip) and Windows' startup switch are read then; a single
+click opens the window. Its End my day… opens the window on a route
+(`openWindowOn`, `window:on-open-route`).
+
 **Starting with Windows** is `LaunchAtLoginService`
 (`src/main/services/launch-at-login.ts`), behind both the switch in Settings,
-General and the tray's checkbox; the tray rebuilds its menu from the service's
-notification. It keeps no state: every read asks Windows
+General and the tray's checkbox; the tray reads it each time it builds its
+menu. It keeps no state: every read asks Windows
 (`getLoginItemSettings(...).executableWillLaunchAtLogin`), because the
 Startup apps page can switch the entry off with no event the app hears. The
 entry is the Run value named by the AppUserModelID, and it carries

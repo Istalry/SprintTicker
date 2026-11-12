@@ -19,6 +19,7 @@ import { IPCHandlerRegistry } from './ipc/ipc-handler-registry';
 import { followBar } from './services/follow-bar';
 import { ProviderEventService } from './services/provider-event-service';
 import { ElectronToastPresenter } from './services/toast-presenter';
+import { MainWindowCloseGuard } from './windows/main-window-close';
 import { WindowPromptOutlet } from './windows/prompt-outlet';
 import { ReminderService } from './services/reminder-service';
 import { MorningService } from './services/morning-service';
@@ -34,7 +35,7 @@ import { defaultAnimationsDir, loadAnimationSequence } from './hardware/animatio
 import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
 import { UndoService } from './services/undo-service';
 import { undoableSessionEnding } from './services/undoable-commands';
-import { openTaskPickerInMainWindow, revealMainWindow } from './windows/main-window-actions';
+import { openTaskPickerInMainWindow, openWindowOn, revealMainWindow } from './windows/main-window-actions';
 import { ForegroundRaiser } from './windows/foreground-raiser';
 import { ProviderManager } from './providers/provider-manager';
 
@@ -57,7 +58,7 @@ import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
 import { DeviceConfigDTO, ScheduleSettingsDTO } from '../shared/dtos';
 import { normalizeScheduleSettings } from '../shared/schedule-defaults';
-import { FlowSettingKey, readStartSideEffects } from '../shared/flow-settings';
+import { FlowSettingKey, readCloseToTray, readStartSideEffects } from '../shared/flow-settings';
 import { UpdateChecker } from './updater/update-checker';
 import { LaunchAtLoginService, launchedHidden } from './services/launch-at-login';
 import { InterruptShortcutService } from './services/interrupt-shortcut-service';
@@ -75,6 +76,13 @@ let webhookServer: WebhookServer | null = null;
 let deckServer: DeckServer | null = null;
 let ipcRegistry: IPCHandlerRegistry | null = null;
 let trayManager: TrayManager | null = null;
+/**
+ * A quit under way: the tray's Quit, or Windows ending the session. The
+ * window's close hides it to the tray otherwise (P12a), and must never hold
+ * a quit -- End my day's shutdown included.
+ */
+let quitting = false;
+let closeGuard: MainWindowCloseGuard | null = null;
 let windowsNotificationService: WindowsNotificationListenerService | null = null;
 let contextScheduleService: ContextScheduleService | null = null;
 let presenceMonitor: PresenceMonitor | null = null;
@@ -226,6 +234,13 @@ const createWindow = (hidden: boolean = false): void => {
 
   mainWindow.setMenu(null);
   secureAndLoad(mainWindow);
+
+  mainWindow.on('close', event => {
+    closeGuard?.onClose(event);
+  });
+  // Windows logging off or shutting down: the close that follows is a quit.
+  mainWindow.on('query-session-end', () => { quitting = true; });
+  mainWindow.on('session-end', () => { quitting = true; });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -586,10 +601,35 @@ async function startApplication(): Promise<void> {
   webhookServer.onUpgrade(DECK_PATH, (req, socket, head) => deck.handleUpgrade(req, socket, head));
 
   // 6. Create Window & Render Initial State
+  closeGuard = new MainWindowCloseGuard({
+    closeToTray: () => readCloseToTray(settingsRepo.getSetting<unknown>(FlowSettingKey.CLOSE_TO_TRAY, null)),
+    isQuitting: () => quitting,
+    hide: () => mainWindow?.hide(),
+    settings: settingsRepo,
+    toasts,
+    reveal: () => { revealMainWindow(mainWindow); }
+  });
   createWindow(launchedHidden(process.argv));
   if (mainWindow && engine) {
     const schedule = contextScheduleService;
-    trayManager = new TrayManager(mainWindow, engine, miniWindowManager, launchAtLogin, schedule ? () => { schedule.interrupt('tray'); } : undefined, pickers);
+    const window = mainWindow;
+    trayManager = new TrayManager(
+      mainWindow,
+      engine,
+      miniWindowManager,
+      launchAtLogin,
+      schedule ? () => { schedule.interrupt('tray'); } : undefined,
+      pickers,
+      schedule
+        ? {
+            // Today's Stop: one click, Undo for 10 s; an interruption ends.
+            stop: () => { sessionEnding.complete(undefined, false); },
+            chooseMode: mode => schedule.chooseMode(mode),
+            getMode: () => priorityEngine.getUserMode(),
+            endDay: () => { openWindowOn(window, 'end-day'); }
+          }
+        : undefined
+    );
     trayManager.initialize();
   }
   miniWindowManager.restore();
@@ -629,6 +669,7 @@ function streamDeckPluginPath(): string {
 }
 
 app.on('before-quit', () => {
+  quitting = true;
   miniWindowManager?.dispose();
   pickerWindowManager?.dispose();
 });

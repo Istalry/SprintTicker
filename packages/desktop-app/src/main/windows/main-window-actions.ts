@@ -1,5 +1,6 @@
 import type { BrowserWindow } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
+import type { WindowRoute } from '../../shared/window-route';
 import type { ForegroundRaiser } from './foreground-raiser';
 
 /**
@@ -16,6 +17,16 @@ export function revealMainWindow(win: BrowserWindow | null, raiser?: ForegroundR
   win.show();
   win.focus();
   if (raiser) void raiser.raise(win.getNativeWindowHandle());
+  return true;
+}
+
+/**
+ * Brings the dashboard forward on a place (P12): the tray's End my day…,
+ * and the toasts that lead somewhere. Main names it; the window shows it.
+ */
+export function openWindowOn(win: BrowserWindow | null, route: WindowRoute): boolean {
+  if (!revealMainWindow(win)) return false;
+  win!.webContents.send(IPCChannel.ON_OPEN_ROUTE, route);
   return true;
 }
 

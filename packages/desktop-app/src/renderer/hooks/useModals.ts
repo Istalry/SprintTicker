@@ -47,6 +47,15 @@ export function useModals(sessionRunning: boolean) {
     });
   }, []);
 
+  // The tray's End my day… (P12a): opened as the header's button opens it,
+  // so the bar shows the wrap-up too.
+  useEffect(() => window.electronAPI?.onOpenRoute?.(route => {
+    if (route !== 'end-day') return;
+    setEodOpen(true);
+    window.electronAPI?.triggerEodPrompt?.()
+      .catch(err => console.warn('[useModals] Could not show the wrap-up prompt on the bar:', err));
+  }), []);
+
   // Picker requests and prompt answers arriving on the input stream.
   useEffect(() => {
     if (!window.electronAPI?.onHardwareInputEvent) return undefined;

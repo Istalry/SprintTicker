@@ -1029,6 +1029,13 @@ shortcut that declares another AUMID. Two more things about it:
   change, once the new one has run against real hardware.
 - **No floating promises in main.** An unhandled rejection terminates the
   process on Node 15+; it is an ESLint error there and a warning in the renderer.
+- **The window's close hides; only Quit quits** (P12a). Quitting clears
+  the bar and closes the deck's socket, so the dashboard's ✕ hides it to
+  the tray (`MainWindowCloseGuard`) unless `close_to_tray` is off. The
+  guard must never hold a quit: `before-quit` and Windows'
+  `query-session-end` / `session-end` set `quitting` first, or the window
+  would refuse Windows' shutdown -- End my day's included. Anything that
+  ran on the dashboard's `closed` now runs only at a quit.
 - **Async Electron lifecycle handlers do not work.** Electron does not await
   `will-quit`, so an `async` handler's teardown after the first `await` never
   runs. Use `preventDefault()` + `app.exit(0)`.

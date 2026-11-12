@@ -631,7 +631,7 @@
       tracking, amber while paused, grey with nothing running. Beside them is the
       icon of whatever holds the bar: the stopwatch for your session, an app&#39;s icon
       during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
-      Timer</strong> in the header or <strong>Show Mini Timer</strong> in the tray menu.</p>
+      Timer</strong> in the header or <strong>Mini timer</strong> in the tray menu.</p>
       <p align="center">
         <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
       </p><ul>
@@ -922,8 +922,8 @@
       that waited stops, its time logged. Tick <em>Put &quot;…&quot; on it too</em> in the
       picker, and the interruption&#39;s time goes on the task you pick as well.</li>
       </ul>
-      <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>Back to
-      MG-12</strong>, <strong>Stop the Interruption</strong> and <strong>Another Interruption</strong>.</p>
+      <p>The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has <strong>↩ Back to
+      MG-12</strong> and <strong>Stop</strong>, which ends the interruption.</p>
       <ul>
       <li><p><strong>Lunch time during an interruption</strong> asks first, on Today and the mini
       timer: <em>Start lunch? It ends &quot;Call with Marc&quot;, which waits to be placed.</em>
@@ -1604,6 +1604,18 @@
       replied. <strong>Reset to USB default</strong> puts the address back to <code>10.0.4.20</code>.</p>
       <p>🎨 <strong>Task key color</strong> sets the color of the task key on the bar&#39;s front
       display -- blue, pink, amber or pale cyan -- and is kept across restarts.</p>
+      <p>🗙 <strong>Closing the window keeps SprintTicker running</strong>, in the tray by the
+      clock: your timer, the bar and the Stream Deck go on. The first time, a
+      Windows notification says where it went. <strong>Quit</strong> is in the tray&#39;s menu.
+      <em>Settings › General › When I close the window</em> can make the window&#39;s ✕
+      quit instead.</p>
+      <p>🧭 <strong>The tray</strong>: a click opens the window. Its menu, on a right-click, holds
+      what you reach for without the window: <strong>Switch task…</strong>, <strong>Previous task:
+      PF-31</strong>, <strong>Pause</strong> or <strong>Resume</strong>, <strong>Stop</strong> (as Today&#39;s, with Undo),
+      <strong>Interrupt</strong> -- or <strong>↩ Back to MG-12</strong> during an interruption -- <strong>Lunch</strong>
+      and <strong>Away</strong> (ticked while on; click again to go back to work), <strong>End my
+      day…</strong>, <strong>Mini timer</strong>, <strong>Start with Windows</strong> and <strong>Quit</strong>. Quit clears the
+      bar and lets go of the Stream Deck.</p>
       <p>🚀 <strong>Start with Windows</strong> starts SprintTicker when you sign in, in the tray,
       with no window over whatever you open first. The tray icon, the bar and the
       mini timer work as usual; open the window from the tray, or by starting
@@ -2236,10 +2248,22 @@
       provider&#39;s <code>getTaskByKey</code>, keeps the task as the sync would, and is shown
       only with <code>canFetchByKey</code>. Picking during an interruption is
       <code>interruption:switch</code>, with <code>takeAlong</code> when its time goes too.</p>
+      <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
+      (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
+      quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
+      window and, the first time, shows &quot;SprintTicker is still running&quot;
+      (<code>close_to_tray_told</code>). A quit is the tray&#39;s Quit (<code>before-quit</code>) or Windows
+      ending the session (<code>query-session-end</code>, <code>session-end</code>): a close that only
+      hid would hold Windows&#39; shutdown, End my day&#39;s included. <code>TrayManager</code>
+      builds its menu at each right-click (<code>buildMenu</code>), so Pause or Resume, the
+      previous task, Lunch and Away (<code>ContextScheduleService.chooseMode</code>, shared
+      with the mode chip) and Windows&#39; startup switch are read then; a single
+      click opens the window. Its End my day… opens the window on a route
+      (<code>openWindowOn</code>, <code>window:on-open-route</code>).</p>
       <p><strong>Starting with Windows</strong> is <code>LaunchAtLoginService</code>
       (<code>src/main/services/launch-at-login.ts</code>), behind both the switch in Settings,
-      General and the tray&#39;s checkbox; the tray rebuilds its menu from the service&#39;s
-      notification. It keeps no state: every read asks Windows
+      General and the tray&#39;s checkbox; the tray reads it each time it builds its
+      menu. It keeps no state: every read asks Windows
       (<code>getLoginItemSettings(...).executableWillLaunchAtLogin</code>), because the
       Startup apps page can switch the entry off with no event the app hears. The
       entry is the Run value named by the AppUserModelID, and it carries
@@ -3640,6 +3664,10 @@
       <tr>
       <td align="left"><code>notices:dismiss</code></td>
       <td align="left"><code>&#39;updated&#39; | &#39;no-account&#39;</code>: put away for good; answers the notices</td>
+      </tr>
+      <tr>
+      <td align="left"><code>window:on-open-route</code></td>
+      <td align="left">Push, main to the window: open on a place -- <code>&#39;today&#39;</code>, <code>&#39;end-day&#39;</code> (the tray&#39;s End my day…, P12a). The window goes to Today; <code>end-day</code> opens End my day as the header&#39;s button does</td>
       </tr>
       <tr>
       <td align="left"><code>worklogs:get-refused</code></td>

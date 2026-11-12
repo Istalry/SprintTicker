@@ -1763,6 +1763,38 @@ waits for the undo and the drain).
 **Docs:** `USER-GUIDE.md` (the tray, the mini timer), `CLAUDE.md` (close
 hides; only Quit clears the bar).
 
+**Split** (2026-11-12), each its own commit:
+
+- P12a: close hides to the tray, the setting, the first-close toast; the
+  tray's single click and its menu of S26.
+- P12b: the tray icon's mark (▶ ⚡ ❚❚ ! ○) and the number waiting.
+- P12c: toasts that lead somewhere, a route each.
+- P12d: the mini timer's states of S25.
+- P12e: `ShortcutService` and its four chords (moved here from P6).
+
+**As landed: P12a, close hides to the tray (2026-11-12).**
+
+- `MainWindowCloseGuard` (`windows/main-window-close.ts`): the close is
+  prevented and the window hidden, unless quitting (`before-quit`,
+  `query-session-end`, `session-end`) or `close_to_tray` is off. The first
+  hide says "SprintTicker is still running" (`close_to_tray_told`, set only
+  once Windows took the toast); its click opens the window.
+- *Settings › General › When I close the window*: Keep running (default) or
+  Quit SprintTicker (`CloseToTrayCard`, the `close_to_tray` flow setting P4
+  added).
+- `TrayManager`: a single click opens the window; the menu of S26 is built
+  at each right-click (`buildMenu`), so nothing rebuilds it on the engine's
+  ticks. Stop is Today's undoable Stop; Lunch and Away go through
+  `ContextScheduleService.chooseMode`, now shared with the mode chip's IPC;
+  End my day… opens the window on it (`window:on-open-route`,
+  `shared/window-route.ts`, which P12c's toasts extend).
+- **Deviations:** "Windows is asked to keep the icon visible" is not done --
+  Windows 11 gives an app no way to promote its own icon out of the
+  overflow. During an interruption holding no task, Interrupt reads
+  "Another interruption", since there is nothing to go back to.
+- Also fixed: Settings › Devices' Stream Deck card still called the plugin
+  a separate download, which stopped being true in P11a.
+
 ---
 
 ## 18. P13 -- Stream Deck plugin 0.6.0
@@ -2047,7 +2079,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
-| P12 | not started | |
+| P12 | in progress: P12a (close hides to the tray, the menu of S26) done; P12b (the tray icon) next -- see §17 "Split" | P12a (2026-11-12) |
 | P13 | not started | |
 | P14 | not started | |
 | P15 | not started | |

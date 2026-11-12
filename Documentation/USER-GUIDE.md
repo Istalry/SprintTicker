@@ -116,7 +116,7 @@ the task key and title, the elapsed time, and a coloured edge -- green while
 tracking, amber while paused, grey with nothing running. Beside them is the
 icon of whatever holds the bar: the stopwatch for your session, an app's icon
 during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with **Mini
-Timer** in the header or **Show Mini Timer** in the tray menu.
+Timer** in the header or **Mini timer** in the tray menu.
 
 <p align="center">
   <img src="../docs/images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
@@ -385,8 +385,8 @@ While it runs, the session card says which task waits, and offers:
   that waited stops, its time logged. Tick *Put "…" on it too* in the
   picker, and the interruption's time goes on the task you pick as well.
 
-The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **Back to
-MG-12**, **Stop the Interruption** and **Another Interruption**.
+The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **↩ Back to
+MG-12** and **Stop**, which ends the interruption.
 
 - **Lunch time during an interruption** asks first, on Today and the mini
   timer: *Start lunch? It ends "Call with Marc", which waits to be placed.*
@@ -1017,6 +1017,20 @@ replied. **Reset to USB default** puts the address back to `10.0.4.20`.
 
 🎨 **Task key color** sets the color of the task key on the bar's front
 display -- blue, pink, amber or pale cyan -- and is kept across restarts.
+
+🗙 **Closing the window keeps SprintTicker running**, in the tray by the
+clock: your timer, the bar and the Stream Deck go on. The first time, a
+Windows notification says where it went. **Quit** is in the tray's menu.
+*Settings › General › When I close the window* can make the window's ✕
+quit instead.
+
+🧭 **The tray**: a click opens the window. Its menu, on a right-click, holds
+what you reach for without the window: **Switch task…**, **Previous task:
+PF-31**, **Pause** or **Resume**, **Stop** (as Today's, with Undo),
+**Interrupt** -- or **↩ Back to MG-12** during an interruption -- **Lunch**
+and **Away** (ticked while on; click again to go back to work), **End my
+day…**, **Mini timer**, **Start with Windows** and **Quit**. Quit clears the
+bar and lets go of the Stream Deck.
 
 🚀 **Start with Windows** starts SprintTicker when you sign in, in the tray,
 with no window over whatever you open first. The tray icon, the bar and the

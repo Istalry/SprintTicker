@@ -10,9 +10,16 @@ import { app, Menu, BrowserWindow, nativeImage } from 'electron';
 import fs from 'fs';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { LaunchAtLoginService } from '../src/main/services/launch-at-login';
+import type { UserMode } from '../src/shared/dtos';
 
 // Shared mock tray instance — populated by the Tray constructor mock on each initialize() call
-let lastMockTray: { setToolTip: ReturnType<typeof vi.fn>; setContextMenu: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; destroy: ReturnType<typeof vi.fn> } | null = null;
+let lastMockTray: {
+  setToolTip: ReturnType<typeof vi.fn>;
+  setContextMenu: ReturnType<typeof vi.fn>;
+  popUpContextMenu: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  destroy: ReturnType<typeof vi.fn>;
+} | null = null;
 
 vi.mock('electron', () => {
   return {
@@ -32,6 +39,7 @@ vi.mock('electron', () => {
       lastMockTray = {
         setToolTip: vi.fn(),
         setContextMenu: vi.fn(),
+        popUpContextMenu: vi.fn(),
         on: vi.fn(),
         destroy: vi.fn()
       };
@@ -78,28 +86,44 @@ describe('TrayManager Unit Tests', () => {
     dbConn.close();
   });
 
-  it('TrayManager_Initialize_CreatesTrayAndSubscribesToWindowEvents', () => {
+  /** The tray's handler for `event`, as `initialize` registered it. */
+  const trayHandler = (event: string): (() => void) =>
+    (lastMockTray!.on.mock.calls as Array<[string, () => void]>).find(c => c[0] === event)![1];
+
+  it('TrayManager_SingleClick_OpensTheWindow', () => {
+    // S26: a single click; the double-click it replaced was a second guess.
     const manager = new TrayManager(mockWindow, engine);
     manager.initialize();
 
-    expect(mockWindow.on).toHaveBeenCalledWith('close', expect.any(Function));
+    trayHandler('click')();
 
-    manager.restoreWindow();
     expect(mockWindow.show).toHaveBeenCalled();
     expect(mockWindow.focus).toHaveBeenCalled();
-
-    // Trigger active task session to test tooltip update
-    engine.startTask('PROJ-142', false, 'Implement Dash Mechanics');
-    engine.pauseSession();
-    engine.resumeSession();
-
-    // Trigger close event
-    const closeHandler = (mockWindow.on as unknown as { mock: { calls: Array<[string, (...args: unknown[]) => unknown]> } }).mock.calls.find(c => c[0] === 'close')![1];
-    closeHandler();
-    expect((app as unknown as { isQuitting?: boolean }).isQuitting).toBe(true);
-
     manager.destroy();
   });
+
+  it('TrayManager_Initialize_LeavesTheWindowsCloseAlone', () => {
+    // The close is MainWindowCloseGuard's now: it hides to the tray. The
+    // tray used to take it as a quit.
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+
+    expect(mockWindow.on).not.toHaveBeenCalledWith('close', expect.any(Function));
+    manager.destroy();
+  });
+
+  it('TrayManager_RightClick_PopsUpTheMenuBuiltNow', () => {
+    const manager = new TrayManager(mockWindow, engine);
+    manager.initialize();
+    const builds = vi.mocked(Menu.buildFromTemplate).mock.calls.length;
+
+    trayHandler('right-click')();
+
+    expect(vi.mocked(Menu.buildFromTemplate).mock.calls.length).toBe(builds + 1);
+    expect(lastMockTray!.popUpContextMenu).toHaveBeenCalledTimes(1);
+    manager.destroy();
+  });
+
   it('TrayManager_RestoreWindow_WhenMinimized_RestoresAndShows', () => {
     mockWindow.isMinimized = vi.fn().mockReturnValue(true);
 
@@ -144,35 +168,12 @@ describe('TrayManager Unit Tests', () => {
     manager.destroy();
   });
 
-  it('TrayManager_ContextMenu_QuitMenuItem_SetsIsQuittingAndCallsQuit', () => {
-    let quitClickHandler: ((item: unknown) => void) | null = null;
-
-    vi.mocked(Menu.buildFromTemplate).mockImplementation((template: Array<{ label?: string; click?: () => void }>) => {
-      const quitItem = template.find(i => i.label === 'Quit Application');
-      if (quitItem && quitItem.click) quitClickHandler = quitItem.click;
-      return {} as unknown as Menu;
-    });
-
-    const manager = new TrayManager(mockWindow, engine);
-    manager.initialize();
-
-    expect(quitClickHandler).not.toBeNull();
-    quitClickHandler!(null);
-
-    expect(vi.mocked(app).quit).toHaveBeenCalled();
-    manager.destroy();
-  });
-
   /**
-   * The rest of the tray context menu.
-   *
-   * `updateContextMenu` is private and runs only from `initialize`, so the
-   * click handlers are reachable only through the template Menu.buildFromTemplate
-   * receives -- the technique the quit test above established. Only quit used
-   * it, which left every item a user actually reaches for untested: the tray is
-   * how you pause without opening the window.
+   * The menu of S26, as `buildMenu` answers it for each state: the template
+   * Menu.buildFromTemplate receives, so any item's click can be invoked by
+   * its label.
    */
-  describe('context menu items', () => {
+  describe('the menu', () => {
     type MenuTemplateItem = {
       label?: string;
       type?: string;
@@ -182,14 +183,15 @@ describe('TrayManager Unit Tests', () => {
 
     let template: MenuTemplateItem[];
 
-    /** Captures the template so any item's click can be invoked by label. */
-    function captureTemplate(): void {
+    beforeEach(() => {
       template = [];
       vi.mocked(Menu.buildFromTemplate).mockImplementation((built: MenuTemplateItem[]) => {
         template = built;
         return {} as unknown as Menu;
       });
-    }
+    });
+
+    const labels = () => template.filter(i => i.label).map(i => i.label);
 
     function click(label: string, item: { checked: boolean } = { checked: false }): void {
       const entry = template.find(i => i.label === label);
@@ -197,13 +199,151 @@ describe('TrayManager Unit Tests', () => {
       entry.click(item);
     }
 
-    beforeEach(() => {
-      captureTemplate();
+    function commands(mode: UserMode = 'WORK') {
+      let current = mode;
+      return {
+        stop: vi.fn(),
+        chooseMode: vi.fn((next: UserMode) => { current = next; }),
+        getMode: () => current,
+        endDay: vi.fn()
+      };
+    }
+
+    function trayWith(options: { interrupt?: () => void; commands?: ReturnType<typeof commands> } = {}): TrayManager {
+      const manager = new TrayManager(mockWindow, engine, undefined, undefined, options.interrupt, undefined, options.commands);
+      manager.initialize();
+      manager.buildMenu();
+      return manager;
+    }
+
+    it('Menu_NothingTiming_SwitchInterruptModesAndQuit', () => {
+      const manager = trayWith({ interrupt: vi.fn(), commands: commands() });
+
+      expect(labels()).toEqual([
+        'Open SprintTicker', 'Switch task…', 'Interrupt', 'Lunch', 'Away', 'End my day…', 'Quit'
+      ]);
+      manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_OpenDashboard_RestoresTheWindow', () => {
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
+    it('Menu_Timing_PauseStopAndThePreviousTask', () => {
+      engine.startTask('PROJ-2', false, 'Second');
+      // Which task is previous is the engine's rule (previous-task.test.ts).
+      vi.spyOn(engine, 'getPreviousTask').mockReturnValue({ id: 'PROJ-1', projectId: 'P', key: 'PROJ-1', title: 'First', status: 'todo' });
+      const tray = commands();
+      const manager = trayWith({ interrupt: vi.fn(), commands: tray });
+
+      expect(labels()).toEqual([
+        'Open SprintTicker', 'Switch task…', 'Previous task: PROJ-1', 'Pause', 'Stop', 'Interrupt',
+        'Lunch', 'Away', 'End my day…', 'Quit'
+      ]);
+      click('Previous task: PROJ-1');
+      expect(engine.getCurrentSession()?.taskId).toBe('PROJ-1');
+      click('Stop');
+      expect(tray.stop).toHaveBeenCalledTimes(1);
+      manager.destroy();
+    });
+
+    it('Menu_PauseThenResume_FollowTheSession', () => {
+      engine.startTask('PROJ-301', false, 'Tray pause');
+      const manager = trayWith({ commands: commands() });
+
+      click('Pause');
+      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      manager.buildMenu();
+      click('Resume');
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      manager.destroy();
+    });
+
+    it('Menu_DuringAnInterruption_BackToTheTask_NoPauseNorPrevious', () => {
+      engine.startTask('PROJ-1', false, 'First');
+      engine.startTask('PROJ-2', false, 'Second');
+      engine.startInterruption(new Date(), 'tray');
+      const manager = trayWith({ interrupt: vi.fn(), commands: commands() });
+
+      expect(labels()).toContain('↩ Back to PROJ-2');
+      expect(labels()).not.toContain('Pause');
+      expect(labels().some(l => l?.startsWith('Previous'))).toBe(false);
+      expect(labels()).not.toContain('Interrupt');
+      click('↩ Back to PROJ-2');
+      expect(engine.getCurrentSession()).toMatchObject({ taskId: 'PROJ-2', status: 'TRACKING' });
+      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+      manager.destroy();
+    });
+
+    it('Menu_InterruptionHoldingNothing_InterruptIsAnother', () => {
+      engine.startInterruption(new Date(), 'tray');
+      const interrupt = vi.fn();
+      const manager = trayWith({ interrupt, commands: commands() });
+
+      click('Another interruption');
+
+      expect(interrupt).toHaveBeenCalledTimes(1);
+      manager.destroy();
+    });
+
+    it('Menu_Interrupt_StartsItWithoutTheWindow', () => {
+      const interrupt = vi.fn();
+      const manager = trayWith({ interrupt });
+
+      click('Interrupt');
+
+      expect(interrupt).toHaveBeenCalledTimes(1);
+      expect(mockWindow.show).not.toHaveBeenCalled();
+      manager.destroy();
+    });
+
+    it('Menu_ActionFails_TheClickDoesNotThrow', () => {
+      // A throw from a menu click would reach Electron's main process.
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const manager = trayWith({ interrupt: () => { throw new Error('database closed'); } });
+
+      expect(() => click('Interrupt')).not.toThrow();
+      manager.destroy();
+    });
+
+    it('Menu_NoInterrupt_OffersNoEntry', () => {
+      const manager = trayWith();
+
+      expect(labels()).not.toContain('Interrupt');
+      manager.destroy();
+    });
+
+    it('Menu_LunchAndAway_TickedWhileOn_ClickingTheOneOnGoesBackToWork', () => {
+      const tray = commands('LUNCH');
+      const manager = trayWith({ commands: tray });
+
+      expect(template.find(i => i.label === 'Lunch')?.checked).toBe(true);
+      expect(template.find(i => i.label === 'Away')?.checked).toBe(false);
+      click('Lunch');
+      expect(tray.chooseMode).toHaveBeenLastCalledWith('WORK');
+      manager.buildMenu();
+      click('Away');
+      expect(tray.chooseMode).toHaveBeenLastCalledWith('AWAY');
+      manager.destroy();
+    });
+
+    it('Menu_EndMyDay_OpensItInTheWindow', () => {
+      const tray = commands();
+      const manager = trayWith({ commands: tray });
+
+      click('End my day…');
+
+      expect(tray.endDay).toHaveBeenCalledTimes(1);
+      manager.destroy();
+    });
+
+    it('Menu_Quit_QuitsTheApp', () => {
+      const manager = trayWith();
+
+      click('Quit');
+
+      expect(vi.mocked(app).quit).toHaveBeenCalled();
+      manager.destroy();
+    });
+
+    it('Menu_OpenSprintTicker_RestoresTheWindow', () => {
+      const manager = trayWith();
 
       click('Open SprintTicker');
 
@@ -212,103 +352,13 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_Interrupt_StartsItWithoutTheWindow', () => {
-      const interrupt = vi.fn();
-      const manager = new TrayManager(mockWindow, engine, undefined, undefined, interrupt);
-      manager.initialize();
-
-      click('Start an Interruption');
-
-      expect(interrupt).toHaveBeenCalledTimes(1);
-      expect(mockWindow.show).not.toHaveBeenCalled();
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_InterruptFails_TheClickDoesNotThrow', () => {
-      // A throw from a menu click would reach Electron's main process.
-      vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      const manager = new TrayManager(mockWindow, engine, undefined, undefined, () => { throw new Error('database closed'); });
-      manager.initialize();
-
-      expect(() => click('Start an Interruption')).not.toThrow();
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_NoInterrupt_OffersNoEntry', () => {
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
-
-      expect(template.some(i => i.label === 'Start an Interruption')).toBe(false);
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_DuringAnInterruption_BackStopAndAnother', () => {
-      engine.startTask('adhoc_t', true, 'The task');
-      const manager = new TrayManager(mockWindow, engine, undefined, undefined, vi.fn());
-      manager.initialize();
-      expect(template.some(i => i.label?.startsWith('Back to'))).toBe(false);
-
-      engine.startInterruption(new Date(), 'tray');
-
-      // The menu followed the engine: rebuilt for the interruption.
-      expect(template.some(i => i.label === 'Another Interruption')).toBe(true);
-      click(template.find(i => i.label?.startsWith('Back to'))!.label!);
-      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
-      expect(template.some(i => i.label === 'Start an Interruption')).toBe(true);
-
-      engine.startInterruption(new Date(), 'tray');
-      click('Stop the Interruption');
-      // Ended alone: the task still waits, paused.
-      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
-      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_StartPause_NoSession_RestoresTheWindowInsteadOfGuessing', () => {
-      // There is nothing to resume and no way to choose a task from a tray
-      // menu, so the only useful move is to show the window.
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
-
-      click('Start / Pause Active Tracking');
-
-      expect(mockWindow.show).toHaveBeenCalled();
-      expect(engine.getCurrentSession()).toBeNull();
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_StartPause_WhileTracking_PausesTheSession', () => {
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
-      engine.startTask('PROJ-301', false, 'Tray pause');
-
-      click('Start / Pause Active Tracking');
-
-      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_StartPause_WhilePaused_ResumesTheSession', () => {
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
-      engine.startTask('PROJ-302', false, 'Tray resume');
-      engine.pauseSession();
-
-      click('Start / Pause Active Tracking');
-
-      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_TaskSelector_RestoresAndSendsOnTheChannelTheRendererHears', () => {
-      // It used to send on 'input:hardware-event', which nothing subscribes
+    it('Menu_SwitchTask_RestoresAndSendsOnTheChannelTheRendererHears', () => {
+      // It once sent on 'input:hardware-event', which nothing subscribes
       // to: the window came up and the picker never opened. The channel is
       // the preload's, compared by value so a rename cannot drift past it.
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
+      const manager = trayWith();
 
-      click('Trigger Task Selector Modal');
+      click('Switch task…');
 
       expect(mockWindow.show).toHaveBeenCalled();
       expect(mockWindow.webContents.send).toHaveBeenCalledWith(IPCChannel.ON_HARDWARE_INPUT_EVENT, {
@@ -318,49 +368,45 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_TaskSelector_WithPickerWindow_OpensItAndLeavesTheDashboard', () => {
+    it('Menu_SwitchTask_WithPickerWindow_OpensItAndLeavesTheDashboard', () => {
       // P7b: the picker as its own window, not the dashboard over the user's work.
       const pickerWindow = { open: vi.fn(() => true) };
       const manager = new TrayManager(mockWindow, engine, undefined, undefined, undefined, pickerWindow);
       manager.initialize();
+      manager.buildMenu();
 
-      click('Trigger Task Selector Modal');
+      click('Switch task…');
 
       expect(pickerWindow.open).toHaveBeenCalledWith('start');
       expect(mockWindow.show).not.toHaveBeenCalled();
-      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_NoMiniWindow_OffersNoMiniTimerEntry', () => {
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
+    it('Menu_NoMiniWindow_OffersNoMiniTimerEntry', () => {
+      const manager = trayWith();
 
-      expect(template.some(i => i.label === 'Show Mini Timer')).toBe(false);
+      expect(labels()).not.toContain('Mini timer');
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_MiniTimer_TogglesAndFollowsTheWindow', () => {
+    it('Menu_MiniTimer_TogglesAndIsTickedAtTheNextOpening', () => {
       let open = false;
-      const listeners: Array<(open: boolean) => void> = [];
       const miniWindow = {
         isOpen: () => open,
-        toggle: vi.fn(() => { open = !open; listeners.forEach(l => l(open)); return open; }),
-        subscribe: (l: (open: boolean) => void) => { listeners.push(l); return () => undefined; }
+        toggle: vi.fn(() => { open = !open; return open; }),
+        subscribe: () => () => undefined
       };
       const manager = new TrayManager(mockWindow, engine, miniWindow);
       manager.initialize();
-      expect(template.find(i => i.label === 'Show Mini Timer')?.checked).toBe(false);
+      manager.buildMenu();
+      expect(template.find(i => i.label === 'Mini timer')?.checked).toBe(false);
 
-      click('Show Mini Timer');
+      click('Mini timer');
       expect(miniWindow.toggle).toHaveBeenCalledTimes(1);
-      // Rebuilt from the controller's notification, so a close from the
-      // window's own button reaches the checkbox too.
-      expect(template.find(i => i.label === 'Show Mini Timer')?.checked).toBe(true);
-
-      open = false;
-      listeners.forEach(l => l(false));
-      expect(template.find(i => i.label === 'Show Mini Timer')?.checked).toBe(false);
+      // Built at each right-click, so a close from the window's own button
+      // shows the next time too.
+      manager.buildMenu();
+      expect(template.find(i => i.label === 'Mini timer')?.checked).toBe(true);
       manager.destroy();
     });
 
@@ -371,66 +417,36 @@ describe('TrayManager Unit Tests', () => {
       let entry = false;
       const api = {
         getLoginItemSettings: vi.fn(() => ({ executableWillLaunchAtLogin: entry })),
-        setLoginItemSettings: vi.fn((s: { openAtLogin: boolean }) => { entry = s.openAtLogin; })
+        setLoginItemSettings: vi.fn((settings: { openAtLogin: boolean }) => { entry = settings.openAtLogin; })
       };
       const service = new LaunchAtLoginService(api, { platform: 'win32', isPackaged, execPath: EXE });
       return { api, service };
     }
 
-    it('TrayManager_ContextMenu_StartWithWindows_WritesTheHiddenLoginItem', () => {
+    it('Menu_StartWithWindows_WritesTheHiddenLoginItem', () => {
       const { api, service } = launchAtLogin();
       const manager = new TrayManager(mockWindow, engine, undefined, service);
       manager.initialize();
+      manager.buildMenu();
       expect(template.find(i => i.label === 'Start with Windows')?.checked).toBe(false);
 
       click('Start with Windows', { checked: true });
 
       expect(api.setLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true, path: EXE, args: ['--hidden'] });
+      manager.buildMenu();
       expect(template.find(i => i.label === 'Start with Windows')?.checked).toBe(true);
       manager.destroy();
     });
 
-    it('TrayManager_ContextMenu_StartWithWindows_FollowsASwitchThrownInTheWindow', () => {
-      // The window's card goes through the same service; the menu is
-      // rebuilt from its notification, or the tray would show the old state.
-      const { service } = launchAtLogin();
-      const manager = new TrayManager(mockWindow, engine, undefined, service);
-      manager.initialize();
-
-      service.setEnabled(true);
-
-      expect(template.find(i => i.label === 'Start with Windows')?.checked).toBe(true);
-      manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_StartWithWindows_NotPackaged_OffersNoEntry', () => {
+    it('Menu_StartWithWindows_NotPackaged_OffersNoEntry', () => {
       // From `pnpm dev` the entry would start a bare electron.exe at login.
       const { service } = launchAtLogin(false);
       const manager = new TrayManager(mockWindow, engine, undefined, service);
       manager.initialize();
+      manager.buildMenu();
 
-      expect(template.some(i => i.label === 'Start with Windows')).toBe(false);
+      expect(labels()).not.toContain('Start with Windows');
       manager.destroy();
-    });
-
-    it('TrayManager_ContextMenu_NoLaunchAtLoginService_OffersNoEntry', () => {
-      const manager = new TrayManager(mockWindow, engine);
-      manager.initialize();
-
-      expect(template.some(i => i.label === 'Start with Windows')).toBe(false);
-      manager.destroy();
-    });
-
-    it('TrayManager_Destroy_StopsFollowingTheLoginItem', () => {
-      const { service } = launchAtLogin();
-      const manager = new TrayManager(mockWindow, engine, undefined, service);
-      manager.initialize();
-      manager.destroy();
-      const builds = vi.mocked(Menu.buildFromTemplate).mock.calls.length;
-
-      service.setEnabled(true);
-
-      expect(vi.mocked(Menu.buildFromTemplate).mock.calls.length).toBe(builds);
     });
   });
 

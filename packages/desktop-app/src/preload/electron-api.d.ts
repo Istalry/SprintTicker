@@ -1,3 +1,4 @@
+import type { WindowRoute } from '../shared/window-route';
 /**
  * The contract between the preload bridge and the renderer.
  *
@@ -112,6 +113,8 @@ export interface IElectronAPI {
   dismissNotice: (kind: NoticeKind) => Promise<NoticesDTO>;
 
   // One entry refused (P11c)
+  /** Main opening the window on a place: the tray's End my day…, a toast (P12). */
+  onOpenRoute: (callback: (route: WindowRoute) => void) => () => void;
   /** The entries their provider refused for good, oldest first. */
   getRefusedWorklogs: () => Promise<WorklogDTO[]>;
   /** Keeps a refused entry off its provider: local time on its task, undoable. */

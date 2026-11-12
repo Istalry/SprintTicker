@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '../../src/renderer/App';
+import { installElectronApi } from './electron-api-mock';
 import {
   SETTINGS_ENTRIES,
   SETTINGS_GROUPS,
@@ -33,7 +34,8 @@ describe('settings groups', () => {
     ['ceremonies', 'Stand-up'],
     ['wipe', 'Erase everything on this computer'],
     ['jira token', 'Credentials'],
-    ['launch at login', 'Start with Windows']
+    ['launch at login', 'Start with Windows'],
+    ['tray', 'When I close the window']
   ])('Search_TheOldName_%s_FindsItsNewHome', (query, label) => {
     expect(searchSettings(query, false).map(e => e.label)).toContain(label);
   });
@@ -81,5 +83,21 @@ describe('settings groups', () => {
     fireEvent.click(within(screen.getByRole('list', { name: 'Search results' })).getByRole('button', { name: /Lunch/ }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'My workday' })).toBeTruthy();
+  });
+
+  it('CloseToTray_ChooseQuit_SavesIt', async () => {
+    // P12a: keep running in the tray, the default, or quit on close.
+    const bridge = installElectronApi({
+      getFlowSetting: vi.fn().mockImplementation(async (key: string) => (key === 'close_to_tray' ? true : null)),
+      saveFlowSetting: vi.fn().mockImplementation(async (_key: string, value: unknown) => value)
+    });
+    await openSettings();
+
+    const choice = await screen.findByRole('combobox', { name: 'When I close the window' });
+    await vi.waitFor(() => expect((choice as HTMLSelectElement).value).toBe('keep'));
+    fireEvent.change(choice, { target: { value: 'quit' } });
+
+    expect(bridge.api.saveFlowSetting).toHaveBeenCalledWith('close_to_tray', false);
+    await vi.waitFor(() => expect((choice as HTMLSelectElement).value).toBe('quit'));
   });
 });
