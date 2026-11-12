@@ -242,9 +242,9 @@ export enum IPCChannel {
   /** Starting with Windows: Windows' own answer, and the switch. */
   GET_LAUNCH_AT_LOGIN = 'app:get-launch-at-login',
   SET_LAUNCH_AT_LOGIN = 'app:set-launch-at-login',
-  GET_INTERRUPT_SHORTCUT = 'app:get-interrupt-shortcut',
-  SET_INTERRUPT_SHORTCUT = 'app:set-interrupt-shortcut',
-  SET_INTERRUPT_SHORTCUT_RECORDING = 'app:set-interrupt-shortcut-recording',
+  GET_SHORTCUTS = 'app:get-shortcuts',
+  SET_SHORTCUT = 'app:set-shortcut',
+  SET_SHORTCUTS_RECORDING = 'app:set-shortcuts-recording',
   GET_UPDATE_CHECK_ENABLED = 'updates:get-enabled',
   SET_UPDATE_CHECK_ENABLED = 'updates:set-enabled',
   OPEN_RELEASE_PAGE = 'updates:open-release-page',

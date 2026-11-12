@@ -751,7 +751,7 @@
       </thead>
       <tbody><tr>
       <td align="left"><strong>General</strong></td>
-      <td align="left">Start with Windows, the Interrupt shortcut, updates, <strong>Set up again</strong>, and <strong>Show developer tools</strong></td>
+      <td align="left">Start with Windows, when you close the window, the shortcuts, updates, <strong>Set up again</strong>, and <strong>Show developer tools</strong></td>
       </tr>
       <tr>
       <td align="left"><strong>Account</strong></td>
@@ -1653,14 +1653,43 @@
       here too. The portable build registers the file you ran, so move it and
       switch it on again from the new place. A build run from source
       (<code>pnpm dev</code>) shows the switch greyed out.</p>
-      <p>⌨️ <strong>Interrupt shortcut</strong> starts an
-      <a href="#-interrupt-a-timer-at-once">interruption</a> from any app, with the window
-      closed. It is off until you tick <strong>Use the shortcut</strong>. The suggested chord
-      is <strong>Ctrl+Alt+Shift+I</strong>; <strong>Change</strong> records another -- press it, then the
-      keys, or Escape to keep the old one. A chord needs Ctrl, Alt or Win: Shift
-      alone only types capitals. Avoid Ctrl+Alt without Shift on AZERTY and
-      other layouts where it is AltGr, or the shortcut takes a character you type
-      -- the card says so.</p>
+      <p>⌨️ <strong>Shortcuts</strong> work from any app, with the window closed. Each is on
+      until you untick it:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Shortcut</th>
+      <th align="left">Chord</th>
+      <th align="left">Does</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><strong>Interrupt</strong></td>
+      <td align="left">Ctrl+Alt+Shift+I</td>
+      <td align="left">starts an <a href="#-interrupt-a-timer-at-once">interruption</a>; during one, <strong>Another</strong></td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Switch task</strong></td>
+      <td align="left">Ctrl+Alt+Shift+S</td>
+      <td align="left">opens the task picker over the app you are in</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Previous task</strong></td>
+      <td align="left">Ctrl+Alt+Shift+P</td>
+      <td align="left">goes back to the task you timed before this one (not during an interruption)</td>
+      </tr>
+      <tr>
+      <td align="left"><strong>Back</strong></td>
+      <td align="left">Ctrl+Alt+Shift+B</td>
+      <td align="left">ends the interruption and resumes the task it holds; nothing otherwise</td>
+      </tr>
+      </tbody></table></div>
+      <p><strong>Change</strong> records another chord -- press it, then the keys, or Escape to
+      keep the old one. A chord needs Ctrl, Alt or Win: Shift alone only types
+      capitals, and two shortcuts cannot share one. Avoid Ctrl+Alt without Shift
+      on AZERTY and other layouts where it is AltGr, or the shortcut takes a
+      character you type -- the card says so. If you had turned the Interrupt
+      shortcut on or off before, your choice stays.</p>
       <ul>
       <li><strong>&quot;Not active: another app holds it&quot;</strong> means Windows gave that chord to
       another app first. Choose another; SprintTicker tries yours again at its
@@ -1668,9 +1697,9 @@
       <li><strong>Nothing happens in an app run as administrator.</strong> Windows does not pass
       a shortcut to SprintTicker while such a window has the focus.</li>
       <li><strong>With the window hidden, no bar and no mini timer</strong>, a Windows
-      notification says the interruption started and which task waits paused
-      -- otherwise nothing would show that the timer changed. Pressed during
-      an interruption, the shortcut is <strong>Another</strong>.</li>
+      notification says what the shortcut did -- the interruption started and
+      which task waits paused, or which task you are back on -- otherwise
+      nothing would show that the timer changed.</li>
       </ul>
       <hr>
       <h3 id="guide-the-bar-itself">💡 The bar itself</h3>
@@ -3092,14 +3121,20 @@
       renderer, Today, History and the wrap-up share <code>InterruptionsToPlace</code> (its
       list from <code>useInterruptionsToPlace</code>), and Today&#39;s and History&#39;s entries
       share <code>useEntryActions</code> -- Correct, Move and Delete with their dialogs and
-      the closed-week question -- and <code>SyncBadge</code>. The optional global
-      shortcut is one more caller: <code>InterruptShortcutService</code> takes Electron&#39;s
-      <code>globalShortcut</code> by constructor, registers the stored chord only when the user
-      turned it on (<code>interrupt_shortcut</code>), reports a chord another app holds as
-      <code>taken</code>, lets go of it while the window records a new one, and unregisters at
-      quit, synchronously. A press with nothing on screen -- window hidden, no mini
-      timer, no bar connected -- is told by one of the app&#39;s own toasts, which the
-      notification listener never mirrors to the bar. The stand-up&#39;s
+      the closed-week question -- and <code>SyncBadge</code>. The global shortcuts are one
+      more caller (P12e): <code>ShortcutService</code> takes Electron&#39;s <code>globalShortcut</code> by
+      constructor and registers the four chords of the <code>shortcuts</code> flow setting
+      that are on -- Interrupt (Another during an interruption), Switch (the
+      picker window, raised past the foreground lock as the deck&#39;s is), Previous
+      (none during an interruption, as the tray&#39;s) and Back (nothing outside an
+      interruption holding a task) -- each through the command the other surfaces
+      use. It reports a chord another app holds as <code>taken</code>, refuses a chord
+      another of its actions holds, lets go of all of them while the window
+      records one, and unregisters at quit, synchronously. The Interrupt chord&#39;s
+      old <code>interrupt_shortcut</code> key is carried over once at start. A press with
+      nothing on screen -- window hidden, no mini timer, no bar connected -- is
+      told by one of the app&#39;s own toasts, which the notification listener never
+      mirrors to the bar. The stand-up&#39;s
       <code>standup_resume</code> entry from before is read once at start and moved over.
       An ad-hoc session can be named while it runs (<code>renameAdHocSession</code>: the task
       row and the session&#39;s copy together, one notification) or assigned to a task
@@ -4114,8 +4149,8 @@
       <td align="left"><code>app:get-system-locale</code> -- Windows&#39; regional format (<code>en-BE</code>, <code>fr-FR</code>), read once by the renderer at startup to format times</td>
       </tr>
       <tr>
-      <td align="left">Interrupt shortcut</td>
-      <td align="left"><code>app:get-interrupt-shortcut</code> answers <code>{ enabled, accelerator, registered, problem }</code>: <code>enabled</code> is the user&#39;s choice, <code>registered</code> whether Windows gave the app the chord, <code>problem: &#39;taken&#39;</code> when it is on but another app holds it. <code>app:set-interrupt-shortcut</code> takes <code>{ enabled, accelerator }</code>, an Electron accelerator; refuses one <code>chordProblem</code> refuses (no Ctrl, Alt or Win; modifiers out of order; an unknown key), stores the rest and answers what Windows said. <code>app:set-interrupt-shortcut-recording</code> takes a boolean: true lets go of the chord while the window records a new one, false registers the stored one again</td>
+      <td align="left">Global shortcuts (P12e)</td>
+      <td align="left"><code>app:get-shortcuts</code> answers the four, <code>{ interrupt, switch, previous, back }</code>, each <code>{ enabled, accelerator, registered, problem }</code>: <code>enabled</code> is the user&#39;s choice (on by default), <code>registered</code> whether Windows gave the app the chord, <code>problem: &#39;taken&#39;</code> when it is on but another app holds it. <code>app:set-shortcut</code> takes <code>(action, { enabled, accelerator })</code>, an Electron accelerator; refuses an unknown action, a chord <code>chordProblem</code> refuses (no Ctrl, Alt or Win; modifiers out of order; an unknown key) or one another shortcut of the app holds, stores the rest in the <code>shortcuts</code> flow setting and answers all four as Windows has them. <code>app:set-shortcuts-recording</code> takes a boolean: true lets go of every chord while the window records a new one, false registers them again. Replaces <code>app:get-interrupt-shortcut</code> and its two companions</td>
       </tr>
       <tr>
       <td align="left">Start with Windows</td>

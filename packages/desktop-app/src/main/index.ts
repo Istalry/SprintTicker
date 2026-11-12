@@ -64,7 +64,7 @@ import { normalizeScheduleSettings } from '../shared/schedule-defaults';
 import { FlowSettingKey, readCloseToTray, readStartSideEffects } from '../shared/flow-settings';
 import { UpdateChecker } from './updater/update-checker';
 import { LaunchAtLoginService, launchedHidden } from './services/launch-at-login';
-import { InterruptShortcutService } from './services/interrupt-shortcut-service';
+import { ShortcutService } from './services/shortcut-service';
 import { COLOR_THEME_KEY, DEFAULT_COLOR_THEME, isColorThemeId } from '../shared/color-theme';
 import { UPDATE_CHECK_INTERVAL_MS, UPDATE_CHECK_STARTUP_DELAY_MS } from './updater/update-constants';
 
@@ -97,7 +97,7 @@ let updateCheckTimer: NodeJS.Timeout | null = null;
 let miniWindowManager: MiniWindowManager | null = null;
 let pickerWindowManager: PickerWindowManager | null = null;
 let providerEventService: ProviderEventService | null = null;
-let interruptShortcut: InterruptShortcutService | null = null;
+let shortcutService: ShortcutService | null = null;
 let reminderService: ReminderService | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -503,15 +503,29 @@ async function startApplication(): Promise<void> {
   });
   const pickers = pickerWindowManager;
 
-  // Interrupt from any app, on the user's chord; off until they turn it on.
+  // The global shortcuts (P12e): Interrupt, Switch, Previous and Back from
+  // any app, on by default; a chord another app holds reads "taken".
   const schedule = contextScheduleService;
   const minis = miniWindowManager;
-  interruptShortcut = new InterruptShortcutService({
+  const timer = engine;
+  shortcutService = new ShortcutService({
     shortcuts: globalShortcut,
     settings: settingsRepo,
-    interrupt: () => {
-      if (!schedule) throw new Error('The schedule service is not running.');
-      return schedule.interrupt('shortcut');
+    commands: {
+      interrupt: () => {
+        if (!schedule) throw new Error('The schedule service is not running.');
+        return schedule.interrupt('shortcut');
+      },
+      back: () => timer.backFromInterruption(),
+      // Pressed in another app: raised past Windows' foreground lock, as the
+      // deck's picker is (CLAUDE.md §3).
+      openPicker: () => { pickers.open('start', { raise: true }); },
+      previous: () => {
+        const task = timer.getPreviousTask();
+        if (!task) return null;
+        timer.startTask(task.id, false, task.title);
+        return task.key;
+      }
     },
     getCurrentSession: () => engine?.getCurrentSession() ?? null,
     isSeen: () =>
@@ -520,7 +534,7 @@ async function startApplication(): Promise<void> {
       (activeDriver.isEnabled() && activeDriver.getDeviceStatus().connected),
     toasts
   });
-  interruptShortcut.start();
+  shortcutService.start();
 
   // Undo (P5): the last Stop, Done, Discard or worklog edit, held with its
   // sends for UNDO_WINDOW_MS. The window and the deck end sessions through
@@ -609,7 +623,7 @@ async function startApplication(): Promise<void> {
     syncWorker: engine.getSyncWorker(),
     updateChecker,
     launchAtLogin,
-    interruptShortcut,
+    shortcuts: shortcutService,
     webhookServer
   });
   ipcRegistry.registerAllHandlers();
@@ -786,7 +800,7 @@ app.on('will-quit', event => {
   miniOnInterruption?.stop();
   undoService?.dispose();
   // Synchronously too: Windows keeps a chord until the process lets go of it.
-  interruptShortcut?.dispose();
+  shortcutService?.dispose();
 
   void (async () => {
     try {

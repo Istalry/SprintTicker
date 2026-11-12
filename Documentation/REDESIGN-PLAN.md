@@ -1795,6 +1795,28 @@ hides; only Quit clears the bar).
 - Also fixed: Settings › Devices' Stream Deck card still called the plugin
   a separate download, which stopped being true in P11a.
 
+**As landed: P12e, the four shortcuts (2026-11-12).**
+
+- `ShortcutService` (`services/shortcut-service.ts`) replaces
+  `InterruptShortcutService`: the four chords of the `shortcuts` flow
+  setting, on by default (§2). Interrupt is Another during an
+  interruption; Switch opens the picker window, raised as the deck's is;
+  Previous starts the task before (none during an interruption, as the
+  tray's); Back ends the interruption holding a task, and does nothing
+  otherwise. Each acts through the command the other surfaces use, and
+  says what it did in a toast when nothing shows it.
+- The recording and "taken" rules apply to each chord; a chord another
+  shortcut holds is refused. The old `interrupt_shortcut` (off by
+  default) is carried over once -- on, off or another chord -- then
+  cleared.
+- `app:get-shortcuts`, `app:set-shortcut`, `app:set-shortcuts-recording`
+  replace the three Interrupt channels; *Settings › General › Shortcuts*
+  (`ShortcutsCard`) lists the four with Change, a switch and "taken".
+- **Not measured:** whether a chord's press gives SprintTicker the
+  foreground on its own; Switch raises the picker with `ForegroundRaiser`
+  meanwhile (~0.8 s, a PowerShell), as a deck press does.
+- P12 complete.
+
 **As landed: P12d, the mini timer's states (2026-11-12).**
 
 - `MiniBar` shows every state of S25: running with **⚡3** (to place) and
@@ -2170,7 +2192,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
-| P12 | in progress: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states) done; P12e (`ShortcutService`) next -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d (2026-11-12) |
+| P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | not started | |
 | P14 | not started | |
 | P15 | not started | |

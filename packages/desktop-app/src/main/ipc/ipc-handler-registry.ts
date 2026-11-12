@@ -33,7 +33,7 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO, StandupRunningDTO } from '../../shared/dtos';
+import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, ShortcutsStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO, StandupRunningDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
@@ -45,8 +45,8 @@ import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { UpdateChecker } from '../updater/update-checker';
 import { LaunchAtLoginService } from '../services/launch-at-login';
 import { COLOR_THEME_KEY, DEFAULT_COLOR_THEME, isColorThemeId } from '../../shared/color-theme';
-import { InterruptShortcutService } from '../services/interrupt-shortcut-service';
-import { DEFAULT_INTERRUPT_SHORTCUT, InterruptShortcutSetting } from '../../shared/interrupt-shortcut';
+import { ShortcutService } from '../services/shortcut-service';
+import { DEFAULT_SHORTCUTS, ShortcutAction, ShortcutChord } from '../../shared/flow-settings';
 import { OpenProjectProvider } from '../providers/openproject-provider';
 import { ProviderManager } from '../providers/provider-manager';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
@@ -81,7 +81,13 @@ import { UNDO_WINDOW_MS } from '../sync/sync-constants';
  */
 /** What the switch reads with no service behind it: a registry built without one, in tests. */
 const LAUNCH_AT_LOGIN_UNAVAILABLE: LaunchAtLoginStatusDTO = { enabled: false, available: false, reason: null };
-const INTERRUPT_SHORTCUT_UNAVAILABLE: InterruptShortcutStatusDTO = { ...DEFAULT_INTERRUPT_SHORTCUT, registered: false, problem: null };
+/** Without the service (a test, a build without it): every chord as its default, holding nothing. */
+const SHORTCUTS_UNAVAILABLE: ShortcutsStatusDTO = {
+  interrupt: { ...DEFAULT_SHORTCUTS.interrupt, registered: false, problem: null },
+  switch: { ...DEFAULT_SHORTCUTS.switch, registered: false, problem: null },
+  previous: { ...DEFAULT_SHORTCUTS.previous, registered: false, problem: null },
+  back: { ...DEFAULT_SHORTCUTS.back, registered: false, problem: null }
+};
 
 export interface IPCHandlerRegistryDeps {
   engine: TimeTrackingEngine;
@@ -131,7 +137,7 @@ export interface IPCHandlerRegistryDeps {
   updateChecker?: UpdateChecker;
   /** Starting with Windows; without it, the switch reads unavailable. */
   launchAtLogin?: LaunchAtLoginService;
-  interruptShortcut?: InterruptShortcutService;
+  shortcuts?: ShortcutService;
   /** Supplied so the diagnostics bundle can report the listener's real state rather than assert one. */
   webhookServer?: { getStatus(): { listening: boolean; port: number } };
   /**
@@ -166,7 +172,7 @@ function isManualWorklog(value: unknown): value is ManualWorklogDTO {
 export class IPCHandlerRegistry {
   private updateChecker?: UpdateChecker;
   private launchAtLogin?: LaunchAtLoginService;
-  private interruptShortcut?: InterruptShortcutService;
+  private shortcuts?: ShortcutService;
   private engine: TimeTrackingEngine;
   private taskRepo: TaskRepository;
   private projectRepo: ProjectRepository;
@@ -222,7 +228,7 @@ export class IPCHandlerRegistry {
       syncWorker,
       updateChecker,
       launchAtLogin,
-      interruptShortcut,
+      shortcuts,
       webhookServer
     } = deps;
 
@@ -232,7 +238,7 @@ export class IPCHandlerRegistry {
     this.syncWorker = syncWorker;
     this.updateChecker = updateChecker;
     this.launchAtLogin = launchAtLogin;
-    this.interruptShortcut = interruptShortcut;
+    this.shortcuts = shortcuts;
     // Bound to the settings repository's connection rather than the
     // DatabaseConnection singleton, which would open a second, on-disk database
     // even when the caller supplied an in-memory one.
@@ -1460,19 +1466,20 @@ export class IPCHandlerRegistry {
       return this.launchAtLogin ? this.launchAtLogin.setEnabled(enabled) : LAUNCH_AT_LOGIN_UNAVAILABLE;
     });
 
-    ipcMain.handle(IPCChannel.GET_INTERRUPT_SHORTCUT, async () => {
-      return this.interruptShortcut ? this.interruptShortcut.getStatus() : INTERRUPT_SHORTCUT_UNAVAILABLE;
+    // The global shortcuts (P12e): four chords, one service.
+    ipcMain.handle(IPCChannel.GET_SHORTCUTS, async (): Promise<ShortcutsStatusDTO> =>
+      this.shortcuts ? this.shortcuts.getStatus() : SHORTCUTS_UNAVAILABLE);
+
+    ipcMain.handle(IPCChannel.SET_SHORTCUT, async (_event, action: unknown, chord: unknown): Promise<ShortcutsStatusDTO> => {
+      if (typeof action !== 'string') throw new ArgumentException('Which shortcut?', 'action');
+      if (!chord || typeof chord !== 'object') throw new ArgumentException('The shortcut is a setting.', 'chord');
+      // The service validates the action and the fields, and refuses a chord it cannot register.
+      return this.shortcuts ? this.shortcuts.set(action as ShortcutAction, chord as ShortcutChord) : SHORTCUTS_UNAVAILABLE;
     });
 
-    ipcMain.handle(IPCChannel.SET_INTERRUPT_SHORTCUT, async (_event, setting: unknown) => {
-      if (!setting || typeof setting !== 'object') throw new ArgumentException('The shortcut is a setting.', 'setting');
-      // The service validates the fields, and refuses a chord it cannot register.
-      return this.interruptShortcut ? this.interruptShortcut.set(setting as InterruptShortcutSetting) : INTERRUPT_SHORTCUT_UNAVAILABLE;
-    });
-
-    ipcMain.handle(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, async (_event, recording: unknown) => {
+    ipcMain.handle(IPCChannel.SET_SHORTCUTS_RECORDING, async (_event, recording: unknown): Promise<ShortcutsStatusDTO> => {
       if (typeof recording !== 'boolean') throw new ArgumentException('Recording is on or off.', 'recording');
-      return this.interruptShortcut ? this.interruptShortcut.setRecording(recording) : INTERRUPT_SHORTCUT_UNAVAILABLE;
+      return this.shortcuts ? this.shortcuts.setRecording(recording) : SHORTCUTS_UNAVAILABLE;
     });
 
     ipcMain.handle(IPCChannel.GET_UPDATE_CHECK_ENABLED, async () => {

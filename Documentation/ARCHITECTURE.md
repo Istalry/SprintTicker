@@ -911,14 +911,20 @@ one (`fromInterruption`: an `interruptions` row names it as
 renderer, Today, History and the wrap-up share `InterruptionsToPlace` (its
 list from `useInterruptionsToPlace`), and Today's and History's entries
 share `useEntryActions` -- Correct, Move and Delete with their dialogs and
-the closed-week question -- and `SyncBadge`. The optional global
-shortcut is one more caller: `InterruptShortcutService` takes Electron's
-`globalShortcut` by constructor, registers the stored chord only when the user
-turned it on (`interrupt_shortcut`), reports a chord another app holds as
-`taken`, lets go of it while the window records a new one, and unregisters at
-quit, synchronously. A press with nothing on screen -- window hidden, no mini
-timer, no bar connected -- is told by one of the app's own toasts, which the
-notification listener never mirrors to the bar. The stand-up's
+the closed-week question -- and `SyncBadge`. The global shortcuts are one
+more caller (P12e): `ShortcutService` takes Electron's `globalShortcut` by
+constructor and registers the four chords of the `shortcuts` flow setting
+that are on -- Interrupt (Another during an interruption), Switch (the
+picker window, raised past the foreground lock as the deck's is), Previous
+(none during an interruption, as the tray's) and Back (nothing outside an
+interruption holding a task) -- each through the command the other surfaces
+use. It reports a chord another app holds as `taken`, refuses a chord
+another of its actions holds, lets go of all of them while the window
+records one, and unregisters at quit, synchronously. The Interrupt chord's
+old `interrupt_shortcut` key is carried over once at start. A press with
+nothing on screen -- window hidden, no mini timer, no bar connected -- is
+told by one of the app's own toasts, which the notification listener never
+mirrors to the bar. The stand-up's
 `standup_resume` entry from before is read once at start and moved over.
 An ad-hoc session can be named while it runs (`renameAdHocSession`: the task
 row and the session's copy together, one notification) or assigned to a task

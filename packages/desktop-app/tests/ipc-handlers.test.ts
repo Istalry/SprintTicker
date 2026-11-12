@@ -1158,44 +1158,47 @@ describe('IPC handlers', () => {
     });
   });
 
-  describe('the Interrupt shortcut', () => {
+  describe('the global shortcuts', () => {
     const OFF = { enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null };
+    const ALL = { interrupt: OFF, switch: OFF, previous: OFF, back: OFF };
     const service = () => ({
-      getStatus: vi.fn().mockReturnValue(OFF),
-      set: vi.fn((s: { enabled: boolean; accelerator: string }) => ({ ...s, registered: s.enabled, problem: null })),
-      setRecording: vi.fn().mockReturnValue(OFF)
+      getStatus: vi.fn().mockReturnValue(ALL),
+      set: vi.fn((action: string, c: { enabled: boolean; accelerator: string }) => ({ ...ALL, [action]: { ...c, registered: c.enabled, problem: null } })),
+      setRecording: vi.fn().mockReturnValue(ALL)
     });
 
-    it('InterruptShortcut_NoService_SaysOffAndRegistersNothing', async () => {
-      await expect(invoke(IPCChannel.GET_INTERRUPT_SHORTCUT)).resolves.toEqual(OFF);
-      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, { enabled: true, accelerator: 'Ctrl+Alt+Shift+I' })).resolves.toEqual(OFF);
+    it('Shortcuts_NoService_TheDefaultsHoldingNothing', async () => {
+      const status = await invoke(IPCChannel.GET_SHORTCUTS) as Record<string, { enabled: boolean; registered: boolean }>;
+      expect(Object.keys(status)).toEqual(['interrupt', 'switch', 'previous', 'back']);
+      expect(Object.values(status).every(s => s.enabled && !s.registered)).toBe(true);
     });
 
-    it('InterruptShortcut_Set_AnswersTheService', async () => {
-      const interruptShortcut = service();
-      build({ interruptShortcut });
+    it('Shortcuts_Set_AnswersTheService', async () => {
+      const shortcuts = service();
+      build({ shortcuts });
 
-      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, { enabled: true, accelerator: 'Ctrl+Shift+F9' }))
-        .resolves.toEqual({ enabled: true, accelerator: 'Ctrl+Shift+F9', registered: true, problem: null });
-      await expect(invoke(IPCChannel.GET_INTERRUPT_SHORTCUT)).resolves.toEqual(OFF);
+      const status = await invoke(IPCChannel.SET_SHORTCUT, 'switch', { enabled: true, accelerator: 'Ctrl+Shift+F9' }) as typeof ALL;
+      expect(status.switch).toEqual({ enabled: true, accelerator: 'Ctrl+Shift+F9', registered: true, problem: null });
+      expect(shortcuts.set).toHaveBeenCalledWith('switch', { enabled: true, accelerator: 'Ctrl+Shift+F9' });
     });
 
-    it('InterruptShortcut_SetNotASetting_Refused', async () => {
-      const interruptShortcut = service();
-      build({ interruptShortcut });
+    it('Shortcuts_SetNotASetting_Refused', async () => {
+      const shortcuts = service();
+      build({ shortcuts });
 
-      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, 'Ctrl+Alt+Shift+I')).rejects.toThrow(/setting/);
-      expect(interruptShortcut.set).not.toHaveBeenCalled();
+      await expect(invoke(IPCChannel.SET_SHORTCUT, 'interrupt', 'Ctrl+Alt+Shift+I')).rejects.toThrow(/setting/);
+      await expect(invoke(IPCChannel.SET_SHORTCUT, 3, { enabled: true, accelerator: 'Ctrl+Alt+Shift+I' })).rejects.toThrow(/Which shortcut/);
+      expect(shortcuts.set).not.toHaveBeenCalled();
     });
 
-    it('InterruptShortcut_Recording_PassedOnAsABoolean', async () => {
-      const interruptShortcut = service();
-      build({ interruptShortcut });
+    it('Shortcuts_Recording_PassedOnAsABoolean', async () => {
+      const shortcuts = service();
+      build({ shortcuts });
 
-      await invoke(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, true);
-      expect(interruptShortcut.setRecording).toHaveBeenCalledWith(true);
-      await expect(invoke(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, 'yes')).rejects.toThrow(/on or off/);
-      expect(interruptShortcut.setRecording).toHaveBeenCalledTimes(1);
+      await invoke(IPCChannel.SET_SHORTCUTS_RECORDING, true);
+      expect(shortcuts.setRecording).toHaveBeenCalledWith(true);
+      await expect(invoke(IPCChannel.SET_SHORTCUTS_RECORDING, 'yes')).rejects.toThrow(/on or off/);
+      expect(shortcuts.setRecording).toHaveBeenCalledTimes(1);
     });
   });
 });

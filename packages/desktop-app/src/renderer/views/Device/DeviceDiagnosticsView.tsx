@@ -4,7 +4,7 @@ import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
 import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
-import { InterruptShortcutCard } from '../../components/InterruptShortcutCard';
+import { ShortcutsCard } from '../../components/ShortcutsCard';
 import { ColorThemeId, DeviceConfigDTO } from '../../../shared/dtos';
 import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
@@ -606,7 +606,7 @@ export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> =
       {part === 'all' && (<>
       <LaunchAtLoginCard />
 
-      <InterruptShortcutCard />
+      <ShortcutsCard />
 
       <UpdateSettingsCard />
       </>)}

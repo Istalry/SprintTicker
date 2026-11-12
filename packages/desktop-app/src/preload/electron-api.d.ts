@@ -17,8 +17,7 @@ import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../sh
 import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { DayShare } from '../shared/work-split';
 import type { TaskVisibility } from '../shared/task-visibility';
-import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
-import type { FlowSettingKeyValue, FlowSettingValues } from '../shared/flow-settings';
+import type { FlowSettingKeyValue, FlowSettingValues, ShortcutAction, ShortcutChord } from '../shared/flow-settings';
 import type { InterruptionSource, InterruptionToPlaceDTO } from '../shared/interruption';
 import type { PickerDataDTO } from '../shared/task-picker';
 import type {
@@ -55,7 +54,7 @@ import type {
   DeviceConfigDTO,
   UpdateStatusDTO,
   LaunchAtLoginStatusDTO,
-  InterruptShortcutStatusDTO,
+  ShortcutsStatusDTO,
   ColorThemeId,
   ProviderSyncResult,
   SyncQueueSnapshotDTO,
@@ -364,12 +363,12 @@ export interface IElectronAPI {
   getLaunchAtLogin: () => Promise<LaunchAtLoginStatusDTO>;
   /** Resolves the state Windows reports after the change. */
   setLaunchAtLogin: (enabled: boolean) => Promise<LaunchAtLoginStatusDTO>;
-  /** The global shortcut for Interrupt, and whether Windows gave the app its chord. */
-  getInterruptShortcut: () => Promise<InterruptShortcutStatusDTO>;
-  /** Stores and registers it; rejects a chord `chordProblem` refuses. */
-  setInterruptShortcut: (setting: InterruptShortcutSetting) => Promise<InterruptShortcutStatusDTO>;
-  /** Lets go of the chord while a new one is recorded, so the press reaches the window. */
-  setInterruptShortcutRecording: (recording: boolean) => Promise<InterruptShortcutStatusDTO>;
+  /** The four global shortcuts (P12e), and whether Windows gave the app each chord. */
+  getShortcuts: () => Promise<ShortcutsStatusDTO>;
+  /** Stores and registers one; rejects a chord `chordProblem` refuses or another shortcut holds. */
+  setShortcut: (action: ShortcutAction, chord: ShortcutChord) => Promise<ShortcutsStatusDTO>;
+  /** Lets go of every chord while a new one is recorded, so the press reaches the window. */
+  setShortcutsRecording: (recording: boolean) => Promise<ShortcutsStatusDTO>;
   openReleasePage: (url: string) => Promise<boolean>;
   /**
    * Opens the task's page on the provider it came from, in the browser. Main

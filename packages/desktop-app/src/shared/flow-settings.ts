@@ -64,6 +64,12 @@ export interface ShortcutsSetting {
   back: ShortcutChord;
 }
 
+/** What a global shortcut does (P12e). */
+export type ShortcutAction = keyof ShortcutsSetting;
+
+/** In the order Settings lists them. */
+export const SHORTCUT_ACTIONS: readonly ShortcutAction[] = ['interrupt', 'switch', 'previous', 'back'];
+
 export const DEFAULT_START_SIDE_EFFECTS: StartSideEffectsSetting = { enabled: true, afterSeconds: 120 };
 
 export const DEFAULT_DONE_STATE_BY_PROJECT: DoneStateByProjectSetting = { default: null, overrides: {} };

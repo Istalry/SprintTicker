@@ -1,7 +1,16 @@
 import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../../src/shared/worklog-correction';
 import { vi } from 'vitest';
 import type { IElectronAPI } from '../../src/preload/electron-api';
-import type { ActiveSessionDTO, DeviceStatusDTO, HardwareDisplayStateDTO } from '../../src/shared/dtos';
+import type { ActiveSessionDTO, DeviceStatusDTO, HardwareDisplayStateDTO, ShortcutsStatusDTO } from '../../src/shared/dtos';
+import type { ShortcutAction, ShortcutChord } from '../../src/shared/flow-settings';
+
+/** The four global shortcuts as main answers them by default: on, each holding its chord. */
+export const SHORTCUTS: ShortcutsStatusDTO = {
+  interrupt: { enabled: true, accelerator: 'Ctrl+Alt+Shift+I', registered: true, problem: null },
+  switch: { enabled: true, accelerator: 'Ctrl+Alt+Shift+S', registered: true, problem: null },
+  previous: { enabled: true, accelerator: 'Ctrl+Alt+Shift+P', registered: true, problem: null },
+  back: { enabled: true, accelerator: 'Ctrl+Alt+Shift+B', registered: true, problem: null }
+};
 import { DEFAULT_DEVICE_CONFIG, EMPTY_DISPLAY_HEALTH } from '../../src/shared/device-constants';
 import { DEFAULT_PRIORITY_RULES } from '../../src/shared/priority-defaults';
 import { DEFAULT_TASK_VISIBILITY, type TaskVisibility } from '../../src/shared/task-visibility';
@@ -329,11 +338,11 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     setUpdateCheckEnabled: vi.fn().mockResolvedValue(true),
     getLaunchAtLogin: vi.fn().mockResolvedValue({ enabled: false, available: true, reason: null }),
     setLaunchAtLogin: vi.fn(async (enabled: boolean) => ({ enabled, available: true, reason: null })),
-    getInterruptShortcut: vi.fn().mockResolvedValue({ enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null }),
-    setInterruptShortcut: vi.fn(async (setting: { enabled: boolean; accelerator: string }) => ({
-      ...setting, registered: setting.enabled, problem: null
+    getShortcuts: vi.fn().mockResolvedValue(SHORTCUTS),
+    setShortcut: vi.fn(async (action: ShortcutAction, chord: ShortcutChord) => ({
+      ...SHORTCUTS, [action]: { ...chord, registered: chord.enabled, problem: null }
     })),
-    setInterruptShortcutRecording: vi.fn().mockResolvedValue({ enabled: false, accelerator: 'Ctrl+Alt+Shift+I', registered: false, problem: null }),
+    setShortcutsRecording: vi.fn().mockResolvedValue(SHORTCUTS),
     openReleasePage: vi.fn().mockResolvedValue(true),
     openTaskPage: vi.fn().mockResolvedValue(true),
     onUpdateStatus: subscribe('onUpdateStatus'),

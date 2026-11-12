@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import type { ProviderEventSettingsDTO } from '../shared/provider-events';
 import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { TaskVisibility } from '../shared/task-visibility';
-import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
+import type { ShortcutAction, ShortcutChord } from '../shared/flow-settings';
 import type { InterruptionToPlaceDTO } from '../shared/interruption';
 import type { ConnectionTestRequestDTO } from '../shared/first-run';
 import type { NoticeKind, SyncHealthDTO } from '../shared/sync-health';
@@ -326,10 +326,9 @@ const electronAPI: IElectronAPI = {
     ipcRenderer.invoke(IPCChannel.SET_UPDATE_CHECK_ENABLED, enabled),
   getLaunchAtLogin: () => ipcRenderer.invoke(IPCChannel.GET_LAUNCH_AT_LOGIN),
   setLaunchAtLogin: (enabled: boolean) => ipcRenderer.invoke(IPCChannel.SET_LAUNCH_AT_LOGIN, enabled),
-  getInterruptShortcut: () => ipcRenderer.invoke(IPCChannel.GET_INTERRUPT_SHORTCUT),
-  setInterruptShortcut: (setting: InterruptShortcutSetting) => ipcRenderer.invoke(IPCChannel.SET_INTERRUPT_SHORTCUT, setting),
-  setInterruptShortcutRecording: (recording: boolean) =>
-    ipcRenderer.invoke(IPCChannel.SET_INTERRUPT_SHORTCUT_RECORDING, recording),
+  getShortcuts: () => ipcRenderer.invoke(IPCChannel.GET_SHORTCUTS),
+  setShortcut: (action: ShortcutAction, chord: ShortcutChord) => ipcRenderer.invoke(IPCChannel.SET_SHORTCUT, action, chord),
+  setShortcutsRecording: (recording: boolean) => ipcRenderer.invoke(IPCChannel.SET_SHORTCUTS_RECORDING, recording),
   openReleasePage: (url: string) => ipcRenderer.invoke(IPCChannel.OPEN_RELEASE_PAGE, url),
   openTaskPage: (taskId: string) => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PAGE, taskId),
   onUpdateStatus: (callback: (status: UpdateStatusDTO) => void) => {

@@ -33,7 +33,7 @@ export interface SettingsEntry {
 export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Start with Windows', group: 'general', keywords: ['launch at login', 'startup', 'tray'] },
   { label: 'When I close the window', group: 'general', keywords: ['tray', 'quit', 'close', 'keep running'] },
-  { label: 'Interrupt shortcut', group: 'general', keywords: ['keyboard', 'hotkey', 'chord'] },
+  { label: 'Shortcuts', group: 'general', keywords: ['keyboard', 'hotkey', 'chord', 'interrupt', 'switch', 'previous', 'back'] },
   { label: 'Check for updates', group: 'general', keywords: ['update', 'version', 'release'] },
   { label: 'Set up again', group: 'general', keywords: ['setup wizard', 'onboarding', 'first run'] },
   { label: 'Show developer tools', group: 'general', keywords: ['debug', 'developer'] },

@@ -7,7 +7,7 @@ import { NotificationSettingsView } from '../Notifications/NotificationSettingsV
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
 import { CloseToTrayCard } from '../../components/CloseToTrayCard';
 import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
-import { InterruptShortcutCard } from '../../components/InterruptShortcutCard';
+import { ShortcutsCard } from '../../components/ShortcutsCard';
 import { StartSideEffectsCard } from '../../components/StartSideEffectsCard';
 import { UpdateSettingsCard } from '../../components/UpdateNotice';
 import { BarRemotePad } from '../../components/BarRemotePad';
@@ -149,7 +149,7 @@ const GeneralGroup: React.FC<{ showDeveloper: boolean; onShowDeveloper: (value: 
   <>
     <LaunchAtLoginCard />
     <CloseToTrayCard />
-    <InterruptShortcutCard />
+    <ShortcutsCard />
     <UpdateSettingsCard />
     <Card title="Set up again" description="The first-run questions: account, bar, your day.">
       <button

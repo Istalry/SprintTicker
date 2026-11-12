@@ -210,7 +210,7 @@ by its name or by the name it used to have -- *sync queue*, *priority*,
 
 | Group | Holds |
 | :--- | :--- |
-| **General** | Start with Windows, the Interrupt shortcut, updates, **Set up again**, and **Show developer tools** |
+| **General** | Start with Windows, when you close the window, the shortcuts, updates, **Set up again**, and **Show developer tools** |
 | **Account** | your task provider, its credentials, the tasks to fetch, the transitions, provider notifications, and the entries waiting to send |
 | **My workday** | working days, the stand-up, lunch, the end of day |
 | **Desk devices** | the bar's status, task key color, connection, idle clock and use without a bar; with a bar, the Windows notifications it shows and what it shows first; the Stream Deck |
@@ -1072,23 +1072,31 @@ here too. The portable build registers the file you ran, so move it and
 switch it on again from the new place. A build run from source
 (`pnpm dev`) shows the switch greyed out.
 
-⌨️ **Interrupt shortcut** starts an
-[interruption](#-interrupt-a-timer-at-once) from any app, with the window
-closed. It is off until you tick **Use the shortcut**. The suggested chord
-is **Ctrl+Alt+Shift+I**; **Change** records another -- press it, then the
-keys, or Escape to keep the old one. A chord needs Ctrl, Alt or Win: Shift
-alone only types capitals. Avoid Ctrl+Alt without Shift on AZERTY and
-other layouts where it is AltGr, or the shortcut takes a character you type
--- the card says so.
+⌨️ **Shortcuts** work from any app, with the window closed. Each is on
+until you untick it:
+
+| Shortcut | Chord | Does |
+| :--- | :--- | :--- |
+| **Interrupt** | Ctrl+Alt+Shift+I | starts an [interruption](#-interrupt-a-timer-at-once); during one, **Another** |
+| **Switch task** | Ctrl+Alt+Shift+S | opens the task picker over the app you are in |
+| **Previous task** | Ctrl+Alt+Shift+P | goes back to the task you timed before this one (not during an interruption) |
+| **Back** | Ctrl+Alt+Shift+B | ends the interruption and resumes the task it holds; nothing otherwise |
+
+**Change** records another chord -- press it, then the keys, or Escape to
+keep the old one. A chord needs Ctrl, Alt or Win: Shift alone only types
+capitals, and two shortcuts cannot share one. Avoid Ctrl+Alt without Shift
+on AZERTY and other layouts where it is AltGr, or the shortcut takes a
+character you type -- the card says so. If you had turned the Interrupt
+shortcut on or off before, your choice stays.
 - **"Not active: another app holds it"** means Windows gave that chord to
   another app first. Choose another; SprintTicker tries yours again at its
   next start.
 - **Nothing happens in an app run as administrator.** Windows does not pass
   a shortcut to SprintTicker while such a window has the focus.
 - **With the window hidden, no bar and no mini timer**, a Windows
-  notification says the interruption started and which task waits paused
-  -- otherwise nothing would show that the timer changed. Pressed during
-  an interruption, the shortcut is **Another**.
+  notification says what the shortcut did -- the interruption started and
+  which task waits paused, or which task you are back on -- otherwise
+  nothing would show that the timer changed.
 
 ---
 

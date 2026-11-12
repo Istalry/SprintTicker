@@ -885,11 +885,20 @@ export interface LaunchAtLoginStatusDTO {
  * `registered` Windows' answer: on but not registered is a chord another
  * app holds (`taken`), which Settings says rather than showing it working.
  */
-export interface InterruptShortcutStatusDTO {
+/** One global shortcut as Windows has it (P12e): stored, and whether it holds its chord. */
+export interface ShortcutStatusDTO {
   enabled: boolean;
   accelerator: string;
   registered: boolean;
   problem: 'taken' | null;
+}
+
+/** The four global shortcuts, by what they do (`ShortcutAction`). */
+export interface ShortcutsStatusDTO {
+  interrupt: ShortcutStatusDTO;
+  switch: ShortcutStatusDTO;
+  previous: ShortcutStatusDTO;
+  back: ShortcutStatusDTO;
 }
 
 /**

@@ -132,7 +132,8 @@ discards existing worklogs.
 
 **Interrupt** starts a timer at once when someone comes to your desk -- one
 click on the session card, in the mini timer or in the tray, or a keyboard
-shortcut from any app, off until you turn it on -- on a new task named for
+shortcut from any app (Ctrl+Alt+Shift+I; Switch, Previous and Back have
+theirs too) -- on a new task named for
 the time; when it ends, you are asked whether to go back to the task it
 stopped.
 

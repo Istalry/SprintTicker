@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
+  Switch task (S), Previous task (P) and Back (B), on by default and each
+  changeable in *Settings › General › Shortcuts*. A chord another app holds
+  says so rather than seeming to work. If you had set the Interrupt
+  shortcut before, your choice is kept.
 - **The mini timer shows every state.** ⟲ goes back to the previous task,
   ⚡3 counts the interruptions waiting to be placed, and "Nothing timing" is
   loud in your working hours. An interruption started from the bar, the
