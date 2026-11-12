@@ -1138,9 +1138,16 @@ cup and a moon taken from their scenes' sprites.
 
 ## 6. The 2026-11 redesign
 
-**Blocked on:** nothing; waiting to be started. Phase P0 (the Unity
-removal and the banner fix) landed on 2026-11-10, and the plan's six
-decisions were taken the same day.
+**Status (2026-11-12):** under way. P0-P13 are done: the new face, the
+undo and the held sends, interruptions as fragments, the picker window,
+prompts without focus, History's week and Check my week, End my day, the
+first run, the tray and the mini timer, and the Stream Deck plugin on
+protocol 2 with its shipped profiles. P14, the bar, is four-fifths done: the
+user rethought the bar's controls (Pause is yes and Pause again stops, the
+wheel's click interrupts or says no, Back is unused, turning opens a short
+menu) and the ⚡ icon is drawn; P14e, the words and NOTHING TIMING, is
+begun. Then P16 (Tasks and Settings as their screens), then P15 (the
+review and the release).
 
 A new face and new flows for every surface: the window, the mini timer,
 the tray, the bar and the Stream Deck. The target is drawn in
