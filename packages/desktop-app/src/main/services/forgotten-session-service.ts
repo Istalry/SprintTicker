@@ -14,13 +14,20 @@ import {
 } from '../../shared/dtos';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { atLocalTime, localDateKey } from '../../shared/local-date';
-import { FORGOTTEN_MIN_GAP_MS, FORGOTTEN_REVIEW_KEY, PRESENCE_SAMPLE_MS } from '../../shared/session-review';
+import {
+  FORGOTTEN_MIN_GAP_MS,
+  FORGOTTEN_REVIEW_KEY,
+  ForgottenCause,
+  forgottenHeading,
+  PRESENCE_SAMPLE_MS
+} from '../../shared/session-review';
 
 interface StoredReview {
   sessionId: string;
   lastPresenceUtc: string;
   /** Decide later: asked as a card, not a dialog (S18, P10b). */
   deferred?: boolean;
+  cause?: ForgottenCause;
 }
 
 const ACTIONS = new Set(['stop', 'restart', 'discard', 'keep', 'later', 'ask']);
@@ -84,13 +91,19 @@ export class ForgottenSessionService {
    * that order, since the presence before this one is the evidence. At start,
    * on resume and unlock, every minute, and on a press on the bar
    * (`barInput`), which Windows does not see as input.
+   *
+   * `atStart` also looks for a session SprintTicker was closed under -- a
+   * crash, a shutdown -- the same day (S31, P10c). Nothing watched the
+   * presence while it was closed, so a long gap there is asked about rather
+   * than counted as work, whoever is at the machine now.
    */
-  public check(options: { barInput?: boolean } = {}): void {
+  public check(options: { barInput?: boolean; atStart?: boolean } = {}): void {
     try {
       const previous = this._presence.lastPresence();
       if (previous !== null && (options.barInput || this._presence.isPresent())) {
         this.detect(previous);
       }
+      if (previous !== null && options.atStart) this.detectClosed(previous);
     } catch (err) {
       console.error('[ForgottenSessionService] Looking for a forgotten session failed:', err);
     } finally {
@@ -131,7 +144,8 @@ export class ForgottenSessionService {
       endOfDayUtc,
       pauses: this._engine.getClosedPauses(),
       taskUnlisted: session.taskUnlisted === true,
-      deferred: stored.deferred === true
+      deferred: stored.deferred === true,
+      cause: stored.cause ?? 'overnight'
     };
   }
 
@@ -194,20 +208,42 @@ export class ForgottenSessionService {
     const now = Date.now();
     if (localDateKey(new Date(lastActivity)) >= localDateKey(new Date(now))) return;
     if (now - lastActivity < FORGOTTEN_MIN_GAP_MS) return;
+    this.ask(session, lastActivity, 'overnight');
+  }
 
+  /**
+   * The same day, at start: the gap since the last activity was spent with
+   * SprintTicker closed, and used to count as work, silently. Across a change
+   * of day `detect` asks instead, once someone is there.
+   */
+  private detectClosed(previousPresence: number): void {
+    if (this.schedule().askAboutForgottenSessions === false) return;
+    if (this.readStored()) return;
+    const session = this._engine.getCurrentSession();
+    if (!session || session.status !== 'TRACKING') return;
+
+    const lastActivity = Math.max(previousPresence, Date.parse(session.startTimeUtc));
+    const now = Date.now();
+    if (localDateKey(new Date(lastActivity)) !== localDateKey(new Date(now))) return;
+    if (now - lastActivity < FORGOTTEN_MIN_GAP_MS) return;
+    this.ask(session, lastActivity, 'closed');
+  }
+
+  /** Pauses the session at the last activity and asks; nothing is logged until it is answered. */
+  private ask(session: ActiveSessionDTO, lastActivity: number, cause: ForgottenCause): void {
     const lastPresenceUtc = new Date(lastActivity).toISOString();
     console.log(
-      `[ForgottenSessionService] ${session.taskKey} was left running since ${lastPresenceUtc}: ` +
+      `[ForgottenSessionService] ${session.taskKey} was left running (${cause}) since ${lastPresenceUtc}: ` +
         'paused there, and the user is asked when it ended.'
     );
     this._engine.pauseSessionAt(lastPresenceUtc);
-    const stored: StoredReview = { sessionId: session.sessionId, lastPresenceUtc };
+    const stored: StoredReview = { sessionId: session.sessionId, lastPresenceUtc, cause };
     this._settings.setSetting(FORGOTTEN_REVIEW_KEY, stored);
     this.send(this.getReview());
     // The question waits in the window, which no longer comes forward to ask
     // it (P8c); a toast says so while it is hidden.
     this._outlet?.announce({
-      title: `${session.taskKey} ran all night`,
+      title: forgottenHeading(session.taskKey, cause),
       body: `Paused at your last activity, ${localClock(lastPresenceUtc)}. Click to say when you stopped; nothing is logged until you do.`
     });
   }
@@ -227,7 +263,12 @@ export class ForgottenSessionService {
   private readStored(): StoredReview | null {
     const value = this._settings.getSetting<Partial<StoredReview> | null>(FORGOTTEN_REVIEW_KEY, null);
     if (!value || typeof value.sessionId !== 'string' || typeof value.lastPresenceUtc !== 'string') return null;
-    return { sessionId: value.sessionId, lastPresenceUtc: value.lastPresenceUtc, deferred: value.deferred === true };
+    return {
+      sessionId: value.sessionId,
+      lastPresenceUtc: value.lastPresenceUtc,
+      deferred: value.deferred === true,
+      cause: value.cause === 'closed' ? 'closed' : 'overnight'
+    };
   }
 
   private schedule(): ScheduleSettingsDTO {

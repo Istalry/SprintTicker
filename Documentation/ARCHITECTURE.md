@@ -949,7 +949,12 @@ through the `PromptOutlet` (a toast while the window is hidden). Decide later
 so the window shows a card on Today instead of the dialog, and `ask` takes
 the mark off and brings the dashboard forward -- the user's click. Neither
 answers: the session stays paused and nothing is logged. The mini timer shows
-the question in both states, with Answer. The service listens to the engine:
+the question in both states, with Answer. At start (`check({ atStart: true })`,
+P10c) it also looks for a session the app was closed under the same day: a
+running session whose last activity was `FORGOTTEN_MIN_GAP_MS` ago or more is
+paused there and asked with `cause: 'closed'`, whoever is at the machine,
+since nothing watched the presence meanwhile. The minute samples never ask
+about a same-day gap: with the app running, that is a meeting. The service listens to the engine:
 anything else done to the session answers the question. Its bar listener is prepended to
 the driver's `input` event, ahead of `InputDecoder`'s, so a first press that
 resumes the session does not hide that it was left running.

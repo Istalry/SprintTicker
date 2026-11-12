@@ -407,6 +407,8 @@ export interface ForgottenSessionReviewDTO {
    * timer keep a card that opens it again. The timer stays paused.
    */
   deferred?: boolean;
+  /** Left running overnight, or SprintTicker closed while it ran (P10c); overnight when absent. */
+  cause?: 'overnight' | 'closed';
 }
 
 /**

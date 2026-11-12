@@ -778,6 +778,11 @@
       minute. Stopping the session from the bar or the mini timer logs up to your
       last activity; resuming it does not count the gap. Turn the question off in
       <strong>Settings, My workday</strong>.</p>
+      <p>💥 <strong>SprintTicker closed while a task ran</strong> -- a crash, or the PC shut down
+      -- is asked about the same way when it starts again, the same day, if your
+      last activity was more than two hours before: <em>SprintTicker closed while
+      MG-12 ran</em>, the timer paused at your last activity, nothing logged. A shorter
+      gap counts as work, as it would have with the app open.</p>
       <p>🌙 <strong>Overtime is never interrupted.</strong> As long as you are at the keyboard or
       mouse, working past midnight is just a long session: nothing pauses it and
       nothing asks. Only more than two hours without any input across midnight --
@@ -3025,7 +3030,12 @@
       so the window shows a card on Today instead of the dialog, and <code>ask</code> takes
       the mark off and brings the dashboard forward -- the user&#39;s click. Neither
       answers: the session stays paused and nothing is logged. The mini timer shows
-      the question in both states, with Answer. The service listens to the engine:
+      the question in both states, with Answer. At start (<code>check({ atStart: true })</code>,
+      P10c) it also looks for a session the app was closed under the same day: a
+      running session whose last activity was <code>FORGOTTEN_MIN_GAP_MS</code> ago or more is
+      paused there and asked with <code>cause: &#39;closed&#39;</code>, whoever is at the machine,
+      since nothing watched the presence meanwhile. The minute samples never ask
+      about a same-day gap: with the app running, that is a meeting. The service listens to the engine:
       anything else done to the session answers the question. Its bar listener is prepended to
       the driver&#39;s <code>input</code> event, ahead of <code>InputDecoder</code>&#39;s, so a first press that
       resumes the session does not hide that it was left running.</p>
@@ -3527,7 +3537,7 @@
       </tr>
       <tr>
       <td align="left"><code>session:get-forgotten-review</code></td>
-      <td align="left">The session left running across a change of day, paused at the last activity and awaiting an answer: <code>{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted, deferred }</code>, or null; <code>deferred</code> after Decide later</td>
+      <td align="left">The session left running across a change of day, paused at the last activity and awaiting an answer: <code>{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted, deferred }</code>, or null; <code>deferred</code> after Decide later, <code>cause</code> <code>overnight</code> or <code>closed</code> (SprintTicker closed under it the same day)</td>
       </tr>
       <tr>
       <td align="left"><code>session:resolve-forgotten</code></td>

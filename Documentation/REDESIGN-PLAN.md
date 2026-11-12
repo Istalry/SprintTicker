@@ -199,7 +199,7 @@ From `CLAUDE.md`, restated where they bite here:
 | P7 | One picker, its own window, and the command palette | P4 | L | 1.6 |
 | P8 | Today and the prompts: cards, no focus stealing, Lunch / Away / stand-up, reminders | P6, P7, D1, D3 | L | 1.6 |
 | P9 | History: day, timeline, week, Check my week, add time, split | P5 | L | 1.7 |
-| P10 | in progress: P10a (End my day) and P10b (Decide later) done; P10c (a crash during the day) next -- see §15 "Split" | P10a, P10b (2026-11-12) |
+| P10 | End my day, overnight and crash | P5, P8 | M | 1.7 |
 | P11 | First run, and the states that are not normal (S31) | P3, P7 | M | 1.7 |
 | P12 | Outside the window: close to tray, tray, toasts, mini timer | P6, P8 | M | 1.6 |
 | P13 | Stream Deck plugin 0.6.0 | P6, P8 | M | 1.7 |
@@ -1572,6 +1572,21 @@ waits for the undo and the drain).
   discard is undone by restoring the session's rows, and the stored question
   would need restoring with it; the discard asks first instead, as before.
 
+**As landed: P10c, a close during the day (2026-11-12).**
+
+- Not in `reconcileStartupState`, as planned, but in
+  `ForgottenSessionService.check({ atStart: true })`, the call already made
+  before the first render: the engine has no presence, and the question,
+  its storage and its answers are the service's. `detectClosed` asks when
+  the last activity falls the same day and at least `FORGOTTEN_MIN_GAP_MS`
+  ago, whoever is at the machine; across midnight the overnight path asks.
+- The question carries `cause: 'closed'` (shared `forgottenHeading`):
+  *SprintTicker closed while MG-12 ran*, "all along" reads "all the time it
+  was closed". Decide later, the card and the mini timer are P10b's.
+- **Deviation:** S31 says "at 14:02, last activity 13:58". Nothing records
+  when the app closed -- a crash has no quit to write it, and a heartbeat
+  would write every minute -- so the card names the last activity only.
+
 ---
 
 ## 16. P11 -- First run, and the states that are not normal
@@ -1950,7 +1965,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
-| P10 | not started | |
+| P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | not started | |
 | P12 | not started | |
 | P13 | not started | |

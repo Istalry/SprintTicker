@@ -259,6 +259,12 @@ minute. Stopping the session from the bar or the mini timer logs up to your
 last activity; resuming it does not count the gap. Turn the question off in
 **Settings, My workday**.
 
+💥 **SprintTicker closed while a task ran** -- a crash, or the PC shut down
+-- is asked about the same way when it starts again, the same day, if your
+last activity was more than two hours before: *SprintTicker closed while
+MG-12 ran*, the timer paused at your last activity, nothing logged. A shorter
+gap counts as work, as it would have with the app open.
+
 🌙 **Overtime is never interrupted.** As long as you are at the keyboard or
 mouse, working past midnight is just a long session: nothing pauses it and
 nothing asks. Only more than two hours without any input across midnight --

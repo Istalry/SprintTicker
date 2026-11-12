@@ -571,8 +571,9 @@ async function startApplication(): Promise<void> {
   }
   miniWindowManager.restore();
   // Before the first render: a session left running since Friday is drawn
-  // paused at Friday's last activity, not as 62 hours.
-  forgottenSessionService.check();
+  // paused at Friday's last activity, not as 62 hours -- and one the app was
+  // closed under this morning, at the last activity before it closed (P10c).
+  forgottenSessionService.check({ atStart: true });
   forgottenSessionService.start();
   renderer.renderActiveSession(engine.getCurrentSession());
 

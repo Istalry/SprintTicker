@@ -4,6 +4,10 @@
 
 ### Added
 
+- **A crash no longer counts as work.** A task running when SprintTicker
+  closed -- a crash, a shutdown -- and started again hours later the same day
+  is paused at your last activity and asked about, like a night left running.
+  The gap used to count as work, silently.
 - **Decide later, for a session left running overnight.** The question,
   now *MG-12 ran all night*, can wait: the timer stays paused at your last
   activity, nothing is logged, and a card on Today and the mini timer keep

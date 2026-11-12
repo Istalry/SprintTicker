@@ -25,6 +25,18 @@ export const PRESENCE_WRITE_STEP_MS = 60_000;
  */
 export const FORGOTTEN_MIN_GAP_MS = 2 * 60 * 60 * 1000;
 
+/**
+ * Why a session is asked about: left running across a change of day, or
+ * SprintTicker closed -- a crash, a shutdown -- while it ran, the same day
+ * (S31, P10c).
+ */
+export type ForgottenCause = 'overnight' | 'closed';
+
+/** The question's title, in the dialog, on the cards and in the toast. */
+export function forgottenHeading(taskKey: string, cause: ForgottenCause = 'overnight'): string {
+  return cause === 'closed' ? `SprintTicker closed while ${taskKey} ran` : `${taskKey} ran all night`;
+}
+
 /** When the user was last at the machine, as an ISO instant. */
 export const LAST_PRESENCE_KEY = 'last_user_presence_utc';
 

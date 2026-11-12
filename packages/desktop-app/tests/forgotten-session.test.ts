@@ -282,6 +282,101 @@ describe('A session left running', () => {
     });
   });
 
+  /**
+   * SprintTicker closed while a task ran -- a crash, a shutdown -- the same
+   * day (S31, P10c). Nothing watched the presence meanwhile: the gap used to
+   * count as work, silently.
+   */
+  describe('closed during the day', () => {
+    /** Friday: started at 10:00, last activity at 13:58, then the app is gone. */
+    const closedAt1358 = () => {
+      back(at(16, 10));
+      engine.startTask('T-1', false, 'Rework the pause menu', 'P', 'MG-12');
+      back(at(16, 13, 58));
+      service.check();
+      service.dispose();
+    };
+    const restartAt = (time: number) => {
+      back(time);
+      service = createService();
+      const outlet = { send: vi.fn(), announce: vi.fn() };
+      service.setPromptOutlet(outlet);
+      service.check({ atStart: true });
+      return outlet;
+    };
+
+    it('Start_ClosedForHours_PausesAtTheLastActivityAndAsks', () => {
+      closedAt1358();
+
+      const outlet = restartAt(at(16, 17));
+
+      const review = service.getReview();
+      expect(review?.cause).toBe('closed');
+      expect(review?.lastPresenceUtc).toBe(iso(at(16, 13, 58)));
+      expect(engine.getCurrentSession()?.status).toBe('PAUSED');
+      expect(loggedOn(16)).toBe(0);
+      expect(outlet.announce).toHaveBeenCalledWith(expect.objectContaining({ title: 'SprintTicker closed while MG-12 ran' }));
+    });
+
+    it('Start_NobodyAtTheMachine_StillAsks', () => {
+      closedAt1358();
+      vi.setSystemTime(at(16, 17));
+      service = createService();
+
+      service.check({ atStart: true });
+
+      expect(service.getReview()?.cause).toBe('closed');
+    });
+
+    it('Start_ClosedBriefly_CountsAsWork', () => {
+      closedAt1358();
+
+      restartAt(at(16, 14, 30));
+
+      expect(service.getReview()).toBeNull();
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+
+    it('Start_AnsweredLikeTheNight_LogsUpToTheLastActivity', () => {
+      closedAt1358();
+      restartAt(at(16, 17));
+
+      service.resolve({ action: 'stop', endUtc: iso(at(16, 13, 58)) });
+
+      expect(loggedOn(16)).toBe(3 * 3600 + 58 * 60);
+    });
+
+    it('MinuteCheck_TheSameGapWhileRunning_IsNotAsked', () => {
+      // The app was running: an absence the same day is work, a meeting.
+      back(at(16, 10));
+      engine.startTask('T-1', false, 'Rework the pause menu', 'P', 'MG-12');
+      back(at(16, 13, 58));
+      service.check();
+      back(at(16, 17));
+
+      service.check();
+
+      expect(service.getReview()).toBeNull();
+    });
+
+    it('Start_AcrossMidnight_IsTheOvernightQuestion', () => {
+      closedAt1358();
+
+      restartAt(at(19, 9));
+
+      expect(service.getReview()?.cause).toBe('overnight');
+    });
+
+    it('Start_SettingTurnedOff_DoesNotAsk', () => {
+      settings.setSetting('schedule_settings', { eodWrapUpTime: '17:30', askAboutForgottenSessions: false });
+      closedAt1358();
+
+      restartAt(at(16, 17));
+
+      expect(service.getReview()).toBeNull();
+    });
+  });
+
   /** Decide later (S18, P10b): the dialog goes, the card stays, nothing moves. */
   describe('decide later', () => {
     beforeEach(() => {

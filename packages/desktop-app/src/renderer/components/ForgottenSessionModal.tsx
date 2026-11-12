@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Moon } from 'lucide-react';
 import { ForgottenSessionAction, ForgottenSessionReviewDTO } from '../../shared/dtos';
-import { workedSecondsUntil } from '../../shared/session-review';
+import { forgottenHeading as headingFor, workedSecondsUntil } from '../../shared/session-review';
 import {
   formatDayAndTime,
   formatDaySplit,
@@ -23,8 +23,8 @@ function toLocalInput(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-/** "MG-12 ran all night": the dialog's title, the card's and the mini timer's. */
-export const forgottenHeading = (review: ForgottenSessionReviewDTO) => `${review.taskKey} ran all night`;
+/** "MG-12 ran all night", or "SprintTicker closed while MG-12 ran": the dialog's title, the card's and the mini timer's. */
+export const forgottenHeading = (review: ForgottenSessionReviewDTO) => headingFor(review.taskKey, review.cause);
 
 /**
  * "Paused at Thu 12 Nov, 18:04, nothing logged": where it stands while it
@@ -236,7 +236,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                 checked={choice === 'all-along'}
                 onSelect={() => select('all-along')}
                 label="I was working all along"
-                note={`Logs ${formatHoursAndMinutes(worked(nowUtc))}, to now -- the whole night.`}
+                note={`Logs ${formatHoursAndMinutes(worked(nowUtc))}, to now -- ${review.cause === 'closed' ? 'all the time it was closed' : 'the whole night'}.`}
               />
               <EndOption
                 checked={choice === 'discard'}

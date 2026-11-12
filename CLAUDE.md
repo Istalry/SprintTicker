@@ -1210,6 +1210,12 @@ is logged or sent until they answer. Overtime is never interrupted -- input
 moves the presence on every minute -- and no time the user has not
 confirmed is ever sent. Presence is read *before* it is recorded, at every
 check: recorded first, the evidence of the absence is gone.
+**A gap spent with the app closed is asked about too** (P10c): at start, a
+running session whose last activity was over two hours ago the same day --
+a crash, a shutdown -- is paused there and asked (`check({ atStart: true })`,
+cause `closed`). Only at start: while the app runs, the same gap is a
+meeting. Nothing records when the app closed, so the question names the
+last activity, not the close.
 
 **A worklog never spans local midnight.** The providers file a worklog under
 the day it began (`started_at_utc`), so a session across midnight is split

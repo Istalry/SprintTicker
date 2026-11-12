@@ -192,6 +192,15 @@ describe('a session left running', () => {
     expect(Date.parse(sent.endUtc!)).toBeGreaterThanOrEqual(before - 1000);
   });
 
+  it('ClosedDuringTheDay_SaysSo_AndAllAlongIsTheTimeItWasClosed', async () => {
+    installElectronApi({ getForgottenReview: async () => ({ ...REVIEW, cause: 'closed' as const }) });
+    render(<ForgottenSessionModal />);
+
+    await screen.findByRole('dialog', { name: 'SprintTicker closed while MG-12 ran' });
+
+    expect(screen.getByLabelText(/I was working all along/).closest('label')?.textContent).toMatch(/all the time it was closed/);
+  });
+
   /** Decide later (S18, P10b). */
   describe('decide later', () => {
     it('DecideLater_AsksMain_AndTheDialogGoesWhenMainDefersIt', async () => {
