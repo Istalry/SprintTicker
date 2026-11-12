@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDiagnosticsView';
-import { OnboardingWizardModal } from '../../src/renderer/components/OnboardingWizardModal';
 import { DEFAULT_DEVICE_CONFIG } from '../../src/shared/device-constants';
 import { NO_BAR_DEVICE, installElectronApi } from './electron-api-mock';
 
@@ -48,37 +47,5 @@ describe('no-bar mode', () => {
     fireEvent.click(await screen.findByText('Use without a bar'));
 
     expect(await screen.findByText('disk full')).toBeTruthy();
-  });
-
-  describe('onboarding', () => {
-    /** Steps forward until the wizard offers to finish, then finishes. */
-    const finish = async (): Promise<void> => {
-      while (screen.queryByText('Next')) fireEvent.click(screen.getByText('Next'));
-      fireEvent.click(screen.getByText('Complete Setup & Open Dashboard'));
-    };
-
-    it('Onboarding_NotNow_SavesNoBarMode', async () => {
-      const bridge = installElectronApi();
-      const onClose = vi.fn();
-      render(<OnboardingWizardModal isOpen onClose={onClose} />);
-
-      fireEvent.click(screen.getByText('Not now -- use it without one'));
-      expect(screen.queryByText('Test Ping')).toBeNull();
-      await finish();
-
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
-      expect(bridge.api.setDeviceConfig).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
-    });
-
-    it('Onboarding_KeepsTheBar_DoesNotRedialIt', async () => {
-      const bridge = installElectronApi();
-      const onClose = vi.fn();
-      render(<OnboardingWizardModal isOpen onClose={onClose} />);
-
-      await finish();
-
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
-      expect(bridge.api.setDeviceConfig).not.toHaveBeenCalled();
-    });
   });
 });

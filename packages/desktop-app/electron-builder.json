@@ -27,6 +27,10 @@
     {
       "from": "../../LICENSE",
       "to": "LICENSE"
+    },
+    {
+      "from": "../streamdeck-plugin/dist/io.github.istalry.sprintticker.streamDeckPlugin",
+      "to": "StreamDeck/SprintTicker.streamDeckPlugin"
     }
   ],
   "electronLanguages": ["en-US"],

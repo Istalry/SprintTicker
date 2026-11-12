@@ -4,6 +4,11 @@
 
 ### Added
 
+- **A new first run.** Three steps instead of the setup wizard: where your
+  tasks are, with **Test connection** saying who you are or exactly what
+  went wrong; what is on your desk, ticking only what it finds, with the
+  Stream Deck plugin now inside the installer; and your day. It ends on
+  Today with the picker open. Installs set up before it never see it.
 - **A crash no longer counts as work.** A task running when SprintTicker
   closed -- a crash, a shutdown -- and started again hours later the same day
   is paused at your last activity and asked about, like a night left running.

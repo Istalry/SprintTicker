@@ -20,7 +20,7 @@ export function windowPickerWanted(inputKey: string, sessionRunning: boolean): b
 
 /**
  * The window's global dialogs: the picker, the end-of-day wrap-up, and the
- * setup wizard. Main opens some of them -- a ceremony
+ * first run. Main opens some of them -- a ceremony
  * prompt, a picker request from the bar, the tray or the mini timer -- so
  * their flags live here rather than in the views.
  */
@@ -28,7 +28,15 @@ export function useModals(sessionRunning: boolean) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState<PickerMode>('start');
   const [eodOpen, setEodOpen] = useState(false);
-  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [firstRunOpen, setFirstRunOpen] = useState(false);
+
+  // The first run opens on its own once, at the first launch (P11a); main
+  // decides, and marks an install set up before it existed as done.
+  useEffect(() => {
+    window.electronAPI?.shouldShowFirstRun?.()
+      .then(show => { if (show) setFirstRunOpen(true); })
+      .catch(err => console.warn('[useModals] Could not ask about the first run:', err));
+  }, []);
 
   // The wrap-up opens where the window is, without coming forward (P8c).
   // The stand-up is a card on Today, which follows the prompt itself.
@@ -73,6 +81,6 @@ export function useModals(sessionRunning: boolean) {
   return {
     picker: { open: pickerOpen, mode: pickerMode, show: openPicker, close: () => setPickerOpen(false) },
     eod: { open: eodOpen, show: openEod, close: () => setEodOpen(false) },
-    onboarding: { open: onboardingOpen, show: () => setOnboardingOpen(true), close: () => setOnboardingOpen(false) }
+    firstRun: { open: firstRunOpen, show: () => setFirstRunOpen(true), close: () => setFirstRunOpen(false) }
   };
 }

@@ -1,3 +1,5 @@
+import type { FirstRunService } from '../services/first-run-service';
+import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../../shared/first-run';
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
 import { ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import { worklogsToCsv } from '../../shared/worklog-csv';
@@ -103,6 +105,8 @@ export interface IPCHandlerRegistryDeps {
   contextScheduleService?: ContextScheduleService;
   /** Asks about a session left running overnight; without it, nothing is ever asked. */
   forgottenSessionService?: ForgottenSessionService;
+  /** The first run (P11a); without it, it never opens on its own and nothing can be tested. */
+  firstRun?: Pick<FirstRunService, 'shouldShow' | 'finish' | 'testConnection' | 'detectDesk' | 'installDeckPlugin' | 'openTokenPage'>;
   /** The "still...?" reminders (P8d); without it, none is ever asked. */
   reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   /** The morning card (P8e2); without it, Today never shows one. */
@@ -169,6 +173,7 @@ export class IPCHandlerRegistry {
   private priorityEngine: PriorityPreemptionEngine;
   private contextScheduleService: ContextScheduleService;
   private forgottenSessionService?: ForgottenSessionService;
+  private firstRun?: IPCHandlerRegistryDeps['firstRun'];
   private diagnosticExporter: DiagnosticExporter;
   private systemAutomationService: ISystemAutomationService;
   private getWindow: () => BrowserWindow | null;
@@ -247,6 +252,7 @@ export class IPCHandlerRegistry {
     this.windowsNotificationService = windowsNotificationService || new WindowsNotificationListenerService(settingsRepo, this.priorityEngine, renderer);
     this.contextScheduleService = contextScheduleService || new ContextScheduleService(this.priorityEngine, settingsRepo, engine, renderer, this.getWindow);
     this.forgottenSessionService = forgottenSessionService;
+    this.firstRun = deps.firstRun;
     this.diagnosticExporter = new DiagnosticExporter(driver, settingsRepo.getConnection(), {
       webhookStatus: webhookServer ? () => webhookServer.getStatus() : undefined
     });
@@ -452,6 +458,21 @@ export class IPCHandlerRegistry {
     ipcMain.handle(IPCChannel.GET_PREVIOUS_TASK, async (): Promise<TaskDTO | null> => this.engine.getPreviousTask());
 
     ipcMain.handle(IPCChannel.GET_SESSION_DAYS, async (): Promise<DayShare[]> => this.engine.getSessionDays());
+
+    // The first run (P11a). Test connection never throws for the remote's
+    // failure -- that is its answer -- and never saves what it tested.
+    ipcMain.handle(IPCChannel.GET_FIRST_RUN, async (): Promise<boolean> => this.firstRun?.shouldShow() ?? false);
+    ipcMain.handle(IPCChannel.FINISH_FIRST_RUN, async (): Promise<void> => { this.firstRun?.finish(); });
+    ipcMain.handle(IPCChannel.TEST_PROVIDER_CONNECTION, async (_event, request: ConnectionTestRequestDTO): Promise<ConnectionTestDTO> => {
+      if (!this.firstRun) return { ok: false, reason: 'failed', host: null, detail: 'Testing is not available.' };
+      return this.firstRun.testConnection(request);
+    });
+    ipcMain.handle(IPCChannel.DETECT_DESK, async (): Promise<DeskDetectionDTO | null> => this.firstRun?.detectDesk() ?? null);
+    ipcMain.handle(IPCChannel.INSTALL_DECK_PLUGIN, async (): Promise<boolean> => this.firstRun?.installDeckPlugin() ?? false);
+    // The renderer names the provider and the address typed; main builds the URL.
+    ipcMain.handle(IPCChannel.OPEN_TOKEN_PAGE, async (_event, providerId: string, site: string): Promise<boolean> =>
+      this.firstRun?.openTokenPage(providerId, site) ?? false
+    );
 
     ipcMain.handle(IPCChannel.GET_FORGOTTEN_REVIEW, async (): Promise<ForgottenSessionReviewDTO | null> =>
       this.forgottenSessionService?.getReview() ?? null

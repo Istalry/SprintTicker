@@ -112,6 +112,15 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getSessionDays: vi.fn().mockResolvedValue([]),
     getForgottenReview: vi.fn().mockResolvedValue(null),
     resolveForgottenSession: vi.fn().mockResolvedValue(true),
+    shouldShowFirstRun: vi.fn().mockResolvedValue(false),
+    finishFirstRun: vi.fn().mockResolvedValue(undefined),
+    testProviderConnection: vi.fn().mockResolvedValue({ ok: true, userName: 'Alex Moreau', projectCount: 15 }),
+    detectDesk: vi.fn().mockResolvedValue({
+      bar: { found: true, address: '10.0.4.20', connectionType: 'usb' },
+      deck: { installed: false, connected: false }
+    }),
+    installDeckPlugin: vi.fn().mockResolvedValue(true),
+    openTokenPage: vi.fn().mockResolvedValue(true),
     onForgottenReview: subscribe('onForgottenReview'),
     onSessionUpdated: subscribe('onSessionUpdated'),
 

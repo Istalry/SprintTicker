@@ -449,12 +449,22 @@ async function captureWithBar(page, framesDir, profile) {
 
   await nav('Settings');
   await nav('General');
+  // The first run (S1-S3): S1 with No account chosen, then S2 with
+  // neither device -- the picture of using it without a bar.
   await page.click('Run setup');
+  await page.eval(`[...document.querySelectorAll('input[type=radio]')]
+    .find(r => r.closest('label')?.textContent.includes('No account'))?.click()`);
+  await sleep(300);
   await page.shot('app-setup-wizard');
-  await page.click('Not now -- use it without one');
+  // Continue saves "No account" on this throwaway profile, whose projects are
+  // its own anyway; S2 is reached no other way.
+  await page.click('Continue');
+  await sleep(500);
+  await page.eval(`[...document.querySelectorAll('input[type=checkbox]')]
+    .find(c => c.closest('label')?.textContent.includes('I have neither'))?.click()`);
+  await sleep(300);
   await page.shot('app-setup-wizard-nobar');
-  // Closed by a reload: the wizard has no state that outlives it, and the
-  // answer above must not be saved.
+  // Closed by a reload: the desk's answer must not be saved.
   await reload(page);
 
   // Last, because joining stops MG-12: the stand-up is an ad-hoc session,

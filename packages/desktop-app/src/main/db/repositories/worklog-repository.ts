@@ -440,6 +440,11 @@ export class WorklogRepository {
     return this.getSyncItem(id);
   }
 
+  /** Time was ever logged here: the first run never opens for an install that has history. */
+  public hasAnyWorklog(): boolean {
+    return this.dbConn.getDb().prepare('SELECT 1 FROM worklogs LIMIT 1').get() !== undefined;
+  }
+
   /** One worklog, with its task's name and its sync state, or null. */
   public getWorklogById(id: string): WorklogRecord | null {
     const row = this.dbConn

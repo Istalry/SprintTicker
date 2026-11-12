@@ -231,6 +231,24 @@ export class JiraProvider implements ITaskProvider {
    * the sync worker prunes against what it receives, so an incomplete walk
    * throws rather than returning what it has (audit F-01).
    */
+  /** The account's display name, from `/myself`: what a refused token answers 401 to. */
+  public async getUserName(): Promise<string> {
+    this.requireConfigured();
+    const context = 'Checking the Jira credentials';
+    const res = await providerFetch(
+      this.providerId,
+      `${this.getBaseUrl()}/rest/api/3/myself`,
+      { headers: this.headers() },
+      context,
+      this._http
+    );
+    const body = await this.readJson<JiraUser>(res, context);
+    if (!body.accountId) {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no accountId`);
+    }
+    return body.displayName?.trim() || body.accountId;
+  }
+
   public async getProjects(): Promise<ProjectDTO[]> {
     this.requireConfigured();
     await this.authenticatedAccountId();

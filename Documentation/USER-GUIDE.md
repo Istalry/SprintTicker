@@ -11,7 +11,7 @@ first launch.
 
 | | |
 | :--- | :--- |
-| 🏁 [First run](#-first-run) | the setup wizard, with or without a bar, and the mini timer |
+| 🏁 [First run](#-first-run) | the first run -- your account, your desk, your day -- and the mini timer |
 | 🗂️ [The window](#-the-window) | its four places -- Today, Tasks, History, Settings -- and the header |
 | 💡 [The bar itself](#-the-bar-itself) | every screen the bar shows, and its buttons |
 | 🎹 [A Stream Deck](#-a-stream-deck) | the session on keys you place yourself |
@@ -22,38 +22,48 @@ first launch.
 
 ## 🏁 First run
 
-The onboarding wizard opens automatically. Two steps:
+The first run opens on its own at the first launch -- three steps, each
+optional. **Settings › General › Run setup** opens it again.
 
 <p align="center">
-  <img src="../docs/images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar, device address 10.0.4.20, Test Ping">
-  <img src="../docs/images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
+  <img src="../docs/images/app-setup-wizard.png" width="49%" alt="First run, step 1: where are your tasks? Jira, OpenProject or no account">
+  <img src="../docs/images/app-setup-wizard-nobar.png" width="49%" alt="First run, step 2: what's on your desk? I have neither">
 </p>
 
-**1️⃣ Hardware.** First, whether you have a BUSY Bar. If you do, plug it in over
-USB. It presents a virtual Ethernet adapter and answers on `10.0.4.20`, so there
-is usually nothing to configure — press **Test Ping** to confirm the link. A
-failure here is reported as a failure; it never congratulates you on a
-connection it did not make.
+**1️⃣ Where are your tasks?** Jira, OpenProject, or no account at all:
 
-If you do not, choose **Not now**: SprintTicker runs without one (see
-[Without a BUSY Bar](#-without-a-busy-bar)), and you can add a bar later.
+| Choice | What it needs |
+| :--- | :--- |
+| 🟦 Jira | Your site, your email, and an API token -- **make one ↗** opens Atlassian's page for it |
+| 🔷 OpenProject | Your server's address and an API key -- **make one ↗** opens your account's page on that server |
+| 📝 No account | Nothing -- your own tasks only, and their time stays on this computer |
+
+**Test connection** tries what you typed without saving it, and says who you
+are -- *Connected as Alex Moreau · 15 projects* -- or exactly what went wrong:
+an address that does not exist (*studio.atlasian.net was not found*), a token
+Jira refused (with **Make a new one ↗**), or no network. Then one question:
+when you start a task, should SprintTicker move it to In Progress and make it
+yours once it has run two minutes? **Continue** saves the account; nothing is
+saved before it. **Set up later** goes straight to Today -- connect an
+account any time in **Settings › Account**.
+
+**2️⃣ What's on your desk?** A BUSY Bar and a Stream Deck, both optional.
+Only what SprintTicker finds starts ticked: a bar answering on USB, Stream
+Deck installed on this computer. A bar on Wi-Fi: tick it, **Mine is on
+Wi-Fi**, and type its address. **Install the plugin** opens the Stream Deck
+plugin that comes with SprintTicker, so Stream Deck asks to install it; the
+line turns green once a deck connects. **I have neither** runs SprintTicker
+without a bar (see [Without a BUSY Bar](#-without-a-busy-bar)); add one later
+in **Settings › Desk devices**.
 
 Developing without a bar but wanting to see what it would show? Run
 `pnpm dev:mock` (or launch with `--mock-hardware`) and the on-screen emulator
 shows what the device would display.
 
-**2️⃣ Task provider.** Choose OpenProject, Jira or *This computer*, and enter
-the credentials for the one you picked:
-
-| Provider | What it needs |
-| :--- | :--- |
-| 🔷 OpenProject | Domain URL, and an API key from *My Account → Access tokens* |
-| 🟦 Jira Cloud | Site URL, your account email, and a token from `id.atlassian.com` |
-| 📝 This computer | Nothing — local tasks only, and their time stays here |
-
-You can leave credentials blank and add them later in **Settings, Account**. Until
-a remote provider is configured the app runs on local ad-hoc tasks. Completing
-the wizard saves the choice and immediately fetches your projects.
+**3️⃣ Your day.** Your working days, the stand-up's time and the task it is
+timed on, lunch, and the end of your day, all filled in already, and how
+SprintTicker works in four sentences. **Start my first task** saves them and
+opens the picker on Today.
 
 The **ad-hoc task key** (default `MISC-1`) is the key your own ad-hoc tasks
 show in the window — meetings, admin, anything without a ticket. The bar

@@ -927,6 +927,22 @@ reports a state the id no longer matches. A resume question after an
 interruption left `nothingTiming` minutes gets one more toast. The ids it
 asked are kept in memory: a restart may ask an occurrence once more.
 
+### `FirstRunService` — `src/main/services/`
+
+The first run (S1–S3, P11a). `shouldShow` is true once: at the first launch
+of an install with no Jira or OpenProject credentials and no worklog, and an
+install that has either is marked done (`first_run_done`) without ever
+seeing it. Test connection builds a fresh adapter from what was typed --
+never the saved one, so a wrong token replaces nothing -- and reads
+`getUserName` (`/myself`, `/api/v3/users/me`) then the projects. A failure is
+the answer, never a throw: `auth` is *refused*, a DNS `ENOTFOUND` or a 404 on
+the account is *not found*, any other transport failure is *network*, empty
+fields are *incomplete* (`shared/first-run.ts` writes each out). The desk is
+read from the driver's status, `%APPDATA%\Elgato\StreamDeck` and the deck
+socket's client count. "Install the plugin" opens the `.streamDeckPlugin`
+the installer carries in `resources/StreamDeck/` (`package:win` packs it
+first). "make one ↗" is built by main from the provider and the host typed.
+
 ### `PresenceMonitor` and `ForgottenSessionService` — `src/main/services/`
 
 Time is wall clock minus pauses, so a session forgotten on Friday read 62

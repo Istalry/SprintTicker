@@ -1633,6 +1633,40 @@ waits for the undo and the drain).
 
 **Docs:** `USER-GUIDE.md` (getting started, troubleshooting), `README.md`.
 
+**Split** (2026-11-12), each its own commit:
+
+- P11a: the first run (S1–S3), with Test connection's failures written out.
+- P11b: S31's cards on Today -- the first sync, the provider not answering,
+  the token refused, no network, the bar unplugged, updated, no account, the
+  first-day picker.
+- P11c: one entry refused (`refused`, Move… or Keep off).
+
+**As landed: P11a, the first run (2026-11-12).**
+
+- `components/FirstRun/` replaces `OnboardingWizardModal`: `YourTasksStep`
+  (S1), `YourDeskStep` (S2), `YourDayStep` (S3), in `StepFrame`. Each step
+  saves when left forward. Set up later and Start my first task both call
+  `finishFirstRun`; the second ends on Today with the picker open.
+- Main: `FirstRunService` and five channels (`first-run:*`). Test connection
+  runs a fresh adapter (`getUserName`, new on both, then `getProjects`),
+  saving nothing; `shared/first-run.ts` words its failures. An install with
+  credentials or a worklog is marked done and never sees it.
+- S2: the bar is found by the driver's status; the deck by
+  `%APPDATA%\Elgato\StreamDeck` or a connected deck, polled every 2 s while
+  the plugin installs. **The installer carries the plugin** (the user's
+  choice, 2026-11-12): `extraResources`, `package:win` packs it first,
+  `verify:packed` checks it.
+- S1's start question writes `start_side_effects.enabled`; S3 reuses
+  `StandupTaskSetting` for "on: Choose a task".
+- **Not built:** the SprintTicker server choice (PROVIDER-API §15 has not
+  shipped), and a Stream Deck layout installed with the plugin -- asked for
+  by the user (2026-11-12), deferred to P13: a `.streamDeckProfile` per
+  model, Stream Deck Mobile and Mini, bundled through the manifest's
+  `Profiles`; its format is Stream Deck's own, so it is exported from the
+  app rather than generated.
+- The pictures `app-setup-wizard*.png` keep their names; `capture-app.js`
+  now shoots S1 and S2 (neither device), but they are not remade yet.
+
 ---
 
 ## 17. P12 -- Outside the window
@@ -1726,6 +1760,11 @@ hides; only Quit clears the bar).
   (`package.test.ts`). `check-deck-release.js` refuses the tag otherwise.
 - **Tried on Stream Deck Mobile**: every state of S29, reconnecting after
   either app restarts, and a version-1 plugin against the new app.
+- **A layout installed with the plugin** (the user's request, 2026-11-12):
+  a `.streamDeckProfile` for Stream Deck Mobile and for the Mini, placed
+  with Session, Interrupt and Answer A/B/C, listed in the manifest's
+  `Profiles` so installing the plugin offers it. Exported from the Stream
+  Deck app, not generated: the format is Stream Deck's own.
 
 **Tests:**
 
@@ -1966,7 +2005,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
-| P11 | not started | |
+| P11 | in progress: P11a (the first run) done; P11b (S31's cards) next -- see §16 "Split" | P11a (2026-11-12) |
 | P12 | not started | |
 | P13 | not started | |
 | P14 | not started | |

@@ -15,7 +15,7 @@ import { SettingsPage } from './views/Settings/SettingsPage';
 import { SettingsGroupId } from './views/Settings/settings-groups';
 import { EndMyDayDialog } from './views/EOD/EndMyDayDialog';
 import { WeekEndedNotice } from './components/WeekEndedNotice';
-import { OnboardingWizardModal } from './components/OnboardingWizardModal';
+import { FirstRunDialog } from './components/FirstRun/FirstRunDialog';
 import { ForgottenSessionModal } from './components/ForgottenSessionModal';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { UpdateBanner } from './components/UpdateNotice';
@@ -162,7 +162,7 @@ export const App: React.FC = () => {
             group={settingsGroup}
             onGroupChange={setSettingsGroup}
             hasBar={hasBar}
-            onRunSetup={modals.onboarding.show}
+            onRunSetup={modals.firstRun.show}
           />
         );
       case 'today':
@@ -244,7 +244,15 @@ export const App: React.FC = () => {
       />
       <ForgottenSessionModal />
 
-      <OnboardingWizardModal isOpen={modals.onboarding.open} onClose={modals.onboarding.close} />
+      <FirstRunDialog
+        isOpen={modals.firstRun.open}
+        onClose={modals.firstRun.close}
+        onStartFirstTask={() => {
+          modals.firstRun.close();
+          setPlace('today');
+          modals.picker.show('start');
+        }}
+      />
 
       <UndoBar />
 

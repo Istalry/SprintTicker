@@ -516,7 +516,7 @@
         </thead>
         <tbody><tr>
         <td align="left">🏁 <a href="#-first-run">First run</a></td>
-        <td align="left">the setup wizard, with or without a bar, and the mini timer</td>
+        <td align="left">the first run -- your account, your desk, your day -- and the mini timer</td>
         </tr>
         <tr>
         <td align="left">🗂️ <a href="#-the-window">The window</a></td>
@@ -541,45 +541,55 @@
         </tbody></table>
       </div>
       <h3 id="guide-first-run">🏁 First run</h3>
-      <p>The onboarding wizard opens automatically. Two steps:</p>
+      <p>The first run opens on its own at the first launch -- three steps, each
+      optional. <strong>Settings › General › Run setup</strong> opens it again.</p>
       <p align="center">
-        <img src="images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar, device address 10.0.4.20, Test Ping">
-        <img src="images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
-      </p><p><strong>1️⃣ Hardware.</strong> First, whether you have a BUSY Bar. If you do, plug it in over
-      USB. It presents a virtual Ethernet adapter and answers on <code>10.0.4.20</code>, so there
-      is usually nothing to configure — press <strong>Test Ping</strong> to confirm the link. A
-      failure here is reported as a failure; it never congratulates you on a
-      connection it did not make.</p>
-      <p>If you do not, choose <strong>Not now</strong>: SprintTicker runs without one (see
-      <a href="#-without-a-busy-bar">Without a BUSY Bar</a>), and you can add a bar later.</p>
-      <p>Developing without a bar but wanting to see what it would show? Run
-      <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen emulator
-      shows what the device would display.</p>
-      <p><strong>2️⃣ Task provider.</strong> Choose OpenProject, Jira or <em>This computer</em>, and enter
-      the credentials for the one you picked:</p>
+        <img src="images/app-setup-wizard.png" width="49%" alt="First run, step 1: where are your tasks? Jira, OpenProject or no account">
+        <img src="images/app-setup-wizard-nobar.png" width="49%" alt="First run, step 2: what's on your desk? I have neither">
+      </p><p><strong>1️⃣ Where are your tasks?</strong> Jira, OpenProject, or no account at all:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
-      <th align="left">Provider</th>
+      <th align="left">Choice</th>
       <th align="left">What it needs</th>
       </tr>
       </thead>
       <tbody><tr>
+      <td align="left">🟦 Jira</td>
+      <td align="left">Your site, your email, and an API token -- <strong>make one ↗</strong> opens Atlassian&#39;s page for it</td>
+      </tr>
+      <tr>
       <td align="left">🔷 OpenProject</td>
-      <td align="left">Domain URL, and an API key from <em>My Account → Access tokens</em></td>
+      <td align="left">Your server&#39;s address and an API key -- <strong>make one ↗</strong> opens your account&#39;s page on that server</td>
       </tr>
       <tr>
-      <td align="left">🟦 Jira Cloud</td>
-      <td align="left">Site URL, your account email, and a token from <code>id.atlassian.com</code></td>
-      </tr>
-      <tr>
-      <td align="left">📝 This computer</td>
-      <td align="left">Nothing — local tasks only, and their time stays here</td>
+      <td align="left">📝 No account</td>
+      <td align="left">Nothing -- your own tasks only, and their time stays on this computer</td>
       </tr>
       </tbody></table></div>
-      <p>You can leave credentials blank and add them later in <strong>Settings, Account</strong>. Until
-      a remote provider is configured the app runs on local ad-hoc tasks. Completing
-      the wizard saves the choice and immediately fetches your projects.</p>
+      <p><strong>Test connection</strong> tries what you typed without saving it, and says who you
+      are -- <em>Connected as Alex Moreau · 15 projects</em> -- or exactly what went wrong:
+      an address that does not exist (<em>studio.atlasian.net was not found</em>), a token
+      Jira refused (with <strong>Make a new one ↗</strong>), or no network. Then one question:
+      when you start a task, should SprintTicker move it to In Progress and make it
+      yours once it has run two minutes? <strong>Continue</strong> saves the account; nothing is
+      saved before it. <strong>Set up later</strong> goes straight to Today -- connect an
+      account any time in <strong>Settings › Account</strong>.</p>
+      <p><strong>2️⃣ What&#39;s on your desk?</strong> A BUSY Bar and a Stream Deck, both optional.
+      Only what SprintTicker finds starts ticked: a bar answering on USB, Stream
+      Deck installed on this computer. A bar on Wi-Fi: tick it, <strong>Mine is on
+      Wi-Fi</strong>, and type its address. <strong>Install the plugin</strong> opens the Stream Deck
+      plugin that comes with SprintTicker, so Stream Deck asks to install it; the
+      line turns green once a deck connects. <strong>I have neither</strong> runs SprintTicker
+      without a bar (see <a href="#-without-a-busy-bar">Without a BUSY Bar</a>); add one later
+      in <strong>Settings › Desk devices</strong>.</p>
+      <p>Developing without a bar but wanting to see what it would show? Run
+      <code>pnpm dev:mock</code> (or launch with <code>--mock-hardware</code>) and the on-screen emulator
+      shows what the device would display.</p>
+      <p><strong>3️⃣ Your day.</strong> Your working days, the stand-up&#39;s time and the task it is
+      timed on, lunch, and the end of your day, all filled in already, and how
+      SprintTicker works in four sentences. <strong>Start my first task</strong> saves them and
+      opens the picker on Today.</p>
       <p>The <strong>ad-hoc task key</strong> (default <code>MISC-1</code>) is the key your own ad-hoc tasks
       show in the window — meetings, admin, anything without a ticket. The bar
       shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
@@ -3010,6 +3020,20 @@
       reports a state the id no longer matches. A resume question after an
       interruption left <code>nothingTiming</code> minutes gets one more toast. The ids it
       asked are kept in memory: a restart may ask an occurrence once more.</p>
+      <h4><code>FirstRunService</code> — <code>src/main/services/</code></h4>
+      <p>The first run (S1–S3, P11a). <code>shouldShow</code> is true once: at the first launch
+      of an install with no Jira or OpenProject credentials and no worklog, and an
+      install that has either is marked done (<code>first_run_done</code>) without ever
+      seeing it. Test connection builds a fresh adapter from what was typed --
+      never the saved one, so a wrong token replaces nothing -- and reads
+      <code>getUserName</code> (<code>/myself</code>, <code>/api/v3/users/me</code>) then the projects. A failure is
+      the answer, never a throw: <code>auth</code> is <em>refused</em>, a DNS <code>ENOTFOUND</code> or a 404 on
+      the account is <em>not found</em>, any other transport failure is <em>network</em>, empty
+      fields are <em>incomplete</em> (<code>shared/first-run.ts</code> writes each out). The desk is
+      read from the driver&#39;s status, <code>%APPDATA%\Elgato\StreamDeck</code> and the deck
+      socket&#39;s client count. &quot;Install the plugin&quot; opens the <code>.streamDeckPlugin</code>
+      the installer carries in <code>resources/StreamDeck/</code> (<code>package:win</code> packs it
+      first). &quot;make one ↗&quot; is built by main from the provider and the host typed.</p>
       <h4><code>PresenceMonitor</code> and <code>ForgottenSessionService</code> — <code>src/main/services/</code></h4>
       <p>Time is wall clock minus pauses, so a session forgotten on Friday read 62
       hours on Monday and its stop sent them all at once. <code>PresenceMonitor</code> keeps
@@ -3534,6 +3558,30 @@
       <tr>
       <td align="left">... and <code>taskOwnerName</code></td>
       <td align="left">Who the task is assigned to, when it is someone else&#39;s -- reassigned, started as a teammate&#39;s, or taken by someone between the pick and the start. The window says &quot;Assigned to&quot; that name</td>
+      </tr>
+      <tr>
+      <td align="left"><code>first-run:should-show</code></td>
+      <td align="left">True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead</td>
+      </tr>
+      <tr>
+      <td align="left"><code>first-run:finish</code></td>
+      <td align="left">Start my first task, or Set up later: it does not open on its own again</td>
+      </tr>
+      <tr>
+      <td align="left"><code>first-run:test-connection</code></td>
+      <td align="left"><code>{ providerId: &#39;jira&#39; | &#39;openproject&#39;, site, email?, token }</code>, saving nothing: <code>{ ok: true, userName, projectCount }</code> or <code>{ ok: false, reason: &#39;incomplete&#39; | &#39;not-found&#39; | &#39;refused&#39; | &#39;network&#39; | &#39;failed&#39;, host, detail }</code> -- never throws for the remote&#39;s failure</td>
+      </tr>
+      <tr>
+      <td align="left"><code>first-run:detect-desk</code></td>
+      <td align="left"><code>{ bar: { found, address, connectionType }, deck: { installed, connected } }</code></td>
+      </tr>
+      <tr>
+      <td align="left"><code>first-run:install-deck-plugin</code></td>
+      <td align="left">Opens the <code>.streamDeckPlugin</code> the installer carries; false when this build has none</td>
+      </tr>
+      <tr>
+      <td align="left"><code>first-run:open-token-page</code></td>
+      <td align="left"><code>(providerId, site)</code>: opens Atlassian&#39;s token page, or <code>/my/access_tokens</code> on the OpenProject host typed; main builds the URL</td>
       </tr>
       <tr>
       <td align="left"><code>session:get-forgotten-review</code></td>

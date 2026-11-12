@@ -152,6 +152,13 @@ build's step is `clean:dist`, invoked as `pnpm run clean:dist`. **Nor `pack`**:
 repository root (2026-10-22), so the plugin's is `pack:plugin`, reached
 through the root's `deck:pack`.
 
+**The installer carries the Stream Deck plugin** (P11a, the user's choice,
+2026-11-12): the first run's "Install the plugin" opens
+`resources/StreamDeck/SprintTicker.streamDeckPlugin`, so `package:win` runs
+`pack:plugin` before electron-builder, and `verify:packed` fails a build
+without it. The copy is whatever plugin version the app was built with; the
+plugin's own release, and its version rule (§3), are unchanged.
+
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and
 `package:win` will happily build an installer with a broken icon and no

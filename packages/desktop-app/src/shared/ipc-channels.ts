@@ -40,6 +40,13 @@ export enum IPCChannel {
   DISCARD_SESSION = 'session:discard',
   GET_SESSION_DAYS = 'session:get-days',
   GET_FORGOTTEN_REVIEW = 'session:get-forgotten-review',
+  // The first run (S1-S3, P11a)
+  GET_FIRST_RUN = 'first-run:should-show',
+  FINISH_FIRST_RUN = 'first-run:finish',
+  TEST_PROVIDER_CONNECTION = 'first-run:test-connection',
+  DETECT_DESK = 'first-run:detect-desk',
+  INSTALL_DECK_PLUGIN = 'first-run:install-deck-plugin',
+  OPEN_TOKEN_PAGE = 'first-run:open-token-page',
   RESOLVE_FORGOTTEN_SESSION = 'session:resolve-forgotten',
   ON_FORGOTTEN_SESSION_REVIEW = 'session:on-forgotten-review',
   ON_SESSION_UPDATED = 'session:on-updated',

@@ -23,6 +23,14 @@ async function verifyPackedApp() {
     process.exit(1);
   }
 
+  // The first run's "Install the plugin" opens this file (P11a); a build
+  // packed without `pnpm deck:pack` first would answer "not in this build".
+  const deckPlugin = path.join(path.dirname(exePath), 'resources', 'StreamDeck', 'SprintTicker.streamDeckPlugin');
+  if (!fs.existsSync(deckPlugin)) {
+    console.error(`[VERIFY ERROR] The Stream Deck plugin is not in the build: ${deckPlugin}`);
+    process.exit(1);
+  }
+
   console.log(`========================================================`);
   console.log(` [VERIFY] Launching packed binary: ${exePath}`);
   console.log(`========================================================`);

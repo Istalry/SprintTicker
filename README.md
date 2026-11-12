@@ -94,13 +94,14 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 1. ⬇️ **Download** the installer from the
    [latest release](https://github.com/Istalry/SprintTicker/releases/latest) and
    run it — SmartScreen will ask, see [Installation](#-installation).
-2. 🔌 **Plug in the bar** over USB, or choose *Not now* in the setup wizard.
+2. 🔌 **Answer the first run**: where your tasks are, what is on your desk,
+   your day. Every step is optional.
 3. ▶️ **Pick a task and press Start.** Connect OpenProject or Jira whenever you
    like; until then, local tasks work on their own.
 
 <p align="center">
-  <img src="docs/images/app-setup-wizard.png" width="49%" alt="Setup wizard, step 1: I have a BUSY Bar">
-  <img src="docs/images/app-setup-wizard-nobar.png" width="49%" alt="Setup wizard, step 1: Not now, use it without one">
+  <img src="docs/images/app-setup-wizard.png" width="49%" alt="First run, step 1: where are your tasks?">
+  <img src="docs/images/app-setup-wizard-nobar.png" width="49%" alt="First run, step 2: what's on your desk? I have neither">
 </p>
 
 ---
@@ -406,7 +407,9 @@ and Electron (for the app) both load as it is. Alternating `pnpm test` and
 
 ## 🏁 First run
 
-1. Launch the app; the onboarding wizard appears on first start.
+1. Launch the app; the first run opens on its own: your account (with
+   **Test connection**), your desk (the bar, the Stream Deck plugin) and your
+   day.
 2. The device answers at `10.0.4.20` over USB, which is the default and needs no
    token — nothing to configure for a normal USB setup. Both the address and an
    API token are editable under **Settings → Desk devices → Connection** for a bar on

@@ -4,6 +4,7 @@ import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-c
 import type { TaskVisibility } from '../shared/task-visibility';
 import type { InterruptShortcutSetting } from '../shared/interrupt-shortcut';
 import type { InterruptionToPlaceDTO } from '../shared/interruption';
+import type { ConnectionTestRequestDTO } from '../shared/first-run';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
 import type {
@@ -50,6 +51,12 @@ const electronAPI: IElectronAPI = {
   discardSession: () => ipcRenderer.invoke(IPCChannel.DISCARD_SESSION),
   getSessionDays: () => ipcRenderer.invoke(IPCChannel.GET_SESSION_DAYS),
   getForgottenReview: () => ipcRenderer.invoke(IPCChannel.GET_FORGOTTEN_REVIEW),
+  shouldShowFirstRun: () => ipcRenderer.invoke(IPCChannel.GET_FIRST_RUN),
+  finishFirstRun: () => ipcRenderer.invoke(IPCChannel.FINISH_FIRST_RUN),
+  testProviderConnection: (request: ConnectionTestRequestDTO) => ipcRenderer.invoke(IPCChannel.TEST_PROVIDER_CONNECTION, request),
+  detectDesk: () => ipcRenderer.invoke(IPCChannel.DETECT_DESK),
+  installDeckPlugin: () => ipcRenderer.invoke(IPCChannel.INSTALL_DECK_PLUGIN),
+  openTokenPage: (providerId: 'jira' | 'openproject', site: string) => ipcRenderer.invoke(IPCChannel.OPEN_TOKEN_PAGE, providerId, site),
   resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) =>
     ipcRenderer.invoke(IPCChannel.RESOLVE_FORGOTTEN_SESSION, resolution),
   onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => {

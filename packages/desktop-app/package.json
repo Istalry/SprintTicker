@@ -18,7 +18,7 @@
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:preload\" \"npm:dev:main\" \"npm:dev:electron\"",
     "clean:dist": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "pnpm run clean:dist && vite build --config vite.config.electron.ts && vite build --config vite.config.preload.ts && vite build",
-    "package:win": "pnpm run build && electron-builder --win",
+    "package:win": "pnpm run build && pnpm --filter @sprintticker/streamdeck-plugin run pack:plugin && electron-builder --win",
     "package:portable": "pnpm run build && electron-builder --win portable",
     "package:installer": "pnpm run build && electron-builder --win nsis",
     "test": "vitest run",

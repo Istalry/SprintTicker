@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 import { builtinModules } from 'module';
 import path from 'path';
 import { ELECTRON_EXTERNALS } from '../vite.config.electron';
+import { DECK_PLUGIN_PACK, DECK_PLUGIN_RESOURCE } from '../src/shared/first-run';
 
 /**
  * electron-builder packs every `dependencies` entry into app.asar, and main
@@ -75,5 +76,28 @@ describe('better-sqlite3 binary', () => {
 
     expect(builder.npmRebuild).toBe(false);
     expect(builder.files).toContain('!**/node_modules/better-sqlite3/build/**');
+  });
+});
+
+/**
+ * The first run's "Install the plugin" opens the pack the installer carries
+ * (P11a). Packed without it, the button answers "not in this build" -- which
+ * nothing but a packaged build would show.
+ */
+describe('the Stream Deck plugin in the installer', () => {
+  it('ExtraResources_CarryThePack_WhereMainLooks', () => {
+    const builder = JSON.parse(readFileSync(path.join(__dirname, '..', 'electron-builder.json'), 'utf8'));
+
+    expect(builder.extraResources).toContainEqual({
+      from: `../streamdeck-plugin/dist/${DECK_PLUGIN_PACK}`,
+      to: DECK_PLUGIN_RESOURCE
+    });
+  });
+
+  it('PackageWin_PacksThePluginBeforeElectronBuilder', () => {
+    const script: string = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).scripts['package:win'];
+
+    expect(script.indexOf('pack:plugin')).toBeGreaterThan(-1);
+    expect(script.indexOf('pack:plugin')).toBeLessThan(script.indexOf('electron-builder'));
   });
 });

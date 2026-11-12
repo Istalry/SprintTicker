@@ -10,6 +10,7 @@
  * `undefined is not a function` in the renderer, so keep it.
  */
 
+import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../shared/first-run';
 import type { ProviderEventSettingsDTO, ProviderEventTestResultDTO } from '../shared/provider-events';
 import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { DayShare } from '../shared/work-split';
@@ -86,6 +87,20 @@ export interface IElectronAPI {
   getForgottenReview: () => Promise<ForgottenSessionReviewDTO | null>;
   /** Answers it. False when nothing was being asked any more. */
   resolveForgottenSession: (resolution: ForgottenSessionResolutionDTO) => Promise<boolean>;
+
+  // The first run (S1-S3, P11a)
+  /** True once, at the first launch of an install never set up; false after. */
+  shouldShowFirstRun: () => Promise<boolean>;
+  /** Finished or put off: it does not open on its own again. */
+  finishFirstRun: () => Promise<void>;
+  /** Tests what the user typed, saving nothing; a failure is the answer, never a throw. */
+  testProviderConnection: (request: ConnectionTestRequestDTO) => Promise<ConnectionTestDTO>;
+  /** What is on the desk now: the bar answering, Stream Deck installed or connected. */
+  detectDesk: () => Promise<DeskDetectionDTO | null>;
+  /** Opens the Stream Deck plugin the app ships, so Stream Deck asks to install it. */
+  installDeckPlugin: () => Promise<boolean>;
+  /** "make one ↗": the page that makes a token, which main builds from the provider and the address typed. */
+  openTokenPage: (providerId: 'jira' | 'openproject', site: string) => Promise<boolean>;
   onForgottenReview: (callback: (review: ForgottenSessionReviewDTO | null) => void) => () => void;
   onSessionUpdated: (callback: (session: ActiveSessionDTO | null) => void) => () => void;
 

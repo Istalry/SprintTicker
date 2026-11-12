@@ -145,6 +145,26 @@ export class OpenProjectProvider implements ITaskProvider {
   /// <summary>
   /// Fetches accessible projects via OpenProject API v3 (/api/v3/projects).
   /// </summary>
+  /** The account's name, from `/api/v3/users/me`. */
+  public async getUserName(): Promise<string> {
+    if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
+      throw ProviderRequestError.notConfigured(this.providerId);
+    }
+    const context = 'Reading the OpenProject user';
+    const res = await providerFetch(
+      this.providerId,
+      `${this.getBaseUrl()}/api/v3/users/me`,
+      { headers: { Authorization: this.getAuthHeader(), Accept: 'application/json' } },
+      context,
+      this._http
+    );
+    const body = (await res.json()) as { id?: number | string; name?: string; login?: string };
+    if (body.id === undefined || body.id === null || String(body.id) === '') {
+      throw new ProviderRequestError(this.providerId, 'protocol', `${context} failed: response had no id`);
+    }
+    return body.name?.trim() || body.login?.trim() || String(body.id);
+  }
+
   public async getProjects(): Promise<ProjectDTO[]> {
     if (!isOpenProjectConfigured(this._domain, this._apiKey)) {
       throw ProviderRequestError.notConfigured(this.providerId);

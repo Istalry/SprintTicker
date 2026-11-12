@@ -42,6 +42,11 @@ import { PriorityPreemptionEngine } from './services/priority-preemption-engine'
 import { ContextScheduleService } from './services/context-schedule-service';
 import { PresenceMonitor } from './services/presence-monitor';
 import { ForgottenSessionService } from './services/forgotten-session-service';
+import { FirstRunService } from './services/first-run-service';
+import { DECK_PLUGIN_PACK, DECK_PLUGIN_RESOURCE } from '../shared/first-run';
+import { JiraProvider } from './providers/jira-provider';
+import { OpenProjectProvider } from './providers/openproject-provider';
+import { existsSync } from 'fs';
 import { TrayManager } from './tray/tray-manager';
 import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
 import { PickerWindowManager } from './windows/picker-window-manager';
@@ -517,6 +522,22 @@ async function startApplication(): Promise<void> {
     priorityEngine,
     contextScheduleService,
     forgottenSessionService,
+    firstRun: new FirstRunService({
+      settings: settingsRepo,
+      isProviderConfigured: () => providerManager.isRemoteConfigured(),
+      hasHistory: () => worklogRepo.hasAnyWorklog(),
+      makeProvider: id => (id === 'jira' ? new JiraProvider() : id === 'openproject' ? new OpenProjectProvider() : null),
+      deviceStatus: () => driver?.getDeviceStatus() ?? null,
+      deckInstalled: () => existsSync(path.join(app.getPath('appData'), 'Elgato', 'StreamDeck')),
+      // The socket opens after the registry; until then no deck is connected.
+      decksConnected: () => deckServer?.getClientCount() ?? 0,
+      pluginPath: () => {
+        const pack = streamDeckPluginPath();
+        return existsSync(pack) ? pack : null;
+      },
+      openPath: target => shell.openPath(target),
+      openExternal: url => shell.openExternal(url)
+    }),
     reminders: reminderService,
     morning,
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
@@ -595,6 +616,16 @@ async function startApplication(): Promise<void> {
 // Before any window closes. app.quit() -- the tray's Quit -- closes windows in
 // no promised order, and a mini timer that went first would read as closed by
 // the user and stay closed at the next launch.
+/**
+ * The Stream Deck plugin the installer carries (`extraResources`), or the
+ * one `pnpm deck:pack` last built, in development.
+ */
+function streamDeckPluginPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, ...DECK_PLUGIN_RESOURCE.split('/'))
+    : path.resolve(__dirname, '../../../streamdeck-plugin/dist', DECK_PLUGIN_PACK);
+}
+
 app.on('before-quit', () => {
   miniWindowManager?.dispose();
   pickerWindowManager?.dispose();

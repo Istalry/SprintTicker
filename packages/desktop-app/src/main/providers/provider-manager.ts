@@ -7,7 +7,13 @@ import { SecretStore } from '../db/secret-store';
 import { ProjectDTO, ProviderCapabilitiesDTO, TaskDTO } from '../../shared/dtos';
 import type { TaskClaim } from '../../shared/task-claim';
 import { doneStateFor, FlowSettingKey, readDoneStateByProject } from '../../shared/flow-settings';
-import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue } from '../../shared/provider-settings';
+import {
+  isJiraConfigured,
+  isOpenProjectConfigured,
+  PROVIDER_SETTING_DEFAULTS,
+  ProviderSettingKey,
+  ProviderSettingKeyValue
+} from '../../shared/provider-settings';
 
 /**
  * What a provider can do, read off its optional methods, so the window hides
@@ -75,6 +81,21 @@ export class ProviderManager {
    */
   public getAdHocTaskKey(): string {
     return this.readSetting(ProviderSettingKey.FALLBACK_TICKET_KEY).trim() || PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY];
+  }
+
+  /**
+   * Jira or OpenProject has credentials: an install set up before the first
+   * run existed, which it never opens on its own for.
+   */
+  public isRemoteConfigured(): boolean {
+    return (
+      isOpenProjectConfigured(this.readSetting(ProviderSettingKey.OP_DOMAIN), this._secrets.getSecret(ProviderSettingKey.OP_API_KEY)) ||
+      isJiraConfigured(
+        this.readSetting(ProviderSettingKey.JIRA_SITE),
+        this.readSetting(ProviderSettingKey.JIRA_EMAIL),
+        this._secrets.getSecret(ProviderSettingKey.JIRA_API_TOKEN)
+      )
+    );
   }
 
   /// <summary>

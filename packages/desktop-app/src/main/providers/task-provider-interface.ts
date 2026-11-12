@@ -57,6 +57,13 @@ export interface ITaskProvider {
    * instance is not set up.
    */
   getNonWorkingDays?(fromKey: string, toKey: string): Promise<string[]>;
+  /**
+   * Optional: the name of the account the credentials belong to, for the
+   * first run's Test connection ("Connected as Alex Moreau"). Throws like any
+   * read -- `auth` for refused credentials, `transport` for an address that
+   * does not answer.
+   */
+  getUserName?(): Promise<string>;
   getProjects(): Promise<ProjectDTO[]>;
   getTasks(projectId: string): Promise<TaskDTO[]>;
   /**
