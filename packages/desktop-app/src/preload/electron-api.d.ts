@@ -144,6 +144,8 @@ export interface IElectronAPI {
   exportWorklogsCsv: (from: string, to: string) => Promise<string | null>;
   /** Check my week: the sends queued for a closed week after it closed; null while the week is open. */
   getWeekChanges: (day: string) => Promise<WeekChangeDTO[] | null>;
+  /** Split in two (S16c): shortens the entry to end at `atUtc` and puts the rest on `taskId`, with Undo. */
+  splitWorklog: (worklogId: string, atUtc: string, taskId: string) => Promise<{ first: WorklogDTO; second: WorklogDTO }>;
   /** Every worklog of an interruption still to sort, newest first. */
   getUnsortedWorklogs: () => Promise<WorklogDTO[]>;
   /** Stars a task; answers the starred tasks the lists hold. */

@@ -962,7 +962,7 @@ export interface SyncQueueSnapshotDTO {
 }
 
 /** What an undo puts back (P5). */
-export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day' | 'add';
+export type UndoKind = 'stop' | 'discard' | 'correct' | 'move' | 'delete' | 'place' | 'end-day' | 'add' | 'split';
 
 /**
  * The one action that can still be undone, for the window's bar and the

@@ -297,6 +297,13 @@ export class WorklogRepository {
    *
    * `worklogId` names the local worklog the row sends, which is what lets
    * that worklog be corrected once it has been sent.
+   *
+   * `waitsFor` names another row this send is not made before: a split's
+   * second piece waits for the first piece's shortening (P9e), so the
+   * provider never holds the same minutes on both. It is stored in
+   * `origin_sync_id`, which on a correction names the send it corrects; on a
+   * CREATE it means only this wait, and nothing that reads corrections
+   * (`getUnsentCorrectionsOf`, the worker's lookup of the entry) reads it.
    */
   public enqueueSyncItem(payload: {
     id: string;
@@ -306,13 +313,14 @@ export class WorklogRepository {
     startedAtUtc: string;
     comment: string;
     worklogId?: string | null;
+    waitsFor?: string | null;
   }): void {
     // Held for the undo window (UNDO_WINDOW_MS): not due before it ends.
     const stmt = this.dbConn.getDb().prepare(`
       INSERT INTO worklog_sync_queue (
         id, provider_id, task_id, duration_seconds, started_at_utc, comment, created_at_utc, status, worklog_id,
-        next_attempt_at_utc
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+        next_attempt_at_utc, origin_sync_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)
     `);
 
     const now = Date.now();
@@ -325,7 +333,8 @@ export class WorklogRepository {
       payload.comment,
       new Date(now).toISOString(),
       payload.worklogId ?? null,
-      this.heldUntilUtc(now)
+      this.heldUntilUtc(now),
+      payload.waitsFor ?? null
     );
   }
 
@@ -345,6 +354,10 @@ export class WorklogRepository {
           -- provider stays there, and its corrections go.
           AND NOT (q.operation = 'CREATE' AND q.worklog_id IS NOT NULL AND EXISTS (
             SELECT 1 FROM worklogs w WHERE w.id = q.worklog_id AND EXISTS (${OVERLAPPING_EARLIER('w')})))
+          -- A split's second piece waits for the first's shortening
+          -- (enqueueSyncItem's waitsFor). A row dropped since releases it.
+          AND NOT (q.operation = 'CREATE' AND q.origin_sync_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM worklog_sync_queue awaited WHERE awaited.id = q.origin_sync_id AND awaited.status <> 'SYNCED'))
           -- A correction waits for whatever came before it on the same
           -- worklog: an UPDATE sent ahead of its CREATE names no entry.
           AND NOT EXISTS (

@@ -1310,6 +1310,12 @@ CREATE *for the task it is on* (`getSendOf`), and the unsent corrections a
 correction or a deletion drops are those of *that* send (`origin_sync_id`).
 By worklog alone, deleting a just-moved worklog dropped the DELETE and left
 the old entry at Jira for good. "Never attempted" is `send_attempts`.
+**A split's second piece waits for the first's shortening** (P9e): its
+`CREATE` names the `UPDATE` in `origin_sync_id`, and the queue holds it
+until that row is sent. So `origin_sync_id` on a `CREATE` means "not before
+this row" -- never "the send this corrects": anything reading it as a
+correction's origin must keep filtering `operation <> 'CREATE'`, as
+`getUnsentCorrectionsOf` does.
 
 **Listed is not mine.** The sync keeps the user's open work, every open task
 nobody is assigned and a teammate's task in progress (`keptByDefaultScope`),

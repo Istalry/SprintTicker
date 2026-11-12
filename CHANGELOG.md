@@ -4,6 +4,9 @@
 
 ### Added
 
+- **Split in two.** In Correct, for the time you forgot to switch: choose
+  the moment, pick the task the rest goes to. Jira or OpenProject gets the
+  first entry shortened, then the second, with Undo for ten seconds.
 - **Check my week.** From History's week, or the notice when a week closes:
   every problem of the week in one list -- time to place, corrections and
   sends not answered, untracked time in your working hours, overlaps, and

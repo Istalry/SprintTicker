@@ -7,6 +7,7 @@ import { findOverlaps } from '../../shared/overlap';
 import { ConfirmPanel } from './ConfirmPanel';
 import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
+import { SPLIT_MIN_SECONDS } from './SplitWorklogDialog';
 
 /** `YYYY-MM-DDTHH:MM` in local time, as a datetime-local input holds it. */
 function toLocalInput(date: Date): string {
@@ -31,6 +32,8 @@ interface EditWorklogModalProps {
   onClose: () => void;
   /** Called once main has accepted the change. */
   onDone: () => void;
+  /** Opens Split in two (S16c) on this entry, instead of correcting it. */
+  onSplit?: () => void;
 }
 
 /**
@@ -42,7 +45,7 @@ interface EditWorklogModalProps {
  * fields are left alone, so fixing a comment does not also shave the
  * duration or move the start to the minute.
  */
-export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mode, lastWeekClosed = null, sameDay = [], onClose, onDone }) => {
+export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mode, lastWeekClosed = null, sameDay = [], onClose, onDone, onSplit }) => {
   const initialHours = Math.floor(worklog.durationSeconds / 3600);
   const initialMinutes = Math.floor((worklog.durationSeconds % 3600) / 60);
   const initialStart = toLocalInput(new Date(worklog.startedAtUtc));
@@ -206,6 +209,15 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
             )}
 
             <div className="flex justify-end space-x-3 pt-1">
+              {onSplit && worklog.durationSeconds >= SPLIT_MIN_SECONDS && (
+                <button
+                  type="button"
+                  onClick={onSplit}
+                  className="mr-auto px-3 py-2 text-xs font-semibold text-text-secondary hover:text-white"
+                >
+                  Split in two…
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-text-secondary hover:text-white rounded-lg text-xs font-semibold border border-border-dark transition-all"

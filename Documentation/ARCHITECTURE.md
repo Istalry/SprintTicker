@@ -410,6 +410,15 @@ What it queues depends on how far the send got:
 | None (ad-hoc, too short, recovered, or untied by migration 8) | Here only | Here only |
 | Queued, not claimed (`PENDING`, `FAILED`) | The queued row is rewritten, and given a fresh start | The queued row is dropped -- unless an attempt was made, whose lost answer may have created the entry; then a `DELETE` goes out and finds it by its marker |
 | Claimed or delivered | An `UPDATE` behind it; one unsent per worklog, the latest wins | A `DELETE` behind it, replacing any unsent `UPDATE` |
+
+A split (`split`, S16c) is a correction and an added entry in one
+transaction: the worklog is shortened as the table says, and the rest is a
+new worklog on the task chosen, from the same session. When the shortening
+is an `UPDATE`, the new entry's `CREATE` names it in `origin_sync_id`, and
+`getPendingQueueItems` holds a `CREATE` while the row it names is unsent --
+so the provider has the first entry shortened before it gets the second,
+and never the same minutes on both. On a `CREATE` that column means only
+this wait; on a correction it names the send corrected.
 | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
 
 History's week (S15) is `shared/week-sheet.ts` over `worklogs:get-range`:

@@ -1114,6 +1114,15 @@
       Worklogs sent by an earlier version are found at the provider by the
       <code>[#xxxxxxxx]</code> tag at the end of their comment, so keep that tag if you edit the
       comment in Jira.</p>
+      <p>✂️ <strong>Split an entry in two</strong> with <strong>Split in two…</strong> in Correct, for the time
+      you forgot to switch: slide to the moment you switched, by the minute, and
+      pick the task the rest goes to -- nothing is chosen for you. The first part
+      stays on its task and the rest becomes a new entry with the same note. Jira
+      or OpenProject gets the first entry shortened, then the second as a new one,
+      in that order, so it never holds the same minutes twice; a shortening it
+      refuses keeps the second from being sent. Undo is there for ten seconds, and
+      time in a closed week is warned about first. An entry under two minutes has
+      nothing to split.</p>
       <p>⇄ <strong>Move a worklog to another task</strong> with <strong>↳ Move…</strong> in ⋯ on its row: pick the
       task, and the time is on it at once here. At Jira or OpenProject the entry is
       deleted where it was, then created on the new task -- in that order, so the
@@ -2424,12 +2433,16 @@
       <td align="left">An <code>UPDATE</code> behind it; one unsent per worklog, the latest wins</td>
       <td align="left">A <code>DELETE</code> behind it, replacing any unsent <code>UPDATE</code></td>
       </tr>
-      <tr>
-      <td align="left">At a provider with no remote (ad-hoc rows of an older build)</td>
-      <td align="left">Here only</td>
-      <td align="left">Here only</td>
-      </tr>
       </tbody></table></div>
+      <p>A split (<code>split</code>, S16c) is a correction and an added entry in one
+      transaction: the worklog is shortened as the table says, and the rest is a
+      new worklog on the task chosen, from the same session. When the shortening
+      is an <code>UPDATE</code>, the new entry&#39;s <code>CREATE</code> names it in <code>origin_sync_id</code>, and
+      <code>getPendingQueueItems</code> holds a <code>CREATE</code> while the row it names is unsent --
+      so the provider has the first entry shortened before it gets the second,
+      and never the same minutes on both. On a <code>CREATE</code> that column means only
+      this wait; on a correction it names the send corrected.
+      | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |</p>
       <p>History&#39;s week (S15) is <code>shared/week-sheet.ts</code> over <code>worklogs:get-range</code>:
       each task&#39;s time per day grouped by project, the Day row, and the provider&#39;s
       row, which sums <code>providerSeconds</code> -- the duration of the last <code>SYNCED</code> queue
@@ -3678,6 +3691,10 @@
       <tr>
       <td align="left"><code>worklogs:export-csv</code></td>
       <td align="left"><code>(from, to)</code>, as <code>worklogs:get-range</code>. Asks where to save (<code>sprintticker-&lt;from&gt;-to-&lt;to&gt;.csv</code>) and writes those worklogs as CSV (<code>shared/worklog-csv.ts</code>: Date, Start, End, Duration, Hours, Project, Task, Title, Note, Sent; local times; RFC 4180 quoting; a cell starting <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> gets a leading <code>&#39;</code>). Answers the path, or null when cancelled</td>
+      </tr>
+      <tr>
+      <td align="left"><code>worklog:split</code></td>
+      <td align="left"><code>(worklogId, atUtc, taskId)</code>. Split in two (S16c, <code>WorklogCorrectionService.split</code>): the worklog shortened to end at <code>atUtc</code> -- a correction, through the queue -- and the rest a new worklog on <code>taskId</code>, from the same session and with the same note, whose first send waits for the shortening (<code>origin_sync_id</code> on its <code>CREATE</code>). Undo for ten seconds (<code>Split MG-12 · 2h 00m</code>) puts the entry back whole. Answers <code>{ first, second }</code> and resends <code>worklog:on-updated</code>. Rejects with the reason: a moment not inside the entry (<code>splitPieces</code>), ad-hoc work or an unknown task, or a piece under its provider&#39;s floor</td>
       </tr>
       <tr>
       <td align="left"><code>worklog:create-manual</code></td>

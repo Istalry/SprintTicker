@@ -410,6 +410,18 @@ describe('IPC handlers', () => {
       expect(add).toHaveBeenCalledTimes(1);
     });
 
+    it('SplitWorklog_ReachesTheServiceAndTheTableIsResent_BadArgumentsRefused', async () => {
+      const split = vi.fn().mockReturnValue({ first: { id: 'w1' }, second: { id: 'w2' } });
+      build({ worklogCorrections: { split } });
+
+      expect(await invoke(IPCChannel.SPLIT_WORKLOG, 'w1', '2026-11-10T11:20:00.000Z', 'T-2')).toEqual({ first: { id: 'w1' }, second: { id: 'w2' } });
+      expect(split).toHaveBeenCalledWith('w1', { atUtc: '2026-11-10T11:20:00.000Z', taskId: 'T-2' });
+      expect(sentOn(IPCChannel.ON_WORKLOGS_UPDATED)).toHaveLength(1);
+      await expect(invoke(IPCChannel.SPLIT_WORKLOG, 'w1', undefined, 'T-2')).rejects.toThrow(/needs a worklog id, a moment and a task/);
+      await expect(invoke(IPCChannel.SPLIT_WORKLOG, 'w1', '2026-11-10T11:20:00.000Z', '')).rejects.toThrow(/needs/);
+      expect(split).toHaveBeenCalledTimes(1);
+    });
+
     it('DeleteWorklog_AnId_ReachesTheServiceAndTheTableIsResent', async () => {
       const remove = vi.fn();
       build({ worklogCorrections: { remove } });

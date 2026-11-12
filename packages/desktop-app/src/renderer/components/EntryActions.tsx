@@ -4,6 +4,7 @@ import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
 import { formatClockTime, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { EditWorklogModal } from './EditWorklogModal';
+import { SplitWorklogDialog } from './SplitWorklogDialog';
 import { TaskPicker } from './TaskPicker';
 import { ConfirmPanel } from './ConfirmPanel';
 import { RowMenu } from './RowMenu';
@@ -17,7 +18,7 @@ interface Moving {
 }
 
 /**
- * Correct, Move and Delete on an entry, with their dialogs: History's rows
+ * Correct (and from it Split in two), Move and Delete on an entry, with their dialogs: History's rows
  * and Today's (P8e) share this, so the closed-week warning and the move's
  * one-after-another rule live once.
  *
@@ -26,6 +27,8 @@ interface Moving {
  */
 export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
   const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
+  // Split in two (S16c), opened from Correct.
+  const [splitting, setSplitting] = useState<WorklogDTO | null>(null);
   const [moving, setMoving] = useState<Moving | null>(null);
   // A move of closed-week time, waiting for the user to say go on.
   const [askingMove, setAskingMove] = useState<Moving | null>(null);
@@ -114,6 +117,23 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
           onClose={() => setEditing(null)}
           onDone={() => {
             setEditing(null);
+            changed();
+          }}
+          onSplit={() => {
+            setSplitting(editing.worklog);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      {splitting && (
+        <SplitWorklogDialog
+          key={splitting.id}
+          worklog={splitting}
+          lastWeekClosed={lastWeekClosed}
+          onClose={() => setSplitting(null)}
+          onDone={() => {
+            setSplitting(null);
             changed();
           }}
         />

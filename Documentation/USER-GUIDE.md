@@ -617,6 +617,16 @@ Worklogs sent by an earlier version are found at the provider by the
 `[#xxxxxxxx]` tag at the end of their comment, so keep that tag if you edit the
 comment in Jira.
 
+✂️ **Split an entry in two** with **Split in two…** in Correct, for the time
+you forgot to switch: slide to the moment you switched, by the minute, and
+pick the task the rest goes to -- nothing is chosen for you. The first part
+stays on its task and the rest becomes a new entry with the same note. Jira
+or OpenProject gets the first entry shortened, then the second as a new one,
+in that order, so it never holds the same minutes twice; a shortening it
+refuses keeps the second from being sent. Undo is there for ten seconds, and
+time in a closed week is warned about first. An entry under two minutes has
+nothing to split.
+
 ⇄ **Move a worklog to another task** with **↳ Move…** in ⋯ on its row: pick the
 task, and the time is on it at once here. At Jira or OpenProject the entry is
 deleted where it was, then created on the new task -- in that order, so the

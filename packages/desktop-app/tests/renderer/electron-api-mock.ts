@@ -183,6 +183,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getWorklogsByDate: vi.fn().mockResolvedValue([]),
     getWorklogsRange: vi.fn().mockResolvedValue([]),
     getWeekChanges: vi.fn().mockResolvedValue(null),
+    splitWorklog: vi.fn().mockResolvedValue({ first: {}, second: {} }),
     exportWorklogsCsv: vi.fn().mockResolvedValue('C:\\exports\\week.csv'),
     getUnsortedWorklogs: vi.fn().mockResolvedValue([]),
     starTask: vi.fn().mockResolvedValue([]),

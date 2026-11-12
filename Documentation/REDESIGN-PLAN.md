@@ -1463,9 +1463,26 @@ timesheet, Check my week, and the corrections that were missing.
   16:55–17:30", or "Nothing logged on Monday". The header says "37h 20m
   logged", without "against 37h 30m".
 
-After P9d: P9e, Split in two (S16c), `worklog:split(id, at, taskId)` --
-shorten first, then create, both through the queue
-(`worklog-split-manual.test.ts` checks the order of the queue rows).
+**As landed: P9e, Split in two (2026-11-12).**
+
+- `worklog:split(worklogId, atUtc, taskId)` (`WorklogCorrectionService.split`,
+  `splitUndoably`): `correct` shortens the entry, then the rest is written
+  on the task chosen, from the same session and with the same note, in one
+  transaction. `shared/worklog-correction.ts` `splitPieces` cuts at the same
+  second in the window and in main.
+- The order at the provider: the second piece's `CREATE` waits for the
+  first's `UPDATE` (`enqueueSyncItem`'s `waitsFor`, stored in
+  `origin_sync_id`; a rule in `getPendingQueueItems`). An entry not sent yet
+  has its send rewritten, and the two go out alongside. A shortening refused
+  keeps the second from being sent. No migration.
+- `SplitWorklogDialog`, from "Split in two…" in Correct (entries of two
+  minutes or more): a slider by the minute, starting at the middle, the two
+  rows, "Choose a task ▾" opening the picker (move mode); nothing
+  preselected. Closed-week warning; Undo `Split MG-12 · 2h 00m`.
+- Not as drawn: the slider is the native range input rather than the drawn
+  bar.
+
+P9 is complete.
 
 ---
 
@@ -1888,7 +1905,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P6 | done; four-chord `ShortcutService` moved to P12, "Still on it?" to P8, stress sources to P14; `pnpm db:check-migration` passed on the real database (13 to 15: 20 worklogs, 7 queue rows, nothing lost), run by the user | `9c6d0d0` (2026-11-10) |
 | P7 | done: the picker and fetch by key (P7a), the picker window (P7b), Ctrl+K, the Tasks rows and S12b (P7c) | `12bca71` (2026-11-10), `621c67a`, `b764bcf` (2026-11-11) |
 | P8 | done: P8a-P8e3 (the session card, Lunch and Away pause, prompts without focus, the stand-up, the reminders, Today's entries and interruptions, the morning card, the reassigned card, S9's extras) -- see §13 "Split" and each "As landed" | P8a-P8e3 (2026-11-11) |
-| P9 | in progress: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week) done; P9e (Split in two) next -- see §14 "Split" | P9a-P9c (2026-11-11), P9d (2026-11-12) |
+| P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | not started | |
 | P11 | not started | |
 | P12 | not started | |

@@ -8,7 +8,7 @@ import { UndoService } from './undo-service';
 import { completeSession, SessionEnding } from './session-commands';
 import { undoLabel } from '../../shared/words';
 import { formatHoursAndMinutes } from '../../shared/time-format';
-import { ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { ManualWorklogDTO, WorklogCorrectionDTO, WorklogSplitDTO } from '../../shared/worklog-correction';
 import { createId, IdPrefix } from '../db/id-generator';
 
 /** What an undoable command reaches. */
@@ -120,7 +120,7 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
 /** What the worklog edits reach, besides the undo. */
 export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
   worklogs: Pick<WorklogRepository, 'getWorklogById'>;
-  corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove' | 'add'>;
+  corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove' | 'add' | 'split'>;
   /** Called after an undo put rows back, so the window reads them again. */
   onRestored: () => void;
 }
@@ -128,7 +128,7 @@ export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
 function offerWorklogUndo(
   deps: WorklogEditDeps,
   point: RestorePoint,
-  kind: 'correct' | 'move' | 'delete' | 'add',
+  kind: 'correct' | 'move' | 'delete' | 'add' | 'split',
   label: string
 ): void {
   point.seal();
@@ -175,6 +175,20 @@ export function addUndoably(deps: WorklogEditDeps, entry: ManualWorklogDTO): Wor
   const added = deps.corrections.add(entry, worklogId);
   offerWorklogUndo(deps, point, 'add', undoLabel('add', added.taskKey ?? added.taskId, formatHoursAndMinutes(added.durationSeconds)));
   return added;
+}
+
+/** A split in two, held: Undo puts the entry back whole and takes the second piece away, with their sends. */
+export function splitUndoably(deps: WorklogEditDeps, worklogId: string, split: WorklogSplitDTO): { first: WorklogRecord; second: WorklogRecord } {
+  const before = worklogOrThrow(deps, worklogId);
+  // Named before it exists, so the restore point covers the rows it adds.
+  const secondId = createId(IdPrefix.WORKLOG);
+  const point = RestorePoint.capture(deps.db, [
+    ...worklogScopes(worklogId, [before.taskId, split.taskId]),
+    ...worklogScopes(secondId, [split.taskId]).slice(1)
+  ]);
+  const pieces = deps.corrections.split(worklogId, split, secondId);
+  offerWorklogUndo(deps, point, 'split', undoLabel('split', before.taskKey ?? before.taskId, formatHoursAndMinutes(before.durationSeconds)));
+  return pieces;
 }
 
 /** A deletion, held: Undo brings the worklog back with its sends. */

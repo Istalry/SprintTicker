@@ -13,6 +13,7 @@ import {
   deleteUndoably,
   discardUndoably,
   moveUndoably,
+  splitUndoably,
   stopUndoably,
   UndoableDeps,
   WorklogEditDeps
@@ -288,6 +289,22 @@ describe('undoable commands', () => {
       expect(undo.run()).toBe(true);
 
       expect(worklogs.getWorklogById(before.id)?.taskId).toBe(A.id);
+      expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }]);
+    });
+
+    it('SplitThenUndo_TheEntryWholeAgain_TheRestGone', async () => {
+      const before = await sentWorklog();
+      const at = new Date(Date.parse(before.startedAtUtc) + 10 * 60_000).toISOString();
+
+      const { second } = splitUndoably(edits, before.id, { atUtc: at, taskId: B.id });
+      expect(queueRows()).toEqual([
+        { operation: 'CREATE', status: 'SYNCED' }, { operation: 'UPDATE', status: 'PENDING' }, { operation: 'CREATE', status: 'PENDING' }
+      ]);
+      expect(undo.current()?.label).toMatch(/^Split A-1 · \d/);
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(before.id)?.durationSeconds).toBe(before.durationSeconds);
+      expect(worklogs.getWorklogById(second.id)).toBeNull();
       expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }]);
     });
 

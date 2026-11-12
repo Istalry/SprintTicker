@@ -56,7 +56,7 @@ import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { selectableProviders } from '../../shared/provider-names';
 import { plainSessionEnding, SessionEnding } from '../services/session-commands';
 import { UndoService } from '../services/undo-service';
-import { addUndoably, correctUndoably, deleteUndoably, moveUndoably, WorklogEditDeps } from '../services/undoable-commands';
+import { addUndoably, correctUndoably, deleteUndoably, moveUndoably, splitUndoably, WorklogEditDeps } from '../services/undoable-commands';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -1156,6 +1156,18 @@ export class IPCHandlerRegistry {
       const added = edits ? addUndoably(edits, entry) : this.worklogCorrections.add(entry);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return added;
+    });
+
+    // Split in two (S16c): the entry shortened, then the rest on the task chosen, both through the queue.
+    ipcMain.handle(IPCChannel.SPLIT_WORKLOG, async (_event, worklogId: unknown, atUtc: unknown, taskId: unknown) => {
+      if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
+      if (typeof worklogId !== 'string' || !worklogId || typeof atUtc !== 'string' || typeof taskId !== 'string' || !taskId) {
+        throw new ArgumentException('A split needs a worklog id, a moment and a task id.');
+      }
+      const edits = this.worklogEdits();
+      const pieces = edits ? splitUndoably(edits, worklogId, { atUtc, taskId }) : this.worklogCorrections.split(worklogId, { atUtc, taskId });
+      this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
+      return pieces;
     });
 
     ipcMain.handle(IPCChannel.DELETE_WORKLOG, async (_event, worklogId: unknown) => {

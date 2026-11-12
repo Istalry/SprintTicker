@@ -20,7 +20,7 @@ const at = (hour: number, minute = 0) => new Date(2026, 9, 13, hour, minute).toI
  * Time added by hand (S16b, P9a): a worklog here and a first send through
  * the queue, like a stop's -- the real queue and worker, a Jira-like fake.
  */
-describe('Adding time by hand', () => {
+describe('Adding time by hand, and splitting an entry', () => {
   let dbConn: DatabaseConnection;
   let worklogs: WorklogRepository;
   let tasks: TaskRepository;
@@ -31,6 +31,7 @@ describe('Adding time by hand', () => {
 
   const DESTINATIONS: Record<string, SendDestination | null> = {
     'T-1': { providerId: 'jira', minimumSeconds: 60 },
+    'T-2': { providerId: 'jira', minimumSeconds: 60 },
     'OWN-1': null
   };
 
@@ -42,6 +43,7 @@ describe('Adding time by hand', () => {
     tasks = new TaskRepository(dbConn);
     tasks.ensureTaskExists({ id: 'T-1', key: 'PF-31', title: 'Anvil sound pass', projectId: 'P' });
     tasks.ensureTaskExists({ id: 'OWN-1', key: 'HOME-1', title: 'Tidy up', projectId: 'HOME' });
+    tasks.ensureTaskExists({ id: 'T-2', key: 'MG-12', title: 'Fix the lantern glow at dusk', projectId: 'P' });
     tasks.ensureTaskExists({ id: ADHOC, key: 'ADHOC', title: 'Call with Marc', projectId: 'ADHOC' });
     jira = fakeRemote('jira', 'Jira', 60);
     const manager = new ProviderManager(new SettingsRepository(dbConn));
@@ -175,5 +177,83 @@ describe('Adding time by hand', () => {
     expect(worklogs.getWorklogById(first.id)?.syncState).toBe('sent');
     expect(worklogs.getWorklogById(second.id)).toMatchObject({ syncState: 'held-overlap', overlapsTaskKey: 'PF-31' });
     expect(jira.entries.size).toBe(1);
+  });
+
+  /** Split in two (S16c, P9e). */
+  const twoHours = () => service.add(entry({ startedAtUtc: at(10), durationSeconds: 120 * MINUTE, comment: 'Lantern' }));
+  const queue = () =>
+    dbConn.getDb().prepare<[], { id: string; operation: string; status: string; task_id: string; worklog_id: string; origin_sync_id: string | null; duration_seconds: number }>(
+      'SELECT id, operation, status, task_id, worklog_id, origin_sync_id, duration_seconds FROM worklog_sync_queue ORDER BY rowid'
+    ).all();
+
+  it('Split_ASentEntry_ShortenedFirst_TheRestWaitsForIt', async () => {
+    const original = twoHours();
+    await worker.processPendingQueue();
+
+    const { first, second } = service.split(original.id, { atUtc: at(11, 20), taskId: 'T-2' });
+
+    expect(first).toMatchObject({ durationSeconds: 80 * MINUTE, startedAtUtc: at(10), comment: 'Lantern' });
+    expect(second).toMatchObject({ taskId: 'T-2', durationSeconds: 40 * MINUTE, startedAtUtc: at(11, 20), comment: 'Lantern', sessionId: original.sessionId });
+    const [send, update, create] = queue();
+    expect([send.operation, send.status, update.operation, update.status, create.operation, create.status])
+      .toEqual(['CREATE', 'SYNCED', 'UPDATE', 'PENDING', 'CREATE', 'PENDING']);
+    expect(create).toMatchObject({ worklog_id: second.id, task_id: 'T-2', origin_sync_id: update.id });
+    // Only the shortening is due: the rest waits for it.
+    expect(worklogs.getPendingQueueItems().map(r => r.operation)).toEqual(['UPDATE']);
+
+    await worker.processPendingQueue();
+    await worker.processPendingQueue();
+
+    expect([...jira.entries.values()].map(e => [e.taskId, e.durationSeconds / MINUTE]).sort()).toEqual([['T-1', 80], ['T-2', 40]]);
+    expect(queue().every(r => r.status === 'SYNCED')).toBe(true);
+  });
+
+  it('Split_AShorteningRefused_TheRestNeverSent', async () => {
+    const original = twoHours();
+    await worker.processPendingQueue();
+    service.split(original.id, { atUtc: at(11, 20), taskId: 'T-2' });
+    const update = queue()[1];
+    worklogs.parkSyncItemAsFailed(update.id, 'Jira said no');
+
+    await worker.processPendingQueue();
+
+    // The provider still has the two hours, and not the 40 minutes too.
+    expect([...jira.entries.values()].map(e => e.durationSeconds / MINUTE)).toEqual([120]);
+    expect(worklogs.getPendingQueueItems()).toEqual([]);
+  });
+
+  it('Split_AnEntryNotSentYet_ItsSendRewritten_TheRestSentAlongside', async () => {
+    const original = twoHours();
+
+    const { second } = service.split(original.id, { atUtc: at(11), taskId: 'T-2' });
+
+    expect(queue().map(r => [r.operation, r.duration_seconds / MINUTE, r.origin_sync_id])).toEqual([['CREATE', 60, null], ['CREATE', 60, null]]);
+    await worker.processPendingQueue();
+    expect([...jira.entries.values()].map(e => e.taskId).sort()).toEqual(['T-1', 'T-2']);
+    expect(worklogs.getWorklogById(second.id)?.syncState).toBe('sent');
+  });
+
+  it('Split_OnAProjectMadeHere_TheRestKeptHere', () => {
+    const original = twoHours();
+
+    service.split(original.id, { atUtc: at(11), taskId: 'OWN-1' });
+
+    expect(queue().map(r => r.task_id)).toEqual(['T-1']);
+  });
+
+  it.each([
+    ['at its start', at(10), 'T-2', /between its start and its end/],
+    ['after its end', at(12, 30), 'T-2', /between its start and its end/],
+    ['no moment', 'soon', 'T-2', /Choose when/],
+    ['on ad-hoc work', at(11), ADHOC, /not on ad-hoc work/],
+    ['on an unknown task', at(11), 'NOPE', /No task NOPE/],
+    ['leaving the rest under the floor of the provider', new Date(Date.parse(at(12)) - 30_000).toISOString(), 'T-2', /at least|minute/]
+  ])('Split_%s_RefusedAndNothingChanged', (_name, atUtc, taskId, why) => {
+    const original = twoHours();
+
+    expect(() => service.split(original.id, { atUtc, taskId })).toThrow(why);
+
+    expect(worklogs.getWorklogById(original.id)?.durationSeconds).toBe(120 * MINUTE);
+    expect(queue()).toHaveLength(1);
   });
 });

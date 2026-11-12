@@ -98,3 +98,28 @@ export function checkWorklogCorrection(
   }
   return null;
 }
+
+/** Where an entry is split (S16c, P9e): the moment, and the task the second piece goes to. */
+export interface WorklogSplitDTO {
+  atUtc: string;
+  taskId: string;
+}
+
+/**
+ * The two pieces of an entry split at `atUtc`, in whole seconds, or why it
+ * cannot be: the moment must fall inside the entry, a whole second after its
+ * start and before its end. Shared, so the window's slider and main's check
+ * cut at the same second.
+ */
+export function splitPieces(
+  entry: { startedAtUtc: string; durationSeconds: number },
+  atUtc: string
+): { firstSeconds: number; secondSeconds: number } | string {
+  const startMs = Date.parse(entry.startedAtUtc);
+  const atMs = Date.parse(atUtc);
+  if (Number.isNaN(atMs)) return 'Choose when the entry is split.';
+  const firstSeconds = Math.round((atMs - startMs) / 1000);
+  const secondSeconds = entry.durationSeconds - firstSeconds;
+  if (firstSeconds < 1 || secondSeconds < 1) return 'Split it between its start and its end.';
+  return { firstSeconds, secondSeconds };
+}

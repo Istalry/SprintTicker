@@ -3,7 +3,7 @@ import { ProviderManager } from '../providers/provider-manager';
 import { ITaskProvider } from '../providers/task-provider-interface';
 import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
-import { checkManualWorklog, checkWorklogCorrection, ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { checkManualWorklog, checkWorklogCorrection, ManualWorklogDTO, splitPieces, WorklogCorrectionDTO } from '../../shared/worklog-correction';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 
 /** Where time logged on a task is queued, and the least that provider records. */
@@ -264,31 +264,95 @@ export class WorklogCorrectionService {
     if (refusal) throw new ArgumentException(refusal);
 
     const comment = entry.comment.trim() || WORKLOG_COMMENTS.ADDED;
-    this.transaction(() => {
-      this._worklogs.saveWorklog({
-        id: worklogId,
-        sessionId: createId(IdPrefix.MANUAL_SESSION),
-        taskId: entry.taskId,
-        durationSeconds: entry.durationSeconds,
-        startedAtUtc: entry.startedAtUtc,
-        comment,
-        createdAtUtc: new Date(this._now()).toISOString()
-      });
-      if (destination) {
-        this._worklogs.enqueueSyncItem({
-          id: createId(IdPrefix.SYNC_ITEM),
-          providerId: destination.providerId,
-          taskId: entry.taskId,
-          durationSeconds: entry.durationSeconds,
-          startedAtUtc: entry.startedAtUtc,
-          comment,
-          worklogId
-        });
-      }
-    });
+    this.transaction(() => this.writeEntry({ ...entry, comment }, worklogId, createId(IdPrefix.MANUAL_SESSION), destination, null));
 
     if (destination) this._requestDispatch();
     return this._worklogs.getWorklogById(worklogId)!;
+  }
+
+  /**
+   * Splits an entry in two at `split.atUtc` (S16c): the time forgotten to be
+   * switched. The entry is shortened to end there -- a correction, through
+   * the queue like any -- and the rest becomes a new entry on
+   * `split.taskId`, from the same session and with the same note, whose
+   * first send waits for the shortening to arrive (`waitsFor`): the provider
+   * gets the first entry shortened and the second as a new one, in that
+   * order, and never the same minutes on both.
+   *
+   * @throws ArgumentException when the moment is outside the entry, the
+   *   task is ad-hoc or unknown, or a piece is shorter than its provider
+   *   records.
+   */
+  public split(worklogId: string, split: { atUtc: string; taskId: string }, secondId: string = createId(IdPrefix.WORKLOG)): {
+    first: WorklogRecord;
+    second: WorklogRecord;
+  } {
+    if (!worklogId) throw new ArgumentNullException('worklogId');
+    if (!split?.taskId) throw new ArgumentNullException('taskId');
+    if (!this._targets) throw new Error('Splitting an entry is unavailable.');
+    const worklog = this._worklogs.getWorklogById(worklogId);
+    if (!worklog) throw new ArgumentException(`No worklog ${worklogId}.`, 'worklogId');
+    const pieces = splitPieces(worklog, split.atUtc);
+    if (typeof pieces === 'string') throw new ArgumentException(pieces, 'atUtc');
+    if (isAdHocTaskId(split.taskId)) throw new ArgumentException('Put the rest on a task, not on ad-hoc work.', 'taskId');
+    if (!this._targets.getTask(split.taskId)) throw new ArgumentException(`No task ${split.taskId}.`, 'taskId');
+
+    const comment = worklog.adHoc && worklog.taskTitle ? worklog.taskTitle : worklog.comment;
+    const second: ManualWorklogDTO = {
+      taskId: split.taskId,
+      durationSeconds: pieces.secondSeconds,
+      startedAtUtc: new Date(Date.parse(worklog.startedAtUtc) + pieces.firstSeconds * 1000).toISOString(),
+      comment
+    };
+    const destination = this._targets.destinationOf(split.taskId);
+    // The note is kept as it is, even empty: it is the entry's own, not added time's.
+    const refusal = checkManualWorklog({ ...second, comment: comment || WORKLOG_COMMENTS.ADDED }, this._now(), destination?.minimumSeconds ?? 1);
+    if (refusal) throw new ArgumentException(refusal);
+
+    this.transaction(() => {
+      this.correct(worklogId, { durationSeconds: pieces.firstSeconds, startedAtUtc: worklog.startedAtUtc, comment: worklog.comment });
+      // The row the provider must have before the second piece: the
+      // shortening, when the entry was sent and an UPDATE now carries it.
+      const send = this._worklogs.getSendOf(worklogId);
+      const shortening = send
+        ? this._worklogs.getUnsentCorrectionsOf(worklogId, send.id).find(row => row.operation === 'UPDATE') ?? null
+        : null;
+      this.writeEntry(second, secondId, worklog.sessionId, destination, shortening?.id ?? null);
+    });
+
+    if (destination) this._requestDispatch();
+    return { first: this._worklogs.getWorklogById(worklogId)!, second: this._worklogs.getWorklogById(secondId)! };
+  }
+
+  /** A worklog here and, for a task with a provider, its first send. */
+  private writeEntry(
+    entry: ManualWorklogDTO,
+    worklogId: string,
+    sessionId: string,
+    destination: SendDestination | null,
+    waitsFor: string | null
+  ): void {
+    this._worklogs.saveWorklog({
+      id: worklogId,
+      sessionId,
+      taskId: entry.taskId,
+      durationSeconds: entry.durationSeconds,
+      startedAtUtc: entry.startedAtUtc,
+      comment: entry.comment,
+      createdAtUtc: new Date(this._now()).toISOString()
+    });
+    if (destination) {
+      this._worklogs.enqueueSyncItem({
+        id: createId(IdPrefix.SYNC_ITEM),
+        providerId: destination.providerId,
+        taskId: entry.taskId,
+        durationSeconds: entry.durationSeconds,
+        startedAtUtc: entry.startedAtUtc,
+        comment: entry.comment,
+        worklogId,
+        waitsFor
+      });
+    }
   }
 
   /** Unclaimed and never claimed: the entry cannot exist. `send_attempts`, never the retry budget. */
