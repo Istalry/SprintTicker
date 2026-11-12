@@ -71,3 +71,42 @@ export function describeSends(entries: readonly CountedEntry[]): string {
   if (unsent.length === 0) return sent > 0 ? 'all sent' : entries.length > 0 ? 'kept in SprintTicker' : '';
   return sent > 0 ? `all sent but ${unsent.join(', ')}` : unsent.join(', ');
 }
+
+/** What End my day reads of the session running, if any. */
+export interface RunningForEndOfDay {
+  elapsedSeconds: number;
+  /** An interruption: its time is placed, not sent. */
+  interruption: boolean;
+  /** Its time goes to a provider: not ad-hoc work, nor a project made here. */
+  sendable: boolean;
+}
+
+export interface EndOfDayFigures {
+  loggedSeconds: number;
+  /** What the provider holds of today: the last answered sends. */
+  sentSeconds: number;
+  /** What ending the day sends: the session running, and the entries waiting or refused. */
+  toSendSeconds: number;
+  toPlaceSeconds: number;
+}
+
+/**
+ * End my day's figures (S17, P10a): its header line and its button, from the
+ * same entries the list shows, so "send 1h 45m" is what the rows add up to.
+ * An entry an overlap holds is not counted to send: it waits until fixed.
+ */
+export function endOfDayFigures(
+  entries: ReadonlyArray<CountedEntry & { providerSeconds?: number }>,
+  running: RunningForEndOfDay | null,
+  waitingToPlaceSeconds: number
+): EndOfDayFigures {
+  const sum = (list: ReadonlyArray<{ durationSeconds: number }>) => list.reduce((total, e) => total + e.durationSeconds, 0);
+  const runningWork = running && !running.interruption ? running.elapsedSeconds : 0;
+  return {
+    loggedSeconds: sum(entries) + runningWork,
+    sentSeconds: entries.reduce((total, e) => total + (e.providerSeconds ?? 0), 0),
+    toSendSeconds: sum(entries.filter(e => e.syncState === 'pending' || e.syncState === 'failed'))
+      + (running?.sendable && !running.interruption ? running.elapsedSeconds : 0),
+    toPlaceSeconds: waitingToPlaceSeconds + (running?.interruption ? running.elapsedSeconds : 0)
+  };
+}

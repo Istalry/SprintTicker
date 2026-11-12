@@ -1258,6 +1258,13 @@ purpose, never following the active provider, still holds. Nothing else
 writes `provider_id` after the start, and a provider task's open session is
 never retargeted: that would move logged time between issues.
 
+**End my day's shutdown waits for the undo and the drain** (P10a). It
+used to run right after the stop, so the day's sends, held ten seconds for
+Undo, went down with the machine, and Undo could not stop it. Now the undo's
+commit starts `EndDayShutdown`, which drains the queue for at most 30 s and
+then shuts down anyway, entries kept. Never start a shutdown from the stop
+itself, and never ticked by default (the user's choice, 2026-11-12).
+
 **Every user send waits `UNDO_WINDOW_MS`, and only `UndoService` undoes.**
 A row the queue takes is written due ten seconds ahead, and the worker is
 woken when the hold ends (`dispatchAfterHold`); Undo checks the hold and the

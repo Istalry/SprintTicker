@@ -82,7 +82,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /End my day/ }));
 
-    expect(await screen.findByText('End-of-Day Wrap-Up Wizard')).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'End my day' })).toBeTruthy();
     expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);
   });
 });

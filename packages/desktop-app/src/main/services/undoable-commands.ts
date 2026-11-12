@@ -199,6 +199,37 @@ export function deleteUndoably(deps: WorklogEditDeps, worklogId: string): void {
   offerWorklogUndo(deps, point, 'delete', undoLabel('delete', before.taskKey ?? before.taskId, formatHoursAndMinutes(before.durationSeconds)));
 }
 
+/**
+ * End my day (S17, P10a), held: `stopForWrapUp` ends the interruption and
+ * the session it holds, and Undo reopens both as they were. `onCommit` runs
+ * once Undo has passed -- the optional shutdown waits for it -- and `onUndo`
+ * when it is used, to cancel that shutdown. Offered even when nothing was
+ * running, so the shutdown has the same ten seconds to be taken back.
+ */
+export function endDayUndoably(
+  deps: UndoableDeps,
+  stopForWrapUp: () => void,
+  hooks: { onCommit?: () => void; onUndo?: () => void } = {}
+): void {
+  const active = deps.engine.getCurrentSession();
+  const held = active?.interruption?.interruptedSessionId ?? null;
+  const point = RestorePoint.capture(deps.db, [
+    ...(active ? sessionScopes(active.sessionId, active.taskId) : []),
+    ...(held ? sessionScopes(held, '') : [])
+  ]);
+  stopForWrapUp();
+  point.seal();
+  deps.undo.offer({
+    kind: 'end-day',
+    label: undoLabel('end-day', ''),
+    undo: () => {
+      hooks.onUndo?.();
+      return active ? reopen(deps, point) : true;
+    },
+    commit: () => hooks.onCommit?.()
+  });
+}
+
 /** Stop, Done and Discard with Undo: what main hands the window and the deck. */
 export function undoableSessionEnding(
   deps: UndoableDeps,

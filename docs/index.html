@@ -1229,9 +1229,9 @@
       <td align="left">Switches to Lunch mode</td>
       </tr>
       <tr>
-      <td align="left">🌙 <strong>End-of-day wrap-up</strong></td>
+      <td align="left">🌙 <strong>End my day</strong></td>
       <td align="left">17:30</td>
-      <td align="left">Prompts to wrap up; can save open editors and schedule a shutdown</td>
+      <td align="left">Asks you to end the day: see below</td>
       </tr>
       </tbody></table></div>
       <p>Both prompts can be confirmed or dismissed <strong>from the bar itself</strong> — see the
@@ -1243,6 +1243,30 @@
       window. The stand-up&#39;s card offers <strong>Join</strong>, <strong>Skip today</strong> and <strong>Remind me in
       10 min</strong>, and stays until you choose. The end-of-day wrap-up opens in the
       window without bringing it forward.</p>
+      <p>🌙 <strong>End my day</strong> (at your end of day, or ☾ in the header, or the tray)
+      shows the day before anything is sent:</p>
+      <ul>
+      <li>the interruptions still to place, each with its own menu -- each is sent
+      once you choose its task, and those you leave wait for the morning card and
+      the week;</li>
+      <li><strong>every</strong> entry of the day, nothing folded, with where it stands with Jira
+      (or OpenProject), and the task still running: <em>stops, stays open, and is
+      sent</em>;</li>
+      <li>the untracked gaps in your working hours, as a hint only -- <strong>Check
+      them…</strong> opens History, <strong>Skip</strong> hides them; a gap never stops you ending
+      the day.</li>
+      </ul>
+      <p>Its button says exactly what it does: <em>End my day · send 1h 45m · 45m left
+      to place</em>. One click stops the running task (it stays open in Jira) and
+      sends everything on a task after the usual ten seconds to undo; <strong>Undo</strong>
+      brings the task back as it was. Anything Jira refuses stays here, and the
+      next day says so. <strong>Later</strong> asks again in 15 minutes. On the bar it is still
+      two presses of START, and BACK closes it.</p>
+      <p><strong>Then shut down the PC</strong> is a separate choice, never ticked for you. The
+      shutdown waits until the ten seconds of Undo have passed and Jira has
+      answered -- up to 30 seconds, after which it goes ahead with what is not
+      sent kept for tomorrow -- and Windows then gives you its own 30 seconds to
+      cancel. Undo cancels it. Open files in VS Code or Cursor are saved first.</p>
       <p>🔔 <strong>Reminders ask once.</strong> Between your stand-up time and your end of day, on
       a working day and in Work mode, SprintTicker asks -- once each time, on Today,
       in the mini timer, and by notification while the window is hidden:</p>
@@ -2920,7 +2944,16 @@
       the copy follows.
       The wrap-up stops the session through
       <code>stopForWrapUp</code>, which drops every stored restart first: stopped from the IPC
-      handler, a stand-up running at wrap-up time restarted its task overnight.</p>
+      handler, a stand-up running at wrap-up time restarted its task overnight.
+      End my day (S17, <code>EndMyDayDialog</code>) does it through <code>endDayUndoably</code>, which
+      captures the session -- and, during an interruption, the session it holds --
+      and offers Undo (<code>Day ended</code>). The optional shutdown is <code>EndDayShutdown</code>:
+      started by the undo&#39;s commit, it passes over the queue every second until
+      nothing is due within the undo window or <code>END_DAY_DRAIN_TIMEOUT_MS</code> (30 s)
+      has passed, then asks Windows to shut down; Undo, a new wrap-up or a cancel
+      stops it at any point. Its figures (<code>endOfDayFigures</code> in
+      <code>shared/day-summary.ts</code>) count the list it shows, so the button and the rows
+      cannot disagree.</p>
       <p>Only working days have ceremonies. <code>WorkingCalendar</code> answers which days are:
       the schedule&#39;s <code>workingDays</code> (Monday to Friday by default, never empty), less
       the holidays the provider lists (<code>getNonWorkingDays</code>). Those are read at most
@@ -3787,7 +3820,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code>, <code>schedule:cancel-eod-wrapup</code>, <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code> (<code>{ shouldShutdown }</code>: End my day -- saves open editors, stops through <code>stopForWrapUp</code> with Undo, and with <code>shouldShutdown</code> shuts down only after the undo has passed and the queue has answered, 30 s at most), <code>schedule:cancel-eod-wrapup</code> (also cancels a shutdown on its way), <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Morning card</td>

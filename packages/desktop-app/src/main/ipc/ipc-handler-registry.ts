@@ -56,7 +56,9 @@ import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { selectableProviders } from '../../shared/provider-names';
 import { plainSessionEnding, SessionEnding } from '../services/session-commands';
 import { UndoService } from '../services/undo-service';
-import { addUndoably, correctUndoably, deleteUndoably, moveUndoably, splitUndoably, WorklogEditDeps } from '../services/undoable-commands';
+import { addUndoably, correctUndoably, deleteUndoably, endDayUndoably, moveUndoably, splitUndoably, WorklogEditDeps } from '../services/undoable-commands';
+import { EndDayShutdown } from '../services/end-day-shutdown';
+import { UNDO_WINDOW_MS } from '../sync/sync-constants';
 
 /**
  * Centrally registers all Electron IPC channel handlers and manages bi-directional
@@ -176,6 +178,8 @@ export class IPCHandlerRegistry {
   private reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   private morning?: Pick<MorningService, 'getMorning' | 'markSeen'>;
   private undo?: UndoService;
+  /** End my day's optional shutdown, after Undo and the queue (S17). */
+  private readonly endDayShutdown: EndDayShutdown;
   private sessionEnding: SessionEnding;
 
   constructor(deps: IPCHandlerRegistryDeps) {
@@ -248,6 +252,17 @@ export class IPCHandlerRegistry {
     });
     this.systemAutomationService = systemAutomationService || new SystemAutomationService();
     this.undo = deps.undo;
+    this.endDayShutdown = new EndDayShutdown({
+      drainOnce: async () => {
+        if (!this.syncWorker) return false;
+        await this.syncWorker.processPendingQueue();
+        // Still due within the undo window: sends held for it, not stuck ones.
+        return this.worklogRepo.getPendingQueueItems(new Date(Date.now() + UNDO_WINDOW_MS).toISOString()).length > 0;
+      },
+      scheduleShutdown: () => this.systemAutomationService.scheduleShutdown(),
+      abortShutdown: () => this.systemAutomationService.abortShutdown(),
+      isShutdownPending: () => this.systemAutomationService.isShutdownPending()
+    });
     this.sessionEnding = deps.sessionEnding ?? plainSessionEnding(engine, renderer);
   }
 
@@ -807,13 +822,13 @@ export class IPCHandlerRegistry {
       return this.contextScheduleService.answerResumePrompt(resume, addGapMinutes ?? 0, workedThrough ?? false);
     });
 
-    ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options) => {
-      // Through the schedule service, which drops the restarts first: a
-      // stand-up ended by the wrap-up must not bring its task back overnight.
+    ipcMain.handle(IPCChannel.TRIGGER_EOD_WRAP_UP, async (_event, options: unknown) => {
+      const shutdown = typeof options === 'object' && options !== null && (options as { shouldShutdown?: unknown }).shouldShutdown === true;
       this.contextScheduleService.closeEodPrompt();
-      this.contextScheduleService.stopForWrapUp();
+      // A shutdown asked for earlier and not yet gone is this one's to replace.
+      await this.endDayShutdown.cancel();
 
-      // 1. Instruct open code editors (VS Code, Cursor) to save open dirty files
+      // Open editors save first, before anything can shut the machine down.
       let savedVSCode = false;
       try {
         const editorSaveResult = await this.systemAutomationService.saveOpenEditors();
@@ -822,11 +837,25 @@ export class IPCHandlerRegistry {
         console.warn('[EOD] Editor save error:', err);
       }
 
-      // 2. Render EOD completion screen on hardware display
-      this.renderer.renderEodCompleted();
+      // Through the schedule service, which drops the restarts first: a
+      // stand-up ended by the wrap-up must not bring its task back overnight.
+      // The shutdown waits for Undo to pass and the queue to answer (S17).
+      const startShutdown = () => {
+        this.endDayShutdown.start().catch(err => console.error('[EOD] The shutdown failed:', err));
+      };
+      const stop = () => this.contextScheduleService.stopForWrapUp();
+      if (this.undo) {
+        endDayUndoably({ db: this.worklogRepo.getConnection().getDb(), undo: this.undo, engine: this.engine }, stop, {
+          ...(shutdown ? { onCommit: startShutdown } : {}),
+          onUndo: () => { void this.endDayShutdown.cancel(); }
+        });
+      } else {
+        stop();
+        if (shutdown) startShutdown();
+      }
 
-      // 3. Release display lock once the scene is over, to return to the
-      // background active/idle display
+      // The bar's completion screen, then the display goes back once it is over.
+      this.renderer.renderEodCompleted();
       //
       // The test branch releases at once instead. Audit F-35 flagged this shape
       // as test logic in production code, and it is -- kept because the
@@ -847,16 +876,6 @@ export class IPCHandlerRegistry {
         this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
       }
 
-      // 4. Trigger Shutdown if requested
-      if (options?.shouldShutdown) {
-        try {
-          // The service's own delay and reason; this used to repeat both.
-          await this.systemAutomationService.scheduleShutdown();
-        } catch (e) {
-          console.error('[EOD] Failed to execute shutdown command:', e);
-        }
-      }
-
       return { success: true, savedVSCode };
     });
 
@@ -864,9 +883,7 @@ export class IPCHandlerRegistry {
       this.contextScheduleService.closeEodPrompt();
       this.priorityEngine.releaseActiveLock('standupPromptPriority');
       this.priorityEngine.releaseActiveLock('eodWrapUpPriority');
-      if (this.systemAutomationService.isShutdownPending()) {
-        await this.systemAutomationService.abortShutdown();
-      }
+      await this.endDayShutdown.cancel();
       // Nothing drawn here: a release that frees the lock it names hands the
       // display back itself, and one that does not leaves it with whoever
       // holds it. Drawing the session after it drew idle twice -- two clears

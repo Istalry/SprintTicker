@@ -15,7 +15,6 @@ export const CeremoniesView: React.FC = () => {
   const [lunchStart, setLunchStart] = useState<string>(DEFAULT_SCHEDULE_SETTINGS.lunchStartTime);
   const [lunchEnd, setLunchEnd] = useState<string>('13:00');
   const [eodTime, setEodTime] = useState<string>('17:30');
-  const [shutdownByDefault, setShutdownByDefault] = useState<boolean>(false);
   const [askAboutForgotten, setAskAboutForgotten] = useState<boolean>(DEFAULT_SCHEDULE_SETTINGS.askAboutForgottenSessions);
   const [workingDays, setWorkingDays] = useState<number[]>([...DEFAULT_WORKING_DAYS]);
   const [splitPauseMinutes, setSplitPauseMinutes] = useState<number>(DEFAULT_SPLIT_PAUSE_MINUTES);
@@ -35,11 +34,6 @@ export const CeremoniesView: React.FC = () => {
           if (sched.askAboutForgottenSessions !== undefined) setAskAboutForgotten(sched.askAboutForgottenSessions);
           if (sched.workingDays) setWorkingDays(sched.workingDays);
           if (sched.splitPauseMinutes !== undefined) setSplitPauseMinutes(sched.splitPauseMinutes);
-          if (sched.shutdownByDefault !== undefined) {
-            setShutdownByDefault(sched.shutdownByDefault);
-          } else if (sched.eodShutdownByDefault !== undefined) {
-            setShutdownByDefault(sched.eodShutdownByDefault);
-          }
         }
       }).catch(err => console.error('[CeremoniesView] Error loading schedule settings:', err))
         // Auto-save must stay off until the stored schedule has arrived, or
@@ -56,8 +50,6 @@ export const CeremoniesView: React.FC = () => {
     lunchEndTime: lunchEnd,
     eodTime,
     eodWrapUpTime: eodTime,
-    shutdownByDefault,
-    eodShutdownByDefault: shutdownByDefault,
     askAboutForgottenSessions: askAboutForgotten,
     workingDays,
     splitPauseMinutes
@@ -79,7 +71,7 @@ export const CeremoniesView: React.FC = () => {
 
   const saveStatus = useAutoSave(
     handleSave,
-    [standupTime, lunchStart, lunchEnd, eodTime, shutdownByDefault, askAboutForgotten, workingDays, splitPauseMinutes],
+    [standupTime, lunchStart, lunchEnd, eodTime, askAboutForgotten, workingDays, splitPauseMinutes],
     loaded
   );
 
@@ -260,16 +252,6 @@ export const CeremoniesView: React.FC = () => {
                 className="w-full bg-dark-900 border border-border-dark rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-focus"
               />
             </div>
-
-            <label className="flex items-center space-x-2.5 pt-1 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={shutdownByDefault}
-                onChange={e => setShutdownByDefault(e.target.checked)}
-                className="w-4 h-4 rounded text-text-primary focus:ring-focus bg-dark-900 border-border-dark"
-              />
-              <span className="text-xs text-text-primary">Shutdown computer by default during EOD wrap-up</span>
-            </label>
 
             <label className="flex items-start space-x-2.5 pt-1 cursor-pointer select-none">
               <input

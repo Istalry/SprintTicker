@@ -13,7 +13,7 @@ import { ProjectTaskManagerView } from './views/Tasks/ProjectTaskManagerView';
 import { WorklogHistoryView } from './views/History/WorklogHistoryView';
 import { SettingsPage } from './views/Settings/SettingsPage';
 import { SettingsGroupId } from './views/Settings/settings-groups';
-import { EodWrapUpModal } from './views/EOD/EodWrapUpModal';
+import { EndMyDayDialog } from './views/EOD/EndMyDayDialog';
 import { WeekEndedNotice } from './components/WeekEndedNotice';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
 import { ForgottenSessionModal } from './components/ForgottenSessionModal';
@@ -88,9 +88,10 @@ export const App: React.FC = () => {
     setPlace('settings');
   };
 
+  const warn = (what: string) => (err: unknown) => console.warn(`[App] ${what} failed:`, err);
+
   /** A palette action, run as the window's own control for it runs it. */
   const runAction = (id: PaletteAction['id']): void => {
-    const warn = (what: string) => (err: unknown) => console.warn(`[App] ${what} failed:`, err);
     if (id.startsWith('settings:')) {
       openSettings(id.slice('settings:'.length) as SettingsGroupId);
       return;
@@ -217,22 +218,21 @@ export const App: React.FC = () => {
         onPickTask={task => { void pickTask('start', session, { task, takeAlong: false }, startTask); }}
       />
 
-      <EodWrapUpModal
+      <EndMyDayDialog
         isOpen={modals.eod.open}
-        onClose={async () => {
+        onClose={() => {
           modals.eod.close();
-          if (window.electronAPI?.cancelEodWrapUp) {
-            await window.electronAPI.cancelEodWrapUp();
-          }
+          window.electronAPI.cancelEodWrapUp().catch(warn('Closing End my day'));
         }}
-        onSnooze={async (minutes) => {
+        onLater={minutes => {
           modals.eod.close();
-          if (window.electronAPI?.snoozeCeremony) {
-            await window.electronAPI.snoozeCeremony('EOD', minutes);
-          }
+          window.electronAPI.snoozeCeremony('EOD', minutes).catch(warn('Later'));
         }}
-        onConfirmEod={async () => {
-          await complete('Finalized during End-of-Day Wrap-Up');
+        // Main stopped the session itself (stopForWrapUp), with Undo.
+        onEnded={modals.eod.close}
+        onCheckGaps={() => {
+          modals.eod.close();
+          setPlace('history');
         }}
       />
 

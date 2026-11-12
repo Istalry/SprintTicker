@@ -199,7 +199,7 @@ From `CLAUDE.md`, restated where they bite here:
 | P7 | One picker, its own window, and the command palette | P4 | L | 1.6 |
 | P8 | Today and the prompts: cards, no focus stealing, Lunch / Away / stand-up, reminders | P6, P7, D1, D3 | L | 1.6 |
 | P9 | History: day, timeline, week, Check my week, add time, split | P5 | L | 1.7 |
-| P10 | End my day, overnight and crash | P5, P8 | M | 1.7 |
+| P10 | in progress: P10a (End my day, the shutdown after Undo) done; P10b (Decide later) next -- see §15 "Split" | P10a (2026-11-12) |
 | P11 | First run, and the states that are not normal (S31) | P3, P7 | M | 1.7 |
 | P12 | Outside the window: close to tray, tray, toasts, mini timer | P6, P8 | M | 1.6 |
 | P13 | Stream Deck plugin 0.6.0 | P6, P8 | M | 1.7 |
@@ -1527,6 +1527,31 @@ P9 is complete.
 
 **Docs:** `USER-GUIDE.md`, `ARCHITECTURE.md`, `CLAUDE.md` (the shutdown
 waits for the undo and the drain).
+
+**Split** (2026-11-12), each its own commit:
+
+- P10a: End my day (S17) and the shutdown after the undo and the drain.
+- P10b: overnight, Decide later (S18).
+- P10c: a crash or close during the day (S31).
+
+**As landed: P10a, End my day (2026-11-12).**
+
+- `views/EOD/EndMyDayDialog.tsx` replaces `EodWrapUpModal`: the
+  interruptions to place (`InterruptionsToPlace`, its own menu per row),
+  every entry of today with its state and the running session, the gaps up
+  to now in the working hours (`day-gaps`; Skip, Check them… opens
+  History), the shutdown checkbox, Later (15 min, the snooze) and the button
+  from `endOfDayFigures` (`shared/day-summary.ts`). One click in the window;
+  the bar keeps START twice, BACK closes.
+- Main: `endDayUndoably` (Undo `Day ended`, during an interruption too) and
+  `EndDayShutdown` (the undo's commit, a drain of 30 s at most, then
+  `scheduleShutdown`; Undo and cancel abort it). Open editors are still
+  saved, silently (the user's choice, 2026-11-12). `App.tsx` no longer calls
+  `complete` after the wrap-up.
+- The "Shut down by default" setting is gone (the user's choice,
+  2026-11-12): the checkbox is never ticked for you; a stored value is
+  ignored. The checklist (`saveAll CLI`, "logged to Jira") went with the
+  wizard.
 
 ---
 

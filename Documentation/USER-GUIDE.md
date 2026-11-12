@@ -722,7 +722,7 @@ Working hours, and the three scheduled events:
 | :--- | :--- | :--- |
 | 🗣️ **Stand-up prompt** | 09:30 | A card on Today; **Join** switches your timer to Daily Standup |
 | 🥪 **Lunch** | 12:30–13:30 | Switches to Lunch mode |
-| 🌙 **End-of-day wrap-up** | 17:30 | Prompts to wrap up; can save open editors and schedule a shutdown |
+| 🌙 **End my day** | 17:30 | Asks you to end the day: see below |
 
 Both prompts can be confirmed or dismissed **from the bar itself** — see the
 hardware controls below.
@@ -734,6 +734,32 @@ tray or minimised, a Windows notification says so; clicking it opens the
 window. The stand-up's card offers **Join**, **Skip today** and **Remind me in
 10 min**, and stays until you choose. The end-of-day wrap-up opens in the
 window without bringing it forward.
+
+🌙 **End my day** (at your end of day, or ☾ in the header, or the tray)
+shows the day before anything is sent:
+
+- the interruptions still to place, each with its own menu -- each is sent
+  once you choose its task, and those you leave wait for the morning card and
+  the week;
+- **every** entry of the day, nothing folded, with where it stands with Jira
+  (or OpenProject), and the task still running: *stops, stays open, and is
+  sent*;
+- the untracked gaps in your working hours, as a hint only -- **Check
+  them…** opens History, **Skip** hides them; a gap never stops you ending
+  the day.
+
+Its button says exactly what it does: *End my day · send 1h 45m · 45m left
+to place*. One click stops the running task (it stays open in Jira) and
+sends everything on a task after the usual ten seconds to undo; **Undo**
+brings the task back as it was. Anything Jira refuses stays here, and the
+next day says so. **Later** asks again in 15 minutes. On the bar it is still
+two presses of START, and BACK closes it.
+
+**Then shut down the PC** is a separate choice, never ticked for you. The
+shutdown waits until the ten seconds of Undo have passed and Jira has
+answered -- up to 30 seconds, after which it goes ahead with what is not
+sent kept for tomorrow -- and Windows then gives you its own 30 seconds to
+cancel. Undo cancels it. Open files in VS Code or Cursor are saved first.
 
 🔔 **Reminders ask once.** Between your stand-up time and your end of day, on
 a working day and in Work mode, SprintTicker asks -- once each time, on Today,

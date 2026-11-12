@@ -12,6 +12,7 @@ import {
   correctUndoably,
   deleteUndoably,
   discardUndoably,
+  endDayUndoably,
   moveUndoably,
   splitUndoably,
   stopUndoably,
@@ -256,6 +257,62 @@ describe('undoable commands', () => {
 
     expect(engine.getCurrentSession()?.sessionId).toBe(sessionId);
     expect(worklogs.getTodaysWorklogs()).toEqual([]);
+  });
+
+  describe('End my day', () => {
+    const wrapUp = () => {
+      if (engine.getCurrentSession()?.interruption) engine.stopInterruption();
+      if (engine.getCurrentSession()) engine.stopSession('Wrap-up');
+    };
+
+    it('EndDayThenUndo_TheSessionRunsAgain_NoShutdown', () => {
+      runA();
+      const onCommit = vi.fn();
+      const onUndo = vi.fn();
+
+      endDayUndoably(deps, wrapUp, { onCommit, onUndo });
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(undo.current()?.label).toBe('Day ended');
+      expect(undo.run()).toBe(true);
+
+      expect(engine.getCurrentSession()?.taskId).toBe(A.id);
+      expect(onUndo).toHaveBeenCalledTimes(1);
+      expect(onCommit).not.toHaveBeenCalled();
+      expect(worklogs.getTodaysWorklogs()).toEqual([]);
+    });
+
+    it('EndDayDuringAnInterruption_UndoBringsBothBack', () => {
+      runA();
+      engine.startInterruption();
+
+      endDayUndoably(deps, wrapUp);
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(undo.run()).toBe(true);
+
+      const back = engine.getCurrentSession();
+      expect(back?.interruption).toBeTruthy();
+      expect(back?.interruption?.interruptedTaskKey).toBe(A.key);
+    });
+
+    it('EndDay_LeftAlone_CommitsAfterTheWindow', async () => {
+      runA();
+      const onCommit = vi.fn();
+
+      endDayUndoably(deps, wrapUp, { onCommit });
+      await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS);
+
+      expect(onCommit).toHaveBeenCalledTimes(1);
+      expect(undo.run()).toBe(false);
+    });
+
+    it('EndDay_NothingRunning_StillOffersUndoForTheShutdown', () => {
+      const onUndo = vi.fn();
+
+      endDayUndoably(deps, wrapUp, { onUndo });
+
+      expect(undo.run()).toBe(true);
+      expect(onUndo).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('worklog edits', () => {

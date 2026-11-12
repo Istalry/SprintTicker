@@ -864,6 +864,15 @@ the copy follows.
 The wrap-up stops the session through
 `stopForWrapUp`, which drops every stored restart first: stopped from the IPC
 handler, a stand-up running at wrap-up time restarted its task overnight.
+End my day (S17, `EndMyDayDialog`) does it through `endDayUndoably`, which
+captures the session -- and, during an interruption, the session it holds --
+and offers Undo (`Day ended`). The optional shutdown is `EndDayShutdown`:
+started by the undo's commit, it passes over the queue every second until
+nothing is due within the undo window or `END_DAY_DRAIN_TIMEOUT_MS` (30 s)
+has passed, then asks Windows to shut down; Undo, a new wrap-up or a cancel
+stops it at any point. Its figures (`endOfDayFigures` in
+`shared/day-summary.ts`) count the list it shows, so the button and the rows
+cannot disagree.
 
 Only working days have ceremonies. `WorkingCalendar` answers which days are:
 the schedule's `workingDays` (Monday to Friday by default, never empty), less

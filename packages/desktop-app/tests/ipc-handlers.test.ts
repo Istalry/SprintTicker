@@ -23,6 +23,7 @@ vi.mock('electron', () => electron);
 import { DatabaseConnection } from '../src/main/db/database-connection';
 import { SessionRepository } from '../src/main/db/repositories/session-repository';
 import { WorklogRepository } from '../src/main/db/repositories/worklog-repository';
+import { UndoService } from '../src/main/services/undo-service';
 import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { SettingsRepository } from '../src/main/db/repositories/settings-repository';
@@ -454,11 +455,44 @@ describe('IPC handlers', () => {
       expect(res).toEqual({ success: true, savedVSCode: false });
     });
 
-    it('WrapUp_WithShutdown_SchedulesItWithAGracePeriod', async () => {
+    it('WrapUp_WithShutdown_NoUndo_SchedulesItWithAGracePeriod', async () => {
       await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, { shouldShutdown: true });
 
       // The service's defaults: a grace period, and a reason naming SprintTicker.
-      expect(automation.scheduleShutdown).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(automation.scheduleShutdown).toHaveBeenCalledTimes(1));
+    });
+
+    it('WrapUp_WithShutdown_WaitsForTheUndoToPass', async () => {
+      const undo = new UndoService();
+      build({ undo });
+      engine.startTask('T-1', true, 'Ad hoc');
+
+      await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, { shouldShutdown: true });
+      await Promise.resolve();
+      expect(automation.scheduleShutdown).not.toHaveBeenCalled();
+      expect(undo.current()?.label).toBe('Day ended');
+
+      undo.commitPending();
+
+      await vi.waitFor(() => expect(automation.scheduleShutdown).toHaveBeenCalledTimes(1));
+      undo.dispose();
+    });
+
+    it('WrapUp_Undone_NoShutdown_TheSessionBack', async () => {
+      const undo = new UndoService();
+      build({ undo });
+      engine.startTask('T-1', true, 'Ad hoc');
+
+      await invoke(IPCChannel.TRIGGER_EOD_WRAP_UP, { shouldShutdown: true });
+      expect(engine.getCurrentSession()).toBeNull();
+      expect(undo.run()).toBe(true);
+
+      // Ad-hoc work, as started above, running again.
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      undo.commitPending();
+      await Promise.resolve();
+      expect(automation.scheduleShutdown).not.toHaveBeenCalled();
+      undo.dispose();
     });
 
     it('WrapUp_WithoutShutdown_SchedulesNothing', async () => {

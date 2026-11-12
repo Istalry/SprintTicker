@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CountedEntry, describeSends, summarizeDay } from '../src/shared/day-summary';
+import { CountedEntry, describeSends, endOfDayFigures, summarizeDay } from '../src/shared/day-summary';
 import { WorklogSyncState } from '../src/shared/worklog-correction';
 
 const entry = (taskKey: string, minutes: number, syncState: WorklogSyncState = 'sent'): CountedEntry => ({
@@ -37,5 +37,27 @@ describe('describeSends', () => {
     ['no entries', [], '']
   ])('Describe_%s', (_name, entries, words) => {
     expect(describeSends(entries)).toBe(words);
+  });
+});
+
+/** End my day's figures (S17, P10a): what the header and the button say. */
+describe('endOfDayFigures', () => {
+  const sent = { ...entry('PF-31', 100), providerSeconds: 100 * 60 };
+  const waiting = { ...entry('OPS-4', 20, 'pending') };
+  const refused = { ...entry('OPS-5', 10, 'failed') };
+  const held = { ...entry('OPS-6', 15, 'held-overlap') };
+
+  it('Figures_TheRunningSessionIsSent_AHeldEntryIsNot', () => {
+    expect(endOfDayFigures([sent, waiting, refused, held], { elapsedSeconds: 3600, interruption: false, sendable: true }, 25 * 60)).toEqual({
+      loggedSeconds: (100 + 20 + 10 + 15 + 60) * 60,
+      sentSeconds: 100 * 60,
+      toSendSeconds: (20 + 10 + 60) * 60,
+      toPlaceSeconds: 25 * 60
+    });
+  });
+
+  it('Figures_ARunningInterruption_IsToPlace_AndWorkKeptHereIsNotSent', () => {
+    expect(endOfDayFigures([], { elapsedSeconds: 600, interruption: true, sendable: false }, 0)).toMatchObject({ loggedSeconds: 0, toSendSeconds: 0, toPlaceSeconds: 600 });
+    expect(endOfDayFigures([], { elapsedSeconds: 600, interruption: false, sendable: false }, 0)).toMatchObject({ loggedSeconds: 600, toSendSeconds: 0 });
   });
 });

@@ -4,6 +4,10 @@
 
 ### Added
 
+- **End my day.** Replaces the wrap-up wizard: every entry of the day,
+  the interruptions to place, the day's gaps as a hint, and a button that
+  says what it sends. Undo for ten seconds. The PC shutdown is never ticked
+  for you, and waits until Undo has passed and Jira has answered.
 - **Split in two.** In Correct, for the time you forgot to switch: choose
   the moment, pick the task the rest goes to. Jira or OpenProject gets the
   first entry shortened, then the second, with Undo for ten seconds.

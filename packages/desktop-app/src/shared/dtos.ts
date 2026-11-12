@@ -240,8 +240,8 @@ export interface ScheduleSettingsDTO {
   eodTime?: string; // Alias for UI compatibility
   promptTimeoutSeconds?: number; // 0 for indefinite
   autoDismissSeconds?: number; // Alias for UI compatibility
-  shutdownByDefault?: boolean; // Default checkbox state in EOD wrap-up wizard
-  eodShutdownByDefault?: boolean; // Alias for UI compatibility
+  // No shutdown default: End my day never ticks the shutdown for you (S17,
+  // the user's choice 2026-11-12). A stored `shutdownByDefault` is ignored.
   /** Ask, rather than log, about a session left running across a change of day. */
   askAboutForgottenSessions?: boolean;
   /**

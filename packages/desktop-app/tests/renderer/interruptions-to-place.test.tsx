@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { WorklogHistoryView } from '../../src/renderer/views/History/WorklogHistoryView';
-import { EodWrapUpModal } from '../../src/renderer/views/EOD/EodWrapUpModal';
+import { EndMyDayDialog } from '../../src/renderer/views/EOD/EndMyDayDialog';
 import { WorklogDTO } from '../../src/shared/dtos';
 import type { InterruptionToPlaceDTO } from '../../src/shared/interruption';
 import { localDateKey } from '../../src/shared/local-date';
@@ -492,14 +492,11 @@ describe('Work History, time in a closed week', () => {
 });
 
 describe('the wrap-up, interruptions to place', () => {
-  const summary = (items: Array<Record<string, unknown>>) => ({ date: '2026-11-09', totalSeconds: 900, tasksCount: items.length, items });
-  const wrapUp = () => render(<EodWrapUpModal isOpen onClose={vi.fn()} onConfirmEod={vi.fn().mockResolvedValue(undefined)} />);
+  const wrapUp = () => render(<EndMyDayDialog isOpen onClose={vi.fn()} onLater={vi.fn()} onEnded={vi.fn()} onCheckGaps={vi.fn()} />);
 
   it('WrapUp_Waiting_ListedToPlace', async () => {
     const bridge = installElectronApi({
-      getDailyWorklogSummary: vi.fn().mockResolvedValue(summary([
-        { taskId: '10001', key: 'MG-12', title: 'Rework the pause menu', durationSeconds: 3600, comment: '' }
-      ])),
+      getWorklogsByDate: vi.fn().mockResolvedValue([]),
       getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING])
     });
     wrapUp();
@@ -514,7 +511,7 @@ describe('the wrap-up, interruptions to place', () => {
   it('WrapUp_OnePlaced_TheDayIsReadAgain', async () => {
     // Placed, its time joins the day's summary.
     const bridge = installElectronApi({
-      getDailyWorklogSummary: vi.fn().mockResolvedValue(summary([])),
+      getWorklogsByDate: vi.fn().mockResolvedValue([]),
       getInterruptionsToPlace: vi.fn().mockResolvedValue([WAITING])
     });
     wrapUp();
@@ -522,19 +519,17 @@ describe('the wrap-up, interruptions to place', () => {
 
     act(() => bridge.emit('onInterruptionsUpdated', []));
 
-    await waitFor(() => expect(bridge.api.getDailyWorklogSummary).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
   });
 
   it('WrapUp_NothingWaiting_NoList', async () => {
     installElectronApi({
-      getDailyWorklogSummary: vi.fn().mockResolvedValue(summary([
-        { taskId: '10001', key: 'MG-12', title: 'Rework the pause menu', durationSeconds: 3600, comment: '' }
-      ]))
+      getWorklogsByDate: vi.fn().mockResolvedValue([])
     });
     wrapUp();
 
-    await screen.findByText('MG-12:');
+    await screen.findByText('Nothing logged today.');
     expect(screen.queryByRole('region', { name: 'Interruptions to place' })).toBeNull();
   });
 });
