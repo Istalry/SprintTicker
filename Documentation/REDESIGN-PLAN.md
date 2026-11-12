@@ -2307,6 +2307,39 @@ all. Their choices:
   rest of the words stay P14e's, and §19.1's table is read with these
   changes.
 
+
+**As landed: P14c, the menu (2026-11-12).**
+
+- Turning opens it on the first notch: right on the first entry, left on
+  the last; it stops at either end. Entries as refinement 2 lists them, from
+  `barMenuEntries` (`hardware/bar-menu.ts`); the recent tasks are the
+  deck's read (`taskRepo.getRecent`), the open task and the previous one
+  left out so none shows twice. STOP is not an entry: it is Pause twice.
+- Pause picks. DONE and DISCARD ask first, in red with AGAIN=YES
+  (`MENU_CONFIRM_TEXT`; NOT YOURS / DONE ANYWAY? for a task no longer the
+  user's); a second Pause ends the session through the app's
+  `SessionEnding`, so Undo offers it back. The bar's Stop (Pause twice) now
+  goes through it too, which it did not in P14b: the docs promised Undo.
+- **Closing, with Back unused:** the wheel's click (no, as on any question),
+  or `BAR_MENU_IDLE_MS` (6 s) untouched; a session started or ended
+  elsewhere closes it too. Closing releases `BAR_MENU_EVENT`: one render,
+  the engine's.
+- OPEN APP raises the dashboard past the foreground lock
+  (`revealMainWindow` with the `ForegroundRaiser`).
+- The paused question screen of P14a (`askPausedConfirm`) is gone; the
+  question lives on the menu's screen.
+- **Found by the stress test:** a queued alert replayed in a mode that
+  suppresses it -- the stand-up prompt queued under Away played over Lunch
+  once the menu let go (seed 1025). `drainQueue` now applies `displaysNow`,
+  as `resumeSuspended` did; scripted in `display-handback.test.ts`.
+- **Not done: `Desk` driving the real decoder.** Desk still mimics it, as
+  it did the picker, now with `openMenu` / `turnMenu` / `closeMenu` and the
+  menu's DISCARD question. Driving the real decoder needs a real engine
+  under Desk, which fakes sessions today: a change of its own.
+- **To try on the bar:** each state's entries, a DONE and a DISCARD with
+  their second Pause and Undo, the click and the 6 s close, OPEN APP, and
+  the menu turned to under a notification.
+
 ---
 
 ## 19b. P16 -- Tasks and Settings, rebuilt as their screens
@@ -2478,6 +2511,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done, revised after the bar trial (Pause twice stops, Back unused) | P14a `4de9fa0`, P14b `8b32784` + revision (2026-11-12) |
+| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done, revised after the bar trial (Pause twice stops, Back unused); P14c (the menu) done | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c (2026-11-12) |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

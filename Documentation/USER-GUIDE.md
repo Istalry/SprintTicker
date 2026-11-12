@@ -993,7 +993,7 @@ the list sorts itself again; type a level from 1 to 100 to place it exactly.
 | Claim | Default |
 | :--- | ---: |
 | 🧳 Away mode | 100 |
-| 🎛️ Bar task picker | 97 |
+| 🎛️ Bar menu | 97 |
 | 🥪 Lunch mode | 95 |
 | 🌙 End-of-day wrap-up | 80 |
 | 🥪 Resume after lunch question | 76 |
@@ -1140,8 +1140,8 @@ task key, and row 1 the time, in amber. Paused from the bar, row 1
 says **AGAIN=STOP** for four seconds: Pause again then stops the task --
 the time is logged, the task stays open, and the bar shows **LOGGED** for
 three seconds, the stopwatch's hand sweeping back to twelve. Marking a task done
-or discarding a session is done in the app or on the Stream Deck; DONE from
-anywhere shows **DONE!**.
+or discarding a session is in the wheel's menu, the app or the Stream Deck;
+DONE from anywhere shows **DONE!**.
 
 > [!NOTE]
 > **Why the timer shows HH:MM**
@@ -1178,7 +1178,7 @@ the computer, in front of what you are doing.
 | ⏯️ **Pause** | **Yes.** Pauses, resumes, goes back to your task from an interruption, joins the stand-up, answers yes, dismisses a notification. With nothing running, opens the task picker on the computer |
 | ⏯️⏯️ **Pause again** | **Stop.** Within 4 s of pausing -- the bar says **AGAIN=STOP** meanwhile -- stops the task: its time logged, the task left open, **LOGGED** on the bar and Undo in the app. After the 4 s, Pause resumes |
 | 🖱️ **Wheel** click | **Interrupt**; during an interruption, **Another**. On a question or a notification, **no** |
-| 🔄 **Wheel** turn | Nothing yet: a short menu is coming |
+| 🔄 **Wheel** turn | **The menu**: one entry per screen, Pause picks it, a click closes it |
 | ↩️ **Back** | Nothing |
 
 - **During an interruption**, one Pause goes back to your task and two stop
@@ -1189,6 +1189,22 @@ the computer, in front of what you are doing.
 - **A press right as a question or a notification appears only settles.**
   Within 0.7 s of it coming up, the press was meant for what was there
   before, so it neither answers nor dismisses.
+- **The menu** opens on the first notch -- turned right on its first entry,
+  left on its last -- and shows one entry at a time, with its place in the
+  list (**2/5**):
+  - while a task runs or is paused: **DONE**, **DISCARD**, your previous
+    task, up to three recent ones, **OPEN APP**;
+  - during an interruption: **DISCARD** and **OPEN APP** -- a task is never
+    chosen during one;
+  - with nothing running: your previous task, the recent ones, **OPEN APP**.
+
+  Pause picks the entry: a task starts (stopping the one running), and
+  **OPEN APP** brings SprintTicker in front of what you are doing. **DONE**
+  and **DISCARD** ask first -- **DONE?** or **DISCARD?** in red, **AGAIN=YES**
+  -- and a second Pause does it, with Undo in the app; a click or a turn
+  says no. A task no longer yours asks **NOT YOURS / DONE ANYWAY?**. A click
+  closes the menu, and so do 6 s untouched. The recent tasks are the Stream
+  Deck's.
 - **Nothing is held.** The bar sends no long press, so no control depends on
   one.
 - **Back is left alone.** On the bar's own screen -- its clock when nothing

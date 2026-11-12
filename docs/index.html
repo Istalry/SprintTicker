@@ -1564,7 +1564,7 @@
       <td align="right">100</td>
       </tr>
       <tr>
-      <td align="left">🎛️ Bar task picker</td>
+      <td align="left">🎛️ Bar menu</td>
       <td align="right">97</td>
       </tr>
       <tr>
@@ -1763,8 +1763,8 @@
       says <strong>AGAIN=STOP</strong> for four seconds: Pause again then stops the task --
       the time is logged, the task stays open, and the bar shows <strong>LOGGED</strong> for
       three seconds, the stopwatch&#39;s hand sweeping back to twelve. Marking a task done
-      or discarding a session is done in the app or on the Stream Deck; DONE from
-      anywhere shows <strong>DONE!</strong>.</p>
+      or discarding a session is in the wheel&#39;s menu, the app or the Stream Deck;
+      DONE from anywhere shows <strong>DONE!</strong>.</p>
       <div class="note"><span class="label">Why the timer shows HH:MM</span>
       <p></p>
       <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
@@ -1822,7 +1822,7 @@
       </tr>
       <tr>
       <td align="left">🔄 <strong>Wheel</strong> turn</td>
-      <td align="left">Nothing yet: a short menu is coming</td>
+      <td align="left"><strong>The menu</strong>: one entry per screen, Pause picks it, a click closes it</td>
       </tr>
       <tr>
       <td align="left">↩️ <strong>Back</strong></td>
@@ -1830,18 +1830,40 @@
       </tr>
       </tbody></table></div>
       <ul>
-      <li><strong>During an interruption</strong>, one Pause goes back to your task and two stop
+      <li><p><strong>During an interruption</strong>, one Pause goes back to your task and two stop
       the interruption without going back -- the Place window then opens on the
       computer. The bar waits 2 s, showing <strong>AGAIN=STOP</strong>, to see whether a
       second press comes, so going back takes that long; the interruption ends
-      at your first press either way.</li>
-      <li><strong>A press right as a question or a notification appears only settles.</strong>
+      at your first press either way.</p>
+      </li>
+      <li><p><strong>A press right as a question or a notification appears only settles.</strong>
       Within 0.7 s of it coming up, the press was meant for what was there
-      before, so it neither answers nor dismisses.</li>
-      <li><strong>Nothing is held.</strong> The bar sends no long press, so no control depends on
-      one.</li>
-      <li><strong>Back is left alone.</strong> On the bar&#39;s own screen -- its clock when nothing
-      runs -- the bar uses Back itself and leaves its own clock app.</li>
+      before, so it neither answers nor dismisses.</p>
+      </li>
+      <li><p><strong>The menu</strong> opens on the first notch -- turned right on its first entry,
+      left on its last -- and shows one entry at a time, with its place in the
+      list (<strong>2/5</strong>):</p>
+      <ul>
+      <li>while a task runs or is paused: <strong>DONE</strong>, <strong>DISCARD</strong>, your previous
+      task, up to three recent ones, <strong>OPEN APP</strong>;</li>
+      <li>during an interruption: <strong>DISCARD</strong> and <strong>OPEN APP</strong> -- a task is never
+      chosen during one;</li>
+      <li>with nothing running: your previous task, the recent ones, <strong>OPEN APP</strong>.</li>
+      </ul>
+      <p>Pause picks the entry: a task starts (stopping the one running), and
+      <strong>OPEN APP</strong> brings SprintTicker in front of what you are doing. <strong>DONE</strong>
+      and <strong>DISCARD</strong> ask first -- <strong>DONE?</strong> or <strong>DISCARD?</strong> in red, <strong>AGAIN=YES</strong>
+      -- and a second Pause does it, with Undo in the app; a click or a turn
+      says no. A task no longer yours asks <strong>NOT YOURS / DONE ANYWAY?</strong>. A click
+      closes the menu, and so do 6 s untouched. The recent tasks are the Stream
+      Deck&#39;s.</p>
+      </li>
+      <li><p><strong>Nothing is held.</strong> The bar sends no long press, so no control depends on
+      one.</p>
+      </li>
+      <li><p><strong>Back is left alone.</strong> On the bar&#39;s own screen -- its clock when nothing
+      runs -- the bar uses Back itself and leaves its own clock app.</p>
+      </li>
       </ul>
       <p>🗣️ <strong>During a question</strong> -- the stand-up, back to your task?, the
       end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
@@ -2780,9 +2802,9 @@
       displays it: the stand-up prompt, covered by Away, waits through a Lunch
       begun meanwhile and returns after it. The tracker and the mode locks are
       never set aside: <code>setContextMode</code> draws them as they are now.</li>
-      <li><strong>The bar&#39;s picker was the background state</strong> (removed in P14b; the
-      wheel&#39;s menu, P14c, takes its place). Registered by
-      <code>InputDecoder</code>, it came back while it was open: refused under Away and
+      <li><strong>The wheel&#39;s menu is the background state</strong> (P14c; the bar&#39;s picker,
+      removed in P14b, was before it). Registered by
+      <code>InputDecoder</code>, it comes back while it is open: refused under Away and
       never queued, it would otherwise be open and unseen once Away ended. A
       state is reclaimed rather than resumed -- it redraws what it is by then,
       not what it was when covered. The Unity Editor&#39;s compile and Play Mode
@@ -2803,7 +2825,7 @@
       <td align="right">100</td>
       </tr>
       <tr>
-      <td align="left">Bar task picker</td>
+      <td align="left">Bar menu</td>
       <td align="left"><code>menuPriority</code></td>
       <td align="right">97</td>
       </tr>
@@ -3013,7 +3035,7 @@
       </tr>
       <tr>
       <td align="left">Wheel turn</td>
-      <td align="left">nothing yet (the menu, P14c)</td>
+      <td align="left">the menu (P14c), below</td>
       </tr>
       </tbody></table></div>
       <p>An answer pressed within <code>BAR_ANSWER_SETTLE_MS</code> of the panel changing
@@ -3022,7 +3044,20 @@
       by the bar&#39;s keys, whose meaning changed under it once. The bar sends no
       long press: a hold arrives as a press released late, so nothing depends on
       one. The bar&#39;s own task picker and the paused menu went with this layout;
-      the old <code>hardware_bindings</code> setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
+      the old <code>hardware_bindings</code> setting is no longer read. <strong>The menu</strong> (P14c) is <code>barMenuEntries</code> (<code>hardware/bar-menu.ts</code>), a pure
+      list built from the session, <code>engine.getPreviousTask()</code> and the deck&#39;s
+      recent tasks (<code>setMenuDeps</code>): DONE, DISCARD, the previous task, up to three
+      recent ones and OPEN APP while a session is open; DISCARD and OPEN APP
+      during an interruption; the tasks and OPEN APP with nothing running. The
+      decoder holds the open menu -- its entries, the index, the DONE or DISCARD
+      asked about -- and draws it with <code>DisplayRenderer.renderBarMenu</code> under
+      <code>BAR_MENU_EVENT</code>, never queued, registered as a background screen. Pause
+      picks; DONE and DISCARD ask first (<code>MENU_CONFIRM_TEXT</code>) and then end the
+      session through the app&#39;s <code>SessionEnding</code>, so Undo offers them back, as it
+      does the bar&#39;s Stop; a task picked starts through <code>engine.startTask</code>. The
+      click, <code>BAR_MENU_IDLE_MS</code> untouched, or a session started or ended
+      elsewhere closes it, by releasing the lock: one render, the engine&#39;s.</p>
+      <p>The driver listener is wrapped in a try/catch on purpose: a throw
       inside an EventEmitter listener with no error handler terminates the main
       process, so without it a button press could take the whole app down.</p>
       <h4><code>ContextScheduleService</code> — <code>src/main/services/</code></h4>

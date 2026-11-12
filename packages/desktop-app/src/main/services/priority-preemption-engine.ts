@@ -370,7 +370,14 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
     // Sort descending by priority, then ascending by timestamp
     this._notificationQueue.sort((a, b) => b.priority - a.priority || a.timestampMs - b.timestampMs);
 
-    const nextItem = this._notificationQueue.shift();
+    // Only what the mode shows now, as for a screen set aside: a stand-up
+    // prompt queued under Away replayed in a Lunch begun meanwhile, the
+    // meeting table over the break, once the bar's menu let go of the display
+    // (stress seed 1025, P14c). One the mode holds back stays queued until
+    // it expires.
+    const at = this._notificationQueue.findIndex(item => this.displaysNow(item.eventName));
+    if (at < 0) return;
+    const [nextItem] = this._notificationQueue.splice(at, 1);
     if (nextItem && typeof nextItem.renderCallback === 'function') {
       this._activeLockEventName = nextItem.eventName;
       this._activeLockPriority = nextItem.priority;
@@ -419,7 +426,7 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   private highestWaitingPriority(): number {
     const now = Date.now();
     const queued = this._notificationQueue
-      .filter(item => now - item.timestampMs < PriorityPreemptionEngine.DEFAULT_QUEUE_EXPIRATION_MS)
+      .filter(item => now - item.timestampMs < PriorityPreemptionEngine.DEFAULT_QUEUE_EXPIRATION_MS && this.displaysNow(item.eventName))
       .map(item => item.priority);
     const suspended = this._suspended.filter(entry => this.displaysNow(entry.eventName)).map(entry => entry.priority);
     return Math.max(-Infinity, ...queued, ...suspended);
@@ -458,7 +465,7 @@ export class PriorityPreemptionEngine implements IPriorityPreemptionEngine {
   }
 
   /**
-   * Whether the user's mode lets a screen set aside come back now. The mode
+   * Whether the user's mode lets a screen set aside, or an alert queued, come back now. The mode
    * may have changed while it waited: a stand-up prompt set aside under Away
    * came back during Lunch, whose rule suppresses it, and played the meeting
    * table over the break (stress seed 2383). One the mode holds back stays

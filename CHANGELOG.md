@@ -235,9 +235,15 @@
   and the Place window opens on the computer. A **wheel click** starts an
   interruption, or the next one, and says no to a question. **Back** is no
   longer used. A press just as a question or a notification appears only
-  settles. The paused screen shows ❚❚ and the key, the time below. The bar's own task picker, its paused menu and
-  "hold BACK = done" are gone: the bar sends no long press, and choosing is
-  the app's.
+  settles. The paused screen shows ❚❚ and the key, the time below. The
+  bar's own task picker, its paused menu and "hold BACK = done" are gone:
+  the bar sends no long press, and choosing is the app's.
+- **Turning the bar's wheel opens a short menu**, one entry at a time: DONE,
+  DISCARD, your previous task, up to three recent ones and OPEN APP -- only
+  DISCARD and OPEN APP during an interruption. Pause picks; DONE and DISCARD
+  ask for a second Pause and can be undone in the app; a click, or six
+  seconds untouched, closes it. A stand-up prompt that arrived while
+  Windows was locked no longer plays over lunch when the menu closes.
 - **Four places instead of eight tabs.** The window is **Today**, **Tasks**,
   **History** (formerly Work History) and **Settings**, the same with or
   without a bar. The header holds the bar's preview, a **Mode** chip for Work,

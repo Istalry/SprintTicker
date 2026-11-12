@@ -203,7 +203,10 @@ export const BarWord = {
   // so the hints name only what a second Pause does; the OK= words went with
   // the click's old meaning.
   AGAIN_STOP: 'AGAIN=STOP',
-  AGAIN_YES: 'AGAIN=YES'
+  AGAIN_YES: 'AGAIN=YES',
+  // The wheel's menu (P14c).
+  RECENT: 'RECENT',
+  OPEN_APP: 'OPEN APP'
 } as const;
 
 /** Union of the bar's word strings. */

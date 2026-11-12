@@ -41,10 +41,10 @@ export function random(seed: number): () => number {
 export type EventName =
   | 'banner' | 'highBanner'
   | 'startTask' | 'startTaskFromBar' | 'pause' | 'resume' | 'tick' | 'stop' | 'finish'
-  /** The paused menu's DROP: the question, BACK on it, and the click that confirms. */
+  /** The menu's DISCARD: the question, the click refusing it, and the second Pause that confirms. */
   | 'askDiscard' | 'cancelDiscard' | 'discard'
-  /** The bar's task picker, opened with nothing running, and BACK out of it. */
-  | 'openPicker' | 'closePicker'
+  /** The wheel's menu (P14c): turned to in any state, turned through, and closed. */
+  | 'openMenu' | 'turnMenu' | 'closeMenu'
   | 'lunchStart' | 'lunchEnd' | 'awayStart' | 'awayEnd'
   /** Lunch beginning under Away, which takes over Away's pause and stays Away; and unlocking into it. */
   | 'lunchStartUnderAway' | 'awayEndIntoLunch'
@@ -85,7 +85,9 @@ export class Desk {
   public readonly timeline: string[] = [];
   private readonly startedAt = Date.now();
   private sessionCount = 0;
-  private picking = false;
+  private menuOpen = false;
+  private menuIndex = 0;
+  private menuConfirm = false;
   /** The session the stand-up switched away from, to restart when it ends. */
   private beforeStandup: ActiveSessionDTO | null = null;
   /** Until when the bar is rebooting, and no `barBack` brings it back. */
@@ -120,10 +122,10 @@ export class Desk {
     // The user's configuration: idle shows the firmware clock, which is the
     // one path that closes the device's screen on purpose.
     this.renderer.setShowIdleClockFallback(true);
-    // As InputDecoder does: an open picker is drawn again whenever the
+    // As InputDecoder does: an open menu is drawn again whenever the
     // display frees.
     this.priority.addBackgroundScreen([BAR_MENU_EVENT], () => {
-      if (this.picking) this.renderer.renderTaskSelection('PROJECT', 'Game', { position: { index: 0, count: 2 } });
+      if (this.menuOpen) this.drawMenu();
     });
   }
 
@@ -145,31 +147,36 @@ export class Desk {
         return;
       case 'startTask':
       case 'startTaskFromBar': {
+        // From the bar: a task picked in the wheel's menu, as from the app
+        // otherwise. No interruption here, where the menu offers none.
+        if (event === 'startTaskFromBar' && !this.menuOpen) return;
         this.session = this.newSession();
         // The engine's listeners in the order they subscribed: the decoder's
-        // closes a picker left open, ContextScheduleService's leaves Lunch.
-        // From the bar, the picker is closed after GO!, not by the listener.
-        const fromThePicker = event === 'startTaskFromBar' && this.picking;
-        if (!fromThePicker && this.picking) this.closePicker();
+        // closes the menu -- whose release hands the display to the session
+        // just started -- ContextScheduleService's leaves Lunch.
+        this.closeMenu();
         this.workThroughLunch();
-        // From the app the IPC registry's subscriber renders the session; from
-        // the bar the picker plays GO! first, then lets go of the display.
-        if (event === 'startTaskFromBar') {
-          this.renderer.renderTaskStarted(this.session);
-          if (fromThePicker) this.closePicker();
-        } else this.renderer.renderActiveSession(this.session);
+        // The IPC registry's subscriber renders the session.
+        this.renderer.renderActiveSession(this.session);
         return;
       }
-      case 'openPicker':
-        // As InputDecoder does: START or a click with nothing running.
-        if (this.session || this.picking) return;
-        this.picking = true;
-        this.renderer.renderTaskSelection('PROJECT', 'Game', { position: { index: 0, count: 2 } });
+      case 'openMenu':
+        // As InputDecoder does: the first notch, in any state.
+        if (this.menuOpen) return;
+        this.menuOpen = true;
+        this.menuIndex = 0;
+        this.menuConfirm = false;
+        this.drawMenu();
         return;
-      case 'closePicker':
-        if (!this.picking) return;
-        this.closePicker();
-        this.renderer.renderIdle();
+      case 'turnMenu':
+        if (!this.menuOpen) return;
+        this.menuIndex = (this.menuIndex + 1) % 3;
+        this.menuConfirm = false;
+        this.drawMenu();
+        return;
+      case 'closeMenu':
+        // The click, or the menu left untouched: the release alone draws.
+        this.closeMenu();
         return;
       case 'pause':
       case 'resume':
@@ -184,24 +191,31 @@ export class Desk {
         this.renderer.renderActiveSession(this.session);
         return;
       case 'askDiscard':
-        if (this.session?.status !== 'PAUSED') return;
-        this.renderer.askPausedConfirm('DISCARD');
+        // Pause on the menu's DISCARD: the question, drawn in its place.
+        if (!this.session || !this.menuOpen) return;
+        this.menuConfirm = true;
+        this.drawMenu();
         return;
       case 'cancelDiscard':
-        this.renderer.clearPausedConfirm();
+        // The click says no: back to the entry.
+        if (!this.menuConfirm) return;
+        this.menuConfirm = false;
+        this.drawMenu();
         return;
       case 'discard':
         if (!this.session) return;
         this.session = null;
-        // As InputDecoder does it: the question goes without a redraw, and the
-        // engine's subscriber draws the empty session. No scene: nothing was kept.
-        this.renderer.clearPausedConfirm({ redraw: false });
+        // As InputDecoder does it: the menu closes first, and the engine's
+        // subscriber draws the empty session. No scene: nothing was kept.
+        this.closeMenu();
         this.renderer.renderActiveSession(null);
         return;
       case 'stop':
       case 'finish':
         if (!this.session) return;
         this.session = null;
+        // The decoder's subscriber closes a menu about the session ended.
+        this.closeMenu();
         // The engine's subscriber first, then the IPC handler's scene.
         this.renderer.renderActiveSession(null);
         if (event === 'stop') this.renderer.renderTaskLogged();
@@ -230,6 +244,7 @@ export class Desk {
         // subscriber drawing each, and the prompt's release draws once more.
         if (this.session?.taskTitle === DAILY_STANDUP_TITLE) return;
         this.beforeStandup = this.session?.status === 'TRACKING' ? this.session : null;
+        this.closeMenu();
         if (this.session) {
           this.session = null;
           this.renderer.renderActiveSession(null);
@@ -244,6 +259,7 @@ export class Desk {
         // STOP: the engine's subscriber and the LOGGED scene, as 'stop';
         // then, once every listener has heard, the task before comes back.
         this.session = null;
+        this.closeMenu();
         this.renderer.renderActiveSession(null);
         this.renderer.renderTaskLogged();
         const before = this.beforeStandup;
@@ -277,9 +293,9 @@ export class Desk {
     }
   }
 
-  /** The bar's picker is open: it holds the display until BACK or a pick. */
-  public get isPicking(): boolean {
-    return this.picking;
+  /** The wheel's menu is open: it holds the display until a pick, the click or the idle close. */
+  public get isMenuOpen(): boolean {
+    return this.menuOpen;
   }
 
   public note(what: string): void {
@@ -316,8 +332,18 @@ export class Desk {
     this.renderer.renderActiveSession(this.session);
   }
 
-  private closePicker(): void {
-    this.picking = false;
+  private drawMenu(): void {
+    this.renderer.renderBarMenu({
+      icon: 'task', label: 'T-1', detail: 'RECENT', position: { index: this.menuIndex, count: 3 },
+      ...(this.menuConfirm ? { confirm: 'DISCARD' as const } : {})
+    });
+  }
+
+  /** As InputDecoder.closeMenu: lets go of the display, which the engine hands back. */
+  private closeMenu(): void {
+    if (!this.menuOpen) return;
+    this.menuOpen = false;
+    this.menuConfirm = false;
     this.priority.releaseActiveLock(BAR_MENU_EVENT);
   }
 
@@ -345,12 +371,12 @@ export function expectSettledScreen(desk: Desk): void {
   const shown = desk.device.shown();
   const lock = desk.priority.getActiveLockEventName();
   const context = `mode ${desk.mode}, lock ${String(lock)}, session ${desk.session?.status ?? 'none'}, panel [${shown.join(', ')}]`;
-  // The picker outranks Lunch, not Away; under Away it waits, and comes
+  // The menu outranks Lunch, not Away; under Away it waits, and comes
   // back as a background screen when Away ends.
   // Lunch can begin under Away here, as the 'modes' case scripts it, and
   // Away's lock then stays.
   const away = desk.mode === 'AWAY' || lock === 'awayModePriority';
-  if (away || (desk.mode === 'LUNCH' && !desk.isPicking)) {
+  if (away || (desk.mode === 'LUNCH' && !desk.isMenuOpen)) {
     if (!desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)) throw new Error(`Expected the ${desk.mode} scene: ${context}`);
     // Which scene, not just a scene: unlocked into lunch, the mode said
     // LUNCH while Away's lock kept the coffee cup up (real bar, 2026-10-15).
@@ -362,10 +388,10 @@ export function expectSettledScreen(desk: Desk): void {
     if (desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) throw new Error(`Expected no icon over the ${desk.mode} scene: ${context}`);
     return;
   }
-  // The user's hand on the bar: it stays over everything else until BACK.
-  if (desk.isPicking) {
+  // The user's hand on the bar: it stays over everything else until it closes.
+  if (desk.isMenuOpen) {
     if (lock !== BAR_MENU_EVENT || !desk.device.has(FRONT_ELEMENT_IDS.FRAME)) {
-      throw new Error(`Expected the bar's picker, which is open: ${context}`);
+      throw new Error(`Expected the bar's menu, which is open: ${context}`);
     }
     return;
   }

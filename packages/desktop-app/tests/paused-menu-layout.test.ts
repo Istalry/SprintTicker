@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PAUSED_CONFIRM_TEXT,
+  MENU_CONFIRM_TEXT,
   PAUSED_MARK_WIDTH,
-  PausedConfirm,
+  MenuConfirm,
   RESUME_AFTER_INTERRUPTION_TEXT
 } from '../src/main/hardware/display-renderer';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
@@ -23,8 +23,8 @@ describe('paused screen layout', () => {
     expect(field - PAUSED_MARK_WIDTH).toBeGreaterThanOrEqual(measureText('SPR-1428', ROW0_FONT));
   });
 
-  it.each(Object.keys(PAUSED_CONFIRM_TEXT) as PausedConfirm[])('PausedConfirmText_%s_FitsBothRows', kind => {
-    const { question, hint } = PAUSED_CONFIRM_TEXT[kind];
+  it.each(Object.keys(MENU_CONFIRM_TEXT) as MenuConfirm[])('MenuConfirmText_%s_FitsBothRows', kind => {
+    const { question, hint } = MENU_CONFIRM_TEXT[kind];
     expect(measureText(question, ROW0_FONT)).toBeLessThanOrEqual(field);
     expect(measureText(hint, ROW1_FONT)).toBeLessThanOrEqual(field);
   });

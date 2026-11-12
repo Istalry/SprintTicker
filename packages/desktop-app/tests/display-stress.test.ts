@@ -30,7 +30,7 @@ vi.mock('electron', () => ({
  * Generated days at the desk, played against the firmware simulator.
  *
  * Each scenario is a seeded run of events from every source that draws on
- * the bar -- notification banners, the session, the bar's picker, the
+ * the bar -- notification banners, the session, the bar's menu, the
  * stand-up, Lunch and Away, the bar itself dropping out -- some landing in the
  * same tick, some seconds apart, on top of a device that takes its time to
  * answer. The whole real stack takes them: renderer, animation player, icon
@@ -63,9 +63,9 @@ const QUIESCENCE_MS = 20_000;
 const WEIGHTS: Partial<Record<EventName, number>> = {
   banner: 6, highBanner: 3,
   startTask: 3, startTaskFromBar: 2, pause: 3, resume: 3, tick: 8, stop: 2, finish: 2,
-  openPicker: 3, closePicker: 3,
+  openMenu: 3, turnMenu: 2, closeMenu: 3,
   lunchStart: 1, lunchEnd: 1, awayStart: 1, awayEnd: 1, lunchStartUnderAway: 1, awayEndIntoLunch: 1,
-  // The paused menu's DROP: asked, taken back, confirmed.
+  // The menu's DISCARD: asked, taken back, confirmed.
   askDiscard: 2, cancelDiscard: 1, discard: 1,
   // The stand-up's prompt, joined, and its end bringing the task back.
   standupPrompt: 1, joinStandup: 1, standupEnds: 1,

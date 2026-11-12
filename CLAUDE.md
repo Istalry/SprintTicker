@@ -815,7 +815,12 @@ changing it:
   the clock or Lunch. `InputDecoder` registered it as a background
   screen that redrew itself while open; Desk registers the same. The
   picker went in P14b; the wheel's menu (P14c) is the same kind of state
-  and must follow this rule.
+  and is registered the same way.
+- **A queued alert comes back only in a mode that shows it**, like a screen
+  set aside (`displaysNow`, in `drainQueue` too). A stand-up prompt refused
+  under Away was queued; unlocking into Lunch offered the display to the
+  bar's menu, and closing the menu replayed the prompt -- the meeting table
+  over the break (stress seed 1025).
 - **Modes and the tracker are not claims to restore.** The idle clock is the
   user's mode: the idle branch of `renderActiveSession` leaves alone any
   holder but the tracker, and drops the tracker's lock with the session

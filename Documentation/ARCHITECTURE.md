@@ -576,9 +576,9 @@ Two rules, both scars:
   displays it: the stand-up prompt, covered by Away, waits through a Lunch
   begun meanwhile and returns after it. The tracker and the mode locks are
   never set aside: `setContextMode` draws them as they are now.
-- **The bar's picker was the background state** (removed in P14b; the
-  wheel's menu, P14c, takes its place). Registered by
-  `InputDecoder`, it came back while it was open: refused under Away and
+- **The wheel's menu is the background state** (P14c; the bar's picker,
+  removed in P14b, was before it). Registered by
+  `InputDecoder`, it comes back while it is open: refused under Away and
   never queued, it would otherwise be open and unseen once Away ended. A
   state is reclaimed rather than resumed -- it redraws what it is by then,
   not what it was when covered. The Unity Editor's compile and Play Mode
@@ -588,7 +588,7 @@ Two rules, both scars:
 | Claim | Event name | Default score |
 | :--- | :--- | ---: |
 | Away mode | `awayModePriority` | 100 |
-| Bar task picker | `menuPriority` | 97 |
+| Bar menu | `menuPriority` | 97 |
 | Lunch mode | `lunchModePriority` | 95 |
 | End-of-day wrap-up | `eodWrapUpPriority` | 80 |
 | Resume after lunch question | `resumePromptPriority` | 76 |
@@ -768,7 +768,7 @@ nothing rebindable:
 | Pause during an interruption | held `BAR_INTERRUPTION_AGAIN_MS` (2 s): none more and it goes back (`backFromInterruption`); a second and the interruption stops where the first was pressed (`stopInterruption(atUtc)`), which opens the Place window. One holding no task stops at once |
 | Wheel click | no on a question or a notification; elsewhere `START_INTERRUPTION`, handed to `ContextScheduleService.answerFromBar`, which interrupts -- Another during one |
 | Back | nothing |
-| Wheel turn | nothing yet (the menu, P14c) |
+| Wheel turn | the menu (P14c), below |
 
 An answer pressed within `BAR_ANSWER_SETTLE_MS` of the panel changing
 (`DisplayRenderer.msSinceScreenChange`) settles instead, as the deck's do.
@@ -776,7 +776,21 @@ The Stream Deck answers through `answerQuestion(yes)` -- by meaning, never
 by the bar's keys, whose meaning changed under it once. The bar sends no
 long press: a hold arrives as a press released late, so nothing depends on
 one. The bar's own task picker and the paused menu went with this layout;
-the old `hardware_bindings` setting is no longer read. The driver listener is wrapped in a try/catch on purpose: a throw
+the old `hardware_bindings` setting is no longer read. **The menu** (P14c) is `barMenuEntries` (`hardware/bar-menu.ts`), a pure
+list built from the session, `engine.getPreviousTask()` and the deck's
+recent tasks (`setMenuDeps`): DONE, DISCARD, the previous task, up to three
+recent ones and OPEN APP while a session is open; DISCARD and OPEN APP
+during an interruption; the tasks and OPEN APP with nothing running. The
+decoder holds the open menu -- its entries, the index, the DONE or DISCARD
+asked about -- and draws it with `DisplayRenderer.renderBarMenu` under
+`BAR_MENU_EVENT`, never queued, registered as a background screen. Pause
+picks; DONE and DISCARD ask first (`MENU_CONFIRM_TEXT`) and then end the
+session through the app's `SessionEnding`, so Undo offers them back, as it
+does the bar's Stop; a task picked starts through `engine.startTask`. The
+click, `BAR_MENU_IDLE_MS` untouched, or a session started or ended
+elsewhere closes it, by releasing the lock: one render, the engine's.
+
+The driver listener is wrapped in a try/catch on purpose: a throw
 inside an EventEmitter listener with no error handler terminates the main
 process, so without it a button press could take the whole app down.
 

@@ -178,3 +178,10 @@ export const BAR_STOP_AGAIN_MS = 4000;
  * so it is shorter than `BAR_STOP_AGAIN_MS`, whose first press acts at once.
  */
 export const BAR_INTERRUPTION_AGAIN_MS = 2000;
+
+/**
+ * How long the wheel's menu stays open untouched (P14c): it closes on its own,
+ * so a menu turned to by accident never holds the display for long. Each turn
+ * or press starts the wait again.
+ */
+export const BAR_MENU_IDLE_MS = 6000;

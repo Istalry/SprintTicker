@@ -1,19 +1,54 @@
 import { BusyBarDriver, HardwareEvent } from './busybar-driver';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
-import { DisplayRenderer } from './display-renderer';
-import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { DisplayRenderer, MenuConfirm } from './display-renderer';
+import { BarMenuEntry, barMenuEntries } from './bar-menu';
+import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
-import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_STOP_AGAIN_MS } from '../../shared/render-constants';
+import {
+  BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS
+} from '../../shared/render-constants';
 import { BarWord } from '../../shared/words';
+import { finishNeedsConfirmation } from '../../shared/task-left';
+import { DECK_MAX_RECENT } from '../../shared/deck-protocol';
+import type { ActiveSessionDTO, TaskDTO } from '../../shared/dtos';
+import { SessionEnding, plainSessionEnding } from '../services/session-commands';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
+
+/** Two more than the menu shows: the open task and the previous one are left out. */
+const DECK_RECENT_READ = DECK_MAX_RECENT + 2;
+
+/** Ends sessions with no scene, for a decoder with no renderer (tests). */
+const NO_SCENES = { renderTaskCompletionConfetti: () => undefined, renderTaskLogged: () => undefined } as unknown as DisplayRenderer;
 
 /** What a press of the bar's inputs is, whatever the firmware calls it. */
 type BarInput = 'pause' | 'back' | 'click' | 'turn' | 'other';
 
 /** The questions the bar answers, by the lock that holds the display for each. */
 type BarQuestion = 'eod' | 'standup' | 'resume';
+
+/** The wheel's menu while it is open. */
+interface OpenMenu {
+  entries: BarMenuEntry[];
+  index: number;
+  /** The DONE or DISCARD asked about, until a second Pause or the click. */
+  confirm: MenuConfirm | null;
+  /** What the menu was built for: a session started or ended elsewhere closes it. */
+  builtFor: string;
+  /** Closes it untouched; a turn or a question asked starts it again. */
+  idle: ReturnType<typeof setTimeout>;
+}
+
+/** What the menu needs beyond the engine, wired by main. */
+export interface BarMenuDeps {
+  /** How the user's Stop, Done and Discard end a session, with the app's Undo. */
+  sessionEnding?: SessionEnding;
+  /** The picker's recent tasks, newest first, as the deck's Recent keys read them. */
+  recentTasks?: (limit: number) => TaskDTO[];
+  /** The dashboard, raised past the foreground lock. */
+  openApp?: () => void;
+}
 
 /** An interruption's return, held to see whether a second Pause comes. */
 interface PendingBack {
@@ -35,7 +70,9 @@ interface PendingBack {
  * - **The wheel's click** is no on a question or a notification, and
  *   Interrupt everywhere else -- Another during one.
  * - **Back** does nothing: the user did not want to use it.
- * - **Turning** does nothing yet.
+ * - **Turning** opens the menu (P14c): one entry per screen, Pause picks, the
+ *   click or `BAR_MENU_IDLE_MS` untouched closes it. DONE and DISCARD ask a
+ *   second Pause.
  *
  * No input is held: the bar never sends a long press. A two-second hold
  * arrives as a press released late (measured on the bar, 2026-11-12). And
@@ -55,6 +92,9 @@ export class InputDecoder {
   /** The session the bar's Pause just paused, which a second Pause stops until `until`. */
   private _stopArmed: { sessionId: string; until: number } | null = null;
   private _pendingBack: PendingBack | null = null;
+  private _menu: OpenMenu | null = null;
+  private _menuDeps: BarMenuDeps = {};
+  private _unregisterMenu: (() => void) | null = null;
 
   /// <summary>
   /// Instantiates InputDecoder, binding hardware driver event listeners.
@@ -81,13 +121,41 @@ export class InputDecoder {
         console.error('[InputDecoder] Unhandled error while processing hardware input:', err);
       }
     });
+
+    // A task started or ended elsewhere -- the window, the deck -- while the
+    // menu is open: its entries are about a state that is gone. Left open,
+    // the old picker held the display over the new session (2026-10).
+    this._engine.subscribe(session => {
+      if (this._menu && this._menu.builtFor !== InputDecoder.menuKey(session)) this.closeMenu();
+    });
   }
 
   /// <summary>
   /// Injects PriorityPreemptionEngine reference for notification dismissal checks.
   /// </summary>
   public setPriorityEngine(engine: IPriorityPreemptionEngine): void {
+    this._unregisterMenu?.();
     this._priorityEngine = engine;
+    // The open menu is the user's hand on the bar, a state rather than an
+    // alert (CLAUDE.md §5): whenever the display frees, it is drawn again if
+    // it is still open. Never queued, it would otherwise be refused under
+    // Away and then forgotten -- open, invisible, still taking presses.
+    // A test double without background screens has nothing to register with.
+    this._unregisterMenu = typeof engine.addBackgroundScreen === 'function'
+      ? engine.addBackgroundScreen([BAR_MENU_EVENT], () => {
+        if (this._menu) this.drawMenu();
+      })
+      : null;
+  }
+
+  /** The commands the menu's entries reach; see `BarMenuDeps`. */
+  public setMenuDeps(deps: BarMenuDeps): void {
+    this._menuDeps = deps;
+  }
+
+  /** Whether the wheel's menu is open. */
+  public isMenuOpen(): boolean {
+    return this._menu !== null;
   }
 
   /// <summary>
@@ -128,10 +196,14 @@ export class InputDecoder {
     return () => this._actionHandlers.delete(handler);
   }
 
-  /** Drops a return still waiting on a second Pause, for shutdown. */
+  /** Drops a return still waiting on a second Pause and the menu's timers, for shutdown. */
   public dispose(): void {
     if (this._pendingBack) clearTimeout(this._pendingBack.timer);
     this._pendingBack = null;
+    if (this._menu) clearTimeout(this._menu.idle);
+    this._menu = null;
+    this._unregisterMenu?.();
+    this._unregisterMenu = null;
   }
 
   /**
@@ -189,6 +261,8 @@ export class InputDecoder {
       return this.report('DISMISS_NOTIFICATION_ALERT', key);
     }
 
+    if (this._menu) return this.inMenu(input, event, key);
+
     switch (input) {
       case 'pause': return this.pause(key);
       // Interrupt is ContextScheduleService's, through the action handlers: it
@@ -198,8 +272,7 @@ export class InputDecoder {
       // Back stops nothing and answers nothing: the user does not want to use
       // it, and on the bar's own screen the firmware takes it anyway.
       case 'back': return 'NONE';
-      // The wheel's menu is P14c.
-      case 'turn': return 'NONE';
+      case 'turn': return this.openMenu(InputDecoder.turnOf(event), key);
       default:
         // The firmware's own keys: reported so the app can follow the bar,
         // never an action of ours.
@@ -306,15 +379,149 @@ export class InputDecoder {
     this._stopArmed = null;
     this._renderer?.clearAgainHint();
     if (armed && armed.sessionId === session.sessionId && Date.now() < armed.until) {
-      // Stop means stop: the time is logged and the task stays open. LOGGED
-      // says so, before the stop, so the session's end is held behind the
-      // scene rather than drawn first. Undo is the app's toast.
-      this._renderer?.renderTaskLogged();
-      this._engine.stopSession(WORKLOG_COMMENTS.BAR_STOP);
+      // Stop means stop: the time is logged and the task stays open, with
+      // LOGGED on the bar -- through the window's own Stop, so Undo offers
+      // it back.
+      this.ending().complete(WORKLOG_COMMENTS.BAR_STOP, false);
       return this.report('STOP_SESSION', key);
     }
     this._engine.resumeSession();
     return this.report('RESUME_SESSION', key);
+  }
+
+  /** +1 for a notch right (or down), -1 left (or up). */
+  private static turnOf(event: HardwareEvent): 1 | -1 {
+    const key = (event.key || '').toLowerCase();
+    return event.type === 'rotate_left' || key === 'rotate_left' || key === 'up' ? -1 : 1;
+  }
+
+  /** What the menu is about: the session open, or the interruption running. */
+  private static menuKey(session: ActiveSessionDTO | null): string {
+    if (!session || session.status === 'COMPLETED') return 'none';
+    return `${session.sessionId}|${session.interruption ? 'interruption' : 'task'}`;
+  }
+
+  private ending(): SessionEnding {
+    return this._menuDeps.sessionEnding ?? plainSessionEnding(this._engine, this._renderer ?? NO_SCENES);
+  }
+
+  /** The first notch opens it: right on the first entry, left on the last. */
+  private openMenu(direction: 1 | -1, key: string): string {
+    const session = this._engine.getCurrentSession();
+    const entries = barMenuEntries({
+      session,
+      previous: session?.interruption ? null : this._engine.getPreviousTask(),
+      recent: this._menuDeps.recentTasks?.(DECK_RECENT_READ) ?? []
+    });
+    this._menu = {
+      entries,
+      index: direction === 1 ? 0 : entries.length - 1,
+      confirm: null,
+      builtFor: InputDecoder.menuKey(session),
+      idle: this.idleTimer()
+    };
+    this.drawMenu();
+    return this.report('OPEN_MENU', key);
+  }
+
+  private idleTimer(): ReturnType<typeof setTimeout> {
+    return setTimeout(() => {
+      try {
+        this.closeMenu();
+      } catch (err) {
+        // A timer's throw would end the process; the menu stays open until
+        // the next press closes it.
+        console.error('[InputDecoder] Closing the menu failed:', err);
+      }
+    }, BAR_MENU_IDLE_MS);
+  }
+
+  /** A press while the menu is open: turn moves, Pause picks, the click says no. */
+  private inMenu(input: BarInput, event: HardwareEvent, key: string): string {
+    const menu = this._menu!;
+    clearTimeout(menu.idle);
+    menu.idle = this.idleTimer();
+    switch (input) {
+      case 'turn': {
+        const next = Math.min(menu.entries.length - 1, Math.max(0, menu.index + InputDecoder.turnOf(event)));
+        if (next === menu.index && menu.confirm === null) return 'NONE';
+        menu.index = next;
+        menu.confirm = null;
+        this.drawMenu();
+        return 'MOVE_MENU';
+      }
+      case 'click':
+        if (menu.confirm !== null) {
+          menu.confirm = null;
+          this.drawMenu();
+          return this.report('MENU_CONFIRM_REFUSED', key);
+        }
+        this.closeMenu();
+        return this.report('CLOSE_MENU', key);
+      case 'pause':
+        return this.pick(menu, key);
+      default:
+        return 'NONE';
+    }
+  }
+
+  private pick(menu: OpenMenu, key: string): string {
+    const entry = menu.entries[menu.index];
+    const session = this._engine.getCurrentSession();
+    switch (entry.action) {
+      case 'DONE':
+      case 'DISCARD': {
+        if (menu.confirm === null) {
+          // One changes the ticket, the other loses the time: a second Pause.
+          menu.confirm = entry.action === 'DISCARD' ? 'DISCARD' : finishNeedsConfirmation(session) ? 'DONE_UNLISTED' : 'DONE';
+          this.drawMenu();
+          return this.report(`ASK_${entry.action}`, key);
+        }
+        const unlisted = menu.confirm === 'DONE_UNLISTED';
+        this.closeMenu();
+        if (entry.action === 'DISCARD') {
+          this.ending().discard();
+          return this.report('DISCARD_SESSION', key);
+        }
+        this.ending().complete(unlisted ? WORKLOG_COMMENTS.BAR_FINISH_CONFIRMED : WORKLOG_COMMENTS.BAR_FINISH, true);
+        return this.report('FINISH_SESSION', key);
+      }
+      case 'PREVIOUS':
+      case 'RECENT': {
+        // The engine's listeners close the menu as the task starts (above),
+        // and the release hands the display to the session just started.
+        const task = entry.task!;
+        this._engine.startTask(task.id, false, task.title);
+        if (this._menu) this.closeMenu();
+        return this.report(entry.action === 'PREVIOUS' ? 'START_PREVIOUS' : 'START_RECENT', key);
+      }
+      case 'OPEN_APP':
+        this.closeMenu();
+        this._menuDeps.openApp?.();
+        return this.report('OPEN_APP', key);
+    }
+  }
+
+  private drawMenu(): void {
+    const menu = this._menu;
+    if (!menu) return;
+    const entry = menu.entries[menu.index];
+    this._renderer?.renderBarMenu({
+      icon: entry.icon,
+      label: entry.label,
+      detail: entry.detail,
+      position: { index: menu.index, count: menu.entries.length },
+      ...(menu.confirm ? { confirm: menu.confirm } : {})
+    });
+  }
+
+  /** Lets go of the display, which hands it back to the mode: one render, the engine's. */
+  private closeMenu(): void {
+    const menu = this._menu;
+    if (!menu) return;
+    clearTimeout(menu.idle);
+    this._menu = null;
+    this._priorityEngine?.releaseActiveLock(BAR_MENU_EVENT);
   }
 
   private stillShowing(sessionId: string): boolean {

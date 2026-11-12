@@ -23,8 +23,8 @@ import { BarWord } from '../../shared/words';
 import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
 
 
-const PAUSED_CONFIRM_COLOR = '#EF4444';
-const PAUSED_CONFIRM_HINT_COLOR = '#E5E7EB';
+const CONFIRM_COLOR = '#EF4444';
+const CONFIRM_HINT_COLOR = '#E5E7EB';
 /**
  * After lunch, about a task no longer the user's. Pause answers yes and the
  * wheel's click no, as on every question on the bar (P14b).
@@ -38,16 +38,27 @@ export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BA
 const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
- * A question the paused screen asks in place of its rows, for the wheel's
- * menu (P14c): a second Pause answers yes, as every question on the bar.
+ * The question the wheel's menu asks before DONE or DISCARD (P14c): a second
+ * Pause answers yes and the wheel's click no, as every question on the bar.
  */
-export type PausedConfirm = 'DISCARD' | 'DONE_UNLISTED';
-export const PAUSED_CONFIRM_TEXT: Record<PausedConfirm, { question: string; hint: string }> = {
-  DISCARD: { question: `${BarWord.DISCARD}?`, hint: BarWord.AGAIN_YES },
+export type MenuConfirm = 'DONE' | 'DONE_UNLISTED' | 'DISCARD';
+export const MENU_CONFIRM_TEXT: Record<MenuConfirm, { question: string; hint: string }> = {
+  DONE: { question: `${BarWord.DONE}?`, hint: BarWord.AGAIN_YES },
   // Marking done a task the provider no longer lists as the user's:
   // reassigned, closed or moved.
-  DONE_UNLISTED: { question: BarWord.NOT_YOURS, hint: `${BarWord.DONE} ANYWAY?` }
+  DONE_UNLISTED: { question: BarWord.NOT_YOURS, hint: `${BarWord.DONE} ANYWAY?` },
+  DISCARD: { question: `${BarWord.DISCARD}?`, hint: BarWord.AGAIN_YES }
 };
+
+/** One screen of the wheel's menu, as `InputDecoder` asks it drawn. */
+export interface BarMenuScreen {
+  icon: BitmapIconId;
+  label: string;
+  detail: string;
+  position: SelectionPosition;
+  /** The entry's question, asked in place of the entry until it is answered. */
+  confirm?: MenuConfirm;
+}
 
 /**
  * ❚❚ before the paused key (P14a): two bars of the row-0 capitals' height,
@@ -504,7 +515,6 @@ export class DisplayRenderer {
     this.showIdleClockFallback = enabled;
   }
 
-  private pausedConfirm: PausedConfirm | null = null;
   /** When the panel last took a frame that differs from the one before: the answers' settle (P14b). */
   private screenChangedAt = 0;
   /** AGAIN=STOP in place of the time, for the session it was shown for, until it lapses. */
@@ -544,35 +554,6 @@ export class DisplayRenderer {
 
   private showsAgainHint(session: ActiveSessionDTO | null): boolean {
     return !!session && !!this.againHint && this.againHint.sessionId === session.sessionId;
-  }
-
-  /** Replaces the paused screen's rows with a yes-or-no question until it is answered. */
-  public askPausedConfirm(kind: PausedConfirm): void {
-    if (this.pausedConfirm === kind) return;
-    this.pausedConfirm = kind;
-    this.redrawPausedScreen();
-  }
-
-  /**
-   * Drops the question. Answered no, the paused screen is redrawn as it was; answered
-   * yes, the session is about to end and redraw the screen itself, so
-   * `redraw: false` spares an upload of a paused screen nobody will see.
-   */
-  public clearPausedConfirm(options: { redraw?: boolean } = {}): void {
-    if (this.pausedConfirm === null) return;
-    this.pausedConfirm = null;
-    if (options.redraw !== false) this.redrawPausedScreen();
-  }
-
-  /** The question the paused screen is asking, or null. */
-  public getPausedConfirm(): PausedConfirm | null {
-    return this.pausedConfirm;
-  }
-
-  private redrawPausedScreen(): void {
-    if (this.lastSessionCache && this.lastSessionCache.status === 'PAUSED') {
-      this.renderActiveSession(this.lastSessionCache);
-    }
   }
 
   /// <summary>
@@ -745,12 +726,6 @@ export class DisplayRenderer {
   private paintPausedRows(taskText: string, timerText: string, color: string): void {
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
 
-    if (this.pausedConfirm) {
-      const text = PAUSED_CONFIRM_TEXT[this.pausedConfirm];
-      this.canvas.drawTextClipped(text.question, layout.TEXT_X, layout.ROW0_Y, PAUSED_CONFIRM_COLOR, layout.TEXT_FIELD_WIDTH);
-      this.canvas.drawSmallText(text.hint, layout.TEXT_X, layout.ROW1_Y, PAUSED_CONFIRM_HINT_COLOR, layout.TEXT_FIELD_WIDTH);
-      return;
-    }
     // ❚❚ and the key on row 0, cut by fitToWidth to what the mark leaves; the
     // time on row 1 in the timer's font, as while timing (P14b: the menu that
     // shared row 1 went with the bar's rethink).
@@ -1030,8 +1005,8 @@ export class DisplayRenderer {
         getBitmapById(interruption ? 'task_in_progress' : after === 'standup' ? 'clock' : 'burger'),
         interruption ? taskKey || RESUME_AFTER_INTERRUPTION_TEXT.fallback : RESUME_PROMPT_TEXT.question,
         interruption ? RESUME_AFTER_INTERRUPTION_TEXT.hint : RESUME_PROMPT_TEXT.hint,
-        PAUSED_CONFIRM_COLOR,
-        PAUSED_CONFIRM_HINT_COLOR
+        CONFIRM_COLOR,
+        CONFIRM_HINT_COLOR
       );
       this.ledMode = 'PULSE_ALERT';
       const payload: DisplayPayload = {
@@ -1072,11 +1047,6 @@ export class DisplayRenderer {
    */
   public renderActiveSession(session: ActiveSessionDTO | null): DisplayPayload {
     this.lastSessionCache = session;
-    // A question belongs to the pause it was asked in. Resumed, stopped or
-    // replaced, the session takes it with it.
-    if (!session || session.status !== 'PAUSED') {
-      this.pausedConfirm = null;
-    }
 
     if (session && session.status === 'TRACKING' && this.isCelebrating && session.sessionId !== this.sceneSessionId) {
       this.isCelebrating = false;
@@ -1320,6 +1290,45 @@ export class DisplayRenderer {
       // Never queued: every press redraws it, so a queued copy is stale by the
       // time it replays -- and one queued under Away replayed after the user
       // had closed it, holding the display for a picker the bar had left.
+    }, { queueOnPreempt: false });
+  }
+
+  /**
+   * One entry of the wheel's menu (P14c), laid out as the picker was: the
+   * icon, row 0 the task or the verb, row 1 the verb and `2/5`, and the scroll
+   * bar under the rows. A DONE or DISCARD asked about draws its question in
+   * red instead, the entry's icon kept so the user sees what is asked.
+   *
+   * Under `BAR_MENU_EVENT`, never queued: every turn redraws it, so a queued
+   * copy is stale by the time it replays. The decoder registers the menu as a
+   * background screen instead, as the picker it replaces was.
+   *
+   * @throws ArgumentException for a position outside its list.
+   */
+  public renderBarMenu(screen: BarMenuScreen): DisplayPayload {
+    const { index, count } = screen.position;
+    if (!Number.isInteger(count) || count < 1) {
+      throw new ArgumentException(`Menu count must be a positive integer, got ${count}.`, 'screen');
+    }
+    if (!Number.isInteger(index) || index < 0 || index >= count) {
+      throw new ArgumentException(`Menu index ${index} is outside a list of ${count}.`, 'screen');
+    }
+    return this.requestRender(BAR_MENU_EVENT, () => {
+      if (screen.confirm) {
+        const text = MENU_CONFIRM_TEXT[screen.confirm];
+        this.paintIconAndTwoRows(getBitmapById(screen.icon), text.question, text.hint, CONFIRM_COLOR, CONFIRM_HINT_COLOR);
+      } else {
+        this.paintIconAndTwoRows(getBitmapById(screen.icon), screen.label, '', '#FFFFFF', SELECTION_LABEL_COLOR);
+        const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+        const detailWidth = this.paintSelectionPosition(screen.position) - layout.TEXT_X - SELECTION_LABEL_GAP_PX;
+        this.canvas.drawSmallText(screen.detail, layout.TEXT_X, layout.ROW1_Y, SELECTION_LABEL_COLOR, detailWidth);
+      }
+      this.ledMode = 'SOLID';
+      const led = screen.confirm ? `${CONFIRM_COLOR}FF` : '#3B82F6FF';
+      const frontEls = this.canvasToEmulatorElements();
+      void this.transmitFrame(led, frontEls)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
+      return { frontElements: frontEls, ledColorHex: led };
     }, { queueOnPreempt: false });
   }
 

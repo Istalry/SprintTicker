@@ -73,18 +73,23 @@ describe('Display hand-back: the screen that ends gives the display to the right
     vi.restoreAllMocks();
   });
 
-  describe('discarding from the paused menu', () => {
+  describe('discarding from the menu', () => {
     it('Discard_Confirmed_LeavesTheIdleScreenAndNoScene', async () => {
-      await play('startTask', 500, 'pause', 500, 'askDiscard', 500, 'discard', SETTLE_MS);
+      await play('startTask', 500, 'pause', 500, 'openMenu', 500, 'askDiscard', 500, 'discard', SETTLE_MS);
+
+      expect(desk.isMenuOpen).toBe(false);
 
       expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
       expectSettledScreen(desk);
     });
 
     it('Discard_RefusedThenResumed_TracksAsBefore', async () => {
-      await play('startTask', 500, 'pause', 500, 'askDiscard', 500, 'cancelDiscard', 500, 'resume', SETTLE_MS);
+      await play(
+        'startTask', 500, 'pause', 500, 'openMenu', 500, 'askDiscard', 500, 'cancelDiscard', 500, 'closeMenu', 500, 'resume', SETTLE_MS
+      );
 
-      expect(desk.renderer.getPausedConfirm()).toBeNull();
+      expect(desk.isMenuOpen).toBe(false);
+      expect(desk.session?.status).toBe('TRACKING');
       expectSettledScreen(desk);
     });
   });
@@ -95,10 +100,10 @@ describe('Display hand-back: the screen that ends gives the display to the right
     it('StandupPrompt_UnderThePicker_ComesBackWhenThePickerCloses', async () => {
       // Seed 1947, with a build under a banner then: the cover's end went to
       // the idle clock, the screen beneath it still going on.
-      await play('standupPrompt', 1000, 'openPicker', 1000);
+      await play('standupPrompt', 1000, 'openMenu', 1000);
       expect(lock()).toBe(BAR_MENU_EVENT);
 
-      await play('closePicker', SETTLE_MS);
+      await play('closeMenu', SETTLE_MS);
 
       expect(lock()).toBe('standupPromptPriority');
       expect(scene()).toMatch(/^meeting_table_72x16/);
@@ -109,7 +114,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
       // and the picker's release then gave the display to the prompt -- in
       // LUNCH, whose rule suppresses it: the meeting table over the break.
       await play('standupPrompt', SETTLE_MS, 'awayStart', SETTLE_MS, 'lunchStart', SETTLE_MS);
-      await play('openPicker', SETTLE_MS, 'closePicker', SETTLE_MS);
+      await play('openMenu', SETTLE_MS, 'closeMenu', SETTLE_MS);
 
       expect(lock()).not.toBe('standupPromptPriority');
       expect(scene()).toMatch(/^lunch_sandwich_72x16/);
@@ -121,18 +126,18 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
-    it('Picker_OverTheStandupPrompt_IsDrawnOverTheMeetingScene', async () => {
+    it('Menu_OverTheStandupPrompt_IsDrawnOverTheMeetingScene', async () => {
       // Seed 1159: the picker took the prompt's lock, but the meeting scene
       // went on playing, and a frame is never sent over a scene that plays:
       // the picker was open, taking presses, and nowhere on the panel.
-      await play('standupPrompt', SETTLE_MS, 'openPicker', SETTLE_MS);
+      await play('standupPrompt', SETTLE_MS, 'openMenu', SETTLE_MS);
 
       expect(lock()).toBe(BAR_MENU_EVENT);
       expect(desk.device.isShowing(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
       expect(desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE)).toBe(false);
       expectSettledScreen(desk);
 
-      await play('closePicker', SETTLE_MS);
+      await play('closeMenu', SETTLE_MS);
       expect(lock()).toBe('standupPromptPriority');
       expectSettledScreen(desk);
     });
@@ -192,22 +197,22 @@ describe('Display hand-back: the screen that ends gives the display to the right
   describe('lunch, and the user working through it', () => {
     const scene = (): boolean => desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE);
 
-    it('Picker_DuringLunch_DrawsOverTheSandwich_BackBringsItBack', async () => {
+    it('Menu_DuringLunch_DrawsOverTheSandwich_BackBringsItBack', async () => {
       await play('lunchStart', 2000);
       expect(scene()).toBe(true);
 
-      await play('openPicker', 1000);
+      await play('openMenu', 1000);
       expect(lock()).toBe(BAR_MENU_EVENT);
       expect(scene()).toBe(false);
       expect(desk.device.has(FRONT_ELEMENT_IDS.FRAME)).toBe(true);
 
-      await play('closePicker', SETTLE_MS);
+      await play('closeMenu', SETTLE_MS);
       expect(lock()).toBe('lunchModePriority');
       expectSettledScreen(desk);
     });
 
     it('TaskPickedOnTheBar_DuringLunch_TheSessionReplacesTheSandwich', async () => {
-      await play('lunchStart', 2000, 'openPicker', 1000, 'startTaskFromBar', SETTLE_MS);
+      await play('lunchStart', 2000, 'openMenu', 1000, 'startTaskFromBar', SETTLE_MS);
 
       expect(desk.mode).toBe('WORK');
       expect(scene()).toBe(false);
@@ -217,28 +222,28 @@ describe('Display hand-back: the screen that ends gives the display to the right
     it('TaskStartedInTheWindow_WhileThePickerIsOpen_TheSessionShows', async () => {
       // Found by a stress seed: the picker kept the display, the session
       // waiting under it until someone pressed BACK on the bar.
-      await play('openPicker', 1000, 'startTask', SETTLE_MS);
+      await play('openMenu', 1000, 'startTask', SETTLE_MS);
 
-      expect(desk.isPicking).toBe(false);
+      expect(desk.isMenuOpen).toBe(false);
       expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
       expectSettledScreen(desk);
     });
 
-    it('PickerOpenedAndClosedUnderAway_IsNotReplayedWhenAwayEnds', async () => {
+    it('MenuOpenedAndClosedUnderAway_IsNotReplayedWhenAwayEnds', async () => {
       // Found by a stress seed: refused under Away, the picker was queued, and
       // replayed when Away ended -- after the user had closed it -- holding
       // the display for a picker the bar had already left.
-      await play('awayStart', 1000, 'openPicker', 500, 'closePicker', 500, 'awayEnd', SETTLE_MS);
+      await play('awayStart', 1000, 'openMenu', 500, 'closeMenu', 500, 'awayEnd', SETTLE_MS);
 
       expect(lock()).toBeNull();
       expectSettledScreen(desk);
     });
 
-    it('PickerOpenedUnderAway_StillOpenWhenAwayEnds_ComesBack', async () => {
+    it('MenuOpenedUnderAway_StillOpenWhenAwayEnds_ComesBack', async () => {
       // Found by stress seeds: refused under Away and never queued, the
       // picker was forgotten when Away ended -- the clock came back while the
       // bar still took presses for a list nobody could see.
-      await play('awayStart', 1000, 'openPicker', 1000, 'awayEnd', SETTLE_MS);
+      await play('awayStart', 1000, 'openMenu', 1000, 'awayEnd', SETTLE_MS);
 
       expect(lock()).toBe(BAR_MENU_EVENT);
       expectSettledScreen(desk);
@@ -247,34 +252,48 @@ describe('Display hand-back: the screen that ends gives the display to the right
     it.each([
       ['during DONE!', 1000],
       ['after DONE!', SETTLE_MS]
-    ])('PickerOpened_%s_ABannerArrives_ThePickerStays', async (_when, wait) => {
+    ])('MenuOpened_%s_ABannerArrives_ThePickerStays', async (_when, wait) => {
       // On the real bar (2026-10-15): FINISH, START with nothing running --
       // the picker -- and a screen it outranks arrived (an editor's compile,
       // then). It covered the picker, which never came back.
-      await play('startTask', SETTLE_MS, 'finish', wait, 'openPicker', 500, 'highBanner', SETTLE_MS);
+      await play('startTask', SETTLE_MS, 'finish', wait, 'openMenu', 500, 'highBanner', SETTLE_MS);
 
       expect(lock()).toBe(BAR_MENU_EVENT);
       expectSettledScreen(desk);
     });
 
-    it('PickerOpenedUnderAway_UnlockedDuringLunch_ThePickerIsOverTheSandwich', async () => {
-      // Found by stress seed 1186, once unlocking into lunch let go of Away:
-      // the picker (97) outranks Lunch (95) and was not offered the display.
-      await play('awayStart', 1000, 'openPicker', 1000, 'awayEndIntoLunch', SETTLE_MS);
-
+    it('StandupPromptQueuedUnderAway_MenuClosedDuringLunch_TheSandwichStays', async () => {
+      // Stress seed 1025 (P14c): the prompt, refused under Away, was queued;
+      // unlocking into lunch offered the display to the menu, and closing it
+      // replayed the prompt -- the meeting table over the break. A queued
+      // alert comes back only in a mode that shows it, as a screen set aside.
+      await play('awayStart', 1000, 'openMenu', 500, 'standupPrompt', 500, 'awayEndIntoLunch', SETTLE_MS);
       expect(lock()).toBe(BAR_MENU_EVENT);
-      expectSettledScreen(desk);
 
-      await play('closePicker', SETTLE_MS);
+      await play('closeMenu', SETTLE_MS);
+
       expect(lock()).toBe('lunchModePriority');
       expectSettledScreen(desk);
     });
 
-    it('PickerOpenedUnderAway_ABannerQueuedMeanwhile_ThePickerComesFirst', async () => {
+    it('MenuOpenedUnderAway_UnlockedDuringLunch_ThePickerIsOverTheSandwich', async () => {
+      // Found by stress seed 1186, once unlocking into lunch let go of Away:
+      // the picker (97) outranks Lunch (95) and was not offered the display.
+      await play('awayStart', 1000, 'openMenu', 1000, 'awayEndIntoLunch', SETTLE_MS);
+
+      expect(lock()).toBe(BAR_MENU_EVENT);
+      expectSettledScreen(desk);
+
+      await play('closeMenu', SETTLE_MS);
+      expect(lock()).toBe('lunchModePriority');
+      expectSettledScreen(desk);
+    });
+
+    it('MenuOpenedUnderAway_ABannerQueuedMeanwhile_ThePickerComesFirst', async () => {
       // Found by stress seeds: the queue replayed first, so the banner (70)
       // took the display from the picker (97) when Away ended, and Lunch (95)
       // then took it from the banner.
-      await play('awayStart', 1000, 'openPicker', 500, 'highBanner', 500, 'awayEnd', 100, 'lunchStart', SETTLE_MS);
+      await play('awayStart', 1000, 'openMenu', 500, 'highBanner', 500, 'awayEnd', 100, 'lunchStart', SETTLE_MS);
 
       expect(lock()).toBe(BAR_MENU_EVENT);
       expectSettledScreen(desk);
@@ -534,10 +553,10 @@ describe('Display hand-back: the screen that ends gives the display to the right
       await advance(PING_NOTICE_MS);
     };
 
-    it('PickerClosedWhileTheBarIsAway_BackOnTheIdleClock', async () => {
-      await play('openPicker', 500);
+    it('MenuClosedWhileTheBarIsAway_BackOnTheIdleClock', async () => {
+      await play('openMenu', 500);
 
-      await outage(() => play('closePicker', SETTLE_MS));
+      await outage(() => play('closeMenu', SETTLE_MS));
       await advance(SETTLE_MS);
 
       expect(lock()).toBeNull();
@@ -564,7 +583,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
       // panel, all answered; that ping then forgot what the answers said, and
       // the redraw it asks for removed a frame that was gone and closed a
       // closed screen.
-      await play('openPicker', 'closePicker', 'barDrop', 1000, 'barBack', 40, 'openPicker', 1000, 'closePicker', SETTLE_MS);
+      await play('openMenu', 'closeMenu', 'barDrop', 1000, 'barBack', 40, 'openMenu', 1000, 'closeMenu', SETTLE_MS);
 
       expect(lock()).toBeNull();
       expectSettledScreen(desk);
@@ -617,7 +636,7 @@ describe('Display hand-back: the screen that ends gives the display to the right
     });
 
     it('BarRebootsUnderThePicker_ThePickerComesBack', async () => {
-      await play('openPicker', 500);
+      await play('openMenu', 500);
 
       await outage(() => advance(1000), { reboot: true });
       await advance(SETTLE_MS);

@@ -1,6 +1,6 @@
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DisplayRenderer, PAUSED_MARK_WIDTH } from '../src/main/hardware/display-renderer';
+import { DisplayRenderer, MENU_CONFIRM_TEXT, PAUSED_MARK_WIDTH } from '../src/main/hardware/display-renderer';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
@@ -1147,6 +1147,34 @@ describe('DisplayRenderer Unit Tests', () => {
       renderer.renderTaskSelection('PROJECT', 'Alpha', { position: { index: 0, count: 1 } });
 
       expect(scrollBar()).toEqual({ thumbStart: -1, thumbEnd: -1, trackPixels: 0 });
+    });
+
+    it('RenderBarMenu_AnEntry_DrawsTheLabel_TheVerb_ThePosition_AndTheBar', () => {
+      // The wheel's menu (P14c) is laid out as the picker was.
+      const calls = textCalls();
+      const small = vi.spyOn((renderer as unknown as { canvas: { drawSmallText: (...a: unknown[]) => void } }).canvas, 'drawSmallText');
+      renderer.renderBarMenu({ icon: 'task_done', label: 'SPR-1428', detail: 'DONE', position: { index: 1, count: 4 } });
+
+      expect(calls.some(([text]) => text === 'SPR-1428')).toBe(true);
+      expect(small.mock.calls.map(([text]) => text)).toEqual(expect.arrayContaining(['DONE', '2/4']));
+      expect(scrollBar().trackPixels).toBeGreaterThan(0);
+    });
+
+    it.each(['DONE', 'DONE_UNLISTED', 'DISCARD'] as const)('RenderBarMenu_Confirm_%s_AsksInRed_WithNoPosition', confirm => {
+      const calls = textCalls();
+      renderer.renderBarMenu({ icon: 'stop', label: 'SPR-1428', detail: 'DISCARD', position: { index: 1, count: 4 }, confirm });
+
+      const question = calls.find(([text]) => text === MENU_CONFIRM_TEXT[confirm].question);
+      expect(question?.[3]).toBe('#EF4444');
+      expect(scrollBar()).toEqual({ thumbStart: -1, thumbEnd: -1, trackPixels: 0 });
+    });
+
+    it.each([
+      [{ index: 0, count: 0 }],
+      [{ index: 3, count: 3 }],
+      [{ index: -1, count: 3 }]
+    ])('RenderBarMenu_PositionOutsideItsList_Throws (%o)', position => {
+      expect(() => renderer.renderBarMenu({ icon: 'task', label: 'X', detail: '', position })).toThrow(ArgumentException);
     });
 
     it('RenderTaskSelection_NoPosition_DrawsNeitherNumberNorBar', () => {

@@ -8,8 +8,10 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
-import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
-import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_STOP_AGAIN_MS } from '../src/shared/render-constants';
+import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS } from '../src/shared/render-constants';
+import { WORKLOG_COMMENTS } from '../src/shared/worklog-comments';
+import type { TaskDTO } from '../src/shared/dtos';
 import { BarWord } from '../src/shared/words';
 
 /** Starting a task takes it up at once: the two-minute wait is not this suite's subject. */
@@ -720,15 +722,278 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(dismissed).toEqual([false]);
         expect(engine.isInterrupted()).toBe(false);
       });
+    });
+    /**
+     * The wheel's menu (P14c): turning opens it, one entry per screen, Pause
+     * picks, the click or BAR_MENU_IDLE_MS untouched closes it, and DONE and
+     * DISCARD ask a second Pause.
+     */
+    describe('the menu', () => {
+      let released: string[];
+      let ending: { complete: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
+      let openApp: ReturnType<typeof vi.fn>;
+      let recent: TaskDTO[];
+      const drawn = () => vi.mocked(renderer.renderBarMenu).mock.calls.map(([screen]) => screen);
+      const last = () => drawn()[drawn().length - 1];
 
-      it.each(['rotate_left', 'rotate_right', 'up', 'down'])('Turn_%s_DoesNothingYet', key => {
+      beforeEach(() => {
+        released = [];
+        recent = [];
+        ending = { complete: vi.fn(() => ({ success: true, loggedSeconds: 60 })), discard: vi.fn(() => ({ success: true, discardedSeconds: 60 })) };
+        openApp = vi.fn();
+        decoder.setPriorityEngine({
+          getActiveLockEventName: () => null,
+          releaseActiveLock: (lock: string) => released.push(lock),
+          hasActiveNotification: () => notificationUp,
+          dismissNotification: () => false
+        } as never);
+        decoder.setMenuDeps({ sessionEnding: ending, recentTasks: () => recent, openApp });
+        vi.spyOn(renderer, 'renderBarMenu');
+        for (const n of [2, 3]) {
+          taskRepo.saveTask({ id: `T-${n}`, projectId: 'P-1', key: `SCRUM-${n}`, title: `Tache ${n}`, status: 'todo' });
+        }
+      });
+
+      it('Turn_Timing_OpensOnDone_ThenDiscard_ThenOpenApp', () => {
         engine.startTask('T-1');
-        const focus = vi.fn();
-        decoder.setWindowFocusCallback(focus);
 
-        expect(press(key)).toBe('NONE');
-        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
-        expect(focus).not.toHaveBeenCalled();
+        expect(press('rotate_right')).toBe('OPEN_MENU');
+        expect(last()).toMatchObject({ label: 'SCRUM-1', detail: BarWord.DONE, position: { index: 0, count: 3 } });
+        press('rotate_right');
+        expect(last()).toMatchObject({ detail: BarWord.DISCARD, position: { index: 1 } });
+        press('rotate_right');
+        expect(last()).toMatchObject({ label: BarWord.OPEN_APP, position: { index: 2 } });
+      });
+
+      it('Turn_Left_OpensOnTheLastEntry_AndStopsAtEitherEnd', () => {
+        engine.startTask('T-1');
+
+        press('rotate_left');
+        expect(last()).toMatchObject({ label: BarWord.OPEN_APP });
+        expect(press('rotate_right')).toBe('NONE');
+        press('rotate_left');
+        press('rotate_left');
+        expect(press('rotate_left')).toBe('NONE');
+        expect(last()).toMatchObject({ detail: BarWord.DONE });
+      });
+
+      it('Done_AsksASecondPause_ThenFinishesThroughTheSessionEnding', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+
+        expect(press('start')).toBe('ASK_DONE');
+        expect(last()).toMatchObject({ confirm: 'DONE' });
+        expect(ending.complete).not.toHaveBeenCalled();
+
+        expect(press('start')).toBe('FINISH_SESSION');
+        expect(ending.complete).toHaveBeenCalledWith(WORKLOG_COMMENTS.BAR_FINISH, true);
+        expect(decoder.isMenuOpen()).toBe(false);
+        expect(released).toContain(BAR_MENU_EVENT);
+      });
+
+      it('Done_OnATaskNoLongerTheUsers_AsksNotYours_AndSaysSoInTheWorklog', () => {
+        engine.startTask('T-1');
+        vi.spyOn(engine, 'getCurrentSession').mockReturnValue({ ...engine.getCurrentSession()!, taskUnlisted: true });
+        press('rotate_right');
+
+        press('start');
+        expect(last()).toMatchObject({ confirm: 'DONE_UNLISTED' });
+        press('start');
+
+        expect(ending.complete).toHaveBeenCalledWith(WORKLOG_COMMENTS.BAR_FINISH_CONFIRMED, true);
+      });
+
+      it('Done_TheClickSaysNo_BackToTheEntry_NothingEnds', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+        press('start');
+
+        expect(press('ok')).toBe('MENU_CONFIRM_REFUSED');
+
+        expect(last()).toMatchObject({ detail: BarWord.DONE });
+        expect(last().confirm).toBeUndefined();
+        expect(decoder.isMenuOpen()).toBe(true);
+        expect(ending.complete).not.toHaveBeenCalled();
+      });
+
+      it('Done_ATurnDropsTheQuestion', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+        press('start');
+        press('rotate_right');
+
+        expect(press('start')).toBe('ASK_DISCARD');
+        expect(ending.complete).not.toHaveBeenCalled();
+      });
+
+      it('Discard_AsksASecondPause_ThenDiscards', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+        press('rotate_right');
+
+        expect(press('start')).toBe('ASK_DISCARD');
+        expect(last()).toMatchObject({ confirm: 'DISCARD' });
+        expect(press('start')).toBe('DISCARD_SESSION');
+        expect(ending.discard).toHaveBeenCalledTimes(1);
+      });
+
+      it('Interruption_OffersDiscardAndOpenApp_NoTask', () => {
+        // No task is chosen during an interruption (2026-11-12).
+        engine.startTask('T-2');
+        engine.stopSession();
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        recent = [taskRepo.getTaskById('T-3')!];
+
+        press('rotate_right');
+
+        expect(last()).toMatchObject({ detail: BarWord.DISCARD, position: { count: 2 } });
+        press('rotate_right');
+        expect(last()).toMatchObject({ label: BarWord.OPEN_APP });
+      });
+
+      it('NothingRunning_OffersThePrevious_TheRecent_AndOpenApp_EachOnce', () => {
+        engine.startTask('T-2');
+        engine.stopSession();
+        recent = ['T-2', 'T-3', 'T-1'].map(id => taskRepo.getTaskById(id)!);
+
+        press('rotate_right');
+
+        expect(last()).toMatchObject({ label: 'SCRUM-2', detail: BarWord.PREVIOUS, position: { index: 0, count: 4 } });
+        press('rotate_right');
+        expect(last()).toMatchObject({ label: 'SCRUM-3', detail: BarWord.RECENT });
+        press('rotate_right');
+        expect(last()).toMatchObject({ label: 'SCRUM-1', detail: BarWord.RECENT });
+      });
+
+      it('Previous_Picked_StartsIt_AndTheMenuLetsGo', () => {
+        engine.startTask('T-2');
+        engine.stopSession();
+        press('rotate_right');
+
+        expect(press('start')).toBe('START_PREVIOUS');
+
+        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-2', status: 'TRACKING' });
+        expect(decoder.isMenuOpen()).toBe(false);
+        expect(released).toEqual([BAR_MENU_EVENT]);
+      });
+
+      it('Recent_Picked_WhileTiming_SwitchesToIt', () => {
+        engine.startTask('T-1');
+        recent = [taskRepo.getTaskById('T-3')!];
+        press('rotate_left');
+        press('rotate_left');
+
+        expect(press('start')).toBe('START_RECENT');
+        expect(engine.getCurrentSession()?.taskId).toBe('T-3');
+      });
+
+      it('OpenApp_Picked_RaisesTheApp_AndCloses', () => {
+        press('rotate_left');
+
+        expect(press('start')).toBe('OPEN_APP');
+        expect(openApp).toHaveBeenCalledTimes(1);
+        expect(decoder.isMenuOpen()).toBe(false);
+      });
+
+      it('Click_ClosesTheMenu_LettingGoOfTheDisplay', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+
+        expect(press('ok')).toBe('CLOSE_MENU');
+        expect(decoder.isMenuOpen()).toBe(false);
+        expect(released).toEqual([BAR_MENU_EVENT]);
+        expect(engine.isInterrupted()).toBe(false);
+      });
+
+      it('Untouched_ClosesOnItsOwn_ATurnWaitsAgain', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+        vi.advanceTimersByTime(BAR_MENU_IDLE_MS - 1);
+        press('rotate_right');
+        vi.advanceTimersByTime(BAR_MENU_IDLE_MS - 1);
+        expect(decoder.isMenuOpen()).toBe(true);
+
+        vi.advanceTimersByTime(1);
+
+        expect(decoder.isMenuOpen()).toBe(false);
+        expect(released).toEqual([BAR_MENU_EVENT]);
+      });
+
+      it('ASessionEndedElsewhere_ClosesTheMenu', () => {
+        // The window's Stop while the menu offers DONE on the task it ended.
+        engine.startTask('T-1');
+        press('rotate_right');
+
+        engine.stopSession();
+
+        expect(decoder.isMenuOpen()).toBe(false);
+      });
+
+      it('APauseElsewhere_LeavesTheMenuOpen', () => {
+        // Its entries are the same, timing or paused.
+        engine.startTask('T-1');
+        press('rotate_right');
+
+        engine.pauseSession();
+
+        expect(decoder.isMenuOpen()).toBe(true);
+      });
+
+      it('Back_InTheMenu_DoesNothing', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+
+        expect(press('back')).toBe('NONE');
+        expect(decoder.isMenuOpen()).toBe(true);
+      });
+
+      it('ANotificationOverTheMenu_TakesThePress', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+        notificationUp = true;
+
+        expect(press('ok')).toBe('DISMISS_NOTIFICATION_ALERT');
+        expect(decoder.isMenuOpen()).toBe(true);
+      });
+
+      it('TheDisplayFrees_TheOpenMenuIsDrawnAgain', () => {
+        // A state, not an alert (CLAUDE.md §5): refused under Away, it comes
+        // back when the display frees, as long as it is open.
+        let reclaim: (() => void) | undefined;
+        decoder.setPriorityEngine({
+          getActiveLockEventName: () => null,
+          releaseActiveLock: () => undefined,
+          hasActiveNotification: () => false,
+          dismissNotification: () => false,
+          addBackgroundScreen: (_names: string[], cb: () => void) => { reclaim = cb; return () => { reclaim = undefined; }; }
+        } as never);
+        engine.startTask('T-1');
+        press('rotate_right');
+        const before = drawn().length;
+
+        reclaim?.();
+        expect(drawn().length).toBe(before + 1);
+
+        press('ok');
+        reclaim?.();
+        expect(drawn().length).toBe(before + 1);
+        decoder.dispose();
+        expect(reclaim).toBeUndefined();
+      });
+
+      it('Untouched_TheCloseThrows_IsLoggedNotThrown', () => {
+        engine.startTask('T-1');
+        press('rotate_right');
+        decoder.setPriorityEngine({
+          getActiveLockEventName: () => null,
+          releaseActiveLock: () => { throw new Error('boom'); },
+          hasActiveNotification: () => false,
+          dismissNotification: () => false
+        } as never);
+
+        expect(() => vi.advanceTimersByTime(BAR_MENU_IDLE_MS)).not.toThrow();
+        expect(vi.mocked(console.error)).toHaveBeenCalled();
       });
     });
   });
