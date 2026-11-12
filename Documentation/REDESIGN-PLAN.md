@@ -1795,6 +1795,41 @@ hides; only Quit clears the bar).
 - Also fixed: Settings › Devices' Stream Deck card still called the plugin
   a separate download, which stopped being true in P11a.
 
+**As landed: P12d, the mini timer's states (2026-11-12).**
+
+- `MiniBar` shows every state of S25: running with **⚡3** (to place) and
+  ⟲ Previous, in S25's order ❚❚ ■ ⚡ ⇄ ⟲ ✕; paused ("❚❚ Paused · MG-12");
+  an interruption (↩ ↳ ⇄ ⚡ ■, "⚡ to place · during MG-12") and, started
+  from the bar, the deck or the shortcut, "⚡ from the deck · started now ▾"
+  (`STARTED_AGO_CHOICES`, `interruption:move-start`); nothing timing, loud
+  in working hours (`schedule:get-working-now`) with "⚡ 3 to place" and
+  ▶ Start…; "MG-12 · Rin's now"; the stand-up running, "then back to MG-12,
+  as it was", End stand-up (`schedule:get-standup-running`,
+  `ContextScheduleService.standupRunning`); stopping, "Stop MG-12 · Done or
+  Stop logs 1h 24m · Discard keeps nothing", Done / Stop / Discard…; the
+  Undo row. "Back to MG-12? 6 min untracked" with **↩ Back +6m** in
+  `MiniPromptRow`. The other questions were P8's and stay as they were.
+- ↳ opens the picker window in a third mode, `place`
+  (`mini:open-place-picker`), which chooses the interruption's task.
+- `MiniOnInterruption`: an interruption from the bar, the deck or the
+  shortcut opens the mini timer without the focus (`openQuietly`,
+  `showInactive`), once per interruption, unless the dashboard is on
+  screen. `UndoToasts` counts the mini timer as on screen.
+- The one-line tour of the buttons on the first open
+  (`mini_tour_seen`, a flow setting); hover labels name every button.
+- `MINI_WINDOW_SIZE` is 560 × 56 (was 480): six buttons, the count and
+  the deck's "started now ▾" beside the timer. The stale "360x56" comments
+  are corrected.
+- `pnpm docs:images` sets the throwaway profile's schedule around the
+  time it runs (stand-up behind, lunch and the wrap-up ahead): run at
+  13:00, the default lunch paused the session and the capture failed. It
+  also puts the mini timer's tour away before its picture.
+- **Deviations:** the name field is the existing click-to-rename title
+  rather than an always-open input -- a field open in an always-on-top
+  window would take keystrokes meant for the app in front. The stopping
+  row offers Done / Stop / Discard… with ✕, without S25's separate
+  confirmation layout beyond Discard's Yes.
+
 **As landed: P12c, toasts that lead somewhere (2026-11-12).**
 
 - `ToastRequest.route` (`WindowRoute`, now `today`, `end-day`, `undo`,
@@ -2135,7 +2170,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P9 | done: P9a (the day, Add time), P9b (the timeline), P9c (the week, CSV), P9d (Check my week), P9e (Split in two) -- see §14 "Split" and each "As landed" | P9a-P9c (2026-11-11), P9d-P9e (2026-11-12) |
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
-| P12 | in progress: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere) done; P12d (the mini timer's states) next -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c (2026-11-12) |
+| P12 | in progress: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states) done; P12e (`ShortcutService`) next -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d (2026-11-12) |
 | P13 | not started | |
 | P14 | not started | |
 | P15 | not started | |

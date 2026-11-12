@@ -25,18 +25,22 @@ export const PickerWindow: React.FC<PickerWindowProps> = ({ mode }) => {
   if (loading) return null;
 
   const close = (): void => window.close();
+  // ↳ from the mini timer (P12d): which task the running interruption is for.
+  const placing = mode === 'place' && session?.interruption ? session.interruption : null;
   return (
     <TaskPicker
       isOpen
       asWindow
       onClose={() => { if (!picking.current) close(); }}
-      mode={mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
-      takeAlongOf={mode !== 'assign' && session?.interruption
+      mode={placing ? 'place' : mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
+      title={placing ? `Which task is "${placing.title}" for?` : undefined}
+      subtitle={placing ? 'The timer keeps running; its time goes there when it ends.' : undefined}
+      takeAlongOf={mode === 'start' && session?.interruption
         ? { title: session.interruption.title, seconds: session.elapsedSeconds }
         : null}
       onPick={picked => {
         picking.current = true;
-        void pickTask(mode, session, picked, startTask).finally(close);
+        void pickTask(placing ? 'place' : mode === 'place' ? 'start' : mode, session, picked, startTask).finally(close);
       }}
     />
   );

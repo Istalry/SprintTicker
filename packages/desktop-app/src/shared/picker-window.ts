@@ -10,10 +10,11 @@ export const PICKER_WINDOW_HASH = 'picker';
 
 /**
  * What the picker window is opened for. `start` becomes Switch while a
- * session runs -- the window reads the session itself -- and `assign`
- * chooses the task an ad-hoc session goes to.
+ * session runs -- the window reads the session itself -- `assign` chooses
+ * the task an ad-hoc session goes to, and `place` the task the running
+ * interruption's time goes to when it ends (the mini timer's ↳, P12d).
  */
-export type PickerWindowMode = 'start' | 'assign';
+export type PickerWindowMode = 'start' | 'assign' | 'place';
 
 /** The hash, without its `#`, for a mode: `picker`, or `picker?mode=assign`. */
 export function pickerWindowHash(mode: PickerWindowMode): string {
@@ -29,5 +30,6 @@ export function readPickerWindowHash(hash: string): PickerWindowMode | null {
   const bare = hash.startsWith('#') ? hash.slice(1) : hash;
   const [route, query = ''] = bare.split('?', 2);
   if (route !== PICKER_WINDOW_HASH) return null;
-  return new URLSearchParams(query).get('mode') === 'assign' ? 'assign' : 'start';
+  const mode = new URLSearchParams(query).get('mode');
+  return mode === 'assign' || mode === 'place' ? mode : 'start';
 }

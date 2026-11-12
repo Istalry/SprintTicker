@@ -40,6 +40,8 @@ class FakeMiniWindow implements MiniWindowLike {
   public bounds: Rectangle;
   public readonly shown = vi.fn();
   public readonly focused = vi.fn();
+  public readonly shownInactive = vi.fn();
+  public inactive = false;
   private readonly handlers = new Map<string, Array<() => void>>();
 
   constructor(bounds: Rectangle) {
@@ -48,6 +50,7 @@ class FakeMiniWindow implements MiniWindowLike {
 
   isDestroyed(): boolean { return this.destroyed; }
   show(): void { this.shown(); }
+  showInactive(): void { this.shownInactive(); }
   focus(): void { this.focused(); }
   getBounds(): Rectangle { return this.bounds; }
   on(event: 'moved' | 'closed', listener: () => void): this {
@@ -95,8 +98,9 @@ describe('MiniWindowManager', () => {
     displays = [PRIMARY];
     created = [];
     manager = new MiniWindowManager({
-      createWindow: bounds => {
+      createWindow: (bounds, options) => {
         const win = new FakeMiniWindow(bounds);
+        win.inactive = options?.inactive === true;
         created.push(win);
         return win;
       },
@@ -162,6 +166,26 @@ describe('MiniWindowManager', () => {
     expect(created).toHaveLength(1);
     expect(created[0].shown).toHaveBeenCalled();
     expect(created[0].focused).toHaveBeenCalled();
+  });
+
+  it('OpenQuietly_Closed_OpensItWithoutTheFocus', () => {
+    // An interruption from the bar or the deck (P12d): the user may be typing elsewhere.
+    manager.openQuietly();
+
+    expect(created).toHaveLength(1);
+    expect(created[0].inactive).toBe(true);
+    expect(manager.isOpen()).toBe(true);
+  });
+
+  it('OpenQuietly_AlreadyOpen_ShowsItWithoutTheFocus', () => {
+    manager.open();
+    created[0].focused.mockClear();
+
+    manager.openQuietly();
+
+    expect(created).toHaveLength(1);
+    expect(created[0].shownInactive).toHaveBeenCalled();
+    expect(created[0].focused).not.toHaveBeenCalled();
   });
 
   it('Moved_RemembersThePositionAndKeepsItOpen', () => {

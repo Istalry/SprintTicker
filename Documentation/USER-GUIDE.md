@@ -113,7 +113,11 @@ before are kept, and the bar's screens come back at once.
 
 A small window that stays above every other one and shows what the bar would:
 the task key and title, the elapsed time, and a coloured edge -- green while
-tracking, amber while paused, grey with nothing running. Beside them is the
+tracking, amber while paused, in an interruption or asking, grey with nothing
+running. **Nothing timing** is written large and amber in your working hours,
+with the interruptions still to place under it, and **▶ Start…** beside it.
+The first time it opens, one line names its buttons; **Got it** puts it
+away. Beside them is the
 icon of whatever holds the bar: the stopwatch for your session, an app's icon
 during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with **Mini
 Timer** in the header or **Mini timer** in the tray menu.
@@ -122,22 +126,34 @@ Timer** in the header or **Mini timer** in the tray menu.
   <img src="../docs/images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
 </p>
 
-- ⏯️ **Pause** and **Resume** act on the session as Today does.
-- ⏹️ **Stop** offers the three ways to end it, in place of the buttons:
-  **Not done** logs the time and keeps the task open, **Done** also marks it
-  done, and **Discard** throws the session away after a **Yes**. **×** keeps
-  the session running.
+- ⏯️ **Pause** and **Resume** act on the session as Today does; paused, the
+  row says **❚❚ Paused · MG-12**.
+- ⏹️ **Stop** offers the three ways to end it, in the order the bar and the
+  Stream Deck use: **Done** logs the time and marks the task done, **Stop**
+  logs it and keeps the task open, and **Discard…** throws the session away
+  after a **Yes**. **×** keeps the session running.
+- ⟲ **Previous** goes back to the task you timed before this one, and
+  **⚡3** beside the buttons counts the interruptions waiting to be placed.
 - ⚡ **Interrupt** starts a timer at once, as Today's button does --
   see [Interrupt](#-interrupt-a-timer-at-once). During an interruption the
-  row says which task waits, and offers ↩ **Back** to it, ⏹️ **Stop**, which
-  ends the interruption alone, and ⚡ **Another**. Click an interruption's
-  title to name it, and the link button to put it on a task.
+  row says which task waits, and offers ↩ **Back** to it, ↳ to choose the
+  task its time goes to, the list, ⚡ **Another** and ⏹️ **Stop**, which ends
+  the interruption alone. Click its title to name it.
+- 🎛️ **An interruption started from the bar, the Stream Deck or the
+  shortcut opens the mini timer**, without taking the focus from what you
+  are typing in, unless the window is on screen: "⚡ from the deck · started
+  now ▾" sets when it began (2, 5 or 10 minutes ago, taken off the task it
+  interrupted), and its name can wait.
+- ☷ **During the stand-up** the row says which task comes back after it,
+  "then back to MG-12, as it was", with **End stand-up**.
+- 👤 A task given to someone else reads **MG-12 · Rin's now**, in amber; its
+  time is still logged.
 - 📋 The **list** button brings the window forward with the task picker open:
   that is how you start or switch a task from it.
 - ❓ **A question takes the row** until you answer it, with an amber edge:
   the stand-up (**Skip**, **Join**), **Back at your desk?** (**Not now**,
-  **Worked through**, **▶ Resume**) and **Back to MG-12?** (**Not now**,
-  **Back +time**, **↩ Back**), and, when nothing else is asked, a reminder
+  **Worked through**, **▶ Resume**) and **Back to MG-12? 6 min untracked**
+  (**Not now**, **↩ Back +6m**, **↩ Back**), and, when nothing else is asked, a reminder
   -- see *Reminders ask once*, with the ceremonies. Answered anywhere, it
   goes everywhere.
 - 🖱️ Drag it by any part that is not a button. It reopens where you left it; if

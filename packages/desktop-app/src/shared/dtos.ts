@@ -60,6 +60,16 @@ export interface ActiveSessionDTO {
   taskLeftAtUtc?: string;
 }
 
+/**
+ * The stand-up running (P12d, S25): what the mini timer says over its row --
+ * "Daily stand-up, then back to MG-12, as it was". `returnsToKey` is the
+ * task set aside for it, which its end starts again; null when nothing was
+ * timing before it.
+ */
+export interface StandupRunningDTO {
+  returnsToKey: string | null;
+}
+
 /** Why a tracked task left the provider's list: see `ActiveSessionDTO.taskLeftBecause`. */
 export type TaskLeftReason = 'closed' | 'reassigned' | 'gone';
 

@@ -331,6 +331,12 @@ export interface IElectronAPI {
   openTaskPicker: () => Promise<boolean>;
   /** Brings the dashboard forward with its picker open to assign the open ad-hoc session to a task. */
   openAssignPicker: () => Promise<boolean>;
+  /** The picker as its own window, choosing the task the running interruption goes to (P12d). */
+  openPlacePicker: () => Promise<boolean>;
+  /** The stand-up, when it is what runs, and the task its end starts again (P12d). */
+  getStandupRunning: () => Promise<import('../shared/dtos').StandupRunningDTO | null>;
+  /** In working hours now: WORK, a working day, stand-up to wrap-up (P12d). */
+  isWorkingNow: () => Promise<boolean>;
   /**
    * "Only my projects": whether the Projects tab, the task picker and the
    * bar's picker hide projects with no open task. Shared by all three, so a

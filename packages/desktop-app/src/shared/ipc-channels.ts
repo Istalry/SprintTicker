@@ -228,6 +228,9 @@ export enum IPCChannel {
   OPEN_TASK_PICKER = 'mini:open-task-picker',
   /** Brings the dashboard forward with its task picker open to assign the open ad-hoc session. */
   OPEN_ASSIGN_PICKER = 'mini:open-assign-picker',
+  OPEN_PLACE_PICKER = 'mini:open-place-picker',
+  GET_STANDUP_RUNNING = 'schedule:get-standup-running',
+  GET_WORKING_NOW = 'schedule:get-working-now',
   /** "Only my projects": whether project lists hide those with no open task. */
   GET_ONLY_PROJECTS_WITH_TASKS = 'projects:get-only-with-tasks',
   SET_ONLY_PROJECTS_WITH_TASKS = 'projects:set-only-with-tasks',

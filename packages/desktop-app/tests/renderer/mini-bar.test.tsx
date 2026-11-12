@@ -4,7 +4,8 @@ import { MiniBar } from '../../src/renderer/components/MiniBar';
 import { App } from '../../src/renderer/App';
 import { TRACKING_SESSION, installElectronApi } from './electron-api-mock';
 import { getBitmapById } from '../../src/shared/pixel-bitmaps';
-import type { ScreenIconDTO } from '../../src/shared/dtos';
+import type { ScreenIconDTO, TaskDTO } from '../../src/shared/dtos';
+import { MiniPromptRow } from '../../src/renderer/components/MiniPromptRow';
 
 /**
  * The always-on-top mini timer: the bar's screen, for people without one.
@@ -16,7 +17,7 @@ describe('mini timer', () => {
     const bridge = installElectronApi();
     render(<MiniBar />);
 
-    expect(await screen.findByText('No task running')).toBeTruthy();
+    expect(await screen.findByText('Nothing timing')).toBeTruthy();
     expect(screen.queryByLabelText('Pause')).toBeNull();
     expect(screen.queryByLabelText('Stop')).toBeNull();
 
@@ -127,13 +128,13 @@ describe('mini timer', () => {
       return bridge;
     };
 
-    it('Stop_NotDone_LogsTheTimeWithoutMarkingTheTaskDone', async () => {
+    it('Stop_Stop_LogsTheTimeWithoutMarkingTheTaskDone', async () => {
       const bridge = await openEndings();
 
-      fireEvent.click(screen.getByText('Not done'));
+      fireEvent.click(screen.getByText('Stop'));
 
       expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, false);
-      expect(await screen.findByText('No task running')).toBeTruthy();
+      expect(await screen.findByText('Nothing timing')).toBeTruthy();
     });
 
     it('Stop_Done_LogsAndMarksTheTaskDone', async () => {
@@ -147,22 +148,22 @@ describe('mini timer', () => {
     it('Stop_DiscardConfirmed_DiscardsAndLogsNothing', async () => {
       const bridge = await openEndings();
 
-      fireEvent.click(screen.getByText('Discard'));
+      fireEvent.click(screen.getByText('Discard…'));
       fireEvent.click(screen.getByText('Yes'));
 
       expect(bridge.api.discardSession).toHaveBeenCalledTimes(1);
       expect(bridge.api.completeSession).not.toHaveBeenCalled();
-      expect(await screen.findByText('No task running')).toBeTruthy();
+      expect(await screen.findByText('Nothing timing')).toBeTruthy();
     });
 
     it('Stop_DiscardRefused_KeepsTheSessionAndOffersTheChoicesAgain', async () => {
       const bridge = await openEndings();
 
-      fireEvent.click(screen.getByText('Discard'));
+      fireEvent.click(screen.getByText('Discard…'));
       fireEvent.click(screen.getByText('No'));
 
       expect(bridge.api.discardSession).not.toHaveBeenCalled();
-      expect(screen.getByText('Not done')).toBeTruthy();
+      expect(screen.getByText('Stop')).toBeTruthy();
     });
 
     it('Stop_ThenKeep_GivesTheButtonsBack', async () => {
@@ -177,7 +178,7 @@ describe('mini timer', () => {
     it('Stop_DoneOnAnUnlistedTask_AsksFirst', async () => {
       const bridge = installElectronApi({ getCurrentSession: async () => ({ ...TRACKING_SESSION, taskUnlisted: true }) });
       render(<MiniBar />);
-      expect(await screen.findByLabelText('No longer assigned to you')).toBeTruthy();
+      expect(await screen.findByText('SPR-142 · No longer assigned to you')).toBeTruthy();
       fireEvent.click(screen.getByLabelText('Stop'));
 
       fireEvent.click(screen.getByText('Done'));
@@ -192,7 +193,7 @@ describe('mini timer', () => {
         getCurrentSession: async () => ({ ...TRACKING_SESSION, taskUnlisted: true, taskLeftBecause: 'closed' as const })
       });
       render(<MiniBar />);
-      expect(await screen.findByLabelText('Closed on the provider')).toBeTruthy();
+      expect(await screen.findByText('SPR-142 · Closed on the provider')).toBeTruthy();
       fireEvent.click(screen.getByLabelText('Stop'));
 
       fireEvent.click(screen.getByText('Done'));
@@ -209,14 +210,14 @@ describe('mini timer', () => {
       act(() => bridge.emit('onSessionUpdated', { ...TRACKING_SESSION, sessionId: 'sess-next' }));
 
       expect(await screen.findByLabelText('Pause')).toBeTruthy();
-      expect(screen.queryByText('Not done')).toBeNull();
+      expect(screen.queryByRole('group', { name: 'End the session' })).toBeNull();
     });
   });
 
   it('SessionUpdated_ElsewhereInTheApp_ReachesTheMiniTimer', async () => {
     const bridge = installElectronApi();
     render(<MiniBar />);
-    await screen.findByText('No task running');
+    await screen.findByText('Nothing timing');
 
     act(() => bridge.emit('onSessionUpdated', { ...TRACKING_SESSION, status: 'PAUSED' }));
 
@@ -299,7 +300,7 @@ describe('mini timer: the screen icon', () => {
   it('Render_FirmwaresClock_ShowsNoIcon', async () => {
     installElectronApi();
     render(<MiniBar />);
-    await screen.findByText('No task running');
+    await screen.findByText('Nothing timing');
 
     expect(screen.queryByRole('img')).toBeNull();
   });
@@ -370,7 +371,7 @@ describe('mini timer: the screen icon', () => {
     it('Asked_WhileTheWindowIsOpen_AppearsAndGoesWhenAnsweredElsewhere', async () => {
       const bridge = installElectronApi();
       render(<MiniBar />);
-      await screen.findByText('No task running');
+      await screen.findByText('Nothing timing');
 
       act(() => bridge.emit('onResumePrompt', { ...HELD, after: 'interruption' as const, held: undefined }));
       expect(screen.getByText('Back to SPR-142?')).toBeTruthy();
@@ -378,5 +379,148 @@ describe('mini timer: the screen icon', () => {
       act(() => bridge.emit('onResumePrompt', null));
       expect(screen.queryByText('Back to SPR-142?')).toBeNull();
     });
+  });
+});
+
+/** S25's states (P12d): each with its words and its buttons, in S25's order. */
+describe('mini timer: the states of S25', () => {
+  const INTERRUPTION = {
+    ...TRACKING_SESSION,
+    sessionId: 'int_1',
+    taskId: 'int_1',
+    taskKey: 'ADHOC',
+    taskTitle: 'Interruption 10:30',
+    isAdHoc: true,
+    interruption: {
+      id: 'int_1', name: null, title: 'Interruption 10:30', startedAtUtc: '2026-11-10T09:00:00.000Z', index: 1,
+      source: 'deck' as const, interruptedSessionId: 's1', interruptedTaskKey: 'SPR-142',
+      interruptedTaskTitle: 'The task', interruptedWasPaused: false
+    }
+  };
+  const PREVIOUS = { id: 't-31', key: 'PF-31', title: 'Lantern glow' } as TaskDTO;
+  // The row's buttons; the title's own Rename is not one of them.
+  const labels = () => screen.getAllByRole('button').map(b => b.getAttribute('aria-label') ?? b.textContent).filter(l => !l?.startsWith('Rename'));
+
+  it('Running_ButtonsInOrder_WithPreviousAndTheCount', async () => {
+    const bridge = installElectronApi({
+      getCurrentSession: async () => TRACKING_SESSION,
+      getPreviousTask: async () => PREVIOUS,
+      getInterruptionsToPlace: vi.fn().mockResolvedValue([{}, {}, {}])
+    });
+    render(<MiniBar />);
+
+    await screen.findByLabelText('Previous task: PF-31');
+    expect(await screen.findByText('⚡3')).toBeTruthy();
+    expect(labels()).toEqual(['Pause', 'Stop', 'Interrupt', 'Switch task', 'Previous task: PF-31', 'Close the mini timer']);
+
+    fireEvent.click(screen.getByLabelText('Previous task: PF-31'));
+    await waitFor(() => expect(bridge.api.startTask).toHaveBeenCalledWith('t-31', false, 'Lantern glow'));
+  });
+
+  it('Paused_SaysSoWithTheKey', async () => {
+    installElectronApi({ getCurrentSession: async () => ({ ...TRACKING_SESSION, status: 'PAUSED' }) });
+    render(<MiniBar />);
+
+    expect(await screen.findByText(/Paused ·/)).toBeTruthy();
+    expect(screen.getByLabelText('Resume')).toBeTruthy();
+  });
+
+  it('SomeoneElsesTask_SaysWhoseItIsNow', async () => {
+    installElectronApi({
+      getCurrentSession: async () => ({ ...TRACKING_SESSION, taskUnlisted: true, taskLeftBecause: 'reassigned' as const, taskOwnerName: 'Rin Okada' })
+    });
+    render(<MiniBar />);
+
+    expect(await screen.findByText("SPR-142 · Rin's now")).toBeTruthy();
+  });
+
+  it('NothingTiming_InWorkingHours_IsLoud_WithWhatWaitsToBePlaced', async () => {
+    installElectronApi({ isWorkingNow: async () => true, getInterruptionsToPlace: vi.fn().mockResolvedValue([{}, {}, {}]) });
+    render(<MiniBar />);
+
+    expect(await screen.findByText('⚡ 3 to place')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Nothing timing').className).toContain('text-accent-amber'));
+    expect(screen.getByLabelText('Start a task')).toBeTruthy();
+  });
+
+  it('NothingTiming_OutsideWorkingHours_IsQuiet', async () => {
+    installElectronApi({ isWorkingNow: async () => false });
+    render(<MiniBar />);
+
+    expect((await screen.findByText('Nothing timing')).className).not.toContain('text-accent-amber');
+  });
+
+  it('Interruption_FromTheDeck_OffersStartedEarlierAndPlace', async () => {
+    const bridge = installElectronApi({ getCurrentSession: async () => INTERRUPTION });
+    render(<MiniBar />);
+
+    expect(await screen.findByText(/from the deck/)).toBeTruthy();
+    expect(labels()).toEqual(['Back to SPR-142', 'Place it on a task', 'Switch task', 'Another', 'Stop', 'Close the mini timer']);
+
+    fireEvent.change(screen.getByLabelText('When it started'), { target: { value: '5' } });
+    expect(bridge.api.moveInterruptionStart).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByLabelText('Place it on a task'));
+    await waitFor(() => expect(bridge.api.openPlacePicker).toHaveBeenCalledTimes(1));
+  });
+
+  it('Interruption_FromThisScreen_NoStartedChoice', async () => {
+    installElectronApi({ getCurrentSession: async () => ({ ...INTERRUPTION, interruption: { ...INTERRUPTION.interruption, source: 'mini' as const } }) });
+    render(<MiniBar />);
+
+    await screen.findByText('during SPR-142');
+    expect(screen.queryByLabelText('When it started')).toBeNull();
+  });
+
+  it('StandupRunning_SaysWhereItGoesBack_AndEndsIt', async () => {
+    const bridge = installElectronApi({
+      getCurrentSession: async () => ({ ...TRACKING_SESSION, taskTitle: 'Daily Standup', isAdHoc: true }),
+      getStandupRunning: async () => ({ returnsToKey: 'PF-31' })
+    });
+    render(<MiniBar />);
+
+    expect(await screen.findByText('then back to PF-31, as it was')).toBeTruthy();
+    fireEvent.click(screen.getByText('End stand-up'));
+
+    expect(bridge.api.completeSession).toHaveBeenCalledWith(undefined, false);
+  });
+
+  it('Stopping_TheDevicesOrder_DoneStopDiscard', async () => {
+    installElectronApi({ getCurrentSession: async () => TRACKING_SESSION });
+    render(<MiniBar />);
+    fireEvent.click(await screen.findByLabelText('Stop'));
+
+    expect(screen.getByText('Stop SPR-142')).toBeTruthy();
+    expect(screen.getByText(/logs 1h 23m · Discard keeps nothing/)).toBeTruthy();
+    expect(labels()).toEqual(['Done', 'Stop', 'Discard…', 'Keep the session']);
+  });
+
+  it('Tour_FirstOpen_NamesTheButtons_UntilPutAway', async () => {
+    const bridge = installElectronApi({
+      getCurrentSession: async () => TRACKING_SESSION,
+      getFlowSetting: vi.fn().mockResolvedValue(false)
+    });
+    render(<MiniBar />);
+
+    expect(await screen.findByLabelText('The buttons')).toBeTruthy();
+    fireEvent.click(screen.getByText('Got it'));
+
+    expect(bridge.api.saveFlowSetting).toHaveBeenCalledWith('mini_tour_seen', true);
+    expect(await screen.findByText('Rework the pause menu')).toBeTruthy();
+  });
+
+  it('BackQuestion_SaysTheMinutesUntracked_AndBacksThemIn', () => {
+    installElectronApi();
+    const ended = new Date(Date.now() - 6 * 60_000).toISOString();
+    render(
+      <MiniPromptRow
+        resume={{ taskKey: 'SPR-142', taskTitle: 'T', after: 'interruption', unlisted: false, interruptionEndedAtUtc: ended } as never}
+        ceremony={null}
+        onAnswered={() => undefined}
+      />
+    );
+
+    expect(screen.getByText('Back to SPR-142? 6 min untracked')).toBeTruthy();
+    fireEvent.click(screen.getByText('↩ Back +6m'));
+    expect(window.electronAPI.answerResumePrompt).toHaveBeenCalledWith(true, 6, undefined);
   });
 });

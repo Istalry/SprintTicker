@@ -356,6 +356,25 @@ async function seed(page, profile) {
   // Today answers with "No account yet" (P11b): put away, as a user would,
   // or every picture of Today shows it over the session.
   await page.api("dismissNotice('no-account')");
+  // The mini timer's one-line tour of its buttons shows on its first open
+  // only (P12d); the picture is of the timer as it is every day after.
+  await page.api("saveFlowSetting('mini_tour_seen', true)");
+  // The day's schedule around the time the capture runs, not the defaults:
+  // run at 13:00, the default lunch (12:30-13:30) paused the session and the
+  // stand-up clip found nothing to come back to (2026-11-12). The stand-up
+  // is behind us, lunch and the wrap-up hours ahead.
+  const at = hours => {
+    const d = new Date(Date.now() + hours * 3600_000);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const schedule = await page.api('getScheduleSettings()');
+  await page.api(`saveScheduleSettings(${JSON.stringify({
+    ...schedule,
+    standupTime: at(-2),
+    lunchStartTime: at(3),
+    lunchEndTime: at(4),
+    eodWrapUpTime: at(6)
+  })})`);
   for (const project of PROJECTS) {
     await page.api(`createProject(${JSON.stringify({ id: project.id, key: project.key, name: project.name })})`);
     await page.api(`importTasks(${JSON.stringify(project.id)}, ${JSON.stringify(project.tasks)})`);

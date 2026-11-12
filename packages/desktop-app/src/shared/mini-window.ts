@@ -3,6 +3,6 @@
  *
  * Shared because main loads the window with it and the renderer reads it; two
  * literals would drift, and the symptom would be the whole dashboard squeezed
- * into a 360x56 always-on-top window.
+ * into the mini timer's small always-on-top window (`MINI_WINDOW_SIZE`).
  */
 export const MINI_WINDOW_HASH = 'mini';

@@ -4,6 +4,14 @@
 
 ### Added
 
+- **The mini timer shows every state.** ⟲ goes back to the previous task,
+  ⚡3 counts the interruptions waiting to be placed, and "Nothing timing" is
+  loud in your working hours. An interruption started from the bar, the
+  Stream Deck or the shortcut opens the mini timer without taking the focus,
+  with "started now ▾" to set when it began and ↳ to choose its task. The
+  stand-up says which task it goes back to, with End stand-up; "Back to
+  MG-12?" says how long went untracked; Stop offers Done, Stop and Discard
+  in the devices' order. The first time, one line names the buttons.
 - **SprintTicker's notifications open where they are about.** A question
   opens Today on its card, "Sending time stopped" opens Settings › Account,
   and a Stop from the tray, the Stream Deck or the bar while the window is

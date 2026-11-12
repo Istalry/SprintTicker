@@ -304,6 +304,9 @@ const electronAPI: IElectronAPI = {
   },
   openTaskPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_TASK_PICKER),
   openAssignPicker: () => ipcRenderer.invoke(IPCChannel.OPEN_ASSIGN_PICKER),
+  openPlacePicker: () => ipcRenderer.invoke(IPCChannel.OPEN_PLACE_PICKER),
+  getStandupRunning: () => ipcRenderer.invoke(IPCChannel.GET_STANDUP_RUNNING),
+  isWorkingNow: () => ipcRenderer.invoke(IPCChannel.GET_WORKING_NOW),
   getOnlyProjectsWithTasks: () => ipcRenderer.invoke(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS),
   setOnlyProjectsWithTasks: (enabled: boolean) => ipcRenderer.invoke(IPCChannel.SET_ONLY_PROJECTS_WITH_TASKS, enabled),
   onOnlyProjectsWithTasks: (callback: (enabled: boolean) => void) => {

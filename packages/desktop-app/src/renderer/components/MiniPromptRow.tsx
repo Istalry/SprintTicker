@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CeremonyPromptDTO, ForgottenSessionReviewDTO, ReminderDTO, ResumePromptDTO } from '../../shared/dtos';
 import { reminderView } from './ReminderPrompt';
 import { askAgain, forgottenHeading, forgottenStanding } from './ForgottenSessionModal';
 
 const MS_PER_MINUTE = 60_000;
+
+/** How often "6 min untracked" is counted again. */
+const UNTRACKED_TICK_MS = 15_000;
 
 const choice =
   'px-1 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-colors [-webkit-app-region:no-drag]';
@@ -35,6 +38,12 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
   resume, ceremony, inInterruption = false, forgotten = null, reminder = null, onAnswered
 }) => {
   const api = window.electronAPI;
+  // The clock "Back to MG-12? 6 min untracked" counts from (S25).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), UNTRACKED_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
   const answer = (yes: boolean, gap?: number, workedThrough?: boolean) => () => {
     onAnswered();
     api.answerResumePrompt(yes, gap, workedThrough).catch(warn('Answering'));
@@ -46,7 +55,7 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
   if (resume) {
     const key = resume.taskKey;
     if (resume.held) {
-      // 360 px: the key goes in the heading, so the buttons fit beside it.
+      // One row: the key goes in the heading, so the buttons fit beside it.
       heading = `${resume.after === 'away' ? 'Away' : 'Lunch'} over · ${key}`;
       question = 'Back at your desk?';
       buttons = (
@@ -60,16 +69,16 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
       );
     } else if (resume.after === 'interruption') {
       const endedAt = resume.interruptionEndedAtUtc ? Date.parse(resume.interruptionEndedAtUtc) : NaN;
-      const gapNow = () => Math.max(0, Math.round((Date.now() - endedAt) / MS_PER_MINUTE));
+      const gap = Number.isNaN(endedAt) ? null : Math.max(0, Math.round((now - endedAt) / MS_PER_MINUTE));
       heading = 'Nothing timing';
-      question = `Back to ${key}?`;
+      question = gap ? `Back to ${key}? ${gap} min untracked` : `Back to ${key}?`;
       buttons = (
         <>
           <button type="button" className={quiet} onClick={answer(false)}>Not now</button>
-          {!Number.isNaN(endedAt) && (
-            <button type="button" className={quiet} title="Resume it, and count the time since the interruption ended as work"
-              onClick={() => answer(true, gapNow())()}>
-              Back +time
+          {gap !== null && gap > 0 && (
+            <button type="button" className={quiet} title={`Resume it, and count the ${gap} min since the interruption ended as work`}
+              onClick={() => answer(true, Math.max(0, Math.round((Date.now() - endedAt) / MS_PER_MINUTE)))()}>
+              ↩ Back +{gap}m
             </button>
           )}
           <button type="button" className={main} onClick={answer(true)}>↩ Back</button>

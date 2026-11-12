@@ -33,12 +33,12 @@ import { ContextScheduleService } from '../services/context-schedule-service';
 import { ForgottenSessionService } from '../services/forgotten-session-service';
 import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
-import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO } from '../../shared/dtos';
+import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, HardwareBindingConfig, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, InterruptShortcutStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO, StandupRunningDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
 import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
-import { openTaskPickerInMainWindow } from '../windows/main-window-actions';
+import { openTaskPickerInMainWindow, openWindowOn } from '../windows/main-window-actions';
 import type { PickerWindowController } from '../windows/picker-window-manager';
 import { DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG, isValidDeviceHost } from '../../shared/device-constants';
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
@@ -117,6 +117,11 @@ export interface IPCHandlerRegistryDeps {
   reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   /** The morning card (P8e2); without it, Today never shows one. */
   morning?: Pick<MorningService, 'getMorning' | 'markSeen'>;
+  /**
+   * In working hours now -- WORK, a working day, stand-up to wrap-up -- for
+   * the mini timer's loud "Nothing timing" (P12d). Without it, never.
+   */
+  isWorkingNow?: () => boolean;
   /** Corrects and deletes worklogs; without it, both channels refuse. */
   worklogCorrections?: WorklogCorrectionService;
   windowsNotificationService?: WindowsNotificationListenerService;
@@ -189,6 +194,7 @@ export class IPCHandlerRegistry {
   private pickerWindow?: PickerWindowController;
   private reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   private morning?: Pick<MorningService, 'getMorning' | 'markSeen'>;
+  private isWorkingNow?: () => boolean;
   private undo?: UndoService;
   /** End my day's optional shutdown, after Undo and the queue (S17). */
   private readonly endDayShutdown: EndDayShutdown;
@@ -245,6 +251,7 @@ export class IPCHandlerRegistry {
     this.pickerWindow = deps.pickerWindow;
     this.reminders = deps.reminders;
     this.morning = deps.morning;
+    this.isWorkingNow = deps.isWorkingNow;
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
     // The default is never started and shows nothing: it serves the settings
@@ -1405,6 +1412,15 @@ export class IPCHandlerRegistry {
       this.pickerWindow ? this.pickerWindow.open('start') : openTaskPickerInMainWindow(this.getWindow()));
     ipcMain.handle(IPCChannel.OPEN_ASSIGN_PICKER, async (): Promise<boolean> =>
       this.pickerWindow ? this.pickerWindow.open('assign') : openTaskPickerInMainWindow(this.getWindow(), undefined, 'assign'));
+    // The mini timer's ↳ (P12d): which task the running interruption goes
+    // to. Without the picker window, Today's interruption card asks the same.
+    ipcMain.handle(IPCChannel.OPEN_PLACE_PICKER, async (): Promise<boolean> =>
+      this.pickerWindow ? this.pickerWindow.open('place') : openWindowOn(this.getWindow(), 'today'));
+    // What the mini timer shows when it is not the session (P12d): the
+    // stand-up and where it goes back to, and whether nothing timing is news.
+    ipcMain.handle(IPCChannel.GET_STANDUP_RUNNING, async (): Promise<StandupRunningDTO | null> =>
+      this.contextScheduleService?.standupRunning() ?? null);
+    ipcMain.handle(IPCChannel.GET_WORKING_NOW, async (): Promise<boolean> => this.isWorkingNow?.() ?? false);
     this.miniWindow?.subscribe(open => this.broadcast(IPCChannel.ON_MINI_VISIBILITY, open));
 
     ipcMain.handle(IPCChannel.GET_ONLY_PROJECTS_WITH_TASKS, async (): Promise<boolean> =>

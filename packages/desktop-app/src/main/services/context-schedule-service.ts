@@ -5,7 +5,7 @@ import { PriorityPreemptionEngine } from './priority-preemption-engine';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { DisplayRenderer } from '../hardware/display-renderer';
-import { ScheduleSettingsDTO, ArgumentException, ArgumentNullException, ActiveSessionDTO, CeremonyPromptDTO, ResumePromptDTO, StandupTaskDTO, WeekEndedDTO } from '../../shared/dtos';
+import { ScheduleSettingsDTO, ArgumentException, ArgumentNullException, ActiveSessionDTO, CeremonyPromptDTO, ResumePromptDTO, StandupTaskDTO, WeekEndedDTO, StandupRunningDTO } from '../../shared/dtos';
 import type { PromptAnnouncement, PromptOutlet } from '../windows/prompt-outlet';
 import { FlowSettingKey, readStandupTask } from '../../shared/flow-settings';
 import { DAILY_STANDUP_TITLE, normalizeScheduleSettings } from '../../shared/schedule-defaults';
@@ -343,6 +343,18 @@ export class ContextScheduleService {
   /** Whether the session is the stand-up: the local Daily Standup or its chosen task. */
   public isStandup(session: ActiveSessionDTO): boolean {
     return isStandupSession(session, this.getStandupTask());
+  }
+
+  /**
+   * The stand-up, when it is what runs now, and the task its end starts
+   * again (P12d): the set-aside entry waiting on this very session.
+   */
+  public standupRunning(): StandupRunningDTO | null {
+    const session = this._engine.getCurrentSession();
+    if (!session || !this.isStandup(session)) return null;
+    const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.SET_ASIDE_KEY, null);
+    const waiting = isSetAside(stored) && stored.after === 'standup' && stored.endsWith === session.sessionId;
+    return { returnsToKey: waiting ? stored.taskKey ?? stored.customTitle ?? null : null };
   }
 
   /// <summary>

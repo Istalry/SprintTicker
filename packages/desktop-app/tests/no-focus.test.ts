@@ -218,6 +218,27 @@ describe('Prompts without focus', () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
+    it('StandupRunning_SaysTheTaskItGoesBackTo', () => {
+      // The mini timer's "then back to MG-12, as it was" (P12d).
+      const before = engine.startNamedAdHocTask('Lantern glow');
+      expect(service.standupRunning()).toBeNull();
+      at(9, 30);
+      service.evaluateSchedule();
+
+      service.joinStandup();
+
+      expect(service.standupRunning()).toEqual({ returnsToKey: before.taskKey });
+    });
+
+    it('StandupRunning_NothingBefore_GoesBackToNothing', () => {
+      at(9, 30);
+      service.evaluateSchedule();
+
+      service.joinStandup();
+
+      expect(service.standupRunning()).toEqual({ returnsToKey: null });
+    });
+
     it('IsStandup_TheLocalStandupOrTheChosenTask', () => {
       const local = engine.startNamedAdHocTask('Daily Standup');
       expect(service.isStandup(local)).toBe(true);

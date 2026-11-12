@@ -12,6 +12,8 @@ export interface Rectangle {
 export interface MiniWindowLike {
   isDestroyed(): boolean;
   show(): void;
+  /** Shown without taking the focus: for an opening the user did not click (P12d). */
+  showInactive(): void;
   focus(): void;
   close(): void;
   destroy(): void;
@@ -39,8 +41,11 @@ export interface MiniWindowState {
 }
 
 export interface MiniWindowDeps {
-  /** Builds and loads the window at these bounds; the manager owns it after. */
-  createWindow: (bounds: Rectangle) => MiniWindowLike;
+  /**
+   * Builds and loads the window at these bounds; the manager owns it after.
+   * `inactive`: shown without the focus once it is ready.
+   */
+  createWindow: (bounds: Rectangle, options?: { inactive?: boolean }) => MiniWindowLike;
   screen: ScreenLike;
   settings: SettingsStore;
 }
@@ -84,8 +89,24 @@ export class MiniWindowManager implements MiniWindowController {
       this.window!.focus();
       return;
     }
+    this.create(false);
+  }
 
-    const win = this.deps.createWindow(this.initialBounds());
+  /**
+   * Opens it, or shows it, without taking the focus (P12d): an interruption
+   * started from the bar, the deck or the shortcut puts its name field on
+   * screen while the user goes on typing wherever they were.
+   */
+  public openQuietly(): void {
+    if (this.isOpen()) {
+      this.window!.showInactive();
+      return;
+    }
+    this.create(true);
+  }
+
+  private create(inactive: boolean): void {
+    const win = this.deps.createWindow(this.initialBounds(), inactive ? { inactive: true } : undefined);
     this.window = win;
 
     win.on('moved', () => {

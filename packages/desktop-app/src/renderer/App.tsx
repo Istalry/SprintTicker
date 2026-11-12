@@ -20,33 +20,7 @@ import { ForgottenSessionModal } from './components/ForgottenSessionModal';
 import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { UpdateBanner } from './components/UpdateNotice';
 import { UndoBar } from './components/UndoBar';
-
-/**
- * Interruptions not placed on a task yet, for the ⚡ count beside Today. Read
- * again whenever main says the worklogs changed: placing one, or a new one
- * ending, changes the count.
- */
-function useToPlaceCount(): number {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getInterruptionsToPlace) return undefined;
-    let live = true;
-    const read = () => {
-      api.getInterruptionsToPlace()
-        .then(waiting => { if (live) setCount(waiting.length); })
-        .catch(err => console.warn('[App] Could not read the interruptions to place:', err));
-    };
-    read();
-    // Main sends the list itself when one ends or is placed.
-    const off = api.onInterruptionsUpdated?.(waiting => { if (live) setCount(waiting.length); });
-    return () => {
-      live = false;
-      off?.();
-    };
-  }, []);
-  return count;
-}
+import { useToPlaceCount } from './hooks/useToPlaceCount';
 
 /**
  * Ctrl+K opens and closes the command palette (S30), from anywhere in the

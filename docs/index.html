@@ -628,29 +628,45 @@
       <h4>⏱️ The mini timer</h4>
       <p>A small window that stays above every other one and shows what the bar would:
       the task key and title, the elapsed time, and a coloured edge -- green while
-      tracking, amber while paused, grey with nothing running. Beside them is the
+      tracking, amber while paused, in an interruption or asking, grey with nothing
+      running. <strong>Nothing timing</strong> is written large and amber in your working hours,
+      with the interruptions still to place under it, and <strong>▶ Start…</strong> beside it.
+      The first time it opens, one line names its buttons; <strong>Got it</strong> puts it
+      away. Beside them is the
       icon of whatever holds the bar: the stopwatch for your session, an app&#39;s icon
       during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
       Timer</strong> in the header or <strong>Mini timer</strong> in the tray menu.</p>
       <p align="center">
         <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
       </p><ul>
-      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as Today does.</li>
-      <li>⏹️ <strong>Stop</strong> offers the three ways to end it, in place of the buttons:
-      <strong>Not done</strong> logs the time and keeps the task open, <strong>Done</strong> also marks it
-      done, and <strong>Discard</strong> throws the session away after a <strong>Yes</strong>. <strong>×</strong> keeps
-      the session running.</li>
+      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as Today does; paused, the
+      row says <strong>❚❚ Paused · MG-12</strong>.</li>
+      <li>⏹️ <strong>Stop</strong> offers the three ways to end it, in the order the bar and the
+      Stream Deck use: <strong>Done</strong> logs the time and marks the task done, <strong>Stop</strong>
+      logs it and keeps the task open, and <strong>Discard…</strong> throws the session away
+      after a <strong>Yes</strong>. <strong>×</strong> keeps the session running.</li>
+      <li>⟲ <strong>Previous</strong> goes back to the task you timed before this one, and
+      <strong>⚡3</strong> beside the buttons counts the interruptions waiting to be placed.</li>
       <li>⚡ <strong>Interrupt</strong> starts a timer at once, as Today&#39;s button does --
       see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. During an interruption the
-      row says which task waits, and offers ↩ <strong>Back</strong> to it, ⏹️ <strong>Stop</strong>, which
-      ends the interruption alone, and ⚡ <strong>Another</strong>. Click an interruption&#39;s
-      title to name it, and the link button to put it on a task.</li>
+      row says which task waits, and offers ↩ <strong>Back</strong> to it, ↳ to choose the
+      task its time goes to, the list, ⚡ <strong>Another</strong> and ⏹️ <strong>Stop</strong>, which ends
+      the interruption alone. Click its title to name it.</li>
+      <li>🎛️ <strong>An interruption started from the bar, the Stream Deck or the
+      shortcut opens the mini timer</strong>, without taking the focus from what you
+      are typing in, unless the window is on screen: &quot;⚡ from the deck · started
+      now ▾&quot; sets when it began (2, 5 or 10 minutes ago, taken off the task it
+      interrupted), and its name can wait.</li>
+      <li>☷ <strong>During the stand-up</strong> the row says which task comes back after it,
+      &quot;then back to MG-12, as it was&quot;, with <strong>End stand-up</strong>.</li>
+      <li>👤 A task given to someone else reads <strong>MG-12 · Rin&#39;s now</strong>, in amber; its
+      time is still logged.</li>
       <li>📋 The <strong>list</strong> button brings the window forward with the task picker open:
       that is how you start or switch a task from it.</li>
       <li>❓ <strong>A question takes the row</strong> until you answer it, with an amber edge:
       the stand-up (<strong>Skip</strong>, <strong>Join</strong>), <strong>Back at your desk?</strong> (<strong>Not now</strong>,
-      <strong>Worked through</strong>, <strong>▶ Resume</strong>) and <strong>Back to MG-12?</strong> (<strong>Not now</strong>,
-      <strong>Back +time</strong>, <strong>↩ Back</strong>), and, when nothing else is asked, a reminder
+      <strong>Worked through</strong>, <strong>▶ Resume</strong>) and <strong>Back to MG-12? 6 min untracked</strong>
+      (<strong>Not now</strong>, <strong>↩ Back +6m</strong>, <strong>↩ Back</strong>), and, when nothing else is asked, a reminder
       -- see <em>Reminders ask once</em>, with the ceremonies. Answered anywhere, it
       goes everywhere.</li>
       <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
@@ -2207,8 +2223,9 @@
       <code>blur</code>. A window that cannot be made falls back to the dashboard&#39;s picker
       (<code>openTaskPickerInMainWindow</code>), kept until the window has run packaged. The
       tray, the deck&#39;s <code>openPicker</code> and <code>mini:open-task-picker</code> /
-      <code>mini:open-assign-picker</code> open it; the bar keeps raising the dashboard with
-      its picker until P14.</p>
+      <code>mini:open-assign-picker</code> / <code>mini:open-place-picker</code> open it; the bar keeps
+      raising the dashboard with its picker until P14. Its third mode, <code>place</code>
+      (P12d), chooses the running interruption&#39;s task and starts nothing.</p>
       <p><strong>The command palette</strong> (<code>CommandPalette</code>, Ctrl+K, redesign P7c) is renderer
       only. <code>utils/palette-actions.ts</code> lists the actions the session allows, in the
       words of <code>shared/words.ts</code>, each with other words for it (&quot;sort&quot; finds
@@ -2227,7 +2244,14 @@
       builds it through an injected factory, remembers its position and whether it
       was open under the <code>mini_window</code> setting, and checks a saved position against
       the displays that exist now -- a monitor unplugged since would leave an
-      always-on-top window off-screen. It closes with the dashboard (<code>dispose</code>, which
+      always-on-top window off-screen. <code>openQuietly</code> opens or shows it without the
+      focus (<code>showInactive</code>): <code>MiniOnInterruption</code> (<code>windows/mini-on-interruption.ts</code>)
+      calls it once per interruption started from the bar, the deck or the
+      shortcut while the dashboard is not on screen, so the name field and
+      &quot;started now ▾&quot; are there and the user&#39;s typing is not taken. The mini
+      timer&#39;s states of S25 (P12d) come from the session DTO and three reads:
+      <code>schedule:get-standup-running</code>, <code>schedule:get-working-now</code> and the previous
+      task; <code>UndoToasts</code> counts it as on screen, since its Undo row says it. It closes with the dashboard (<code>dispose</code>, which
       keeps <code>open</code> for the next launch), because Windows quits an app only when its
       last window is gone. Every broadcast -- the registry&#39;s and the engine tick&#39;s
       <code>session:on-updated</code> -- goes to all windows, or the mini timer would keep
@@ -3607,6 +3631,18 @@
       <tr>
       <td align="left"><code>mini:open-assign-picker</code></td>
       <td align="left">Open the picker window (<code>#picker?mode=assign</code>) to choose the task the open ad-hoc session goes to. Answers whether a picker opened: when the window cannot be made, the dashboard&#39;s picker opens instead, and <code>false</code> means there was no dashboard either</td>
+      </tr>
+      <tr>
+      <td align="left"><code>mini:open-place-picker</code></td>
+      <td align="left">The mini timer&#39;s ↳ (P12d): open the picker window (<code>#picker?mode=place</code>) to choose the task the running interruption&#39;s time goes to (<code>interruption:choose-task</code>); the timer runs on. Without the picker window, the dashboard opens on Today, whose interruption card asks the same</td>
+      </tr>
+      <tr>
+      <td align="left"><code>schedule:get-standup-running</code></td>
+      <td align="left">The stand-up, when it is the session open, and the key of the task set aside for it (<code>{ returnsToKey }</code>, null when nothing was timing), or <code>null</code> (P12d)</td>
+      </tr>
+      <tr>
+      <td align="left"><code>schedule:get-working-now</code></td>
+      <td align="left">Whether it is working hours now -- WORK, a working day, from the stand-up to the wrap-up, the reminders&#39; rule -- for the mini timer&#39;s loud &quot;Nothing timing&quot; (P12d)</td>
       </tr>
       <tr>
       <td align="left"><code>session:start-interruption</code></td>

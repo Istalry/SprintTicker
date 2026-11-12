@@ -37,6 +37,7 @@ import { UndoService } from './services/undo-service';
 import { undoableSessionEnding } from './services/undoable-commands';
 import { openTaskPickerInMainWindow, openWindowOn, revealMainWindow } from './windows/main-window-actions';
 import { UndoToasts } from './windows/undo-toasts';
+import { MiniOnInterruption } from './windows/mini-on-interruption';
 import { UNDO_WINDOW_MS } from './sync/sync-constants';
 import { ForegroundRaiser } from './windows/foreground-raiser';
 import { ProviderManager } from './providers/provider-manager';
@@ -72,6 +73,7 @@ let dbConnection: DatabaseConnection | null = null;
 let engine: TimeTrackingEngine | null = null;
 let undoService: UndoService | null = null;
 let undoToasts: UndoToasts | null = null;
+let miniOnInterruption: MiniOnInterruption | null = null;
 let driver: BusyBarDriver | null = null;
 let inputDecoder: InputDecoder | null = null;
 let renderer: DisplayRenderer | null = null;
@@ -161,7 +163,7 @@ function secureAndLoad(win: BrowserWindow, hash?: string): void {
 }
 
 /** Builds the mini timer: frameless, always on top, out of the taskbar. */
-function createMiniWindow(bounds: Rectangle): BrowserWindow {
+function createMiniWindow(bounds: Rectangle, options: { inactive?: boolean } = {}): BrowserWindow {
   const win = new BrowserWindow({
     ...bounds,
     frame: false,
@@ -179,7 +181,8 @@ function createMiniWindow(bounds: Rectangle): BrowserWindow {
   // windows without covering system UI such as the Start menu.
   win.setAlwaysOnTop(true, 'floating');
   win.setMenu(null);
-  win.once('ready-to-show', () => win.show());
+  // Opened by a device's interruption, it must not take the focus (P12d).
+  win.once('ready-to-show', () => (options.inactive ? win.showInactive() : win.show()));
   secureAndLoad(win, MINI_WINDOW_HASH);
   return win;
 }
@@ -420,6 +423,11 @@ async function startApplication(): Promise<void> {
   const daySchedule = contextScheduleService;
   const tracker = engine;
   const calendar = new WorkingCalendar(settingsRepo, (from, to) => providerManager.getNonWorkingDays(from, to));
+  // The reminders' hours: WORK, a working day, stand-up to wrap-up. The
+  // tray's ! and the mini timer's loud "Nothing timing" read the same.
+  const workingNow = (): boolean =>
+    priorityEngine.getUserMode() === 'WORK' &&
+    inWorkingHours(new Date(), settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {}), dateKey => calendar.isWorkingDay(dateKey));
   reminderService = new ReminderService({
     getSession: () => tracker.getCurrentSession(),
     subscribe: listener => tracker.subscribe(listener),
@@ -488,7 +496,10 @@ async function startApplication(): Promise<void> {
     createWindow: createPickerWindow,
     screen,
     raiser: foregroundRaiser,
-    fallback: (mode, raise) => openTaskPickerInMainWindow(mainWindow, raise ? foregroundRaiser : undefined, mode)
+    // Place has no picker of the window's own: Today's interruption card asks it.
+    fallback: (mode, raise) => mode === 'place'
+      ? openWindowOn(mainWindow, 'today')
+      : openTaskPickerInMainWindow(mainWindow, raise ? foregroundRaiser : undefined, mode)
   });
   const pickers = pickerWindowManager;
 
@@ -518,14 +529,25 @@ async function startApplication(): Promise<void> {
   const undo = undoService;
   // An action taken with the window hidden -- the tray's Stop, the deck, the
   // bar -- says it can be undone, and the toast opens the Undo bar (P12c).
+  const dashboardOnScreen = (): boolean =>
+    mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized();
+  const quietMini = miniWindowManager;
   undoToasts = new UndoToasts({
     onUndoChanged: listener => undo.onChanged(listener),
-    isDashboardOnScreen: () =>
-      mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized(),
+    // The mini timer's Undo row says it too (P12d).
+    isDashboardOnScreen: () => dashboardOnScreen() || quietMini.isOpen(),
     toasts,
     seconds: Math.round(UNDO_WINDOW_MS / 1000)
   });
   undoToasts.start();
+  // An interruption from the bar, the deck or the shortcut puts the mini
+  // timer on screen, without the focus, to name it (P12d).
+  miniOnInterruption = new MiniOnInterruption({
+    subscribe: listener => tracker.subscribe(listener),
+    isDashboardOnScreen: dashboardOnScreen,
+    openMini: () => quietMini.openQuietly()
+  });
+  miniOnInterruption.start();
   const sessionEnding = undoableSessionEnding({ db: dbConnection.getDb(), undo, engine }, renderer);
   // A session started makes a held stop final: undoing it would reopen a
   // second session beside the new one.
@@ -571,6 +593,7 @@ async function startApplication(): Promise<void> {
     }),
     reminders: reminderService,
     morning,
+    isWorkingNow: workingNow,
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
       // Wakes the worker when the hold ends, as a stop does: a correction
       // should not wait out the five-minute interval to reach the provider.
@@ -640,10 +663,7 @@ async function startApplication(): Promise<void> {
             chooseMode: mode => schedule.chooseMode(mode),
             getMode: () => priorityEngine.getUserMode(),
             endDay: () => { openWindowOn(window, 'end-day'); },
-            // The reminders' hours: WORK, a working day, stand-up to wrap-up.
-            inWorkingHours: () =>
-              priorityEngine.getUserMode() === 'WORK' &&
-              inWorkingHours(new Date(), settingsRepo.getSetting<ScheduleSettingsDTO>('schedule_settings', {}), dateKey => calendar.isWorkingDay(dateKey)),
+            inWorkingHours: workingNow,
             countWaiting: () => worklogRepo.countUnsent()
           }
         : undefined
@@ -763,6 +783,7 @@ app.on('will-quit', event => {
   // Makes the held action final: its rows are queued already and go at the
   // next start; its Done transition is asked for now.
   undoToasts?.stop();
+  miniOnInterruption?.stop();
   undoService?.dispose();
   // Synchronously too: Windows keeps a chord until the process lets go of it.
   interruptShortcut?.dispose();

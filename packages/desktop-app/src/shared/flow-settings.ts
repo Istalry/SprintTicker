@@ -28,7 +28,9 @@ export const FlowSettingKey = {
   /** The task the stand-up is timed on, or none: an ad-hoc task kept here. */
   STANDUP_TASK: 'standup_task',
   /** Whether the first interruption's explanation was put away (S9): it shows once. */
-  FIRST_INTERRUPTION_SEEN: 'first_interruption_seen'
+  FIRST_INTERRUPTION_SEEN: 'first_interruption_seen',
+  /** Whether the mini timer's one-line tour of its buttons was put away (S25): it shows once. */
+  MINI_TOUR_SEEN: 'mini_tour_seen'
 } as const;
 
 export interface StartSideEffectsSetting {
@@ -184,6 +186,7 @@ export interface FlowSettingValues {
   close_to_tray: boolean;
   standup_task: StandupTaskDTO | null;
   first_interruption_seen: boolean;
+  mini_tour_seen: boolean;
 }
 
 export type FlowSettingKeyValue = keyof FlowSettingValues;
@@ -196,7 +199,8 @@ const FLOW_READERS: { [K in FlowSettingKeyValue]: (stored: unknown) => FlowSetti
   shortcuts: readShortcuts,
   close_to_tray: readCloseToTray,
   standup_task: readStandupTask,
-  first_interruption_seen: stored => stored === true
+  first_interruption_seen: stored => stored === true,
+  mini_tour_seen: stored => stored === true
 };
 
 export function isFlowSettingKey(key: unknown): key is FlowSettingKeyValue {

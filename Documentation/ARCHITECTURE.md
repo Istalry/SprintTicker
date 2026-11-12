@@ -102,8 +102,9 @@ renderer's `window.close()`, after main has answered the pick) and on
 `blur`. A window that cannot be made falls back to the dashboard's picker
 (`openTaskPickerInMainWindow`), kept until the window has run packaged. The
 tray, the deck's `openPicker` and `mini:open-task-picker` /
-`mini:open-assign-picker` open it; the bar keeps raising the dashboard with
-its picker until P14.
+`mini:open-assign-picker` / `mini:open-place-picker` open it; the bar keeps
+raising the dashboard with its picker until P14. Its third mode, `place`
+(P12d), chooses the running interruption's task and starts nothing.
 
 **The command palette** (`CommandPalette`, Ctrl+K, redesign P7c) is renderer
 only. `utils/palette-actions.ts` lists the actions the session allows, in the
@@ -123,7 +124,14 @@ cannot end up laxer than the first. `MiniWindowManager` owns the mini timer: it
 builds it through an injected factory, remembers its position and whether it
 was open under the `mini_window` setting, and checks a saved position against
 the displays that exist now -- a monitor unplugged since would leave an
-always-on-top window off-screen. It closes with the dashboard (`dispose`, which
+always-on-top window off-screen. `openQuietly` opens or shows it without the
+focus (`showInactive`): `MiniOnInterruption` (`windows/mini-on-interruption.ts`)
+calls it once per interruption started from the bar, the deck or the
+shortcut while the dashboard is not on screen, so the name field and
+"started now ▾" are there and the user's typing is not taken. The mini
+timer's states of S25 (P12d) come from the session DTO and three reads:
+`schedule:get-standup-running`, `schedule:get-working-now` and the previous
+task; `UndoToasts` counts it as on screen, since its Undo row says it. It closes with the dashboard (`dispose`, which
 keeps `open` for the next launch), because Windows quits an app only when its
 last window is gone. Every broadcast -- the registry's and the engine tick's
 `session:on-updated` -- goes to all windows, or the mini timer would keep

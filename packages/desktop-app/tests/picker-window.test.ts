@@ -230,7 +230,12 @@ describe('the picker window hash', () => {
     expect(readPickerWindowHash('#pickers')).toBeNull();
   });
 
+  it('ReadPickerWindowHash_Place_IsPlace', () => {
+    // The mini timer's ↳ (P12d).
+    expect(readPickerWindowHash(`#${pickerWindowHash('place')}`)).toBe('place');
+  });
+
   it('ReadPickerWindowHash_UnknownMode_OpensStart', () => {
-    expect(readPickerWindowHash('#picker?mode=place')).toBe('start');
+    expect(readPickerWindowHash('#picker?mode=elsewhere')).toBe('start');
   });
 });

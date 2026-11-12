@@ -48,7 +48,7 @@ describe('PickerWindow', () => {
 
   const openWith = (
     session: ActiveSessionDTO | null,
-    mode: 'start' | 'assign' = 'start',
+    mode: 'start' | 'assign' | 'place' = 'start',
     overrides: Partial<IElectronAPI> = {}
   ) => {
     const { api } = installElectronApi({
@@ -99,6 +99,19 @@ describe('PickerWindow', () => {
 
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(bridge.switchFromInterruption).toHaveBeenCalledWith(MG22.id, true);
+  });
+
+  it('PlaceMode_ChoosesTheInterruptionsTask_AndTheTimerRunsOn', async () => {
+    // The mini timer's ↳ (P12d): which task its time goes to, nothing started.
+    const bridge = openWith(DURING_INTERRUPTION, 'place');
+    await screen.findByRole('dialog', { name: 'Which task is "Call with Marc" for?' });
+
+    await pickMG22();
+
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(bridge.chooseInterruptionTask).toHaveBeenCalledWith(MG22.id);
+    expect(bridge.switchFromInterruption).not.toHaveBeenCalled();
+    expect(bridge.startTask).not.toHaveBeenCalled();
   });
 
   it('APick_ClosesOnlyOnceMainHasAnswered', async () => {

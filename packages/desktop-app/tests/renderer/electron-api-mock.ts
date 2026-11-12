@@ -150,7 +150,10 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     placeInterruptions: vi.fn().mockResolvedValue(undefined),
     keepInterruptionOff: vi.fn().mockResolvedValue(undefined),
     getInterruptionsToPlace: vi.fn().mockResolvedValue([]),
-    getFlowSetting: vi.fn().mockImplementation((key: FlowSettingKeyValue) => Promise.resolve(readFlowSetting(key, undefined))),
+    // The mini timer's tour is put away here, or its first-open line would
+    // stand in for the title in every test; mini-bar.test.tsx shows it.
+    getFlowSetting: vi.fn().mockImplementation((key: FlowSettingKeyValue) =>
+      Promise.resolve(key === 'mini_tour_seen' ? true : readFlowSetting(key, undefined))),
     saveFlowSetting: vi.fn().mockImplementation((key: FlowSettingKeyValue, value: unknown) => Promise.resolve(readFlowSetting(key, value))),
     onUndoChanged: subscribe('onUndoChanged'),
     onInterruptionsUpdated: subscribe('onInterruptionsUpdated'),
@@ -313,6 +316,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     onMiniWindowVisibility: subscribe('onMiniWindowVisibility'),
     openTaskPicker: vi.fn().mockResolvedValue(true),
     openAssignPicker: vi.fn().mockResolvedValue(true),
+    openPlacePicker: vi.fn().mockResolvedValue(true),
+    getStandupRunning: vi.fn().mockResolvedValue(null),
+    isWorkingNow: vi.fn().mockResolvedValue(false),
     getOnlyProjectsWithTasks: vi.fn().mockResolvedValue(true),
     setOnlyProjectsWithTasks: vi.fn(async (enabled: boolean) => enabled),
     onOnlyProjectsWithTasks: subscribe('onOnlyProjectsWithTasks'),
