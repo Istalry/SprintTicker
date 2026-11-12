@@ -1975,6 +1975,18 @@ findings, and their answers:
   Keep off Jira stays for an entry the provider refused (P11c).
 - Plugin 0.6.2, for the Session and Recent keys.
 
+**As landed: P13c, part two -- the Mobile layout (2026-11-12).**
+
+- The user's Stream Deck Mobile profile, exported from the Stream Deck app
+  7.6.1 (`VSD2/WiFi`): the Mini's six keys in the same places -- Session,
+  Interrupt, Previous task / A, B, C. Shipped byte for byte as
+  `profiles/SprintTicker-Mobile.streamDeckProfile`, device type 3,
+  `DontAutoSwitchWhenInstalled`; `package.test.ts` checks its keys as it
+  does the Mini's. Like the Mini's, it carries the device's UUID.
+- Plugin 0.6.3, so the pack installs over 0.6.2.
+- **Still to do:** the trial on Stream Deck Mobile through every state of
+  S29, the ⚡ in DISCARD ⚡ included.
+
 **As landed: P13b, the plugin's keys (2026-11-12).**
 
 - **Plugin 0.6.0 speaks protocol 2** (`PLUGIN_PROTOCOL`, `deckUrl`).
@@ -2283,7 +2295,7 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P10 | done: P10a (End my day, the shutdown after Undo), P10b (Decide later), P10c (a close during the day) -- see §15 "Split" and each "As landed" | `3c831ee`, `2b9730d`, P10c (2026-11-12) |
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
-| P13 | in progress: P13a (protocol 2 and the app side), P13b (the plugin's keys, 0.6.0) done; P13c (on the deck, with the user): the Mini layout shipped, the first trial's interruption findings fixed (plugin 0.6.2), the Mobile layout and the rest of the trial to come -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions (2026-11-12) |
+| P13 | in progress: P13a (protocol 2 and the app side), P13b (the plugin's keys, 0.6.0) done; P13c (on the deck, with the user): the Mini and Mobile layouts shipped, the first trial's interruption findings fixed, plugin 0.6.3; the rest of the trial to come -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile (2026-11-12) |
 | P14 | not started | |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

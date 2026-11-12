@@ -115,9 +115,9 @@ describe('manifest', () => {
 describe('profiles', () => {
   const profiles = manifest.Profiles ?? [];
 
-  it('Profiles_TheMini_IsShipped', () => {
-    // Stream Deck Mini is device type 1.
-    expect(profiles.map(p => p.DeviceType)).toContain(1);
+  it('Profiles_TheMiniAndMobile_AreShipped', () => {
+    // Stream Deck Mini is device type 1, Stream Deck Mobile 3.
+    expect(profiles.map(p => p.DeviceType)).toEqual(expect.arrayContaining([1, 3]));
   });
 
   it.each(profiles.map(p => [p.Name, p] as const))('Profile_%s_NeverTakesOverTheDeck', (_name, profile) => {

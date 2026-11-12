@@ -1245,10 +1245,11 @@ onto any key, as many times as you like:
 | **Answer C** | throws away, in red: DISCARD, or DISCARD ⚡ during an interruption -- the interruption, not your task | two presses; nothing logged. Blank while a question waits or nothing runs |
 | **Recent 1, 2, 3** | one of your recent tasks and START -- never the one running; blank during an interruption | starts it |
 
-- **On a Stream Deck Mini, the layout is ready-made.** Installing the plugin
-  adds a **SprintTicker** profile for the Mini -- Session, Interrupt and
-  Previous task on the top row, A, B and C below. It does not replace the
-  profile you use: choose it in the Stream Deck app's profile list.
+- **On a Stream Deck Mini or Stream Deck Mobile, the layout is
+  ready-made.** Installing the plugin adds a **SprintTicker** profile for
+  each -- Session, Interrupt and Previous task on the top row, A, B and C
+  below. It does not replace the profile you use: choose it in the Stream
+  Deck app's profile list.
 - **Each position keeps one meaning.** A always says yes, B always stops or
   waits, C always throws away; a key with nothing of its kind to do is
   blank. When a question comes -- the stand-up, the wrap-up, back to your
