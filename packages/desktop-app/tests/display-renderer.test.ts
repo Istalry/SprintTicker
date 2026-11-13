@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DisplayRenderer, MENU_CONFIRM_TEXT, PAUSED_MARK_WIDTH } from '../src/main/hardware/display-renderer';
 import { INTERRUPTION_16X16_BITMAP } from '../src/shared/pixel-bitmaps';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
+import { BarWord, barToPlaceLabel } from '../src/shared/words';
+import { NOTHING_TIMING_EVENT } from '../src/shared/priority-defaults';
 import { BusyBarDriver, DeviceRequestError } from '../src/main/hardware/busybar-driver';
 import { AnimationPlayer } from '../src/main/hardware/animation-player';
 import { IconAnimator } from '../src/main/hardware/icon-animator';
@@ -858,7 +860,7 @@ describe('DisplayRenderer Unit Tests', () => {
           'drawTextClipped'
         );
         renderer.renderActiveSession({
-          taskKey: 'MISC-1', taskTitle: 'Daily Standup', elapsedSeconds: 60,
+          taskKey: 'MISC-1', taskTitle: 'Call with Marc', elapsedSeconds: 60,
           startedAtUtc: new Date().toISOString(), ...session
         } as never);
         return drawn.mock.calls.map(([text]) => text as string);
@@ -867,7 +869,7 @@ describe('DisplayRenderer Unit Tests', () => {
       it.each(['TRACKING', 'PAUSED'])('RenderActiveSession_AdHoc%s_ShowsTheNameAlone', status => {
         const texts = titleDrawn({ taskId: 'adhoc_1', isAdHoc: true, status });
 
-        expect(texts).toContain('Daily Standup');
+        expect(texts).toContain('Call with Marc');
         expect(texts.some(text => text.includes('MISC-1'))).toBe(false);
       });
 
@@ -875,7 +877,7 @@ describe('DisplayRenderer Unit Tests', () => {
         // A list starts an ad-hoc row again with isAdHoc false; the id says it.
         const texts = titleDrawn({ taskId: 'adhoc_1', isAdHoc: false, status: 'TRACKING' });
 
-        expect(texts).toContain('Daily Standup');
+        expect(texts).toContain('Call with Marc');
       });
 
       it('RenderActiveSession_ProviderTask_KeepsTheKey', () => {
@@ -932,6 +934,191 @@ describe('DisplayRenderer Unit Tests', () => {
       const last = states[states.length - 1];
       expect(last.frontElements.some(el => el.id === 'icon_anim_preview')).toBe(false);
       renderer.dispose();
+    });
+  });
+
+  /**
+   * The words of D5 (P14e): STAND-UP for the stand-up, KEY > NAME for a task
+   * given away, "3 TO PLACE" in amber on a task's screens with the time moved
+   * beside the key, and NOTHING TIMING across the panel.
+   */
+  describe('the bar\'s words', () => {
+    const AMBER = '#F59E0B';
+    type Call = [string, number, number, string, number, unknown?];
+    let clipped: Call[];
+    let small: Call[];
+
+    beforeEach(() => {
+      const canvas = (renderer as unknown as {
+        canvas: { drawTextClipped: (...args: unknown[]) => void; drawSmallText: (...args: unknown[]) => void };
+      }).canvas;
+      clipped = vi.spyOn(canvas, 'drawTextClipped').mock.calls as unknown as Call[];
+      small = vi.spyOn(canvas, 'drawSmallText').mock.calls as unknown as Call[];
+    });
+
+    afterEach(() => {
+      renderer.dispose();
+    });
+
+    const task = (over: Record<string, unknown> = {}) => ({
+      sessionId: 's1', taskId: 't1', taskKey: 'MG-12', taskTitle: 'Fix the login', status: 'TRACKING',
+      elapsedSeconds: 3720, isAdHoc: false, startTimeUtc: new Date().toISOString(), ...over
+    }) as never;
+    const texts = (): string[] => [...clipped, ...small].map(([text]) => text);
+    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+
+    it('RenderActiveSession_TheStandUp_SaysStandUp', () => {
+      renderer.renderActiveSession(task({ taskId: 'adhoc_1', taskKey: 'MISC-1', taskTitle: 'Daily Standup', isAdHoc: true }));
+
+      expect(texts()).toContain(BarWord.STAND_UP);
+      expect(texts()).not.toContain('Daily Standup');
+    });
+
+    it('RenderActiveSession_TaskGivenAway_SaysTheKeyAndTheirFirstName', () => {
+      renderer.renderActiveSession(task({ taskLeftBecause: 'reassigned', taskOwnerName: 'Rin Okada' }));
+
+      expect(texts()).toContain('MG-12 > RIN');
+    });
+
+    it('RenderActiveSession_GivenToANameWithAccents_DrawsItInAscii', () => {
+      renderer.renderActiveSession(task({ taskLeftBecause: 'reassigned', taskOwnerName: '  Zoë Dupré' }));
+
+      expect(texts()).toContain('MG-12 > ZOE');
+    });
+
+    it('RenderActiveSession_TaskClosedThere_KeepsItsTitle', () => {
+      renderer.renderActiveSession(task({ taskLeftBecause: 'closed', taskOwnerName: 'Rin Okada' }));
+
+      expect(texts()).toContain('MG-12: Fix the login');
+    });
+
+    it('RenderActiveSession_ThreeToPlaceWhileTiming_SaysSoInAmber_TheTimeBesideTheKey', () => {
+      renderer.setToPlaceSource(() => 3);
+
+      renderer.renderActiveSession(task());
+
+      expect(small).toContainEqual([barToPlaceLabel(3), layout.TEXT_X, layout.ROW1_Y, AMBER, layout.TEXT_FIELD_WIDTH]);
+      const time = clipped.find(([text]) => text === '01:02')!;
+      const key = clipped.find(([text]) => text === 'MG-12')!;
+      const right = layout.TEXT_X + layout.TEXT_FIELD_WIDTH;
+      // The time flush right on row 0 and never cut; the key gets the rest.
+      expect(time[2]).toBe(layout.ROW0_Y);
+      expect(time[1] + time[4]).toBe(right);
+      expect(time[4]).toBe(measureText('01:02', ROW0_FONT));
+      expect(key[1]).toBe(layout.TEXT_X);
+      expect(key[1] + key[4]).toBeLessThan(time[1]);
+    });
+
+    it.each([
+      ['AdHoc', { taskId: 'adhoc_1', taskKey: 'MISC-1', taskTitle: 'Call with Marc', isAdHoc: true }, 'Call with Marc'],
+      ['GivenAway', { taskLeftBecause: 'reassigned', taskOwnerName: 'Rin Okada' }, 'MG-12 > RIN']
+    ])('RenderActiveSession_ThreeToPlaceWhileTiming_%s_KeepsItsWords', (_name, over, expected) => {
+      renderer.setToPlaceSource(() => 3);
+
+      renderer.renderActiveSession(task(over));
+
+      expect(clipped.find(([text]) => text === expected)?.[2]).toBe(layout.ROW0_Y);
+      expect(texts()).not.toContain('MISC-1');
+    });
+
+    it('RenderActiveSession_ThreeToPlaceWhilePaused_SaysSoInAmber_BesideThePausedMark', () => {
+      renderer.setToPlaceSource(() => 3);
+
+      renderer.renderActiveSession(task({ status: 'PAUSED' }));
+
+      expect(small.map(([text, , , color]) => [text, color])).toContainEqual([barToPlaceLabel(3), AMBER]);
+      expect(clipped.find(([text]) => text === 'MG-12')![1]).toBe(layout.TEXT_X + PAUSED_MARK_WIDTH);
+      expect(clipped.find(([text]) => text === '01:02')![2]).toBe(layout.ROW0_Y);
+    });
+
+    it('RenderActiveSession_ToPlaceUnderAgainStop_AgainStopTakesRowOne', () => {
+      renderer.setToPlaceSource(() => 3);
+      renderer.showAgainHint('s1', 4000);
+
+      renderer.renderActiveSession(task({ status: 'PAUSED' }));
+
+      expect(texts()).toContain(BarWord.AGAIN_STOP);
+      expect(texts()).not.toContain(barToPlaceLabel(3));
+    });
+
+    it('RenderActiveSession_ToPlaceDuringAnInterruption_IsNotSaid', () => {
+      renderer.setToPlaceSource(() => 3);
+
+      renderer.renderActiveSession(task({
+        sessionId: 'f1', taskId: 'adhoc_1', taskKey: 'MISC-1', taskTitle: 'Call with Marc', isAdHoc: true,
+        interruption: { id: 'f1', interruptedSessionId: 's1', interruptedTaskKey: 'MG-12' }
+      }));
+
+      expect(texts()).not.toContain(barToPlaceLabel(3));
+    });
+
+    it('RenderActiveSession_ToPlaceDuringTheStandUp_IsNotSaid', () => {
+      renderer.setToPlaceSource(() => 3);
+
+      renderer.renderActiveSession(task({ taskId: 'adhoc_1', taskKey: 'MISC-1', taskTitle: 'Daily Standup', isAdHoc: true }));
+
+      expect(texts()).not.toContain(barToPlaceLabel(3));
+      expect(texts()).toContain(BarWord.STAND_UP);
+    });
+
+    it('RenderActiveSession_NothingToPlace_TheTimeKeepsRowOne', () => {
+      renderer.setToPlaceSource(() => 0);
+
+      renderer.renderActiveSession(task({ status: 'PAUSED' }));
+
+      expect(clipped.find(([text]) => text === '01:02')).toEqual(
+        ['01:02', layout.TEXT_X, layout.ROW1_Y, expect.any(String), layout.TEXT_FIELD_WIDTH, TIMER_FONT]
+      );
+    });
+
+    it('RenderNothingTiming_DrawsTheWordsCentredInAmber_WithNoIcon', () => {
+      renderer.renderNothingTiming();
+
+      const [text, x, y, color] = clipped.find(([t]) => t === BarWord.NOTHING_TIMING)!;
+      expect(text).toBe(BarWord.NOTHING_TIMING);
+      const width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH;
+      expect(x).toBe(Math.floor((width - measureText(BarWord.NOTHING_TIMING, ROW0_FONT)) / 2));
+      expect(y).toBe(layout.ROW0_Y);
+      expect(color).toBe(AMBER);
+      expect(renderer.getScreenIcon()).toBeNull();
+    });
+
+    describe('under the priority engine', () => {
+      let engine: PriorityPreemptionEngine;
+
+      beforeEach(() => {
+        const settingsRepo = { getSetting: vi.fn().mockReturnValue(null), setSetting: vi.fn() };
+        engine = new PriorityPreemptionEngine(settingsRepo as unknown as SettingsRepository);
+        renderer.setPriorityEngine(engine);
+        engine.setRenderer(renderer);
+      });
+
+      it('RenderNothingTiming_InWork_HoldsItsLock', () => {
+        renderer.renderNothingTiming();
+
+        expect(engine.getActiveLockEventName()).toBe(NOTHING_TIMING_EVENT);
+      });
+
+      it('RenderNothingTiming_InLunch_IsNotShown', () => {
+        engine.setUserMode('LUNCH');
+        clipped.length = 0;
+
+        renderer.renderNothingTiming();
+
+        expect(engine.getActiveLockEventName()).not.toBe(NOTHING_TIMING_EVENT);
+        expect(texts()).not.toContain(BarWord.NOTHING_TIMING);
+      });
+
+      it('RenderNothingTiming_UnderTheWrapUp_IsNeverQueued', () => {
+        renderer.renderNotificationBanner({ title: 'Wrap up', eventName: 'eodWrapUpPriority', timeoutMs: 0 });
+        renderer.renderNothingTiming();
+        clipped.length = 0;
+
+        engine.releaseActiveLock('eodWrapUpPriority');
+
+        expect(texts()).not.toContain(BarWord.NOTHING_TIMING);
+        expect(engine.getActiveLockEventName()).not.toBe(NOTHING_TIMING_EVENT);
+      });
     });
   });
 

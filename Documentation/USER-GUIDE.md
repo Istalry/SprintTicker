@@ -835,8 +835,9 @@ in the mini timer, and by notification while the window is hidden:
 | An interruption of 20 min | *Still on it?* | **Still on it** · **↩ Back to MG-12** (or **■ Stop**) |
 | The stand-up at 25 min | *Still in it?* | **Still in it** · **End stand-up** |
 
-The quiet answer is final for that time: the same pause is not asked about
-again, the next one is. Resuming, going back or starting a task answers it
+On the bar, *Nothing timing* shows **NOTHING TIMING** until you answer it
+there or in the app. The quiet answer is final for that time: the same
+pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
 too. **Back to MG-12?** left unanswered for 10 minutes gets one more
 notification. The delays are `prompt_delays` in the settings; Settings
 will show them.
@@ -998,6 +999,7 @@ the list sorts itself again; type a level from 1 to 100 to place it exactly.
 | 🌙 End-of-day wrap-up | 80 |
 | 🥪 Resume after lunch question | 76 |
 | 🗣️ Stand-up prompt | 75 |
+| ⏸️ Nothing timing | 74 |
 | 🔔 Notification — High Priority | 70 |
 | 💬 Notification — Default | 65 |
 | ⏱️ Active task tracker | 45 |
@@ -1125,7 +1127,7 @@ Every screen, as the bar shows it:
 | :---: | :--- |
 | <img src="../docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, MG-12, 01:24"> | ⏱️ **Tracking.** The task on row 0, its time in large digits on row 1. The stopwatch's hand ticks round. |
 | <img src="../docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused.** ❚❚ and the key, the time below -- **AGAIN=STOP** for 4 s after the bar's Pause, when a second press stops. Then Pause resumes; a wheel click interrupts. |
-| <img src="../docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
+| <img src="../docs/images/bar-standup.webp" width="304" alt="STAND-UP with a meeting icon, 00:00"> | 🗣️ **Stand-up.** Joined from its prompt: **STAND-UP** over the stand-up's own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key. |
 | <img src="../docs/images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"> | 🏃 **GO!** A task picked on the bar itself, for two seconds. |
 | <img src="../docs/images/bar-scene-task-logged.webp" width="304" alt="LOGGED"> | 📝 **LOGGED.** Stopped: the time is kept, the task stays open. |
 | <img src="../docs/images/bar-scene-task-done.webp" width="304" alt="DONE!"> | ✅ **DONE!** Finished and marked done. |
@@ -1142,6 +1144,20 @@ the time is logged, the task stays open, and the bar shows **LOGGED** for
 three seconds, the stopwatch's hand sweeping back to twelve. Marking a task done
 or discarding a session is in the wheel's menu, the app or the Stream Deck;
 DONE from anywhere shows **DONE!**.
+
+Three more things the session screen can say:
+
+- **3 TO PLACE**, in amber on row 1, while interruptions wait for you to
+  place them in the app -- on a task's screen, running or paused. The time
+  moves up beside the key, and the key is the one shortened. Not during an
+  interruption or the stand-up, and **AGAIN=STOP** still takes row 1 for its
+  four seconds.
+- **MG-12 > RIN**: the task was given to someone else on Jira or
+  OpenProject while you were on it -- the key and their first name.
+- **NOTHING TIMING**, in amber across the whole bar, when the app's
+  *Nothing timing* reminder asks (see *Reminders ask once* under [Settings: My workday](#-settings-my-workday)).
+  Pause opens the task picker on the computer; a wheel click is *not now*.
+  Either puts it away, and the bar's own clock comes back.
 
 > [!NOTE]
 > **Why the timer shows HH:MM**
@@ -1211,8 +1227,8 @@ the computer, in front of what you are doing.
 - **Back is left alone.** On the bar's own screen -- its clock when nothing
   runs -- the bar uses Back itself and leaves its own clock app.
 
-🗣️ **During a question** -- the stand-up, back to your task?, the
-end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
+🗣️ **During a question** -- the stand-up, back to your task?, NOTHING
+TIMING, the end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
 wrap-up asks twice — the first press is "yes", the second confirms
 (**AGAIN=YES**) — because it can shut your machine down. Once it is done,
 the bar says **SEE YOU!** for five seconds, a moon rising and the stars

@@ -593,6 +593,7 @@ Two rules, both scars:
 | End-of-day wrap-up | `eodWrapUpPriority` | 80 |
 | Resume after lunch question | `resumePromptPriority` | 76 |
 | Stand-up prompt | `standupPromptPriority` | 75 |
+| Nothing timing | `nothingTimingPriority` | 74 |
 | Notification — high | `highNotificationPriority` | 70 |
 | Notification — default | `messagingPriority` | 65 |
 | Active task tracker | `activeTrackerPriority` | 45 |
@@ -1019,6 +1020,15 @@ on `reminders:dismiss`, outside working hours, or as soon as the engine
 reports a state the id no longer matches. A resume question after an
 interruption left `nothingTiming` minutes gets one more toast. The ids it
 asked are kept in memory: a restart may ask an occurrence once more.
+
+Its `onReminder` listener puts *nothing timing* on the bar (P14e): main draws
+`DisplayRenderer.renderNothingTiming` under `nothingTimingPriority` (74, Work
+only) and, when the reminder goes, releases that lock -- the engine hands the
+display back, one render. It is never queued, since a queued copy would
+replay after the answer; it is a background screen instead, offered the
+display whenever it frees while the reminder is asked. Pause on it opens the
+picker window and reports `CONFIRM_NOTHING_TIMING`, the click
+`DISMISS_NOTHING_TIMING`; the IPC registry turns either into `dismiss`.
 
 ### `FirstRunService` — `src/main/services/`
 

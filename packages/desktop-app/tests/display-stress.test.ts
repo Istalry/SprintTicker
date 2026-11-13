@@ -69,6 +69,8 @@ const WEIGHTS: Partial<Record<EventName, number>> = {
   askDiscard: 2, cancelDiscard: 1, discard: 1,
   // The stand-up's prompt, joined, and its end bringing the task back.
   standupPrompt: 1, joinStandup: 1, standupEnds: 1,
+  // NOTHING TIMING asked with nothing running, and answered (P14e).
+  nothingTiming: 2, answerNothingTiming: 2,
   // The bar dropping out and coming back, as a Wi-Fi blip or a restart does.
   barDrop: 1, barBack: 2, barReboot: 1
 };

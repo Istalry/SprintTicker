@@ -21,6 +21,11 @@ export interface ReminderDeps {
   /** "Back to MG-12?" being asked, if it is: its own question, asked again by toast once. */
   getResumePrompt: () => ResumePromptDTO | null;
   outlet: () => PromptOutlet | null;
+  /**
+   * Told whenever the reminder asked changes, null when it goes: the bar
+   * draws NOTHING TIMING from here and lets go of it (P14e).
+   */
+  onReminder?: (reminder: ReminderDTO | null) => void;
   now?: () => number;
 }
 
@@ -169,6 +174,7 @@ export class ReminderService {
     this._asked.add(due.id);
     this._current = due;
     this._deps.outlet()?.send(IPCChannel.ON_REMINDER, due);
+    this._deps.onReminder?.(due);
     this._deps.outlet()?.announce(announcementOf(due));
   }
 
@@ -203,6 +209,7 @@ export class ReminderService {
     if (!this._current) return;
     this._current = null;
     this._deps.outlet()?.send(IPCChannel.ON_REMINDER, null);
+    this._deps.onReminder?.(null);
   }
 
   private now(): number {

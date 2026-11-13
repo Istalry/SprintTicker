@@ -40,7 +40,7 @@ import { LaunchAtLoginService } from '../src/main/services/launch-at-login';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { ProviderSettingKey } from '../src/shared/provider-settings';
 import type { PriorityRule, UpdateStatusDTO } from '../src/shared/dtos';
-import { RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
 import { END_THE_INTERRUPTION_FIRST } from '../src/shared/interruption';
 import { localDateKey } from '../src/shared/local-date';
@@ -184,6 +184,33 @@ describe('IPC handlers', () => {
       decoder.handleHardwareInput({ key: 'back', type: 'press', timestamp: new Date().toISOString() });
 
       expect(joinStandup).not.toHaveBeenCalled();
+    });
+
+    it.each(['start', 'ok'])('HardwareAction_%sOnNothingTiming_PutsTheReminderAway', key => {
+      // P14e: either answer on the bar is the card's Not now, which lets go
+      // of the screen; Pause also opens the picker, the decoder's part.
+      const reminder = { id: 'nothing-timing:x', kind: 'nothing-timing', sinceUtc: 'x', minutes: 10 };
+      const dismiss = vi.fn().mockReturnValue(true);
+      build({ contextScheduleService: barAnswering({}), reminders: { getReminder: vi.fn().mockReturnValue(reminder), dismiss } });
+      vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue(NOTHING_TIMING_EVENT);
+      decoder.setPriorityEngine(priorityEngine);
+
+      decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
+
+      expect(dismiss).toHaveBeenCalledWith(reminder.id);
+    });
+
+    it('HardwareAction_NothingTimingAnswered_AnotherReminderAsked_LeavesItAlone', () => {
+      // Only its own reminder: a "still paused?" asked meanwhile is not answered by the bar.
+      const reminder = { id: 'long-pause:S1:x', kind: 'long-pause', sinceUtc: 'x', minutes: 30, taskKey: 'MG-12' };
+      const dismiss = vi.fn().mockReturnValue(true);
+      build({ contextScheduleService: barAnswering({}), reminders: { getReminder: vi.fn().mockReturnValue(reminder), dismiss } });
+      vi.spyOn(priorityEngine, 'getActiveLockEventName').mockReturnValue(NOTHING_TIMING_EVENT);
+      decoder.setPriorityEngine(priorityEngine);
+
+      decoder.handleHardwareInput({ key: 'ok', type: 'press', timestamp: new Date().toISOString() });
+
+      expect(dismiss).not.toHaveBeenCalled();
     });
   });
 
@@ -546,6 +573,27 @@ describe('IPC handlers', () => {
       const back = (await invoke(IPCChannel.INTERRUPTION_BACK)) as { sessionId: string; status: string };
 
       expect(back).toMatchObject({ sessionId: before.sessionId, status: 'TRACKING' });
+    });
+
+    it('InterruptionDiscardUndone_TheBarIsDrawnAgain_ItsCountBack', async () => {
+      // P14e: the bar's "TO PLACE" count is read at each draw, and an undo
+      // restores rows without the engine noticing: the registry redraws.
+      const undo = new UndoService();
+      const renderer = new DisplayRenderer(driver);
+      renderer.setToPlaceSource(() => engine.getToPlaceSummary().count);
+      build({ undo, renderer });
+      await invoke(IPCChannel.INTERRUPTION_START);
+      await invoke(IPCChannel.INTERRUPTION_STOP);
+      const [waiting] = (await invoke(IPCChannel.INTERRUPTION_GET_TO_PLACE)) as Array<{ id: string }>;
+      await invoke(IPCChannel.INTERRUPTION_DISCARD, waiting.id);
+      const drawn = vi.spyOn(renderer, 'renderActiveSession');
+
+      expect(undo.run()).toBe(true);
+
+      expect(engine.getToPlaceSummary().count).toBe(1);
+      expect(drawn).toHaveBeenCalledTimes(1);
+      undo.dispose();
+      renderer.dispose();
     });
 
     it('InterruptionStopThenRenameThenKeepOff_ListsItNoMore', async () => {

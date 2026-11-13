@@ -29,6 +29,8 @@ describe('ReminderService', () => {
   let mode: UserMode;
   let workingDay: boolean;
   let resumePrompt: ResumePromptDTO | null;
+  /** What the bar's listener was told (P14e). */
+  let told: Array<ReminderDTO | null>;
 
   /** Wednesday 14 October 2026, local time. Working hours are 09:30 to 17:30. */
   const at = (hours: number, minutes: number) => vi.setSystemTime(new Date(2026, 9, 14, hours, minutes, 0));
@@ -56,6 +58,7 @@ describe('ReminderService', () => {
     mode = 'WORK';
     workingDay = true;
     resumePrompt = null;
+    told = [];
     service = new ReminderService({
       getSession: () => engine.getCurrentSession(),
       subscribe: listener => engine.subscribe(listener),
@@ -64,7 +67,8 @@ describe('ReminderService', () => {
       isWorkingDay: () => workingDay,
       isStandupSession: s => s.isAdHoc && s.taskTitle === DAILY_STANDUP_TITLE,
       getResumePrompt: () => resumePrompt,
-      outlet: () => outlet
+      outlet: () => outlet,
+      onReminder: reminder => told.push(reminder)
     });
   });
 
@@ -161,6 +165,41 @@ describe('ReminderService', () => {
       expect(asked()).toEqual([]);
       expect(outlet.announce).toHaveBeenCalledTimes(1);
       expect(outlet.announce).toHaveBeenCalledWith({ title: 'Nothing is running. Back to MG-12?', body: 'Click to go back to it, or leave it.' });
+    });
+  });
+
+  describe('the listener on the bar', () => {
+    // Main draws NOTHING TIMING from here, and lets go of it when told null.
+    it('OnReminder_AskedThenATaskStarted_ToldEachTime', () => {
+      tick(9, 40);
+      expect(told).toEqual([expect.objectContaining({ kind: 'nothing-timing' })]);
+
+      startA();
+
+      expect(told.at(-1)).toBeNull();
+    });
+
+    it('OnReminder_Dismissed_ToldItWent', () => {
+      tick(9, 40);
+
+      service.dismiss(service.getReminder()!.id);
+
+      expect(told).toEqual([expect.objectContaining({ kind: 'nothing-timing' }), null]);
+    });
+
+    it('OnReminder_LeavingWork_ToldItWent', () => {
+      tick(9, 40);
+      mode = 'LUNCH';
+
+      tick(12, 30);
+
+      expect(told.at(-1)).toBeNull();
+    });
+
+    it('OnReminder_NothingAsked_NeverTold', () => {
+      tick(9, 35);
+
+      expect(told).toEqual([]);
     });
   });
 

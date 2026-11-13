@@ -304,6 +304,9 @@ export class IPCHandlerRegistry {
         ...(this.worklogCorrections ? { corrections: this.worklogCorrections } : {}),
         ...(this.undo ? { undo: this.undo, db: this.worklogRepo.getConnection().getDb() } : {}),
         onRestored: () => {
+          // An undone placement waits again: the bar's count reads it at its
+          // next draw, and nothing in the engine notified.
+          this.renderer.renderActiveSession(this.engine.getCurrentSession());
           this.broadcastInterruptions();
           this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
         },
@@ -1551,6 +1554,12 @@ export class IPCHandlerRegistry {
     // when ticked -- on a single press.
     this.inputDecoder.registerActionHandler((action: string, inputKey: string) => {
       this.contextScheduleService.answerFromBar(action);
+      // NOTHING TIMING answered on the bar: the reminder is put away, as its
+      // card's Not now does, and that lets go of the screen.
+      if (action === 'CONFIRM_NOTHING_TIMING' || action === 'DISMISS_NOTHING_TIMING') {
+        const asked = this.reminders?.getReminder();
+        if (asked?.kind === 'nothing-timing') this.reminders?.dismiss(asked.id);
+      }
       this.broadcast(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
     });
   }

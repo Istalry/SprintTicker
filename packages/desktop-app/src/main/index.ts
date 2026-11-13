@@ -26,6 +26,7 @@ import { MorningService } from './services/morning-service';
 import { WorkingCalendar } from './services/working-calendar';
 import { APP_USER_MODEL_ID } from './app-identity';
 import { BitmapIconId } from '../shared/dtos';
+import { NOTHING_TIMING_EVENT } from '../shared/priority-defaults';
 import { WindowsNotificationListenerService } from './services/windows-notification-listener-service';
 import { WebhookServer } from './api/webhook-server';
 import { DeckServer } from './api/deck-server';
@@ -354,6 +355,10 @@ async function startApplication(): Promise<void> {
   renderer.setPriorityEngine(priorityEngine);
   inputDecoder.setPriorityEngine(priorityEngine);
   inputDecoder.setRenderer(renderer);
+  // The interruptions waiting to be placed, on the task's screen (D5, P14e):
+  // read at each draw, which every placement, keep and discard notifies.
+  const counted = engine;
+  renderer.setToPlaceSource(() => counted.getToPlaceSummary().count);
   inputDecoder.setWindowFocusCallback(() => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
@@ -436,10 +441,24 @@ async function startApplication(): Promise<void> {
     isWorkingDay: dateKey => calendar.isWorkingDay(dateKey),
     isStandupSession: session => daySchedule.isStandup(session),
     getResumePrompt: () => daySchedule.getResumePrompt(),
-    outlet: () => promptOutlet
+    outlet: () => promptOutlet,
+    // NOTHING TIMING on the bar (P14e): drawn when asked, and let go of when
+    // it goes -- answered, or ended by a start -- which hands the display
+    // back through the engine, one render (CLAUDE.md §5). A release of a
+    // lock not held only drops it from the set-aside screens.
+    onReminder: reminder => {
+      if (reminder?.kind === 'nothing-timing') bannerRenderer.renderNothingTiming();
+      else priorityEngine.releaseActiveLock(NOTHING_TIMING_EVENT);
+    }
   });
   const reminders = reminderService;
   daySchedule.onChecked(() => reminders.evaluate());
+  // Asked is a state until answered, not an alert: refused under a screen
+  // above it -- the stand-up's prompt still up -- it comes back when the
+  // display frees, as the bar's menu does, and never after its answer.
+  priorityEngine.addBackgroundScreen([NOTHING_TIMING_EVENT], () => {
+    if (reminders.getReminder()?.kind === 'nothing-timing') bannerRenderer.renderNothingTiming();
+  });
   // The morning card (P8e2): read by Today when it opens.
   const morning = new MorningService({
     isWorkingDay: dateKey => calendar.isWorkingDay(dateKey),

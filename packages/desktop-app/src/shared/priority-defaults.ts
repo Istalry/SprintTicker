@@ -30,6 +30,13 @@ export const BAR_MENU_EVENT = 'menuPriority';
 /** "Resume it anyway?", asked after lunch about a task no longer the user's. */
 export const RESUME_PROMPT_EVENT = 'resumePromptPriority';
 
+/**
+ * NOTHING TIMING, drawn once when the "nothing timing" reminder fires in
+ * working hours and let go of at the answer (D4, P14e). Below the stand-up's
+ * prompt, above the notifications; shown in Work only, where it is asked.
+ */
+export const NOTHING_TIMING_EVENT = 'nothingTimingPriority';
+
 /** The stand-up's prompt, and the end-of-day wrap-up's: the prompts a Stream Deck key answers. */
 export const STANDUP_PROMPT_EVENT = 'standupPromptPriority';
 export const EOD_WRAP_UP_EVENT = 'eodWrapUpPriority';
@@ -82,6 +89,14 @@ export const DEFAULT_PRIORITY_RULES: readonly PriorityRule[] = [
     actionOnWork: 'DISPLAY',
     actionOnLunch: 'SUPPRESS',
     actionOnAway: 'DISPLAY'
+  },
+  {
+    id: 'nothing_timing',
+    eventName: NOTHING_TIMING_EVENT,
+    priority: 74,
+    actionOnWork: 'DISPLAY',
+    actionOnLunch: 'SUPPRESS',
+    actionOnAway: 'SUPPRESS'
   },
   {
     id: 'high_notification',

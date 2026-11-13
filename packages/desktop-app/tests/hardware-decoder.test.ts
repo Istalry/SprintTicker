@@ -8,7 +8,7 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
-import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
 import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS } from '../src/shared/render-constants';
 import { WORKLOG_COMMENTS } from '../src/shared/worklog-comments';
 import type { TaskDTO } from '../src/shared/dtos';
@@ -422,6 +422,65 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(press('rotate_left')).toBe('AWAIT_RESUME_PROMPT');
       expect(heard).toEqual([]);
       expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+  });
+
+  describe('NOTHING TIMING on the bar', () => {
+    // P14e: Pause is the picker on the computer, the wheel's click is not now.
+    // Putting the reminder away is main's, from the action reported.
+    const press = (key: string) => decoder.handleHardwareInput({ key, type: 'press', timestamp: new Date().toISOString() });
+    let heard: string[];
+    let opened: number;
+
+    beforeEach(() => {
+      heard = [];
+      opened = 0;
+      decoder.registerActionHandler(action => heard.push(action));
+      decoder.setOpenPickerCallback(() => { opened++; });
+      decoder.setPriorityEngine({
+        getActiveLockEventName: () => NOTHING_TIMING_EVENT,
+        releaseActiveLock: () => undefined,
+        hasActiveNotification: () => false,
+        dismissNotification: () => false
+      } as never);
+    });
+
+    it('HandleHardwareInput_PauseOnNothingTiming_OpensThePicker', () => {
+      expect(press('start')).toBe('CONFIRM_NOTHING_TIMING');
+
+      expect(opened).toBe(1);
+      expect(heard).toEqual(['CONFIRM_NOTHING_TIMING']);
+    });
+
+    it('HandleHardwareInput_WheelClickOnNothingTiming_IsNotNow', () => {
+      expect(press('ok')).toBe('DISMISS_NOTHING_TIMING');
+
+      expect(opened).toBe(0);
+      expect(heard).toEqual(['DISMISS_NOTHING_TIMING']);
+    });
+
+    it('HandleHardwareInput_ClickOnNothingTiming_StartsNoInterruption', () => {
+      press('ok');
+
+      expect(engine.getCurrentSession()).toBeNull();
+    });
+
+    it('HandleHardwareInput_AnswerJustAfterNothingTimingCameUp_Settles', () => {
+      vi.mocked(renderer.msSinceScreenChange).mockReturnValue(BAR_ANSWER_SETTLE_MS - 1);
+
+      expect(press('start')).toBe('ANSWER_SETTLING');
+      expect(opened).toBe(0);
+      expect(heard).toEqual([]);
+    });
+
+    it('HandleHardwareInput_WheelTurnedOnNothingTiming_OpensNoMenu', () => {
+      expect(press('rotate_right')).toBe('AWAIT_NOTHING_PROMPT');
+      expect(decoder.isMenuOpen()).toBe(false);
+    });
+
+    it.each([true, false])('AnswerQuestion_FromTheDeck_%s_IsTheBarsAnswer', yes => {
+      expect(decoder.answerQuestion(yes)).toBe(yes ? 'CONFIRM_NOTHING_TIMING' : 'DISMISS_NOTHING_TIMING');
+      expect(opened).toBe(yes ? 1 : 0);
     });
   });
 

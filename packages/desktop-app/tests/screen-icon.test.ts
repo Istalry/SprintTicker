@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
+import { BarWord } from '../src/shared/words';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
 import { ANIMATED_ICONS, FRONT_ANIMATIONS, SCENE_ICONS } from '../src/shared/render-constants';
 import {
@@ -57,7 +58,7 @@ describe('the screen icon', () => {
   it('RenderActiveSession_StandUpRunning_IsTheMeeting', () => {
     renderer.renderActiveSession(session({ taskTitle: 'Daily Standup', isAdHoc: true }));
 
-    expect(renderer.getScreenIcon()).toEqual({ pixels: MEETING_16X16_BITMAP, label: 'Daily Standup', animation: ANIMATED_ICONS.meeting });
+    expect(renderer.getScreenIcon()).toEqual({ pixels: MEETING_16X16_BITMAP, label: BarWord.STAND_UP, animation: ANIMATED_ICONS.meeting });
   });
 
   it('RenderActiveSession_EverySecond_ToldOnce', () => {

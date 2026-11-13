@@ -4,7 +4,7 @@ import path from 'path';
 import { loadAnimationSequence } from '../src/main/hardware/animation-sequence';
 import { FRONT_ELEMENT_IDS } from '../src/shared/device-constants';
 import { ANIMATIONS_DIR, Desk, EventName, advance, expectSettledScreen, realTurns } from './support/desk';
-import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../src/shared/priority-defaults';
 
 // As in display-stress.test.ts: every `.anim` read once, then from memory, so
 // a file read never lands at some arbitrary point of simulated time.
@@ -643,6 +643,75 @@ describe('Display hand-back: the screen that ends gives the display to the right
 
       expect(lock()).toBe(BAR_MENU_EVENT);
       expectSettledScreen(desk);
+    });
+  });
+
+  describe('NOTHING TIMING', () => {
+    // P14e: drawn while the reminder is asked, let go of at its answer, which
+    // hands the display back to the firmware's clock -- one render, the
+    // engine's.
+    it('NothingTiming_ABannerWaitingUnderIt_TheAnswerGivesTheBannerItsTurnThenTheClock', async () => {
+      await play('nothingTiming', SETTLE_MS);
+      expect(lock()).toBe(NOTHING_TIMING_EVENT);
+      expectSettledScreen(desk);
+
+      // A banner ranks below it: it waits.
+      await play('banner', 500);
+      expect(lock()).toBe(NOTHING_TIMING_EVENT);
+
+      await play('answerNothingTiming', 100);
+      expect(lock()).toBe('messagingPriority');
+
+      await play(SETTLE_MS);
+      expect(lock()).toBeNull();
+      expect(desk.device.shown()).toEqual([]);
+      expectSettledScreen(desk);
+    });
+
+    it('NothingTiming_Answered_TheClockComesBack', async () => {
+      await play('nothingTiming', SETTLE_MS, 'answerNothingTiming', SETTLE_MS);
+
+      expect(lock()).toBeNull();
+      expect(desk.device.shown()).toEqual([]);
+    });
+
+    it('NothingTimingAskedUnderTheMenu_MenuClosed_ItComesBack', async () => {
+      // Refused under the menu and never queued: the reminder is a state
+      // while asked, and is offered the display when the menu lets go.
+      await play('openMenu', 500, 'nothingTiming', 500);
+      expect(lock()).toBe(BAR_MENU_EVENT);
+
+      await play('closeMenu', SETTLE_MS);
+
+      expect(lock()).toBe(NOTHING_TIMING_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('NothingTimingUnderTheStandupPrompt_Joined_TheStandupTracks', async () => {
+      await play('nothingTiming', 500, 'standupPrompt', SETTLE_MS);
+      expect(lock()).toBe(STANDUP_PROMPT_EVENT);
+
+      await play('joinStandup', SETTLE_MS);
+
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('NothingTiming_ATaskStarted_TheSessionTakesTheDisplay', async () => {
+      await play('nothingTiming', SETTLE_MS, 'startTask', SETTLE_MS);
+
+      expect(lock()).toBe(ACTIVE_TRACKER_EVENT);
+      expectSettledScreen(desk);
+    });
+
+    it('NothingTiming_LunchBegins_TheSandwichAlone', async () => {
+      await play('nothingTiming', SETTLE_MS, 'lunchStart', SETTLE_MS);
+
+      expect(lock()).not.toBe(NOTHING_TIMING_EVENT);
+      expectSettledScreen(desk);
+
+      await play('lunchEnd', SETTLE_MS);
+      expect(lock()).not.toBe(NOTHING_TIMING_EVENT);
     });
   });
 });

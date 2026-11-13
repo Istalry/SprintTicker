@@ -81,6 +81,7 @@ export const PriorityRulesView: React.FC = () => {
     { key: 'messagingPriority', label: 'Default Chat / App Notifications', desc: 'Standard third-party notifications; auto-suppressed during Lunch or Away' },
     { key: 'eodWrapUpPriority', label: 'End-of-Day Wrap-Up Prompt', desc: 'Interactive end-of-day prompt for logging remaining time' },
     { key: 'menuPriority', label: 'Bar Menu', desc: 'The menu the wheel opens on the bar; above Lunch so it works during the break' },
+    { key: 'nothingTimingPriority', label: 'Nothing Timing', desc: 'Asks on the bar, in working hours, when no task has been timed for a while' },
     { key: 'resumePromptPriority', label: 'Resume After Lunch Question', desc: 'Asks whether to resume a task reassigned, closed or moved over lunch' },
     { key: 'activeTrackerPriority', label: 'Active Session Time Tracker / Idle', desc: 'Base UI tracker state' }
   ];

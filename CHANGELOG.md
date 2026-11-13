@@ -244,6 +244,14 @@
   ask for a second Pause and can be undone in the app; a click, or six
   seconds untouched, closes it. A stand-up prompt that arrived while
   Windows was locked no longer plays over lunch when the menu closes.
+- **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
+  given to someone else reads **MG-12 > RIN**; interruptions waiting to be
+  placed show as **3 TO PLACE** in amber on a task's screen, the time
+  moving up beside the key. When the *Nothing timing* reminder asks in your
+  working hours, the bar says **NOTHING TIMING** across its width: Pause
+  opens the task picker on the computer, a wheel click is not now, and
+  either brings the bar's clock back. It ranks 74 in *What the bar shows
+  first*, shown in Work only.
 - **An interruption has its own icon on the bar**: an amber bolt, a light
   running down it, where the task's stopwatch was -- the ⚡ the window, the
   tray and the Stream Deck already mark one with. The menu's DISCARD during

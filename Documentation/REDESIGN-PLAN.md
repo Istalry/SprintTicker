@@ -2359,65 +2359,45 @@ all. Their choices:
   light reads as running or as flicker.
 
 
-**Next: P14e, the words and nothing timing (handoff, end of 2026-11-12).**
-Committed through `8ce363c` (P14d). **Not tried on the bar yet:** the
-revised buttons (`725c786`), the menu (P14c, `70a8d33`) and the bolt
-(P14d) -- the user tries each before the phase after it, so ask first.
+**As landed: P14e, the words and nothing timing (2026-11-13).**
 
-**The user's choices for P14e (2026-11-12):**
+- The session screen's words (D5): **STAND-UP** for the stand-up;
+  **MG-12 > RIN** for a task reassigned (`taskLeftBecause`), the new
+  owner's first name through `sanitizeAsciiText`, in capitals; and
+  **3 TO PLACE** in amber (`WAITING_COLOR`) on row 1 of a task's screens,
+  timing and paused, with the time on row 0 flush right and the key cut by
+  `fitToWidth` to what is left (`paintKeyAndTime`). Not on an
+  interruption's or the stand-up's screen; AGAIN=STOP takes row 1 first.
+  The count is `engine.getToPlaceSummary`, read at each draw
+  (`setToPlaceSource`): a place, keep or discard notifies the engine, and an
+  undone one now redraws from the IPC registry, which nothing did.
+- **NOTHING TIMING**: `renderNothingTiming`, across the panel, no icon,
+  amber, under `nothingTimingPriority` (74, between the stand-up's prompt
+  and the notifications; Work only). `ReminderService` gained `onReminder`;
+  main draws the screen for `nothing-timing` and releases the lock when the
+  reminder goes -- answered, a task started, out of Work -- so the engine
+  hands back, one render. Never queued: it is a background screen while
+  asked, so one refused under the stand-up's prompt or the menu comes back
+  when they let go.
+- The decoder: `questionShown` answers `nothing` under that lock. Pause
+  opens the picker window raised and reports `CONFIRM_NOTHING_TIMING`, the
+  click `DISMISS_NOTHING_TIMING`; the IPC registry turns either into the
+  reminder's `dismiss`. The answers' settle applies; the deck's answer keys
+  reach it through `answerQuestion`.
+- No hint names a button (decided before): Pause is yes on every question,
+  so the words were checked by `words.test.ts` against their fields rather
+  than on the font sheet.
+- Tests: the renderer's words and layouts, the decoder, the reminder's
+  listener, the registry's routing and the undo redraw (each checked to fail
+  without its change), and scripted NOTHING TIMING cases on `Desk` -- a
+  banner waiting under it, the menu and the stand-up's prompt over it, a
+  start, lunch -- with the events in the stress mix (2000 seeds clean).
+- **To try on the bar:** NOTHING TIMING's width and amber, Pause and the
+  click on it; 3 TO PLACE with a long key, timing and paused; STAND-UP.
 
-- **NOTHING TIMING:** Pause opens the picker on the computer, raised (as
-  Pause with nothing running); the wheel's click is "not now". Both put the
-  screen away, and the firmware's clock comes back. Row 1 names no task.
-- **3 TO PLACE on the timing and the paused screens** (D5): row 1 says it in
-  amber, the time moving beside the key on row 0 (the key cut, never the
-  time). Not on an interruption's screen nor the stand-up's. AGAIN=STOP
-  still takes row 1 for its 4 s.
-- Already decided: the stand-up's row 0 is STAND-UP over its time; a task
-  given away reads MG-12 > RIN (the new owner's first name, ASCII,
-  capitals). No hint names a button: Pause is yes on every question.
-
-**Begun, uncommitted** (in the working tree, and as `.git/P14E_WIP.patch`;
-typechecks, no tests yet):
-
-- `display-renderer.ts`: the STAND-UP word and `KEY > NAME` in the title;
-  `setToPlaceSource(count)` and the to-place layout on both screens
-  (`paintKeyAndTime`, `WAITING_COLOR`, `ROW0_TIME_GAP_PX`);
-  `renderNothingTiming()` -- full width, no icon, amber, under the new lock,
-  never queued.
-- `priority-defaults.ts`: `NOTHING_TIMING_EVENT` (`nothingTimingPriority`),
-  rule `nothing_timing` at 74, shown in Work only.
-
-**Still to do:**
-
-1. Main: `renderer.setToPlaceSource(() => engine.getToPlaceSummary().count)`.
-   Check that placing, keeping or discarding a fragment notifies the
-   engine's listeners, or the bar's count lags until the next minute.
-2. `ReminderService`: tell a listener when the reminder changes (a dep such
-   as `onReminder`). Main draws `renderNothingTiming()` for `nothing-timing`
-   and, when it closes, `releaseActiveLock(NOTHING_TIMING_EVENT)` -- one
-   render, the engine's (CLAUDE.md §5).
-3. `InputDecoder`: `questionShown` answers `nothing` under that lock. Pause
-   calls the picker callback and reports `CONFIRM_NOTHING_TIMING`; the click
-   reports `DISMISS_NOTHING_TIMING`; main routes both to
-   `reminderService.dismiss(current.id)`. The answers' settle applies.
-4. `PriorityRulesView`: a row for the new rule; the priority tables in
-   ARCHITECTURE and USER-GUIDE.
-5. Tests: the renderer (each word, a non-ASCII owner, to-place on both
-   screens and under AGAIN=STOP, NOTHING TIMING's layout); the decoder; the
-   reminder's listener; `words.test.ts` for any new string; a scripted
-   `display-handback` case -- NOTHING TIMING, a banner over it, the answer
-   handing back to the idle clock -- and Desk events for it in the stress
-   weights; whatever counts the default priority rules.
-6. Docs: USER-GUIDE (the bar's screens), ARCHITECTURE (priority table, the
-   reminder on the bar), CHANGELOG, this section's "As landed", §24, and
-   pictures if a captured screen changes (`pnpm docs:images`; its stand-up
-   step failed once with "No active tracking session available to pause"
-   and passed on a re-run -- flaky, not looked into).
-
-**After P14e:** P14 is done (mark §24), then P16, then P15. Also open from
-P14: `Desk` still imitates the decoder rather than driving it -- that needs a
-real engine under Desk, a change of its own.
+**After P14e:** P14 is done. Next P16 (Tasks and Settings as their
+screens), then P15. Still open from P14: `Desk` imitates the decoder rather
+than driving it -- that needs a real engine under Desk, a change of its own.
 
 ---
 
@@ -2590,6 +2570,6 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P11 | done: P11a (the first run), P11b (S31's cards), P11c (a refused entry); `pnpm db:check-migration` passed on the real database (13 to 16: 21 worklogs, 7 queue rows, nothing lost) -- see §16 "Split" | P11a `ac2373c`, P11b `d7b1238`, P11c `0661a56` |
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
-| P14 | in progress: P14a (the paused menu) done; the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons) done, revised after the bar trial (Pause twice stops, Back unused); P14c (the menu) and P14d (the ⚡ icon) done; P14e (the words, nothing timing) begun -- see the handoff at the end of §19.1 | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12) |
+| P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
 | P16 | not started; added 2026-11-10 | |

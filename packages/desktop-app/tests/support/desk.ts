@@ -6,7 +6,7 @@ import { PriorityPreemptionEngine } from '../../src/main/services/priority-preem
 import { SettingsRepository } from '../../src/main/db/repositories/settings-repository';
 import { ActiveSessionDTO, UserMode } from '../../src/shared/dtos';
 import { FRONT_ELEMENT_IDS } from '../../src/shared/device-constants';
-import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, STANDUP_PROMPT_EVENT } from '../../src/shared/priority-defaults';
+import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, NOTHING_TIMING_EVENT, STANDUP_PROMPT_EVENT } from '../../src/shared/priority-defaults';
 import { DAILY_STANDUP_TITLE } from '../../src/shared/schedule-defaults';
 import { FRONT_ANIMATIONS } from '../../src/shared/render-constants';
 import { FirmwareSimulator } from './firmware-simulator';
@@ -51,7 +51,9 @@ export type EventName =
   /** The bar unreachable, back, or rebooted while unreachable. */
   | 'barDrop' | 'barBack' | 'barReboot'
   /** The stand-up's prompt, OK on it -- the timer switches to the stand-up -- and its STOP, which brings the task before it back. */
-  | 'standupPrompt' | 'joinStandup' | 'standupEnds';
+  | 'standupPrompt' | 'joinStandup' | 'standupEnds'
+  /** The "nothing timing" reminder asked, in Work with nothing running (P14e), and answered on the bar. */
+  | 'nothingTiming' | 'answerNothingTiming';
 
 /** Lets real file reads land: the animation player and icon animator load `.anim` files from disk. */
 export async function realTurns(count = 8): Promise<void> {
@@ -88,6 +90,8 @@ export class Desk {
   private menuOpen = false;
   private menuIndex = 0;
   private menuConfirm = false;
+  /** The "nothing timing" reminder is asked, as ReminderService holds it. */
+  private nothingAsked = false;
   /** The session the stand-up switched away from, to restart when it ends. */
   private beforeStandup: ActiveSessionDTO | null = null;
   /** Until when the bar is rebooting, and no `barBack` brings it back. */
@@ -127,6 +131,11 @@ export class Desk {
     this.priority.addBackgroundScreen([BAR_MENU_EVENT], () => {
       if (this.menuOpen) this.drawMenu();
     });
+    // As main does: NOTHING TIMING is a state while asked, drawn again when
+    // the display frees.
+    this.priority.addBackgroundScreen([NOTHING_TIMING_EVENT], () => {
+      if (this.nothingAsked) this.renderer.renderNothingTiming();
+    });
   }
 
   public async connect(): Promise<void> {
@@ -156,13 +165,15 @@ export class Desk {
         // just started -- ContextScheduleService's leaves Lunch.
         this.closeMenu();
         this.workThroughLunch();
+        // The reminder's subscriber: a start ends "nothing timing".
+        this.closeNothingTiming();
         // The IPC registry's subscriber renders the session.
         this.renderer.renderActiveSession(this.session);
         return;
       }
       case 'openMenu':
-        // As InputDecoder does: the first notch, in any state.
-        if (this.menuOpen) return;
+        // As InputDecoder does: the first notch, in any state but a question.
+        if (this.menuOpen || this.priority.getActiveLockEventName() === NOTHING_TIMING_EVENT) return;
         this.menuOpen = true;
         this.menuIndex = 0;
         this.menuConfirm = false;
@@ -250,6 +261,7 @@ export class Desk {
           this.renderer.renderActiveSession(null);
         }
         this.session = { ...this.newSession(), taskTitle: DAILY_STANDUP_TITLE, isAdHoc: true };
+        this.closeNothingTiming();
         this.renderer.renderActiveSession(this.session);
         this.priority.releaseActiveLock('standupPromptPriority');
         return;
@@ -266,10 +278,24 @@ export class Desk {
         this.beforeStandup = null;
         if (before) {
           this.session = { ...this.newSession(), taskId: before.taskId, taskKey: before.taskKey, taskTitle: before.taskTitle };
+          this.closeNothingTiming();
           this.renderer.renderActiveSession(this.session);
         }
         return;
       }
+      case 'nothingTiming':
+        // As ReminderService asks it -- once, in Work, nothing running -- and
+        // main draws it.
+        if (this.session || this.mode !== 'WORK' || this.nothingAsked) return;
+        this.nothingAsked = true;
+        this.renderer.renderNothingTiming();
+        return;
+      case 'answerNothingTiming':
+        // Pause or the click while it holds the display: the reminder is put
+        // away, and main lets go of the screen.
+        if (this.priority.getActiveLockEventName() !== NOTHING_TIMING_EVENT) return;
+        this.closeNothingTiming();
+        return;
       case 'lunchStart':
         this.pauseForBreak();
         return this.enterMode('LUNCH');
@@ -351,6 +377,16 @@ export class Desk {
     this.mode = mode;
     this.priority.setUserMode(mode);
     this.renderer.setContextMode(mode);
+    // The schedule's check switches the mode, then the reminders run: out of
+    // Work, the reminder goes.
+    if (mode !== 'WORK') this.closeNothingTiming();
+  }
+
+  /** As main's listener on ReminderService: the reminder gone, its screen let go of. */
+  private closeNothingTiming(): void {
+    if (!this.nothingAsked) return;
+    this.nothingAsked = false;
+    this.priority.releaseActiveLock(NOTHING_TIMING_EVENT);
   }
 
   private newSession(): ActiveSessionDTO {
@@ -404,6 +440,13 @@ export function expectSettledScreen(desk: Desk): void {
     }
     if (desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) throw new Error(`Expected no icon over the meeting scene: ${context}`);
     if (desk.device.has(FRONT_ELEMENT_IDS.FRAME)) throw new Error(`Expected no frame over the meeting scene: ${context}`);
+    return;
+  }
+  // NOTHING TIMING, asked and unanswered: its words alone, with no icon.
+  if (lock === NOTHING_TIMING_EVENT) {
+    if (desk.session || !desk.device.has(FRONT_ELEMENT_IDS.FRAME) || desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) {
+      throw new Error(`Expected NOTHING TIMING alone, with nothing running: ${context}`);
+    }
     return;
   }
   // The stand-up tracks on the session screen, with the meeting icon -- not

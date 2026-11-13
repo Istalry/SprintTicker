@@ -18,12 +18,19 @@ import { defaultAnimationsDir, loadAnimationSequence } from './animation-sequenc
 import { DEVICE_APPLICATION_NAME } from '../../shared/device-constants';
 import { isAdHocTaskId } from '../db/id-generator';
 import { measureText } from '../../shared/proportional-text';
-import { ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
-import { BarWord } from '../../shared/words';
-import { ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { ROW0_FONT, ROW1_FONT, TIMER_FONT } from '../../shared/fonts/pixel-font';
+import { BarWord, barToPlaceLabel } from '../../shared/words';
+import { sanitizeAsciiText } from '../../shared/text-sanitizer';
+import {
+  ACTIVE_TRACKER_EVENT, BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT, STANDUP_PROMPT_EVENT
+} from '../../shared/priority-defaults';
 
 
 const CONFIRM_COLOR = '#EF4444';
+/** Waiting on the user: amber, as the window's token (CLAUDE.md §6). */
+const WAITING_COLOR = '#F59E0B';
+/** Between the key and the time when both share row 0. */
+const ROW0_TIME_GAP_PX = 2;
 const CONFIRM_HINT_COLOR = '#E5E7EB';
 /**
  * After lunch, about a task no longer the user's. Pause answers yes and the
@@ -517,8 +524,20 @@ export class DisplayRenderer {
 
   /** When the panel last took a frame that differs from the one before: the answers' settle (P14b). */
   private screenChangedAt = 0;
+  /** How many interruptions wait to be placed; none, until main says where to read it. */
+  private toPlaceCount: () => number = () => 0;
   /** AGAIN=STOP in place of the time, for the session it was shown for, until it lapses. */
   private againHint: { sessionId: string; timer: ReturnType<typeof setTimeout> } | null = null;
+
+  /**
+   * Where the session screen reads how many interruptions wait to be placed
+   * (`engine.getToPlaceSummary`). The screen is drawn again whenever the
+   * engine notifies, which a placement or a stop does, so the count is read
+   * at each draw rather than pushed.
+   */
+  public setToPlaceSource(count: () => number): void {
+    this.toPlaceCount = count;
+  }
 
   /**
    * How long the panel has shown what it shows now. A press on a question or
@@ -723,7 +742,7 @@ export class DisplayRenderer {
    * 26px: "KEY: title" came out as "SPR-..." and even the key alone did not
    * fit. Side by side they also follow the wheel, which turns left and right.
    */
-  private paintPausedRows(taskText: string, timerText: string, color: string): void {
+  private paintPausedRows(taskText: string, timerText: string, color: string, toPlace = 0): void {
     const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
 
     // ❚❚ and the key on row 0, cut by fitToWidth to what the mark leaves; the
@@ -733,14 +752,66 @@ export class DisplayRenderer {
     this.canvas.drawRect(
       layout.TEXT_X + PAUSED_MARK.barWidth + PAUSED_MARK.gap, layout.ROW0_Y, PAUSED_MARK.barWidth, PAUSED_MARK.height, color
     );
-    this.canvas.drawTextClipped(
-      taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH
-    );
     if (this.showsAgainHint(this.lastSessionCache)) {
+      this.canvas.drawTextClipped(
+        taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH
+      );
       this.canvas.drawSmallText(BarWord.AGAIN_STOP, layout.TEXT_X, layout.ROW1_Y, color, layout.TEXT_FIELD_WIDTH);
       return;
     }
+    if (toPlace > 0) {
+      this.paintKeyAndTime(taskText, timerText, layout.TEXT_X + PAUSED_MARK_WIDTH, color);
+      this.canvas.drawSmallText(barToPlaceLabel(toPlace), layout.TEXT_X, layout.ROW1_Y, WAITING_COLOR, layout.TEXT_FIELD_WIDTH);
+      return;
+    }
+    this.canvas.drawTextClipped(
+      taskText, layout.TEXT_X + PAUSED_MARK_WIDTH, layout.ROW0_Y, color, layout.TEXT_FIELD_WIDTH - PAUSED_MARK_WIDTH
+    );
     this.canvas.drawTextClipped(timerText, layout.TEXT_X, layout.ROW1_Y, color, layout.TEXT_FIELD_WIDTH, TIMER_FONT);
+  }
+
+  /**
+   * Row 0 shared by the key and the time, when row 1 has something to say:
+   * the time flush right and never cut, the key cut by `fitToWidth` to what
+   * it leaves.
+   */
+  private paintKeyAndTime(keyText: string, timerText: string, fromX: number, color: string): void {
+    const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+    const timeWidth = measureText(timerText, ROW0_FONT);
+    const right = layout.TEXT_X + layout.TEXT_FIELD_WIDTH;
+    this.canvas.drawTextClipped(keyText, fromX, layout.ROW0_Y, color, right - fromX - timeWidth - ROW0_TIME_GAP_PX);
+    this.canvas.drawTextClipped(timerText, right - timeWidth, layout.ROW0_Y, color, timeWidth);
+  }
+
+  /**
+   * NOTHING TIMING (D4, P14e): drawn once when the "nothing timing" reminder
+   * fires in working hours, across the whole panel with no icon -- it does not
+   * fit beside one -- and let go of at the answer, which hands the display
+   * back to the firmware's clock. No clock of ours: the idle screen stays the
+   * firmware's. Pause opens the picker on the computer; the wheel's click is
+   * not now.
+   *
+   * Never queued: a queued copy would replay after the answer. Main registers
+   * it as a background state instead, so one refused under a screen above it
+   * is drawn again when the display frees, for as long as it is asked.
+   */
+  public renderNothingTiming(): DisplayPayload {
+    return this.requestRender(NOTHING_TIMING_EVENT, () => {
+      this.canvas.clear();
+      this.animationPlayer.stop();
+      this.frameIcon = null;
+      this.frameScreenIcon = null;
+      const width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH;
+      const text = BarWord.NOTHING_TIMING;
+      const x = Math.max(0, Math.floor((width - measureText(text, ROW0_FONT)) / 2));
+      this.canvas.drawTextClipped(text, x, DISPLAY_CONSTANTS.LAYOUT_OFFSETS.ROW0_Y, WAITING_COLOR, width - x);
+      this.ledMode = 'PULSE_ALERT';
+      const led = `${WAITING_COLOR}FF`;
+      const frontEls = this.canvasToEmulatorElements();
+      void this.transmitFrame(led, frontEls)
+        .catch(err => console.error('[DisplayRenderer] transmitFrame failed:', err));
+      return { frontElements: frontEls, ledColorHex: led };
+    }, { queueOnPreempt: false });
   }
 
   /**
@@ -1161,14 +1232,27 @@ export class DisplayRenderer {
       // 2026-10-15). Read from the id too, as the engine does: a row started
       // again from a list carries `isAdHoc = false`.
       const adHoc = session && (session.isAdHoc || isAdHocTaskId(session.taskId));
+      // The words of D5 (P14e): the stand-up by its bar word, and a task
+      // given to someone else by its key and their first name.
+      const handedTo = session && !adHoc && session.taskLeftBecause === 'reassigned' && session.taskOwnerName
+        ? sanitizeAsciiText(session.taskOwnerName.trim().split(/\s+/)[0] ?? '').toUpperCase()
+        : '';
       const titleText = !session
         ? 'Ready'
-        : adHoc
+        : isStandup
+          ? BarWord.STAND_UP
+          : adHoc
           ? session.taskTitle || session.taskKey
+          : handedTo
+          ? `${session.taskKey} > ${handedTo}`
           : isPaused
           ? session.taskKey || session.taskTitle
           : `${session.taskKey}: ${session.taskTitle}`;
       const timerText = session ? this.formatTime(session.elapsedSeconds, false) : 'No task running';
+      // Interruptions waiting to be placed, on a task's screen: row 1 says
+      // so and the time moves beside the key (D5). Not on an interruption's
+      // own screen, nor the stand-up's.
+      const toPlace = session && !session.interruption && !isStandup ? this.toPlaceCount() : 0;
 
       const row0Color = isPaused ? '#F59E0B' : session ? colors.keyColor : '#888888';
       const row1Color = isPaused ? '#F59E0B' : session ? '#FFFFFF' : '#888888';
@@ -1194,7 +1278,14 @@ export class DisplayRenderer {
       this.frameScreenIcon = { pixels: getBitmapById(icon), label: titleText, ...(this.frameIcon ? { animation: this.frameIcon } : {}) };
 
       if (isPaused) {
-        this.paintPausedRows(titleText, timerText, row0Color);
+        this.paintPausedRows(titleText, timerText, row0Color, toPlace);
+      } else if (toPlace > 0 && !this.showsAgainHint(session)) {
+        const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
+        // The key alone beside the time, as paused -- but an ad-hoc task by
+        // its name, never the shared key, and a task given away as itself.
+        const keyText = adHoc || handedTo ? titleText : session!.taskKey || titleText;
+        this.paintKeyAndTime(keyText, timerText, layout.TEXT_X, row0Color);
+        this.canvas.drawSmallText(barToPlaceLabel(toPlace), layout.TEXT_X, layout.ROW1_Y, WAITING_COLOR, layout.TEXT_FIELD_WIDTH);
       } else {
         const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
         this.canvas.drawTextClipped(titleText, layout.TEXT_X, layout.ROW0_Y, row0Color, layout.TEXT_FIELD_WIDTH);

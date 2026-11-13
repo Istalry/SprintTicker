@@ -3,7 +3,7 @@ import { TimeTrackingEngine } from '../engine/time-tracking-engine';
 import { IPriorityPreemptionEngine } from '../services/priority-preemption-engine';
 import { DisplayRenderer, MenuConfirm } from './display-renderer';
 import { BarMenuEntry, barMenuEntries } from './bar-menu';
-import { BAR_MENU_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
+import { BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import {
   BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS
@@ -26,7 +26,7 @@ const NO_SCENES = { renderTaskCompletionConfetti: () => undefined, renderTaskLog
 type BarInput = 'pause' | 'back' | 'click' | 'turn' | 'other';
 
 /** The questions the bar answers, by the lock that holds the display for each. */
-type BarQuestion = 'eod' | 'standup' | 'resume';
+type BarQuestion = 'eod' | 'standup' | 'resume' | 'nothing';
 
 /** The wheel's menu while it is open. */
 interface OpenMenu {
@@ -286,6 +286,7 @@ export class InputDecoder {
     if (lock === 'eodWrapUpPriority') return 'eod';
     if (lock === 'standupPromptPriority') return 'standup';
     if (lock === RESUME_PROMPT_EVENT) return 'resume';
+    if (lock === NOTHING_TIMING_EVENT) return 'nothing';
     return null;
   }
 
@@ -331,6 +332,13 @@ export class InputDecoder {
         // answer goes to ContextScheduleService, which owns the question and
         // its lock.
         return this.report(yes ? 'CONFIRM_RESUME_PROMPT' : 'DISMISS_RESUME_PROMPT', key);
+      case 'nothing':
+        // NOTHING TIMING (P14e): yes is the picker on the computer, as Pause
+        // with nothing running; no is not now. Either answer puts the
+        // reminder away, which lets go of the screen (main's, through the
+        // reminder service), and the firmware's clock comes back.
+        if (yes) this._openPickerCallback?.();
+        return this.report(yes ? 'CONFIRM_NOTHING_TIMING' : 'DISMISS_NOTHING_TIMING', key);
     }
   }
 

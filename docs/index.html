@@ -1387,8 +1387,9 @@
       <td align="left"><strong>Still in it</strong> · <strong>End stand-up</strong></td>
       </tr>
       </tbody></table></div>
-      <p>The quiet answer is final for that time: the same pause is not asked about
-      again, the next one is. Resuming, going back or starting a task answers it
+      <p>On the bar, <em>Nothing timing</em> shows <strong>NOTHING TIMING</strong> until you answer it
+      there or in the app. The quiet answer is final for that time: the same
+      pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
       too. <strong>Back to MG-12?</strong> left unanswered for 10 minutes gets one more
       notification. The delays are <code>prompt_delays</code> in the settings; Settings
       will show them.</p>
@@ -1584,6 +1585,10 @@
       <td align="right">75</td>
       </tr>
       <tr>
+      <td align="left">⏸️ Nothing timing</td>
+      <td align="right">74</td>
+      </tr>
+      <tr>
       <td align="left">🔔 Notification — High Priority</td>
       <td align="right">70</td>
       </tr>
@@ -1734,8 +1739,8 @@
       <td align="left">⏸️ <strong>Paused.</strong> ❚❚ and the key, the time below -- <strong>AGAIN=STOP</strong> for 4 s after the bar&#39;s Pause, when a second press stops. Then Pause resumes; a wheel click interrupts.</td>
       </tr>
       <tr>
-      <td align="center"><img src="images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"></td>
-      <td align="left">🗣️ <strong>Stand-up.</strong> Joined from its prompt: the stand-up&#39;s own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key.</td>
+      <td align="center"><img src="images/bar-standup.webp" width="304" alt="STAND-UP with a meeting icon, 00:00"></td>
+      <td align="left">🗣️ <strong>Stand-up.</strong> Joined from its prompt: <strong>STAND-UP</strong> over the stand-up&#39;s own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key.</td>
       </tr>
       <tr>
       <td align="center"><img src="images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"></td>
@@ -1765,6 +1770,20 @@
       three seconds, the stopwatch&#39;s hand sweeping back to twelve. Marking a task done
       or discarding a session is in the wheel&#39;s menu, the app or the Stream Deck;
       DONE from anywhere shows <strong>DONE!</strong>.</p>
+      <p>Three more things the session screen can say:</p>
+      <ul>
+      <li><strong>3 TO PLACE</strong>, in amber on row 1, while interruptions wait for you to
+      place them in the app -- on a task&#39;s screen, running or paused. The time
+      moves up beside the key, and the key is the one shortened. Not during an
+      interruption or the stand-up, and <strong>AGAIN=STOP</strong> still takes row 1 for its
+      four seconds.</li>
+      <li><strong>MG-12 &gt; RIN</strong>: the task was given to someone else on Jira or
+      OpenProject while you were on it -- the key and their first name.</li>
+      <li><strong>NOTHING TIMING</strong>, in amber across the whole bar, when the app&#39;s
+      <em>Nothing timing</em> reminder asks (see <em>Reminders ask once</em> under <a href="#-settings-my-workday">Settings: My workday</a>).
+      Pause opens the task picker on the computer; a wheel click is <em>not now</em>.
+      Either puts it away, and the bar&#39;s own clock comes back.</li>
+      </ul>
       <div class="note"><span class="label">Why the timer shows HH:MM</span>
       <p></p>
       <p>Every frame is an asset upload plus a draw — two HTTP requests. A per-second
@@ -1866,8 +1885,8 @@
       runs -- the bar uses Back itself and leaves its own clock app.</p>
       </li>
       </ul>
-      <p>🗣️ <strong>During a question</strong> -- the stand-up, back to your task?, the
-      end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
+      <p>🗣️ <strong>During a question</strong> -- the stand-up, back to your task?, NOTHING
+      TIMING, the end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
       wrap-up asks twice — the first press is &quot;yes&quot;, the second confirms
       (<strong>AGAIN=YES</strong>) — because it can shut your machine down. Once it is done,
       the bar says <strong>SEE YOU!</strong> for five seconds, a moon rising and the stars
@@ -2851,6 +2870,11 @@
       <td align="right">75</td>
       </tr>
       <tr>
+      <td align="left">Nothing timing</td>
+      <td align="left"><code>nothingTimingPriority</code></td>
+      <td align="right">74</td>
+      </tr>
+      <tr>
       <td align="left">Notification — high</td>
       <td align="left"><code>highNotificationPriority</code></td>
       <td align="right">70</td>
@@ -3269,6 +3293,14 @@
       reports a state the id no longer matches. A resume question after an
       interruption left <code>nothingTiming</code> minutes gets one more toast. The ids it
       asked are kept in memory: a restart may ask an occurrence once more.</p>
+      <p>Its <code>onReminder</code> listener puts <em>nothing timing</em> on the bar (P14e): main draws
+      <code>DisplayRenderer.renderNothingTiming</code> under <code>nothingTimingPriority</code> (74, Work
+      only) and, when the reminder goes, releases that lock -- the engine hands the
+      display back, one render. It is never queued, since a queued copy would
+      replay after the answer; it is a background screen instead, offered the
+      display whenever it frees while the reminder is asked. Pause on it opens the
+      picker window and reports <code>CONFIRM_NOTHING_TIMING</code>, the click
+      <code>DISMISS_NOTHING_TIMING</code>; the IPC registry turns either into <code>dismiss</code>.</p>
       <h4><code>FirstRunService</code> — <code>src/main/services/</code></h4>
       <p>The first run (S1–S3, P11a). <code>shouldShow</code> is true once: at the first launch
       of an install with no Jira or OpenProject credentials and no worklog, and an
