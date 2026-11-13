@@ -93,13 +93,14 @@ export class FirstRunService {
   /** What is on the desk now: S2 ticks only what it finds. */
   public detectDesk(): DeskDetectionDTO {
     const status = this.deps.deviceStatus();
+    const decks = this.deps.decksConnected();
     return {
       bar: {
         found: status?.connected === true,
         address: status?.ipAddress ?? '',
         connectionType: status?.connected ? (status.connectionType ?? null) : null
       },
-      deck: { installed: this.deps.deckInstalled(), connected: this.deps.decksConnected() > 0 }
+      deck: { installed: this.deps.deckInstalled(), connected: decks > 0, count: decks }
     };
   }
 

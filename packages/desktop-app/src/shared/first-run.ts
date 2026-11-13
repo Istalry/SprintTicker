@@ -38,6 +38,8 @@ export interface DeskDetectionDTO {
     installed: boolean;
     /** A deck runs the plugin and is connected to the app now. */
     connected: boolean;
+    /** How many decks are connected: each phone or device runs its own plugin. */
+    count: number;
   };
 }
 

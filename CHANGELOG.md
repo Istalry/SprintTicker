@@ -263,6 +263,16 @@
   four reminders waits -- nothing timing, a long pause, a stand-up, an
   interruption -- set here at last; a timer left running overnight; and the
   pause that starts a new entry, now a menu.
+- **Settings · Desk devices is a page of rows**, a block for the bar and one
+  for the Stream Deck: the bar's line (where it answers, firmware, battery,
+  brightness) with **Use without a bar**; task key color; when nothing
+  runs; Windows notifications on the bar, with its switch, **Grant access**
+  while Windows refuses and **Choose apps…**; what the bar shows first
+  behind **Open…**; and the connection behind **Change…**, with how long a
+  notification stays and how often Windows is read. The Stream Deck's line
+  says how many decks are connected and installs the plugin. Without a bar
+  its block is one line with **Add**. Adding an app by its id moved to
+  Developer.
 - **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
   given to someone else reads **MG-12 > RIN**; interruptions waiting to be
   placed show as **3 TO PLACE** in amber on a task's screen, the time

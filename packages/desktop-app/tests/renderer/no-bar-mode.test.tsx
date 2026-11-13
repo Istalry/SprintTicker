@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDiagnosticsView';
+import { DeviceSettings } from '../../src/renderer/views/Settings/DeviceSettings';
 import { DEFAULT_DEVICE_CONFIG } from '../../src/shared/device-constants';
 import { NO_BAR_DEVICE, installElectronApi } from './electron-api-mock';
 
@@ -10,14 +11,19 @@ import { NO_BAR_DEVICE, installElectronApi } from './electron-api-mock';
  * reversible, because a user who buys a bar later keeps their setup.
  */
 describe('no-bar mode', () => {
-  it('DeviceView_NoBar_OffersToAddOneAndKeepsLogsAndReset', async () => {
+  it('DeskDevices_NoBar_OneLineThatAddsItBack', async () => {
     const bridge = installElectronApi({
       getDeviceStatus: async () => NO_BAR_DEVICE,
       getDeviceConfig: async () => ({ ...DEFAULT_DEVICE_CONFIG, enabled: false, ipAddress: '10.0.4.21' })
     });
-    render(<DeviceDiagnosticsView />);
+    render(<DeviceSettings />);
+    const line = await screen.findByRole('group', { name: 'No bar on this computer' });
+    const add = within(line).getByRole('button', { name: 'Add' });
+    await waitFor(() => expect((add as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.queryByRole('group', { name: 'Task key color' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Windows notifications on the bar' })).toBeNull();
 
-    fireEvent.click(await screen.findByText('Add a BUSY Bar'));
+    fireEvent.click(add);
 
     // The address set before no-bar mode comes back with the bar.
     await waitFor(() =>
@@ -25,27 +31,37 @@ describe('no-bar mode', () => {
         expect.objectContaining({ enabled: true, ipAddress: '10.0.4.21' })
       )
     );
-    expect(screen.getByText('Export Logs')).toBeTruthy();
+  });
+
+  it('DataAndDeveloper_NoBar_KeepLogsHideTheConsole', async () => {
+    installElectronApi({ getDeviceStatus: async () => NO_BAR_DEVICE });
+    render(<DeviceDiagnosticsView />);
+
+    expect(await screen.findByText('Export Logs')).toBeTruthy();
     expect(screen.queryByText(/Hardware Input Stream Console/)).toBeNull();
   });
 
-  it('DeviceView_WithABar_CanSwitchToNoBarMode', async () => {
+  it('DeskDevices_WithABar_CanSwitchToNoBarMode', async () => {
     const bridge = installElectronApi();
-    render(<DeviceDiagnosticsView />);
+    render(<DeviceSettings />);
+    const button = await screen.findByRole('button', { name: 'Use without a bar' });
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
 
-    fireEvent.click(await screen.findByText('Use without a bar'));
+    fireEvent.click(button);
 
     await waitFor(() =>
       expect(bridge.api.setDeviceConfig).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
     );
   });
 
-  it('DeviceView_SaveRefused_SaysSo', async () => {
+  it('DeskDevices_SaveRefused_SaysSo', async () => {
     installElectronApi({ setDeviceConfig: vi.fn().mockRejectedValue(new Error('disk full')) });
-    render(<DeviceDiagnosticsView />);
+    render(<DeviceSettings />);
+    const button = await screen.findByRole('button', { name: 'Use without a bar' });
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
 
-    fireEvent.click(await screen.findByText('Use without a bar'));
+    fireEvent.click(button);
 
-    expect(await screen.findByText('disk full')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toMatch(/disk full/);
   });
 });

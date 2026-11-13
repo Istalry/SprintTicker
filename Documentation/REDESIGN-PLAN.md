@@ -2554,6 +2554,43 @@ setting; the Tasks view's filters, stars and delete-asks.
   closes and the four reminders.
 - Picture remade: `app-ceremonies.png`.
 
+**As landed: P16d, Desk devices (2026-11-13).**
+
+- `DeviceSettings` replaces the devices part of `DeviceDiagnosticsView` (the
+  status cards, the Display panel, the no-bar card) and `SettingsPage`'s
+  folds. Two blocks, as S22: **BUSY Bar** -- the bar's line (*Connected on
+  USB* / *Connected at* the address / *Not answering at* it; firmware,
+  battery, brightness when reported; **Use without a bar**), Task key color
+  (taken back if refused), When nothing runs (`showIdleClockFallback`),
+  Windows notifications on the bar, What the bar shows first (**Open…**,
+  `PriorityRulesView embedded`), Connection (**Change…**); **Stream Deck**
+  -- one line from `detectDesk`, read every 3 s, whose deck part now carries
+  `count`. Without a bar, the bar's block is one line with **Add**.
+- `NotificationSettingsView` is split: `useNotificationSettings` (one store,
+  read once, saved whole -- the page shows it in three rows, so they share
+  it) and `useNotificationListenerStatus`; `NotificationAppRules`, the apps
+  under **Choose apps…** (Don't show / Default / High priority, hide the
+  text, an icon of my own, test, forget); and `NotificationListenerView`,
+  Developer's status, logs and adding an app by its id (S24).
+- Deviations from S22: the notifications row has a switch too
+  (`enableListener` had no other place); the timings sit in Connection as
+  drawn, as menus. The deck's line names no plugin version and no "Which
+  key does what ↗": the plugin does not send its version, and the app has
+  no route to open the guide.
+- The listener now trims an icon path of the user's own, which the field no
+  longer trims as it is typed (a path with a space in it could not be
+  typed).
+- `capture-app.js` opens the rows' folds by their buttons (`reveal`), no
+  longer `<details>`.
+- Tests: `settings-devices.test.tsx` (the rows, the bar's line, the colour
+  and its refusal, the idle clock, Grant access, the apps' choices saved
+  whole, the switch, Open…, Connection's draft, its refusal of a URL, Back
+  to USB default, the timings, the deck's three lines, every search entry);
+  `notification-listener-view.test.tsx`; `no-bar-mode.test.tsx` on the new
+  page.
+- Pictures remade: `app-device.png`, `app-notifications.png`,
+  `app-priority.png`, `app-nobar-device.png`.
+
 ---
 
 ## 20. P15 -- Documents, pictures, release
@@ -2669,4 +2706,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
-| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General), P16b (Account) and P16c (My workday) done | P16a `0a36d40`, P16b `fe1c7ab`, P16c (2026-11-13) |
+| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General), P16b (Account), P16c (My workday) and P16d (Desk devices) done | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d (2026-11-13) |

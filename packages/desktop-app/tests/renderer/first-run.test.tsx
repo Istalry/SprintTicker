@@ -153,7 +153,7 @@ describe('First run', () => {
 
     it('BarOnWifi_SavesItsAddress', async () => {
       const { bridge } = await toDesk({
-        detectDesk: vi.fn().mockResolvedValue({ bar: { found: false, address: '10.0.4.20', connectionType: null }, deck: { installed: false, connected: false } })
+        detectDesk: vi.fn().mockResolvedValue({ bar: { found: false, address: '10.0.4.20', connectionType: null }, deck: { installed: false, connected: false, count: 0 } })
       });
       fireEvent.click(box(/A BUSY Bar/));
       click('Mine is on Wi-Fi');

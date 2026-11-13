@@ -61,11 +61,12 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
 
   { label: 'BUSY Bar', group: 'devices', keywords: ['device', 'firmware', 'battery', 'brightness', 'connection', 'status'] },
   { label: 'Task key color', group: 'devices', keywords: ['colour', 'theme', 'color'] },
-  { label: 'Connection', group: 'devices', keywords: ['address', 'ip', 'wi-fi', 'usb', 'token', 'reconnect'] },
+  { label: 'Connection', group: 'devices', keywords: ['address', 'ip', 'wi-fi', 'usb', 'token', 'reconnect', 'notification duration', 'polling'] },
   { label: 'When nothing runs', group: 'devices', keywords: ['idle clock', 'clock'] },
   { label: 'Use without a bar', group: 'devices', keywords: ['no bar', 'add a busy bar'] },
   { label: 'Windows notifications on the bar', group: 'devices', keywords: ['notifications', 'apps', 'mirror', 'banner', 'privacy'] },
   { label: 'What the bar shows first', group: 'devices', keywords: ['priority', 'rules', 'levels', 'preemption'] },
+  { label: 'Stream Deck', group: 'devices', keywords: ['deck', 'elgato', 'plugin', 'keys'] },
 
   { label: 'Export logs', group: 'data', keywords: ['diagnostics', 'bug report'] },
   { label: 'Erase everything on this computer', group: 'data', keywords: ['wipe', 'factory reset', 'delete'] },

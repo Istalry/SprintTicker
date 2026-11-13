@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download, Network, Eye, EyeOff } from 'lucide-react';
+import { Monitor, Activity, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
-import { ColorThemeId, DeviceConfigDTO } from '../../../shared/dtos';
-import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
-import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { formatClockTime } from '../../utils/formatters';
 
 /**
- * Which part of the view to show. Settings splits it (S22–S24): the bar's
- * status and setup under Desk devices, logs and erasing under Data, the
- * debug tools under Developer. `all` is the view as it was before.
+ * Which part of the view to show. Settings splits it (S23, S24): logs and
+ * erasing under Data, the debug tools under Developer; `all` is both. The
+ * bar's own settings are Desk devices' (`DeviceSettings`, S22).
  */
-export type DeviceDiagnosticsPart = 'all' | 'devices' | 'data' | 'developer';
+export type DeviceDiagnosticsPart = 'all' | 'data' | 'developer';
 
 export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> = ({ part = 'all' }) => {
   const show = (...parts: DeviceDiagnosticsPart[]): boolean => part === 'all' || parts.includes(part);
@@ -21,83 +18,10 @@ export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> =
   const [wiping, setWiping] = useState<boolean>(false);
   const [activeTestLog, setActiveTestLog] = useState<string | null>(null);
   const [hardwareLogs, setHardwareLogs] = useState<{ time: string; key: string; action: string }[]>([]);
-  const [deviceConfig, setDeviceConfig] = useState<DeviceConfigDTO>(DEFAULT_DEVICE_CONFIG);
-  const [colorTheme, setColorTheme] = useState<ColorThemeId>(DEFAULT_COLOR_THEME);
-
-  // The stored colour, so the list opens on it rather than on the first entry.
-  useEffect(() => {
-    window.electronAPI?.getColorTheme?.().then(setColorTheme, err => console.error('[DeviceDiagnostics] getColorTheme failed:', err));
-  }, []);
-
-  // The connection fields are a draft, applied on an explicit action rather
-  // than on change. Saving per keystroke would tear down and redial the device
-  // once per character typed into the address.
-  const [addressDraft, setAddressDraft] = useState<string>(DEFAULT_DEVICE_CONFIG.ipAddress);
-  const [tokenDraft, setTokenDraft] = useState<string>('');
-  const [tokenVisible, setTokenVisible] = useState<boolean>(false);
-  const [applying, setApplying] = useState<boolean>(false);
-  const [applyResult, setApplyResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const hasBar = deviceStatus.enabled;
-  const [barToggleError, setBarToggleError] = useState<string>('');
-
-  /**
-   * Turns no-bar mode on or off. The address and token are kept either way,
-   * so a bar switched off and on again comes back where it was.
-   */
-  const setBarEnabled = async (enabled: boolean): Promise<void> => {
-    if (!window.electronAPI?.setDeviceConfig) return;
-    setBarToggleError('');
-    const next: DeviceConfigDTO = { ...deviceConfig, enabled };
-    try {
-      await window.electronAPI.setDeviceConfig(next);
-      setDeviceConfig(next);
-    } catch (err) {
-      setBarToggleError(err instanceof Error ? err.message : 'Could not save the setting.');
-    }
-  };
-
-  const addressValid = isValidDeviceHost(addressDraft);
-  const connectionDirty =
-    addressDraft.trim() !== deviceConfig.ipAddress || tokenDraft !== deviceConfig.apiToken;
-
-  const applyConnectionSettings = async (): Promise<void> => {
-    if (!addressValid || !window.electronAPI?.setDeviceConfig) return;
-    setApplying(true);
-    setApplyResult(null);
-    const next: DeviceConfigDTO = {
-      ...deviceConfig,
-      ipAddress: addressDraft.trim(),
-      apiToken: tokenDraft
-    };
-    try {
-      await window.electronAPI.setDeviceConfig(next);
-      setDeviceConfig(next);
-      // Deliberately not "Connected". This resolves when the setting has been
-      // saved and the reconnect attempted; whether the bar actually answered is
-      // reported by the live status header above, which is the honest source.
-      setApplyResult({
-        ok: true,
-        message: `Saved. Now dialling ${next.ipAddress} — watch the connection status above.`
-      });
-    } catch (err) {
-      setApplyResult({
-        ok: false,
-        message: err instanceof Error ? err.message : 'Could not save the connection settings.'
-      });
-    } finally {
-      setApplying(false);
-    }
-  };
 
   useEffect(() => {
-    if (window.electronAPI?.getDeviceConfig) {
-      window.electronAPI.getDeviceConfig().then(config => {
-        setDeviceConfig(config);
-        setAddressDraft(config.ipAddress);
-        setTokenDraft(config.apiToken);
-      });
-    }
     if (window.electronAPI?.onHardwareInputEvent) {
       const unsubscribe = window.electronAPI.onHardwareInputEvent((event) => {
         const timeStr = formatClockTime(new Date()) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
@@ -165,78 +89,7 @@ export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> =
         </div>
       )}
 
-      {show('devices') && !hasBar && (
-        <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-3">
-          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-            <Monitor className="w-4 h-4 text-text-primary" />
-            <span>No BUSY Bar on this machine</span>
-          </h3>
-          <p className="text-xs text-text-secondary">
-            SprintTicker is keeping time, syncing worklogs and prompting as usual; the screens that only
-            describe the bar are hidden. If you get a BUSY Bar later, add it here: the address and token you
-            set before are kept.
-          </p>
-          <button
-            type="button"
-            onClick={() => { void setBarEnabled(true); }}
-            className="px-3 py-1.5 text-xs font-bold rounded bg-primary text-dark-900"
-          >
-            Add a BUSY Bar
-          </button>
-          {barToggleError && <p className="text-[10px] text-accent-red">{barToggleError}</p>}
-        </div>
-      )}
-
       {hasBar && (<>
-      {/* Grid Status Cards */}
-      {show('devices') && (
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-xs text-text-secondary">
-            <span>Status</span>
-            <Wifi className={`w-4 h-4 ${deviceStatus.connected ? 'text-accent-green' : 'text-accent-red'}`} />
-          </div>
-          <div className="text-lg font-bold text-white">
-            {deviceStatus.connected ? 'Connected' : 'Offline'}
-          </div>
-          <div className="text-[11px] text-text-secondary">IP: {deviceStatus.ipAddress}</div>
-        </div>
-
-        <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-xs text-text-secondary">
-            <span>Latency</span>
-            <Activity className={`w-4 h-4 ${deviceStatus.connected ? 'text-accent-green' : 'text-text-secondary'}`} />
-          </div>
-          <div className={`text-lg font-bold ${deviceStatus.connected ? 'text-accent-green' : 'text-text-secondary'}`}>
-            {deviceStatus.connected ? `${deviceStatus.webSocketPingMs} ms` : 'N/A'}
-          </div>
-          <div className="text-[11px] text-text-secondary">WebSocket Ping</div>
-        </div>
-
-        <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-xs text-text-secondary">
-            <span>Battery Level</span>
-            <Battery className={`w-4 h-4 ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`} />
-          </div>
-          <div className={`text-lg font-bold ${deviceStatus.connected ? 'text-white' : 'text-text-secondary'}`}>
-            {deviceStatus.connected ? `${deviceStatus.batteryPercent}%` : 'N/A'}
-          </div>
-          <div className="text-[11px] text-text-secondary">Mode: {deviceStatus.connectionType.toUpperCase()}</div>
-        </div>
-
-        <div className="bg-dark-800 p-4 rounded-xl border border-border-dark space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-xs text-text-secondary">
-            <span>Firmware</span>
-            <Cpu className={`w-4 h-4 ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`} />
-          </div>
-          <div className={`text-lg font-bold ${deviceStatus.connected ? 'text-white' : 'text-text-secondary'}`}>
-            {deviceStatus.connected ? `v${deviceStatus.firmwareVersion}` : 'N/A'}
-          </div>
-          <div className="text-[11px] text-text-secondary">{deviceStatus.connected ? 'As the bar reports it' : 'Disconnected'}</div>
-        </div>
-      </div>
-      )}
-
       {/* Display health: what came before every measured hang of the bar. */}
       {show('developer') && (
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
@@ -269,186 +122,6 @@ export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> =
             <span className="text-text-secondary">Longest request queue:</span>
             <span className="font-bold text-white">{deviceStatus.displayHealth.maxQueueLength}</span>
           </div>
-        </div>
-      </div>
-
-      )}
-
-      {/* Hardware Telemetry Detail Panel */}
-      {show('devices') && (
-      <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">
-        <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-          <HardDrive className="w-4 h-4 text-text-primary" />
-          <span>Display</span>
-        </h3>
-
-        <div className="space-y-3 text-xs">
-          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Front display brightness</span>
-            <span className={`font-bold ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`}>
-              {!deviceStatus.connected
-                ? 'Off (Disconnected)'
-                : deviceStatus.frontBrightness === null
-                  ? 'Not reported'
-                  : `${deviceStatus.frontBrightness}%`}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Rear display brightness</span>
-            <span className={`font-bold ${deviceStatus.connected ? 'text-text-primary' : 'text-text-secondary'}`}>
-              {!deviceStatus.connected
-                ? 'Off (Disconnected)'
-                : deviceStatus.backBrightness === null
-                  ? 'Not driven by this app'
-                  : `${deviceStatus.backBrightness}%`}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary">Task key color</span>
-            <select
-              aria-label="Task key color"
-              value={colorTheme}
-              onChange={(e) => {
-                const next = e.target.value as ColorThemeId;
-                setColorTheme(next);
-                window.electronAPI?.setColorTheme(next)
-                  .catch(err => console.error('[DeviceDiagnostics] setColorTheme failed:', err));
-              }}
-              className="bg-dark-800 text-text-primary font-bold text-xs px-2 py-1 rounded border border-border-dark focus:outline-none"
-            >
-              {COLOR_THEMES.map(theme => (
-                <option key={theme.id} value={theme.id}>{theme.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="bg-dark-900 p-3 rounded-lg border border-border-dark space-y-3">
-            <div className="flex items-center space-x-2 text-text-primary">
-              <Network className="w-4 h-4" />
-              <span className="text-xs font-bold">Connection</span>
-            </div>
-            <p className="text-[10px] text-text-muted leading-relaxed">
-              Over USB the bar answers on <span className="">{DEFAULT_USB_IP}</span>. Change this
-              for a bar on Wi-Fi, or when the USB network interface will not start and you are reaching
-              the device through a proxy on another address.
-            </p>
-
-            <label className="block">
-              <span className="text-[10px] text-text-secondary">Device address</span>
-              <input
-                type="text"
-                value={addressDraft}
-                spellCheck={false}
-                onChange={(e) => { setAddressDraft(e.target.value); setApplyResult(null); }}
-                placeholder={DEFAULT_USB_IP}
-                className={`mt-1 w-full bg-dark-800 border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 ${
-                  addressDraft.length > 0 && !addressValid
-                    ? 'border-accent-red focus:ring-accent-red'
-                    : 'border-border-dark focus:ring-focus'
-                }`}
-              />
-              {addressDraft.length > 0 && !addressValid && (
-                <span className="text-[10px] text-accent-red">
-                  IPv4 address or hostname only — no http://, port or path.
-                </span>
-              )}
-            </label>
-
-            <label className="block">
-              <span className="text-[10px] text-text-secondary">
-                API token <span className="text-text-muted normal-case tracking-normal">— leave empty for USB</span>
-              </span>
-              <div className="mt-1 flex items-center space-x-2">
-                <input
-                  type={tokenVisible ? 'text' : 'password'}
-                  value={tokenDraft}
-                  spellCheck={false}
-                  autoComplete="off"
-                  onChange={(e) => { setTokenDraft(e.target.value); setApplyResult(null); }}
-                  placeholder="Required only if the device has access protection enabled"
-                  className="flex-1 min-w-0 bg-dark-800 border border-border-dark rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-focus"
-                />
-                <button
-                  type="button"
-                  onClick={() => setTokenVisible(v => !v)}
-                  title={tokenVisible ? 'Hide token' : 'Show token'}
-                  aria-label={tokenVisible ? 'Hide token' : 'Show token'}
-                  className="p-1.5 text-text-secondary hover:text-text-primary border border-border-dark rounded"
-                >
-                  {tokenVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </label>
-
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                disabled={!connectionDirty || !addressValid || applying}
-                onClick={() => { void applyConnectionSettings(); }}
-                className="px-3 py-1.5 text-xs font-bold rounded bg-primary text-dark-900 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {applying ? 'Reconnecting...' : 'Save & Reconnect'}
-              </button>
-              {addressDraft.trim() !== DEFAULT_USB_IP && (
-                <button
-                  type="button"
-                  onClick={() => { setAddressDraft(DEFAULT_USB_IP); setApplyResult(null); }}
-                  className="text-[10px] text-text-secondary hover:text-text-primary underline"
-                >
-                  Reset to USB default
-                </button>
-              )}
-            </div>
-
-            {applyResult && (
-              <p className={`text-[10px] ${applyResult.ok ? 'text-accent-green' : 'text-accent-red'}`}>
-                {applyResult.message}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary flex flex-col">
-              <span>Show the bar&apos;s own clock when idle</span>
-              <span className="text-[10px] text-text-muted">With no task running, SprintTicker hands the display back and the bar shows its clock.</span>
-            </span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={deviceConfig.showIdleClockFallback}
-                onChange={(e) => {
-                  const newConfig = { ...deviceConfig, showIdleClockFallback: e.target.checked };
-                  setDeviceConfig(newConfig);
-                  if (window.electronAPI?.setDeviceConfig) {
-                    // Caught, because the handler now validates the address and
-                    // rejects: an unhandled rejection here would surface as a
-                    // console error with the toggle already flipped in the UI.
-                    void window.electronAPI.setDeviceConfig(newConfig)
-                      .catch(err => console.error('[DeviceDiagnostics] setDeviceConfig failed:', err));
-                  }
-                }}
-              />
-              <div className="w-9 h-5 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-dark-900 peer-checked:after:bg-dark-900 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-dark after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between bg-dark-900 p-3 rounded-lg border border-border-dark">
-            <span className="text-text-secondary flex flex-col">
-              <span>No BUSY Bar on this machine?</span>
-              <span className="text-[10px] text-text-muted">Stops dialling the bar and hides its screens. Reversible here at any time.</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => { void setBarEnabled(false); }}
-              className="px-3 py-1.5 text-xs font-semibold rounded border border-border-dark text-text-secondary hover:text-text-primary"
-            >
-              Use without a bar
-            </button>
-          </div>
-          {barToggleError && <p className="text-[10px] text-accent-red">{barToggleError}</p>}
         </div>
       </div>
 

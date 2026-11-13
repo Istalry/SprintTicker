@@ -620,10 +620,10 @@
       <p>The app does not look for a bar in this mode, so it logs nothing about one being
       unreachable.</p>
       <p align="center">
-        <img src="images/app-nobar-device.png" width="70%" alt="Device and Logs in no-bar mode, with an Add a BUSY Bar button">
+        <img src="images/app-nobar-device.png" width="70%" alt="Desk devices in no-bar mode: one line, No bar on this computer, with Add">
       </p><p>To switch, use <strong>Use without a bar</strong> in <strong>Settings, Desk devices</strong>; the bar is
       cleared and handed back to its own clock first. To add a bar later,
-      press <strong>Add a BUSY Bar</strong> in the same place: the address and token you had set
+      press <strong>Add</strong> on its one line in the same place: the address and token you had set
       before are kept, and the bar&#39;s screens come back at once.</p>
       <h4>⏱️ The mini timer</h4>
       <p>A small window that stays above every other one and shows what the bar would:
@@ -741,9 +741,10 @@
       <h4>⚙️ Settings</h4>
       <p>Six groups, each one page, with a search box above them that finds a setting
       by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
-      <em>ceremonies</em>. <strong>General</strong>, <strong>Account</strong> and <strong>My workday</strong> are pages of
-      rows, each a name, one sentence and its control at the right -- a switch
-      that says <strong>On</strong> or <strong>Off</strong>, a menu or a button; the other groups follow:</p>
+      <em>ceremonies</em>. <strong>General</strong>, <strong>Account</strong>, <strong>My workday</strong> and <strong>Desk
+      devices</strong> are pages of rows, each a name, one sentence and its control at
+      the right -- a switch that says <strong>On</strong> or <strong>Off</strong>, a menu or a button; the
+      other groups follow:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -765,7 +766,7 @@
       </tr>
       <tr>
       <td align="left"><strong>Desk devices</strong></td>
-      <td align="left">the bar&#39;s status, task key color, connection, idle clock and use without a bar; with a bar, the Windows notifications it shows and what it shows first; the Stream Deck</td>
+      <td align="left">the bar&#39;s line (where it answers, firmware, battery, brightness; Use without a bar), task key color, when nothing runs, Windows notifications on the bar, what the bar shows first, the connection; the Stream Deck&#39;s line. Without a bar, one line with Add</td>
       </tr>
       <tr>
       <td align="left"><strong>Data</strong></td>
@@ -1522,10 +1523,14 @@
       week too. A locked timesheet may refuse the change at Jira or OpenProject; the
       sync queue then shows why.</p>
       <h4>🔔 Settings: Desk devices, Windows notifications</h4>
-      <p>Which applications may reach the bar -- folded under <strong>Desk devices</strong>, with a
-      bar. <strong>Nothing is mirrored until you allow it.</strong></p>
+      <p>Which applications may reach the bar: the <strong>Windows notifications on the
+      bar</strong> row of <strong>Desk devices</strong>, with a bar. Its switch turns the mirroring on
+      or off. Windows must let SprintTicker read its notifications: until it does,
+      the row says <em>Windows access needed</em> and <strong>Grant access</strong> opens the page in
+      Windows&#39; settings; the row notices once you come back. <strong>Choose apps…</strong> opens
+      the list of apps known. <strong>Nothing is mirrored until you allow it.</strong></p>
       <p align="center">
-        <img src="images/app-notifications.png" width="80%" alt="Windows notifications on the bar: the listener enabled and its status, banner duration, per-source rules">
+        <img src="images/app-notifications.png" width="80%" alt="Windows notifications on the bar: the switch, Choose apps, and each app known with Don't show, Default or High priority">
         <img src="images/bar-banner.png" width="456" alt="A Slack banner on the bar: the Slack logo, Mira, New message">
       </p><p>Per app, choose one of three:</p>
       <div class="table-wrap"><table>
@@ -1536,7 +1541,7 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left">🚫 <strong>Don&#39;t Show</strong></td>
+      <td align="left">🚫 <strong>Don&#39;t show</strong></td>
       <td align="left">Ignored entirely</td>
       </tr>
       <tr>
@@ -1544,7 +1549,7 @@
       <td align="left">Claims the display at whatever <em>Notification — Default</em> scores</td>
       </tr>
       <tr>
-      <td align="left">🔔 <strong>High Priority</strong></td>
+      <td align="left">🔔 <strong>High priority</strong></td>
       <td align="left">Claims it at whatever <em>Notification — High Priority</em> scores</td>
       </tr>
       </tbody></table></div>
@@ -1559,15 +1564,21 @@
       app, so a shortcut named differently from its app — <code>PowerToys (Preview)</code>,
       <code>Visual Studio Code</code> — still finds the right icon. An app with no shortcut is
       matched by name, which is not perfect: if it shows the wrong icon, set an icon
-      override on that app. The first notification from an app after SprintTicker
+      of your own on that app (<em>Icon of my own</em>, a 16×16 PNG). The ✈ beside an
+      app sends it a test notification, and the bin forgets it until it notifies
+      again. An app the list has not seen yet is added by its id under <strong>Settings,
+      Developer</strong>. The first notification from an app after SprintTicker
       starts shows the built-in icon while the real one is looked up; later ones
       show the app&#39;s own.</p>
-      <p><strong>Sender only</strong> mode shows that a message arrived without showing what it said.</p>
+      <p><strong>Hide the message text</strong> shows that a message arrived, and from whom,
+      without what it said -- on by default for Slack and Discord. How long a
+      notification stays on the bar, and how often Windows is read, are under
+      <strong>Connection</strong>.</p>
       <p>Notification text is redacted from logs and the diagnostics export. Launch with
       <code>--debug-notifications</code> to see it while troubleshooting.</p>
       <h4>⚡ Settings: Desk devices, What the bar shows first</h4>
-      <p>What the display shows when several things want it -- folded under <strong>Desk
-      devices</strong>, with a bar. Every claim has a score;
+      <p>What the display shows when several things want it: <strong>Open…</strong> on its row
+      of <strong>Desk devices</strong>, with a bar. Every claim has a score;
       the highest holds the bar. The arrows beside a claim move its level by 10 and
       the list sorts itself again; type a level from 1 to 100 to place it exactly.</p>
       <p align="center">
@@ -1625,13 +1636,17 @@
       <p>With the shipped ordering, notifications do not interrupt Lunch or Away. That is
       the table working as configured, not a bug. Move the rows if you disagree.</p>
       <h4>🩺 Settings: Desk devices and General</h4>
-      <p><strong>Desk devices</strong> shows the bar&#39;s connection, battery and firmware as the bar
-      reports it. The animation debugger -- marquee speeds, particle effects, LED
+      <p><strong>Desk devices</strong> opens on the bar&#39;s line -- <em>Connected on USB</em>, or the
+      address it answers at, with its firmware, battery and brightness as the bar
+      reports them, or <em>Not answering at …</em> -- and <strong>Use without a bar</strong>. <strong>When
+      nothing runs</strong>, on, leaves the bar its own clock when no task is timed; a
+      question or NOTHING TIMING still stays on it until answered. Off,
+      SprintTicker keeps its own idle screen. The animation debugger -- marquee speeds, particle effects, LED
       colours and icon rasterisation, live, drawn through the real renderer -- and
       <strong>Display Health</strong> are under <strong>Developer</strong>.</p>
       <p align="center">
-        <img src="images/app-device.png" width="80%" alt="Desk devices: connected at 10.0.4.20, latency, battery, firmware">
-      </p><p>It also holds <strong>Connection</strong>, where you set the address the app dials and, if
+        <img src="images/app-device.png" width="80%" alt="Desk devices: connected on USB, task key color, when nothing runs, Windows notifications, what the bar shows first, connection, and the Stream Deck's line">
+      </p><p><strong>Connection</strong>, behind <strong>Change…</strong>, sets the address the app dials and, if
       your device needs one, an API token:</p>
       <ul>
       <li>🌐 <strong>Device address.</strong> Defaults to <code>10.0.4.20</code>, which is where the bar answers
@@ -1642,10 +1657,18 @@
       requests. Fill it in once the device has access protection enabled, which is
       the normal state over Wi-Fi; without it every request comes back 401 or 403.</li>
       </ul>
-      <p><strong>Save &amp; Reconnect</strong> applies both immediately — the app re-dials without a
-      restart. Watch the connection status at the top of the window to see whether the
-      new address answered; saving means the setting was stored, not that the bar
-      replied. <strong>Reset to USB default</strong> puts the address back to <code>10.0.4.20</code>.</p>
+      <p><strong>Save and reconnect</strong> applies both immediately — the app re-dials without a
+      restart. The bar&#39;s line above says whether the new address answered; saving
+      means the setting was stored, not that the bar replied. <strong>Back to USB
+      default</strong> puts the address back to <code>10.0.4.20</code>. Below them: how long a
+      notification stays on the bar, and how often Windows&#39; notifications are
+      read.</p>
+      <p>🎛️ <strong>The Stream Deck</strong> has its own line under the bar&#39;s: <em>Connected · 1
+      deck</em>, with <strong>Install the plugin again</strong>; <em>Plugin not connected</em>, when
+      Stream Deck is installed but the plugin is not talking to SprintTicker, with
+      <strong>Install the plugin</strong>; or, with no Stream Deck at all, one line with
+      <strong>Add</strong>. The line notices a plugin installed meanwhile within a few
+      seconds.</p>
       <p>🎨 <strong>Task key color</strong> sets the color of the task key on the bar&#39;s front
       display -- blue, pink, amber or pale cyan -- and is kept across restarts.</p>
       <p>🗙 <strong>Closing the window keeps SprintTicker running</strong>, in the tray by the
@@ -2072,7 +2095,8 @@
       to arrive first: a correction never overtakes it.</p>
       </details><details>
       <summary>🔕 <b>Notifications never appear on the bar</b></summary><p> Three things to check, in order: the
-      app is set to something other than <em>Don&#39;t Show</em>; the notification listener is
+      app is set to something other than <em>Don&#39;t show</em>, and the row&#39;s switch is
+      on; the notification listener is
       running (<strong>Settings, Developer</strong> reports its status — <strong>its failures are otherwise
       silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
       the usual culprits.</p>
@@ -3920,7 +3944,7 @@
       </tr>
       <tr>
       <td align="left"><code>first-run:detect-desk</code></td>
-      <td align="left"><code>{ bar: { found, address, connectionType }, deck: { installed, connected } }</code></td>
+      <td align="left"><code>{ bar: { found, address, connectionType }, deck: { installed, connected, count } }</code> -- also read by Settings › Desk devices every 3 s</td>
       </tr>
       <tr>
       <td align="left"><code>first-run:install-deck-plugin</code></td>

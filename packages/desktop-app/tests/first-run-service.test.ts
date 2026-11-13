@@ -154,7 +154,7 @@ describe('FirstRunService', () => {
 
       expect(desk).toEqual({
         bar: { found: true, address: '10.0.4.20', connectionType: 'usb' },
-        deck: { installed: true, connected: true }
+        deck: { installed: true, connected: true, count: 1 }
       });
     });
 

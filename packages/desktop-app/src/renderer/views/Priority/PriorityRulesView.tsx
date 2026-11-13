@@ -15,7 +15,11 @@ interface PriorityItemDef {
  * "What the bar shows first" (S22): the levels and per-mode actions. The
  * mode switch that used to head it is the header's mode chip now.
  */
-export const PriorityRulesView: React.FC = () => {
+/**
+ * `embedded`: shown under Desk devices' "What the bar shows first" row
+ * (S22), whose title and sentence say what the view's own heading did.
+ */
+export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   // Shown only until the engine's real rules arrive. This used to be a local
   // table that inverted main's hierarchy -- an editor's build failure
   // outranking Away mode -- and omitted the EOD rule, so the first paint showed an ordering
@@ -104,7 +108,9 @@ export const PriorityRulesView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      {embedded && <div className="flex justify-end"><AutoSaveIndicator status={saveStatus} /></div>}
       {/* Title Bar */}
+      {!embedded && (
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
@@ -116,6 +122,7 @@ export const PriorityRulesView: React.FC = () => {
 
         <AutoSaveIndicator status={saveStatus} />
       </div>
+      )}
 
       {/* Rules Table Card */}
       <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4">

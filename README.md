@@ -282,14 +282,14 @@ Every claim on the display carries a score, and the highest score holds it:
 | 💬 Notification — Default | 65 |
 | ⏱️ Active task tracker | 45 |
 
-Per application you choose `Don't Show`, `Default` or `High Priority`; the table
+Per application you choose `Don't show`, `Default` or `High priority`; the table
 decides what that means in context. With the ordering above, notifications do
 not interrupt Lunch or Away — that is the scores working as configured, and
 every row is editable in **Settings → Desk devices → What the bar shows first**.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/app-notifications.png" alt="Windows notifications on the bar: listener enabled, per-source rules"></td>
+    <td width="50%"><img src="docs/images/app-notifications.png" alt="Windows notifications on the bar: the switch and each app known"></td>
     <td width="50%"><img src="docs/images/app-priority.png" alt="What the bar shows first: Away 100, Lunch 95, editable per mode"></td>
   </tr>
 </table>
@@ -429,8 +429,8 @@ and Electron (for the app) both load as it is. Alternating `pnpm test` and
     <th width="50%">💻 Desk devices, without one</th>
   </tr>
   <tr>
-    <td><img src="docs/images/app-device.png" alt="Desk devices: connected at 10.0.4.20, latency, battery, firmware, display health"></td>
-    <td><img src="docs/images/app-nobar-device.png" alt="Desk devices in no-bar mode: Add a BUSY Bar, updates, factory reset"></td>
+    <td><img src="docs/images/app-device.png" alt="Desk devices: connected on USB, firmware, battery, the bar's settings and the Stream Deck's line"></td>
+    <td><img src="docs/images/app-nobar-device.png" alt="Desk devices in no-bar mode: one line with Add, and the Stream Deck's line"></td>
   </tr>
 </table>
 

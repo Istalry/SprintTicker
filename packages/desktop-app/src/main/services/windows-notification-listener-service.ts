@@ -454,7 +454,7 @@ export class WindowsNotificationListenerService {
 
     let rawIconData = event.rawIconData;
     if (!rawIconData) {
-      const iconOverride = matchedRule?.iconImagePath;
+      const iconOverride = matchedRule?.iconImagePath?.trim();
       const customInput = iconOverride || event.iconPath || event.iconBase64 || this.resolveIconSource(event);
       if (customInput) {
         // `tryProcessAppImage`, not `processAppIcon`: the latter substitutes a

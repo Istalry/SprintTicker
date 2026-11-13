@@ -126,7 +126,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     testProviderConnection: vi.fn().mockResolvedValue({ ok: true, userName: 'Alex Moreau', projectCount: 15 }),
     detectDesk: vi.fn().mockResolvedValue({
       bar: { found: true, address: '10.0.4.20', connectionType: 'usb' },
-      deck: { installed: false, connected: false }
+      deck: { installed: false, connected: false, count: 0 }
     }),
     installDeckPlugin: vi.fn().mockResolvedValue(true),
     openTokenPage: vi.fn().mockResolvedValue(true),

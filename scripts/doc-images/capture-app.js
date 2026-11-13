@@ -177,17 +177,17 @@ class Page {
     await sleep(300);
   }
 
-  /** Opens the <details> whose summary reads `label`, and scrolls it to the top. */
-  async open(label) {
+  /** Scrolls the settings row named `title` to the top (P16: rows, not <details>). */
+  async reveal(title) {
     const found = await this.eval(`(() => {
-      const want = ${JSON.stringify(label)};
-      const summary = [...document.querySelectorAll('summary')].find(s => s.textContent.trim() === want);
-      if (!summary) return false;
-      summary.parentElement.open = true;
-      summary.scrollIntoView({ block: 'start' });
+      const want = ${JSON.stringify(title)};
+      const row = [...document.querySelectorAll('[role=group][aria-labelledby]')]
+        .find(g => document.getElementById(g.getAttribute('aria-labelledby'))?.textContent.trim() === want);
+      if (!row) return false;
+      row.scrollIntoView({ block: 'start' });
       return true;
     })()`);
-    if (!found) throw new Error(`no section "${label}" on screen`);
+    if (!found) throw new Error(`no row "${title}" on screen`);
     await sleep(300);
   }
 
@@ -447,14 +447,14 @@ async function captureWithBar(page, framesDir, profile) {
   await sleep(10000);
 
   // The places and Settings' groups since the 2026-11 redesign (P3); a
-  // section folded under <details> is opened before the picture.
-  for (const { steps, section, name } of [
+  // row's fold is opened by its button, and the row scrolled to the top.
+  for (const { steps, press, row, name } of [
     { steps: ['Tasks'], name: 'app-projects' },
     { steps: ['History'], name: 'app-history' },
     { steps: ['Settings', 'Account'], name: 'app-providers' },
     { steps: ['Settings', 'My workday'], name: 'app-ceremonies' },
-    { steps: ['Settings', 'Desk devices'], section: 'Windows notifications on the bar', name: 'app-notifications' },
-    { steps: ['Settings', 'Desk devices'], section: 'What the bar shows first', name: 'app-priority' },
+    { steps: ['Settings', 'Desk devices'], press: 'Choose apps…', row: 'Windows notifications on the bar', name: 'app-notifications' },
+    { steps: ['Settings', 'Desk devices'], press: 'Open…', row: 'What the bar shows first', name: 'app-priority' },
     { steps: ['Settings', 'Desk devices'], name: 'app-device' }
   ]) {
     // The panel reads the listener's state when it opens, so it is switched
@@ -463,7 +463,10 @@ async function captureWithBar(page, framesDir, profile) {
     for (const step of steps) await nav(step);
     // A place keeps the scroll of the one before it.
     await page.eval(`document.querySelector('main').scrollTop = 0`);
-    if (section) await page.open(section);
+    if (press) {
+      await page.click(press);
+      await page.reveal(row);
+    }
     await page.shot(name);
     if (name === 'app-notifications') await listener(page, false);
     if (name === 'app-history') await shootCorrection(page);

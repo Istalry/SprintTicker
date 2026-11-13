@@ -67,7 +67,7 @@ Everything else is a request/response `invoke`.
 | `first-run:should-show` | True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead |
 | `first-run:finish` | Start my first task, or Set up later: it does not open on its own again |
 | `first-run:test-connection` | `{ providerId: 'jira' \| 'openproject', site, email?, token }`, saving nothing: `{ ok: true, userName, projectCount }` or `{ ok: false, reason: 'incomplete' \| 'not-found' \| 'refused' \| 'network' \| 'failed', host, detail }` -- never throws for the remote's failure |
-| `first-run:detect-desk` | `{ bar: { found, address, connectionType }, deck: { installed, connected } }` |
+| `first-run:detect-desk` | `{ bar: { found, address, connectionType }, deck: { installed, connected, count } }` -- also read by Settings › Desk devices every 3 s |
 | `first-run:install-deck-plugin` | Opens the `.streamDeckPlugin` the installer carries; false when this build has none |
 | `first-run:open-token-page` | `(providerId, site)`: opens Atlassian's token page, or `/my/access_tokens` on the OpenProject host typed; main builds the URL |
 | `session:get-forgotten-review` | The session left running across a change of day, paused at the last activity and awaiting an answer: `{ sessionId, taskKey, taskTitle, startTimeUtc, lastPresenceUtc, endOfDayUtc, pauses, taskUnlisted, deferred }`, or null; `deferred` after Decide later, `cause` `overnight` or `closed` (SprintTicker closed under it the same day) |

@@ -3,8 +3,8 @@ import { Search } from 'lucide-react';
 import { AccountSettings } from './AccountSettings';
 import { WorkdaySettings } from './WorkdaySettings';
 import { DeviceDiagnosticsView } from '../Device/DeviceDiagnosticsView';
-import { NotificationSettingsView } from '../Notifications/NotificationSettingsView';
-import { PriorityRulesView } from '../Priority/PriorityRulesView';
+import { NotificationListenerView } from '../Notifications/NotificationListenerView';
+import { DeviceSettings } from './DeviceSettings';
 import { CloseToTraySetting } from '../../components/CloseToTraySetting';
 import { LaunchAtLoginSetting } from '../../components/LaunchAtLoginSetting';
 import { ShortcutSettings } from '../../components/ShortcutSettings';
@@ -118,7 +118,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange
         )}
         {current === 'account' && <AccountSettings hasBar={hasBar} />}
         {current === 'workday' && <WorkdaySettings />}
-        {current === 'devices' && <DevicesGroup hasBar={hasBar} />}
+        {current === 'devices' && <DeviceSettings />}
         {current === 'data' && <DeviceDiagnosticsView part="data" />}
         {current === 'developer' && <DeveloperGroup hasBar={hasBar} />}
       </section>
@@ -160,34 +160,6 @@ const GeneralGroup: React.FC<{ showDeveloper: boolean; onShowDeveloper: (value: 
   </SettingsList>
 );
 
-const DevicesGroup: React.FC<{ hasBar: boolean }> = ({ hasBar }) => (
-  <>
-    <DeviceDiagnosticsView part="devices" />
-    {hasBar && (
-      <>
-        <details className="space-y-3">
-          <summary className="cursor-pointer select-none text-sm font-semibold text-text-primary">Windows notifications on the bar</summary>
-          <div className="mt-3">
-            <NotificationSettingsView part="rules" />
-          </div>
-        </details>
-        <details className="space-y-3">
-          <summary className="cursor-pointer select-none text-sm font-semibold text-text-primary">What the bar shows first</summary>
-          <div className="mt-3">
-            <PriorityRulesView />
-          </div>
-        </details>
-      </>
-    )}
-    <Card
-      title="Stream Deck"
-      description="The SprintTicker plugin for Elgato's Stream Deck talks to this app on its own once installed: Session, Interrupt and the answer keys. It comes with SprintTicker; Run setup, in General, installs it."
-    >
-      <span className="text-xs text-text-muted">Nothing to set here.</span>
-    </Card>
-  </>
-);
-
 const DeveloperGroup: React.FC<{ hasBar: boolean }> = ({ hasBar }) => (
   <>
     <p className="text-xs text-accent-amber">
@@ -198,6 +170,6 @@ const DeveloperGroup: React.FC<{ hasBar: boolean }> = ({ hasBar }) => (
       <BarRemotePad />
     </Card>
     <DeviceDiagnosticsView part="developer" />
-    {hasBar && <NotificationSettingsView part="diagnostics" />}
+    {hasBar && <NotificationListenerView />}
   </>
 );

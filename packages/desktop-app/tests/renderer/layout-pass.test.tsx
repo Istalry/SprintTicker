@@ -1,36 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDiagnosticsView';
 import { ProjectTaskManagerView } from '../../src/renderer/views/Tasks/ProjectTaskManagerView';
 import { ProjectDTO, TaskDTO } from '../../src/shared/dtos';
 import { END_THE_INTERRUPTION_FIRST } from '../../src/shared/interruption';
-import { CONNECTED_DEVICE, TRACKING_SESSION, installElectronApi } from './electron-api-mock';
-
-describe('the task key colour', () => {
-  it('Mount_StoredColour_ListOpensOnIt', async () => {
-    // The list had no value: it opened on the first entry whatever was chosen.
-    installElectronApi({
-      getDeviceStatus: async () => CONNECTED_DEVICE,
-      getColorTheme: vi.fn().mockResolvedValue('retro_arcade')
-    });
-    render(<DeviceDiagnosticsView />);
-
-    const list = await screen.findByLabelText('Task key color') as HTMLSelectElement;
-    await waitFor(() => expect(list.value).toBe('retro_arcade'));
-    expect(list.selectedOptions[0].textContent).toBe('Amber');
-  });
-
-  it('Change_SendsTheColourAndShowsIt', async () => {
-    const bridge = installElectronApi({ getDeviceStatus: async () => CONNECTED_DEVICE });
-    render(<DeviceDiagnosticsView />);
-
-    const list = await screen.findByLabelText('Task key color') as HTMLSelectElement;
-    fireEvent.change(list, { target: { value: 'nordic_cyan' } });
-
-    expect(bridge.api.setColorTheme).toHaveBeenCalledWith('nordic_cyan');
-    expect(list.value).toBe('nordic_cyan');
-  });
-});
+import { TRACKING_SESSION, installElectronApi } from './electron-api-mock';
 
 describe('the task list rows', () => {
   const PROJECT: ProjectDTO = { id: 'P-1', key: 'SPR', name: 'Sprint', openTaskCount: 2 };
