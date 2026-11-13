@@ -376,7 +376,7 @@ device.
   the one that matters) shows a time wrong by the skew, with nothing anywhere
   reporting it. Read `GET /api/time`, take the offset, and apply it; re-read it
   periodically, because drift is what produced the 19 seconds -- the same bar
-  read **29.7 seconds** behind three weeks later (2026-09-29).
+  read **29.7 seconds** behind three weeks later (2026-09-29), and 9.5 s on 1.3.1 (2026-11-13).
 - **`GET /api/screen?display=0` does not return what it says it does.** It
   answers `Content-Type: image/bmp`, and `streaming.yaml` types the body as
   base64 — but on 1.2.3 what arrives is base64-encoded **raw** pixels with no
@@ -441,7 +441,7 @@ under its own `application_name`, sends no `rectangle` elements — a wrong colo
 count there reboots the device, and no probe is worth that — and removes what it
 drew. Close the app first, or its priority-95 claim turns into 409s that mean
 only that the app owns the display. Last run: **firmware 1.3.1, all checks
-passing**, the animation check on a `bicycle1` file (2026-11-04). **`--compositing` still removes animations by id**,
+passing**, the animation check on a `bicycle1` file (2026-11-04, and again for the 2.0 candidate on 2026-11-13). **`--compositing` still removes animations by id**,
 the operation that hangs the bar now and then (below): run it knowing that,
 and expect to restart the bar. The teardown soak takes the flags that
 measured it -- `--rounds <n>`, `--icon <name>`, `--reupload`,

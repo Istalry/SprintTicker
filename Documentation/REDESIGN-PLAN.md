@@ -2770,6 +2770,8 @@ database: the update keeps it, and a copy first costs nothing.
    OpenProject or Jira the next morning, split at lunch.
 8. **Asked first, one at a time:** `pnpm probe:busybar` with the app
    closed, the plain run only: never `--compositing` or a soak flag.
+   **Passed 2026-11-13** on firmware 1.3.1, every check, the bar 9.5 s
+   behind this machine.
 
 What the trial finds is fixed here, as its own commit; then the user
 raises the version and tags 2.0.0.
