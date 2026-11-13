@@ -55,7 +55,7 @@ describe('settings groups', () => {
     ['Account', /Tasks to fetch from OpenProject/],
     ['My workday', /My week closes/],
     ['Desk devices', /Task key color/],
-    ['Data', /Danger Zone/]
+    ['Data', /Erase everything on this computer/]
   ])('Group_%s_MountsItsCards', async (label, card) => {
     await openSettings();
 
@@ -73,6 +73,7 @@ describe('settings groups', () => {
     fireEvent.click(group('Developer'));
 
     expect(await screen.findByText(/act on the real app/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Bar remote' }));
     expect(screen.getByRole('button', { name: 'START' })).toBeTruthy();
   });
 

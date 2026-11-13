@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, RotateCcw, AlertCircle, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { RefreshCw, RotateCcw, Loader2 } from 'lucide-react';
+import { SettingButton } from './SettingRow';
 import { SyncQueueItemDTO, SyncQueueSnapshotDTO } from '../../shared/dtos';
 import { countOf, formatClockTime, formatHoursAndMinutes } from '../utils/formatters';
 
@@ -82,8 +83,8 @@ export const SyncQueuePanel: React.FC = () => {
       const { requeued } = await window.electronAPI.retryFailedWorklogs();
       setNotice(
         requeued > 0
-          ? `Requeued ${requeued} worklog(s) and attempted delivery.`
-          : 'Nothing was parked, so there was nothing to retry.'
+          ? `${countOf(requeued, 'entry', 'entries')} queued again and being sent.`
+          : 'Nothing had failed, so there was nothing to retry.'
       );
     } catch (err) {
       setNotice(err instanceof Error ? err.message : 'The retry failed to start.');
@@ -98,88 +99,42 @@ export const SyncQueuePanel: React.FC = () => {
   const items = snapshot?.items ?? [];
 
   return (
-    <div className="bg-dark-800 border border-border-dark rounded-xl p-6 mt-6">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-bold text-white">Worklog Sync Queue</h3>
-          <p className="text-xs text-text-secondary mt-1">
-            Time recorded locally and waiting to reach the provider. A row here has not arrived yet.
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {counts ? (
+          <p className="text-xs text-text-secondary">
+            <span className="text-text-primary">{counts.pending}</span> waiting ·{' '}
+            <span className="text-text-primary">{counts.syncing}</span> sending ·{' '}
+            <span className={counts.failed > 0 ? 'text-accent-red' : 'text-text-primary'}>{counts.failed}</span> failed ·{' '}
+            <span className="text-text-primary">{counts.synced}</span> sent
           </p>
-        </div>
+        ) : <span />}
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => void runSyncNow()}
-            disabled={busy !== null}
-            className="flex items-center gap-2 bg-dark-900 border border-border-dark hover:border-focus disabled:opacity-50 rounded-lg px-3 py-2 text-xs text-white"
-          >
-            {busy === 'sync' ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RefreshCw size={14} />
-            )}
-            Sync Now
-          </button>
-          <button
-            type="button"
-            onClick={() => void retryFailed()}
-            disabled={busy !== null || (counts?.failed ?? 0) === 0}
-            className="flex items-center gap-2 bg-dark-900 border border-border-dark hover:border-accent-amber disabled:opacity-50 rounded-lg px-3 py-2 text-xs text-white"
-          >
-            {busy === 'retry' ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RotateCcw size={14} />
-            )}
-            Retry Failed
-          </button>
+          <SettingButton onClick={() => void runSyncNow()} disabled={busy !== null}>
+            {busy === 'sync' ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            Sync now
+          </SettingButton>
+          <SettingButton onClick={() => void retryFailed()} disabled={busy !== null || (counts?.failed ?? 0) === 0}>
+            {busy === 'retry' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+            Retry failed
+          </SettingButton>
         </div>
       </div>
 
-      {counts && (
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <Tally label="Pending" value={counts.pending} icon={<Clock size={13} />} tone="text-text-primary" />
-          <Tally label="Sending" value={counts.syncing} icon={<Loader2 size={13} />} tone="text-text-secondary" />
-          <Tally label="Failed" value={counts.failed} icon={<AlertCircle size={13} />} tone="text-accent-red" />
-          <Tally label="Delivered" value={counts.synced} icon={<CheckCircle2 size={13} />} tone="text-accent-green" />
-        </div>
-      )}
-
-      {notice && (
-        <p className="text-xs text-text-secondary bg-dark-900 border border-border-dark rounded-lg px-3 py-2 mb-4">
-          {notice}
-        </p>
-      )}
+      {notice && <p role="status" className="text-xs text-text-secondary">{notice}</p>}
 
       {items.length === 0 ? (
-        <p className="text-xs text-text-secondary py-2">
-          Nothing outstanding — every recorded worklog has been delivered.
-        </p>
+        <p className="text-xs text-text-secondary">Nothing outstanding: every entry recorded has been sent.</p>
       ) : (
-        <div className="space-y-2">
+        <ul className="divide-y divide-border-dark rounded-lg border border-border-dark bg-dark-900">
           {items.map(item => (
             <QueueRow key={item.id} item={item} maxAttempts={snapshot?.maxAttempts ?? 0} readAtMs={read?.readAtMs ?? 0} />
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
 };
-
-const Tally: React.FC<{ label: string; value: number; icon: React.ReactNode; tone: string }> = ({
-  label,
-  value,
-  icon,
-  tone
-}) => (
-  <div className="bg-dark-900 border border-border-dark rounded-lg px-3 py-2">
-    <div className={`flex items-center gap-1.5 text-xs ${tone}`}>
-      {icon}
-      {label}
-    </div>
-    <div className="text-lg text-white mt-0.5">{value}</div>
-  </div>
-);
 
 const STATUS_TONE: Record<SyncQueueItemDTO['status'], string> = {
   PENDING: 'text-text-primary border-focus',
@@ -197,7 +152,7 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
   const stillWaiting = waitingUntil !== null && waitingUntil.getTime() > readAtMs;
 
   return (
-    <div className="bg-dark-900 border border-border-dark rounded-lg px-4 py-3">
+    <li className="px-3 py-2.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className={`text-xs px-2 py-0.5 rounded border ${STATUS_TONE[item.status]}`}>
@@ -211,7 +166,7 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
               {item.operation === 'UPDATE' ? 'Correction' : 'Deletion'}
             </span>
           )}
-          <span className="text-sm font-mono text-white truncate">{item.taskKey}</span>
+          <span className="text-sm font-mono text-text-primary truncate">{item.taskKey}</span>
           <span className="text-xs font-mono text-text-secondary">{formatHoursAndMinutes(item.durationSeconds)}</span>
           <span className="text-xs text-text-secondary truncate">{item.providerId}</span>
         </div>
@@ -234,6 +189,6 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
           Next attempt at {formatClockTime(waitingUntil)}
         </p>
       )}
-    </div>
+    </li>
   );
 };

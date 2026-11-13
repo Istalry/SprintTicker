@@ -2591,6 +2591,33 @@ setting; the Tasks view's filters, stars and delete-asks.
 - Pictures remade: `app-device.png`, `app-notifications.png`,
   `app-priority.png`, `app-nobar-device.png`.
 
+**As landed: P16e, Data and Developer (2026-11-13).**
+
+- `DataSettings` (S23): **Export logs** (says when the file is saved;
+  nothing when the dialog is cancelled) and **Erase everything on this
+  computer**, which asks twice in the row -- what goes, then that it cannot
+  be undone -- and names the provider that is not touched.
+- `DeveloperSettings` (S24): the warning, then one row per tool behind
+  **Open**, one open at a time: Bar remote, Display debugger, Test
+  notifications (`TestNotifications`), Notification listener
+  (`NotificationListenerView`), Bar health (`BarHealth`: the display health
+  figures, the ping, the inputs the bar sends). Without a bar, the bar
+  remote alone, as before.
+- `DeviceDiagnosticsView` is gone: every part of it now lives in a page of
+  rows. `Card` left `SettingsPage` with it.
+- `SyncQueuePanel` lost its card and title: a line of counts (waiting,
+  sending, failed, sent) with **Sync now** and **Retry failed**, the rows
+  as a list.
+- Found on the way: `wipeAllData` left `interruptions` (migration 15) and
+  `task_stars` (14) behind, so an erased history still listed fragments to
+  place. Both are erased now; settings and credentials still stay.
+- Tests: `settings-data-developer.test.tsx` (Data's rows, export saved and
+  cancelled, the erase asked twice, kept, refused; Developer's rows and
+  search entries, one tool at a time, test notifications sent and refused,
+  an input from the bar); `display-health.test.tsx` on `BarHealth`; the
+  queue's counts and Retry failed; the wipe of interruptions and stars.
+- No picture shows Data or Developer; none was remade.
+
 ---
 
 ## 20. P15 -- Documents, pictures, release
@@ -2706,4 +2733,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
-| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General), P16b (Account), P16c (My workday) and P16d (Desk devices) done | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d (2026-11-13) |
+| P16 | in progress: split P16a-P16f (§19b); P16a-P16e (the row, General, Account, My workday, Desk devices, Data and Developer) done | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e (2026-11-13) |

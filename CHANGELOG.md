@@ -273,6 +273,13 @@
   says how many decks are connected and installs the plugin. Without a bar
   its block is one line with **Add**. Adding an app by its id moved to
   Developer.
+- **Settings · Data and Developer are rows too.** Data: **Export…** says
+  when the file is saved; **Erase…** asks twice, and now erases the
+  interruptions and stars as well, which it used to leave behind. Developer:
+  the bar remote, the display debugger, test notifications, the
+  notification listener and the bar's health, each behind **Open**, one at a
+  time. The entries waiting to send, in Account › Advanced, lost their old
+  card: one line counts them, with **Sync now** and **Retry failed**.
 - **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
   given to someone else reads **MG-12 > RIN**; interruptions waiting to be
   placed show as **3 TO PLACE** in amber on a task's screen, the time

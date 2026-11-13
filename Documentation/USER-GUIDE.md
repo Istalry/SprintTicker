@@ -206,10 +206,8 @@ first, then to do by priority -- since you have no Recent or Starred yet.
 
 Six groups, each one page, with a search box above them that finds a setting
 by its name or by the name it used to have -- *sync queue*, *priority*,
-*ceremonies*. **General**, **Account**, **My workday** and **Desk
-devices** are pages of rows, each a name, one sentence and its control at
-the right -- a switch that says **On** or **Off**, a menu or a button; the
-other groups follow:
+*ceremonies*. Each is a page of rows: a name, one sentence and its control
+at the right -- a switch that says **On** or **Off**, a menu or a button:
 
 | Group | Holds |
 | :--- | :--- |
@@ -218,10 +216,17 @@ other groups follow:
 | **My workday** | working days, the stand-up and its task, lunch, the end of day, when your week closes, how long each reminder waits, a timer left running overnight, the pause that starts a new entry |
 | **Desk devices** | the bar's line (where it answers, firmware, battery, brightness; Use without a bar), task key color, when nothing runs, Windows notifications on the bar, what the bar shows first, the connection; the Stream Deck's line. Without a bar, one line with Add |
 | **Data** | export the logs; erase everything on this computer |
-| **Developer** | hidden until **Show developer tools**: the bar remote, the display debugger, test notifications, the listener's console, the bar's health |
+| **Developer** | hidden until **Show developer tools**: the bar remote, the display debugger, test notifications, the notification listener, the bar's health -- each behind **Open**, one at a time |
 
-The developer tools act on the real app -- Pause and Resume on your real
-timer, Lunch and Away on your real mode -- and the page says so.
+The developer tools act on the real app -- the bar remote and the display
+debugger's Pause, Stop, Lunch and Away on your real timer and mode -- and
+the page says so. Without a bar, only the bar remote is there.
+
+🧹 **Erase everything on this computer**, in **Data**, deletes your tasks,
+projects, history, interruptions and stars here -- nothing at Jira or
+OpenProject. It asks twice: once what goes, once that it cannot be undone
+and that time not yet sent goes with it. Your provider's tasks come back at
+the next refresh; your settings and credentials stay.
 
 ### ▶️ Today
 
@@ -779,8 +784,10 @@ minutes, so a task added on the provider appears without changing views.
 
 | Button | Does |
 | :--- | :--- |
-| 🔄 **Sync Now** | Fetches projects and tasks immediately |
-| ♻️ **Retry Failed** | Un-parks rows that gave up — use after fixing what broke them |
+| 🔄 **Sync now** | Fetches projects and tasks immediately |
+| ♻️ **Retry failed** | Un-parks rows that gave up — use after fixing what broke them |
+
+Above the rows, one line counts them: waiting, sending, failed, sent.
 
 > [!NOTE]
 > **Why a row parks**
@@ -788,7 +795,7 @@ minutes, so a task added on the provider appears without changing views.
 > A row goes `FAILED` when the failure is permanent: a deleted issue, a revoked
 > key, a session too short for the provider to record. Retrying those on a timer
 > would send byte-identical requests forever, so the app stops and tells you
-> why. **Retry Failed** is for after you have fixed the cause.
+> why. **Retry failed** is for after you have fixed the cause.
 
 ### 📅 Settings: My workday
 
@@ -1051,7 +1058,7 @@ nothing runs**, on, leaves the bar its own clock when no task is timed; a
 question or NOTHING TIMING still stays on it until answered. Off,
 SprintTicker keeps its own idle screen. The animation debugger -- marquee speeds, particle effects, LED
 colours and icon rasterisation, live, drawn through the real renderer -- and
-**Display Health** are under **Developer**.
+**Bar health** are under **Developer**.
 
 <p align="center">
   <img src="../docs/images/app-device.png" width="80%" alt="Desk devices: connected on USB, task key color, when nothing runs, Windows notifications, what the bar shows first, connection, and the Stream Deck's line">
@@ -1364,7 +1371,7 @@ Click a problem to unfold its answer.
 <summary>📭 <b>The task list is empty</b></summary>
 
  Check **Settings, Account** for a saved domain and key.
-Press **Sync Now**; if it stays empty, the credentials are probably wrong — the
+Press **Refresh now**; if it stays empty, the credentials are probably wrong — the
 app deliberately does not invent tasks. A provider error is shown rather than
 swallowed.
 
@@ -1565,7 +1572,7 @@ If the bar does freeze, unplug and replug it, then
 export the logs from **Settings, Data**: the lines just before the freeze say
 what the app was drawing. For the first kind of freeze, uploads taking several
 hundred milliseconds, rather than about fifty, are the warning sign, and
-**Settings, Developer** shows them under **Display Health**: the median upload
+**Settings, Developer** shows them under **Bar health**: the median upload
 time, turning red with a warning when it reaches that level, and how many
 times the screen closed in the last hour. If you see the warning, export the
 logs before restarting the bar; the bundle then holds the run-up to the

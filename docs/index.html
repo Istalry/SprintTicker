@@ -741,10 +741,8 @@
       <h4>⚙️ Settings</h4>
       <p>Six groups, each one page, with a search box above them that finds a setting
       by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
-      <em>ceremonies</em>. <strong>General</strong>, <strong>Account</strong>, <strong>My workday</strong> and <strong>Desk
-      devices</strong> are pages of rows, each a name, one sentence and its control at
-      the right -- a switch that says <strong>On</strong> or <strong>Off</strong>, a menu or a button; the
-      other groups follow:</p>
+      <em>ceremonies</em>. Each is a page of rows: a name, one sentence and its control
+      at the right -- a switch that says <strong>On</strong> or <strong>Off</strong>, a menu or a button:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -774,11 +772,17 @@
       </tr>
       <tr>
       <td align="left"><strong>Developer</strong></td>
-      <td align="left">hidden until <strong>Show developer tools</strong>: the bar remote, the display debugger, test notifications, the listener&#39;s console, the bar&#39;s health</td>
+      <td align="left">hidden until <strong>Show developer tools</strong>: the bar remote, the display debugger, test notifications, the notification listener, the bar&#39;s health -- each behind <strong>Open</strong>, one at a time</td>
       </tr>
       </tbody></table></div>
-      <p>The developer tools act on the real app -- Pause and Resume on your real
-      timer, Lunch and Away on your real mode -- and the page says so.</p>
+      <p>The developer tools act on the real app -- the bar remote and the display
+      debugger&#39;s Pause, Stop, Lunch and Away on your real timer and mode -- and
+      the page says so. Without a bar, only the bar remote is there.</p>
+      <p>🧹 <strong>Erase everything on this computer</strong>, in <strong>Data</strong>, deletes your tasks,
+      projects, history, interruptions and stars here -- nothing at Jira or
+      OpenProject. It asks twice: once what goes, once that it cannot be undone
+      and that time not yet sent goes with it. Your provider&#39;s tasks come back at
+      the next refresh; your settings and credentials stay.</p>
       <h4>▶️ Today</h4>
       <p>The main screen. Start a task, and the bar shows it. With nothing running
       the session card offers just <strong>Start a task</strong> and <strong>Interrupt</strong>. While a task
@@ -1294,20 +1298,21 @@
       </tr>
       </thead>
       <tbody><tr>
-      <td align="left">🔄 <strong>Sync Now</strong></td>
+      <td align="left">🔄 <strong>Sync now</strong></td>
       <td align="left">Fetches projects and tasks immediately</td>
       </tr>
       <tr>
-      <td align="left">♻️ <strong>Retry Failed</strong></td>
+      <td align="left">♻️ <strong>Retry failed</strong></td>
       <td align="left">Un-parks rows that gave up — use after fixing what broke them</td>
       </tr>
       </tbody></table></div>
+      <p>Above the rows, one line counts them: waiting, sending, failed, sent.</p>
       <div class="note"><span class="label">Why a row parks</span>
       <p></p>
       <p>A row goes <code>FAILED</code> when the failure is permanent: a deleted issue, a revoked
       key, a session too short for the provider to record. Retrying those on a timer
       would send byte-identical requests forever, so the app stops and tells you
-      why. <strong>Retry Failed</strong> is for after you have fixed the cause.</p>
+      why. <strong>Retry failed</strong> is for after you have fixed the cause.</p>
       </div>
       <h4>📅 Settings: My workday</h4>
       <p>A page of rows: your working days, the three scheduled events, when your
@@ -1643,7 +1648,7 @@
       question or NOTHING TIMING still stays on it until answered. Off,
       SprintTicker keeps its own idle screen. The animation debugger -- marquee speeds, particle effects, LED
       colours and icon rasterisation, live, drawn through the real renderer -- and
-      <strong>Display Health</strong> are under <strong>Developer</strong>.</p>
+      <strong>Bar health</strong> are under <strong>Developer</strong>.</p>
       <p align="center">
         <img src="images/app-device.png" width="80%" alt="Desk devices: connected on USB, task key color, when nothing runs, Windows notifications, what the bar shows first, connection, and the Stream Deck's line">
       </p><p><strong>Connection</strong>, behind <strong>Change…</strong>, sets the address the app dials and, if
@@ -2051,7 +2056,7 @@
       <p>Click a problem to unfold its answer.</p>
       <details>
       <summary>📭 <b>The task list is empty</b></summary><p> Check <strong>Settings, Account</strong> for a saved domain and key.
-      Press <strong>Sync Now</strong>; if it stays empty, the credentials are probably wrong — the
+      Press <strong>Refresh now</strong>; if it stays empty, the credentials are probably wrong — the
       app deliberately does not invent tasks. A provider error is shown rather than
       swallowed.</p>
       </details><details>
@@ -2201,7 +2206,7 @@
       export the logs from <strong>Settings, Data</strong>: the lines just before the freeze say
       what the app was drawing. For the first kind of freeze, uploads taking several
       hundred milliseconds, rather than about fifty, are the warning sign, and
-      <strong>Settings, Developer</strong> shows them under <strong>Display Health</strong>: the median upload
+      <strong>Settings, Developer</strong> shows them under <strong>Bar health</strong>: the median upload
       time, turning red with a warning when it reaches that level, and how many
       times the screen closed in the last hour. If you see the warning, export the
       logs before restarting the bar; the bundle then holds the run-up to the

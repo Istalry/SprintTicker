@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { AccountSettings } from './AccountSettings';
 import { WorkdaySettings } from './WorkdaySettings';
-import { DeviceDiagnosticsView } from '../Device/DeviceDiagnosticsView';
-import { NotificationListenerView } from '../Notifications/NotificationListenerView';
+import { DataSettings } from './DataSettings';
+import { DeveloperSettings } from './DeveloperSettings';
 import { DeviceSettings } from './DeviceSettings';
 import { CloseToTraySetting } from '../../components/CloseToTraySetting';
 import { LaunchAtLoginSetting } from '../../components/LaunchAtLoginSetting';
 import { ShortcutSettings } from '../../components/ShortcutSettings';
 import { SettingButton, SettingRow, SettingsList, SettingSwitch } from '../../components/SettingRow';
 import { UpdateCheckSetting } from '../../components/UpdateNotice';
-import { BarRemotePad } from '../../components/BarRemotePad';
 import {
   SETTINGS_GROUPS,
   SettingsGroupId,
@@ -38,8 +37,7 @@ export function readShowDeveloper(): boolean {
 
 /**
  * Settings, in six groups (S19–S24): a side list, a search box, one page per
- * group. Every card the app had moves here unchanged; the views that held
- * several subjects show the part that belongs to each group.
+ * group, each a page of rows (P16).
  */
 export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange, hasBar, onRunSetup }) => {
   const [query, setQuery] = useState('');
@@ -119,22 +117,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange
         {current === 'account' && <AccountSettings hasBar={hasBar} />}
         {current === 'workday' && <WorkdaySettings />}
         {current === 'devices' && <DeviceSettings />}
-        {current === 'data' && <DeviceDiagnosticsView part="data" />}
-        {current === 'developer' && <DeveloperGroup hasBar={hasBar} />}
+        {current === 'data' && <DataSettings />}
+        {current === 'developer' && <DeveloperSettings />}
       </section>
     </div>
   );
 };
-
-const Card: React.FC<{ title: string; children: React.ReactNode; description?: string }> = ({ title, description, children }) => (
-  <div className="space-y-3 rounded-xl border border-border-dark bg-dark-800 p-5">
-    <div>
-      <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-      {description && <p className="text-xs text-text-secondary">{description}</p>}
-    </div>
-    {children}
-  </div>
-);
 
 /** General (S19): one row per setting, in the mockup's order. */
 const GeneralGroup: React.FC<{ showDeveloper: boolean; onShowDeveloper: (value: boolean) => void; onRunSetup: () => void }> = ({
@@ -158,18 +146,4 @@ const GeneralGroup: React.FC<{ showDeveloper: boolean; onShowDeveloper: (value: 
       control={<SettingSwitch label="Show developer tools" checked={showDeveloper} onChange={onShowDeveloper} />}
     />
   </SettingsList>
-);
-
-const DeveloperGroup: React.FC<{ hasBar: boolean }> = ({ hasBar }) => (
-  <>
-    <p className="text-xs text-accent-amber">
-      These tools act on the real app: the bar remote presses real keys, and the display debugger&apos;s Pause and
-      Resume act on your real timer, its Lunch and Away on your real mode.
-    </p>
-    <Card title="Bar remote" description="▲ ▼ OK BACK START, as if pressed on the bar.">
-      <BarRemotePad />
-    </Card>
-    <DeviceDiagnosticsView part="developer" />
-    {hasBar && <NotificationListenerView />}
-  </>
 );

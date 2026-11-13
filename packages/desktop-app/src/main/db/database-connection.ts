@@ -74,7 +74,12 @@ export class DatabaseConnection {
   public wipeAllData(): void {
     if (!this.db || !this.db.open) return;
 
+    // Interruptions (migration 15) and stars (14) are history and choices
+    // about tasks too: left behind, an erased day still listed fragments to
+    // place, and stars named tasks that no longer existed.
     this.db.exec(`
+      DELETE FROM interruptions;
+      DELETE FROM task_stars;
       DELETE FROM worklog_sync_queue;
       DELETE FROM worklogs;
       DELETE FROM paused_intervals;

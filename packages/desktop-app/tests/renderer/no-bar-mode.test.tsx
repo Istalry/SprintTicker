@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDiagnosticsView';
+import { DeveloperSettings } from '../../src/renderer/views/Settings/DeveloperSettings';
 import { DeviceSettings } from '../../src/renderer/views/Settings/DeviceSettings';
 import { DEFAULT_DEVICE_CONFIG } from '../../src/shared/device-constants';
 import { NO_BAR_DEVICE, installElectronApi } from './electron-api-mock';
@@ -33,12 +33,13 @@ describe('no-bar mode', () => {
     );
   });
 
-  it('DataAndDeveloper_NoBar_KeepLogsHideTheConsole', async () => {
+  it('Developer_NoBar_OnlyTheToolsThatNeedNone', async () => {
     installElectronApi({ getDeviceStatus: async () => NO_BAR_DEVICE });
-    render(<DeviceDiagnosticsView />);
+    render(<DeveloperSettings />);
 
-    expect(await screen.findByText('Export Logs')).toBeTruthy();
-    expect(screen.queryByText(/Hardware Input Stream Console/)).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'Bar health' })).toBeNull());
+    expect(screen.getByRole('group', { name: 'Bar remote' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Notification listener' })).toBeNull();
   });
 
   it('DeskDevices_WithABar_CanSwitchToNoBarMode', async () => {

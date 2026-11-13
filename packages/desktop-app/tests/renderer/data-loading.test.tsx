@@ -92,6 +92,21 @@ describe('SyncQueuePanel', () => {
     expect(await screen.findByText(/Next attempt at/)).toBeTruthy();
   });
 
+  it('RetryFailed_OneFailed_CountsItAndSaysWhatWasQueued', async () => {
+    const bridge = installElectronApi({
+      getSyncQueue: vi.fn().mockResolvedValue({ ...queue(null), counts: { pending: 1, syncing: 0, synced: 4, failed: 1 } }),
+      retryFailedWorklogs: vi.fn().mockResolvedValue({ requeued: 1 })
+    });
+    render(<SyncQueuePanel />);
+    await screen.findByText('SPR-9');
+    expect(screen.getByText(/waiting/).textContent).toBe('1 waiting · 0 sending · 1 failed · 4 sent');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry failed' }));
+
+    expect(await screen.findByText('1 entry queued again and being sent.')).toBeTruthy();
+    expect(bridge.api.retryFailedWorklogs).toHaveBeenCalledTimes(1);
+  });
+
   it('Render_RetryAlreadyDue_SaysNothingAboutWaiting', async () => {
     const earlier = new Date(Date.now() - 60 * 1000).toISOString();
     installElectronApi({ getSyncQueue: vi.fn().mockResolvedValue(queue(earlier)) });

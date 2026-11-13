@@ -46,6 +46,19 @@ describe('Data Wipe & Task Status Unit Tests', () => {
     expect(tasks.length).toBe(0);
   });
 
+  it('DatabaseConnection_WipeAllData_ClearsInterruptionsAndStars', () => {
+    // Both came after the wipe was written, and it left them behind: an
+    // erased history still listed interruptions to place.
+    const db = dbConn.getDb();
+    db.prepare(`INSERT INTO interruptions (id, started_at_utc, ended_at_utc, source) VALUES ('I-1', '2026-11-13T09:00:00Z', '2026-11-13T09:10:00Z', 'window')`).run();
+    db.prepare(`INSERT INTO task_stars (provider_id, task_key, starred_at_utc) VALUES ('jira', 'MG-12', '2026-11-13T09:00:00Z')`).run();
+
+    dbConn.wipeAllData();
+
+    expect(db.prepare('SELECT COUNT(*) AS n FROM interruptions').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM task_stars').get()).toEqual({ n: 0 });
+  });
+
   it('TaskRepository_UpdateTask_StatusToDone_PersistsCorrectly', () => {
     taskRepo.saveTask({ id: 'PROJ_STATUS_1', projectId: 'PROJ', key: 'PROJ-S1', title: 'Status Test Task', status: 'todo' });
 
