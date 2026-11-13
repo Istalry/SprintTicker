@@ -9,6 +9,7 @@ import type { NoticeKind, SyncHealthDTO } from '../shared/sync-health';
 import type { WindowRoute } from '../shared/window-route';
 import { IPCChannel } from '../shared/ipc-channels';
 import type { IElectronAPI } from './electron-api';
+import type { BarInputDTO } from '../shared/bar-input';
 import type {
   ActiveSessionDTO,
   BitmapIconId,
@@ -174,6 +175,11 @@ const electronAPI: IElectronAPI = {
     const handler = (_event: IpcRendererEvent, data: { inputKey: string; actionAssigned: string }) => callback(data);
     ipcRenderer.on(IPCChannel.ON_HARDWARE_INPUT_EVENT, handler);
     return () => ipcRenderer.removeListener(IPCChannel.ON_HARDWARE_INPUT_EVENT, handler);
+  },
+  onBarInput: (callback: (input: BarInputDTO) => void) => {
+    const handler = (_event: IpcRendererEvent, data: BarInputDTO) => callback(data);
+    ipcRenderer.on(IPCChannel.ON_BAR_INPUT, handler);
+    return () => ipcRenderer.removeListener(IPCChannel.ON_BAR_INPUT, handler);
   },
 
   // Priority Rules

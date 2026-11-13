@@ -1563,6 +1563,8 @@ export class IPCHandlerRegistry {
       }
       this.broadcast(IPCChannel.ON_HARDWARE_INPUT_EVENT, { inputKey, actionAssigned: action });
     });
+    // Every input, with what came of it: the chart in Settings › Desk devices.
+    this.inputDecoder.onInput(input => this.broadcast(IPCChannel.ON_BAR_INPUT, input));
   }
 
   /**

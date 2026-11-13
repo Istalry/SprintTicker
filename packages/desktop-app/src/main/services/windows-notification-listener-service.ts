@@ -26,6 +26,12 @@ import {
 import { AppIconBitmapProcessor } from '../hardware/app-icon-bitmap-processor';
 
 /**
+ * The apps whose icon is drawn here, pixel for pixel, for the bar: shown in
+ * place of any icon read off the app, which at 16 px loses to the drawing.
+ */
+const HAND_DRAWN_APP_ICONS: ReadonlySet<BitmapIconId> = new Set<BitmapIconId>(['discord', 'slack', 'gmail', 'antigravity', 'openproject', 'jira']);
+
+/**
  * Service that captures Windows Action Center / System notifications,
  * evaluates per-source priority rules (DONT_SHOW, DEFAULT, HIGH_PRIORITY),
  * and renders formatted notification banners on the BUSY Bar LED display.
@@ -452,9 +458,17 @@ export class WindowsNotificationListenerService {
 
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
 
-    let rawIconData = event.rawIconData;
-    if (!rawIconData) {
-      const iconOverride = matchedRule?.iconImagePath?.trim();
+    // An image the user chose for this app wins over everything. After it, an
+    // app we drew an icon for shows ours: its own logo, read off the exe or
+    // carried by the toast and shrunk to 16 px, came out as a smudge of the
+    // original -- and only from the second message on, since the lookup is
+    // cached after the first, so Discord changed icon between two messages
+    // (the 2.0 candidate, 2026-11-13). The automatic icon is for the apps we
+    // have no drawing of.
+    const iconOverride = matchedRule?.iconImagePath?.trim();
+    const drawnByUs = !iconOverride && HAND_DRAWN_APP_ICONS.has(iconId);
+    let rawIconData = drawnByUs ? undefined : event.rawIconData;
+    if (!rawIconData && !drawnByUs) {
       const customInput = iconOverride || event.iconPath || event.iconBase64 || this.resolveIconSource(event);
       if (customInput) {
         // `tryProcessAppImage`, not `processAppIcon`: the latter substitutes a

@@ -261,6 +261,14 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Changed
 
+- **Slack, Discord and Gmail notifications always show the icon drawn for
+  the bar.** From the second message on, the app's own logo, shrunk to 16
+  pixels, used to take its place. An image you set on the app still wins.
+- **Bar health is in Desk devices**, no longer behind the developer tools,
+  and the bar's inputs are a chart: the last minute, a lane per input, each
+  mark filled when it did something and hollow when it did nothing -- a
+  Back, an answer held off -- with what it did on hover. Presses that did
+  nothing used to be missing from it altogether.
 - **The picker stays quick with a thousand tasks.** A search that finds
   many shows eight tasks of each project and *N more in …*, which opens the
   project with the search kept: the first letter typed used to draw every

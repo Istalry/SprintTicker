@@ -167,7 +167,8 @@ which the window applies too, so it refuses exactly what main refuses.
 | Channel | Purpose |
 | :--- | :--- |
 | `input:inject-remote-key` | Simulate a physical key |
-| `input:on-hardware-event` | **Event** — a physical control was used |
+| `input:on-hardware-event` | **Event** — a physical control was used, and the action it took |
+| `input:on-bar-input` | **Event** — every input the bar sends, `NONE` included: `BarInputDTO` (`input`, a turn's direction, `key`, `outcome`, `atMs`). Feeds the chart in Bar health |
 
 ### Priority and display
 

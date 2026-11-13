@@ -7,6 +7,7 @@ import { DeskDetectionDTO } from '../../../shared/first-run';
 import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { NotificationAppRules } from '../../components/NotificationAppRules';
+import { BarHealth } from '../../components/BarHealth';
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
 import { ipcErrorMessage } from '../../utils/formatters';
 import { useAnnounce } from '../../components/LiveAnnouncer';
@@ -115,6 +116,7 @@ const BarBlock: React.FC<{
   const [showApps, setShowApps] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showConnection, setShowConnection] = useState(false);
+  const [showHealth, setShowHealth] = useState(false);
   const notifications = useNotificationSettings();
   const listener = useNotificationListenerStatus();
 
@@ -220,6 +222,14 @@ const BarBlock: React.FC<{
         control={<SettingButton aria-expanded={showRules} onClick={() => setShowRules(v => !v)}>{showRules ? 'Close' : 'Open…'}</SettingButton>}
       >
         {showRules && <PriorityRulesView embedded />}
+      </SettingRow>
+
+      <SettingRow
+        title="Bar health"
+        description="The inputs the bar sends, live, and how quickly it answers."
+        control={<SettingButton aria-expanded={showHealth} onClick={() => setShowHealth(v => !v)}>{showHealth ? 'Close' : 'Open…'}</SettingButton>}
+      >
+        {showHealth && <BarHealth status={status} />}
       </SettingRow>
 
       <SettingRow

@@ -1,10 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { DataSettings } from '../../src/renderer/views/Settings/DataSettings';
 import { DeveloperSettings } from '../../src/renderer/views/Settings/DeveloperSettings';
-import { BarHealth } from '../../src/renderer/components/BarHealth';
 import { SETTINGS_ENTRIES } from '../../src/renderer/views/Settings/settings-groups';
-import { CONNECTED_DEVICE, installElectronApi } from './electron-api-mock';
+import { installElectronApi } from './electron-api-mock';
 
 const row = (name: string) => screen.getByRole('group', { name });
 
@@ -75,12 +74,14 @@ describe('Settings · Developer', () => {
   it('Render_EveryToolARow_EverySearchEntryToo', async () => {
     installElectronApi();
     render(<DeveloperSettings />);
-    await screen.findByRole('group', { name: 'Bar health' });
+    await screen.findByRole('group', { name: 'Notification listener' });
 
     for (const entry of SETTINGS_ENTRIES.filter(e => e.group === 'developer')) {
       expect(row(entry.label), entry.label).toBeTruthy();
     }
     expect(screen.getByText(/act on the real app/)).toBeTruthy();
+    // Bar health is Desk devices' since the 2.0 candidate: a user's, not a developer's.
+    expect(screen.queryByRole('group', { name: 'Bar health' })).toBeNull();
   });
 
   it('Open_OneToolAtATime', async () => {
@@ -89,12 +90,12 @@ describe('Settings · Developer', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Bar remote' }));
     expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Open Bar health' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Test notifications' }));
 
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
-    expect(screen.getByText('Inputs from the bar')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Bar health' }));
-    expect(screen.queryByText('Inputs from the bar')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Slack' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Test notifications' }));
+    expect(screen.queryByRole('button', { name: 'Slack' })).toBeNull();
   });
 
   it('TestNotifications_Slack_SentThroughTheListenersPath', async () => {
@@ -118,14 +119,4 @@ describe('Settings · Developer', () => {
     expect(await screen.findByText('Discord not sent: listener off')).toBeTruthy();
   });
 
-  it('BarHealth_AnInputArrives_ShowsIt', async () => {
-    const bridge = installElectronApi();
-    render(<BarHealth status={CONNECTED_DEVICE} />);
-    expect(screen.getByText('Nothing yet. Press a key on the bar.')).toBeTruthy();
-
-    act(() => bridge.emit('onHardwareInputEvent', { inputKey: 'ok', actionAssigned: 'INTERRUPT' }));
-
-    expect(within(screen.getByLabelText('Inputs from the bar')).getByText(/OK/)).toBeTruthy();
-    expect(screen.getByText('→ INTERRUPT')).toBeTruthy();
-  });
 });

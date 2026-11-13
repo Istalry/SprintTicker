@@ -1603,7 +1603,9 @@
       defaults those two rows are at levels 65 and 70, and a few common apps arrive pre-classified — Slack and the
       battery warning as High priority, Discord, Gmail and Windows as Default — but
       all of it is yours to change.</p>
-      <p>Each app&#39;s real icon is resolved from its MSIX manifest or Start Menu shortcut
+      <p>Slack, Discord, Gmail, Jira and OpenProject show an icon drawn for the bar,
+      pixel by pixel; their own logo, shrunk to 16 pixels, does not read. Every
+      other app&#39;s real icon is resolved from its MSIX manifest or Start Menu shortcut
       and downscaled to 15×15. Windows itself says which shortcut belongs to which
       app, so a shortcut named differently from its app — <code>PowerToys (Preview)</code>,
       <code>Visual Studio Code</code> — still finds the right icon. An app with no shortcut is
@@ -1685,9 +1687,16 @@
       reports them, or <em>Not answering at …</em> -- and <strong>Use without a bar</strong>. <strong>When
       nothing runs</strong>, on, leaves the bar its own clock when no task is timed; a
       question or NOTHING TIMING still stays on it until answered. Off,
-      SprintTicker keeps its own idle screen. The display debugger -- every scene
-      and screen, drawn through the real renderer -- and <strong>Bar health</strong> are under
-      <strong>Developer</strong>, once <strong>Show developer tools</strong> is on in General.</p>
+      SprintTicker keeps its own idle screen.</p>
+      <p><strong>Bar health</strong> shows what the bar sends, as you press: a chart of the last
+      minute with a lane each for Pause, the wheel&#39;s click, turning and Back. A
+      filled mark did something, a hollow one arrived and did nothing -- a Back,
+      or an answer held off because the screen had just changed -- and a turn is
+      a triangle pointing its way. Point at a mark, or Tab to it, to read what it
+      did and when, to the millisecond; <strong>As a list</strong> has the same, newest first.
+      Under it, how quickly the bar answers. The display debugger -- every scene
+      and screen, drawn through the real renderer -- is under <strong>Developer</strong>, once
+      <strong>Show developer tools</strong> is on in General.</p>
       <p align="center">
         <img src="images/app-device.png" width="80%" alt="Desk devices: connected on USB, task key color, when nothing runs, Windows notifications, what the bar shows first, connection, and the Stream Deck's line">
       </p><p><strong>Connection</strong>, behind <strong>Change…</strong>, sets the address the app dials and, if
@@ -2247,8 +2256,7 @@
       export the logs from <strong>Settings, Data</strong>: the lines just before the freeze say
       what the app was drawing. For the first kind of freeze, uploads taking several
       hundred milliseconds, rather than about fifty, are the warning sign, and
-      <strong>Settings, Developer</strong> (with <strong>Show developer tools</strong> on) shows them under
-      <strong>Bar health</strong>: the median upload
+      <strong>Settings, Desk devices</strong> shows them under <strong>Bar health</strong>: the median upload
       time, turning red with a warning when it reaches that level, and how many
       times the screen closed in the last hour. If you see the warning, export the
       logs before restarting the bar; the bundle then holds the run-up to the
@@ -4242,7 +4250,11 @@
       </tr>
       <tr>
       <td align="left"><code>input:on-hardware-event</code></td>
-      <td align="left"><strong>Event</strong> — a physical control was used</td>
+      <td align="left"><strong>Event</strong> — a physical control was used, and the action it took</td>
+      </tr>
+      <tr>
+      <td align="left"><code>input:on-bar-input</code></td>
+      <td align="left"><strong>Event</strong> — every input the bar sends, <code>NONE</code> included: <code>BarInputDTO</code> (<code>input</code>, a turn&#39;s direction, <code>key</code>, <code>outcome</code>, <code>atMs</code>). Feeds the chart in Bar health</td>
       </tr>
       </tbody></table></div>
       <h4>Priority and display</h4>

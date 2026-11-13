@@ -3,11 +3,10 @@ import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { BarRemotePad } from '../../components/BarRemotePad';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
 import { TestNotifications } from '../../components/TestNotifications';
-import { BarHealth } from '../../components/BarHealth';
 import { NotificationListenerView } from '../Notifications/NotificationListenerView';
 import { SettingButton, SettingRow, SettingsList } from '../../components/SettingRow';
 
-type Tool = 'remote' | 'debugger' | 'tests' | 'listener' | 'health';
+type Tool = 'remote' | 'debugger' | 'tests' | 'listener';
 
 /**
  * Settings · Developer (S24), once switched on in General: what used to be
@@ -46,7 +45,6 @@ export const DeveloperSettings: React.FC = () => {
         {hasBar && row('debugger', 'Display debugger', 'Plays every scene and screen. Pause, Stop, Lunch and Away act on your real timer.', <AnimationDebugPanel />)}
         {hasBar && row('tests', 'Test notifications', 'Fake Slack, Discord, battery and screenshot notifications.', <TestNotifications />)}
         {hasBar && row('listener', 'Notification listener', 'Capture strategy, database access, logs, apps added by their id.', <NotificationListenerView />)}
-        {hasBar && row('health', 'Bar health', 'Latency, upload times, screen closes, the inputs the bar sends.', <BarHealth status={status} />)}
       </SettingsList>
     </div>
   );

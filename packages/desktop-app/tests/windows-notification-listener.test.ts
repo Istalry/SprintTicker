@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { AppIconBitmapProcessor } from '../src/main/hardware/app-icon-bitmap-processor';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { APP_USER_MODEL_ID } from '../src/main/app-identity';
 import { WindowsNotificationListenerService } from '../src/main/services/windows-notification-listener-service';
 import { PriorityPreemptionEngine } from '../src/main/services/priority-preemption-engine';
@@ -237,6 +238,50 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
     const result = service.handleNotification({ appId: 'slack', appName: 'Slack', title: 'Bob', body: 'ping' });
 
     expect(result).toBe(true);
+  });
+
+  describe('the icon', () => {
+    // Electron decodes the image, and the tests have no Electron: the decode
+    // is stood in for, and what matters is whether it is asked at all.
+    const FILE = 'C:/icons/app.png';
+    const GRID = Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '#FF0000FF'));
+    let decode: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      decode = vi.spyOn(AppIconBitmapProcessor, 'tryProcessAppImage').mockReturnValue(GRID);
+    });
+
+    afterEach(() => {
+      decode.mockRestore();
+    });
+
+    it('HandleNotification_DiscordWithItsOwnIcon_ShowsOurs', () => {
+      // Discord's logo off its exe, shrunk to 16 px, from the second message
+      // on: the icon changed between two messages (2026-11-13).
+      withRules([{ appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' }]);
+
+      service.handleNotification({ appId: 'com.squirrel.Discord.Discord', appName: 'Discord', title: 'Toukha', body: 'hi', iconPath: FILE });
+
+      expect(bannerCalls[0]).toMatchObject({ iconId: 'discord', customIconData: undefined });
+      expect(decode).not.toHaveBeenCalled();
+    });
+
+    it('HandleNotification_DiscordWithAnImageTheUserChose_ShowsTheirs', () => {
+      withRules([{ appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT', iconImagePath: FILE }]);
+
+      service.handleNotification({ appId: 'com.squirrel.Discord.Discord', appName: 'Discord', title: 'Toukha', body: 'hi' });
+
+      expect(decode).toHaveBeenCalledWith(FILE, 'com.squirrel.Discord.Discord');
+      expect(bannerCalls[0].customIconData).toBe(GRID);
+    });
+
+    it('HandleNotification_AnAppWeNeverDrew_ShowsItsOwnIcon', () => {
+      withRules([]);
+
+      service.handleNotification({ appId: 'Contoso.Notes', appName: 'Notes', title: 'Saved', body: 'ok', iconPath: FILE });
+
+      expect(bannerCalls[0]).toMatchObject({ iconId: 'bell', customIconData: GRID });
+    });
   });
 
   it('SimulateNotification_ValidPayload_DispatchesNotification', () => {

@@ -1041,7 +1041,9 @@ defaults those two rows are at levels 65 and 70, and a few common apps arrive pr
 battery warning as High priority, Discord, Gmail and Windows as Default — but
 all of it is yours to change.
 
-Each app's real icon is resolved from its MSIX manifest or Start Menu shortcut
+Slack, Discord, Gmail, Jira and OpenProject show an icon drawn for the bar,
+pixel by pixel; their own logo, shrunk to 16 pixels, does not read. Every
+other app's real icon is resolved from its MSIX manifest or Start Menu shortcut
 and downscaled to 15×15. Windows itself says which shortcut belongs to which
 app, so a shortcut named differently from its app — `PowerToys (Preview)`,
 `Visual Studio Code` — still finds the right icon. An app with no shortcut is
@@ -1098,9 +1100,17 @@ address it answers at, with its firmware, battery and brightness as the bar
 reports them, or *Not answering at …* -- and **Use without a bar**. **When
 nothing runs**, on, leaves the bar its own clock when no task is timed; a
 question or NOTHING TIMING still stays on it until answered. Off,
-SprintTicker keeps its own idle screen. The display debugger -- every scene
-and screen, drawn through the real renderer -- and **Bar health** are under
-**Developer**, once **Show developer tools** is on in General.
+SprintTicker keeps its own idle screen.
+
+**Bar health** shows what the bar sends, as you press: a chart of the last
+minute with a lane each for Pause, the wheel's click, turning and Back. A
+filled mark did something, a hollow one arrived and did nothing -- a Back,
+or an answer held off because the screen had just changed -- and a turn is
+a triangle pointing its way. Point at a mark, or Tab to it, to read what it
+did and when, to the millisecond; **As a list** has the same, newest first.
+Under it, how quickly the bar answers. The display debugger -- every scene
+and screen, drawn through the real renderer -- is under **Developer**, once
+**Show developer tools** is on in General.
 
 <p align="center">
   <img src="../docs/images/app-device.png" width="80%" alt="Desk devices: connected on USB, task key color, when nothing runs, Windows notifications, what the bar shows first, connection, and the Stream Deck's line">
@@ -1620,8 +1630,7 @@ If the bar does freeze, unplug and replug it, then
 export the logs from **Settings, Data**: the lines just before the freeze say
 what the app was drawing. For the first kind of freeze, uploads taking several
 hundred milliseconds, rather than about fifty, are the warning sign, and
-**Settings, Developer** (with **Show developer tools** on) shows them under
-**Bar health**: the median upload
+**Settings, Desk devices** shows them under **Bar health**: the median upload
 time, turning red with a warning when it reaches that level, and how many
 times the screen closed in the last hour. If you see the warning, export the
 logs before restarting the bar; the bundle then holds the run-up to the

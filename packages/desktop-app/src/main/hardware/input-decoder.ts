@@ -13,6 +13,7 @@ import { finishNeedsConfirmation } from '../../shared/task-left';
 import { DECK_MAX_RECENT } from '../../shared/deck-protocol';
 import type { ActiveSessionDTO, TaskDTO } from '../../shared/dtos';
 import { SessionEnding, plainSessionEnding } from '../services/session-commands';
+import type { BarInputDTO, BarInputKind } from '../../shared/bar-input';
 
 export type ActionHandler = (action: string, inputKey: string) => void;
 
@@ -23,7 +24,10 @@ const DECK_RECENT_READ = DECK_MAX_RECENT + 2;
 const NO_SCENES = { renderTaskCompletionConfetti: () => undefined, renderTaskLogged: () => undefined } as unknown as DisplayRenderer;
 
 /** What a press of the bar's inputs is, whatever the firmware calls it. */
-type BarInput = 'pause' | 'back' | 'click' | 'turn' | 'other';
+type BarInput = BarInputKind;
+
+/** Hears every input the bar sends, with what came of it. */
+export type BarInputListener = (input: BarInputDTO) => void;
 
 /** The questions the bar answers, by the lock that holds the display for each. */
 type BarQuestion = 'eod' | 'standup' | 'resume' | 'nothing';
@@ -88,6 +92,7 @@ export class InputDecoder {
   private _windowFocusCallback?: () => void;
   private _openPickerCallback?: () => void;
   private _actionHandlers: Set<ActionHandler> = new Set();
+  private _inputListeners: Set<BarInputListener> = new Set();
   private _eodConfirmStep: number = 0;
   /** The session the bar's Pause just paused, which a second Pause stops until `until`. */
   private _stopArmed: { sessionId: string; until: number } | null = null;
@@ -115,11 +120,13 @@ export class InputDecoder {
     // EventEmitter listener with no error handler terminates the main process,
     // taking the whole app down on a button press.
     this._driver.on('input', (event: HardwareEvent) => {
+      let outcome = 'ERROR';
       try {
-        this.handleHardwareInput(event);
+        outcome = this.handleHardwareInput(event);
       } catch (err) {
         console.error('[InputDecoder] Unhandled error while processing hardware input:', err);
       }
+      this.tellInput(event, outcome);
     });
 
     // A task started or ended elsewhere -- the window, the deck -- while the
@@ -194,6 +201,36 @@ export class InputDecoder {
   public registerActionHandler(handler: ActionHandler): () => void {
     this._actionHandlers.add(handler);
     return () => this._actionHandlers.delete(handler);
+  }
+
+  /**
+   * Hears every input from the bar with its outcome -- `NONE` included,
+   * which the action handlers never hear: the window's chart of the inputs
+   * shows a Back or a held-off answer as having arrived and done nothing.
+   */
+  public onInput(listener: BarInputListener): () => void {
+    this._inputListeners.add(listener);
+    return () => this._inputListeners.delete(listener);
+  }
+
+  private tellInput(event: HardwareEvent, outcome: string): void {
+    const input = InputDecoder.inputOf(event);
+    const dto: BarInputDTO = {
+      input,
+      turn: input === 'turn' ? InputDecoder.turnOf(event) : null,
+      key: (event.key || event.type || '').toLowerCase(),
+      outcome,
+      atMs: Date.now()
+    };
+    for (const listener of this._inputListeners) {
+      try {
+        listener(dto);
+      } catch (err) {
+        // A listener is the window's chart: its failure must not reach the
+        // driver's emitter, where a throw would end the main process.
+        console.error('[InputDecoder] Error in input listener:', err);
+      }
+    }
   }
 
   /** Drops a return still waiting on a second Pause and the menu's timers, for shutdown. */

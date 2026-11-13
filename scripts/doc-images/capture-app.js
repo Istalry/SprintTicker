@@ -747,7 +747,14 @@ async function captureEveryScreen(page, profile) {
     await reload(page);
     await place('Settings', 'Developer');
     await page.shot('s26-settings-developer');
-    await page.press('Open Bar health');
+    // Bar health is Desk devices' since the 2.0 candidate (2026-11-13).
+    await place('Settings', 'Desk devices');
+    await page.eval(`(() => {
+      const row = [...document.querySelectorAll('[role=group][aria-labelledby]')]
+        .find(g => document.getElementById(g.getAttribute('aria-labelledby'))?.textContent.trim() === 'Bar health');
+      row.querySelector('button').click();
+    })()`);
+    await page.reveal('Bar health');
     await page.shot('s27-settings-bar-health');
   });
 

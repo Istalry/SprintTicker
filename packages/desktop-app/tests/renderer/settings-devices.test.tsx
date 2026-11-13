@@ -160,7 +160,8 @@ describe('Settings · Desk devices', () => {
     installElectronApi();
     render(<DeviceSettings />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open…' }));
+    const row = await screen.findByRole('group', { name: 'What the bar shows first' });
+    fireEvent.click(within(row).getByRole('button', { name: 'Open…' }));
 
     expect(await screen.findByText(/The list is the order the display goes by/)).toBeTruthy();
   });
@@ -251,6 +252,7 @@ describe('Settings · Desk devices', () => {
       'Use without a bar': /Use without a bar/,
       'Windows notifications on the bar': /Windows notifications on the bar/,
       'What the bar shows first': /What the bar shows first/,
+      'Bar health': /Bar health/,
       'Stream Deck': /Stream Deck/
     };
     for (const entry of SETTINGS_ENTRIES.filter(e => e.group === 'devices')) {

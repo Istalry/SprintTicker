@@ -22,6 +22,8 @@ describe('no-bar mode', () => {
     await waitFor(() => expect((add as HTMLButtonElement).disabled).toBe(false));
     expect(screen.queryByRole('group', { name: 'Task key color' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Windows notifications on the bar' })).toBeNull();
+    // Bar health is there once a bar is: nothing to chart without one.
+    expect(screen.queryByRole('group', { name: 'Bar health' })).toBeNull();
 
     fireEvent.click(add);
 

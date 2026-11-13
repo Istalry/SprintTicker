@@ -121,6 +121,8 @@ export enum IPCChannel {
   // Hardware input
   INJECT_REMOTE_KEY = 'input:inject-remote-key',
   ON_HARDWARE_INPUT_EVENT = 'input:on-hardware-event',
+  /** Every input the bar sends, with its outcome -- `NONE` too (`BarInputDTO`). */
+  ON_BAR_INPUT = 'input:on-bar-input',
 
   // Priority Matrix & Display
   GET_PRIORITY_RULES = 'priority:get-rules',

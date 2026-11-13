@@ -237,6 +237,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
 
     injectRemoteKey: vi.fn().mockResolvedValue(true),
     onHardwareInputEvent: subscribe('onHardwareInputEvent'),
+    onBarInput: subscribe('onBarInput'),
 
     getPriorityRules: vi.fn().mockResolvedValue({ rules: DEFAULT_PRIORITY_RULES.map(rule => ({ ...rule })) }),
     savePriorityRules: vi.fn().mockResolvedValue(true),

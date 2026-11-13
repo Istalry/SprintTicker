@@ -2742,6 +2742,26 @@ user's to try; before it, what REVIEW §8 left for P15d:
   (CLAUDE.md §7), read it as malformed and failed a sound build.
 - The candidate's files read 1.4.0: the version is the user's to raise.
 
+**From the user's first hour on the candidate (2026-11-13).**
+
+- **A switch in Settings slid the whole window up** (Show developer tools,
+  near the foot of General): `SettingSwitch`'s checkbox is `sr-only`, so
+  absolute, and its label was not positioned -- it sat where it would be on
+  an unscrolled page, and the focus of the click scrolled the document to
+  it. The label is `relative`; reproduced and checked in the browser pane.
+- **Bar health moved to Desk devices**, shown once a bar is set up, and its
+  inputs are a chart (`BarInputsChart`): the last minute, a lane per input,
+  filled for an input that did something, hollow for one that did nothing,
+  a turn a triangle its way, a tooltip and an *As a list* fold. It is fed
+  by a new event, `input:on-bar-input` (`InputDecoder.onInput`), which
+  carries every input with its outcome: the action handlers never hear a
+  Back or a held-off answer, so the old list could not show them.
+- **Discord showed two icons**: ours for the first message after a start,
+  then its own logo shrunk to 16 px, once the icon lookup had been cached.
+  An app we drew an icon for now shows ours always
+  (`HAND_DRAWN_APP_ICONS`); an image the user set on the app still wins,
+  and an app we never drew keeps its own icon.
+
 **To try, the user's (P15d):** the packaged build, on a day of real work,
 on the real bar and Stream Deck Mobile. Install over 1.4.0 and keep the
 database: the update keeps it, and a copy first costs nothing.

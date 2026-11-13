@@ -1147,6 +1147,14 @@ ticks. The pickers are comboboxes: the focus stays in the field and
 `aria-activedescendant` names the row the arrows reach, so an option is
 never a Tab stop.
 
+**An `sr-only` control needs a positioned parent.** `sr-only` is
+`position: absolute`; with no `relative` ancestor near it, the hidden
+checkbox of a switch sat where it would be on an unscrolled page, and the
+focus a click gave it scrolled the whole document to reach it -- the app
+slid up off the window, black below (the 2.0 candidate, 2026-11-13).
+`SettingSwitch`'s label is `relative`; jsdom has no layout, so a test
+holds the class.
+
 **The window's colours are tokens, and colour means something.** Green is
 running, amber is paused or waiting on the user, red is danger; everything
 else is grey (`tailwind.config.js`). There is no blue or purple token, and

@@ -6,6 +6,7 @@ import { TaskRepository } from '../src/main/db/repositories/task-repository';
 import { ProjectRepository } from '../src/main/db/repositories/project-repository';
 import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { BusyBarDriver } from '../src/main/hardware/busybar-driver';
+import { barInputDidNothing, type BarInputDTO } from '../src/shared/bar-input';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
@@ -1138,5 +1139,63 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
       expect(seen).toEqual([]);
     });
 
+  });
+
+  describe("every input, for the window's chart", () => {
+    const send = (key: string, type: 'press' | 'rotate_left' | 'rotate_right' = 'press') =>
+      driver.emit('input', { key, type, timestamp: new Date().toISOString() });
+
+    it('OnInput_BackPressed_ToldItArrivedAndDidNothing', () => {
+      // Back does nothing, so the action handlers never hear it -- and the
+      // window's list of inputs used to show nothing at all for it.
+      const told: BarInputDTO[] = [];
+      const actions: string[] = [];
+      decoder.onInput(input => told.push(input));
+      decoder.registerActionHandler(action => actions.push(action));
+
+      send('back');
+
+      expect(told).toEqual([expect.objectContaining({ input: 'back', turn: null, key: 'back', outcome: 'NONE' })]);
+      expect(barInputDidNothing(told[0].outcome)).toBe(true);
+      expect(actions).toEqual([]);
+    });
+
+    it('OnInput_ClickPressed_ToldWithTheAction', () => {
+      const told: BarInputDTO[] = [];
+      decoder.onInput(input => told.push(input));
+
+      send('ok');
+
+      expect(told).toEqual([expect.objectContaining({ input: 'click', outcome: 'START_INTERRUPTION' })]);
+      expect(barInputDidNothing(told[0].outcome)).toBe(false);
+    });
+
+    it('OnInput_TurnedLeft_ToldWithItsDirection', () => {
+      const told: BarInputDTO[] = [];
+      decoder.onInput(input => told.push(input));
+
+      send('rotate_left', 'rotate_left');
+
+      expect(told[0]).toMatchObject({ input: 'turn', turn: -1 });
+    });
+
+    it('OnInput_AListenerThrows_TheDriverCarriesOn', () => {
+      const told: BarInputDTO[] = [];
+      decoder.onInput(() => { throw new Error('chart gone'); });
+      decoder.onInput(input => told.push(input));
+
+      expect(() => send('back')).not.toThrow();
+      expect(told).toHaveLength(1);
+    });
+
+    it('OnInput_Unsubscribed_HearsNoMore', () => {
+      const told: BarInputDTO[] = [];
+      const stop = decoder.onInput(input => told.push(input));
+      stop();
+
+      send('back');
+
+      expect(told).toEqual([]);
+    });
   });
 });

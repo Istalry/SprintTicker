@@ -1,29 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { DeviceStatusDTO } from '../../shared/dtos';
-import { formatClockTime } from '../utils/formatters';
-
-/** How many of the bar's inputs the console keeps. */
-const INPUTS_KEPT = 20;
-
-interface InputLine { time: string; key: string; action: string }
+import { BarInputsChart } from './BarInputsChart';
 
 /**
- * The bar's health (S24, Developer): the figures that came before every
- * measured hang of firmware 1.2.4 -- the upload median, screen closes, skipped
- * requests, the longest queue -- and the inputs the bar sent, as they arrive.
+ * The bar's health (Settings › Desk devices, once a bar is set up; it was
+ * Developer's until the 2.0 candidate, the user's choice 2026-11-13): the
+ * inputs the bar sends, as a chart of the last minute, and the figures that
+ * came before every measured hang of firmware 1.2.4 -- the upload median,
+ * screen closes, skipped requests, the longest queue.
  */
 export const BarHealth: React.FC<{ status: DeviceStatusDTO }> = ({ status }) => {
-  const [inputs, setInputs] = useState<InputLine[]>([]);
   const health = status.displayHealth;
-
-  useEffect(() => {
-    if (!window.electronAPI?.onHardwareInputEvent) return undefined;
-    return window.electronAPI.onHardwareInputEvent(event => {
-      const now = new Date();
-      const time = `${formatClockTime(now)}.${String(now.getMilliseconds()).padStart(3, '0')}`;
-      setInputs(prev => [...prev, { time, key: event.inputKey, action: event.actionAssigned }].slice(-INPUTS_KEPT));
-    });
-  }, []);
 
   const figures: ReadonlyArray<[string, string, boolean]> = [
     ['Upload time (median)', health.uploadMedianMs === null ? 'No uploads yet' : `${health.uploadMedianMs} ms`, health.latencyWarning],
@@ -35,6 +22,10 @@ export const BarHealth: React.FC<{ status: DeviceStatusDTO }> = ({ status }) => 
 
   return (
     <div className="space-y-3">
+      <div>
+        <p className="mb-1 text-xs font-semibold text-text-primary">Inputs from the bar</p>
+        <BarInputsChart />
+      </div>
       {health.latencyWarning && (
         <p role="alert" className="text-xs text-accent-red">
           Uploads to the bar are slow. On firmware 1.2.4 they slowed like this before every freeze that was
@@ -49,19 +40,6 @@ export const BarHealth: React.FC<{ status: DeviceStatusDTO }> = ({ status }) => 
           </div>
         ))}
       </dl>
-      <div>
-        <p className="mb-1 text-xs font-semibold text-text-primary">Inputs from the bar</p>
-        <div aria-label="Inputs from the bar" className="h-32 space-y-0.5 overflow-y-auto rounded-lg border border-border-dark bg-dark-900 p-2 font-mono text-[11px]">
-          {inputs.length === 0 ? (
-            <p className="text-text-muted">Nothing yet. Press a key on the bar.</p>
-          ) : inputs.map((line, i) => (
-            <p key={i} className="text-text-primary">
-              <span className="text-text-muted">{line.time}</span> {line.key.toUpperCase()}{' '}
-              <span className="text-text-secondary">→ {line.action}</span>
-            </p>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

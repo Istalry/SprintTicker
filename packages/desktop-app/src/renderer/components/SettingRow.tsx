@@ -57,7 +57,11 @@ interface SettingSwitchProps {
  * the tests work as they do on any checkbox.
  */
 export const SettingSwitch: React.FC<SettingSwitchProps> = ({ checked, onChange, label, disabled }) => (
-  <label className={`inline-flex items-center gap-2 text-xs text-text-secondary ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>
+  // `relative` holds the hidden checkbox (`sr-only` is absolute) inside the
+  // switch. Without it the checkbox sat where it would be on an unscrolled
+  // page, and the focus a click gives it scrolled the whole window to reach
+  // it: the shell slid up off the top, black below (2.0 candidate, 2026-11-13).
+  <label className={`relative inline-flex items-center gap-2 text-xs text-text-secondary ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>
     <span aria-hidden="true">{checked ? 'On' : 'Off'}</span>
     <input
       type="checkbox"

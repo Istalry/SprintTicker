@@ -75,7 +75,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Display debugger', group: 'developer', keywords: ['animation', 'scenes', 'preview'] },
   { label: 'Test notifications', group: 'developer', keywords: ['simulate', 'discord', 'slack'] },
   { label: 'Notification listener', group: 'developer', keywords: ['capture', 'database', 'logs', 'console'] },
-  { label: 'Bar health', group: 'developer', keywords: ['latency', 'upload', 'screen closes', 'input console'] }
+  { label: 'Bar health', group: 'devices', keywords: ['latency', 'upload', 'screen closes', 'inputs', 'buttons', 'chart'] }
 ];
 
 /**
