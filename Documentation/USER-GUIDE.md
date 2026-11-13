@@ -206,15 +206,15 @@ first, then to do by priority -- since you have no Recent or Starred yet.
 
 Six groups, each one page, with a search box above them that finds a setting
 by its name or by the name it used to have -- *sync queue*, *priority*,
-*ceremonies*. **General** and **Account** are pages of rows, each a name,
-one sentence and its control at the right -- a switch that says **On** or
-**Off**, a menu or a button; the other groups follow:
+*ceremonies*. **General**, **Account** and **My workday** are pages of
+rows, each a name, one sentence and its control at the right -- a switch
+that says **On** or **Off**, a menu or a button; the other groups follow:
 
 | Group | Holds |
 | :--- | :--- |
 | **General** | Start with Windows, when you close the window, the shortcuts, updates, **Set up again**, and **Show developer tools** |
 | **Account** | your account, with Refresh now and Change account; the tasks to fetch; what a start and a Done do there; its notifications; Advanced -- its state names, the key for tasks of your own, the entries waiting to send |
-| **My workday** | working days, the stand-up, lunch, the end of day |
+| **My workday** | working days, the stand-up and its task, lunch, the end of day, when your week closes, how long each reminder waits, a timer left running overnight, the pause that starts a new entry |
 | **Desk devices** | the bar's status, task key color, connection, idle clock and use without a bar; with a bar, the Windows notifications it shows and what it shows first; the Stream Deck |
 | **Data** | export the logs; erase everything on this computer |
 | **Developer** | hidden until **Show developer tools**: the bar remote, the display debugger, test notifications, the listener's console, the bar's health |
@@ -642,7 +642,7 @@ question about a session left running, say how the time will be filed before
 it is. The timer still shows the whole session.
 
 **A long pause starts a new worklog too**: 15 minutes or more by default,
-set under **Working Days** in **Settings, My workday** (0 keeps one worklog per day). A
+set by *A long pause starts a new entry* in **Settings, My workday** (*never* keeps one worklog per day). A
 shorter pause is a gap inside one worklog. A piece too short for your
 provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
 rather than lost.
@@ -791,10 +791,14 @@ minutes, so a task added on the provider appears without changing views.
 
 ### 📅 Settings: My workday
 
-Working hours, and the three scheduled events:
+A page of rows: your working days, the three scheduled events, when your
+week closes, how long each reminder waits before it asks, and two rules for
+your time -- a timer left running overnight is asked about, and a long pause
+starts a new entry. **Show me**, on the stand-up and the end of day, puts up
+the prompt now; nothing is timed or sent unless you answer it.
 
 <p align="center">
-  <img src="../docs/images/app-ceremonies.png" width="80%" alt="Settings, My workday: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
+  <img src="../docs/images/app-ceremonies.png" width="80%" alt="Settings, My workday: working days, stand-up at 09:30, lunch 12:30 to 13:30, end of day at 17:30, the week closing on Friday, and the first reminders' delays">
 </p>
 
 | | Default | Does |
@@ -855,8 +859,8 @@ On the bar, *Nothing timing* shows **NOTHING TIMING** until you answer it
 there or in the app. The quiet answer is final for that time: the same
 pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
 too. **Back to MG-12?** left unanswered for 10 minutes gets one more
-notification. The delays are `prompt_delays` in the settings; Settings
-will show them.
+notification. Each delay is a row of **My workday**, from 5 minutes to
+two hours.
 
 During Lunch the bar shows a sandwich building itself beside **LUNCH**, on
 teal. In Away mode it shows a steaming coffee beside **AWAY**, on purple. At the
@@ -878,8 +882,8 @@ logged, and a **Daily Standup** task starts -- one ad-hoc task, reused every
 day, kept on this computer and never sent. Joined late? Pick **joined 2, 5,
 10 or 15 min ago** beside Join: the stand-up starts then, and those minutes
 come off the task before it. To have the stand-up sent to your provider,
-choose its task in **Settings, My workday** -- *Timed on* › **Choose a
-task…**; **Keep it here** goes back to Daily Standup. A chosen task that is
+choose its task on the **Stand-up** row of **Settings, My workday** --
+**on Daily Standup ▾**; **Keep it here** goes back to Daily Standup. A chosen task that is
 no longer in your lists falls back to Daily Standup. The bar then shows its timer, with three people at a table in place of
 the stopwatch, taking turns to speak, so you can see the prompt has gone and
 the meeting is being timed. Stop the stand-up (DONE, STOP or DISCARD) and the task you were on starts
@@ -893,7 +897,7 @@ question alone keeps your task running.
 🥪 **Lunch and Away pause the task you are tracking.** Neither is timed,
 and nothing is sent at the start of the break: when you stop the task, its
 time goes in as two worklogs either side of a break of 15 minutes or more
-(*A pause of … minutes or more starts a new worklog*, in **My workday**), to the second. When
+(*A long pause starts a new entry*, in **My workday**), to the second. When
 the break ends -- lunch's hour is over, or you unlock Windows -- Today and
 the mini timer ask **Back at your desk?**, naming the task, and the bar shows
 its key with **RESUME IT?**:
@@ -930,7 +934,7 @@ comes when you are back, that day. Lunch never undoes what you do:
 Lunch must start and end on the same day, start first: **My workday**
 says so and saves nothing until it does. A window across midnight never began.
 
-📆 **The ceremonies happen on working days only.** **Working Days**, at the
+📆 **The ceremonies happen on working days only.** **Working days**, at the
 top of **My workday**, picks them -- Monday to Friday until you change
 it, and at least one. On any other day nothing is prompted and Lunch does not
 start; your timer works as on any day, and what you track is logged as usual.
@@ -941,6 +945,7 @@ alone, and a holiday already read stays one.
 
 🗓️ **The wrap-up of the week's last working day closes the week.** Usually
 that is Friday's; with Friday a holiday, or a four-day week, it is Thursday's.
+**My week closes**, in My workday, names that day.
 A notice in the corner of the window then shows the week and the time logged
 in it, a reminder to check it is all in before your timesheet is due. **Check
 my week** opens that week in History with its check (above); either button

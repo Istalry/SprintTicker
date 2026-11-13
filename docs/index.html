@@ -741,9 +741,9 @@
       <h4>⚙️ Settings</h4>
       <p>Six groups, each one page, with a search box above them that finds a setting
       by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
-      <em>ceremonies</em>. <strong>General</strong> and <strong>Account</strong> are pages of rows, each a name,
-      one sentence and its control at the right -- a switch that says <strong>On</strong> or
-      <strong>Off</strong>, a menu or a button; the other groups follow:</p>
+      <em>ceremonies</em>. <strong>General</strong>, <strong>Account</strong> and <strong>My workday</strong> are pages of
+      rows, each a name, one sentence and its control at the right -- a switch
+      that says <strong>On</strong> or <strong>Off</strong>, a menu or a button; the other groups follow:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -761,7 +761,7 @@
       </tr>
       <tr>
       <td align="left"><strong>My workday</strong></td>
-      <td align="left">working days, the stand-up, lunch, the end of day</td>
+      <td align="left">working days, the stand-up and its task, lunch, the end of day, when your week closes, how long each reminder waits, a timer left running overnight, the pause that starts a new entry</td>
       </tr>
       <tr>
       <td align="left"><strong>Desk devices</strong></td>
@@ -1171,7 +1171,7 @@
       question about a session left running, say how the time will be filed before
       it is. The timer still shows the whole session.</p>
       <p><strong>A long pause starts a new worklog too</strong>: 15 minutes or more by default,
-      set under <strong>Working Days</strong> in <strong>Settings, My workday</strong> (0 keeps one worklog per day). A
+      set by <em>A long pause starts a new entry</em> in <strong>Settings, My workday</strong> (<em>never</em> keeps one worklog per day). A
       shorter pause is a gap inside one worklog. A piece too short for your
       provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
       rather than lost.</p>
@@ -1309,9 +1309,13 @@
       why. <strong>Retry Failed</strong> is for after you have fixed the cause.</p>
       </div>
       <h4>📅 Settings: My workday</h4>
-      <p>Working hours, and the three scheduled events:</p>
+      <p>A page of rows: your working days, the three scheduled events, when your
+      week closes, how long each reminder waits before it asks, and two rules for
+      your time -- a timer left running overnight is asked about, and a long pause
+      starts a new entry. <strong>Show me</strong>, on the stand-up and the end of day, puts up
+      the prompt now; nothing is timed or sent unless you answer it.</p>
       <p align="center">
-        <img src="images/app-ceremonies.png" width="80%" alt="Settings, My workday: stand-up at 09:30, lunch 12:30 to 13:30, end-of-day wrap-up at 17:30">
+        <img src="images/app-ceremonies.png" width="80%" alt="Settings, My workday: working days, stand-up at 09:30, lunch 12:30 to 13:30, end of day at 17:30, the week closing on Friday, and the first reminders' delays">
       </p><div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1405,8 +1409,8 @@
       there or in the app. The quiet answer is final for that time: the same
       pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
       too. <strong>Back to MG-12?</strong> left unanswered for 10 minutes gets one more
-      notification. The delays are <code>prompt_delays</code> in the settings; Settings
-      will show them.</p>
+      notification. Each delay is a row of <strong>My workday</strong>, from 5 minutes to
+      two hours.</p>
       <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>, on
       teal. In Away mode it shows a steaming coffee beside <strong>AWAY</strong>, on purple. At the
       stand-up prompt it shows three people round a table taking turns to speak,
@@ -1443,8 +1447,8 @@
       day, kept on this computer and never sent. Joined late? Pick <strong>joined 2, 5,
       10 or 15 min ago</strong> beside Join: the stand-up starts then, and those minutes
       come off the task before it. To have the stand-up sent to your provider,
-      choose its task in <strong>Settings, My workday</strong> -- <em>Timed on</em> › <strong>Choose a
-      task…</strong>; <strong>Keep it here</strong> goes back to Daily Standup. A chosen task that is
+      choose its task on the <strong>Stand-up</strong> row of <strong>Settings, My workday</strong> --
+      <strong>on Daily Standup ▾</strong>; <strong>Keep it here</strong> goes back to Daily Standup. A chosen task that is
       no longer in your lists falls back to Daily Standup. The bar then shows its timer, with three people at a table in place of
       the stopwatch, taking turns to speak, so you can see the prompt has gone and
       the meeting is being timed. Stop the stand-up (DONE, STOP or DISCARD) and the task you were on starts
@@ -1457,7 +1461,7 @@
       <p>🥪 <strong>Lunch and Away pause the task you are tracking.</strong> Neither is timed,
       and nothing is sent at the start of the break: when you stop the task, its
       time goes in as two worklogs either side of a break of 15 minutes or more
-      (<em>A pause of … minutes or more starts a new worklog</em>, in <strong>My workday</strong>), to the second. When
+      (<em>A long pause starts a new entry</em>, in <strong>My workday</strong>), to the second. When
       the break ends -- lunch&#39;s hour is over, or you unlock Windows -- Today and
       the mini timer ask <strong>Back at your desk?</strong>, naming the task, and the bar shows
       its key with <strong>RESUME IT?</strong>:</p>
@@ -1492,7 +1496,7 @@
       </ul>
       <p>Lunch must start and end on the same day, start first: <strong>My workday</strong>
       says so and saves nothing until it does. A window across midnight never began.</p>
-      <p>📆 <strong>The ceremonies happen on working days only.</strong> <strong>Working Days</strong>, at the
+      <p>📆 <strong>The ceremonies happen on working days only.</strong> <strong>Working days</strong>, at the
       top of <strong>My workday</strong>, picks them -- Monday to Friday until you change
       it, and at least one. On any other day nothing is prompted and Lunch does not
       start; your timer works as on any day, and what you track is logged as usual.
@@ -1502,6 +1506,7 @@
       alone, and a holiday already read stays one.</p>
       <p>🗓️ <strong>The wrap-up of the week&#39;s last working day closes the week.</strong> Usually
       that is Friday&#39;s; with Friday a holiday, or a four-day week, it is Thursday&#39;s.
+      <strong>My week closes</strong>, in My workday, names that day.
       A notice in the corner of the window then shows the week and the time logged
       in it, a reminder to check it is all in before your timesheet is due. <strong>Check
       my week</strong> opens that week in History with its check (above); either button

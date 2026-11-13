@@ -2522,6 +2522,38 @@ setting; the Tasks view's filters, stars and delete-asks.
   entry of the group on the page); the notifications tests moved behind
   Choose…; the start setting's menu.
 
+**As landed: P16c, My workday (2026-11-13).**
+
+- `WorkdaySettings` replaces `CeremoniesView` ("AGILE CEREMONIES, SCHEDULE &
+  PC AUTOMATION"), in S21's order: Working days; Stand-up; Lunch; End of
+  day; My week closes; the four reminders; A timer left running overnight;
+  A long pause starts a new entry.
+- The stand-up's row is `StandupSetting`: its time, the task as a button
+  (**on OPS-4 ▾** / **on Daily Standup ▾**, the description saying where
+  its time goes), **Keep it here** and **Show me**. The first run keeps
+  `StandupTaskSetting`; both read and choose through `useStandupTask`.
+- The four prompt delays (P8d's `prompt_delays`) get their rows at last:
+  menus of 5 to 120 minutes, saved on change through `saveFlowSetting`,
+  apart from the schedule. A stored value no menu offers shows as itself.
+- *My week closes* is read-only: the last working day, Monday first (a week
+  worked on Sunday closes on Sunday), as `last_week_closed` closes it.
+- The split pause became a menu (never, 5, 10, 15, 30, 60 min); its
+  sentence says the number chosen and the provider's timesheet.
+- The schedule still saves through one `saveScheduleSettings`, only once
+  valid; each refusal shows under its row (the week's, the split's, the
+  rest under Lunch).
+- Deviations from S21: *Working days* says "nor on a holiday X lists" only
+  for a provider that lists holidays -- with none, the app knows no public
+  holidays; and the stand-up reminder's "ending it then can end it at its
+  usual length" is left out, since its answer does not do that.
+- Tests: `settings-workday.test.tsx` (the rows in S21's order, the gated
+  auto-save, each refusal under its row, the closing day, the split menu,
+  the delays saved and refused, both Show me, every search entry a row) --
+  the old view's tests moved there from `data-loading` and `layout-pass`;
+  `standup-setting.test.tsx` for the row. Search entries added for My week
+  closes and the four reminders.
+- Picture remade: `app-ceremonies.png`.
+
 ---
 
 ## 20. P15 -- Documents, pictures, release
@@ -2637,4 +2669,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
-| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General) and P16b (Account) done | P16a `0a36d40`, P16b (2026-11-13) |
+| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General), P16b (Account) and P16c (My workday) done | P16a `0a36d40`, P16b `fe1c7ab`, P16c (2026-11-13) |

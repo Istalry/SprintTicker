@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { AccountSettings } from './AccountSettings';
-import { CeremoniesView } from '../Ceremonies/CeremoniesView';
+import { WorkdaySettings } from './WorkdaySettings';
 import { DeviceDiagnosticsView } from '../Device/DeviceDiagnosticsView';
 import { NotificationSettingsView } from '../Notifications/NotificationSettingsView';
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
@@ -117,7 +117,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange
           <GeneralGroup showDeveloper={showDeveloper} onShowDeveloper={setShowDeveloper} onRunSetup={onRunSetup} />
         )}
         {current === 'account' && <AccountSettings hasBar={hasBar} />}
-        {current === 'workday' && <CeremoniesView />}
+        {current === 'workday' && <WorkdaySettings />}
         {current === 'devices' && <DevicesGroup hasBar={hasBar} />}
         {current === 'data' && <DeviceDiagnosticsView part="data" />}
         {current === 'developer' && <DeveloperGroup hasBar={hasBar} />}

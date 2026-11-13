@@ -51,6 +51,11 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Stand-up', group: 'workday', keywords: ['standup', 'daily', 'meeting', 'ceremonies'] },
   { label: 'Lunch', group: 'workday', keywords: ['break', 'quiet hours'] },
   { label: 'End of day', group: 'workday', keywords: ['eod', 'wrap-up', 'shutdown'] },
+  { label: 'My week closes', group: 'workday', keywords: ['closed week', 'timesheet', 'friday'] },
+  { label: 'Nothing timing in working hours', group: 'workday', keywords: ['reminder', 'idle', 'not timing'] },
+  { label: 'A pause that runs long', group: 'workday', keywords: ['reminder', 'paused', 'still paused'] },
+  { label: 'A stand-up still running', group: 'workday', keywords: ['reminder', 'standup', 'meeting'] },
+  { label: 'An interruption still running', group: 'workday', keywords: ['reminder', 'interrupt'] },
   { label: 'A long pause starts a new entry', group: 'workday', keywords: ['split', 'pause'] },
   { label: 'A timer left running overnight', group: 'workday', keywords: ['forgotten', 'overnight', 'midnight'] },
 

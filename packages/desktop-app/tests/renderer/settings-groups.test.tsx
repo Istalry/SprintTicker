@@ -53,7 +53,7 @@ describe('settings groups', () => {
   it.each([
     ['General', /Start with Windows/],
     ['Account', /Tasks to fetch from OpenProject/],
-    ['My workday', /Working Days/],
+    ['My workday', /My week closes/],
     ['Desk devices', /Task key color/],
     ['Data', /Danger Zone/]
   ])('Group_%s_MountsItsCards', async (label, card) => {

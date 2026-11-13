@@ -320,7 +320,7 @@ OpenProject instance lists, and the last one in a week closes it with a
 reminder of the time logged.
 
 <p align="center">
-  <img src="docs/images/app-ceremonies.png" width="70%" alt="Settings, My workday: stand-up time, lunch hours, end-of-day wrap-up">
+  <img src="docs/images/app-ceremonies.png" width="70%" alt="Settings, My workday: working days, stand-up, lunch, end of day, when the week closes, and the reminders' delays">
 </p>
 
 ---

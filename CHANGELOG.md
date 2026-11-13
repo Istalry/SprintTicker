@@ -257,6 +257,12 @@
   **Choose…**; and **Advanced** for the state names, the key for tasks of
   your own and the entries waiting to send. When the provider refuses your
   token, a banner on top takes the new one: **Save and send**.
+- **Settings · My workday is a page of rows**: working days; the stand-up,
+  its time, its task (**on Daily Standup ▾**) and **Show me**; lunch; the
+  end of day with **Show me**; when your week closes; how long each of the
+  four reminders waits -- nothing timing, a long pause, a stand-up, an
+  interruption -- set here at last; a timer left running overnight; and the
+  pause that starts a new entry, now a menu.
 - **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
   given to someone else reads **MG-12 > RIN**; interruptions waiting to be
   placed show as **3 TO PLACE** in amber on a task's screen, the time

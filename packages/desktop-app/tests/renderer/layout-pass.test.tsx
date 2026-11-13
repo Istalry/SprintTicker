@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DeviceDiagnosticsView } from '../../src/renderer/views/Device/DeviceDiagnosticsView';
 import { ProjectTaskManagerView } from '../../src/renderer/views/Tasks/ProjectTaskManagerView';
-import { CeremoniesView } from '../../src/renderer/views/Ceremonies/CeremoniesView';
 import { ProjectDTO, TaskDTO } from '../../src/shared/dtos';
 import { END_THE_INTERRUPTION_FIRST } from '../../src/shared/interruption';
 import { CONNECTED_DEVICE, TRACKING_SESSION, installElectronApi } from './electron-api-mock';
@@ -123,17 +122,5 @@ describe('the task list rows', () => {
 
     expect(bridge.api.switchFromInterruption).not.toHaveBeenCalled();
     expect(bridge.api.startTask).not.toHaveBeenCalled();
-  });
-});
-
-describe('Ceremonies', () => {
-  it('Mount_NoPromptTimeoutCard', async () => {
-    // Saved and never read: its auto-dismiss and auto-execute never happened.
-    installElectronApi();
-    render(<CeremoniesView />);
-
-    await screen.findByText('Try the wrap-up');
-    expect(screen.queryByText(/Dialog Prompt Timeout/)).toBeNull();
-    expect(screen.queryByText(/Auto-Execute/)).toBeNull();
   });
 });
