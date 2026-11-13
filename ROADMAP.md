@@ -1147,8 +1147,9 @@ on protocol 2 with its shipped profiles, the bar rethought with the user
 no, Back is unused, turning opens a short menu, the ⚡ icon, STAND-UP,
 3 TO PLACE, MG-12 > RIN, NO TASK), and Tasks and Settings as their
 screens. P15 -- the review, a dry run at 20 projects of 50 tasks, the
-documents -- is done up to the candidate: rc2 is installed, and the
-user's day of real work on the bar and Stream Deck Mobile is Monday
+documents -- is done up to the candidate: rc2 is installed, rc3 (one
+fix more, notification icons kept between starts) is Monday's first build,
+and the user's day of real work on the bar and Stream Deck Mobile is Monday
 2026-11-16 (the checklist is `Documentation/REDESIGN-PLAN.md`, P15d). Then
 the fixes it finds, the user's 2.0.0 tag, and P15e, the motion video.
 
