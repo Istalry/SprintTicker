@@ -1051,7 +1051,10 @@ and downscaled to 15×15. Windows itself says which shortcut belongs to which
 app, so a shortcut named differently from its app — `PowerToys (Preview)`,
 `Visual Studio Code` — still finds the right icon. An app with no shortcut is
 matched by name, which is not perfect: if it shows the wrong icon, set an icon
-of your own on that app (*Icon of my own*, a 16×16 PNG). The ✈ beside an
+of your own on that app (*Icon of my own*, a 16×16 PNG). An icon found is
+kept between starts, and the apps you have already met are looked up when the
+app starts, so a first notification after a start no longer rings the bell
+while its icon is still being found. The ✈ beside an
 app sends it a test notification, and the bin forgets it until it notifies
 again. An app the list has not seen yet is added by its id under **Settings,
 Developer** (turn on **Show developer tools** in General first). The first notification from an app after SprintTicker

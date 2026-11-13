@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import * as fs from 'fs';
 import { ArgumentNullException } from '../../shared/dtos';
 
 /**
@@ -16,6 +17,18 @@ export type PowerShellRunner = (script: string) => Promise<string>;
  * whereas `app.getFileIcon` asks the shell and can.
  */
 export type FileIconReader = (executablePath: string) => Promise<string | null>;
+
+/**
+ * Where found icons are kept between runs: app id to its icon (a file path,
+ * or a data URL read off an executable). Without it every start began with
+ * an empty cache, so each app's first notification after a start drew the
+ * bell -- Claude's, minutes after the 2.0 candidate was installed
+ * (2026-11-13).
+ */
+export interface IconPathStore {
+  load(): Record<string, string>;
+  save(icons: Record<string, string>): void;
+}
 
 /** How long a resolution attempt may run before it is abandoned. */
 const RESOLVE_TIMEOUT_MS = 10_000;
@@ -58,9 +71,22 @@ export class AppIconResolver {
   private readonly _runPowerShell: PowerShellRunner;
   private readonly _readFileIcon: FileIconReader;
 
-  constructor(runPowerShell?: PowerShellRunner, readFileIcon?: FileIconReader) {
+  private readonly _store: IconPathStore | null;
+  private readonly _exists: (filePath: string) => boolean;
+
+  constructor(
+    runPowerShell?: PowerShellRunner,
+    readFileIcon?: FileIconReader,
+    store?: IconPathStore,
+    exists: (filePath: string) => boolean = fs.existsSync
+  ) {
     this._runPowerShell = runPowerShell ?? defaultPowerShellRunner;
     this._readFileIcon = readFileIcon ?? defaultFileIconReader;
+    this._store = store ?? null;
+    this._exists = exists;
+    for (const [appId, icon] of Object.entries(this._store?.load() ?? {})) {
+      if (typeof icon === 'string' && icon) this._cache.set(appId, icon);
+    }
   }
 
   /**
@@ -71,7 +97,16 @@ export class AppIconResolver {
    * call {@link resolve}, which is cheap to call repeatedly.
    */
   public getCachedIconPath(appId: string): string | undefined {
-    return this._cache.get(appId) ?? undefined;
+    const icon = this._cache.get(appId) ?? undefined;
+    // A packaged app's logo lives under a versioned folder
+    // (`Claude_5.1231.2.0_x64__…`): an update moves it, and the kept path
+    // then names nothing. Forgotten, the next notification looks it up again.
+    if (icon && !icon.startsWith('data:') && !this._exists(icon)) {
+      this._cache.delete(appId);
+      this.persist();
+      return undefined;
+    }
+    return icon;
   }
 
   /** Whether this app id has been through a resolution attempt already. */
@@ -104,6 +139,7 @@ export class AppIconResolver {
       .then(result => {
         this._cache.set(appId, result);
         this._inFlight.delete(appId);
+        if (result) this.persist();
         return result;
       });
 
@@ -114,6 +150,32 @@ export class AppIconResolver {
   /** Drops every cached result, so the next resolve re-scans. */
   public clearCache(): void {
     this._cache.clear();
+    this.persist();
+  }
+
+  /**
+   * Looks up, one after another, the apps not found yet -- for the apps the
+   * user already knows about, at start, so their first notification has its
+   * icon. Off the notification path, like every lookup.
+   */
+  public async prewarm(appIds: readonly string[]): Promise<void> {
+    for (const appId of appIds) {
+      if (!appId || this._cache.has(appId)) continue;
+      await this.resolve(appId);
+    }
+  }
+
+  /** Keeps the icons found; a miss is not kept, so a later run tries again. */
+  private persist(): void {
+    if (!this._store) return;
+    const found: Record<string, string> = {};
+    for (const [appId, icon] of this._cache) if (icon) found[appId] = icon;
+    try {
+      this._store.save(found);
+    } catch (err) {
+      // Keeping them is a convenience: the lookup still works this run.
+      console.warn('[AppIconResolver] Could not keep the icons found:', err);
+    }
   }
 
   private async performResolve(appId: string, appName?: string): Promise<string | null> {

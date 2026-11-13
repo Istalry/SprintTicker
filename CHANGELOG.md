@@ -470,6 +470,9 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Fixed
 
+- **An app's first notification after a start showed the bell** while its
+  icon was still being looked up: the icons found were forgotten at every
+  start. They are kept now, and the apps you have met are looked up at start.
 - **The keyboard reaches everything, and Escape closes every dialog.** Add
   time, Correct, End my day and the Tasks dialogs ignored Escape; the others
   heard it only once you had tabbed into them. Every dialog now takes the

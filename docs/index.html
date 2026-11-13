@@ -1619,7 +1619,10 @@
       app, so a shortcut named differently from its app — <code>PowerToys (Preview)</code>,
       <code>Visual Studio Code</code> — still finds the right icon. An app with no shortcut is
       matched by name, which is not perfect: if it shows the wrong icon, set an icon
-      of your own on that app (<em>Icon of my own</em>, a 16×16 PNG). The ✈ beside an
+      of your own on that app (<em>Icon of my own</em>, a 16×16 PNG). An icon found is
+      kept between starts, and the apps you have already met are looked up when the
+      app starts, so a first notification after a start no longer rings the bell
+      while its icon is still being found. The ✈ beside an
       app sends it a test notification, and the bin forgets it until it notifies
       again. An app the list has not seen yet is added by its id under <strong>Settings,
       Developer</strong> (turn on <strong>Show developer tools</strong> in General first). The first notification from an app after SprintTicker

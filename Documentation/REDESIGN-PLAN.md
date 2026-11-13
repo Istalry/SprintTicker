@@ -2786,6 +2786,15 @@ that order, as the day brings them -- 2 to 5 at the desk in the first
 minutes, 6 with the deck, 7 through the day. Run the installed copy, never
 `dist-electron\win-unpacked`: a running build folder locks the next build.
 
+**Monday, before the trial: build and install rc3.** Friday's last fix
+(icons kept between starts, below) is committed but not in rc2. Quit
+SprintTicker from the tray (the build's `verify:packed` closes every
+SprintTicker and needs port 39123), `pnpm package:win`, rename the setup to
+`-rc3`, install over rc2. Then check item 7's notifications from the
+second start on: Claude, and any app met before, show their icon on the
+first message. The suite has 7 tests more than the 3898 quoted in the documents;
+refresh the counts with the next full run.
+
 1. **First start after the update.** The tray icon; ✕ hides the window to
    the tray; Quit from the tray clears the bar. The plugin 0.6.4 offered
    by the first run installs over 0.6.3. *Done 2026-11-13.*
@@ -2822,8 +2831,13 @@ raises the version and tags 2.0.0.
 
 **Open, outside the trial's list** (each its own change, none blocks 2.0):
 - Notification icons for apps we never drew: the first message after a
-  start shows the bell, the icon lookup being cached only after it; which
-  apps look wrong beyond that is the user's to name from the trial.
+  start showed the bell (Claude's, on rc2), the lookup's answer being kept
+  only in memory. **Fixed for rc3**: `AppIconResolver` keeps what it found
+  in the setting `notification_app_icons` (`IconPathStore`), forgets a kept
+  path whose file is gone (a packaged app's logo moves with each update),
+  and the listener looks up the apps of its rules at start (`prewarm`). An
+  app never met still shows the bell on its very first message. Which apps
+  look wrong beyond that is the user's to name from the trial.
 - The studio's *Export* failed to compile the new scene
   (`seq2anim failed`, empty stderr), though both compilers ran cleanly by
   hand: compiled by hand, cause not found.

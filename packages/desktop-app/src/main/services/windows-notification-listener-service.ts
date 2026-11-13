@@ -42,6 +42,8 @@ const HAND_DRAWN_APP_ICONS: ReadonlySet<BitmapIconId> = new Set<BitmapIconId>(['
  */
 export class WindowsNotificationListenerService {
   private static readonly DB_SETTINGS_KEY = 'windows_notification_settings';
+  /** The icons found for apps, kept between runs (`IconPathStore`). */
+  private static readonly ICONS_SETTINGS_KEY = 'notification_app_icons';
   private static readonly DEFAULT_POLLING_INTERVAL_SECONDS = 2;
   private static readonly MAX_LOG_ENTRIES = 200;
   private static readonly MAX_RESTART_ATTEMPTS = 5;
@@ -92,7 +94,10 @@ export class WindowsNotificationListenerService {
     this._settingsRepo = settingsRepo;
     this._priorityEngine = priorityEngine;
     this._renderer = renderer;
-    this._iconResolver = iconResolver ?? new AppIconResolver();
+    this._iconResolver = iconResolver ?? new AppIconResolver(undefined, undefined, {
+      load: () => settingsRepo.getSetting<Record<string, string>>(WindowsNotificationListenerService.ICONS_SETTINGS_KEY, {}),
+      save: icons => settingsRepo.setSetting(WindowsNotificationListenerService.ICONS_SETTINGS_KEY, icons)
+    });
     // Injectable so a test can point the generated script at its own directory
     // rather than writing into the developer's %TEMP%.
     this._scriptDirectory = scriptDirectory ?? os.tmpdir();
@@ -201,6 +206,15 @@ export class WindowsNotificationListenerService {
     // meant a listener that bailed out -- disabled in settings, wrong platform --
     // still counted as listening, so enabling it later did nothing.
     this._isListening = true;
+
+    // The apps the user already knows, by their full id, looked up now so
+    // their first notification has its icon. An app we drew is skipped: ours
+    // is shown whatever is found.
+    const known = settings.sourceRules
+      .filter(rule => rule.appId?.includes('!') && !HAND_DRAWN_APP_ICONS.has(rule.iconId))
+      .map(rule => rule.appId);
+    void this._iconResolver.prewarm(known)
+      .catch(err => console.warn('[NotificationListener] Icon lookup at start failed:', err));
 
     const pollingIntervalMs = (settings.pollingIntervalSeconds || WindowsNotificationListenerService.DEFAULT_POLLING_INTERVAL_SECONDS) * 1000;
 

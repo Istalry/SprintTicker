@@ -200,7 +200,9 @@ describe('AppIconResolver', () => {
   it('GetCachedIconPath_AfterResolution_ServesTheResultSynchronously', async () => {
     const resolver = new AppIconResolver(
       async () => 'C:\\icon.png',
-      async () => null
+      async () => null,
+      undefined,
+      () => true
     );
 
     await resolver.resolve(AUMID_SLACK);
@@ -236,6 +238,80 @@ describe('AppIconResolver', () => {
     // instead of closing it and starting a new statement.
     const script = runner.mock.calls[0][0] as string;
     expect(script).toContain("'weird''; Remove-Item");
+  });
+
+  describe('kept between runs', () => {
+    // Each app's first notification after a start drew the bell: the cache
+    // began empty every run (Claude's, 2026-11-13).
+    const LOGO = 'C:\\Program Files\\WindowsApps\\Claude_5.1231.2.0_x64__pzs8sxrjxfjjc\\Assets\\Square44x44Logo.targetsize-48.png';
+    const CLAUDE = 'Claude_pzs8sxrjxfjjc!Claude';
+    const memory = (initial: Record<string, string> = {}) => {
+      let kept = { ...initial };
+      return { load: () => kept, save: (icons: Record<string, string>) => { kept = { ...icons }; }, kept: () => kept };
+    };
+
+    it('Resolve_Found_KeepsIt', async () => {
+      const store = memory();
+      const resolver = new AppIconResolver(vi.fn().mockResolvedValue(LOGO), async () => null, store, () => true);
+
+      await resolver.resolve(CLAUDE, 'Claude');
+
+      expect(store.kept()).toEqual({ [CLAUDE]: LOGO });
+    });
+
+    it('Start_AnIconKeptBefore_ServedWithoutALookup', () => {
+      const runner = vi.fn();
+      const resolver = new AppIconResolver(runner, async () => null, memory({ [CLAUDE]: LOGO }), () => true);
+
+      expect(resolver.getCachedIconPath(CLAUDE)).toBe(LOGO);
+      expect(resolver.hasResolved(CLAUDE)).toBe(true);
+      expect(runner).not.toHaveBeenCalled();
+    });
+
+    it('GetCachedIconPath_TheAppWasUpdatedAndTheFileIsGone_LooksItUpAgain', () => {
+      const store = memory({ [CLAUDE]: LOGO });
+      const resolver = new AppIconResolver(vi.fn(), async () => null, store, () => false);
+
+      expect(resolver.getCachedIconPath(CLAUDE)).toBeUndefined();
+      expect(resolver.hasResolved(CLAUDE)).toBe(false);
+      expect(store.kept()).toEqual({});
+    });
+
+    it('GetCachedIconPath_AnIconReadOffAnExe_NeedsNoFile', () => {
+      const icon = 'data:image/png;base64,AAAA';
+      const resolver = new AppIconResolver(vi.fn(), async () => null, memory({ Discord: icon }), () => false);
+
+      expect(resolver.getCachedIconPath('Discord')).toBe(icon);
+    });
+
+    it('Resolve_NothingFound_KeepsNothing', async () => {
+      const store = memory();
+      const resolver = new AppIconResolver(vi.fn().mockResolvedValue(''), async () => null, store, () => true);
+
+      await resolver.resolve('Unknown.App!App', 'Unknown');
+
+      expect(store.kept()).toEqual({});
+    });
+
+    it('Prewarm_LooksUpOnlyTheAppsNotKnownYet', async () => {
+      const runner = vi.fn().mockResolvedValue(LOGO);
+      const resolver = new AppIconResolver(runner, async () => null, memory({ [CLAUDE]: LOGO }), () => true);
+
+      await resolver.prewarm([CLAUDE, AUMID_SLACK]);
+
+      expect(runner).toHaveBeenCalledTimes(1);
+      expect(resolver.getCachedIconPath(AUMID_SLACK)).toBe(LOGO);
+    });
+
+    it('Resolve_TheStoreRefuses_TheIconStillServesThisRun', async () => {
+      const store = { load: () => ({}), save: () => { throw new Error('database locked'); } };
+      const resolver = new AppIconResolver(vi.fn().mockResolvedValue(LOGO), async () => null, store, () => true);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await resolver.resolve(CLAUDE, 'Claude');
+
+      expect(resolver.getCachedIconPath(CLAUDE)).toBe(LOGO);
+    });
   });
 });
 
