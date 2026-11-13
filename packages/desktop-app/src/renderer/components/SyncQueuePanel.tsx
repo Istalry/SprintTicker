@@ -4,6 +4,15 @@ import { SettingButton } from './SettingRow';
 import { SyncQueueItemDTO, SyncQueueSnapshotDTO } from '../../shared/dtos';
 import { countOf, formatClockTime, formatHoursAndMinutes } from '../utils/formatters';
 import { useAnnounce } from './LiveAnnouncer';
+import { providerDisplayName } from '../../shared/provider-names';
+
+/** The queue's states in the glossary's words, not the database's (W17). */
+const QUEUE_STATE_WORD: Record<string, string> = {
+  PENDING: 'Waiting to send',
+  SYNCING: 'Sending',
+  SYNCED: 'Sent',
+  FAILED: 'Not sent'
+};
 
 /**
  * What the worklog sync queue holds, and why anything in it has not arrived.
@@ -159,7 +168,7 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
         <div className="flex items-center gap-3 min-w-0">
           <span className={`text-xs px-2 py-0.5 rounded border ${STATUS_TONE[item.status]}`}>
             {/* Refused is FAILED that no retry sends (P11c): Today offers Move or Keep off. */}
-            {item.refused ? 'REFUSED' : item.status}
+            {item.refused ? 'Refused' : QUEUE_STATE_WORD[item.status] ?? item.status}
           </span>
           {item.operation !== 'CREATE' && (
             // A correction or deletion of a worklog already sent, so the
@@ -170,7 +179,7 @@ const QueueRow: React.FC<{ item: SyncQueueItemDTO; maxAttempts: number; readAtMs
           )}
           <span className="text-sm font-mono text-text-primary truncate">{item.taskKey}</span>
           <span className="text-xs font-mono text-text-secondary">{formatHoursAndMinutes(item.durationSeconds)}</span>
-          <span className="text-xs text-text-secondary truncate">{item.providerId}</span>
+          <span className="text-xs text-text-secondary truncate">{providerDisplayName(item.providerId)}</span>
         </div>
         <span className="text-xs text-text-secondary whitespace-nowrap">
           {/* Reading "attempt 8 of 8" is what tells the user the retry budget is

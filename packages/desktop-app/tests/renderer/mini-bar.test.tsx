@@ -410,7 +410,7 @@ describe('mini timer: the states of S25', () => {
     render(<MiniBar />);
 
     await screen.findByLabelText('Previous task: PF-31');
-    expect(await screen.findByText('⚡3')).toBeTruthy();
+    expect(await screen.findAllByText((_, el) => el?.textContent === '⚡3 to place')).toBeTruthy();
     expect(labels()).toEqual(['Pause', 'Stop', 'Interrupt', 'Switch task', 'Previous task: PF-31', 'Close the mini timer']);
 
     fireEvent.click(screen.getByLabelText('Previous task: PF-31'));
@@ -520,7 +520,7 @@ describe('mini timer: the states of S25', () => {
     );
 
     expect(screen.getByText('Back to SPR-142? 6 min not timed')).toBeTruthy();
-    fireEvent.click(screen.getByText('↩ Back +6m'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back, add the 6 min' }));
     expect(window.electronAPI.answerResumePrompt).toHaveBeenCalledWith(true, 6, undefined);
   });
 });

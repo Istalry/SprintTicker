@@ -40,9 +40,10 @@ export function statusRows(inputs: StatusInputs): StatusRow[] {
   const rows: StatusRow[] = [];
 
   if (inputs.accountNotSetUp) {
+    // Waiting on the user, not danger: amber, not red (second pass, N1).
     rows.push({
       id: 'account',
-      severity: 'problem',
+      severity: 'waiting',
       title: `${inputs.providerName} not set up`,
       detail: `Your time is kept here. To fetch your tasks and send your time: Settings › Account › Set up.`,
       headerWord: 'Not set up'
@@ -63,13 +64,15 @@ export function statusRows(inputs: StatusInputs): StatusRow[] {
             id: 'bar',
             severity: 'problem',
             title: 'BUSY Bar not answering',
-            detail: `Nothing from ${inputs.bar.address}. Your time is kept; check the cable, or the address in Settings, Desk devices.`,
+            detail: `Nothing from ${inputs.bar.address}. Your time is kept; check the cable, or the address in Settings › Desk devices.`,
             headerWord: 'Bar offline'
           }
     );
   }
 
-  const queue = inputs.queue;
+  // With no account there is nothing to say about sending: "Everything sent"
+  // under "not set up" contradicted it (N1).
+  const queue = inputs.accountNotSetUp ? null : inputs.queue;
   if (queue) {
     const waiting = queue.counts.pending + queue.counts.syncing;
     if (queue.counts.failed > 0) {

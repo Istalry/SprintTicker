@@ -74,9 +74,11 @@ export const TodayView: React.FC<TodayViewProps> = ({
   // other -- two Resume buttons -- and pushed the session's controls down.
   const questions: React.ReactNode[] = [];
   if (forgotten?.deferred) questions.push(<ForgottenSessionCard key="forgotten" />);
-  if (resume) questions.push(<ResumeAfterLunchPrompt key="resume" />);
-  if (ceremony?.type === 'LUNCH') questions.push(<LunchQuestionCard key="lunch" prompt={ceremony} />);
+  // The ones with a time first: the stand-up and lunch's question will not
+  // wait; Back to MG-12? does (second pass, N5).
   if (ceremony?.type === 'STANDUP') questions.push(<StandupCard key="standup" prompt={ceremony} session={session} />);
+  if (ceremony?.type === 'LUNCH') questions.push(<LunchQuestionCard key="lunch" prompt={ceremony} />);
+  if (resume) questions.push(<ResumeAfterLunchPrompt key="resume" />);
   if (mode !== 'WORK') questions.push(<BreakCard key="break" mode={mode} session={session} onLeaveAway={leaveAway} />);
   if (session?.taskUnlisted && !session.interruption && !wasKept(session)) {
     questions.push(

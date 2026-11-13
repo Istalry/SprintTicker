@@ -21,5 +21,5 @@ export function isInClosedWeek(startedAtUtc: string, lastWeekClosed: string | nu
 
 /** What the window says before changing time in a closed week, naming the provider (`providerDisplayName`). */
 export function closedWeekWarning(providerName: string): string {
-  return `This is time from a week already closed. If its timesheet is in, or approved, this changes it -- and a locked one may refuse the change at ${providerName}.`;
+  return `This is time from a week already closed. If its timesheet is in, or approved, this changes it — and a locked one may refuse the change at ${providerName}.`;
 }

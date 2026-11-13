@@ -385,7 +385,7 @@ describe('ActiveTaskHeroCard', () => {
       />
     );
 
-    expect(screen.getByText(/SPR-142 waits, (running|paused) as it was; nothing is sent/)).toBeTruthy();
+    expect(screen.getByText(/SPR-142 waits, paused(, as it was)?; this time is sent once it is placed/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'More ways to stop' })).toBeNull();
     // Choosing a task does nothing during an interruption (2026-11-12).

@@ -26,8 +26,8 @@ describe('reminders', () => {
 
   it.each([
     [NOTHING, 'Nothing timing for 10 min', 'Not now'],
-    [PAUSED, '❚❚ 30 min paused on MG-12', 'Still paused'],
-    [CALL, '⚡ 20 min on "Call with Marc"', 'Still on it'],
+    [PAUSED, '30 min paused on MG-12', 'Still paused'],
+    [CALL, '20 min on "Call with Marc"', 'Still on it'],
     [STANDUP, '25 min in the stand-up', 'Still in it']
   ])('Card_%#_SaysHowLongAndTheQuietAnswerDismisses', (reminder, heading, quiet) => {
     const bridge = installElectronApi();

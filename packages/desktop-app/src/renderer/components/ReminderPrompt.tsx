@@ -66,13 +66,13 @@ export function reminderView(reminder: ReminderDTO, openPicker: () => void, onAn
       };
     case 'long-pause':
       return {
-        heading: `❚❚ ${reminder.minutes} min paused on ${reminder.taskKey ?? 'your task'}`,
+        heading: `${reminder.minutes} min paused on ${reminder.taskKey ?? 'your task'}`,
         question: 'Still paused?',
         actions: [dismiss('Still paused'), act('▶ Resume', () => api.resumeSession(), `Resume ${reminder.taskKey ?? 'it'}`)]
       };
     case 'interruption-running':
       return {
-        heading: `⚡ ${reminder.minutes} min on "${reminder.name ?? 'the interruption'}"`,
+        heading: `${reminder.minutes} min on "${reminder.name ?? 'the interruption'}"`,
         question: 'Still on it?',
         actions: [
           dismiss('Still on it'),

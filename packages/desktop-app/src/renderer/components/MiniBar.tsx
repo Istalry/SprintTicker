@@ -255,7 +255,7 @@ export const MiniBar: React.FC = () => {
             </>
           ) : (
             <>
-              <span className="shrink-0">⚡ {interruption.chosenTask ? `↳ ${interruption.chosenTask.key}` : 'to place'}</span>
+              <span className="shrink-0"><span aria-hidden="true">⚡ </span>{interruption.chosenTask ? <><span aria-hidden="true">↳ </span>{interruption.chosenTask.key}</> : 'not placed yet'}</span>
               <span className="text-text-secondary">·</span>
               <span className="text-text-secondary truncate">
                 {interruption.interruptedTaskKey ? `during ${interruption.interruptedTaskKey}` : `Interruption ${interruption.index}`}
@@ -432,7 +432,7 @@ export const MiniBar: React.FC = () => {
       <>
         {toPlace > 0 && (
           <span className="px-1 text-[11px] font-bold text-accent-amber whitespace-nowrap" title={`${toPlaceLabel(toPlace)}: on Today`}>
-            ⚡{toPlace}
+            <span aria-hidden="true">⚡</span>{toPlace}<span className="sr-only"> to place</span>
           </span>
         )}
         {tracking ? (

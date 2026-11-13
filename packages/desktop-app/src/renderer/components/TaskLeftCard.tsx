@@ -87,7 +87,7 @@ export const TaskLeftCard: React.FC<{ session: ActiveSessionDTO; onSwitch: () =>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={small} onClick={keep}>Keep timing on it</button>
           <button type="button" className={small} onClick={() => { setError(null); setMoving(true); }}>
-            ↳ {Verb.MOVE} my <span className="font-mono">{soFar}</span>…
+            <span aria-hidden="true">↳</span> {Verb.MOVE} my <span className="font-mono">{soFar}</span>…
           </button>
           <button type="button" className={small} onClick={onSwitch}>⇄ {Verb.SWITCH} task</button>
         </div>

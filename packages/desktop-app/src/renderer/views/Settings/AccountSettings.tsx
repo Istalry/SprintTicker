@@ -14,7 +14,7 @@ import {
 import { PROVIDERS_WITH_EVENTS, providerEventKindsFor } from '../../../shared/provider-events';
 import { ProviderId, selectableProviders, providerDisplayName } from '../../../shared/provider-names';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
-import { formatHoursMinutes } from '../../utils/formatters';
+import { couldNot, formatHoursMinutes } from '../../utils/formatters';
 
 export interface AccountSettingsProps {
   /** Offers the bar as a destination for provider notifications. */
@@ -204,7 +204,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
       const result = await window.electronAPI.syncProviderNow();
       if (result.status === 'failed' || result.status === 'not_configured') setRefreshProblem(result.reason ?? 'The provider did not answer.');
     } catch (err) {
-      setRefreshProblem(err instanceof Error ? err.message : String(err));
+      setRefreshProblem(couldNot('refresh', err));
     } finally {
       setRefreshing(false);
     }
@@ -486,7 +486,7 @@ const RefusedToken: React.FC<{
       await onSave(token.trim());
       setToken('');
     } catch (err) {
-      setProblem(err instanceof Error ? err.message : String(err));
+      setProblem(couldNot('save it', err));
     } finally {
       setBusy(false);
     }

@@ -40,7 +40,7 @@ describe('the task-left card', () => {
 
     expect(card()?.textContent).toMatch(/Your 1h 24m so far stays on MG-12, where you did it\. Keep going, or switch\./);
     expect(screen.getByRole('button', { name: 'Keep timing on it' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '↳ Move my 1h 24m…' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Move my 1h 24m…' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '⇄ Switch task' })).toBeTruthy();
   });
 
@@ -84,7 +84,7 @@ describe('the task-left card', () => {
     });
     today(GIVEN);
 
-    fireEvent.click(screen.getByRole('button', { name: '↳ Move my 1h 24m…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move my 1h 24m…' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Sprint/ }));
     fireEvent.click(await screen.findByText('SPR-9'));
 
@@ -103,7 +103,7 @@ describe('the task-left card', () => {
     });
     today(GIVEN);
 
-    fireEvent.click(screen.getByRole('button', { name: '↳ Move my 1h 24m…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move my 1h 24m…' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Sprint/ }));
     fireEvent.click(await screen.findByText('SPR-9'));
 

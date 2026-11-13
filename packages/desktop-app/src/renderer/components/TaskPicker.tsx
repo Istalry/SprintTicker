@@ -440,7 +440,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
               <label className="flex items-center gap-2 text-xs text-text-primary">
                 <input type="checkbox" checked={takeAlong} onChange={e => setTakeAlong(e.target.checked)} />
                 Put &quot;{takeAlongOf.title}&quot; ({formatHoursAndMinutes(takeAlongOf.seconds)}) on it too
-                <span className="text-text-secondary">-- unticked, it waits to be placed</span>
+                <span className="text-text-secondary">— unticked, it waits to be placed</span>
               </label>
             )}
           </div>

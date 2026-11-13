@@ -116,7 +116,12 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
         <>
           <button type="button" className={quietButton} onClick={onLater}>Set up later</button>
           <span className="flex-1" />
-          <button type="button" className={primaryButton} disabled={!canContinue || saving} onClick={() => void save()}>
+          {/* Continue waited on the test with nothing saying so (second pass, F2). */}
+          {!canContinue && account && (
+            <span id="continue-needs-test" className="text-[11px] text-text-secondary">Test the connection to continue</span>
+          )}
+          <button type="button" className={primaryButton} disabled={!canContinue || saving} onClick={() => void save()}
+            aria-describedby={!canContinue && account ? 'continue-needs-test' : undefined}>
             Continue
           </button>
         </>

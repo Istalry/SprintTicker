@@ -227,6 +227,16 @@
 
 ### Changed
 
+- **A second look at every screen.** With no account set up, the session
+  card no longer says the time will be sent: it is kept here until you set
+  one up, and the status says so in amber rather than red. The first run
+  says that Continue waits for **Test connection**; **End my day** opens on
+  *Remind me*, not on the shutdown box; the stand-up comes before "Back to
+  MG-12?"; the Undo bar sits at the bottom right, clear of the buttons. The
+  comments sent with each entry read *Stopped by End my day*, *Done on the
+  BUSY Bar*, *Stopped for lunch*; the queue, the priority panel and the
+  mini timer use the same words as everywhere else.
+
 - **Today asks one question at a time.** The stand-up, Back at your desk?,
   a reminder and a task that left your list no longer stack up -- three
   amber cards could contradict each other and push the session's buttons

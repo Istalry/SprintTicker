@@ -187,22 +187,22 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
 
                 {/* Per-Mode Action Toggles */}
                 <div className="flex items-center space-x-6 pl-10 text-xs bg-dark-900/60 p-2.5 rounded-lg border border-border-dark/50">
-                  <span className="text-text-secondary font-semibold">Actions per Mode:</span>
+                  <span className="text-text-secondary font-semibold">In each mode:</span>
 
                   {(['WORK', 'LUNCH', 'AWAY'] as UserMode[]).map(m => {
                     const currentAction = m === 'LUNCH' ? rule.actionOnLunch : m === 'AWAY' ? rule.actionOnAway : rule.actionOnWork;
                     return (
                       <div key={m} className="flex items-center space-x-2">
-                        <span aria-hidden="true" className="text-text-secondary">{m}:</span>
+                        <span aria-hidden="true" className="text-text-secondary">{m === 'WORK' ? 'Work' : m === 'LUNCH' ? 'Lunch' : 'Away'}</span>
                         <select
                           aria-label={`${def.label} in ${m === 'WORK' ? 'Work' : m === 'LUNCH' ? 'Lunch' : 'Away'}`}
                           value={currentAction || 'DISPLAY'}
                           onChange={e => updateRuleAction(rule.eventName, m, e.target.value as PriorityAction)}
                           className="bg-dark-800 border border-border-field rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-focus"
                         >
-                          <option value="DISPLAY">DISPLAY</option>
-                          <option value="QUEUE">QUEUE</option>
-                          <option value="SUPPRESS">SUPPRESS</option>
+                          <option value="DISPLAY">Show</option>
+                          <option value="QUEUE">Show when free</option>
+                          <option value="SUPPRESS">Hide</option>
                         </select>
                       </div>
                     );

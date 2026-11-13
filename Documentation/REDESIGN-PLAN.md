@@ -2702,7 +2702,10 @@ left once the screens are real:
   - P15a4: colours and contrast (A7, A8, A12, C13, C17, C21);
   - P15a5: what a screen reader hears, and zoom (A6, A9-A22);
   - P15a6: the rest of the critique's behaviour (C6, C8, C11, C14, C16,
-    C18, C20, the Place window's size).
+    C18, C20, the Place window's size);
+  - P15a7: the second pass -- the screens captured again, read by two
+    fresh agents (a check of every fix, a newcomer's walkthrough), and
+    what they found fixed or listed.
 - **P15b, the dry run at scale.** 20 projects of 50 tasks, simulated days,
   measured.
 - **P15c, the documents.** The guide read end to end, the README, a
@@ -2829,6 +2832,27 @@ left once the screens are real:
   invented profile sends to OpenProject with no account, which is true of
   it. Decide there whether the capture should look configured.
 
+**As landed: P15a7, the second pass (2026-11-13).**
+
+- Two fresh agents read the recaptured screens: 51 of 64 fixes held, 12
+  partial, 1 regressed (A8, listed), 10 new issues, 8 from a walkthrough.
+  Recorded in REVIEW-2026-11.md §6.
+- No account: the session card says the time is kept here until the
+  provider is set up, and the status row is amber with no sending row
+  (F1, N1). The first run says Continue waits on the test (F2); End my
+  day opens on Remind me (F8). The stand-up and lunch's question come
+  before Back to MG-12? (N5). The Undo bar moved to the bottom right (C14).
+- Words: the mini timer's "Back, add the 6 min" under "Interruption over";
+  END_MY_DAY in the first run; the worklog comments and the shutdown's
+  reason in the glossary's words (C9, N4); the queue panel's states and
+  provider; the priority panel's modes and actions; raw errors in Account
+  and the import. Glyphs hidden from the screen reader where they still
+  spoke (A19). The live region says a question already up when a window
+  opens.
+- Listed, not fixed: the deck's WRAP UP (a plugin version, P15d), A6, A8,
+  C18, N2, N6-N10, F3-F6.
+- Tests: `second-pass.test.tsx`, one per behaviour above.
+
 ---
 
 ## 21. Verification, all phases
@@ -2904,5 +2928,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour) done -- P15a complete; P15b next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 (2026-11-13) |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 (2026-11-13) |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

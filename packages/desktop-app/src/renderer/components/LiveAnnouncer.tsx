@@ -12,6 +12,8 @@ import React, { useEffect, useState } from 'react';
 type Listener = (text: string) => void;
 const listeners = new Set<Listener>();
 let last = '';
+/** Said before any region listened: a window opening on a waiting question. */
+let pending: string | null = null;
 
 /** How long the region stays empty before a repeated sentence is set again. */
 const REPEAT_GAP_MS = 50;
@@ -25,6 +27,7 @@ export function announce(text: string): void {
     return;
   }
   last = sentence;
+  if (listeners.size === 0) pending = sentence;
   listeners.forEach(listener => listener(sentence));
 }
 
@@ -44,7 +47,14 @@ export const LiveAnnouncer: React.FC = () => {
   const [text, setText] = useState('');
   useEffect(() => {
     listeners.add(setText);
+    // Set after the empty region is in the page, or it would be read as
+    // mounted with its text, which most screen readers skip.
+    const early = pending;
+    pending = null;
+    // Unless something newer was said meanwhile, which the region has.
+    const timer = early ? setTimeout(() => { if (last === early) setText(early); }, REPEAT_GAP_MS) : undefined;
     return () => {
+      if (timer) clearTimeout(timer);
       listeners.delete(setText);
     };
   }, []);

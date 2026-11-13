@@ -201,7 +201,7 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
               {session && (
                 <tr>
                   <td className="py-1.5 pr-3 text-text-primary">
-                    <span className="font-mono font-bold">{session.interruption ? '⚡' : session.taskKey}</span>{' '}
+                    <span className="font-mono font-bold">{session.interruption ? <span aria-hidden="true">⚡</span> : session.taskKey}</span>{' '}
                     <span className="text-text-secondary">{session.interruption ? session.interruption.title : session.taskTitle}</span>
                   </td>
                   <td className="py-1.5 text-right font-mono text-accent-green">{formatHoursAndMinutes(session.elapsedSeconds)}</td>
@@ -251,6 +251,7 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
           <button
             type="button"
             onClick={() => onLater(END_DAY_LATER_MINUTES)}
+            data-autofocus
             className="px-3 py-2 text-xs font-semibold rounded-lg border border-border-dark text-text-secondary hover:text-white"
           >
             Remind me in {END_DAY_LATER_MINUTES} min

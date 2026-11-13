@@ -242,7 +242,7 @@ describe('SystemAutomationService across platforms', () => {
 
       await service().scheduleShutdown();
 
-      expect(execFn.mock.calls[0][0]).toBe('shutdown /s /f /t 30 /c "SprintTicker End-of-Day Wrap-Up"');
+      expect(execFn.mock.calls[0][0]).toBe('shutdown /s /f /t 30 /c "SprintTicker: End my day"');
     });
 
     it.each([

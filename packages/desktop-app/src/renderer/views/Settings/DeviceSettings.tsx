@@ -216,7 +216,7 @@ const BarBlock: React.FC<{
 
       <SettingRow
         title="What the bar shows first"
-        description="When two things want it: a call, a build, your timer. Levels and arrows, per mode."
+        description="When two things want it: a call, a message, your timer. Levels and arrows, per mode."
         control={<SettingButton aria-expanded={showRules} onClick={() => setShowRules(v => !v)}>{showRules ? 'Close' : 'Open…'}</SettingButton>}
       >
         {showRules && <PriorityRulesView embedded />}

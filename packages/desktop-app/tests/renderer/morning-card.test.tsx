@@ -33,7 +33,7 @@ describe('the morning card', () => {
 
     const card = await screen.findByRole('region', { name: 'Good morning' });
     expect(within(card).getByText(/Carry on with/).textContent).toBe('Carry on with MG-12?');
-    expect(await within(card).findByText('⚡ 1 interruption from before today to place')).toBeTruthy();
+    expect(await within(card).findByText('1 interruption from before today to place')).toBeTruthy();
     expect(within(card).getByText('Call with Marc (25m)')).toBeTruthy();
     expect(within(card).getByText(/Stand-up at/).textContent).toBe('Stand-up at 09:30');
     expect(within(card).getByText('Your 2 tasks in progress')).toBeTruthy();

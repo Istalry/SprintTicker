@@ -15,6 +15,7 @@ import { StopMenu } from './StopMenu';
 import { isAdHocSession } from '../../shared/interruption';
 import { StateWord, Verb } from '../../shared/words';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
+import { useSyncHealth } from '../hooks/usePrompts';
 
 interface ActiveTaskHeroCardProps {
   session: ActiveSessionDTO | null;
@@ -104,10 +105,15 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   // provider's own refusal is the fallback, never a hidden Done.
   const offerDone = keptHere || capabilities?.canTransition !== false;
   const doneMeans = keptHere ? 'and marks it done here' : `and ${destination} moves it to its done state`;
+  // No account yet: the time waits here, and saying "sent" was a promise
+  // nothing could keep (second pass, F1).
+  const notSetUp = useSyncHealth()?.state === 'not-configured';
   const sendLine = !session
     ? null
     : keptHere
     ? 'kept on this computer, never sent'
+    : notSetUp
+    ? `kept here until ${destination} is set up`
     : `sent to ${destination} when you stop, after 10 s to undo`;
 
   const timer = (

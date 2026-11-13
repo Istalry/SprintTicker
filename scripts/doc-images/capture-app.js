@@ -285,7 +285,9 @@ const RECORDER = `(() => {
       if (el.type !== 'image' || !el.data) continue;
       let img = images.get(el.data);
       if (!img) { img = new Image(); img.src = el.data; images.set(el.data, img); }
-      if (!img.complete) await img.decode().catch(() => {});
+      // Bounded: a decode that never settles held stop() -- and the run --
+      // for good, depending on when the last frame came (P15a7).
+      if (!img.complete) await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 1000))]);
       ctx.clearRect(0, 0, W, H);
       ctx.drawImage(img, el.x || 0, el.y || 0);
       const d = ctx.getImageData(0, 0, W, H).data;

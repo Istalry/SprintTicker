@@ -50,7 +50,7 @@ export const DoneStatePerProject: React.FC<DoneStatePerProjectProps> = ({ provid
 
   const differ = projects.filter(p => setting.overrides[p.id]).length;
   const inputClass =
-    'w-48 bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-focus';
+    'w-48 bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-focus';
 
   return (
     <details className="mt-2 text-xs text-text-secondary">

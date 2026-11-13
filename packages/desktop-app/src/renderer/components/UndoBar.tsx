@@ -76,7 +76,7 @@ export const UndoBar: React.FC = () => {
     <div
       role="group"
       aria-label="Undo"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 rounded-lg border border-border-dark bg-dark-700 px-4 py-2 shadow-lg"
+      className="fixed bottom-4 right-4 z-40 flex items-center gap-4 rounded-lg border border-border-dark bg-dark-700 px-4 py-2 shadow-lg"
     >
       {/* Announced once; the countdown beside it is not, or a screen
           reader read it out every second for ten (REVIEW-2026-11 A9). */}

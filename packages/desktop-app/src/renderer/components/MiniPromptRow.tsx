@@ -72,7 +72,7 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
     } else if (resume.after === 'interruption') {
       const endedAt = resume.interruptionEndedAtUtc ? Date.parse(resume.interruptionEndedAtUtc) : NaN;
       const gap = Number.isNaN(endedAt) ? null : Math.max(0, Math.round((now - endedAt) / MS_PER_MINUTE));
-      heading = 'Nothing timing';
+      heading = 'Interruption over';
       question = gap ? `${Verb.BACK} to ${key}? ${gap} min not timed` : `${Verb.BACK} to ${key}?`;
       buttons = (
         <>
@@ -80,10 +80,10 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
           {gap !== null && gap > 0 && (
             <button type="button" className={quiet} title={`Back to ${key}, and count the ${gap} min since the interruption ended as work`}
               onClick={() => answer(true, Math.max(0, Math.round((Date.now() - endedAt) / MS_PER_MINUTE)))()}>
-              ↩ Back +{gap}m
+              <span aria-hidden="true">↩</span> {Verb.BACK}, add the {gap} min
             </button>
           )}
-          <button type="button" className={main} onClick={answer(true)}>↩ Back</button>
+          <button type="button" className={main} onClick={answer(true)}><span aria-hidden="true">↩</span> {Verb.BACK}</button>
         </>
       );
     } else {

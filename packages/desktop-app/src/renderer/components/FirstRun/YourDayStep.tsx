@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
 import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings, normalizeScheduleSettings } from '../../../shared/schedule-defaults';
 import { DEFAULT_WORKING_DAYS, WEEKDAYS_MONDAY_FIRST, checkWorkingDays } from '../../../shared/working-days';
-import { KEEP_AS_OWN_ENTRY } from '../../../shared/words';
+import { END_MY_DAY, KEEP_AS_OWN_ENTRY } from '../../../shared/words';
 import { StandupTaskSetting } from '../StandupTaskSetting';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 import { StepFrame, fieldClass, primaryButton, secondaryButton } from './StepFrame';
@@ -115,8 +115,8 @@ export const YourDayStep: React.FC<{ onBack: () => void; onFinish: () => void }>
           <input type="time" aria-label="Lunch ends" className={timeField} value={lunchEnd} onChange={e => setLunchEnd(e.target.value)} />
         </div>
       </Row>
-      <Row label="End of day" hint="Offers to check today's time and send it.">
-        <input type="time" aria-label="End of day" className={timeField} value={endOfDay} onChange={e => setEndOfDay(e.target.value)} />
+      <Row label={END_MY_DAY} hint="Offers to check today's time and send it.">
+        <input type="time" aria-label={END_MY_DAY} className={timeField} value={endOfDay} onChange={e => setEndOfDay(e.target.value)} />
       </Row>
 
       <section aria-label="How it works" className="rounded-lg border border-border-dark bg-dark-900/60 p-4 text-xs text-text-secondary leading-relaxed">

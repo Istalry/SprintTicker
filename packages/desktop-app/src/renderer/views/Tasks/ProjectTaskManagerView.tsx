@@ -705,7 +705,7 @@ const ImportDialog: React.FC<{
     try {
       parsed = parseImport(text);
     } catch (err) {
-      setResult({ ok: false, text: `Not read: ${err instanceof Error ? err.message : String(err)}. Nothing was imported.` });
+      setResult({ ok: false, text: `Not read: ${ipcErrorMessage(err).replace(/[.]+$/, '')}. Nothing was imported; check the file and try again.` });
       return;
     }
     onImport(parsed).then(

@@ -84,7 +84,7 @@ export const InterruptionDetails: React.FC<{ interruption: RunningInterruptionDT
             // The task picker and the dialogs listen on the window.
             e.stopPropagation();
           }}
-          className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-base font-semibold text-white focus:outline-none focus:border-focus"
+          className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-base font-semibold text-white focus:outline-none focus:border-focus"
         />
       </div>
 
@@ -93,7 +93,7 @@ export const InterruptionDetails: React.FC<{ interruption: RunningInterruptionDT
       <p className={`${label} flex flex-wrap items-center gap-x-1.5 gap-y-1`}>
         <span>
           {held
-            ? `${held} waits, ${interruption.interruptedWasPaused ? 'paused' : 'running'} as it was; nothing is sent until it is placed.`
+            ? `${held} waits, paused${interruption.interruptedWasPaused ? ', as it was' : ''}; this time is sent once it is placed.`
             : 'Nothing was timing: when it ends, it waits to be placed.'}
         </span>
         {interruption.index === 1 && (
@@ -118,7 +118,7 @@ export const InterruptionDetails: React.FC<{ interruption: RunningInterruptionDT
         {interruption.chosenTask ? (
           <>
             <span className="px-2.5 py-1 rounded-lg border border-accent-green/40 bg-accent-green/10 text-xs text-white">
-              ↳ <span className="font-mono">{interruption.chosenTask.key}</span> {interruption.chosenTask.title}
+              <span aria-hidden="true">↳</span> <span className="font-mono">{interruption.chosenTask.key}</span> {interruption.chosenTask.title}
             </span>
             <button type="button" className={small} onClick={() => setChoosing(true)}>Change…</button>
             <button type="button" className={small} title="It waits on Today until placed" onClick={() => choose(null)}>{Verb.LATER}</button>

@@ -71,7 +71,7 @@ export const MorningCard: React.FC<MorningCardProps> = ({ morning, onOpenPicker,
       {earlier.length > 0 && (
         <div className={line}>
           <div className="min-w-0 text-xs">
-            <div className="font-bold text-white">⚡ {earlier.length === 1 ? '1 interruption' : `${earlier.length} interruptions`} from before today to place</div>
+            <div className="font-bold text-white"><span aria-hidden="true">⚡</span> {earlier.length === 1 ? '1 interruption' : `${earlier.length} interruptions`} from before today to place</div>
             <div className="text-text-secondary truncate">
               {earlier.map(item => `${item.title} (${formatHoursAndMinutes(item.durationSeconds)})`).join(' · ')}
             </div>
