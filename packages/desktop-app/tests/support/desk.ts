@@ -442,10 +442,13 @@ export function expectSettledScreen(desk: Desk): void {
     if (desk.device.has(FRONT_ELEMENT_IDS.FRAME)) throw new Error(`Expected no frame over the meeting scene: ${context}`);
     return;
   }
-  // NOTHING TIMING, asked and unanswered: its words alone, with no icon.
+  // NOTHING TIMING, asked and unanswered: its scene alone, the empty chair,
+  // with nothing running and no icon over it.
   if (lock === NOTHING_TIMING_EVENT) {
-    if (desk.session || !desk.device.has(FRONT_ELEMENT_IDS.FRAME) || desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) {
-      throw new Error(`Expected NOTHING TIMING alone, with nothing running: ${context}`);
+    const scene = desk.device.elements.get(FRONT_ELEMENT_IDS.SCENE)?.path ?? '';
+    if (desk.session || !desk.device.isShowing(FRONT_ELEMENT_IDS.SCENE) || !scene.startsWith(FRONT_ANIMATIONS.NOTHING_TIMING)
+      || desk.device.isShowing(FRONT_ELEMENT_IDS.ICON)) {
+      throw new Error(`Expected NOTHING TIMING's scene alone, with nothing running, the panel plays ${scene || 'nothing'}: ${context}`);
     }
     return;
   }

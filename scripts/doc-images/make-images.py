@@ -63,6 +63,7 @@ SCENES = {
     "lunch": "lunch_sandwich_72x16",
     "away": "away_coffee_72x16",
     "meeting": "meeting_table_72x16",
+    "nothing": "nothing_chair_72x16",
     "task-started": "task_started_72x16",
     "task-logged": "task_logged_72x16",
     "task-done": "task_done_72x16",

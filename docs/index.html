@@ -1448,8 +1448,8 @@
       <td align="left"><strong>Still in it</strong> · <strong>End stand-up</strong></td>
       </tr>
       </tbody></table></div>
-      <p>On the bar, <em>Nothing timing</em> shows <strong>NOTHING TIMING</strong> until you answer it
-      there or in the app. The quiet answer is final for that time: the same
+      <p>On the bar, <em>Nothing timing</em> shows <strong>NO TASK</strong> beside an empty office chair,
+      on amber, until you answer it there or in the app. The quiet answer is final for that time: the same
       pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
       too. <strong>Back to MG-12?</strong> left unanswered for 10 minutes gets one more
       notification. Each delay is a row of <strong>My workday</strong>, from 5 minutes to
@@ -1457,7 +1457,8 @@
       <p>During Lunch the bar shows a sandwich building itself beside <strong>LUNCH</strong>, on
       teal. In Away mode it shows a steaming coffee beside <strong>AWAY</strong>, on purple. At the
       stand-up prompt it shows three people round a table taking turns to speak,
-      beside <strong>MEETING</strong>, on blue. Each loops
+      beside <strong>MEETING</strong>, on blue. When nothing is timing in your working hours, an
+      empty office chair swivels and settles beside <strong>NO TASK</strong>, on amber. Each loops
       for as long as the mode lasts, and the bar plays it itself, so it keeps moving
       when the computer is busy.</p>
       <div class="table-wrap"><table>
@@ -1482,6 +1483,14 @@
       <tr>
       <td align="center">🗣️ Stand-up</td>
       <td align="center">🌙 End of day</td>
+      </tr>
+      <tr>
+      <td align="center"><img src="images/bar-scene-nothing.webp" width="304" alt="NO TASK: an empty office chair on amber"></td>
+      <td align="center"></td>
+      </tr>
+      <tr>
+      <td align="center">🪑 Nothing timing</td>
+      <td align="center"></td>
       </tr>
       </tbody></table></div>
       <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> on
@@ -1872,7 +1881,7 @@
       four seconds.</li>
       <li><strong>MG-12 &gt; RIN</strong>: the task was given to someone else on Jira or
       OpenProject while you were on it -- the key and their first name.</li>
-      <li><strong>NOTHING TIMING</strong>, in amber across the whole bar, when the app&#39;s
+      <li><strong>NO TASK</strong>, beside an empty chair on amber, when the app&#39;s
       <em>Nothing timing</em> reminder asks (see <em>Reminders ask once</em> under <a href="#-settings-my-workday">Settings: My workday</a>).
       Pause opens the task picker on the computer; a wheel click is <em>not now</em>.
       Either puts it away, and the bar&#39;s own clock comes back.</li>
@@ -3790,7 +3799,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 3877 tests across 193 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 3898 tests across 194 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

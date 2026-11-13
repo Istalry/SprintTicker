@@ -28,6 +28,8 @@ export const FRONT_ANIMATIONS = {
   LUNCH: 'lunch_sandwich_72x16',
   AWAY: 'away_coffee_72x16',
   MEETING: 'meeting_table_72x16',
+  /** NOTHING TIMING's question: NO TASK beside an empty chair (P15d, the user's). */
+  NOTHING_TIMING: 'nothing_chair_72x16',
   /** Played once, not looped: see TASK_DONE_DISPLAY_SECONDS. */
   TASK_DONE: 'task_done_72x16',
   /** STOP without finishing. Played once: see TASK_LOGGED_DISPLAY_SECONDS. */
@@ -119,6 +121,7 @@ export const SCENE_ICONS: Record<(typeof FRONT_ANIMATIONS)[keyof typeof FRONT_AN
   [FRONT_ANIMATIONS.LUNCH]: { icon: 'burger', label: 'LUNCH' },
   [FRONT_ANIMATIONS.AWAY]: { icon: 'coffee', label: 'AWAY' },
   [FRONT_ANIMATIONS.MEETING]: { icon: 'meeting', label: 'MEETING' },
+  [FRONT_ANIMATIONS.NOTHING_TIMING]: { icon: 'stopwatch_idle', label: 'NO TASK' },
   [FRONT_ANIMATIONS.TASK_DONE]: { icon: 'checkmark', label: 'DONE!' },
   [FRONT_ANIMATIONS.TASK_LOGGED]: { icon: 'stopwatch', label: 'LOGGED' },
   [FRONT_ANIMATIONS.TASK_STARTED]: { icon: 'stopwatch', label: 'GO!' },

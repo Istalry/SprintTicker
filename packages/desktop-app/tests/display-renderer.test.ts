@@ -1087,16 +1087,18 @@ describe('DisplayRenderer Unit Tests', () => {
       );
     });
 
-    it('RenderNothingTiming_DrawsTheWordsCentredInAmber_WithNoIcon', () => {
-      renderer.renderNothingTiming();
+    it('RenderNothingTiming_PlaysTheEmptyChair_NoTaskOnTheMiniTimer', () => {
+      // A scene of its own since the 2.0 candidate, like the stand-up's: the
+      // words alone looked unfinished beside Lunch and Away (2026-11-13).
+      const play = vi.spyOn((renderer as unknown as { animationPlayer: { play: (...a: unknown[]) => Promise<void> } }).animationPlayer, 'play')
+        .mockResolvedValue(undefined);
 
-      const [text, x, y, color] = clipped.find(([t]) => t === BarWord.NOTHING_TIMING)!;
-      expect(text).toBe(BarWord.NOTHING_TIMING);
-      const width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH;
-      expect(x).toBe(Math.floor((width - measureText(BarWord.NOTHING_TIMING, ROW0_FONT)) / 2));
-      expect(y).toBe(layout.ROW0_Y);
-      expect(color).toBe(AMBER);
-      expect(renderer.getScreenIcon()).toBeNull();
+      const payload = renderer.renderNothingTiming();
+
+      expect(play).toHaveBeenCalledWith(FRONT_ANIMATIONS.NOTHING_TIMING, expect.objectContaining({ loop: true }));
+      expect(texts()).not.toContain(BarWord.NOTHING_TIMING);
+      expect(payload.ledColorHex).toBe(`${AMBER}FF`);
+      expect(renderer.getScreenIcon()?.label).toBe('NO TASK');
     });
 
     describe('under the priority engine', () => {

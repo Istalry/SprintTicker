@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "id": "nothing_chair_72x16",
+  "width": 72,
+  "height": 16,
+  "fps": 60,
+  "frameCount": 240,
+  "layers": [
+    {
+      "id": "plate",
+      "name": "Plate",
+      "visible": true,
+      "type": "plate",
+      "x": 1,
+      "y": 0,
+      "width": 70,
+      "height": 16,
+      "radius": 2,
+      "colorA": "#3F2A07",
+      "colorB": "#271A04",
+      "direction": "vertical",
+      "outline": "#B7791F",
+      "outlineBottom": "#5C3D0A",
+      "highlight": "#54390C",
+      "motion": "none",
+      "period": 60
+    },
+    {
+      "id": "glow",
+      "name": "Lamp",
+      "visible": true,
+      "type": "glow",
+      "x": 12,
+      "y": 9,
+      "radiusX": 11,
+      "radiusY": 8,
+      "color": "#FDE68A",
+      "strength": 0.18,
+      "mode": "light",
+      "tracks": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0.7,
+            "ease": "inOut"
+          },
+          {
+            "frame": 120,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 240,
+            "value": 0.7,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "base",
+      "name": "Base",
+      "visible": true,
+      "type": "sprite",
+      "x": 6,
+      "y": 11,
+      "loopFrom": 0,
+      "anchorX": 6.5,
+      "anchorY": 5,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 13,
+        "height": 5,
+        "palette": {
+          "b": "#C2C9D6",
+          "B": "#8A93A6",
+          "k": "#6B7385",
+          "w": "#565D6C"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              "......k......",
+              "......B......",
+              ".kBBBBBBBBBk.",
+              "k.....k.....k",
+              "w.....w.....w"
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "x": [
+          {
+            "frame": 0,
+            "value": 6,
+            "ease": "out"
+          },
+          {
+            "frame": 28,
+            "value": 7.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 70,
+            "value": 6,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 6,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "seat",
+      "name": "Seat and back",
+      "visible": true,
+      "type": "sprite",
+      "x": 5,
+      "y": 1,
+      "loopFrom": 0,
+      "anchorX": 7.5,
+      "anchorY": 10,
+      "shutter": 0.0,
+      "sprite": {
+        "width": 12,
+        "height": 10,
+        "palette": {
+          "b": "#C2C9D6",
+          "B": "#8A93A6",
+          "k": "#6B7385",
+          "w": "#565D6C"
+        },
+        "frames": [
+          {
+            "duration": 1,
+            "rows": [
+              ".bb.........",
+              "bBBb........",
+              "bBBb........",
+              "bBBb........",
+              "bBBb........",
+              "bBBk........",
+              ".bBk........",
+              "..bbbbbbbbb.",
+              "..BBBBBBBBBb",
+              "...kkkkkkkk."
+            ]
+          }
+        ]
+      },
+      "tracks": {
+        "scaleX": [
+          {
+            "frame": 0,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 30,
+            "value": -1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 58,
+            "value": 1.0,
+            "ease": "inOut"
+          },
+          {
+            "frame": 76,
+            "value": 0.72,
+            "ease": "inOut"
+          },
+          {
+            "frame": 92,
+            "value": 1.0,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 1.0,
+            "ease": "linear"
+          }
+        ],
+        "x": [
+          {
+            "frame": 0,
+            "value": 5,
+            "ease": "out"
+          },
+          {
+            "frame": 28,
+            "value": 6.5,
+            "ease": "inOut"
+          },
+          {
+            "frame": 70,
+            "value": 5,
+            "ease": "linear"
+          },
+          {
+            "frame": 240,
+            "value": 5,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "visible": true,
+      "type": "text",
+      "text": "NO TASK",
+      "font": "bold-9",
+      "color": "#FFF4D6",
+      "x": 24,
+      "y": 4,
+      "width": 46,
+      "align": "center",
+      "effect": "none",
+      "period": 60,
+      "colorB": null,
+      "gradient": "vertical",
+      "shadow": {
+        "color": "#1A1003",
+        "dx": 0,
+        "dy": 1,
+        "soft": true
+      },
+      "tracks": {}
+    }
+  ]
+}

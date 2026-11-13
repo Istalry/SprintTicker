@@ -425,7 +425,8 @@ export class DisplayRenderer {
   private static readonly LOCK_SCENES: Readonly<Record<string, string>> = {
     lunchModePriority: FRONT_ANIMATIONS.LUNCH,
     awayModePriority: FRONT_ANIMATIONS.AWAY,
-    [STANDUP_PROMPT_EVENT]: FRONT_ANIMATIONS.MEETING
+    [STANDUP_PROMPT_EVENT]: FRONT_ANIMATIONS.MEETING,
+    [NOTHING_TIMING_EVENT]: FRONT_ANIMATIONS.NOTHING_TIMING
   };
 
   /**
@@ -791,11 +792,13 @@ export class DisplayRenderer {
 
   /**
    * NOTHING TIMING (D4, P14e): drawn once when the "nothing timing" reminder
-   * fires in working hours, across the whole panel with no icon -- it does not
-   * fit beside one -- and let go of at the answer, which hands the display
-   * back to the firmware's clock. No clock of ours: the idle screen stays the
-   * firmware's. Pause opens the picker on the computer; the wheel's click is
-   * not now.
+   * fires in working hours, and let go of at the answer, which hands the
+   * display back to the firmware's clock. Since the 2.0 candidate a scene of
+   * its own, like the stand-up's: NO TASK beside an empty office chair that
+   * swivels and settles, on amber -- the words alone across the panel looked
+   * unfinished beside Lunch and Away (the user, 2026-11-13). NOTHING TIMING
+   * is 87 px in the scenes' face, so the scene says NO TASK. Pause opens the
+   * picker on the computer; the wheel's click is not now.
    *
    * Never queued: a queued copy would replay after the answer. Main registers
    * it as a background state instead, so one refused under a screen above it
@@ -804,13 +807,10 @@ export class DisplayRenderer {
   public renderNothingTiming(): DisplayPayload {
     return this.requestRender(NOTHING_TIMING_EVENT, () => {
       this.canvas.clear();
-      this.animationPlayer.stop();
       this.frameIcon = null;
-      this.frameScreenIcon = null;
-      const width = DISPLAY_CONSTANTS.FRONT_GRID_WIDTH;
-      const text = BarWord.NOTHING_TIMING;
-      const x = Math.max(0, Math.floor((width - measureText(text, ROW0_FONT)) / 2));
-      this.canvas.drawTextClipped(text, x, DISPLAY_CONSTANTS.LAYOUT_OFFSETS.ROW0_Y, WAITING_COLOR, width - x);
+      this.frameScreenIcon = this.sceneScreenIcon(FRONT_ANIMATIONS.NOTHING_TIMING);
+      void this.animationPlayer.play(FRONT_ANIMATIONS.NOTHING_TIMING, { loop: true, onFrame: this.onAnimationFrame })
+        .catch(err => console.error('[DisplayRenderer] animationPlayer.play failed:', err));
       this.ledMode = 'PULSE_ALERT';
       const led = `${WAITING_COLOR}FF`;
       const frontEls = this.canvasToEmulatorElements();

@@ -2761,6 +2761,14 @@ user's to try; before it, what REVIEW §8 left for P15d:
   An app we drew an icon for now shows ours always
   (`HAND_DRAWN_APP_ICONS`); an image the user set on the app still wins,
   and an app we never drew keeps its own icon.
+- **NOTHING TIMING is a scene** (the user's request, word and icon chosen
+  by them): NO TASK beside an empty office chair on amber
+  (`nothing_chair_72x16`), its seat swinging away, back past where it was,
+  a wobble, then still -- a third of the loop, ending on its first frame.
+  NOTHING TIMING is 87 px in Bold 9, so the scene says NO TASK. It plays
+  as the stand-up prompt's does, a lock scene (`LOCK_SCENES`), and the
+  simulator checks it in `expectSettledScreen`. The studio's export failed
+  at the compile, though both compilers ran cleanly by hand: listed.
 
 **To try, the user's (P15d):** the packaged build, on a day of real work,
 on the real bar and Stream Deck Mobile. Install over 1.4.0 and keep the

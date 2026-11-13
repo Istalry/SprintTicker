@@ -903,8 +903,8 @@ in the mini timer, and by notification while the window is hidden:
 | An interruption of 20 min | *Still on it?* | **Still on it** · **↩ Back to MG-12** (or **■ Stop**) |
 | The stand-up at 25 min | *Still in it?* | **Still in it** · **End stand-up** |
 
-On the bar, *Nothing timing* shows **NOTHING TIMING** until you answer it
-there or in the app. The quiet answer is final for that time: the same
+On the bar, *Nothing timing* shows **NO TASK** beside an empty office chair,
+on amber, until you answer it there or in the app. The quiet answer is final for that time: the same
 pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
 too. **Back to MG-12?** left unanswered for 10 minutes gets one more
 notification. Each delay is a row of **My workday**, from 5 minutes to
@@ -913,7 +913,8 @@ two hours.
 During Lunch the bar shows a sandwich building itself beside **LUNCH**, on
 teal. In Away mode it shows a steaming coffee beside **AWAY**, on purple. At the
 stand-up prompt it shows three people round a table taking turns to speak,
-beside **MEETING**, on blue. Each loops
+beside **MEETING**, on blue. When nothing is timing in your working hours, an
+empty office chair swivels and settles beside **NO TASK**, on amber. Each loops
 for as long as the mode lasts, and the bar plays it itself, so it keeps moving
 when the computer is busy.
 
@@ -923,6 +924,8 @@ when the computer is busy.
 | 🥪 Lunch | ☕ Away |
 | <img src="../docs/images/bar-scene-meeting.webp" width="304" alt="MEETING: three people round a table on blue"> | <img src="../docs/images/bar-scene-eod.webp" width="304" alt="SEE YOU!: a moon rising on a dusk gradient"> |
 | 🗣️ Stand-up | 🌙 End of day |
+| <img src="../docs/images/bar-scene-nothing.webp" width="304" alt="NO TASK: an empty office chair on amber"> | |
+| 🪑 Nothing timing | |
 
 🗣️ **Joining the stand-up switches your timer to it.** Press **Join** on
 Today's card or in the mini timer, or Pause on the bar's prompt: the task
@@ -1260,7 +1263,7 @@ Three more things the session screen can say:
   four seconds.
 - **MG-12 > RIN**: the task was given to someone else on Jira or
   OpenProject while you were on it -- the key and their first name.
-- **NOTHING TIMING**, in amber across the whole bar, when the app's
+- **NO TASK**, beside an empty chair on amber, when the app's
   *Nothing timing* reminder asks (see *Reminders ask once* under [Settings: My workday](#-settings-my-workday)).
   Pause opens the task picker on the computer; a wheel click is *not now*.
   Either puts it away, and the bar's own clock comes back.
